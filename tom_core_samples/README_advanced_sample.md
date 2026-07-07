@@ -1,7 +1,7 @@
 # Advanced Tom Core Full-Stack Sample — the whole secured system
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These sample projects are proprietary and internal (`publish_to: none`).
+> These sample projects are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 This is the **secured, full-stack successor** to the basic
 [`core_server_sample`](core_server_sample/README.md) /
@@ -15,9 +15,7 @@ field authorization and cross-user sharing.
 > **Reading this map.** This document links the seven packages, draws the
 > architecture, and gives the one quickstart that stands the whole system up.
 > Every package ships its own article-grade `README.md` with the depth — nothing
-> about a package's internals is re-documented here. The build narrative lives in
-> the quest plan
-> [`advanced_example_specification_plan.md`](../../../_ai/quests/tom_core/advanced_example_specification_plan.md).
+> about a package's internals is re-documented here.
 
 ---
 
@@ -37,7 +35,7 @@ bottom; each links to the next.
 | 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the seven packages at a glance; reading order; conventions. |
 | 01 | [Full-stack architecture](README_advanced_01_architecture.md) | Two servers / two databases / two clients; layering; dependency arrows; the shared JWT key; the request + grant-propagation loop. |
 | 02 | [Project layout, packages & build](README_advanced_02_project_layout_build.md) | The seven pubspecs and their wiring; `publish_to: none`; build order; reflection generation; running build_runner; local run. |
-| 03 | [Domain model & reflection](README_advanced_03_domain_reflection.md) | The reflected `TomClass` entities; `@tomReflector`; the single reflection seed; enums; `resource_keys.dart` as the scope/form/field source of truth. |
+| 03 | [Domain model & reflection](README_advanced_03_domain_reflection.md) | The reflected `TomClass` entities; `@tomReflector`; the single reflection seed; enums; scope + `tomId`/`formId` addressing resolved by convention (no key catalogue). |
 | 04 | [Wire contracts & DTOs](README_advanced_04_wire_contracts_dtos.md) | The contracts package: DTOs, the typed service interfaces, the api registry, the domain↔wire boundary. |
 | 05 | [Persistence & the two databases](README_advanced_05_persistence_database.md) | Persistence mapping; CRUD repositories; the two-database design; datasources config; the schema vs sample-data migration split. |
 | 06 | [Authentication (JWT)](README_advanced_06_authentication.md) | Token issuance; password hashing; the bearer token and shared signing key; the client auth layer and token refresh. |
@@ -81,26 +79,33 @@ One reflected domain (`advanced_todo_domain`) flows into one wire contract
 call it through the shared `advanced_client_core`. The two servers share a JWT
 signing key, so a token minted by the auth server verifies at the app server.
 
+<!-- Figure: overall architecture as a wiring diagram. Two clients on the
+outside (advanced_authadmin_client, advanced_app_client), the shared
+advanced_client_core between them, the two servers in the middle
+(advanced_auth_server :8081 → auth_db :3307; advanced_app_server :8080 → app_db
+:3308), and the shared JWT signing key closing the loop underneath: an
+auth-minted token verifies at the app server. Full walk-through in
+[part 01](README_advanced_01_architecture.md). -->
+
+![Overall architecture: two Flutter clients share advanced_client_core; the auth server (:8081, auth_db :3307) issues tokens and owns /admin/*, the app server (:8080, app_db :3308) serves the task API; a shared JWT signing key lets an auth-minted token verify at the app server.](assets/architecture/advanced_04_overall_architecture.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TB
+  admin[advanced_authadmin_client<br/>admin console] --> core
+  appc[advanced_app_client<br/>end-user app] --> core
+  core[advanced_client_core<br/>shared authenticated HTTP]
+  core -- "login + /admin/*" --> auth[advanced_auth_server<br/>:8081]
+  core -- "login + board/share" --> app[advanced_app_server<br/>:8080]
+  auth --> authdb[(auth_db :3307)]
+  app --> appdb[(app_db :3308)]
+  key(["shared JWT signing key"])
+  key -. "signs" .-> auth
+  key -. "verifies" .-> app
 ```
-                         advanced_todo_domain
-               (shared reflected entities — the model)
-                                 │
-                         advanced_todo_contracts
-        (DTOs + AuthApiService / AdminApiService / AppApiService)
-            ┌────────────────────┼─────────────────────┐
-            │                    │                      │
-   advanced_auth_server   advanced_client_core   advanced_app_server
-   JWT issuer + /admin/*  ── authenticated   ──  secured task API
-   HTTP :8081                HTTP layer            HTTP :8080
-   auth_db  :3307           (Flutter-free)         app_db   :3308
-        │   ▲                  ╱        ╲                  ▲   │
-        │   │   advanced_authadmin_client    advanced_app_client│
-        │   │   admin console (Flutter)      end-user app (Flutter)
-        │   └────────── login + /admin/* ──────────┘           │
-        │                                  login + board/share  │
-        └──── shared JWT signing key: auth-minted token ────────┘
-                       verifies at the app server
-```
+
+</details>
 
 - The **admin console** logs in at the auth server and drives `/admin/*` to edit
   roles and the grant matrix.
@@ -163,18 +168,16 @@ dart run bin/app_server_start.dart       # HTTP :8080  (GET /health → 200)
 
 ```sh
 # End-user app — from advanced_app_client/
-flutter run \
-  --dart-define=AUTH_SERVER_URL=http://localhost:8081 \
-  --dart-define=APP_SERVER_URL=http://localhost:8080
+flutter run
 
 # Admin console — from advanced_authadmin_client/
-flutter run \
-  --dart-define=AUTH_SERVER_URL=http://localhost:8081
+flutter run
 ```
 
-Both clients boot on a **seeded in-memory backend** when launched *without* the
-`--dart-define`s — that is how the socket-free widget tests run. The defines
-point them at the live servers above.
+With **no dart-defines** both clients target the local servers above by default,
+reading their URLs from the `AdvancedClientConfig` config bean. Launch with
+`--dart-define=TEST_MODE=true` to boot on a **seeded in-memory backend** instead
+— the opt-in offline mode, and the same fake the socket-free widget tests inject.
 
 **Seeded live accounts** (sample only — never ship them):
 
@@ -212,7 +215,6 @@ live-stack pass — the runner converts a server-unreachable skip into a failure
 | Topic | Document |
 | --- | --- |
 | Basic samples map (the predecessor series) | [`README.md`](README.md) |
-| Quest build narrative | [`advanced_example_specification_plan.md`](../../../_ai/quests/tom_core/advanced_example_specification_plan.md) |
 | Server stack | [`../tom_core_server/README.md`](../tom_core_server/README.md) |
 | Kernel (foundation) | [`../tom_core_kernel/README.md`](../tom_core_kernel/README.md) |
 | Flutter integration | [`../tom_core_flutter/README.md`](../tom_core_flutter/README.md) |
@@ -236,6 +238,6 @@ tom_core_samples/
 
 ## License
 
-Proprietary and confidential. Each package carries the same proprietary
+BSD 3-Clause licensed. Each package carries the same
 [`LICENSE`](../tom_core_kernel/LICENSE) as the rest of Tom Core; see any package
 folder for the full text.

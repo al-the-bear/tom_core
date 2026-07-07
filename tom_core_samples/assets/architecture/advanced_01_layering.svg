@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    Layering & dependency arrows. Four horizontal bands, foundation at the
+    bottom. Every dependency arrow points DOWN = "depends on":
+      - top band, the four runtimes: advanced_auth_server, advanced_app_server,
+        advanced_app_client, advanced_authadmin_client;
+      - the two CLIENTS depend on advanced_client_core (and on contracts);
+      - the two SERVERS skip client_core and depend on contracts directly (and
+        on the domain);
+      - advanced_client_core depends on advanced_todo_contracts;
+      - advanced_todo_contracts depends on advanced_todo_domain (the reflected
+        entities — the single source of truth).
+    Nothing lower ever imports something higher.
+  -->
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;rx:7;}
+    .runtime{fill:#e3f2fd;}
+    .core{fill:#e8f5e9;}
+    .contract{fill:#fff3e0;}
+    .domain{fill:#f3e5f5;}
+    .lbl{fill:#212121;}
+    .sub{fill:#546e7a;font-size:11px;}
+    .dep{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow);}
+    .legend{fill:#546e7a;font-size:11px;}
+  </style>
+
+  <!-- Band 1: runtimes -->
+  <rect class="box runtime" x="20"  y="20" width="165" height="52" rx="7"/>
+  <text class="lbl" x="102" y="42" text-anchor="middle">advanced_auth_server</text>
+  <text class="sub" x="102" y="60" text-anchor="middle">JWT issuer + /admin/*</text>
+
+  <rect class="box runtime" x="205" y="20" width="165" height="52" rx="7"/>
+  <text class="lbl" x="287" y="42" text-anchor="middle">advanced_app_server</text>
+  <text class="sub" x="287" y="60" text-anchor="middle">secured task API</text>
+
+  <rect class="box runtime" x="390" y="20" width="165" height="52" rx="7"/>
+  <text class="lbl" x="472" y="42" text-anchor="middle">advanced_app_client</text>
+  <text class="sub" x="472" y="60" text-anchor="middle">end-user app (Flutter)</text>
+
+  <rect class="box runtime" x="575" y="20" width="165" height="52" rx="7"/>
+  <text class="lbl" x="657" y="42" text-anchor="middle">advanced_authadmin_client</text>
+  <text class="sub" x="657" y="60" text-anchor="middle">admin console (Flutter)</text>
+
+  <!-- Band 2: client_core -->
+  <rect class="box core" x="390" y="150" width="350" height="46" rx="7"/>
+  <text class="lbl" x="565" y="170" text-anchor="middle">advanced_client_core</text>
+  <text class="sub" x="565" y="186" text-anchor="middle">Flutter-free authenticated HTTP layer (clients only)</text>
+
+  <!-- Band 3: contracts -->
+  <rect class="box contract" x="120" y="260" width="520" height="46" rx="7"/>
+  <text class="lbl" x="380" y="280" text-anchor="middle">advanced_todo_contracts</text>
+  <text class="sub" x="380" y="296" text-anchor="middle">DTOs + AuthApiService / AdminApiService / AppApiService</text>
+
+  <!-- Band 4: domain -->
+  <rect class="box domain" x="200" y="360" width="360" height="46" rx="7"/>
+  <text class="lbl" x="380" y="380" text-anchor="middle">advanced_todo_domain</text>
+  <text class="sub" x="380" y="396" text-anchor="middle">reflected entities (@tomReflector) — the model</text>
+
+  <!-- clients -> client_core -->
+  <path class="dep" d="M472,72 L472,150"/>
+  <path class="dep" d="M657,72 C657,110 610,120 600,150"/>
+  <!-- servers -> contracts (skip client_core) -->
+  <path class="dep" d="M102,72 C102,180 180,200 220,260"/>
+  <path class="dep" d="M287,72 C287,170 300,210 320,260"/>
+  <!-- client_core -> contracts -->
+  <path class="dep" d="M565,196 L520,260"/>
+  <!-- contracts -> domain -->
+  <path class="dep" d="M380,306 L380,360"/>
+
+  <text class="legend" x="20" y="330">arrow ↓ = "depends on"</text>
+  <text class="legend" x="20" y="346">(clients also import contracts; servers also import domain)</text>
+</svg>

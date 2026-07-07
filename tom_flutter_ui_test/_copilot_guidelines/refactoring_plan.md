@@ -34,9 +34,9 @@ Iterate in order. Each step states its **done** condition.
 
 1. **Meta files.** Ensure `README.md` (summary + overview: what the app
    demonstrates, how to run it, what each demo group shows), `CHANGELOG.md`
-   (short, pre-publish), and `LICENSE` (proprietary) exist at the project root.
+   (short, pre-publish), and `LICENSE` (BSD 3-Clause) exist at the project root.
    `CHANGELOG.md` and `LICENSE` are **missing** — create both (copy the
-   proprietary `LICENSE` wording from a sibling project). *Done when all three
+   BSD 3-Clause `LICENSE` wording from a sibling project). *Done when all three
    exist and the README orients a new reader.*
 2. **Entry + bootstrap clarity.** Review `main.dart`, `demo_resources.dart`, and
    `locale_settings.dart`; document the startup path and resource/locale setup

@@ -15,6 +15,7 @@ import 'fields/tom_field_widget_adapter.dart';
 import 'tom_form_child_container.dart';
 import 'validation/form_validation_error.dart';
 import 'validation/validation_result.dart';
+import 'validation/validator_registry.dart';
 
 // ---------------------------------------------------------------------------
 // TomForm — Form Container (§5)
@@ -595,7 +596,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this._initialValue, {
     this.form,
     this.obscureText = false,
-    this.validators = const [],
+    List<Object> validators = const [],
     this.autoValidate = false,
     this.tomGroup,
     this.authorizer,
@@ -603,7 +604,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this.actionIcon,
     this.actionIconTooltip,
     this.onActionIconPressed,
-  }) : super(_initialValue) {
+  })  : _codeValidators = validators,
+        super(_initialValue) {
     // When the field knows its form, derive scope from the form's
     // basePath — so a field can be instantiated at its declaration site
     // (e.g. `late final x = TomFormStringInput('x', '', form: this)`)
@@ -888,13 +890,42 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   // --- Validation ---
 
-  /// Validators applied to this field.
+  /// Validators passed to the constructor in code.
+  ///
+  /// Kept separate from [validators] so the effective list can merge these
+  /// with any resource-declared validators (C-11) resolved lazily.
+  final List<Object> _codeValidators;
+
+  /// Validators applied to this field: the code-declared validators followed
+  /// by any resource-declared validators (C-11).
   ///
   /// Accepts both [Validator<T>] (fast) and [SlowValidator<T>] (slow).
   /// Fast validators run without showing a pending spinner.
   /// Slow validators (e.g., remote API calls) show a spinner and trigger
   /// after a longer debounce.
-  final List<Object> validators;
+  ///
+  /// Resource-declared validators are named in the field's resource bundle
+  /// under `<basePath>.validators` (e.g. `required,minLength:8,strongPassword`)
+  /// and resolved by [TomValidatorRegistry.instance] into validator instances.
+  /// The lookup is `late` so it runs after the field's [basePath] is derived
+  /// and the app resource provider is configured, not during construction
+  /// (fields are frequently constructed during reflection-driven member
+  /// enumeration, before resources are installed).
+  late final List<Object> validators = [
+    ..._codeValidators,
+    ..._resolveResourceDeclaredValidators(),
+  ];
+
+  /// Resolves the field's resource-declared validators (C-11).
+  ///
+  /// Reads `<basePath>.validators` from resources; when absent or blank the
+  /// field has no resource-declared validators. Otherwise the comma-separated
+  /// declaration is resolved by name through [TomValidatorRegistry].
+  List<Object> _resolveResourceDeclaredValidators() {
+    final declaration = TomCtr.textOrNull(basePath, 'validators');
+    if (declaration == null || declaration.trim().isEmpty) return const [];
+    return TomValidatorRegistry.instance.resolveDeclaration(declaration);
+  }
 
   /// Whether this field validates immediately on bind without waiting
   /// for user interaction. Useful for auto-save forms.

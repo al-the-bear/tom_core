@@ -1,7 +1,7 @@
 # Tom Core — the foundation layer of the Tom Framework
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Tom Core is the set of packages every Tom application is built on: a
 platform-neutral kernel (dependency injection, observable state, security,
@@ -179,5 +179,5 @@ on `tom_basics`.
 
 ## License
 
-Proprietary and confidential. Each package carries the same proprietary
+BSD 3-Clause licensed. Each package carries the same
 [`LICENSE`](tom_core_kernel/LICENSE); see any package folder for the full text.

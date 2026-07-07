@@ -140,10 +140,10 @@ class _BreakpointBadge extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              'width: ${width.toStringAsFixed(0)} px '
-              '→ family: ${family.kind.name} '
-              '(${wide ? "wide → Material" : "narrow → Cupertino"})',
+            child: TomText(
+              text: 'width: ${width.toStringAsFixed(0)} px '
+                  '→ family: ${family.kind.name} '
+                  '(${wide ? "wide → Material" : "narrow → Cupertino"})',
               style: theme.textTheme.bodySmall,
               overflow: TextOverflow.ellipsis,
             ),
@@ -162,7 +162,7 @@ class _FormColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return TomCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -170,8 +170,8 @@ class _FormColumn extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                'Active family: ${form.family.kind.name}',
+              child: TomText(
+                text: 'Active family: ${form.family.kind.name}',
                 style: theme.textTheme.titleSmall
                     ?.copyWith(color: theme.colorScheme.primary),
               ),
@@ -205,7 +205,7 @@ class _StatePanel extends StatelessWidget {
     String dateStr(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
-    return Card(
+    return TomCard(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -214,7 +214,8 @@ class _StatePanel extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: Text('Shared state (ResponsiveProfile)',
+              child: TomText(
+                  text: 'Shared state (ResponsiveProfile)',
                   style: theme.textTheme.titleSmall),
             ),
             TomMultiObservableBuilder(
@@ -244,12 +245,13 @@ class _StatePanel extends StatelessWidget {
                           children: [
                             SizedBox(
                               width: 110,
-                              child: Text(name,
+                              child: TomText(
+                                  text: name,
                                   style: theme.textTheme.bodySmall),
                             ),
                             Expanded(
-                              child: Text(
-                                value,
+                              child: TomText(
+                                text: value,
                                 style: theme.textTheme.bodySmall
                                     ?.copyWith(fontFamily: 'monospace'),
                               ),

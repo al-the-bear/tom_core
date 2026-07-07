@@ -84,18 +84,22 @@ prevents an accidental `dart pub publish`.
 ## Reflection generation
 
 Five of the seven packages reflect types; each has **exactly one reflection entry
-point** and a `build.yaml` that emits a sibling `<entry>.reflection.dart`:
+point** and a `build.yaml` that emits a sibling `<entry>.reflection.dart`. Only
+real entry-points (the servers' `bin/` and the clients' `lib/`) ship a **runtime**
+seed; the two **libraries** carry a seed only for their own tests, rooted under
+`test/` (G-REFL-1/2):
 
-| Package | Entry point | Generated output |
-| --- | --- | --- |
-| `advanced_todo_domain` | `lib/src/reflection_entry.dart` | `lib/src/reflection_entry.reflection.dart` |
-| `advanced_todo_contracts` | `lib/src/reflection_entry.dart` | `lib/src/reflection_entry.reflection.dart` |
-| `advanced_auth_server` | `bin/auth_server_start.dart` | `bin/auth_server_start.reflection.dart` |
-| `advanced_app_server` | `bin/app_server_start.dart` | `bin/app_server_start.reflection.dart` |
-| `advanced_app_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` |
-| `advanced_authadmin_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` |
+| Package | Entry point | Generated output | Kind |
+| --- | --- | --- | --- |
+| `advanced_todo_domain` | `test/run_all_tests.dart` | `test/run_all_tests.reflection.dart` | test-only |
+| `advanced_todo_contracts` | `test/run_all_tests.dart` | `test/run_all_tests.reflection.dart` | test-only |
+| `advanced_auth_server` | `bin/auth_server_start.dart` | `bin/auth_server_start.reflection.dart` | runtime |
+| `advanced_app_server` | `bin/app_server_start.dart` | `bin/app_server_start.reflection.dart` | runtime |
+| `advanced_app_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` | runtime |
+| `advanced_authadmin_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` | runtime |
 
-(`advanced_client_core` reflects nothing — it has no `build.yaml`.)
+(`advanced_client_core` reflects nothing of its own — it consumes the combined
+client seed.)
 
 **The single-seed rule.** The generated `initializeReflection()` *assigns* the
 reflection data (last writer wins), so **exactly one seed's `initializeReflection()`
@@ -106,21 +110,29 @@ example, import the shared `advanced_todo_domain` entities *and* the client-loca
 forms, because a `TomForm` is itself a reflected `TomClass` and `bind`/`save`
 walk a form's fields through kernel reflection — so both the bound entities and
 the forms themselves must be in the reflected graph. (The client seed imports
-`advanced_todo_domain` for generator discovery but does **not** re-export it,
-since that library carries its own `initializeReflection` that would collide.)
+`advanced_todo_domain` for generator discovery but does **not** re-export it: the
+domain is a library and ships no runtime seed, so the one authoritative
+`initializeReflection()` a client runs is its own combined seed. The server tests
+follow the same rule from the other direction — they bootstrap through the
+server's own `bin/` seed, not a library seed, since the domain library ships no
+seed of its own.)
 
 **Regenerate only on signature changes.** Each package ships a
-`reflection_generation.sh` that runs the generator in single-project mode:
+`reflection_generation.sh` that runs the generator flag-free:
 
 ```sh
 # from the package root, e.g. advanced_todo_domain/
 ./reflection_generation.sh
-# → dart run tom_reflection_generator --nested
+# → dart run tom_reflection_generator
 ```
 
-`--nested` runs the generator standalone (it does not consult the workspace
-registry, so it works even before the sample is registered in
-`tom_master.yaml`). A regen is required **only when a reflected type's signature
+The invocation is **flag-free**: the generator's framework default scans the
+current project only (scan `.`, non-recursive), so it needs no workspace registry
+and no scan flag — it works standalone from the package root. The two Flutter
+clients are the one exception: their scripts pass `--no-cache`
+(`dart run tom_reflection_generator --no-cache`) because the analyzer
+summary-cache resolver crashes on the Flutter closure; `--no-cache` forces a
+full live analysis. A regen is required **only when a reflected type's signature
 changes** — a field/method/annotation added, removed, or retyped on a
 `@tomReflector`/`@tomService` type, or a new reflected type added to a seed.
 Editing *bodies* or non-reflected code needs no regen. The
@@ -141,7 +153,8 @@ dart run build_runner build --delete-conflicting-outputs
 
 Either path produces the same `<entry>.reflection.dart`. Use
 `reflection_generation.sh` unless you have a reason to drive `build_runner`
-yourself — it encodes the correct `--nested` invocation and target.
+yourself — it encodes the correct flag-free invocation and target (and the
+`--no-cache` flag the Flutter clients need).
 
 ## Local run: env, Docker compose, flutter run
 
@@ -164,27 +177,26 @@ The end-to-end run is four moves (full commands in the hub's
 3. **App server next** — `dart run bin/app_server_start.dart` (HTTP `:8080`,
    `GET /health → 200`); it verifies those tokens and reads grants. Each server
    runs from its own package root so relative migration/asset paths resolve.
-4. **Clients** — `flutter run` each client, pointing it at the live servers with
-   `--dart-define`s:
+4. **Clients** — `flutter run` each client. With no dart-defines they target the
+   local servers by default, reading their URLs from the `AdvancedClientConfig`
+   config bean:
 
    ```sh
    # end-user app — from advanced_app_client/
-   flutter run \
-     --dart-define=AUTH_SERVER_URL=http://localhost:8081 \
-     --dart-define=APP_SERVER_URL=http://localhost:8080
+   flutter run
 
    # admin console — from advanced_authadmin_client/
-   flutter run --dart-define=AUTH_SERVER_URL=http://localhost:8081
+   flutter run
    ```
 
-Launched **without** the `--dart-define`s, both clients boot on a **seeded
-in-memory backend** — which is exactly how the socket-free widget tests run (part
+Launched with `--dart-define=TEST_MODE=true`, either client boots on a **seeded
+in-memory backend** instead — the opt-in offline mode, and exactly the fake the
+socket-free widget tests inject (part
 [12](README_advanced_12_testing_integration.md)). The seeded live accounts
 (`admin` / `alice` / `bob` / `carol`) are listed in the hub.
 
 ## Primary sources
 
-- `advanced_example_specification_plan.md` — A.2 Components, Phase 1 (shared foundations), Plan-completion notes.
 - The seven `pubspec.yaml` files; each package's `build.yaml`, `reflection_generation.sh`, and reflection entry/seed.
 - [`README_advanced_sample.md`](README_advanced_sample.md) — the Repository-layout tree and the [Run the whole thing](README_advanced_sample.md#run-the-whole-thing) quickstart.
 

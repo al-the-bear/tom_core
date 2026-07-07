@@ -1,16 +1,16 @@
 /// The login screen: a bound [LoginForm] over [LoginCredentials], driving
 /// [AppSession.login].
 ///
-/// The form is created inside a [TomScope] (so its fields resolve ids/resources
-/// consistently) and bound to a fresh [LoginCredentials]. On submit we `save()`
-/// the form — which writes the typed fields back into the bound credentials via
-/// the reflection round-trip — then hand the values to the session. A failed
-/// login surfaces its [TodoApiException] message inline without leaving the
-/// screen.
+/// The form is constructed directly (so its `basePath` is the clean `login`
+/// scope its field resources address) and bound to a fresh [LoginCredentials].
+/// On submit we `save()` the form — which writes the typed fields back into the
+/// bound credentials via the reflection round-trip — then hand the values to the
+/// session. A failed login surfaces its [TodoApiException] message inline without
+/// leaving the screen. All visible copy resolves through [TomCtr] (G-RES-1).
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../api/todo_api.dart';
 import '../app/app_session.dart';
@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('login', LoginForm.new);
+    _form = LoginForm();
     _form.bind(_credentials);
   }
 
@@ -66,8 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Tom Todo — sign in')),
+    return TomScaffold(
+      appBar: TomAppBar(title: TomText(text: TomCtr.text('login.appbar.title'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -75,8 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.all(24),
             children: [
-              Text(
-                'Try alice, bob or val (any non-empty password).',
+              TomText(
+                text: TomCtr.text('login.intro'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -85,21 +85,21 @@ class _LoginScreenState extends State<LoginScreen> {
               _form.password.widget,
               const SizedBox(height: 16),
               if (_error != null) ...[
-                Text(
-                  _error!,
+                TomText(
+                  text: _error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 const SizedBox(height: 12),
               ],
-              FilledButton(
+              TomFilledButton(
                 onPressed: _busy ? null : _submit,
                 child: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 18,
                         width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: TomCircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Sign in'),
+                    : TomText(text: TomCtr.text('login.submit')),
               ),
             ],
           ),

@@ -1,7 +1,7 @@
 # observable
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The kernel's reactive value model. A `TomObject<T>` wraps a value, broadcasts
 changes to observers, and exposes a terse operator surface — `|` to set, `~` to

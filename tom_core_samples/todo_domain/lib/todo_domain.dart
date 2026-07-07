@@ -18,4 +18,5 @@
 library;
 
 export 'src/entities.dart';
+export 'src/wire/wire.dart';
 export 'src/reflection_entry.reflection.dart' show initializeReflection;

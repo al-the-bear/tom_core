@@ -15,20 +15,26 @@ appendix [A2](README_advanced_A2_resource_scope_conventions.md).
 ## `TomForm` and `TomField`
 
 A screen's editable surface is a `TomForm<T>` — a reflected container
-(`T extends TomClass`) whose fields are declared as `late final` members:
+(`T extends TomClass`) that separates **definition** (the fields, declared as
+members typed by their base field type), **implementation** (the fields, created
+in `createFormElements()`), and **layout** (the screen, which drops each
+`field.widget` into place) — G-UI-5:
 
 ```dart
 @tomReflector
 class LoginForm extends TomForm<LoginCredentials> {
   LoginForm() : super(formId: 'login');
 
-  late final username = TomFormStringInput('username', '', form: this,
-      validators: [Validators.required()]);
-  late final password = TomFormStringInput('password', '', form: this,
-      obscureText: true, validators: [Validators.required()]);
+  late final TomFormStringInput username;
+  late final TomFormStringInput password;
 
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    username = TomFormStringInput('username', '', form: this,
+        validators: [Validators.required()]);
+    password = TomFormStringInput('password', '', form: this,
+        obscureText: true, validators: [Validators.required()]);
+  }
 }
 ```
 
@@ -41,11 +47,15 @@ Two things are doing the work here:
   (a `ValueListenableBuilder` wrapped in a `TomFieldWidgetAdapter`,
   `tom_form.dart:1163`) that the screen drops straight into its layout. The
   screen never builds a `TextField` for the form's fields by hand.
-- **`createFormElements()` is empty on purpose.** The fields are declared as
-  `late final` initializers rather than created inside that hook, so each field
-  can capture `form: this` at its declaration site and derive its path from the
-  form — independent of whatever scope happens to be current when reflection
-  enumerates the members (see the next section).
+- **Fields are created in `createFormElements()`** (G-UI-5). The hook runs
+  inside the form's own scope, *after* the form's `basePath` is set (it is
+  called from `prepareForSelfObservation`, before the constructor body
+  enumerates members). So each field captures `form: this` and derives its path
+  from the form — independent of whatever scope happens to be current when
+  reflection enumerates the members (see the next section). The members are
+  declared `late final` and typed by their **base field type**
+  (`TomFormStringInput`, `TomFormStringDropdown`, …); they need not be
+  initialised at their declaration site.
 
 The form's lifecycle — `bind`, `save`, `validate`, `discard` — fans out across
 its fields (and any nested forms) through reflection; the screens drive only
@@ -87,7 +97,7 @@ Whether a form is "scoped" is decided **at construction**, by whether a
   equal the server's grade keys (`todo.item.<field>`). The screen constructs it
   inside a pushed scope (`item_detail_screen.dart:88`):
   ```dart
-  final form = TomScope.withScope(TodoItemResourceKeys.scope, TodoItemForm.new);
+  final form = TomScope.withScope('todo', TodoItemForm.new);
   ```
   `TodoItemForm` only declares `super(formId: 'item')`; the `todo` scope comes
   from the call site, so the field at `tomId: 'title'` lands at `todo.item.title`.
@@ -95,9 +105,12 @@ Whether a form is "scoped" is decided **at construction**, by whether a
 This is the one place the sample's "one name, two uses" rule could silently break
 — if the item form were constructed unscoped, its fields would self-address as
 `item.title` and every grade lookup would miss (degrading closed-safe to
-`none`/hidden). The scope keys (`scope = 'todo'`, `formId = 'item'`) live as
-constants in the shared domain's `resource_keys.dart`, so the form, the server
-grade matrix, and the JSON texts cannot drift apart.
+`none`/hidden). The scope segments (`scope = 'todo'`, `formId = 'item'`) are
+**plain string literals** declared where they are used — the `formId` in the
+form's `super(formId: 'item')`, the scope in the screen's
+`TomScope.withScope('todo', …)` (G-RES-2/6, no key-catalogue class). The form,
+the server grade matrix, and the JSON texts stay aligned by naming the same
+`todo.item.<field>` keys by convention, not by importing a shared constants file.
 
 ## Bound reflected forms
 
@@ -145,16 +158,19 @@ the client packages add no field widgets of their own:
 | `TomFormStringDropdown` | enum-valued pickers (status, priority) over a `TomSelectableSource` |
 | `TomFormNDateInput` | nullable dates (the item's due date) |
 | `TomFormNDoubleInput` | nullable numbers (the estimate, `decimals: 1`) |
-| `StaticSelectableSource` / `SelectableItem` | a fixed option list, *valued by the wire/enum token, labelled by `enum.label`* |
+| `StaticSelectableSource` / `SelectableItem` | a fixed option list, *valued by the wire/enum token, labelled from the bundle via the enum's `global.<enumtype>.<value>` key (G-RES-5)* |
 | `Validators.required()` | declarative per-field validation |
 | `TomAuthorizer.fixed(state)` | a per-field grade override (the admin forms' stable-key fields — part 07) |
 
 Each component derives its `basePath` from the form (above) and resolves its
 label/hint/options from the installed resource bundle (part 08) and its grade
 from the installed adapter (part 07). The dropdowns illustrate the
-stored-name-vs-label split from part
+stored-name-vs-display-text split from part
 [03](README_advanced_03_domain_reflection.md): the `SelectableItem` `value` is
-the enum `name` the entity stores, the `label` is `enum.label`.
+the enum `name` the entity stores, while its label is resolved from the bundle
+under the enum's `global.<enumtype>.<value>` key (G-RES-5) — the option list is
+built when the form's field is constructed, after the session installs the
+server-sent bundle, so no display string is hardcoded.
 
 ## The screens
 
@@ -185,7 +201,8 @@ The **admin console** (`advanced_authadmin_client`):
 
 - **Admin login + shell** — a bound `AdminLoginForm` (formId `adminLogin`) whose
   login is **two-phase** (authenticate, then *probe* an admin call, since
-  `/admin/*` is gated by `@TomRoleAccess(['admin'])` not the login itself), then a
+  `/admin/*` is gated by the contract-declared `TomRoleAccess(['admin'])` not the
+  login itself), then a
   `NavigationRail` over an `IndexedStack` of five destinations.
 - **Users / Roles / Groups** — three thin configurations of the **generic**
   `AdminCrudScreen<T>` (one list/dialog/confirm skeleton, not three), opening a
@@ -224,8 +241,8 @@ The sample's reactivity has two layers, both pull-based:
 - `advanced_app_client/lib/forms/{login_form,todo_item_form}.dart`; `advanced_authadmin_client/lib/forms/{user_form,role_form,group_form}.dart`
 - `advanced_app_client/lib/screens/item_detail_screen.dart:88` (`TomScope.withScope`), `:181-188` (`field.widget` / `isEditable` gate)
 - `tom_flutter_ui/.../tom_form.dart:24` (`TomForm`), `:146` (form `basePath`), `:592`/`:614-617` (`TomField` / field `basePath`), `:196` (`bind`), `:315`/`:335` (`save`), `:838` (`isEditable`), `:1163` (`field.widget`)
-- `advanced_todo_domain/lib/src/resource_keys.dart` (`scope`/`formId` constants)
-- `advanced_example_specification_plan.md` — A.8, A.9, Phases 5 & 6; appendix [A2](README_advanced_A2_resource_scope_conventions.md)
+- `advanced_app_client/lib/forms/todo_item_form.dart:37` (`super(formId: 'item')`), `advanced_app_client/lib/screens/item_detail_screen.dart:89` (`TomScope.withScope('todo', …)`) — the `formId`/scope literals, declared at use (no key catalogue)
+- Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 
 ---
 

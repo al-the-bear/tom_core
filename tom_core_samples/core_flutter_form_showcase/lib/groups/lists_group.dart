@@ -53,13 +53,13 @@ class _InlineOrderListState extends State<_InlineOrderList> {
             child: TomInlineListForm<OrderItem, OrderItemForm>(
               listForm: _listForm,
               reorderable: true,
-              rowBuilder: (context, index, rowForm) => Card(
+              rowBuilder: (context, index, rowForm) => TomCard(
                 key: ValueKey('order-row-${rowForm.hashCode}'),
                 margin: const EdgeInsets.symmetric(vertical: 4),
                 color: index == _selectedIndex
                     ? Theme.of(context).colorScheme.surfaceContainerHighest
                     : null,
-                child: InkWell(
+                child: TomInkWell(
                   onTap: () => _select(index),
                   child: Padding(
                     padding: const EdgeInsets.all(8),
@@ -78,7 +78,7 @@ class _InlineOrderListState extends State<_InlineOrderList> {
               ),
             ),
           ),
-          const Divider(height: 8),
+          TomDivider(height: 8),
           TomListFormToolbar<OrderItem, OrderItemForm>(
             listForm: _listForm,
             selectedIndex: _selectedIndex,

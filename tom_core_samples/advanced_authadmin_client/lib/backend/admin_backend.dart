@@ -12,8 +12,9 @@
 /// the grant matrix, and assignments — plus the two **session** operations
 /// ([login]/[logout]) the admin API client does not own (the live wiring routes
 /// those through `AuthClient`). Every administrative operation requires the
-/// `admin` role: the live server gates each `/admin/*` endpoint with
-/// `@TomRoleAccess(['admin'])`, and the in-memory fake mirrors that gate so a
+/// `admin` role: each `/admin/*` endpoint's contract declares
+/// `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) and the live server's
+/// pipeline enforces it, and the in-memory fake mirrors that gate so a
 /// non-admin principal is refused identically either way.
 library;
 
@@ -24,7 +25,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 ///
 /// A single typed failure the screens catch and surface: the in-memory backend
 /// throws it directly, and [LiveAdminBackend] wraps the client core's transport
-/// exceptions (`AuthClientException`/`AdminApiException`/`AuthorizedHttpException`)
+/// exceptions (`AuthClientException`/`AdminApiException`/`TomAuthExpiredException`)
 /// in it. It carries a human [message] to show the user and, when the underlying
 /// failure had one, the server's stable error [key] so a caller can branch
 /// without parsing the message (e.g. the shell rejects a non-admin login by

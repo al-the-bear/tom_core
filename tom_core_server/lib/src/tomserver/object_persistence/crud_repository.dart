@@ -9,6 +9,8 @@ import 'persistence_annotations.dart';
 import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
 import 'annotation_analyzer.dart';
+import 'column_authorization.dart';
+import 'data_scope.dart';
 
 /// Result holder for a `COUNT(*)` query: a single [count] field populated by
 /// the row mapper. Reflectable so the data source can materialise it.
@@ -163,6 +165,71 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     }
   }
 
+  /// Resolves the row-scope predicate (C-3) for the current-zone principal, or
+  /// `null` when the entity declares no `@TomDbScope` or its resolver opts out.
+  ///
+  /// The predicate is bound (`<field> IN (:__tomscope_0, …)`), so a principal's
+  /// allowed values ride the prepared-statement protocol as positional
+  /// parameters — never concatenated into the SQL (C-7). Because the number of
+  /// allowed values (and thus placeholders) varies per principal, a scoped read
+  /// path prepares a fresh statement rather than reusing a cached one.
+  TomDataScopePredicate? _resolveScope() {
+    final scope = TomAnnotationAnalyzer.findDataScope(queryTypes[0]);
+    if (scope == null) return null;
+    final col = TomAnnotationAnalyzer.determineColumn(scope.field, [
+      persistenceInfo,
+    ]);
+    final principal = getFromCurrentZone<TomPrincipal>();
+    return TomDataScope.build(this, scope, col, principal);
+  }
+
+  /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
+  /// every shaping option), or [base] unchanged when [scope] is `null`.
+  TomSelect _scopedSelect(TomSelect base, TomDataScopePredicate? scope) {
+    if (scope == null) return base;
+    return TomSelect(
+      base.types,
+      query: and([base.query, scope.predicate]),
+      distinct: base.distinct,
+      orderBy: base.orderBy,
+      ascending: base.ascending,
+      top: base.top,
+      ignoreFields: base.ignoreFields,
+    );
+  }
+
+  /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
+  /// every shaping option), or [base] unchanged when [scope] is `null`.
+  TomCount _scopedCount(TomCount base, TomDataScopePredicate? scope) {
+    if (scope == null) return base;
+    return TomCount(
+      base.types,
+      query: and([base.query, scope.predicate]),
+      distinct: base.distinct,
+      orderBy: base.orderBy,
+      ascending: base.ascending,
+      top: base.top,
+      ignoreFields: base.ignoreFields,
+    );
+  }
+
+  /// The entity's column-level access-controlled columns (C-4), or empty when it
+  /// declares none — in which case every C-4 read/write path is a no-op.
+  List<TomColumnInformation> get _authColumns =>
+      TomAnnotationAnalyzer.findAuthColumns(queryTypes[0]);
+
+  /// Masks every row of [rows] in place — nulling the columns the current
+  /// principal may not see (C-4) — and returns the list. A no-op when the entity
+  /// declares no column access rights.
+  List<T> _maskRows(List<T> rows) {
+    final authColumns = _authColumns;
+    if (authColumns.isEmpty) return rows;
+    for (final row in rows) {
+      TomColumnAuthorization.applyReadMask(row, authColumns);
+    }
+    return rows;
+  }
+
   TomPreparedStatement<T>? _deleteQuery;
 
   @override
@@ -180,16 +247,16 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     return;
   }
 
+  TomPreparedStatement<T>? _deleteAllByIdQuery;
   @override
   Future<void> deleteAllById(Iterable<K> ids) async {
-    TomQuery deleteAllByIdQuery = _qsc.compileQuerySentence('''
+    _deleteAllByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
+      _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
-      ''');
-    Map<String, Object?> params = {"ids": ids};
-    await datasourceInfo.datasource.executeCommand(
-      deleteAllByIdQuery.generateQuery(sqlDialect),
-      params,
+      ''')
+          as TomDelete,
     );
+    await _deleteAllByIdQuery!.execute({"ids": ids});
     return;
   }
 
@@ -210,66 +277,130 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   TomPreparedStatement<T>? _existsByIdsQuery;
   @override
   Future<bool> existsById(Iterable<K> ids) async {
-    _existsByIdsQuery ??= await datasourceInfo.datasource.prepareStatement(
-      _qsc.compileQuerySentence('''
+    final scope = _resolveScope();
+    if (scope == null) {
+      _existsByIdsQuery ??= await datasourceInfo.datasource.prepareStatement(
+        _qsc.compileQuerySentence('''
 count by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
       ''')
-          as TomCount,
-    );
-    Map<String, Object?> params = {"ids": ids};
-    List<T> result = await _existsByIdsQuery!.execute(params);
+            as TomCount,
+      );
+      List<T> result = await _existsByIdsQuery!.execute({"ids": ids});
+      return result.length == ids.length;
+    }
+    final base =
+        _qsc.compileQuerySentence('''
+count by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
+      ''')
+            as TomCount;
+    final params = <String, Object?>{"ids": ids, ...scope.parameters};
+    List<T> result = await _runPrepared<T>(_scopedCount(base, scope), params);
     return result.length == ids.length;
   }
 
   TomPreparedStatement<T>? _findAllQuery;
   @override
   Future<List<T>> findAll() async {
-    _findAllQuery ??= await datasourceInfo.datasource.prepareStatement(
-      TomLiteralSelect(
-        [T],
-        query:
-            '''
+    final scope = _resolveScope();
+    if (scope == null) {
+      _findAllQuery ??= await datasourceInfo.datasource.prepareStatement(
+        TomLiteralSelect(
+          [T],
+          query:
+              '''
 SELECT * FROM ${dbTable.table}
       ''',
+        ),
+      );
+      return _maskRows(await _findAllQuery!.execute({}));
+    }
+    // Scoped: the WHERE is the scope predicate alone; a generated SELECT emits
+    // the persistent columns and binds the principal's allowed values.
+    return _maskRows(
+      await _runPrepared<T>(
+        TomSelect(queryTypes, query: scope.predicate),
+        {...scope.parameters},
       ),
     );
-    Map<String, Object?> params = {};
-    return await _findAllQuery!.execute(params);
   }
 
+  TomPreparedStatement<T>? _findAllByIdQuery;
   @override
   Future<List<T>> findAllById(Iterable<K> ids) async {
-    var query = TomLiteralSelect(
-      [T],
-      query:
-          '''
-SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} IS IN ( :ids )
-      ''',
-    );
-    Map<String, Object?> params = {"ids": ids};
-    return await datasourceInfo.datasource.executeQuery<T>(
-      query.generateQuery(sqlDialect),
-      params,
-    );
+    // Compile through the query-sentence compiler (like `existsById`) so the
+    // `IS IN` list renders as a bound `IN (?)` placeholder rather than an
+    // inline literal — no value is concatenated into the SQL. (The prior
+    // hand-written SQL also embedded the invalid `IS IN` keyword, which the
+    // compiler translates to a proper `IN (...)`.)
+    final scope = _resolveScope();
+    if (scope == null) {
+      _findAllByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
+        _qsc.compileQuerySentence('''
+find by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
+      ''')
+            as TomSelect,
+      );
+      return _maskRows(await _findAllByIdQuery!.execute({"ids": ids}));
+    }
+    final base =
+        _qsc.compileQuerySentence('''
+find by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
+      ''')
+            as TomSelect;
+    final params = <String, Object?>{"ids": ids, ...scope.parameters};
+    return _maskRows(await _runPrepared<T>(_scopedSelect(base, scope), params));
   }
 
   TomPreparedStatement<T>? _findByIdQuery;
   @override
   Future<T?> findById(K id) async {
-    var params = {"id": id};
-    _findByIdQuery =
-        _findByIdQuery ??
-        await datasourceInfo.datasource.prepareStatement(
-          TomLiteralSelect(
-            [T],
-            query:
-                '''
+    final row = await _selectById(id);
+    // C-4: mask the columns the current principal may not see before the row
+    // leaves the server. `save` reads its update baseline through the unmasked
+    // `_selectById` instead, so a masked-null never reaches the diff.
+    if (row == null) return null;
+    final authColumns = _authColumns;
+    if (authColumns.isEmpty) return row;
+    return TomColumnAuthorization.applyReadMask<T>(row, authColumns);
+  }
+
+  /// Loads the row with primary key [id] **without** C-4 column masking, ANDing
+  /// the current principal's row scope (C-3) when the entity declares one, or
+  /// `null` when no such row is visible.
+  ///
+  /// This is the raw read [findById] masks and [save] diffs its update against —
+  /// a write must be measured against the true stored value, not a masked null.
+  Future<T?> _selectById(K id) async {
+    final scope = _resolveScope();
+    List<T> result;
+    if (scope == null) {
+      final params = {"id": id};
+      _findByIdQuery =
+          _findByIdQuery ??
+          await datasourceInfo.datasource.prepareStatement(
+            TomLiteralSelect(
+              [T],
+              query:
+                  '''
 SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       ''',
-            parameters: params.keys.toList(),
-          ),
-        );
-    var result = await _findByIdQuery!.execute(params);
+              parameters: params.keys.toList(),
+            ),
+          );
+      result = await _findByIdQuery!.execute(params);
+    } else {
+      // Scoped: the id match is ANDed with the principal's row scope, so a
+      // principal cannot read another principal's row by its id.
+      final params = <String, Object?>{"id": id, ...scope.parameters};
+      final where = and([
+        TomDataScope.columnEqualsParam(this, primaryKeyColumnInfo, 'id'),
+        scope.predicate,
+      ]);
+      result = await _runPrepared<T>(
+        TomSelect(queryTypes, query: where),
+        params,
+      );
+    }
     if (result.length == 1) {
       return result[0];
     } else if (result.isEmpty) {
@@ -284,18 +415,27 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   TomPreparedStatement<TomCountResult>? _countQuery;
   @override
   Future<TomDbInt> count() async {
-    _countQuery ??= await datasourceInfo.datasource
-        .prepareStatement<TomCountResult>(
-          TomLiteralSelect(
-            [T],
-            query:
-                '''
+    final scope = _resolveScope();
+    List<TomCountResult> result;
+    if (scope == null) {
+      _countQuery ??= await datasourceInfo.datasource
+          .prepareStatement<TomCountResult>(
+            TomLiteralSelect(
+              [T],
+              query:
+                  '''
     SELECT COUNT(*) AS count FROM ${dbTable.table}
 ''',
-          ),
-        );
-    Map<String, Object?> params = {};
-    List<TomCountResult> result = await _countQuery!.execute(params);
+            ),
+          );
+      result = await _countQuery!.execute({});
+    } else {
+      result = await _runPrepared<TomCountResult>(
+        TomCount(queryTypes, query: scope.predicate),
+        {...scope.parameters},
+        TomCountResult,
+      );
+    }
     if (result.length != 1) {
       throw Exception(
         "Illegal count result. Must have exactly one result row, but had ${result.length}",
@@ -381,13 +521,48 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       for (final col in persistentColumns)
         if (!(col.column?.isReadOnly ?? false)) col,
     ];
-    Object? dbValue(TomColumnInformation col) {
-      final raw = col.getVariableValue(toSave);
+    Object? dbConvert(TomColumnInformation col, Object? raw) {
       final convert = col.column?.toDbConverter;
       return convert != null ? convert(raw) : raw;
     }
 
-    if (isUnsavedKey(primaryKey)) {
+    final insert = isUnsavedKey(primaryKey);
+
+    // C-4 column-level write enforcement. For an entity that declares
+    // `@TomDbColumn(authKey: …)` columns, a change to one the principal is not
+    // `full` on is rejected when the column is *visible* (`read`), and preserved
+    // from the baseline when it is *masked* (`none`/`disabled`) — so a
+    // round-tripped masked-null cannot clobber the stored value. `overrides`
+    // holds the baseline (db-converted) value to bind for each preserved column.
+    final authColumns = TomAnnotationAnalyzer.findAuthColumns(T);
+    final overrides = <String, Object?>{};
+    if (authColumns.isNotEmpty) {
+      // Baseline: the true stored row (unmasked) for an update, all-null for an
+      // insert (a fresh row starts empty, so any populated column is a change).
+      final baseline = insert ? null : await _selectById(primaryKey as K);
+      Object? baselineOf(TomColumnInformation col) =>
+          baseline == null ? null : col.getVariableValue(baseline);
+      final decision = TomColumnAuthorization.decideWrites<TomColumnInformation>(
+        columns: authColumns,
+        gradeOf: (col) => col.column?.authKey,
+        changed: (col) => col.getVariableValue(toSave) != baselineOf(col),
+        onForbidden: (col, key, grade) => throw TomColumnAuthorizationException(
+          'column_authorization.write.field_forbidden',
+          'Column "${col.declaredName}" (resource "$key") is not writable at '
+          'your access level (${grade.name}).',
+        ),
+      );
+      for (final col in decision.preserved) {
+        overrides[col.declaredName] = dbConvert(col, baselineOf(col));
+      }
+    }
+
+    Object? dbValue(TomColumnInformation col) =>
+        overrides.containsKey(col.declaredName)
+            ? overrides[col.declaredName]
+            : dbConvert(col, col.getVariableValue(toSave));
+
+    if (insert) {
       // INSERT
       final (sql, paramNames) = buildInsertStatement(dbTable.table, writable);
       _saveInsertQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
@@ -461,6 +636,39 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     return result;
   }
 
+  /// Prepares [query], runs it once with [params], releases the server-side
+  /// statement, and returns the mapped rows (optionally typed by [resultType]).
+  ///
+  /// Every dynamic (non-cached) query path routes through here so its bind
+  /// values ride the prepared-statement protocol as positional parameters —
+  /// no value is ever concatenated into the SQL text, closing the injection
+  /// surface `executeQuery`/`executeCommand` left open.
+  Future<List<R>> _runPrepared<R extends Object>(
+    TomQuery query,
+    Map<String, Object?> params, [
+    Type? resultType,
+  ]) async {
+    final stmt = await datasourceInfo.datasource.prepareStatement<R>(
+      query,
+      resultType,
+    );
+    try {
+      return await stmt.execute(params);
+    } finally {
+      await stmt.deallocate();
+    }
+  }
+
+  /// Extracts `:name` placeholder names from [sql] in textual order (repeats
+  /// included), so a raw statement can be prepared and its values bound
+  /// positionally in the order the `?` slots appear.
+  static List<String> _extractPlaceholderNames(String sql) {
+    return [
+      for (final m in RegExp(r':([A-Za-z_][A-Za-z0-9_]*)').allMatches(sql))
+        m.group(1)!,
+    ];
+  }
+
   @override
   Future<Iterable<T>> findByQuerySentence(
     String querySentence,
@@ -468,11 +676,16 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Type? resultType,
   ]) async {
     TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
-    return await datasourceInfo.datasource.executeQuery<T>(
-      select.generateQuery(sqlDialect),
-      params,
+    final scope = _resolveScope();
+    final effective = <String, Object?>{...params, ...?scope?.parameters};
+    final rows = await _runPrepared<T>(
+      _scopedSelect(select, scope),
+      effective,
       resultType,
     );
+    // C-4: mask only when the rows are the primary entity type; a caller-chosen
+    // [resultType] is a projection/aggregate whose columns aren't the entity's.
+    return (resultType == null || resultType == T) ? _maskRows(rows) : rows;
   }
 
   @override
@@ -481,10 +694,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Map<String, Object?> params,
   ) async {
     TomDelete select = _qsc.compileQuerySentence(querySentence) as TomDelete;
-    await datasourceInfo.datasource.executeQuery<T>(
-      select.generateQuery(sqlDialect),
-      params,
-    );
+    await _runPrepared<T>(select, params);
     return 0;
   }
 
@@ -493,9 +703,14 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     String querySentence,
     Map<String, Object?> params,
   ) async {
-    TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
-    List<TomCountResult> result = await datasourceInfo.datasource
-        .executeQuery<TomCountResult>(select.generateQuery(sqlDialect), params);
+    TomCount select = _qsc.compileQuerySentence(querySentence) as TomCount;
+    final scope = _resolveScope();
+    final effective = <String, Object?>{...params, ...?scope?.parameters};
+    List<TomCountResult> result = await _runPrepared<TomCountResult>(
+      _scopedCount(select, scope),
+      effective,
+      TomCountResult,
+    );
     if (result.length != 1) {
       throw Exception(
         "Illegal count result. Must have exactly one result row, but had ${result.length}",
@@ -509,9 +724,10 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomSelect query,
     Map<String, Object?> params,
   ) async {
-    return await datasourceInfo.datasource.executeQuery<T>(
-      query.generateQuery(sqlDialect),
-      params,
+    final scope = _resolveScope();
+    final effective = <String, Object?>{...params, ...?scope?.parameters};
+    return _maskRows(
+      await _runPrepared<T>(_scopedSelect(query, scope), effective),
     );
   }
 
@@ -520,10 +736,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomDelete query,
     Map<String, Object?> params,
   ) async {
-    await datasourceInfo.datasource.executeQuery<T>(
-      query.generateQuery(sqlDialect),
-      params,
-    );
+    await _runPrepared<T>(query, params);
     return 0;
   }
 
@@ -532,8 +745,13 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomCount query,
     Map<String, Object?> params,
   ) async {
-    List<TomCountResult> result = await datasourceInfo.datasource
-        .executeQuery<TomCountResult>(query.generateQuery(sqlDialect), params);
+    final scope = _resolveScope();
+    final effective = <String, Object?>{...params, ...?scope?.parameters};
+    List<TomCountResult> result = await _runPrepared<TomCountResult>(
+      _scopedCount(query, scope),
+      effective,
+      TomCountResult,
+    );
     if (result.length != 1) {
       throw Exception(
         "Illegal count result. Must have exactly one result row, but had ${result.length}",
@@ -547,7 +765,15 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     String dbQuery,
     Map<String, Object?> params,
   ) async {
-    return datasourceInfo.datasource.executeQuery<T>(dbQuery, params);
+    // Wrap the raw SQL as a literal query whose parameters are its `:name`
+    // placeholders in textual order, so it prepares and binds positionally
+    // instead of string-substituting values into the command.
+    final query = TomLiteralSelect(
+      [T],
+      query: dbQuery,
+      parameters: _extractPlaceholderNames(dbQuery),
+    );
+    return _maskRows(await _runPrepared<T>(query, params));
   }
 }
 

@@ -79,8 +79,8 @@ Layer 1 keys on `basePath`, and `basePath` is derived structurally when the fiel
 is constructed (`tom_form.dart:614-617`): `scope = form!.basePath`, then
 `basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId`. Under
 `TomScope.withScope('todo', …)` with `formId: 'item'`, the `title` field
-self-addresses as `todo.item.title` — byte-identical to
-`TodoItemResourceKeys.title`, the key the server grades. One scope alignment
+self-addresses as `todo.item.title` — byte-identical to the `todo.item.title`
+key the server grades. One scope alignment
 makes the field's authorization key equal the wire grade key with no translation
 (this is doc 07's headline; the full `basePath` convention is
 [A2](README_advanced_A2_resource_scope_conventions.md)).
@@ -96,7 +96,7 @@ defaulting to `none`, so no single omission can leak an editable control:
    `TomAuthStateCodec.fromStored(null)` and `fromStored('bogus')` both return
    `none` (`tom_core_server/test/graded_authorization_test.dart:33`,`:37`).
 2. **Server resolver.** `FieldGradeResolver.resolveItemFieldStates` resolves
-   **every** key in `TodoItemResourceKeys.all`, and a field with no grant row
+   **every** gradable `todo.item.*` key, and a field with no grant row
    resolves to `none` via `graded.resolveState(key)`
    (`field_grade_resolver.dart:73-80`). The matrix sent to the client is total
    over the field set — there are no "missing" keys, only explicit `none`s.
@@ -112,26 +112,36 @@ The grade a field renders at travels a fixed path from a database row to a
 widget. Tracing it once makes every other authorization claim in the guide
 concrete:
 
+<!-- Figure: the grant matrix → adapter → field data path, tracing the grade a
+field renders at from a database row to a widget:
+1. auth_db.tom_resource_grant row (role_name, resource_key, access_level) —
+   RepositoryGrantStore.grantsForRole(role) [field_grade_resolver.dart:93];
+2. TomGradedAccessControlInformation.fromGrants(grants) [field_grade_resolver.dart:65]
+   (folds duplicate keys by widen — most permissive wins);
+3. resolveItemFieldStates(role) → Map<String,TomAuthState> [field_grade_resolver.dart:73]
+   (itemFieldStates endpoint → List<GradedFieldDto> over the wire);
+4. AppSession.loadFieldStates → adapter.states = matrix (repoint, no reinstall;
+   installed once: TomAuthorization.adapter = … [main.dart:42]);
+5. TomField.resolveEffectiveAuth() layer 1 [tom_form.dart:809]
+   (TomAuthorization.resolveAuth('todo.item.title'));
+6. FieldStateAuthorizationAdapter.resolveAuth(path) [field_state_authorization_adapter.dart:78];
+7. TomAuthState → the field renders at its grade. -->
+
+![The grant matrix to field data path: a tom_resource_grant row is folded into graded access info, resolved to a per-field state map, sent over the wire as GradedFieldDto, repointed onto the installed adapter, and resolved by TomField into the TomAuthState the field renders at.](assets/architecture/advanced_09_grade_data_path.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TB
+  row["auth_db.tom_resource_grant row<br/>(role_name, resource_key, access_level)"] -- "grantsForRole(role) · field_grade_resolver.dart:93" --> fold["TomGradedAccessControlInformation.fromGrants(grants)<br/>field_grade_resolver.dart:65 · widen, most permissive wins"]
+  fold -- "field_grade_resolver.dart:73" --> map["resolveItemFieldStates(role) → Map&lt;String,TomAuthState&gt;<br/>itemFieldStates endpoint → List&lt;GradedFieldDto&gt; over the wire"]
+  map --> adapter["AppSession.loadFieldStates → adapter.states = matrix<br/>installed once: TomAuthorization.adapter = … · main.dart:42"]
+  adapter -- "tom_form.dart:809" --> field["TomField.resolveEffectiveAuth() layer 1<br/>TomAuthorization.resolveAuth('todo.item.title')"]
+  field --> fsaa["FieldStateAuthorizationAdapter.resolveAuth(path)<br/>field_state_authorization_adapter.dart:78"]
+  fsaa --> state["TomAuthState → the field renders at its grade"]
 ```
-auth_db.tom_resource_grant row  (role_name, resource_key, access_level)
-   │  RepositoryGrantStore.grantsForRole(role)         field_grade_resolver.dart:93
-   ▼
-TomGradedAccessControlInformation.fromGrants(grants)   field_grade_resolver.dart:65
-   │  (folds duplicate keys by widen — most permissive wins)
-   ▼
-resolveItemFieldStates(role) → Map<String,TomAuthState>  field_grade_resolver.dart:73
-   │  itemFieldStates endpoint → List<GradedFieldDto> over the wire
-   ▼
-AppSession.loadFieldStates → adapter.states = matrix     (repoint, no reinstall)
-   │  installed once: TomAuthorization.adapter = …       main.dart:42
-   ▼
-TomField.resolveEffectiveAuth() layer 1                  tom_form.dart:809
-   │  TomAuthorization.resolveAuth('todo.item.title')
-   ▼
-FieldStateAuthorizationAdapter.resolveAuth(path)         field_state_authorization_adapter.dart:78
-   ▼
-TomAuthState  →  the field renders at its grade
-```
+
+</details>
 
 Two server layers feed the matrix at the top. **Resource access**
 (`ResourceAccessResolver`) answers *"may this principal touch this object, and as
@@ -167,7 +177,8 @@ resolved that ancestor to the closed-safe `none`, layer 3 would narrow *every*
 field to `none` and hide the whole form. Resolving a gradable-key ancestor
 permissively (`full`) makes the form narrow a no-op while a genuinely ungraded
 leaf still degrades to `none` at step 3. The `gradableKeys` namespace (defaulting
-to `TodoItemResourceKeys.all`, `:62`) is exactly the boundary between "this
+to the inline `_gradableItemKeys` set of `todo.item.*` keys) is exactly the
+boundary between "this
 adapter's concern" (closed-safe) and "everything else" (permissive).
 
 ## Worked role matrix
@@ -210,7 +221,6 @@ commenter still has its write rejected.
 - `tom_flutter_ui/lib/src/forms/tom_form.dart:614-617` (basePath), `:807` (`resolveEffectiveAuth` five layers)
 - `advanced_app_client/lib/app/field_state_authorization_adapter.dart:78-99` (the four-step resolution)
 - `advanced_app_server/lib/src/access/{field_grade_resolver,resource_access_resolver}.dart`; `advanced_todo_contracts/lib/src/graded_field_dto.dart`
-- `advanced_examples_alignment_plan.md` — D-A1…D-A8; `advanced_example_completion.md` — After Todos 2, 5, 11
 - Companion: [07 · Authorization](README_advanced_07_authorization.md)
 
 ---

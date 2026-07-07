@@ -19,6 +19,7 @@ library;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -82,9 +83,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     // itself, which is what the bootstrap test asserts against). The field
     // labels/hints come from the same bundle, resolved by the form's fields.
     final texts = TomTextResourceProvider.getAppResources();
-    return Scaffold(
+    return TomScaffold(
       key: const Key('admin-login-screen'),
-      appBar: AppBar(title: Text(texts.getText('adminLogin.title'))),
+      appBar: TomAppBar(title: TomText(text: texts.getText('adminLogin.title'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -92,8 +93,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.all(24),
             children: [
-              Text(
-                texts.getText('adminLogin.intro'),
+              TomText(
+                text: texts.getText('adminLogin.intro'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -102,22 +103,22 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               _form.password.widget,
               const SizedBox(height: 16),
               if (_error != null) ...[
-                Text(
-                  _error!,
+                TomText(
+                  text: _error!,
                   key: const Key('admin-login-error'),
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 const SizedBox(height: 12),
               ],
-              FilledButton(
+              TomFilledButton(
                 onPressed: _busy ? null : _submit,
                 child: _busy
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(texts.getText('adminLogin.submit')),
+                    ? SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: TomCircularProgressIndicator(strokeWidth: 2),
+                )
+                    : TomText(text: texts.getText('adminLogin.submit')),
               ),
             ],
           ),

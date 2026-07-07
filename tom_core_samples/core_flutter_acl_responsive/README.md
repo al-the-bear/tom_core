@@ -360,7 +360,7 @@ Regenerate it only when a reflected **signature changes** (a field added/removed
 on an entity or form, or a new `@tomReflector` type seeded):
 
 ```bash
-./reflection_generation.sh          # dart run tom_reflection_generator --nested
+./reflection_generation.sh          # dart run tom_reflection_generator (flag-free)
 ```
 
 The seed file (`reflection_seed.dart`) is the single source of truth for *what*

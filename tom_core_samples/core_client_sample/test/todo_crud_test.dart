@@ -7,6 +7,7 @@ import 'package:core_client_sample/api/in_memory_todo_api.dart';
 import 'package:core_client_sample/app/app_session.dart';
 import 'package:core_client_sample/app/todo_app.dart';
 import 'package:core_client_sample/reflection_seed.dart';
+import 'package:core_client_sample/resources/app_texts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -16,7 +17,7 @@ void main() {
 
   setUp(() {
     TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(const <String, dynamic>{}),
+      TomTextResourceProvider.from(appTexts),
     );
   });
 

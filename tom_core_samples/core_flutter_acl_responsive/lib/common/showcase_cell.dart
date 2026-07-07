@@ -44,51 +44,40 @@ class ShowcaseCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Dogfood the engine: a sample about responsiveness lays its own cells out
-    // with the same form-factor tiers it teaches. phone → stacked; tablet /
-    // desktop → side by side.
-    final width = MediaQuery.sizeOf(context).width;
-    final wide =
-        AclDeviceContext.resolveFormFactor(width) != AclFormFactor.phone;
 
     final codeView = CodeBlock(code);
     final preview = _PreviewSurface(child: child);
 
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleMedium),
+            TomText(text: title, style: theme.textTheme.titleMedium),
             if (note != null) ...[
               const SizedBox(height: 4),
-              Text(
-                note!,
+              TomText(
+                text: note!,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.secondary),
               ),
             ],
             const SizedBox(height: 12),
-            if (wide)
-              // Top-aligned rather than stretched: several previews build a
-              // LayoutBuilder internally (the ACL engine), which cannot be
-              // measured by IntrinsicHeight. Letting each column size itself
-              // keeps the cell robust for every layout.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: codeView),
-                  const SizedBox(width: 16),
-                  Expanded(child: preview),
-                ],
-              )
-            else ...[
-              codeView,
-              const SizedBox(height: 12),
-              preview,
-            ],
+            // Dogfood the engine (G-UI-4): a sample *about* responsiveness lays
+            // its own cells out with an AclBuilder row breakpoint instead of a
+            // hand-rolled MediaQuery compare — code | preview share one row
+            // while the cell is at least 720px wide and reflow to a stack below
+            // it. The ACL default top cross-alignment and its intrinsic-free
+            // measurement keep previews that build an internal LayoutBuilder —
+            // the ACL engine itself — robust.
+            AclBuilder()
+                .setAclExpandXDefault(true)
+                .append(codeView)
+                .addRowBreakpoint(atWidth: 720, splitRowDist: 12)
+                .append(preview, dist: 16)
+                .build(),
           ],
         ),
       ),

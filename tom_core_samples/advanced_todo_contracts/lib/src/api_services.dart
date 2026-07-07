@@ -5,10 +5,10 @@
 /// These are plain abstract Dart classes, not server-framework annotated types:
 /// the contracts package depends only on `tom_core_kernel` + the domain model so
 /// it can also be consumed by the Flutter-free client core. The wire details for
-/// each method — URI, HTTP method, and the four-state access level — live next
-/// to the registry in `api_registry.dart` (`authApi`/`adminApi`/`appApi` +
-/// `authApiAccess`/`adminApiAccess`/`appApiAccess`); each method's dartdoc names
-/// the endpoint id that ties the two together.
+/// each method — URI, HTTP method, and the four-state access level declared on
+/// the endpoint (`TomApiEndpoint.access`) — live next to the registry in
+/// `api_registry.dart` (`authApi`/`adminApi`/`appApi`); each method's dartdoc
+/// names the endpoint id that ties the two together.
 ///
 /// Methods return the reflected domain entities (the app's working currency,
 /// projected to/from JSON at the transport boundary) and the step-4 DTOs.
@@ -17,6 +17,7 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 
 import 'admin_dtos.dart';
+import 'entity_id_request.dart';
 import 'graded_field_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
@@ -63,11 +64,13 @@ abstract class AdminApiService {
   Future<UserDto> createUser(CreateUserRequest request);
 
   /// `adminUpdateUser` — `PUT /admin/users/{id}`. [user] carries the mutable
-  /// profile/status fields (no password).
-  Future<UserDto> updateUser(String id, UserDto user);
+  /// profile/status fields (no password); its `id` is the addressed account
+  /// (the `{id}` path capture binds onto `UserDto.id` via `urlParameterMapping`).
+  Future<UserDto> updateUser(UserDto user);
 
-  /// `adminDeleteUser` — `DELETE /admin/users/{id}`.
-  Future<void> deleteUser(String id);
+  /// `adminDeleteUser` — `DELETE /admin/users/{id}`. The `{id}` path capture
+  /// binds onto [EntityIdRequest.id].
+  Future<void> deleteUser(EntityIdRequest request);
 
   /// `adminListRoles` — `GET /admin/roles`.
   Future<List<RoleDto>> listRoles();
@@ -75,11 +78,14 @@ abstract class AdminApiService {
   /// `adminCreateRole` — `POST /admin/roles`.
   Future<RoleDto> createRole(RoleDto role);
 
-  /// `adminUpdateRole` — `PUT /admin/roles/{key}`.
-  Future<RoleDto> updateRole(String key, RoleDto role);
+  /// `adminUpdateRole` — `PUT /admin/roles/{key}`. [role] carries the mutable
+  /// name; its `key` is the addressed role (the `{key}` path capture binds onto
+  /// `RoleDto.key` via `urlParameterMapping`).
+  Future<RoleDto> updateRole(RoleDto role);
 
-  /// `adminDeleteRole` — `DELETE /admin/roles/{key}`.
-  Future<void> deleteRole(String key);
+  /// `adminDeleteRole` — `DELETE /admin/roles/{key}`. The `{key}` path capture
+  /// binds onto [EntityIdRequest.id].
+  Future<void> deleteRole(EntityIdRequest request);
 
   /// `adminListGroups` — `GET /admin/groups`.
   Future<List<GroupDto>> listGroups();
@@ -87,11 +93,14 @@ abstract class AdminApiService {
   /// `adminCreateGroup` — `POST /admin/groups`.
   Future<GroupDto> createGroup(GroupDto group);
 
-  /// `adminUpdateGroup` — `PUT /admin/groups/{id}` (name + membership).
-  Future<GroupDto> updateGroup(String id, GroupDto group);
+  /// `adminUpdateGroup` — `PUT /admin/groups/{id}` (name + membership). Its `id`
+  /// is the addressed group (the `{id}` path capture binds onto `GroupDto.id`
+  /// via `urlParameterMapping`).
+  Future<GroupDto> updateGroup(GroupDto group);
 
-  /// `adminDeleteGroup` — `DELETE /admin/groups/{id}`.
-  Future<void> deleteGroup(String id);
+  /// `adminDeleteGroup` — `DELETE /admin/groups/{id}`. The `{id}` path capture
+  /// binds onto [EntityIdRequest.id].
+  Future<void> deleteGroup(EntityIdRequest request);
 
   /// `adminGetGrants` — `GET /admin/grants`. The full
   /// `(role, resourceKey) → TomAuthState` matrix.
@@ -149,23 +158,33 @@ abstract class AppApiService {
   Future<TodoItem> createItem(TodoItem item);
 
   /// `appUpdateItem` — `PUT /items/{id}`. Field-level authorized: a write to a
-  /// field graded below `full` is rejected.
-  Future<TodoItem> updateItem(String id, TodoItem item);
+  /// field graded below `full` is rejected. The `{id}` path capture binds onto
+  /// `TodoItem.id` via `urlParameterMapping`.
+  Future<TodoItem> updateItem(TodoItem item);
 
-  /// `appDeleteItem` — `DELETE /items/{id}` (owner/editor only).
-  Future<void> deleteItem(String id);
+  /// `appDeleteItem` — `DELETE /items/{id}` (owner/editor only). The `{id}` path
+  /// capture binds onto [EntityIdRequest.id].
+  Future<void> deleteItem(EntityIdRequest request);
 
-  /// `appAddComment` — `POST /items/{id}/comments` (commenter and above).
-  Future<TodoComment> addComment(String id, TodoComment comment);
+  /// `appAddComment` — `POST /items/{id}/comments` (commenter and above). The
+  /// `{id}` path capture binds onto `TodoComment.itemId` (a non-identity
+  /// `{'id': 'itemId'}` `urlParameterMapping`).
+  Future<TodoComment> addComment(TodoComment comment);
 
   /// `appItemFieldStates` — `GET /items/{id}/field-states`. The four-state
-  /// matrix for *this* principal, one [GradedFieldDto] per gradable field.
-  Future<List<GradedFieldDto>> itemFieldStates(String id);
+  /// matrix for *this* principal, one [GradedFieldDto] per gradable field. The
+  /// `{id}` path capture binds onto [EntityIdRequest.id].
+  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request);
 
   /// `appShare` — `POST /share`. Owner shares a resource with a user at a role.
   Future<void> share(ShareRequest request);
 
   /// `appRevokeShare` — `DELETE /share/{id}` (owner only).
+  ///
+  /// The one **retained bare-`String` path-parameter example** (G-API-2): every
+  /// other by-id endpoint binds its `{id}` onto a typed request DTO, but this
+  /// handler keeps the direct `String id` so the framework's primitive
+  /// path-parameter coercion stays demonstrated in the sample.
   Future<void> revokeShare(String id);
 
   /// `appResources` — `GET /resources` (authenticated). The app client's full

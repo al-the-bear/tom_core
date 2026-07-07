@@ -44,7 +44,7 @@ The generated `version.versioner.dart` is tooling output — never hand-edit it.
 Iterate through these steps in order. Each step states its **done** condition.
 
 1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
-   (short, pre-publish list of recent changes), and `LICENSE` (proprietary —
+   (short, pre-publish list of recent changes), and `LICENSE` (BSD 3-Clause —
    copy the wording from the existing `LICENSE`) exist at the project root.
    Create any that are missing; customize a template `README.md`.
    *Done when all three exist and the README describes the package accurately.*

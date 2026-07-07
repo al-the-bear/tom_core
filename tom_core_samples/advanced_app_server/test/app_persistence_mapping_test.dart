@@ -15,6 +15,10 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
+// The server's single reflection seed is its boot root (G-REFL-1); its tests
+// bootstrap reflection from that same seed rather than a library seed.
+import '../bin/app_server_start.reflection.dart' show initializeReflection;
+
 void main() {
   // The domain entities are observable TomClasses: constructing one self-
   // observes through reflection, so the registry must be live before any

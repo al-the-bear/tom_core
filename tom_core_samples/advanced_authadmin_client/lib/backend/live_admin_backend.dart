@@ -10,7 +10,7 @@
 ///
 /// The class is a thin adapter: it forwards each [AdminBackend] method to its
 /// client-core counterpart and normalises the client core's transport exceptions
-/// (`AuthClientException`/`AdminApiException`/`AuthorizedHttpException`) into the
+/// (`AuthClientException`/`AdminApiException`/`TomAuthExpiredException`) into the
 /// single [AdminBackendException] the screens catch — preserving the server's
 /// stable error key, so the shell can still reject a non-admin login by keying on
 /// the `admin`-role gate's denial. The admin DTOs are plain records, so this
@@ -35,6 +35,26 @@ class LiveAdminBackend implements AdminBackend {
   /// other.
   LiveAdminBackend(this._auth, this._api);
 
+  /// Self-wires the live backend from the [AdvancedClientConfig] config bean:
+  /// resolves the auth + admin server URLs, shares one [IoJsonTransport] between
+  /// the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
+  /// [AdminApiClient] sends on, so the bearer the login stores is the one every
+  /// `/admin/*` call presents.
+  ///
+  /// This is the factory the admin bootstrap registers as the `prod`-environment
+  /// backend; it reads its URLs from the config bean, never from
+  /// `String.fromEnvironment` (G-ENV-2). Call
+  /// [AdvancedClientConfig.registerDefault] before this.
+  factory LiveAdminBackend.fromConfig() {
+    final config = AdvancedClientConfig.resolve();
+    final transport = IoJsonTransport();
+    final auth =
+        AuthClient(Uri.parse(config.authServerUrl), transport: transport);
+    final api = AdminApiClient(
+        Uri.parse(config.adminServerUrl), AuthorizedHttp(transport, auth));
+    return LiveAdminBackend(auth, api);
+  }
+
   @override
   Future<LoginResult> login(LoginRequest request) =>
       _guard(() => _auth.login(request));
@@ -58,10 +78,11 @@ class LiveAdminBackend implements AdminBackend {
 
   @override
   Future<UserDto> updateUser(String id, UserDto user) =>
-      _guard(() => _api.updateUser(id, user));
+      _guard(() => _api.updateUser(user..id = id));
 
   @override
-  Future<void> deleteUser(String id) => _guard(() => _api.deleteUser(id));
+  Future<void> deleteUser(String id) =>
+      _guard(() => _api.deleteUser(EntityIdRequest(id: id)));
 
   @override
   Future<List<RoleDto>> listRoles() => _guard(() => _api.listRoles());
@@ -72,10 +93,11 @@ class LiveAdminBackend implements AdminBackend {
 
   @override
   Future<RoleDto> updateRole(String key, RoleDto role) =>
-      _guard(() => _api.updateRole(key, role));
+      _guard(() => _api.updateRole(role..key = key));
 
   @override
-  Future<void> deleteRole(String key) => _guard(() => _api.deleteRole(key));
+  Future<void> deleteRole(String key) =>
+      _guard(() => _api.deleteRole(EntityIdRequest(id: key)));
 
   @override
   Future<List<GroupDto>> listGroups() => _guard(() => _api.listGroups());
@@ -86,10 +108,11 @@ class LiveAdminBackend implements AdminBackend {
 
   @override
   Future<GroupDto> updateGroup(String id, GroupDto group) =>
-      _guard(() => _api.updateGroup(id, group));
+      _guard(() => _api.updateGroup(group..id = id));
 
   @override
-  Future<void> deleteGroup(String id) => _guard(() => _api.deleteGroup(id));
+  Future<void> deleteGroup(String id) =>
+      _guard(() => _api.deleteGroup(EntityIdRequest(id: id)));
 
   @override
   Future<GrantMatrixDto> getGrants() => _guard(() => _api.getGrants());
@@ -109,7 +132,7 @@ class LiveAdminBackend implements AdminBackend {
     try {
       return await op();
     } on TomException catch (e) {
-      // AuthClientException / AdminApiException / AuthorizedHttpException all
+      // AuthClientException / AdminApiException / TomAuthExpiredException all
       // extend TomException and carry the server's stable key + message.
       throw AdminBackendException(e.defaultUserMessage, key: e.key);
     }

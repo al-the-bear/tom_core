@@ -25,10 +25,10 @@ import 'package:advanced_app_client/backend/backend.dart';
 import 'package:advanced_app_client/reflection_seed.dart';
 import 'package:advanced_app_client/screens/item_detail_screen.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-// The app seed owns the authoritative `initializeReflection`; the domain library
-// carries its own (for use on its own), hidden here to avoid the collision.
+// The app seed owns the authoritative `initializeReflection`; the domain is a
+// library and ships no seed, so this import only pulls the enum it needs.
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show ProjectRole, TodoItemResourceKeys;
+    show ProjectRole;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -42,12 +42,11 @@ void main() {
     );
   });
 
-  // The role matrix is now driven *purely* through the implicit chain: each
-  // test installs its session's adapter on the [TomAuthorization] singleton (the
-  // same wiring `main` performs) and clears it afterwards, so the four-role
-  // render matrix is reproduced without the form holding any authorization
-  // state. This is the regression guard for the per-field-authorizer removal
-  // (todo 5).
+  // The role matrix is driven purely by the screen stamping each gradable field
+  // with its DB-resolved grade (a per-field fixed authorizer keyed by basePath).
+  // No authorization adapter is installed, so the four-role render matrix is
+  // reproduced without any global singleton state; the reset keeps the singleton
+  // clean between tests regardless.
   tearDown(TomAuthorization.reset);
 
   /// A tall viewport so the detail form's fields and Save button all fit
@@ -82,10 +81,9 @@ void main() {
 
     final backend = InMemoryAppBackend();
     final session = AppSession(backend);
-    // Install the session's adapter on the singleton, exactly as `main` does, so
-    // each field resolves its grade implicitly through layer-1 once
-    // `loadFieldStates` feeds the matrix in. Cleared in [tearDown].
-    TomAuthorization.adapter = session.authorizationAdapter;
+    // No adapter is installed: the detail screen stamps each gradable field with
+    // its DB-resolved grade from the matrix `loadFieldStates` returns, exactly as
+    // `main` wires it. The four-role render matrix is reproduced purely from that.
 
     if (shareCarolAs != null) {
       await session.login(login('alice'));
@@ -238,13 +236,13 @@ void main() {
     // overrides removed (todo 10) the only source of a field's label is this
     // provider, so the sentinels rendering proves the labels are bundle-driven.
     await openDetail(tester, 'alice', bundleOverride: {
-      '${TodoItemResourceKeys.title}.label': 'Title [srv]',
-      '${TodoItemResourceKeys.status}.label': 'Status [srv]',
-      '${TodoItemResourceKeys.priority}.label': 'Priority [srv]',
-      '${TodoItemResourceKeys.assigneeId}.label': 'Assignee [srv]',
-      '${TodoItemResourceKeys.dueDate}.label': 'Due date [srv]',
-      '${TodoItemResourceKeys.estimate}.label': 'Estimate [srv]',
-      '${TodoItemResourceKeys.description}.label': 'Description [srv]',
+      'todo.item.title.label': 'Title [srv]',
+      'todo.item.status.label': 'Status [srv]',
+      'todo.item.priority.label': 'Priority [srv]',
+      'todo.item.assigneeId.label': 'Assignee [srv]',
+      'todo.item.dueDate.label': 'Due date [srv]',
+      'todo.item.estimate.label': 'Estimate [srv]',
+      'todo.item.description.label': 'Description [srv]',
     });
 
     expect(find.textContaining('Title [srv]'), findsWidgets);

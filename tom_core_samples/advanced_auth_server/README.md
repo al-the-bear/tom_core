@@ -24,10 +24,12 @@ Each surface is split into a pure, database-free logic class and a thin
 | `AuthTokenService` over `AdvancedAuthenticationService` | `AdvancedAuthApiService` | `/auth/*` |
 | `AdminService` over `AdminStore` | `AdvancedAdminApiService` | `/admin/*` |
 
-The adapters carry the production wiring (the repository-backed stores) and the
-explicit per-endpoint access annotations: `/auth/login` is `@TomPublicAccess`,
-the rest of `/auth/*` is `@TomAuthenticatedAccess`, and every `/admin/*`
-endpoint is `@TomRoleAccess(['admin'])`. The endpoint pipeline reads the caller's
+The adapters carry the production wiring (the repository-backed stores); the
+per-endpoint access policy is **declared on the contract** (`TomApiEndpoint.access`,
+G-API-3), not annotated on the handlers: `/auth/login` is `TomPublicAccess`,
+the rest of `/auth/*` is `TomAuthenticatedAccess`, and every `/admin/*`
+endpoint is `TomRoleAccess(['admin'])` (the shared `adminAccess` constant). The
+endpoint pipeline extracts that declaration on first call, reads the caller's
 principal from the bearer token via the default
 `tomDefaultAuthenticationMiddleware`, and rejects a non-admin **before** the
 method runs; `bin/auth_server_start.dart` installs the server-level

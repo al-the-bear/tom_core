@@ -52,6 +52,25 @@ class DiscoveredConcreteService {
   String ping() => 'concrete';
 }
 
+// ----------------------------------------------------------------------------
+// Environment-selection fixtures: one interface, two environment-specific
+// implementations. installByEnvironment must install exactly the one named by
+// the active environment.
+// ----------------------------------------------------------------------------
+abstract class EnvBackend {
+  String mode();
+}
+
+class LiveEnvBackend implements EnvBackend {
+  @override
+  String mode() => 'live';
+}
+
+class TestEnvBackend implements EnvBackend {
+  @override
+  String mode() => 'test';
+}
+
 void main() {
   // --------------------------------------------------------------------------
   // Setup
@@ -265,6 +284,75 @@ void main() {
           throwsA(isA<TomBeanLocatorException>()),
         );
       });
+    });
+  });
+
+  // ==========================================================================
+  // installByEnvironment: environment-selector dependency injection
+  // ==========================================================================
+  group('installByEnvironment', () {
+    Map<String, EnvBackend Function()> factories() => {
+          'prod': LiveEnvBackend.new,
+          'test': TestEnvBackend.new,
+        };
+
+    test('installs the implementation named by the explicit environment', () {
+      TomBean.installByEnvironment<EnvBackend>(
+        factories(),
+        environment: 'test',
+      );
+
+      expect(TomBean<EnvBackend>().get(), isA<TestEnvBackend>());
+    });
+
+    test('installs a single implementation, resolvable by interface', () {
+      TomBean.installByEnvironment<EnvBackend>(
+        factories(),
+        environment: 'prod',
+      );
+
+      // One registration, resolved by the interface type — no dispatcher.
+      expect(TomBean<EnvBackend>().get().mode(), equals('live'));
+    });
+
+    test('runs only the selected environment factory', () {
+      var liveBuilt = false;
+      var testBuilt = false;
+      TomBean.installByEnvironment<EnvBackend>(
+        {
+          'prod': () {
+            liveBuilt = true;
+            return LiveEnvBackend();
+          },
+          'test': () {
+            testBuilt = true;
+            return TestEnvBackend();
+          },
+        },
+        environment: 'test',
+      );
+
+      expect(testBuilt, isTrue);
+      expect(liveBuilt, isFalse, reason: 'unselected factory must not run');
+    });
+
+    test('reads the active environment from TomRuntime when none is given', () {
+      TomRuntime.addEnvironment(const TomEnvironment('prod'));
+      TomRuntime.setCurrentEnvironment('prod');
+
+      TomBean.installByEnvironment<EnvBackend>(factories());
+
+      expect(TomBean<EnvBackend>().get(), isA<LiveEnvBackend>());
+    });
+
+    test('throws when no factory matches the active environment', () {
+      expect(
+        () => TomBean.installByEnvironment<EnvBackend>(
+          factories(),
+          environment: 'staging',
+        ),
+        throwsA(isA<TomBeanLocatorException>()),
+      );
     });
   });
 

@@ -42,9 +42,9 @@ is already "doing it the tom_core way":
 - [ ] **A field's `basePath` *is* its grade key** — `<scopePath>.<formId>.<tomId>`, no suffix. Authorization keys on the bare path; texts add a suffix. → H2; anchor `tom_form.dart:146` (form path), `:614-617` (field path), `:809` (auth lookup).
 - [ ] **Install exactly one authorization adapter** at startup (`TomAuthorization.adapter = …`) and feed it the current item's matrix; never scatter per-widget auth checks. → sample `main.dart:42`, `app_session.dart:160` (`authorizationAdapter.states = states`).
 - [ ] **Per-field authorizers are a *narrowing override only*.** Composition can only *restrict* (`narrow`), never widen, what the adapter resolved. Use `TomAuthorizer.fixed` for the admin forms; the item form has **none** (implicit path). → [07](README_advanced_07_authorization.md) D-A5/D-A8, [A1](README_advanced_A1_authorization_state_machine.md).
-- [ ] **Default closed.** Unknown/absent grade ⇒ `TomAuthState.none` (hidden), enforced at three independent points: wire codec (`GradedFieldDto.fromJson`), server resolver (`field_grade_resolver.dart:73-80`), client adapter. → D-A4, [A1](README_advanced_A1_authorization_state_machine.md).
+- [ ] **Default closed.** Unknown/absent grade ⇒ `TomAuthState.none` (hidden), enforced at three independent points: wire read (`GradedFieldDto.accessState`), server resolver (`field_grade_resolver.dart:73-80`), client adapter. → D-A4, [A1](README_advanced_A1_authorization_state_machine.md).
 - [ ] **Enforce writes on the server too.** Field grades are a UX convenience client-side; the server re-checks every changed field is `full` and rejects otherwise. → `app_endpoints.dart:663` (`_enforceFieldWrites`), [A3](README_advanced_A3_request_lifecycle.md).
-- [ ] **Role-gate admin routes** with `@TomRoleAccess([...])` — the pipeline enforces it *before* the method runs. → `tom_core_server`; sample `admin_endpoints.dart:644` (`@TomRoleAccess(['admin'])`).
+- [ ] **Role-gate admin routes** by declaring `TomRoleAccess([...])` on the contract endpoint (`TomApiEndpoint.access`) — the pipeline extracts and enforces it *before* the method runs. → `tom_core_server`; sample `api_registry.dart` (`adminApi`, shared `adminAccess`).
 - [ ] **Source the server principal from the request zone**, `getFromCurrentZone<TomPrincipal>()` — never the client-side `TomBearerAuthentication` singleton (not request-scoped). → sample `app_endpoints.dart:981`, `auth_endpoints.dart:206`.
 
 ## Domain & reflection
@@ -52,7 +52,7 @@ is already "doing it the tom_core way":
 - [ ] **Reflect every entity and every form-bound class** with `@tomReflector` so `bind`/`save` and wire serialization work. → [03](README_advanced_03_domain_reflection.md); sample `advanced_todo_domain/`.
 - [ ] **One reflection seed per package, last-writer-wins.** A single `reflection_seed.dart` whose `main()` touch-imports the reflected types; the generated `reflection_seed.reflection.dart` is the build output. → [02](README_advanced_02_project_layout_build.md); sample `advanced_app_server/`, `advanced_authadmin_client/lib/reflection_seed.dart`.
 - [ ] **Regenerate reflection only on signature changes**, via the package's `reflection_generation.sh` (copy from a sibling if missing) — not on every edit. → memory: reflection-regen rules; sample `*/reflection_generation.sh`.
-- [ ] **Pin scope/form/field keys in a domain constants file** so the form, the grade matrix, and the JSON texts read one source of truth. → [A2](README_advanced_A2_resource_scope_conventions.md) D-A1; sample `resource_keys.dart` (`scope`/`formId`/`keyFor`).
+- [ ] **Address scope/form/field keys by convention, not a catalogue.** Declare `scope`/`formId`/`tomId` as plain string literals at use (`super(formId: 'item')`, `TomScope.withScope('todo', …)`, `tomId: 'title'`); the form, the grade matrix, and the JSON texts stay aligned by naming the same `<scope>.<formId>.<field>` keys — never a constants class (G-RES-2/6). → [A2](README_advanced_A2_resource_scope_conventions.md) D-A1; sample `todo_item_form.dart`, `item_detail_screen.dart`.
 - [ ] **Enums carry a stored-name vs label split** — the stored `name` token is the wire/DB value; the label is a resource. → [03](README_advanced_03_domain_reflection.md).
 
 ## Forms & UI
@@ -65,14 +65,14 @@ is already "doing it the tom_core way":
 
 ## Persistence & migrations
 
-- [ ] **Split schema-creation from sample-data migrations.** DDL in the `[0NN]` band, demo seeds in a separate `[1NN]` file, so sample data is applied/skippable independently and every table exists before it is seeded. → RC-23, [05](README_advanced_05_persistence_database.md); sample `app_db/app_schema/[000]-app_core_schema.sql` + `[100]-app_sample_data.sql` (auth: `[000]`+`[001]`+`[100]`).
-- [ ] **Keep every seed `INSERT` idempotent** (`ON DUPLICATE KEY UPDATE`) so a re-applied migration is a no-op. → [05](README_advanced_05_persistence_database.md); sample `[100]-*_sample_data.sql`.
+- [ ] **Number migrations consecutively (`000,001,002,…`) and split schema / admin / demo.** DDL untagged, the production admin bootstrap untagged, and demo seeds in a separate `@dev,test`-tagged file (G-MIG-1/2/3) — so a production apply seeds the admin account but omits demo users, and every table exists before it is seeded. → RC-23, [05](README_advanced_05_persistence_database.md); sample `app_db/app_schema/[000]-app_core_schema.sql` + `[001]-app_demo_seed@dev,test.sql` (auth: `[000]`+`[001]` schema, `[002]-auth_admin_seed.sql`, `[003]-auth_demo_seed@dev,test.sql`).
+- [ ] **Keep every seed `INSERT` idempotent** (`ON DUPLICATE KEY UPDATE`) so a re-applied migration is a no-op. → [05](README_advanced_05_persistence_database.md); sample `[002]-auth_admin_seed.sql`, `[003]-auth_demo_seed@dev,test.sql`, `[001]-app_demo_seed@dev,test.sql`.
 - [ ] **Map columns with `@TomDbColumn`** on the persistence record; the empty-bodied `TomSqlDatasourceRepository` singletons are the CRUD seam. → [05](README_advanced_05_persistence_database.md); sample `app_persistence_model.dart`.
 - [ ] **One datasource per logical DB**, configured in YAML (map-key = folder, literal-int port). Cross-DB references are *logical* (no cross-DB FK); the app server binds the framework `main` datasource to `auth_db` to read the shared grant table. → [05](README_advanced_05_persistence_database.md); sample `assets/datasources_*.yaml`, `field_grade_resolver.dart:30-39`.
 
 ## Servers & endpoints
 
-- [ ] **The method annotation is authoritative** (`@TomPublicAccess` / `@TomAuthenticatedAccess` / `@TomRoleAccess`); the registry's `*ApiAccess` map is *informational*, not auto-applied. Declare the access on the method. → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:987` (public) vs `:993` (authenticated).
+- [ ] **The contract declares the access; the server enforces it** — set each endpoint's `TomApiEndpoint.access` (`TomPublicAccess` / `TomAuthenticatedAccess` / `TomRoleAccess`) in the registry, and the pipeline extracts it on first call (G-API-3/C-12). A handler-side `TomAccessControl` annotation is only a *local override* (`tea ?? ae.access`); the advanced servers declare nothing inline. → [10](README_advanced_10_servers_endpoints.md); sample `api_registry.dart` (`authApi`/`adminApi`/`appApi`).
 - [ ] **Validate the bearer on every non-public request** — the pipeline rejects pre-invocation with `endpoint_handler.handle_method_call.access_denied` → 403. → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:904`/`:935-939` (`appForbiddenOrNotFound`).
 - [ ] **Fail closed/safe: 404 over 403 for unreachable resources.** A resource the caller cannot reach is reported *missing*, never leaking its existence. → [A1](README_advanced_A1_authorization_state_machine.md)/[A3](README_advanced_A3_request_lifecycle.md); sample `app_endpoints.dart:232-237` (`app.item.not_found`).
 - [ ] **Keep services server-/zone-free; map error keys at the boundary.** Services throw stable `TomEndpointHandlerException` keys; a server-level handler maps them to HTTP statuses. → sample `appForbiddenOrNotFound` (`app_endpoints.dart:920`), `LoginUnauthorizedErrorHandler` (`auth_endpoints.dart:148`).
@@ -84,7 +84,7 @@ is already "doing it the tom_core way":
 - [ ] **Test each layer against the seam directly below it**, never a live socket — inject an in-memory backend (`AppBackend` / `AdminBackend`) mirroring the server's ownership + four-state model. → [12](README_advanced_12_testing_integration.md); sample `in_memory_app_backend.dart`.
 - [ ] **Assert texts with the `[srv]` sentinel and grades with the four-role matrix** (TC-30-01…04). Same widget, four principals, four renderings purely from the installed matrix. → [12](README_advanced_12_testing_integration.md); sample `item_detail_screen_test.dart`.
 - [ ] **Exercise the real stack once, end-to-end**, with a scripted runner that boots both DBs + servers and skips-as-failure when unreachable. → [12](README_advanced_12_testing_integration.md); sample `run_cross_tier_integration.sh`, `cross_tier_integration_test.dart` (TC-37-01).
-- [ ] **The green gate is all three together:** `dart analyze` clean + every suite green (serial) + the cross-tier runner exits `0`. → `advanced_example_completion.md`.
+- [ ] **The green gate is all three together:** `dart analyze` clean + every suite green (serial) + the cross-tier runner exits `0`.
 
 ## Using the checklist
 
@@ -96,10 +96,8 @@ resources → authorization → forms → tests.
 
 ## Primary sources
 
-- `readme_creation_plan.md` §1 (the two rules the realignment made literal); `advanced_examples_alignment_plan.md` (D-A1…D-A9)
 - All spine docs [00](README_advanced_00_introduction.md)–[12](README_advanced_12_testing_integration.md); appendices [A1](README_advanced_A1_authorization_state_machine.md)/[A2](README_advanced_A2_resource_scope_conventions.md)/[A3](README_advanced_A3_request_lifecycle.md)
 - Framework anchors: `tom_flutter_ui` `tom_form.dart:807`/`:855`; `tom_core_server` endpoint pipeline + `@TomRoleAccess`
-- `advanced_example_completion.md` — the green gate
 
 ---
 

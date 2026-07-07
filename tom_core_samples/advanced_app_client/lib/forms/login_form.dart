@@ -20,23 +20,27 @@ class LoginForm extends TomForm<LoginCredentials> {
 
   /// Account login name. Label/hint resolve from the installed login bundle
   /// (`login.username.label` / `login.username.hint`).
-  late final username = TomFormStringInput(
-    'username',
-    '',
-    form: this,
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput username;
 
   /// Account password (the demo backend accepts any non-empty value). Label
   /// resolves from `login.password.label` in the installed login bundle.
-  late final password = TomFormStringInput(
-    'password',
-    '',
-    form: this,
-    obscureText: true,
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput password;
 
+  /// Creates the fields (implementation half of the three-part split, G-UI-5).
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    username = TomFormStringInput(
+      'username',
+      '',
+      form: this,
+      validators: [Validators.required()],
+    );
+    password = TomFormStringInput(
+      'password',
+      '',
+      form: this,
+      obscureText: true,
+      validators: [Validators.required()],
+    );
+  }
 }

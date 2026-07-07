@@ -4,6 +4,11 @@
 /// reflection round-trip `bind` performs writes straight into the bound
 /// credentials. It is `@tomReflector` and seeded for reflection, like every
 /// bound form.
+///
+/// The form carries no hardcoded label or hint text (G-RES-1): constructed
+/// directly (not under an enclosing scope), its `basePath` is `login`, so each
+/// field's label/hint resolve from `login.<tomId>.label` / `login.<tomId>.hintText`
+/// in the installed [appTexts] bundle.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -17,22 +22,21 @@ class LoginForm extends TomForm<LoginCredentials> {
   /// Creates the login form.
   LoginForm() : super(formId: 'login');
 
-  /// Account login name.
+  /// Account login name. Label/hint resolve from `login.username.label` and
+  /// `login.username.hintText`.
   late final username = TomFormStringInput(
     'username',
     '',
     form: this,
-    labelTextOverride: 'Username',
-    hintTextOverride: 'alice, bob or val',
     validators: [Validators.required()],
   );
 
-  /// Account password (the demo backend accepts any non-empty value).
+  /// Account password (the demo backend accepts any non-empty value). Label
+  /// resolves from `login.password.label`.
   late final password = TomFormStringInput(
     'password',
     '',
     form: this,
-    labelTextOverride: 'Password',
     obscureText: true,
     validators: [Validators.required()],
   );

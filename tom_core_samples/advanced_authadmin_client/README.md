@@ -26,8 +26,9 @@ first three share, the `GrantsScreen` matrix editor, and the `AssignmentsScreen`
 role/group assigner. `lib/forms/` binds reflected drafts
 (`UserForm`/`RoleForm`/`GroupForm`); `lib/main.dart` calls
 `initializeReflection()` (from `lib/reflection_seed.dart`) before bootstrapping
-the console over the in-memory fake by default or the live stack when both server
-URLs are supplied.
+the console over the live stack by default (no dart-defines — URLs from the
+`AdvancedClientConfig` config bean), or over the seeded in-memory fake under
+`--dart-define=TEST_MODE=true`.
 
 ## Admin login + shell
 
@@ -35,8 +36,8 @@ The console is a state-driven shell, mirroring the app client: the
 `AdminConsoleApp` renders the login screen when signed out and the console shell
 when signed in, rebuilding on every `AdminSession` change.
 
-Login is **two-phase**, because the auth server gates each `/admin/*` endpoint
-with `@TomRoleAccess(['admin'])` rather than gating login itself:
+Login is **two-phase**, because each `/admin/*` endpoint's contract declares
+`TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) rather than gating login itself:
 
 1. `AdminSession.login` authenticates (a bad password raises
    `auth.login.failed`).
@@ -74,8 +75,9 @@ matrix, and role/group assignments — plus the two session operations
   `alice`/`bob`/`carol`), the five application roles, an `Engineering` group, and
   the same four-state grant matrix the auth server seeds. Every administrative
   call requires the `admin` role: a signed-in non-admin is refused with
-  `admin.access.forbidden`, mirroring the server's `@TomRoleAccess(['admin'])`
-  gate. Reflection-free — the admin DTOs are plain value records.
+  `admin.access.forbidden`, mirroring the server's contract-declared
+  `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) gate. Reflection-free — the
+  admin DTOs are plain value records.
 - **`LiveAdminBackend`** — the production wiring: a thin adapter over an
   `AuthClient` (login/token storage) and an `AdminApiClient` (the `/admin/*` API)
   sharing one `JsonTransport`, normalising the client core's transport exceptions
@@ -123,8 +125,8 @@ working copy differs from the loaded one.
 Like the rest of the console it stays domain-agnostic — it renders whatever role
 keys and resource keys the matrix reports (column headers show the trailing
 segment, e.g. `todo.item.title → title`, while each cell is keyed by the full
-resource key) and never the application's `TodoItemResourceKeys` / `UserStatus`
-enums. Every read and the save route through `AdminSession.guard`.
+resource key) and never the application's `todo.item.*` gradable keys /
+`UserStatus` enums. Every read and the save route through `AdminSession.guard`.
 
 ## Assignments
 

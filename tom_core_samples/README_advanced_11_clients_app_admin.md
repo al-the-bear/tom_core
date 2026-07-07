@@ -60,9 +60,9 @@ a `ListenableBuilder` swapping `AdminLoginScreen` for `AdminShellScreen` on
   single `AssignmentRequest`.
 
 The console is domain-agnostic: it renders whatever role and resource keys the
-backend reports and never references the application's `TodoItemResourceKeys` or
-`UserStatus` enums — the same "the UI ships no policy" discipline the rest of the
-guide rests on.
+backend reports and never references the application's `todo.item.*` gradable
+keys or `UserStatus` enums — the same "the UI ships no policy" discipline the
+rest of the guide rests on.
 
 ## Sessions
 
@@ -71,8 +71,8 @@ the principal + token pair; the shell rebuilds on every `notifyListeners`. They
 are near-identical (`app_session.dart:25`, `admin_session.dart:26`), with two
 differences worth calling out.
 
-**Two-phase admin login.** Because the auth server gates each `/admin/*` endpoint
-with `@TomRoleAccess(['admin'])` rather than gating login itself
+**Two-phase admin login.** Because each `/admin/*` endpoint's contract declares
+`TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) rather than gating login itself
 ([Part 10](README_advanced_10_servers_endpoints.md)), a signed-in non-admin
 authenticates fine but is refused the moment they touch admin data. `AdminSession.login`
 therefore authenticates and then **probes** an admin call (`listUsers`); only if
@@ -112,7 +112,7 @@ never a concrete class. That single seam is what lets the widget tests run
   `AuthorizedHttp`, so the bearer the login stores is the one every subsequent
   call presents (`main.dart` `_buildBackend`). They normalise the client core's
   transport exceptions (`AuthClientException` / `AppApiException` /
-  `AuthorizedHttpException`) into the single typed `AppBackendException` /
+  `TomAuthExpiredException`) into the single typed `AppBackendException` /
   `AdminBackendException` the screens catch, carrying the server's stable error
   `key` so a caller can branch without parsing the message.
 
@@ -141,13 +141,16 @@ frame (`advanced_app_client/lib/main.dart`,
    chrome rather than a hardcoded string ([Part 08](README_advanced_08_resources_texts.md)).
 5. **`runApp(...)`** over the session wrapping the chosen backend.
 
-**Backend selection** is one place: `_buildBackend()` returns the in-memory fake
-unless both `--dart-define=AUTH_SERVER_URL=…` and the app/admin server URL are
-supplied, in which case it builds the live stack over a shared transport. Without
-the defines the apps boot fully usable on the seeded fake — which is how the tests
-and the offline walk-through run.
+**Backend selection** is one place: `_buildBackend()` builds the **live stack**
+over a shared transport by default — this is the normal run mode, so an app
+started with **no dart-defines** targets the local servers, reading their URLs
+from the `AdvancedClientConfig` config bean (never `String.fromEnvironment` reads
+in `main()`). The seeded in-memory fake is a testing convenience, selected only
+by an explicit `--dart-define=TEST_MODE=true`; it is what the widget tests inject
+directly and how the offline walk-through runs. In-memory is never a default
+reached by forgetting a flag.
 
-**Login-then-full resource staging.** The login bundle installed at step 4 is the
+**Login-then-full resource staging.** The login bundle installed at startup is the
 *pre-login* chrome. On a successful `login`, the session pulls the
 **authenticated** full bundle and installs it merged over the current provider
 (full-bundle keys win), so every post-login screen resolves server texts while the
@@ -185,8 +188,6 @@ half of the four-state model: the app client *renders* grades, the admin console
 - [`advanced_app_client/README.md`](advanced_app_client/README.md), [`advanced_authadmin_client/README.md`](advanced_authadmin_client/README.md)
 - `advanced_app_client/lib/{main.dart, app/app_session.dart, app/app_root.dart, backend/}`
 - `advanced_authadmin_client/lib/{main.dart, app/admin_session.dart, app/admin_root.dart, screens/, backend/}`
-- `advanced_example_specification_plan.md` — A.8, A.9, Phases 5 & 6
-- `advanced_example_completion.md` — After Todos 3, 8, 9, 13
 
 ---
 

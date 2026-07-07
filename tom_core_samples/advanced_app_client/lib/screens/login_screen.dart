@@ -14,6 +14,7 @@ library;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
@@ -76,9 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
     // supplies the title, intro and submit label (a missing key falls back to
     // itself, which is what the bootstrap test asserts against).
     final texts = TomTextResourceProvider.getAppResources();
-    return Scaffold(
+    return TomScaffold(
       key: const Key('login-screen'),
-      appBar: AppBar(title: Text(texts.getText('login.title'))),
+      appBar: TomAppBar(title: TomText(text: texts.getText('login.title'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -86,8 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.all(24),
             children: [
-              Text(
-                texts.getText('login.intro'),
+              TomText(
+                text: texts.getText('login.intro'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -96,22 +97,22 @@ class _LoginScreenState extends State<LoginScreen> {
               _form.password.widget,
               const SizedBox(height: 16),
               if (_error != null) ...[
-                Text(
-                  _error!,
+                TomText(
+                  text: _error!,
                   key: const Key('login-error'),
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 const SizedBox(height: 12),
               ],
-              FilledButton(
+              TomFilledButton(
                 onPressed: _busy ? null : _submit,
                 child: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 18,
                         width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: TomCircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(texts.getText('login.submit')),
+                    : TomText(text: texts.getText('login.submit')),
               ),
             ],
           ),

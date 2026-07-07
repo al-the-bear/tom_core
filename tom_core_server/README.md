@@ -1,7 +1,7 @@
 # tom_core_server
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Server-side runtime for the Tom Framework — an HTTP host, an endpoint pipeline,
 and a relational persistence layer built on the platform-neutral kernel.
@@ -248,6 +248,6 @@ apps get the full kernel API through one dependency. See the
 - **Version:** 1.1.0
 - **Tests:** 218 test cases across 15 module suites (run with `testkit :test`
   or `dart test`).
-- **License:** proprietary — see [LICENSE](LICENSE).
+- **License:** BSD-3-Clause — see [LICENSE](LICENSE).
 </content>
 </invoke>

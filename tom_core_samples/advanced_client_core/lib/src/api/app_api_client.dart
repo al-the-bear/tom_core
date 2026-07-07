@@ -26,7 +26,7 @@
 ///
 /// A denial the server maps to `403`/`404` (an `{"error": key}` body, see plan
 /// §A.6) surfaces as a typed [AppApiException] carrying that stable key; a
-/// persistent `401` was already turned into an `AuthorizedHttpException` by the
+/// persistent `401` was already turned into an `TomAuthExpiredException` by the
 /// wrapper before it reaches here.
 ///
 /// Reflection must be initialized (`initializeReflection()` from
@@ -45,7 +45,7 @@ import '../http/authorized_http.dart';
 import '../http/json_transport.dart';
 
 /// Raised when an app-API call returns a non-success status the wrapper did not
-/// already handle (a 401 becomes an `AuthorizedHttpException` upstream).
+/// already handle (a 401 becomes an `TomAuthExpiredException` upstream).
 ///
 /// Carries the HTTP [statusCode] and the server's stable error [key] from the
 /// `{"error": key}` body (e.g. `app.access.forbidden` → 403,
@@ -141,9 +141,9 @@ TodoComment parseComment(Map<String, dynamic> json) => TodoComment()
 /// Parses the `GET /items/{id}/field-states` body — a bare array of
 /// [GradedFieldDto] maps (`{resourceKey, access}`) — into the per-field grade
 /// list for the current principal. An unknown `access` token degrades to
-/// [TomAuthState.none] (closed-safe) via [GradedFieldDto.fromJson].
+/// [TomAuthState.none] (closed-safe) at read time via [GradedFieldDto.accessState].
 List<GradedFieldDto> parseFieldStates(List<Object?> body) =>
-    [for (final e in body) GradedFieldDto.fromJson(_asObjectMap(e))];
+    [for (final e in body) dtoFromJson<GradedFieldDto>(_asObjectMap(e))];
 
 Map<String, dynamic> _asMap(Object? element) =>
     (element as Map).cast<String, dynamic>();
@@ -226,36 +226,38 @@ class AppApiClient implements AppApiService {
       );
 
   @override
-  Future<TodoItem> updateItem(String id, TodoItem item) async => parseItem(
-        (await _send('PUT', '/items/$id', body: jsonEncode(item.toJson())))
+  Future<TodoItem> updateItem(TodoItem item) async => parseItem(
+        (await _send('PUT', '/items/${item.id.get()}',
+                body: jsonEncode(item.toJson())))
             .jsonObject,
       );
 
   @override
-  Future<void> deleteItem(String id) async => _send('DELETE', '/items/$id');
+  Future<void> deleteItem(EntityIdRequest request) async =>
+      _send('DELETE', '/items/${request.id}');
 
   @override
-  Future<TodoComment> addComment(String itemId, TodoComment comment) async =>
-      parseComment(
-        (await _send('POST', '/items/$itemId/comments',
+  Future<TodoComment> addComment(TodoComment comment) async => parseComment(
+        (await _send('POST', '/items/${comment.itemId.get()}/comments',
                 body: jsonEncode(comment.toJson())))
             .jsonObject,
       );
 
   @override
-  Future<List<GradedFieldDto>> itemFieldStates(String itemId) async =>
-      parseFieldStates((await _get('/items/$itemId/field-states')).jsonArray);
+  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request) async =>
+      parseFieldStates(
+          (await _get('/items/${request.id}/field-states')).jsonArray);
 
   @override
   Future<void> share(ShareRequest request) async =>
-      _send('POST', '/share', body: jsonEncode(request.toJson()));
+      _send('POST', '/share', body: dtoToJsonString(request));
 
   @override
   Future<void> revokeShare(String id) async => _send('DELETE', '/share/$id');
 
   @override
   Future<ResourceBundleDto> resources() async =>
-      ResourceBundleDto.fromJson((await _get('/resources')).jsonObject);
+      dtoFromJson<ResourceBundleDto>((await _get('/resources')).jsonObject);
 
   Future<HttpJsonResponse> _get(String path,
           [Map<String, String> query = const {}]) =>

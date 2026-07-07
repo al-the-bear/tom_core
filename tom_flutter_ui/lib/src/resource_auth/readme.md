@@ -1,7 +1,7 @@
 # resource_auth
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The resource and configuration inputs every Tom widget resolves against:
 colour and icon namespaces (each backed by a pluggable adapter), the UI

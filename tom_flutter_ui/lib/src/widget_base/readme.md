@@ -1,7 +1,7 @@
 # widget_base
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The foundation every other module rests on: the base widget classes that carry a
 `tomId` and the authorization contract, the Material/Cupertino family selection,

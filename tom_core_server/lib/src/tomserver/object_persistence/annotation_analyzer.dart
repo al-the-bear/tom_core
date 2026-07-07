@@ -49,6 +49,14 @@ mixin TomAnnotationAnalyzer {
   /// Cache of resolved column metadata lists per entity type.
   static final columnInfoCache = <Type, List<TomColumnInformation>?>{};
 
+  /// Cache of resolved `@TomDbScope` annotations per entity type
+  /// (`null` = the entity declares no row scope).
+  static final dataScopeCache = <Type, TomDbScope?>{};
+
+  /// Cache of the column-authorized (`@TomDbColumn(authKey: …)`) columns per
+  /// entity type (an empty list = the entity declares no column access rights).
+  static final authColumnCache = <Type, List<TomColumnInformation>>{};
+
   /// Resolves the full persistence metadata (table + columns) for entity [T].
   ///
   /// Throws [TomAnnotationAnalyzerException] if the type is not reflectable,
@@ -111,6 +119,41 @@ mixin TomAnnotationAnalyzer {
     }
     tableCache[dbType] = null;
     return null;
+  }
+
+  /// Returns the `@TomDbScope` annotation on [dbType], or `null` when the
+  /// entity declares no row-level data scope (it is then unscoped).
+  static TomDbScope? findDataScope(Type dbType) {
+    if (dataScopeCache.containsKey(dbType)) return dataScopeCache[dbType];
+    ClassMirror? mirror = findMirror(dbType);
+    if (mirror != null) {
+      for (var md in mirror.metadata) {
+        if (md is TomDbScope) {
+          dataScopeCache[dbType] = md;
+          return md;
+        }
+      }
+    }
+    dataScopeCache[dbType] = null;
+    return null;
+  }
+
+  /// Returns the columns of [dbType] that opt into column-level access rights
+  /// (C-4) — those whose `@TomDbColumn` declares an [TomDbColumn.authKey] — or
+  /// an empty list when the entity declares none.
+  ///
+  /// Cached per type. An empty result lets a repository skip all C-4 work for
+  /// entities that declare no column access rights (zero overhead by default).
+  static List<TomColumnInformation> findAuthColumns(Type dbType) {
+    final cached = authColumnCache[dbType];
+    if (cached != null) return cached;
+    final columns = getPersistentColumns(dbType) ?? const [];
+    final result = [
+      for (final column in columns)
+        if (column.column?.authKey != null) column,
+    ];
+    authColumnCache[dbType] = result;
+    return result;
   }
 
   /// Returns the persistence metadata for every annotated field of [dbType]

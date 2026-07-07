@@ -2,6 +2,14 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+/// Builds a request carrying [params] as shelf_router path captures, the way a
+/// matched route exposes them via `Request.params`.
+Request _reqWithParams(Map<String, String> params) => Request(
+      'GET',
+      Uri.parse('http://localhost/items/42'),
+      context: {'shelf_router/params': params},
+    );
+
 /// Tests for the reflection-free surface of the endpoints module.
 ///
 /// The router builder ([TomEndpointRouting]) and per-request handler
@@ -303,6 +311,128 @@ void main() {
 
     test('returns null for a non-primitive parameter type', () {
       expect(TomEndpointHandler.coercePrimitiveParameter(Request, '1'), isNull);
+    });
+  });
+
+  // G-API-2 / rework step 1: URL path parameters (`/items/{id}`) are bound to
+  // typed request-DTO fields via `urlParameterMapping` on the endpoint. The
+  // pipeline folds the matched path captures into the JSON map it instantiates
+  // the DTO from, renaming captures per the mapping (identity when unmapped).
+  // injectPathParameters owns that fold and is pure, so it is unit-testable
+  // without a live router or reflected DTO — the same pattern as
+  // coercePrimitiveParameter / shelfRoutePath above.
+  group('urlParameterMapping', () {
+    test('TomEndpoint defaults to an empty mapping', () {
+      const endpoint = TomEndpoint();
+      expect(endpoint.urlParameterMapping, isEmpty);
+    });
+
+    test('TomApiEndpoint defaults to an empty mapping', () {
+      final endpoint = TomApiEndpoint<Object, Object>(
+        id: 'get',
+        uri: '/items/{id}',
+        method: TomHttpMethod.get,
+      );
+      expect(endpoint.urlParameterMapping, isEmpty);
+    });
+
+    test('TomApiEndpoint carries the declared mapping', () {
+      final endpoint = TomApiEndpoint<Object, Object>(
+        id: 'get',
+        uri: '/items/{id}',
+        method: TomHttpMethod.get,
+        urlParameterMapping: const {'id': 'itemId'},
+      );
+      expect(endpoint.urlParameterMapping, {'id': 'itemId'});
+    });
+
+    test('convertToTomEndpoint carries the mapping from the registry entry', () {
+      tomRemoteApis['catalog'] = TomApi(
+        id: 'catalog',
+        uri: '/api/catalog',
+        endpoints: [
+          TomApiEndpoint<Object, Object>(
+            id: 'getItem',
+            uri: '/items/{id}',
+            method: TomHttpMethod.get,
+            urlParameterMapping: const {'id': 'itemId'},
+          ),
+        ],
+      );
+      addTearDown(() => tomRemoteApis.apis.remove('catalog'));
+
+      const impl = TomApiEndpointImplementation(
+        apiId: 'catalog',
+        endpointId: 'getItem',
+      );
+      final endpoint = impl.convertToTomEndpoint();
+      expect(endpoint.urlParameterMapping, {'id': 'itemId'});
+    });
+  });
+
+  group('TomEndpointHandler.injectPathParameters', () {
+    test('binds a path capture to the same-named DTO field (identity)', () {
+      // `/items/{id}` with no mapping → `request.id`, no bare-String param.
+      const endpoint = TomEndpoint(uri: '/items/{id}');
+      final json = <String, dynamic>{};
+      TomEndpointHandler.injectPathParameters(
+        json,
+        _reqWithParams({'id': '42'}),
+        endpoint,
+      );
+      expect(json, {'id': '42'});
+    });
+
+    test('renames a path capture to the mapped DTO field name', () {
+      // `/items/{id}` with `{'id': 'itemId'}` → `request.itemId`.
+      const endpoint = TomEndpoint(
+        uri: '/items/{id}',
+        urlParameterMapping: {'id': 'itemId'},
+      );
+      final json = <String, dynamic>{};
+      TomEndpointHandler.injectPathParameters(
+        json,
+        _reqWithParams({'id': '42'}),
+        endpoint,
+      );
+      expect(json, {'itemId': '42'});
+    });
+
+    test('folds path captures alongside an existing JSON body', () {
+      const endpoint = TomEndpoint(
+        uri: '/users/{userId}/items/{itemId}',
+        urlParameterMapping: {'itemId': 'id'},
+      );
+      final json = <String, dynamic>{'title': 'Buy milk'};
+      TomEndpointHandler.injectPathParameters(
+        json,
+        _reqWithParams({'userId': '7', 'itemId': '42'}),
+        endpoint,
+      );
+      // Mapped capture renamed, unmapped capture keeps its name, body preserved.
+      expect(json, {'title': 'Buy milk', 'userId': '7', 'id': '42'});
+    });
+
+    test('a path capture overrides a same-named body field', () {
+      const endpoint = TomEndpoint(uri: '/items/{id}');
+      final json = <String, dynamic>{'id': 'from-body'};
+      TomEndpointHandler.injectPathParameters(
+        json,
+        _reqWithParams({'id': 'from-path'}),
+        endpoint,
+      );
+      expect(json['id'], 'from-path');
+    });
+
+    test('leaves the map unchanged when there are no path captures', () {
+      const endpoint = TomEndpoint(uri: '/items');
+      final json = <String, dynamic>{'title': 'x'};
+      TomEndpointHandler.injectPathParameters(
+        json,
+        _reqWithParams({}),
+        endpoint,
+      );
+      expect(json, {'title': 'x'});
     });
   });
 

@@ -62,11 +62,14 @@ import 'auth_server_start.reflection.dart';
 /// / `--port=`). 8081 keeps it clear of the app server's 8080.
 const int _defaultPort = 8081;
 
-/// Demo passwords seeded onto the `[000]` migration's password-less rows so the
-/// README `curl`s can log in on first boot. Hashing is the auth server's job
-/// (never raw SQL), so the migration leaves `password_hash` NULL and the boot
-/// fills it through the step-9 [applyPassword] helper. Sample credentials only —
-/// never ship these.
+/// Demo passwords seeded onto the seed users' password-less rows so the README
+/// `curl`s can log in on first boot — `admin` from the untagged [002] admin seed
+/// (present in every environment) and `alice`/`bob`/`carol` from the `@dev,test`
+/// [003] demo seed (dev/test only). [seedDemoPasswords] fills only the rows that
+/// exist, so a production apply (no demo seed) sets just the admin password.
+/// Hashing is the auth server's job (never raw SQL), so the migrations leave
+/// `password_hash` NULL and the boot fills it through the step-9 [applyPassword]
+/// helper. Sample credentials only — never ship these.
 const Map<String, String> _demoPasswords = {
   'admin': 'admin-pass',
   'alice': 'alice-pass',
@@ -103,7 +106,8 @@ class AuthServerConfiguration extends TomBaseServerConfiguration {
 /// The server-level error handler: pipeline access-denied → 403, else the
 /// framework default JSON error.
 ///
-/// The endpoint pipeline enforces `@TomRoleAccess` *before* the method runs and,
+/// The endpoint pipeline enforces the contract-declared `TomRoleAccess`
+/// (`TomApiEndpoint.access`) *before* the method runs and,
 /// on denial, throws the access-denied [TomEndpointHandlerException] *outside*
 /// the per-endpoint try/catch — so only a server-level handler can see it.
 /// [forbiddenOnAccessDenied] maps exactly that one key to `403 Forbidden` and
@@ -172,15 +176,20 @@ void initializeServerResources() {
   );
 }
 
-/// Configures JWT signing/encryption with the framework's bundled sample
-/// keypair, marked non-dummy so no development-key warning is logged.
+/// Configures JWT signing/encryption with the framework's bundled sample keypair.
 ///
 /// The token pair the auth server mints is signed (HS256) and carries an
 /// RSA-encrypted access-control payload. Reusing the framework's standard sample
 /// keys — rather than minting per-server keys — is what lets the app server
-/// (step 21) verify a token issued here by applying the identical
-/// configuration; the `false` flag only suppresses the dummy-key warning, it
-/// does not change the keys. Replace with real keys before any real deployment.
+/// (step 21) verify a token issued here by applying the identical configuration.
+///
+/// The configuration is left marked as a development ("dummy") certificate — the
+/// bundled keypair is a non-fresh, non-production convenience shared across every
+/// sample. Because it is a dummy cert, the framework emits a development-key
+/// warning whenever it signs or verifies a token; that warning is intentionally
+/// **not** suppressed (guideline G-AUTH-2). To run against a real certificate,
+/// build a [TomJwtConfiguration] from your own keys and pass `isDummy: false`
+/// (the last positional argument) so the warning stops.
 void initializeJwtSigning() {
   final base = TomJwtConfiguration.defaultSignConfiguration;
   TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
@@ -188,8 +197,23 @@ void initializeJwtSigning() {
     base.algorithm,
     TomJwtConfiguration.rsaPrivKey,
     TomJwtConfiguration.rsaPubKey,
-    false,
   );
+}
+
+/// Emits a boot-time warning when the active signing configuration is still the
+/// bundled development ("dummy") certificate.
+///
+/// Kept separate from [initializeJwtSigning] so the check reads explicitly at the
+/// call site: a production deployment installs a real cert (`isDummy: false`) and
+/// this stays silent.
+void warnIfDevelopmentSigningKey() {
+  if (TomJwtConfiguration.defaultSignConfiguration.isDummy) {
+    tomLog.warn(
+      'JWT signing uses the bundled development certificate (non-fresh, '
+      'non-production). Install a real certificate before any real deployment; '
+      'see README_advanced_06_authentication.md.',
+    );
+  }
 }
 
 /// Fills a demo password onto every seed user that still has none, so the
@@ -234,6 +258,7 @@ Future<void> main(List<String> args) async {
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
 
   initializeJwtSigning();
+  warnIfDevelopmentSigningKey();
 
   initializeBeanContext();
 

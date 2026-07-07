@@ -4,46 +4,40 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///
 /// The app server projects a principal's per-field grade into these and ships
 /// them alongside each item (see `GET /items/{id}/field-states`); both Flutter
-/// clients render [access] onto field visibility/interactivity. It carries only
-/// the kernel [TomAuthState] so the contract stays dependency-clean — the graded
-/// resolver itself lives server-side and never crosses the wire.
+/// clients render the grade onto field visibility/interactivity. It carries only
+/// the kernel [TomAuthState] token so the contract stays dependency-clean — the
+/// graded resolver itself lives server-side and never crosses the wire.
 ///
-/// Serialization is hand-written ([toJson]/[fromJson]) rather than reflection:
-/// the advanced sample's endpoints exchange plain JSON maps (mirroring
-/// `core_server_sample`'s `Map<String, Object>` surface), and the client core
-/// maps them with pure functions. [fromJson] is closed-safe: an absent or
-/// unrecognised access token degrades to [TomAuthState.none] (hidden/denied)
-/// rather than throwing.
+/// A reflection-first wire DTO (G-DTO): `@tomReflector`, plain non-`final`
+/// fields, no hand-written serializer. The framework serializes it through the
+/// reflection path ([TomReflectionInfo.getValues] /
+/// [TomReflectionInfo.createInstanceFromJson]) exactly like the reflected
+/// domain entities. [access] travels as the stable [TomAuthState.name] token
+/// under the wire key `access`; use [accessState] for the typed enum. An
+/// unset/unknown token resolves to [TomAuthState.none] (closed-safe).
+@tomReflector
 class GradedFieldDto {
   /// The resource key this grade applies to, e.g. `todo.item.title`.
-  final String resourceKey;
+  String resourceKey;
 
-  /// The resolved four-state access level for [resourceKey].
-  final TomAuthState access;
+  /// The resolved access as its stable [TomAuthState.name] token
+  /// (`none`/`disabled`/`read`/`full`). Reflection serializes this field
+  /// directly under the wire key `access`; use [accessState] for the typed enum.
+  String access;
 
-  /// Creates a grade. Defaults to [TomAuthState.none] so an unset grade is
-  /// closed by default rather than accidentally permissive.
-  const GradedFieldDto({
+  /// Creates a grade. [access] defaults to [TomAuthState.none] so an unset grade
+  /// is closed by default rather than accidentally permissive.
+  GradedFieldDto({
     this.resourceKey = '',
-    this.access = TomAuthState.none,
-  });
+    TomAuthState access = TomAuthState.none,
+  }) : access = access.name;
 
-  /// Rebuilds a grade from its JSON shape `{resourceKey, access}`. Unknown or
-  /// missing values degrade to empty/[TomAuthState.none] (closed-safe).
-  factory GradedFieldDto.fromJson(Map<String, Object?> json) => GradedFieldDto(
-        resourceKey: (json['resourceKey'] as String?) ?? '',
-        access: parseAccess(json['access'] as String?),
-      );
+  /// Typed view of [access]; an unset/unrecognised token resolves to
+  /// [TomAuthState.none] (closed-safe).
+  TomAuthState get accessState => parseAccess(access);
 
-  /// The [access] level as its stable token (`none`/`disabled`/`read`/`full`) —
-  /// the same representation the persistence layer round-trips.
-  String get accessName => access.name;
-
-  /// JSON shape `{resourceKey, access}` with [access] as its stable token.
-  Map<String, Object?> toJson() => {
-        'resourceKey': resourceKey,
-        'access': access.name,
-      };
+  /// Sets [access] from a typed [TomAuthState].
+  set accessState(TomAuthState value) => access = value.name;
 
   /// Parses a stored [TomAuthState] token back to its enum value. A `null` or
   /// unrecognised token yields [orElse] (default [TomAuthState.none], the
@@ -60,14 +54,5 @@ class GradedFieldDto {
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is GradedFieldDto &&
-      other.resourceKey == resourceKey &&
-      other.access == access;
-
-  @override
-  int get hashCode => Object.hash(resourceKey, access);
-
-  @override
-  String toString() => 'GradedFieldDto($resourceKey -> ${access.name})';
+  String toString() => 'GradedFieldDto($resourceKey -> $access)';
 }

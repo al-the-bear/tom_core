@@ -1,66 +1,50 @@
 import 'package:advanced_todo_domain/advanced_todo_domain.dart' show ProjectRole;
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// A request to share a resource with another user at a given role, posted to
 /// `POST /share`.
 ///
 /// The owner names the target ([resourceType] + [resourceId]), the grantee
-/// ([granteeUserId]) and the [projectRole] to grant. The role travels as its
-/// [ProjectRole.name] token; [fromJson] resolves an unknown token to the
-/// least-privileged [ProjectRole.viewer] (closed-safe) rather than throwing.
+/// ([granteeUserId]) and the role to grant. The role travels as its
+/// [ProjectRole.name] token under the wire key `projectRole`; use
+/// [projectRoleValue] for the typed enum. An unset/unknown token resolves to the
+/// least-privileged [ProjectRole.viewer] (closed-safe).
+///
+/// A reflection-first wire DTO (G-DTO): `@tomReflector`, plain non-`final`
+/// fields, no hand-written serializer.
+@tomReflector
 class ShareRequest {
   /// Kind of resource being shared, e.g. `workspace`/`project`/`list`/`item`.
-  final String resourceType;
+  String resourceType;
 
   /// Identifier of the shared resource within [resourceType].
-  final String resourceId;
+  String resourceId;
 
   /// [UserDto.id] the access is granted to.
-  final String granteeUserId;
+  String granteeUserId;
 
-  /// Role granted on the resource.
-  final ProjectRole projectRole;
+  /// Role granted on the resource, as its [ProjectRole.name] token; use
+  /// [projectRoleValue] for the typed enum.
+  String projectRole;
 
   /// Creates a share request. [projectRole] defaults to the least-privileged
   /// [ProjectRole.viewer].
-  const ShareRequest({
+  ShareRequest({
     this.resourceType = '',
     this.resourceId = '',
     this.granteeUserId = '',
-    this.projectRole = ProjectRole.viewer,
-  });
+    ProjectRole projectRole = ProjectRole.viewer,
+  }) : projectRole = projectRole.name;
 
-  /// Rebuilds a request from its JSON shape. An unknown `projectRole` token
-  /// degrades to [ProjectRole.viewer] (closed-safe).
-  factory ShareRequest.fromJson(Map<String, Object?> json) => ShareRequest(
-        resourceType: (json['resourceType'] as String?) ?? '',
-        resourceId: (json['resourceId'] as String?) ?? '',
-        granteeUserId: (json['granteeUserId'] as String?) ?? '',
-        projectRole: ProjectRole.values.asNameMap()[json['projectRole']] ??
-            ProjectRole.viewer,
-      );
+  /// Typed view of [projectRole]; an unset/unrecognised token resolves to
+  /// [ProjectRole.viewer] (closed-safe).
+  ProjectRole get projectRoleValue =>
+      ProjectRole.values.asNameMap()[projectRole] ?? ProjectRole.viewer;
 
-  /// JSON shape `{resourceType, resourceId, granteeUserId, projectRole}` with
-  /// [projectRole] as its stable token.
-  Map<String, Object?> toJson() => {
-        'resourceType': resourceType,
-        'resourceId': resourceId,
-        'granteeUserId': granteeUserId,
-        'projectRole': projectRole.name,
-      };
-
-  @override
-  bool operator ==(Object other) =>
-      other is ShareRequest &&
-      other.resourceType == resourceType &&
-      other.resourceId == resourceId &&
-      other.granteeUserId == granteeUserId &&
-      other.projectRole == projectRole;
-
-  @override
-  int get hashCode =>
-      Object.hash(resourceType, resourceId, granteeUserId, projectRole);
+  /// Sets [projectRole] from a typed [ProjectRole].
+  set projectRoleValue(ProjectRole value) => projectRole = value.name;
 
   @override
   String toString() =>
-      'ShareRequest($resourceType:$resourceId -> $granteeUserId as ${projectRole.name})';
+      'ShareRequest($resourceType:$resourceId -> $granteeUserId as $projectRole)';
 }

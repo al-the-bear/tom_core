@@ -869,8 +869,40 @@ class MariaDbDatasource implements TomDataSource {
 
   @override
   Future<void> initialize(Map<String, dynamic> settings) async {
-    tomReflectionInfo.setValues<MariaDbDatasource>(this, settings);
+    tomReflectionInfo.setValues<MariaDbDatasource>(this, normalizePort(settings));
     await connect();
+  }
+
+  /// Returns [settings] with its `port` value normalized to an `int` (G-DB-3).
+  ///
+  /// The datasource binds `port` to an `int` field, but application config may
+  /// express the port either as an int or as a string — e.g. an environment
+  /// substitution (`port: ${DB_PORT:3306}`) always yields a string. This folds
+  /// a string port to an int before reflection binding so both forms work. When
+  /// `port` is absent or already an int the map is returned unchanged; when it
+  /// is a string it is parsed via [parsePort].
+  static Map<String, dynamic> normalizePort(Map<String, dynamic> settings) {
+    final raw = settings['port'];
+    if (raw is! String) return settings;
+    return <String, dynamic>{...settings, 'port': parsePort(raw)};
+  }
+
+  /// Parses a configured port value into the `int` the driver binds (G-DB-3).
+  ///
+  /// Accepts an `int` verbatim or a `String` holding an integer literal;
+  /// anything else (unparsable string, non-int/non-string, `null`) throws a
+  /// [MariadbDatasourceException].
+  static int parsePort(Object? raw) {
+    if (raw is int) return raw;
+    if (raw is String) {
+      final parsed = int.tryParse(raw.trim());
+      if (parsed != null) return parsed;
+    }
+    throw MariadbDatasourceException(
+      "error.initialize.invalid_port",
+      "MariadbDatasource: configured port '$raw' is not a valid integer.",
+      parameters: {"port": raw},
+    );
   }
 
   @override

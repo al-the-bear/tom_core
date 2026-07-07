@@ -177,7 +177,7 @@ class AppReadService {
   factory AppReadService.production() => AppReadService(
         const RepositoryAppReadStore(),
         const ResourceAccessResolver(RepositoryAppResourceStore()),
-        const FieldGradeResolver(RepositoryGrantStore()),
+        FieldGradeResolver(const RepositoryGrantStore()),
       );
 
   /// Workspaces the principal [userId] owns or is shared into.
@@ -418,10 +418,23 @@ class InMemoryAppWriteStore implements AppWriteStore {
   }
 }
 
-/// One gradable [ItemRecord] field: its resource key plus how to read and copy
-/// the underlying column. Backs both halves of the write check — detecting that
-/// the caller changed a field (so its grade must be `full`) and overlaying the
-/// permitted fields onto the row that is persisted.
+/// How one gradable [ItemRecord] column is read and copied. Backs both halves of
+/// the write check — detecting that the caller changed a field (so its grade
+/// must be `full`) and overlaying the permitted fields onto the persisted row.
+/// Inherently code (per-column closures), keyed by the field's `todo.item.*` key
+/// so the graded *set and order* come from the server resource bundle rather
+/// than a second hand-maintained list.
+class _GradableItemBinding {
+  /// Reads the field's value from a record (for the changed/unchanged diff).
+  final Object? Function(ItemRecord) read;
+
+  /// Copies the field's value from [source] onto [target] (the permitted merge).
+  final void Function(ItemRecord target, ItemRecord source) copy;
+
+  const _GradableItemBinding(this.read, this.copy);
+}
+
+/// One gradable [ItemRecord] field: its resource key plus its read/copy binding.
 class _GradableItemField {
   /// The `todo.item.*` resource key the four-state grade is declared against.
   final String resourceKey;
@@ -435,27 +448,45 @@ class _GradableItemField {
   const _GradableItemField(this.resourceKey, this.read, this.copy);
 }
 
-/// The seven field-graded [ItemRecord] columns, in display order — the same set
-/// the field-grade resolver answers and the matrix the auth server seeds. The
-/// remaining columns (`label`, `tags`) are not part of the field-grade demo;
-/// `updateItem` preserves them from the stored row, `createItem` takes them from
-/// the creator's payload.
+/// The read/copy binding for every gradable `todo.item.*` field, keyed by its
+/// full resource key. Only the closures live here; the *set and order* of graded
+/// fields is the server resource bundle's [AppResourceBundles.gradableItemKeys]
+/// (step 21), so a bundle key without a binding fails loudly when
+/// [_gradableItemFields] is built. The non-gradable columns (`label`, `tags`)
+/// are absent by design — `updateItem` preserves them from the stored row,
+/// `createItem` takes them from the creator's payload.
+final Map<String, _GradableItemBinding> _gradableItemBindings = {
+  'todo.item.title':
+      _GradableItemBinding((r) => r.title, (t, s) => t.title = s.title),
+  'todo.item.status':
+      _GradableItemBinding((r) => r.status, (t, s) => t.status = s.status),
+  'todo.item.priority':
+      _GradableItemBinding((r) => r.priority, (t, s) => t.priority = s.priority),
+  'todo.item.assigneeId': _GradableItemBinding(
+      (r) => r.assigneeId, (t, s) => t.assigneeId = s.assigneeId),
+  'todo.item.dueDate':
+      _GradableItemBinding((r) => r.dueDate, (t, s) => t.dueDate = s.dueDate),
+  'todo.item.estimate': _GradableItemBinding(
+      (r) => r.estimateHours, (t, s) => t.estimateHours = s.estimateHours),
+  'todo.item.description': _GradableItemBinding(
+      (r) => r.description, (t, s) => t.description = s.description),
+};
+
+/// The field-graded [ItemRecord] columns, in the display order the server
+/// resource bundle labels them — the same set the field-grade resolver answers
+/// and the matrix the auth server seeds (step 21). The order and membership come
+/// from [AppResourceBundles.gradableItemKeys]; [_gradableItemBindings] supplies
+/// each key's read/copy closures. A gradable key with no binding throws here.
 final List<_GradableItemField> _gradableItemFields = [
-  _GradableItemField(
-      TodoItemResourceKeys.title, (r) => r.title, (t, s) => t.title = s.title),
-  _GradableItemField(TodoItemResourceKeys.status, (r) => r.status,
-      (t, s) => t.status = s.status),
-  _GradableItemField(TodoItemResourceKeys.priority, (r) => r.priority,
-      (t, s) => t.priority = s.priority),
-  _GradableItemField(TodoItemResourceKeys.assigneeId, (r) => r.assigneeId,
-      (t, s) => t.assigneeId = s.assigneeId),
-  _GradableItemField(TodoItemResourceKeys.dueDate, (r) => r.dueDate,
-      (t, s) => t.dueDate = s.dueDate),
-  _GradableItemField(TodoItemResourceKeys.estimate, (r) => r.estimateHours,
-      (t, s) => t.estimateHours = s.estimateHours),
-  _GradableItemField(TodoItemResourceKeys.description, (r) => r.description,
-      (t, s) => t.description = s.description),
+  for (final key in AppResourceBundles.gradableItemKeys())
+    _GradableItemField(
+        key, _gradableItemBindings[key]!.read, _gradableItemBindings[key]!.copy),
 ];
+
+/// The gradable `todo.item.*` field keys the write path enforces, in order —
+/// exposed so a drift guard can assert it against the server resource bundle.
+List<String> get gradableItemFieldKeys =>
+    [for (final field in _gradableItemFields) field.resourceKey];
 
 /// Pure write logic over an [AppWriteStore], gated by the same two authorization
 /// layers the reads use.
@@ -497,7 +528,7 @@ class AppWriteService {
   factory AppWriteService.production() => AppWriteService(
         const RepositoryAppWriteStore(),
         const ResourceAccessResolver(RepositoryAppResourceStore()),
-        const FieldGradeResolver(RepositoryGrantStore()),
+        FieldGradeResolver(const RepositoryGrantStore()),
       );
 
   /// Creates [project] in its workspace; the principal must own or edit that
@@ -654,31 +685,38 @@ class AppWriteService {
   ///
   /// [baseline] is the row the write is measured against (the stored row for an
   /// update, a fresh server-owned row for a create); [incoming] is the caller's
-  /// payload as a record; [grades] is the caller's per-field grade. Every
-  /// gradable field whose [incoming] value differs from [baseline] must be
-  /// graded `full`; the first violation throws `app.item.field_forbidden`. The
-  /// returned row is a copy of [baseline] with the `full`-graded fields overlaid
-  /// from [incoming], so non-`full` and server-owned columns keep their baseline
-  /// value.
+  /// payload as a record; [grades] is the caller's per-field grade. The check is
+  /// delegated to the framework's first-class C-4 decision core
+  /// [TomColumnAuthorization.decideWrites] over the [_gradableItemFields] tokens:
+  /// a field the caller is not `full` on but *changed* while it is visible
+  /// (`read`) throws `app.item.field_forbidden`; every non-`full` field is
+  /// preserved from [baseline], and only the `full`-graded (writable) fields are
+  /// overlaid from [incoming] — so non-`full` and server-owned columns keep their
+  /// baseline value.
+  ///
+  /// The service resolves grades per **role** (via [FieldGradeResolver]), not
+  /// through the process-wide `TomAuthorization` the repository's default C-4
+  /// resolver consults; the pure decision core is reflection-free precisely so a
+  /// DTO/closure path like this can drive it with its own resolver and its own
+  /// [TomEndpointHandlerException].
   ItemRecord _enforceFieldWrites(
     ItemRecord baseline,
     ItemRecord incoming,
     Map<String, TomAuthState> grades,
   ) {
-    for (final field in _gradableItemFields) {
-      final changed = field.read(incoming) != field.read(baseline);
-      if (changed && grades[field.resourceKey] != TomAuthState.full) {
-        throw TomEndpointHandlerException(
-          'app.item.field_forbidden',
-          'Field "${field.resourceKey}" is not writable at your access level.',
-        );
-      }
-    }
+    final decision = TomColumnAuthorization.decideWrites<_GradableItemField>(
+      columns: _gradableItemFields,
+      gradeOf: (field) => field.resourceKey,
+      changed: (field) => field.read(incoming) != field.read(baseline),
+      onForbidden: (field, key, grade) => throw TomEndpointHandlerException(
+        'app.item.field_forbidden',
+        'Field "$key" is not writable at your access level.',
+      ),
+      resolver: (key) => grades[key] ?? TomAuthState.none,
+    );
     final merged = _cloneItem(baseline);
-    for (final field in _gradableItemFields) {
-      if (grades[field.resourceKey] == TomAuthState.full) {
-        field.copy(merged, incoming);
-      }
+    for (final field in decision.writable) {
+      field.copy(merged, incoming);
     }
     return merged;
   }
@@ -851,7 +889,7 @@ class AppShareService {
       ..resourceType = request.resourceType
       ..resourceId = resourceId
       ..granteeUserId = granteeId
-      ..projectRole = request.projectRole.name
+      ..projectRole = request.projectRole
       ..grantedById = userId
       ..createdAt = DateTime.now();
     await store.saveShare(record);
@@ -895,8 +933,9 @@ class AppShareService {
   }
 }
 
-/// The message key the endpoint pipeline throws when an access check (e.g.
-/// `@TomAuthenticatedAccess` on a missing token) fails *before* the method runs.
+/// The message key the endpoint pipeline throws when an access check (e.g. the
+/// contract-declared `TomAuthenticatedAccess` on a missing token) fails *before*
+/// the method runs.
 ///
 /// Coupled to `TomEndpointHandler`'s access-denied throw in `tom_core_server`,
 /// it surfaces *outside* the per-endpoint try/catch, so only a server-level
@@ -946,11 +985,12 @@ Response? appForbiddenOrNotFound(
 ///
 /// Bound to the `appApi` endpoints (`tomRemoteApis['app']`); the bean container
 /// instantiates it through the no-argument constructor, which wires the
-/// production [AppReadService]. The access annotations are declared explicitly
-/// (the registry's `appApiAccess` map is informational, not auto-applied):
-/// `appHealth` is public, every other endpoint requires an authenticated
-/// principal, which the pipeline reads from the bearer token; the resource- and
-/// field-level checks then run inside the handlers.
+/// production [AppReadService]. The per-endpoint access policy is **declared on
+/// the contract** (each `appApi` endpoint's `TomApiEndpoint.access`, G-API-3)
+/// and extracted by the pipeline on first call, so these handlers carry no
+/// inline access annotation: `appHealth` is public, every other endpoint
+/// requires an authenticated principal, which the pipeline reads from the bearer
+/// token; the resource- and field-level checks then run inside the handlers.
 ///
 /// The read endpoints delegate to [AppReadService], the write endpoints
 /// (`createProject`/`createItem`/`updateItem`/`deleteItem`/`addComment`) to
@@ -984,83 +1024,70 @@ class AdvancedAppApiService implements AppApiService {
   // framework's TomHealthService already owns the plain-text `GET /health`
   // liveness probe in every server, so the app's typed JSON status uses a
   // distinct path to avoid being shadowed by it.
-  @TomPublicAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appHealth')
   @override
   Future<Map<String, Object>> health() async =>
       {'status': 'ok', 'service': 'advanced_app_server'};
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListWorkspaces')
   @override
   Future<List<Workspace>> listWorkspaces() =>
       _reads.listWorkspaces(_principalId);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListProjects')
   @override
   Future<List<Project>> listProjects(String workspaceId) =>
       _reads.listProjects(_principalId, int.tryParse(workspaceId) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListLists')
   @override
   Future<List<TodoList>> listLists(String projectId) =>
       _reads.listLists(_principalId, int.tryParse(projectId) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListItems')
   @override
   Future<List<TodoItem>> listItems(String listId) =>
       _reads.listItems(_principalId, int.tryParse(listId) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appItemFieldStates')
   @override
-  Future<List<GradedFieldDto>> itemFieldStates(String id) =>
-      _reads.itemFieldStates(_principalId, int.tryParse(id) ?? -1);
+  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request) =>
+      _reads.itemFieldStates(_principalId, int.tryParse(request.id) ?? -1);
 
   // ----- Write endpoints (step 20) -----------------------------------------
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateProject')
   @override
   Future<Project> createProject(Project project) =>
       _writes.createProject(_principalId, project);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateItem')
   @override
   Future<TodoItem> createItem(TodoItem item) =>
       _writes.createItem(_principalId, item);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateItem')
   @override
-  Future<TodoItem> updateItem(String id, TodoItem item) =>
-      _writes.updateItem(_principalId, int.tryParse(id) ?? -1, item);
+  Future<TodoItem> updateItem(TodoItem item) => _writes.updateItem(
+      _principalId, int.tryParse(item.id.get()) ?? -1, item);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appDeleteItem')
   @override
-  Future<void> deleteItem(String id) =>
-      _writes.deleteItem(_principalId, int.tryParse(id) ?? -1);
+  Future<void> deleteItem(EntityIdRequest request) =>
+      _writes.deleteItem(_principalId, int.tryParse(request.id) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddComment')
   @override
-  Future<TodoComment> addComment(String id, TodoComment comment) =>
-      _writes.addComment(_principalId, int.tryParse(id) ?? -1, comment);
+  Future<TodoComment> addComment(TodoComment comment) => _writes.addComment(
+      _principalId, int.tryParse(comment.itemId.get()) ?? -1, comment);
 
   // ----- Share endpoints (step 21) -----------------------------------------
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appShare')
   @override
   Future<void> share(ShareRequest request) =>
       _shares.share(_principalId, request);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appRevokeShare')
   @override
   Future<void> revokeShare(String id) =>
@@ -1070,7 +1097,6 @@ class AdvancedAppApiService implements AppApiService {
   // client's full text bundle (board + item-form labels), installed after
   // sign-in. Any authenticated principal may read it — the texts are display
   // strings, not data (D-A10).
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appResources')
   @override
   Future<ResourceBundleDto> resources() async => AppResourceBundles.appBundle();

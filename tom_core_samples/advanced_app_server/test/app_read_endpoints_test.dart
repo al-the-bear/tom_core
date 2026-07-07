@@ -21,6 +21,10 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+// The server's single reflection seed is its boot root (G-REFL-1); its tests
+// bootstrap reflection from that same seed rather than a library seed.
+import '../bin/app_server_start.reflection.dart' show initializeReflection;
+
 // Auth user ids, mirroring the auth seed.
 const int alice = 2; // workspace owner
 const int bob = 3; // editor, shared on project 1
@@ -31,40 +35,40 @@ const int dave = 99; // stranger — grantee of no share, owner of nothing
 // data the auth server's `[001]-auth_authz_grants.sql` seeds.
 const Map<ProjectRole, Map<String, TomAuthState>> a4Matrix = {
   ProjectRole.owner: {
-    TodoItemResourceKeys.title: TomAuthState.full,
-    TodoItemResourceKeys.status: TomAuthState.full,
-    TodoItemResourceKeys.priority: TomAuthState.full,
-    TodoItemResourceKeys.assigneeId: TomAuthState.full,
-    TodoItemResourceKeys.dueDate: TomAuthState.full,
-    TodoItemResourceKeys.estimate: TomAuthState.full,
-    TodoItemResourceKeys.description: TomAuthState.full,
+    'todo.item.title': TomAuthState.full,
+    'todo.item.status': TomAuthState.full,
+    'todo.item.priority': TomAuthState.full,
+    'todo.item.assigneeId': TomAuthState.full,
+    'todo.item.dueDate': TomAuthState.full,
+    'todo.item.estimate': TomAuthState.full,
+    'todo.item.description': TomAuthState.full,
   },
   ProjectRole.editor: {
-    TodoItemResourceKeys.title: TomAuthState.full,
-    TodoItemResourceKeys.status: TomAuthState.full,
-    TodoItemResourceKeys.priority: TomAuthState.full,
-    TodoItemResourceKeys.assigneeId: TomAuthState.full,
-    TodoItemResourceKeys.dueDate: TomAuthState.full,
-    TodoItemResourceKeys.estimate: TomAuthState.read,
-    TodoItemResourceKeys.description: TomAuthState.full,
+    'todo.item.title': TomAuthState.full,
+    'todo.item.status': TomAuthState.full,
+    'todo.item.priority': TomAuthState.full,
+    'todo.item.assigneeId': TomAuthState.full,
+    'todo.item.dueDate': TomAuthState.full,
+    'todo.item.estimate': TomAuthState.read,
+    'todo.item.description': TomAuthState.full,
   },
   ProjectRole.commenter: {
-    TodoItemResourceKeys.title: TomAuthState.read,
-    TodoItemResourceKeys.status: TomAuthState.full,
-    TodoItemResourceKeys.priority: TomAuthState.read,
-    TodoItemResourceKeys.assigneeId: TomAuthState.read,
-    TodoItemResourceKeys.dueDate: TomAuthState.read,
-    TodoItemResourceKeys.estimate: TomAuthState.none,
-    TodoItemResourceKeys.description: TomAuthState.read,
+    'todo.item.title': TomAuthState.read,
+    'todo.item.status': TomAuthState.full,
+    'todo.item.priority': TomAuthState.read,
+    'todo.item.assigneeId': TomAuthState.read,
+    'todo.item.dueDate': TomAuthState.read,
+    'todo.item.estimate': TomAuthState.none,
+    'todo.item.description': TomAuthState.read,
   },
   ProjectRole.viewer: {
-    TodoItemResourceKeys.title: TomAuthState.read,
-    TodoItemResourceKeys.status: TomAuthState.read,
-    TodoItemResourceKeys.priority: TomAuthState.read,
-    TodoItemResourceKeys.assigneeId: TomAuthState.none,
-    TodoItemResourceKeys.dueDate: TomAuthState.read,
-    TodoItemResourceKeys.estimate: TomAuthState.none,
-    TodoItemResourceKeys.description: TomAuthState.read,
+    'todo.item.title': TomAuthState.read,
+    'todo.item.status': TomAuthState.read,
+    'todo.item.priority': TomAuthState.read,
+    'todo.item.assigneeId': TomAuthState.none,
+    'todo.item.dueDate': TomAuthState.read,
+    'todo.item.estimate': TomAuthState.none,
+    'todo.item.description': TomAuthState.read,
   },
 };
 
@@ -129,7 +133,7 @@ AppReadService demoService() => AppReadService(
 /// Collapses a field-state list into the `resourceKey → state` map [a4Matrix]
 /// rows are expressed in.
 Map<String, TomAuthState> statesMap(List<GradedFieldDto> states) =>
-    {for (final state in states) state.resourceKey: state.access};
+    {for (final state in states) state.resourceKey: state.accessState};
 
 void main() {
   // The list endpoints build observable domain entities through the mapping

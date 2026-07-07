@@ -9,7 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import 'assignments_screen.dart';
@@ -39,12 +39,16 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   Widget build(BuildContext context) {
     // The rail destinations and the matching bodies stay index-aligned.
     final destinations = <NavigationRailDestination>[
-      _destination(Icons.people_outline, Icons.people, 'Users'),
-      _destination(Icons.badge_outlined, Icons.badge, 'Roles'),
-      _destination(Icons.groups_outlined, Icons.groups, 'Groups'),
-      _destination(Icons.grid_on_outlined, Icons.grid_on, 'Grants'),
-      _destination(
-          Icons.assignment_ind_outlined, Icons.assignment_ind, 'Assignments'),
+      _destination(Icons.people_outline, Icons.people,
+          TomCtr.text('adminConsole.nav.users')),
+      _destination(Icons.badge_outlined, Icons.badge,
+          TomCtr.text('adminConsole.nav.roles')),
+      _destination(Icons.groups_outlined, Icons.groups,
+          TomCtr.text('adminConsole.nav.groups')),
+      _destination(Icons.grid_on_outlined, Icons.grid_on,
+          TomCtr.text('adminConsole.nav.grants')),
+      _destination(Icons.assignment_ind_outlined, Icons.assignment_ind,
+          TomCtr.text('adminConsole.nav.assignments')),
     ];
     final bodies = <Widget>[
       UsersScreen(session: _session),
@@ -56,16 +60,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
 
     // Shell chrome comes from the post-login console bundle (installed by
     // [AdminSession.login]); `adminConsole.title` has no grade counterpart and
-    // no form override, so it renders the server text straight through.
-    final texts = TomTextResourceProvider.getAppResources();
-    return Scaffold(
+    // no form override, so it renders the server text straight through [TomCtr].
+    return TomScaffold(
       key: const Key('admin-shell-screen'),
-      appBar: AppBar(
-        title: Text(texts.getText('adminConsole.title')),
+      appBar: TomAppBar(
+        title: TomText(text: TomCtr.text('adminConsole.title')),
         actions: [
-          IconButton(
+          TomIconButton(
             key: const Key('admin-sign-out'),
-            tooltip: 'Sign out',
+            tooltip: TomCtr.text('adminConsole.signOut'),
             icon: const Icon(Icons.logout),
             onPressed: _session.logout,
           ),
@@ -73,13 +76,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       ),
       body: Row(
         children: [
-          NavigationRail(
+          TomNavigationRail(
             selectedIndex: _index,
             labelType: NavigationRailLabelType.all,
             onDestinationSelected: (index) => setState(() => _index = index),
             destinations: destinations,
           ),
-          const VerticalDivider(width: 1),
+          TomVerticalDivider(width: 1),
           Expanded(
             child: IndexedStack(index: _index, children: bodies),
           ),

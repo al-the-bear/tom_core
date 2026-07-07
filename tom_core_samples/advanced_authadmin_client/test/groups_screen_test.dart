@@ -63,8 +63,12 @@ void main() {
     await tester.tap(find.byKey(const Key('groups-tile-g-eng')));
     await tester.pumpAndSettle();
 
-    CheckboxListTile box(String id) =>
-        tester.widget<CheckboxListTile>(find.byKey(Key('group-member-$id')));
+    CheckboxListTile box(String id) => tester.widget<CheckboxListTile>(
+          find.descendant(
+            of: find.byKey(Key('group-member-$id')),
+            matching: find.byType(CheckboxListTile),
+          ),
+        );
     expect(box('u-bob').value, isTrue);
     expect(box('u-carol').value, isTrue);
     expect(box('u-alice').value, isFalse);

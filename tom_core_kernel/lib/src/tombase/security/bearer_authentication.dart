@@ -222,6 +222,16 @@ class TomBearerAuthentication {
       return result;
     }
 
+    Map<String, String> strMapFrom(Map<String, dynamic>? src, String key) {
+      final v = src?[key];
+      if (v is! Map) return <String, String>{};
+      final result = <String, String>{};
+      v.forEach((k, value) {
+        if (k is String && value is String) result[k] = value;
+      });
+      return result;
+    }
+
     return TomPrincipal(
       authenticated: (str("username") ?? TomUser.guestUsername) !=
           TomUser.guestUsername,
@@ -262,6 +272,7 @@ class TomBearerAuthentication {
         roles: strListFrom(secret, "roles"),
         entitlements: strListFrom(secret, "entitlements"),
         resourceKeys: strListFrom(secret, "resourceKeys"),
+        resourceRoles: strMapFrom(secret, "resourceRoles"),
       ),
       cli: TomClientLimitsInformation(
         enabledModules: strListFrom(payload, "subscription_enabledModules"),
@@ -321,18 +332,21 @@ class TomBearerAuthentication {
   /// - [roles]: Updated list of roles
   /// - [entitlements]: Updated list of entitlements
   /// - [resourceKeys]: Updated list of resource keys
+  /// - [resourceRoles]: Updated per-resource role map (`resourceKey → roleName`)
   static void updatePrincipal(
     List<String> groups,
     List<String> roles,
     List<String> entitlements,
-    List<String> resourceKeys,
-  ) {
+    List<String> resourceKeys, {
+    Map<String, String> resourceRoles = const {},
+  }) {
     var principal = getPrincipal();
     principal.aci = TomAccessControlInformation(
       roles: roles,
       groups: groups,
       entitlements: entitlements,
       resourceKeys: resourceKeys,
+      resourceRoles: resourceRoles,
     );
   }
 
@@ -456,6 +470,7 @@ class TomBearerAuthentication {
       "roles": aci.roles,
       "entitlements": aci.entitlements,
       "resourceKeys": aci.resourceKeys,
+      "resourceRoles": aci.resourceRoles,
     };
 
     return (publicInfo, privateInfo);

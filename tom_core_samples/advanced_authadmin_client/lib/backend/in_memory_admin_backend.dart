@@ -10,7 +10,8 @@
 ///
 /// The principal is implicit in the session: [login] records the current user,
 /// and every administrative call requires that user to hold the `admin` role —
-/// exactly the `@TomRoleAccess(['admin'])` gate the live server enforces on each
+/// exactly the contract-declared `TomRoleAccess(['admin'])` gate
+/// (`TomApiEndpoint.access`) the live server's pipeline enforces on each
 /// endpoint. A signed-in non-admin is refused with `admin.access.forbidden`, the
 /// stable key the shell (step 33) rejects a non-admin login on.
 library;
@@ -78,23 +79,69 @@ class InMemoryAdminBackend implements AdminBackend {
   /// server-delivered texts while the widget tests stay socket-free.
   static const Map<String, Object?> fullTexts = {
     'adminConsole.title': 'Advanced Todo — Admin console',
+    'adminConsole.signOut': 'Sign out',
+    'adminConsole.nav.users': 'Users',
+    'adminConsole.nav.roles': 'Roles',
+    'adminConsole.nav.groups': 'Groups',
+    'adminConsole.nav.grants': 'Grants',
+    'adminConsole.nav.assignments': 'Assignments',
     'user.username.label': 'Username',
     'user.password.label': 'Password',
     'user.displayName.label': 'Display name',
     'user.email.label': 'Email',
     'user.status.label': 'Status',
+    'user.status.active': 'Active',
+    'user.status.suspended': 'Suspended',
     'role.key.label': 'Key',
     'role.name.label': 'Name',
     'group.name.label': 'Name',
     'grants.title': 'Grant matrix',
+    'grants.unsaved': 'Unsaved changes',
     'grants.column.none': 'None',
     'grants.column.read': 'Read',
     'grants.column.full': 'Full',
     'grants.save': 'Save grants',
+    'grants.empty': 'No grants to edit.',
+    'grants.roleColumn': 'Role',
+    // Shared admin console chrome (dialogs, CRUD list actions, assignments).
+    'admin.cancel': 'Cancel',
+    'admin.save': 'Save',
+    'admin.delete.label': 'Delete',
+    'admin.delete.confirm': 'Delete "{name}"?',
+    'admin.users.create': 'New user',
+    'admin.users.edit': 'Edit user',
+    'admin.users.empty': 'No users yet.',
+    'admin.roles.create': 'New role',
+    'admin.roles.edit': 'Edit role',
+    'admin.roles.empty': 'No roles yet.',
+    'admin.groups.create': 'New group',
+    'admin.groups.edit': 'Edit group',
+    'admin.groups.empty': 'No groups yet.',
+    'admin.groups.members': 'Members',
+    'admin.groups.memberCount': '{count} member',
+    'admin.groups.memberCountPlural': '{count} members',
+    'admin.assignments.title': 'Assign roles and groups',
+    'admin.assignments.assignTo': 'Assign to {name}',
+    'admin.assignments.assigned': 'Assigned to {name}.',
+    'admin.assignments.chooseError': 'Choose a role or a group to assign.',
+    'admin.assignments.assign': 'Assign',
+    'admin.assignments.noGroups': 'No groups',
+    'admin.assignments.groups': 'Groups: {groups}',
+    'admin.assignments.roleLabel': 'Role',
+    'admin.assignments.noRole': '— No role —',
+    'admin.assignments.groupLabel': 'Group',
+    'admin.assignments.noGroup': '— No group —',
+    // Enum display text (G-RES-5) for the kernel's TomAuthState, keyed
+    // `global.tomauthstate.<value>`; the grant-matrix cells resolve their
+    // four-state labels from here rather than a hardcoded switch.
+    'global.tomauthstate.none': 'Hidden',
+    'global.tomauthstate.disabled': 'Disabled',
+    'global.tomauthstate.read': 'Read',
+    'global.tomauthstate.full': 'Full',
   };
 
   /// The four-state field resource keys, mirroring the server's wire keys
-  /// (`TodoItemResourceKeys`). Held as plain strings because the admin console is
+  /// (`todo.item.*`). Held as plain strings because the admin console is
   /// domain-agnostic: it edits whatever resource keys the server reports.
   static const String _kTitle = 'todo.item.title';
   static const String _kStatus = 'todo.item.status';
@@ -126,7 +173,7 @@ class InMemoryAdminBackend implements AdminBackend {
 
     // The application roles: the `admin` console role plus the four project
     // roles the grant matrix grades.
-    _roles.addAll(const [
+    _roles.addAll([
       RoleDto(key: 'admin', name: 'Administrator'),
       RoleDto(key: 'owner', name: 'Owner'),
       RoleDto(key: 'editor', name: 'Editor'),
@@ -219,7 +266,8 @@ class InMemoryAdminBackend implements AdminBackend {
   @override
   Future<ResourceBundleDto> resources() async {
     // The console bundle is admin-gated, exactly like the live
-    // `GET /admin/resources` endpoint's `@TomRoleAccess(['admin'])`.
+    // `GET /admin/resources` endpoint's contract-declared
+    // `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`).
     _requireAdmin();
     return ResourceBundleDto(Map<String, Object?>.from(fullTexts));
   }
@@ -385,7 +433,7 @@ class InMemoryAdminBackend implements AdminBackend {
         for (final role in matrix.roles)
           role: {
             for (final grade in matrix.gradesFor(role))
-              grade.resourceKey: grade.access,
+              grade.resourceKey: grade.accessState,
           },
       });
   }
@@ -429,7 +477,8 @@ class InMemoryAdminBackend implements AdminBackend {
   // ----- Access resolution -------------------------------------------------
 
   /// Asserts an active session that holds the `admin` role, mirroring the
-  /// server's `@TomRoleAccess(['admin'])` gate. Throws `admin.no_session` when no
+  /// server's contract-declared `TomRoleAccess(['admin'])` gate
+  /// (`TomApiEndpoint.access`). Throws `admin.no_session` when no
   /// one is logged in and `admin.access.forbidden` for a non-admin principal.
   void _requireAdmin() {
     final id = _currentUserId;

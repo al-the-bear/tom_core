@@ -24,7 +24,9 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/app_actions.dart';
 import '../app/app_session.dart';
 import '../backend/backend.dart';
 import '../forms/todo_item_form.dart';
@@ -77,19 +79,27 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _error = null;
     });
     try {
-      // Load the item's grade matrix; this pushes it into the session's
-      // installed [FieldStateAuthorizationAdapter], so the form's fields resolve
-      // their grades implicitly (the form itself holds no authorization state).
-      await _session.loadFieldStates(_item.id.get());
+      // Load the item's DB-resolved grade matrix (keyed by wire resource key,
+      // `todo.item.<field>`). The screen stamps it onto the form's fields; there
+      // is no installed authorization adapter to route the grades implicitly.
+      final states = await _session.loadFieldStates(_item.id.get());
       if (!mounted) return;
       // Run the form under the gradable scope so each field's basePath equals
-      // its wire resource key (`todo.item.<field>`) and the installed adapter
-      // (todo 3) resolves its grade implicitly via layer-1.
+      // its wire resource key (`todo.item.<field>`).
       final form = TomScope.withScope(
-        TodoItemResourceKeys.scope,
+        'todo',
         TodoItemForm.new,
       );
       form.bind(_item);
+      // Stamp each gradable field with its DB-resolved grade via a per-field
+      // fixed authorizer (layer 4). An unsent gradable key is closed-safe
+      // ([TomAuthState.none], D-A4): the field collapses rather than leaking an
+      // editable control. Non-gradable chrome (login, board) keeps the
+      // framework's permissive default — this screen installs no global adapter.
+      for (final field in form.gradableFields) {
+        field.authorizer =
+            TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none);
+      }
       setState(() {
         _form = form;
         _loading = false;
@@ -106,9 +116,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
   }
 
-  /// Validates and persists the form, then pops with `true` so the board can
-  /// refresh. Only `full` fields are editable, so the write-back carries exactly
-  /// the permitted changes.
+  /// Validates the form and runs the [SaveItemAction], then pops with `true` so
+  /// the board can refresh. Only `full` fields are editable, so the write-back
+  /// carries exactly the permitted changes. The mutation runs through the action
+  /// (`todo.item.save`); this method keeps the busy/error/navigation chrome.
   Future<void> _save() async {
     final form = _form;
     if (form == null) return;
@@ -117,19 +128,21 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _busy = true;
       _error = null;
     });
-    try {
-      await _session.guard((b) => b.saveItem(_item));
-      if (mounted) Navigator.of(context).pop(true);
-    } on AppBackendException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.message;
-        _busy = false;
-      });
+    final error =
+        await runAppAction(itemActions.save, SaveItemContext(_session, _item));
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(true);
+      return;
     }
+    setState(() {
+      _error = error;
+      _busy = false;
+    });
   }
 
-  /// Posts the composer's text as a new comment on the item.
+  /// Posts the composer's text as a new comment via the [AddCommentAction]
+  /// (`todo.item.comment`); the screen keeps the busy/error/snackbar chrome.
   Future<void> _addComment() async {
     final body = _commentController.text.trim();
     if (body.isEmpty) return;
@@ -137,44 +150,44 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _postingComment = true;
       _commentError = null;
     });
-    try {
-      final comment = TodoComment()
-        ..itemId.set(_item.id.get())
-        ..authorId.set(_session.user?.id ?? '')
-        ..body.set(body);
-      await _session.guard((b) => b.addComment(_item.id.get(), comment));
-      if (!mounted) return;
+    final error = await runAppAction(
+      itemActions.comment,
+      AddCommentContext(_session, _item.id.get(), body),
+    );
+    if (!mounted) return;
+    if (error == null) {
       _commentController.clear();
       setState(() => _postingComment = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Comment added')),
+        TomSnackBar(
+            content: TomText(text: TomCtr.text('board.item.comment.added'))),
       );
-    } on AppBackendException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _commentError = e.message;
-        _postingComment = false;
-      });
+      return;
     }
+    setState(() {
+      _commentError = error;
+      _postingComment = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return TomScaffold(
       key: const Key('item-detail-screen'),
-      appBar: AppBar(title: Text(_item.title.get())),
+      appBar: TomAppBar(title: TomText(text: _item.title.get())),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: TomCircularProgressIndicator());
     }
     final form = _form;
     if (form == null) {
       return Center(
-        child: Text(_error ?? 'Could not load item.',
+        child: TomText(
+            text: _error ?? TomCtr.text('board.item.loadError'),
             key: const Key('item-detail-error')),
       );
     }
@@ -187,24 +200,26 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           const SizedBox(height: 12),
         ],
         if (_error != null) ...[
-          Text(_error!,
+          TomText(
+              text: _error!,
               key: const Key('item-detail-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error)),
           const SizedBox(height: 12),
         ],
         if (canSave)
-          FilledButton(
+          TomFilledButton(
             key: const Key('item-save-button'),
+            authorizer: itemActions.save.authorizer,
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: TomCircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Save'),
+                : TomText(text: TomCtr.text('board.item.save')),
           ),
-        const Divider(height: 32),
+        TomDivider(height: 32),
         _buildCommentComposer(),
       ],
     );
@@ -214,38 +229,42 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Add a comment',
+        TomText(
+            text: TomCtr.text('board.item.comment.title'),
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        TextField(
+        TomTextField(
           key: const Key('comment-input'),
           controller: _commentController,
           minLines: 1,
           maxLines: 3,
+          label: '',
+          hint: TomCtr.text('board.item.comment.hint'),
           decoration: const InputDecoration(
-            hintText: 'Write a comment…',
             border: OutlineInputBorder(),
           ),
         ),
         if (_commentError != null) ...[
           const SizedBox(height: 8),
-          Text(_commentError!,
+          TomText(
+              text: _commentError!,
               key: const Key('comment-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ],
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
-          child: OutlinedButton(
+          child: TomOutlinedButton(
             key: const Key('comment-submit-button'),
+            authorizer: itemActions.comment.authorizer,
             onPressed: _postingComment ? null : _addComment,
             child: _postingComment
-                ? const SizedBox(
+                ? SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: TomCircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Post comment'),
+                : TomText(text: TomCtr.text('board.item.comment.submit')),
           ),
         ),
       ],

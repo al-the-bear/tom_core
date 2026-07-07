@@ -9,14 +9,17 @@
 /// fields as their `name` token. The parsers are the symmetric inverse
 /// (`entity.setValues`), so a captured row round-trips field-for-field.
 ///
-/// Reflection is initialized once in [setUpAll] because every parser constructs
-/// a reflected entity. Stored bearers are synthetic unsigned JWTs (see
-/// [_makeJwt]) so `setTokens(..., decrypt: false)` accepts them without RSA.
+/// Reflection is initialized once in [setUpAll] — via the client core's combined
+/// domain+contracts seed — because every parser constructs either a reflected
+/// entity or a reflection-first DTO. Stored bearers are synthetic unsigned JWTs
+/// (see [_makeJwt]) so `setTokens(..., decrypt: false)` accepts them without RSA.
 library;
 
 import 'dart:convert';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_client_core/reflection_seed.dart';
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
@@ -123,9 +126,9 @@ void main() {
       ]);
       expect(states, hasLength(3));
       expect(states[0].resourceKey, 'todo.item.title');
-      expect(states[0].access, TomAuthState.full);
-      expect(states[1].access, TomAuthState.read);
-      expect(states[2].access, TomAuthState.none);
+      expect(states[0].accessState, TomAuthState.full);
+      expect(states[1].accessState, TomAuthState.read);
+      expect(states[2].accessState, TomAuthState.none);
     });
   });
 
@@ -229,7 +232,7 @@ void main() {
       final client = clientOver(transport);
 
       await expectLater(
-        client.deleteItem('55'),
+        client.deleteItem(EntityIdRequest(id: '55')),
         throwsA(isA<AppApiException>()
             .having((e) => e.key, 'key', 'app.item.not_found')
             .having((e) => e.statusCode, 'statusCode', 404)),
@@ -251,7 +254,7 @@ void main() {
       });
       final client = clientOver(transport);
 
-      final states = await client.itemFieldStates('11');
+      final states = await client.itemFieldStates(EntityIdRequest(id: '11'));
 
       expect(states.map((s) => s.resourceKey),
           ['todo.item.title', 'todo.item.priority']);

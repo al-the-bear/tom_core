@@ -32,8 +32,8 @@ This sample closes that gap end-to-end: real login, JWT issuance,
 bearer-token-secured endpoints, a per-request principal, and per-resource and
 per-field authorization.
 
-Two pieces in this sample **did not previously exist anywhere in the framework's
-samples**, and they are the headline deliverables:
+Two pieces in this sample are its **headline deliverables** — capabilities no
+other framework sample demonstrates:
 
 1. **HTTP admin endpoints that *mutate* roles and the grant matrix** — the
    authorization-administration surface (`/admin/*`).
@@ -142,8 +142,6 @@ back into the relevant parts.
 ## Primary sources
 
 - [`README_advanced_sample.md`](README_advanced_sample.md) — suite map, architecture diagram, quickstart, seeded accounts.
-- `advanced_example_specification_plan.md` — Preamble, A.1 Goals/non-goals, A.2 Components (the build narrative behind this guide).
-- The quest overview `overview.tom_core.md`.
 
 ---
 

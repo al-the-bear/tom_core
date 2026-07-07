@@ -1,7 +1,7 @@
 # widgets
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The general-purpose widget kit: every common Flutter widget given a Tom wrapper
 that adds a `tomId`, the kernel's four-state authorization, and resource-resolved

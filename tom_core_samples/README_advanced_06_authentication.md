@@ -42,8 +42,9 @@ two collaborators (the same seam philosophy as the persistence stores):
 zone** (`getFromCurrentZone<TomPrincipal>()`), which the server's authentication
 middleware populates from the bearer token — *not* from the
 `TomBearerAuthentication` client-side singleton, which the server never fills.
-`@TomAuthenticatedAccess` guarantees the pipeline already rejected any request
-without a principal, so the zone value is non-null inside those methods.
+The contract-declared `TomAuthenticatedAccess` (`TomApiEndpoint.access`)
+guarantees the pipeline already rejected any request without a principal, so the
+zone value is non-null inside those methods.
 
 A rejected login is the *expected* outcome of bad credentials, so the `login`
 endpoint declares a `LoginUnauthorizedErrorHandler` that maps `LoginException` to
@@ -104,9 +105,45 @@ server's key" pattern: reusing one keypair rather than minting per-server keys i
 exactly what makes a minted token verify on the other side. Both boots also set
 the same issuer (`'tom'`), which the app server must match to accept a token.
 
-> **Sample keys only.** The bundled keypair is a development convenience; the
-> `false` flag on the config merely suppresses the dummy-key warning — it does not
-> change the keys. Replace with real keys before any real deployment.
+### Sample keys and the development-key warning (G-AUTH-2)
+
+The bundled keypair (`TomJwtConfiguration.hmacKey` / `rsaPrivKey` / `rsaPubKey`)
+is a **development convenience, not a certificate**: it is the same
+non-fresh key shipped with the framework and shared by every sample, so it is
+public knowledge and useless for real trust. To make that impossible to miss,
+each server leaves its `TomJwtConfiguration` marked as a *dummy* configuration
+(`isDummy == true`, the constructor default), and the framework prints a
+development-key warning **every time it signs or verifies a token** — the sample
+does **not** suppress it. On boot you also see the one-line reminder emitted by
+`warnIfDevelopmentSigningKey()`:
+
+```
+WARN  JWT signing uses the bundled development certificate (non-fresh,
+      non-production). Install a real certificate before any real deployment;
+      see README_advanced_06_authentication.md.
+```
+
+**Why it is always on.** The warning is the signal that no production
+certificate has been installed. There is no flag to silence it — hiding this
+deployment hazard behind a convenience toggle is exactly the failure mode the
+warning exists to prevent.
+
+**Installing a production certificate.** Mint your own HMAC/RSA keys, build a
+`TomJwtConfiguration` from them, and pass `isDummy: false` (the last positional
+argument) so the framework treats them as a real cert and stops warning:
+
+```dart
+TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
+  jwt.SecretKey(myHmacSecret),   // your signing secret
+  base.algorithm,
+  myRsaPrivateKeyPem,            // your RSA private key
+  myRsaPublicKeyPem,             // your RSA public key
+  false,                         // isDummy: false → real certificate, no warning
+);
+```
+
+Both servers must install the **same** keys and issuer (`'tom'`) for the app
+server to keep verifying tokens the auth server minted.
 
 ## The client auth layer
 
@@ -136,15 +173,17 @@ which is what makes the retry transparently pick up a just-refreshed token.
 
 ## Token refresh
 
-`AuthorizedHttp.send` implements **refresh-once-on-401**: it sends the request with
-the current bearer; a 2xx or any non-401 status (403/404/… the API client
+`AuthorizedHttp.send` attaches the current bearer and defers the recovery
+decision to the framework's pluggable policy (`tom_core_kernel`'s
+`tomRunWithAuthRetry`, G-AUTH-3) — **refresh-once-on-401**: it sends the request
+with the current bearer; a 2xx or any non-401 status (403/404/… the API client
 interprets itself) returns as-is; a **401** triggers a single `AuthClient.refresh`
 and *exactly one* retry with the freshly stored bearer. If the retry is still 401,
-the session is genuinely dead and it throws `AuthorizedHttpException` (never
-loops); a refresh that itself fails surfaces its own `AuthClientException`. So a
-single token expiry is invisible to the caller, while a dead session surfaces as a
-typed error. `refresh` itself requires a prior login — with no stored authorization
-token it throws `auth.no_token`.
+the session is genuinely dead and the kernel throws `TomAuthExpiredException`
+(never loops); a refresh that itself fails surfaces its own `AuthClientException`.
+So a single token expiry is invisible to the caller, while a dead session surfaces
+as a typed error. `refresh` itself requires a prior login — with no stored
+authorization token it throws `auth.no_token`.
 
 ## Pre-login vs authenticated request paths
 
@@ -159,7 +198,7 @@ Two request shapes coexist, divided by whether a bearer is present:
 - **Authenticated.** Every other endpoint goes through `AuthorizedHttp`, which
   injects `Authorization: Bearer <authzToken>` and applies the refresh-once policy.
   The server's middleware decodes the bearer into the request-zone principal that
-  `@TomAuthenticatedAccess` (and the role/field gates of part
+  the contract-declared `TomAuthenticatedAccess` (and the role/field gates of part
   [07](README_advanced_07_authorization.md)) check.
 
 ## Primary sources
@@ -167,7 +206,6 @@ Two request shapes coexist, divided by whether a bearer is present:
 - [`advanced_auth_server/README.md`](advanced_auth_server/README.md), [`advanced_client_core/README.md`](advanced_client_core/README.md)
 - `advanced_auth_server/lib/src/auth/authentication_service.dart`, `.../auth/password_hashing.dart`, `.../endpoints/auth_endpoints.dart`; both servers' `bin/*_start.dart` `initializeJwtSigning()`
 - `advanced_client_core/lib/src/auth/auth_client.dart`, `.../http/authorized_http.dart`
-- `advanced_example_specification_plan.md` — A.5 Authentication & session flow, A.7, A.11, Phases 2 & 4
 
 ---
 

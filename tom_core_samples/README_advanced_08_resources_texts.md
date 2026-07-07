@@ -96,13 +96,17 @@ hierarchy, so a text file *mirrors the screen it describes*:
 ```jsonc
 // advanced_app_server/assets/resources_app.json
 {
-  "todo":  { "item": { "title": { "label": "Title" }, "status": { "label": "Status" }, … } },
-  "board": { "title": "My Board", "empty": "No items yet", "item": { "save": "Save" }, … }
+  "todo":   { "item": { "title": { "label": "Title" }, "status": { "label": "Status" }, … } },
+  "board":  { "title": "My Board", "empty": "No items yet", "item": { "save": "Save" }, … },
+  "global": { "todostatus": { "inreview": "In review", … }, "projectrole": { "editor": "Editor", … }, … }
 }
 ```
 
 That tree carries exactly the information of the flat wire bundle — the path
-`todo.item.title.label` is the nesting `todo → item → title → label`. The server
+`todo.item.title.label` is the nesting `todo → item → title → label`, and enum
+display text (G-RES-5) lives under `global.<enumtype>.<value>` (e.g.
+`global.todostatus.inreview`) so the domain enums hold no hardcoded strings. The
+server
 loads the asset once and **flattens** it to the flat `<basePath>.<suffix>` map
 the bundle carries, so the wire contract is byte-equivalent to the old
 in-code bundle and every resource-endpoint test is unchanged:
@@ -166,8 +170,9 @@ Future<void> _installFullResources() async {
 ```
 
 The login bundle is unauthenticated by design (it is served *before* a token
-exists); the full and admin bundles sit behind `@TomAuthenticatedAccess()` /
-`@TomRoleAccess(['admin'])` — see part [07](README_advanced_07_authorization.md)
+exists); the full and admin bundles sit behind the contract-declared
+`TomAuthenticatedAccess()` / `TomRoleAccess(['admin'])`
+(`TomApiEndpoint.access`) — see part [07](README_advanced_07_authorization.md)
 and part [10](README_advanced_10_servers_endpoints.md).
 
 ## The sentinel-`[srv]` proof pattern
@@ -189,9 +194,9 @@ If the field were rendering a hard-coded `'Username'`, the `[srv]` text would be
 absent and the test would fail. Because the assertion passes, the label is
 provably resolved through `resolvedLabel` → `TomCtr.textOrNull(basePath, 'label')`
 → the installed bundle. The same pattern guards the admin console's
-`user.*`/`role.*`/`group.*` form labels in `advanced_authadmin_client`. These
-are the tests RC-24 had to keep green: the bundles now come from JSON assets, but
-the served keys (and therefore the sentinels) are byte-identical.
+`user.*`/`role.*`/`group.*` form labels in `advanced_authadmin_client`. The
+bundles come from JSON assets, but the served keys (and therefore the sentinels)
+are byte-identical.
 
 ## Primary sources
 
@@ -200,7 +205,7 @@ the served keys (and therefore the sentinels) are byte-identical.
 - `advanced_app_client/lib/app/app_session.dart` (`loadLoginResources` / `_installFullResources`, D-A9)
 - `tom_flutter_ui/.../tom_form.dart:855` (`resolvedLabel`); `tom_construction_helpers.dart:61-70` (`TomCtr.text`/`textOrNull`)
 - `advanced_app_client/test/form_label_resolution_test.dart` (the `[srv]` sentinel proof)
-- `advanced_examples_alignment_plan.md` — gaps 2–3, Key anatomy, D-A1, D-A9; appendix [A2](README_advanced_A2_resource_scope_conventions.md)
+- Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 
 ---
 

@@ -18,16 +18,19 @@ class GroupForm extends TomForm<GroupDraft> {
 
   /// Human-facing group name. Label resolves from `group.name.label` in the
   /// installed console bundle.
-  late final name = TomFormStringInput(
-    'name',
-    '',
-    form: this,
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput name;
 
   /// The fields the screen renders, in order.
   List<TomField<dynamic>> get editableFields => [name];
 
+  /// Creates the fields (implementation half of the three-part split, G-UI-5).
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    name = TomFormStringInput(
+      'name',
+      '',
+      form: this,
+      validators: [Validators.required()],
+    );
+  }
 }

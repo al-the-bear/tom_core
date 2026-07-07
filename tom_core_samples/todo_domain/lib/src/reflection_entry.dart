@@ -13,6 +13,8 @@ import 'project.dart';
 import 'todo_item.dart';
 import 'todo_list.dart';
 import 'user.dart';
+import 'wire/todo_field_matrix_dto.dart';
+import 'wire/todo_item_dto.dart';
 
 /// Touches each reflected type so the imports are retained and the generator
 /// can reach every entity. Never invoked in production.
@@ -23,4 +25,6 @@ void main() {
   TodoItem();
   TodoPriority.values;
   TodoLabel.values;
+  TodoItemDto();
+  TodoFieldMatrixDto();
 }

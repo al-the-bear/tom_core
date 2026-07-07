@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'common/showcase_section.dart';
 import 'groups/adaptive_sizing_group.dart';
@@ -53,19 +54,19 @@ class _ResponsiveHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tom Flutter UI — Responsive Showcase'),
+    return TomScaffold(
+      appBar: TomAppBar(
+        title: TomText(text: 'Tom Flutter UI — Responsive Showcase'),
       ),
       body: ListView.separated(
         itemCount: responsiveGroups.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
+        separatorBuilder: (_, _) => TomDivider(height: 1),
         itemBuilder: (context, index) {
           final group = responsiveGroups[index];
-          return ListTile(
+          return TomListTile(
             leading: Icon(group.icon),
-            title: Text(group.title),
-            subtitle: Text(group.summary),
+            titleText: group.title,
+            subtitle: TomText(text: group.summary),
             isThreeLine: true,
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(

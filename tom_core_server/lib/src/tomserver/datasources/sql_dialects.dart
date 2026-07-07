@@ -16,9 +16,11 @@ typedef SqlString = String;
 /// dialect via [TomOperator.generate], so a driver can subclass this dialect to
 /// override any fragment for its database (see [MariadbSqlDialect]).
 ///
-/// The literal renderers interpolate values directly into the SQL string; for
-/// untrusted input prefer the parameterised form ([p]) so the driver binds the
-/// value. (Escaping of directly-interpolated literals is a tracked follow-up.)
+/// The literal renderers interpolate values directly into the SQL string;
+/// string literals are escaped ([text] doubles single quotes and backslashes)
+/// so an embedded quote cannot break out of the literal. For untrusted input
+/// still prefer the parameterised form ([p]) so the driver binds the value and
+/// nothing is embedded in the SQL text at all.
 class TomStandardSqlDialect {
   /// Renders `<what> IS NULL`.
   SqlString isNull<T>(TomOperator<T> what) {
@@ -129,10 +131,13 @@ class TomStandardSqlDialect {
     return list;
   }
 
-  /// Renders a string literal, single-quoted. (Not escaped — see [p] for
-  /// untrusted input.)
+  /// Renders a string literal, single-quoted, escaping any embedded backslash
+  /// (`\` → `\\`) and single quote (`'` → `''`) so the value cannot terminate
+  /// the literal early and inject trailing SQL. For untrusted input still
+  /// prefer the parameterised form ([p]), which binds the value out-of-band.
   SqlString text(String text) {
-    return "'$text'";
+    final escaped = text.replaceAll('\\', r'\\').replaceAll("'", "''");
+    return "'$escaped'";
   }
 
   /// Renders an integer literal.

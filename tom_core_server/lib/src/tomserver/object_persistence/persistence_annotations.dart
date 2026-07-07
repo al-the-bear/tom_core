@@ -51,6 +51,14 @@ class TomDbTable {
 /// translate between them when reading and writing. [isReadOnly] columns are
 /// skipped on insert/update, [noLoad] columns are not selected, and [isJson]
 /// marks a column whose value is JSON-encoded.
+///
+/// [authKey] opts the column into **column-level access rights** (C-4): when
+/// set, the repository resolves the current principal's [TomAuthState] for that
+/// resource key (through `TomColumnAuthorization`, consulting `TomAuthorization`)
+/// and enforces it server-authoritatively — masking the column's value on read
+/// when the principal cannot see it, and rejecting a write that changes it when
+/// the principal is not `full`. A column with no [authKey] is unrestricted, so
+/// existing entities keep their behaviour unchanged.
 class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
   /// The column name; defaults to the field name when `null`.
   final String? columnName;
@@ -63,6 +71,13 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
 
   /// Whether the column holds JSON-encoded data.
   final bool isJson;
+
+  /// The resource key that gates this column's read/write access (C-4).
+  ///
+  /// When non-null, the repository resolves the current principal's
+  /// [TomAuthState] for this key and masks the value on read / rejects an
+  /// unauthorized write. `null` (the default) leaves the column unrestricted.
+  final String? authKey;
 
   /// The Dart type, when it cannot be inferred from [DART_TYPE].
   final Type? dartType;
@@ -82,6 +97,7 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
     this.isReadOnly = false,
     this.noLoad = false,
     this.isJson = false,
+    this.authKey,
     this.dartType,
     this.fromDbConverter,
     this.toDbConverter,
@@ -100,6 +116,33 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
 class TomEntityId {
   /// Marks a field as the entity id.
   const TomEntityId();
+}
+
+/// Annotation declaring the **row-level data scope** of an entity (C-3).
+///
+/// Applied to a `@tomReflector` entity, it restricts which rows the repository
+/// returns to those the current principal is allowed to see. [field] names the
+/// entity field/column that carries the scope value (e.g. `ownerId`), and
+/// [scope] names the scope *kind* — a key into `TomDataScopeRegistry` whose
+/// resolver maps the current `TomPrincipal` to the set of [field] values the
+/// principal may see (the default `'owner'` resolves to the principal's own id).
+///
+/// At query time the repository resolves the principal's allowed values and
+/// binds them into an additional prepared `WHERE <field> IN (?, …)` clause; no
+/// value is ever concatenated into the SQL text (C-7). An entity *without* this
+/// annotation is unscoped — every row is visible.
+class TomDbScope {
+  /// The entity field whose value is matched against the principal's allowed
+  /// scope values.
+  final String field;
+
+  /// The scope kind — a key into `TomDataScopeRegistry` selecting the resolver
+  /// that turns the principal into its set of allowed [field] values.
+  final String scope;
+
+  /// Declares that the annotated entity's rows are scoped by [field] under the
+  /// named [scope] resolver (default `'owner'`).
+  const TomDbScope({required this.field, this.scope = 'owner'});
 }
 
 /// Annotation describing a many-to-many join table between two entities.

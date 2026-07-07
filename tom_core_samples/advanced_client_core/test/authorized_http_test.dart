@@ -9,16 +9,21 @@
 /// carried (the "picks up the refreshed token" property).
 ///
 /// Stored tokens are synthetic unsigned JWTs (see [_makeJwt]) so
-/// `setTokens(..., decrypt: false)` accepts them without RSA.
+/// `setTokens(..., decrypt: false)` accepts them without RSA. The refresh path
+/// deserializes a [LoginResult] through reflection, so the combined
+/// domain+contracts seed is installed once (`initializeReflection`).
 library;
 
 import 'dart:convert';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_client_core/reflection_seed.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   group('AuthorizedHttp', () {
     final authBaseUri = Uri.parse('http://localhost:8081');
     final appUri = Uri.parse('http://localhost:8080/items');
@@ -106,7 +111,7 @@ void main() {
           equals('Bearer $authz0'));
     });
 
-    test('TC-23-04: a 401 that persists after refresh throws AuthorizedHttpException',
+    test('TC-23-04: a 401 that persists after refresh throws TomAuthExpiredException',
         () async {
       final authz0 = _makeJwt({'username': 'alice', 'userId': 2});
       TomBearerAuthentication.setTokens(authz0, authz0, false);
@@ -123,7 +128,7 @@ void main() {
 
       await expectLater(
         http.send(method: 'GET', uri: appUri),
-        throwsA(isA<AuthorizedHttpException>()
+        throwsA(isA<TomAuthExpiredException>()
             .having((e) => e.key, 'key', 'auth.token.invalid')
             .having((e) => e.statusCode, 'statusCode', 401)),
       );

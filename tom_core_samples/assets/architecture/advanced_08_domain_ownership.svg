@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    Domain ownership chain of advanced_todo_domain (eight reflected @tomReflector
+    entities). A strict chain plus two satellites:
+      Workspace → Project → TodoList → TodoItem, and TodoItem owns Subtask and
+      TodoComment. Satellites: User, and Share (User × Project → ProjectRole).
+    Relations are flat foreign keys (e.g. workspaceId), not nested lists, so each
+    entity persists as one row.
+  -->
+  <defs>
+    <marker id="arrow8" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;fill:#f3e5f5;}
+    .sat{stroke:#37474f;stroke-width:1.5;fill:#e3f2fd;}
+    .lbl{fill:#212121;font-weight:600;}
+    .own{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow8);}
+    .note{fill:#546e7a;font-size:11px;}
+  </style>
+
+  <!-- chain -->
+  <rect class="box" x="20"  y="40" width="130" height="46" rx="7"/>
+  <text class="lbl" x="85"  y="68" text-anchor="middle">Workspace</text>
+  <rect class="box" x="190" y="40" width="130" height="46" rx="7"/>
+  <text class="lbl" x="255" y="68" text-anchor="middle">Project</text>
+  <rect class="box" x="360" y="40" width="130" height="46" rx="7"/>
+  <text class="lbl" x="425" y="68" text-anchor="middle">TodoList</text>
+  <rect class="box" x="530" y="40" width="130" height="46" rx="7"/>
+  <text class="lbl" x="595" y="68" text-anchor="middle">TodoItem</text>
+
+  <path class="own" d="M150,63 L190,63"/>
+  <path class="own" d="M320,63 L360,63"/>
+  <path class="own" d="M490,63 L530,63"/>
+
+  <!-- TodoItem satellites -->
+  <rect class="box" x="530" y="140" width="130" height="42" rx="7"/>
+  <text class="lbl" x="595" y="166" text-anchor="middle">Subtask</text>
+  <rect class="box" x="530" y="200" width="130" height="42" rx="7"/>
+  <text class="lbl" x="595" y="226" text-anchor="middle">TodoComment</text>
+  <path class="own" d="M595,86 L595,140"/>
+  <path class="own" d="M660,63 C710,63 710,221 660,221"/>
+
+  <!-- satellites: User, Share -->
+  <rect class="sat" x="20"  y="200" width="120" height="42" rx="7"/>
+  <text class="lbl" x="80"  y="226" text-anchor="middle">User</text>
+  <rect class="sat" x="180" y="200" width="300" height="42" rx="7"/>
+  <text class="lbl" x="330" y="226" text-anchor="middle">Share (User × Project → ProjectRole)</text>
+
+  <text class="note" x="20" y="285">Relations are flat foreign keys (e.g. workspaceId) — each entity persists as one row.</text>
+</svg>

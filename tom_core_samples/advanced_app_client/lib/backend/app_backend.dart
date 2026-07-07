@@ -25,7 +25,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///
 /// A single typed failure the screens catch and surface: the in-memory backend
 /// throws it directly, and [LiveAppBackend] wraps the client core's transport
-/// exceptions (`AuthClientException`/`AppApiException`/`AuthorizedHttpException`)
+/// exceptions (`AuthClientException`/`AppApiException`/`TomAuthExpiredException`)
 /// in it. It carries a human [message] to show the user and, when the underlying
 /// failure had one, the server's stable error [key] so a caller can branch
 /// without parsing the message.
@@ -94,9 +94,9 @@ abstract class AppBackend {
   Future<TodoComment> addComment(String itemId, TodoComment comment);
 
   /// The four-state grade for each gradable field of item [itemId], resolved for
-  /// the current principal and keyed by [TodoItemResourceKeys]. An ungranted
-  /// field resolves to [TomAuthState.none] (hidden — the closed-safe default),
-  /// matching the server's resolver.
+  /// the current principal and keyed by the gradable item resource keys
+  /// (`todo.item.*`). An ungranted field resolves to [TomAuthState.none] (hidden
+  /// — the closed-safe default), matching the server's resolver.
   Future<Map<String, TomAuthState>> itemFieldStates(String itemId);
 
   /// Shares the named resource with another user at a [ProjectRole].

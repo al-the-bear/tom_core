@@ -1,7 +1,7 @@
 # configuration
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Typed access to server configuration. A `TomBaseServerConfiguration` loads
 property sources (YAML via `TomYaml`, env, args) into the active

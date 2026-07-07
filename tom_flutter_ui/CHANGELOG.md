@@ -3,7 +3,7 @@
 First versioned release of the Tom Flutter UI widget library. Promotes the
 package from the `0.0.1` Flutter template stub to a real, documented `1.0.0`:
 authored the package `README.md` (description + module/widget catalogue + form
-field catalogue), the proprietary `LICENSE`, and this changelog. No source
+field catalogue), the BSD 3-Clause `LICENSE`, and this changelog. No source
 change — this release records the widget set that already exists.
 
 ### Added

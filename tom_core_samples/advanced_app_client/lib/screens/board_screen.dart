@@ -11,10 +11,11 @@ library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
+import '../domain/enum_text.dart';
 import 'item_detail_screen.dart';
 import 'share_dialog.dart';
 
@@ -161,7 +162,7 @@ class _BoardScreenState extends State<BoardScreen> {
     final shared = await showShareDialog(context, _session, projectId);
     if (shared == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Project shared')),
+        TomSnackBar(content: TomText(text: TomCtr.text('board.shared'))),
       );
     }
   }
@@ -172,23 +173,22 @@ class _BoardScreenState extends State<BoardScreen> {
         _session.user?.displayName ?? _session.user?.username ?? '';
     // Board chrome comes from the post-login full bundle (installed by
     // [AppSession.login]); `board.*` has no grade counterpart and no form
-    // override, so it renders the server text straight through.
-    final texts = TomTextResourceProvider.getAppResources();
-    return Scaffold(
+    // override, so it renders the server text straight through [TomCtr].
+    return TomScaffold(
       key: const Key('board-screen'),
-      appBar: AppBar(
-        title: Text(texts.getText('board.title')),
+      appBar: TomAppBar(
+        title: TomText(text: TomCtr.text('board.title')),
         actions: [
-          IconButton(
+          TomIconButton(
             key: const Key('share-button'),
             icon: const Icon(Icons.person_add_alt),
-            tooltip: 'Share project',
+            tooltip: TomCtr.text('board.shareTooltip'),
             onPressed: _projectId == null ? null : _openShare,
           ),
-          IconButton(
+          TomIconButton(
             key: const Key('logout-button'),
             icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
+            tooltip: TomCtr.text('board.signOut'),
             onPressed: _session.logout,
           ),
         ],
@@ -196,7 +196,7 @@ class _BoardScreenState extends State<BoardScreen> {
       body: Column(
         children: [
           _buildHeader(name),
-          const Divider(height: 1),
+          TomDivider(height: 1),
           Expanded(child: _buildBody()),
         ],
       ),
@@ -209,39 +209,54 @@ class _BoardScreenState extends State<BoardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Signed in as $name'),
+          TomText(text: TomCtr.text('board.signedInAs').replaceAll('{name}', name)),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: const Key('workspace-picker'),
-                  initialValue: _workspaceId,
-                  decoration: const InputDecoration(labelText: 'Workspace'),
-                  items: [
-                    for (final w in _workspaces)
-                      DropdownMenuItem(
-                          value: w.id.get(), child: Text(w.name.get())),
+          AclBuilder()
+              .setAclDefaultHideUnauthorized(true)
+              .append(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TomText(text: TomCtr.text('board.workspace')),
+                    TomDropdownButton<String>(
+                      key: const Key('workspace-picker'),
+                      value: _workspaceId,
+                      isExpanded: true,
+                      items: [
+                        for (final w in _workspaces)
+                          DropdownMenuItem(
+                              value: w.id.get(),
+                              child: Text(w.name.get())),
+                      ],
+                      onChanged: _onWorkspaceChanged,
+                    ),
                   ],
-                  onChanged: _onWorkspaceChanged,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: const Key('project-picker'),
-                  initialValue: _projectId,
-                  decoration: const InputDecoration(labelText: 'Project'),
-                  items: [
-                    for (final p in _projects)
-                      DropdownMenuItem(
-                          value: p.id.get(), child: Text(p.name.get())),
+                dist: 0,
+              )
+              .append(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TomText(text: TomCtr.text('board.project')),
+                    TomDropdownButton<String>(
+                      key: const Key('project-picker'),
+                      value: _projectId,
+                      isExpanded: true,
+                      items: [
+                        for (final p in _projects)
+                          DropdownMenuItem(
+                              value: p.id.get(),
+                              child: Text(p.name.get())),
+                      ],
+                      onChanged: _onProjectChanged,
+                    ),
                   ],
-                  onChanged: _onProjectChanged,
                 ),
-              ),
-            ],
-          ),
+                dist: 12,
+              )
+              .addRowBreakpoint(atWidth: 480)
+              .build(),
         ],
       ),
     );
@@ -249,13 +264,13 @@ class _BoardScreenState extends State<BoardScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: TomCircularProgressIndicator());
     }
     if (_error != null) {
-      return Center(child: Text(_error!, key: const Key('board-error')));
+      return Center(child: TomText(text: _error!, key: const Key('board-error')));
     }
     if (_items.isEmpty) {
-      return const Center(child: Text('No items in this project yet.'));
+      return Center(child: TomText(text: TomCtr.text('board.emptyProject')));
     }
     return _buildBoard();
   }
@@ -290,8 +305,8 @@ class _BoardScreenState extends State<BoardScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              '${status.label} (${items.length})',
+            child: TomText(
+              text: '${enumText(status)} (${items.length})',
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
@@ -302,12 +317,12 @@ class _BoardScreenState extends State<BoardScreen> {
   }
 
   Widget _buildCard(TodoItem item) {
-    return Card(
+    return TomCard(
       key: Key('item-${item.id.get()}'),
-      child: ListTile(
-        title: Text(item.title.get()),
-        subtitle: Text(
-          '${item.priorityValue.label} · ${item.labelValue.label}',
+      child: TomListTile(
+        titleText: item.title.get(),
+        subtitle: TomText(
+          text: '${enumText(item.priorityValue)} · ${enumText(item.labelValue)}',
         ),
         onTap: () => _openItem(item),
       ),

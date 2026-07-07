@@ -8,7 +8,8 @@
 ///   platform → registry → reflection → runtime → config → datasource →
 ///   JWT signing → bean context → migrations → `TomServer.start()`
 ///
-/// Every endpoint but `/health` is `@TomAuthenticatedAccess`, so the boot trusts
+/// Every endpoint but `/health` is contract-declared `TomAuthenticatedAccess`
+/// (`TomApiEndpoint.access`, extracted by the pipeline), so the boot trusts
 /// the **same JWT signing key as the auth server**: [initializeJwtSigning] applies
 /// the identical framework sample keypair (`isDummy: false`), which is what lets a
 /// token minted by `advanced_auth_server` verify here — the standard "resource
@@ -162,14 +163,20 @@ void initializeServerResources() {
   );
 }
 
-/// Configures JWT signing/encryption with the framework's bundled sample keypair,
-/// marked non-dummy so no development-key warning is logged.
+/// Configures JWT signing/encryption with the framework's bundled sample keypair.
 ///
 /// This is the **identical** configuration the auth server applies in its own
 /// `initializeJwtSigning()`. Reusing the framework's standard sample keys — rather
 /// than minting per-server keys — is what lets this app server verify a token the
-/// auth server issued; the `false` flag only suppresses the dummy-key warning, it
-/// does not change the keys. Replace with real keys before any real deployment.
+/// auth server issued.
+///
+/// The configuration is left marked as a development ("dummy") certificate — the
+/// bundled keypair is a non-fresh, non-production convenience shared across every
+/// sample. Because it is a dummy cert, the framework emits a development-key
+/// warning whenever it signs or verifies a token; that warning is intentionally
+/// **not** suppressed (guideline G-AUTH-2). To run against a real certificate,
+/// build a [TomJwtConfiguration] from your own keys and pass `isDummy: false`
+/// (the last positional argument) so the warning stops.
 void initializeJwtSigning() {
   final base = TomJwtConfiguration.defaultSignConfiguration;
   TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
@@ -177,8 +184,23 @@ void initializeJwtSigning() {
     base.algorithm,
     TomJwtConfiguration.rsaPrivKey,
     TomJwtConfiguration.rsaPubKey,
-    false,
   );
+}
+
+/// Emits a boot-time warning when the active signing configuration is still the
+/// bundled development ("dummy") certificate.
+///
+/// Kept separate from [initializeJwtSigning] so the check reads explicitly at the
+/// call site: a production deployment installs a real cert (`isDummy: false`) and
+/// this stays silent.
+void warnIfDevelopmentSigningKey() {
+  if (TomJwtConfiguration.defaultSignConfiguration.isDummy) {
+    tomLog.warn(
+      'JWT signing uses the bundled development certificate (non-fresh, '
+      'non-production). Install a real certificate before any real deployment; '
+      'see README_advanced_06_authentication.md.',
+    );
+  }
 }
 
 /// Boots the HTTP server (fire-and-forget; the bound socket + open DB connection
@@ -204,6 +226,7 @@ Future<void> main(List<String> args) async {
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
 
   initializeJwtSigning();
+  warnIfDevelopmentSigningKey();
 
   initializeBeanContext();
 

@@ -11,6 +11,10 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
 
+// The server's single reflection seed is its boot root (G-REFL-1); its tests
+// bootstrap reflection from that same seed rather than a library seed.
+import '../bin/auth_server_start.reflection.dart' show initializeReflection;
+
 void main() {
   // The domain `User` is an observable TomClass: constructing one self-observes
   // through reflection, so the registry must be live before any mapping runs.
@@ -79,15 +83,14 @@ void main() {
         ..passwordHash = 'secret-hash';
 
       final dto = userRecordToDto(record);
-      expect(dto, UserDto(
-        id: '7',
-        username: 'ada',
-        displayName: 'Ada',
-        email: 'ada@example.com',
-        status: UserStatus.active.name,
-      ));
+      // Reflection-first DTOs carry no value `==`; assert the projected fields.
+      expect(dto.id, '7');
+      expect(dto.username, 'ada');
+      expect(dto.displayName, 'Ada');
+      expect(dto.email, 'ada@example.com');
+      expect(dto.statusValue, UserStatus.active);
       // The DTO has no password field at all — the hash cannot leak through it.
-      expect(dto.toJson().containsKey('passwordHash'), isFalse);
+      expect(dto.toString(), isNot(contains('secret-hash')));
     });
 
     test('applyUserDto updates the profile without clearing the hash', () {
@@ -119,7 +122,7 @@ void main() {
     });
 
     test('createUserRequestToRecord seeds active with no hash yet', () {
-      final record = createUserRequestToRecord(const CreateUserRequest(
+      final record = createUserRequestToRecord(CreateUserRequest(
         username: 'grace',
         password: 'plaintext',
         displayName: 'Grace',
@@ -141,7 +144,9 @@ void main() {
         ..roleKey = 'admin'
         ..name = 'Administrator';
       final dto = roleRecordToDto(record);
-      expect(dto, const RoleDto(key: 'admin', name: 'Administrator'));
+      // Reflection-first DTOs carry no value `==`; assert the projected fields.
+      expect(dto.key, 'admin');
+      expect(dto.name, 'Administrator');
 
       final back = roleDtoToRecord(dto);
       expect(back.roleKey, 'admin');
@@ -165,11 +170,10 @@ void main() {
       ];
 
       final dto = groupToDto(group, members);
-      expect(dto, GroupDto(
-        id: '5',
-        name: 'Engineering',
-        memberUserIds: const ['7', '9'],
-      ));
+      // Reflection-first DTOs carry no value `==`; assert the projected fields.
+      expect(dto.id, '5');
+      expect(dto.name, 'Engineering');
+      expect(dto.memberUserIds, ['7', '9']);
     });
 
     test('a group with no members maps to an empty member list', () {

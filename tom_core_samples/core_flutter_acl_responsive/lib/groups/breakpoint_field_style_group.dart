@@ -193,8 +193,8 @@ class _Badge extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant),
       ),
-      child: Text(
-        '$label: $value',
+      child: TomText(
+        text: '$label: $value',
         style: Theme.of(context).textTheme.labelSmall,
       ),
     );

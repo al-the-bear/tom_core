@@ -9,9 +9,12 @@
 /// client is offered as a "refresh from the live server" action and is the
 /// honest live-tier seam.
 ///
-/// The JSON→entity mapping is split into the pure [parseTodos] /
-/// [parseFieldStates] functions so it is unit-tested against captured server
-/// responses, with no socket in the test.
+/// The wire shapes are the **reflection-first DTOs** (G-DTO): `/todos` a JSON
+/// array of [TodoItemDto], `/todos/field-states` a [TodoFieldMatrixDto]. The
+/// JSON→entity mapping is split into the pure [parseTodos] / [parseFieldStates]
+/// functions — each deserializes through the kernel reflection path
+/// ([dtoFromJson]) and then maps into the observable form entities — so it is
+/// unit-tested against captured server responses, with no socket in the test.
 library;
 
 import 'dart:async';
@@ -21,54 +24,62 @@ import 'dart:io';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart';
 
-import 'field_keys.dart';
+/// The gradable todo-item field resource keys, in display order (G-RES-6).
+///
+/// A bare list, not a `*ResourceKeys` catalogue class: it enumerates the keys
+/// each role's field-state block is expanded to. Same wire keys the server uses.
+const List<String> _gradableItemKeys = [
+  'todo.item.title',
+  'todo.item.done',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+];
 
 /// Parses a [TomAuthState] from its stored [TomAuthState.name] token; an
 /// unknown or absent token degrades to [TomAuthState.none] (the closed-safe
 /// default), matching the server-side codec.
 TomAuthState parseAuthState(String? token) =>
-    TomAuthState.values.asNameMap()[token] ?? TomAuthState.none;
+    TodoFieldMatrixDto.parseState(token);
 
-/// Maps the `GET /todos` body (`{ "items": [ … ] }`) to [TodoItem]s.
+/// Maps the `GET /todos` body (a JSON array of [TodoItemDto]) to [TodoItem]s.
 ///
-/// The priority/label values arrive as the enum's name (the server stores them
-/// that way), so they go straight into the string-backed fields.
-List<TodoItem> parseTodos(Map<String, dynamic> body) {
-  final items = (body['items'] as List<dynamic>? ?? const [])
-      .cast<Map<String, dynamic>>();
-  return [
-    for (final json in items)
-      TodoItem()
-        ..id.set('${json['id'] ?? ''}')
-        ..title.set('${json['title'] ?? ''}')
-        ..description.set('${json['description'] ?? ''}')
-        ..done.set(json['done'] == true)
-        ..priority.set('${json['priority'] ?? TodoPriority.medium.name}')
-        ..label.set('${json['label'] ?? TodoLabel.feature.name}')
-        ..assigneeId.set('${json['assigneeId'] ?? ''}')
-        ..dueDate.set(_parseDate(json['dueDate'])),
-  ];
-}
+/// Each element is deserialized into a [TodoItemDto] through reflection, then
+/// projected into the observable form entity. Priority/label arrive as the
+/// enum's name (the server stores them that way); an empty token falls back to
+/// the domain default.
+List<TodoItem> parseTodos(List<Object?> body) => [
+      for (final element in body) _dtoToItem(dtoFromJson<TodoItemDto>(_asMap(element))),
+    ];
 
-/// Maps the `GET /todos/field-states` body (`{ role: { key: state } }`) to a
-/// per-role, per-field [TomAuthState] matrix.
+/// Maps the `GET /todos/field-states` body (`{ states: { role: { key: token } } }`)
+/// to a per-role, per-field [TomAuthState] matrix.
+///
+/// The body deserializes into a [TodoFieldMatrixDto]; each role is expanded to
+/// the full gradable-field vocabulary, so a field absent from a role's block
+/// degrades to [TomAuthState.none] (closed-safe).
 Map<String, Map<String, TomAuthState>> parseFieldStates(
     Map<String, dynamic> body) {
-  final result = <String, Map<String, TomAuthState>>{};
-  for (final role in body.entries) {
-    final perField = (role.value as Map<String, dynamic>? ?? const {});
-    result[role.key] = {
-      for (final key in TodoFieldKeys.all)
-        key: parseAuthState(perField[key] as String?),
-    };
-  }
-  return result;
+  final matrix = dtoFromJson<TodoFieldMatrixDto>(body.cast<String, Object?>());
+  return {
+    for (final role in matrix.roles)
+      role: {
+        for (final key in _gradableItemKeys) key: matrix.accessFor(role, key),
+      },
+  };
 }
 
-DateTime? _parseDate(Object? raw) {
-  if (raw is! String || raw.isEmpty) return null;
-  return DateTime.tryParse(raw);
-}
+TodoItem _dtoToItem(TodoItemDto dto) => TodoItem()
+  ..id.set(dto.id)
+  ..title.set(dto.title)
+  ..description.set(dto.description)
+  ..done.set(dto.done)
+  ..priority.set(dto.priority.isEmpty ? TodoPriority.medium.name : dto.priority)
+  ..label.set(dto.label.isEmpty ? TodoLabel.feature.name : dto.label)
+  ..assigneeId.set(dto.assigneeId)
+  ..dueDate.set(dto.dueDate.isEmpty ? null : DateTime.tryParse(dto.dueDate));
+
+Map<String, Object?> _asMap(Object? raw) =>
+    (raw as Map).cast<String, Object?>();
 
 /// A minimal HTTP client for `core_server_sample`'s read endpoints.
 class LiveTodoReadClient {
@@ -86,8 +97,10 @@ class LiveTodoReadClient {
     return body['status'] == 'ok';
   }
 
-  /// `GET /todos` — the persisted items, mapped through [parseTodos].
-  Future<List<TodoItem>> fetchTodos() async => parseTodos(await _getJson('/todos'));
+  /// `GET /todos` — the persisted items (a JSON array of [TodoItemDto]), mapped
+  /// through [parseTodos].
+  Future<List<TodoItem>> fetchTodos() async =>
+      parseTodos(await _getJsonArray('/todos'));
 
   /// `GET /todos/field-states` — the four-state matrix, via [parseFieldStates].
   Future<Map<String, Map<String, TomAuthState>>> fetchFieldStates() async =>
@@ -96,13 +109,19 @@ class LiveTodoReadClient {
   /// Releases the underlying HTTP client.
   void close() => _client.close(force: true);
 
-  Future<Map<String, dynamic>> _getJson(String path) async {
+  Future<Map<String, dynamic>> _getJson(String path) async =>
+      await _getBody(path) as Map<String, dynamic>;
+
+  Future<List<Object?>> _getJsonArray(String path) async =>
+      (await _getBody(path) as List).cast<Object?>();
+
+  Future<Object?> _getBody(String path) async {
     final request = await _client.getUrl(Uri.parse('$baseUrl$path'));
     final response = await request.close();
     final text = await response.transform(utf8.decoder).join();
     if (response.statusCode != HttpStatus.ok) {
       throw HttpException('GET $path failed (${response.statusCode})');
     }
-    return json.decode(text) as Map<String, dynamic>;
+    return json.decode(text);
   }
 }

@@ -12,7 +12,7 @@
 /// client-core counterpart, folds the server's per-field grade list into the
 /// UI-shaped `resourceKey → TomAuthState` map, and normalises the client core's
 /// transport exceptions (`AuthClientException`/`AppApiException`/
-/// `AuthorizedHttpException`) into the single [AppBackendException] the screens
+/// `TomAuthExpiredException`) into the single [AppBackendException] the screens
 /// catch. The parsers it relies on build reflected entities, so the bootstrap
 /// must call `initializeReflection()` before the first call.
 library;
@@ -24,6 +24,22 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'app_backend.dart';
 
+/// The gradable item leaf keys, in display order, used to fold the server's bare
+/// grade list into a closed-safe per-key map (an unsent key defaults to `none`).
+///
+/// Addressed by scope + `tomId` (`todo.item.<field>`), resolved at use rather
+/// than pulled from a key-catalogue class (G-RES-6). Steps 24–26 derive this set
+/// from the item form's field `tomId`s; it is the interim client source.
+const _gradableItemKeys = <String>[
+  'todo.item.title',
+  'todo.item.status',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+  'todo.item.dueDate',
+  'todo.item.estimate',
+  'todo.item.description',
+];
+
 /// An [AppBackend] backed by the live auth + app servers through
 /// `advanced_client_core`.
 class LiveAppBackend implements AppBackend {
@@ -34,6 +50,26 @@ class LiveAppBackend implements AppBackend {
   /// [AppApiClient] (the authenticated board API). They are expected to share a
   /// single [JsonTransport] so the stored bearer flows from one to the other.
   LiveAppBackend(this._auth, this._api);
+
+  /// Self-wires the live backend from the [AdvancedClientConfig] config bean:
+  /// resolves the auth + app server URLs, shares one [IoJsonTransport] between
+  /// the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
+  /// [AppApiClient] sends on, so the bearer the login stores is the one every
+  /// board call presents.
+  ///
+  /// This is the factory the app bootstrap registers as the `prod`-environment
+  /// backend; it reads its URLs from the config bean, never from
+  /// `String.fromEnvironment` (G-ENV-2). Call [AdvancedClientConfig.registerDefault]
+  /// before this.
+  factory LiveAppBackend.fromConfig() {
+    final config = AdvancedClientConfig.resolve();
+    final transport = IoJsonTransport();
+    final auth =
+        AuthClient(Uri.parse(config.authServerUrl), transport: transport);
+    final api = AppApiClient(
+        Uri.parse(config.appServerUrl), AuthorizedHttp(transport, auth));
+    return LiveAppBackend(auth, api);
+  }
 
   @override
   Future<LoginResult> login(LoginRequest request) =>
@@ -67,28 +103,34 @@ class LiveAppBackend implements AppBackend {
 
   @override
   Future<TodoItem> saveItem(TodoItem item) => _guard(() {
-        // An empty id means "create"; the server assigns the primary key.
+        // An empty id means "create"; the server assigns the primary key. On
+        // update the addressed item is carried on `item.id` (the `{id}` path
+        // capture binds back onto it server-side).
         return item.id.get().isEmpty
             ? _api.createItem(item)
-            : _api.updateItem(item.id.get(), item);
+            : _api.updateItem(item);
       });
 
   @override
-  Future<void> deleteItem(String id) => _guard(() => _api.deleteItem(id));
+  Future<void> deleteItem(String id) =>
+      _guard(() => _api.deleteItem(EntityIdRequest(id: id)));
 
   @override
   Future<TodoComment> addComment(String itemId, TodoComment comment) =>
-      _guard(() => _api.addComment(itemId, comment));
+      // The addressed item travels on the comment's `itemId` field, which the
+      // `{id}` → `itemId` mapping binds server-side.
+      _guard(() => _api.addComment(comment..itemId.set(itemId)));
 
   @override
   Future<Map<String, TomAuthState>> itemFieldStates(String itemId) =>
       _guard(() async {
-        final graded = await _api.itemFieldStates(itemId);
+        final graded =
+            await _api.itemFieldStates(EntityIdRequest(id: itemId));
         // Fold the bare grade list into a closed-safe per-key map: every
         // gradable key is present, an unsent one defaulting to none.
-        final byKey = {for (final g in graded) g.resourceKey: g.access};
+        final byKey = {for (final g in graded) g.resourceKey: g.accessState};
         return {
-          for (final key in TodoItemResourceKeys.all)
+          for (final key in _gradableItemKeys)
             key: byKey[key] ?? TomAuthState.none,
         };
       });
@@ -104,7 +146,7 @@ class LiveAppBackend implements AppBackend {
     try {
       return await op();
     } on TomException catch (e) {
-      // AuthClientException / AppApiException / AuthorizedHttpException all
+      // AuthClientException / AppApiException / TomAuthExpiredException all
       // extend TomException and carry the server's stable key + message.
       throw AppBackendException(e.defaultUserMessage, key: e.key);
     }

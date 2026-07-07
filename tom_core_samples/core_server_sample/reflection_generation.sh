@@ -4,11 +4,12 @@
 # the transitively-reached MariaDB driver/migrator/grant types). The reflection
 # root is bin/server_start.dart, configured in build.yaml.
 #
-# `--nested` runs the generator in single-project mode (no workspace registry),
-# so it works before this sample is registered in tom_master.yaml.
+# Runs flag-free: the generator scans the current project only (framework
+# default scan '.', non-recursive), so no --nested and no workspace registry
+# are needed.
 #
 # Run from the project root:
 #   ./reflection_generation.sh
 set -e
 cd "$(dirname "$0")"
-/srv/flutter/flutter/bin/dart run tom_reflection_generator --nested
+/srv/flutter/flutter/bin/dart run tom_reflection_generator

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 360" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    Client-call ↔ API-definition ↔ service-impl ↔ routing. One typed method is
+    agreed by construction because both ends compile against the same interface:
+      - CLIENT CALL: advanced_client_core invokes a typed AppApiService method
+        (e.g. itemFieldStates) — no URL string at the call site;
+      - API DEFINITION: advanced_todo_contracts declares the interface AND the
+        api_registry entry (URI, HTTP method, request/response types, per-endpoint
+        TomAccessControl) — the single wire metadata;
+      - ROUTING: the server pipeline matches the incoming HTTP request to the
+        registered endpoint and enforces its access policy;
+      - SERVICE IMPL: the server implements the SAME AppApiService method; its
+        return value is reflection-serialized back over the wire.
+    Because both ends share the interface + registry, a server cannot drift from
+    a client.
+  -->
+  <defs>
+    <marker id="arrow5" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+    <marker id="arrow5b" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#8e24aa"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;}
+    .client{fill:#fff3e0;}
+    .contract{fill:#e3f2fd;}
+    .route{fill:#eceff1;}
+    .impl{fill:#e8f5e9;}
+    .lbl{fill:#212121;font-weight:600;}
+    .sub{fill:#546e7a;font-size:11px;}
+    .mono{fill:#37474f;font-size:11px;font-family:monospace;}
+    .req{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow5);}
+    .resp{stroke:#8e24aa;stroke-width:1.5;fill:none;marker-end:url(#arrow5b);stroke-dasharray:5 4;}
+    .note{fill:#546e7a;font-size:11px;}
+    .respnote{fill:#8e24aa;font-size:11px;}
+  </style>
+
+  <rect class="box client"   x="20"  y="90" width="170" height="80" rx="8"/>
+  <text class="lbl" x="105" y="118" text-anchor="middle">client call</text>
+  <text class="sub" x="105" y="136" text-anchor="middle">advanced_client_core</text>
+  <text class="mono" x="105" y="154" text-anchor="middle">appApi.itemFieldStates(id)</text>
+
+  <rect class="box contract" x="230" y="90" width="180" height="80" rx="8"/>
+  <text class="lbl" x="320" y="114" text-anchor="middle">API definition</text>
+  <text class="sub" x="320" y="132" text-anchor="middle">contracts: interface</text>
+  <text class="sub" x="320" y="148" text-anchor="middle">+ api_registry</text>
+  <text class="mono" x="320" y="164" text-anchor="middle">uri · method · types · access</text>
+
+  <rect class="box route"    x="450" y="90" width="160" height="80" rx="8"/>
+  <text class="lbl" x="530" y="118" text-anchor="middle">routing</text>
+  <text class="sub" x="530" y="136" text-anchor="middle">server pipeline</text>
+  <text class="sub" x="530" y="152" text-anchor="middle">match + enforce access</text>
+
+  <rect class="box impl"     x="650" y="90" width="150" height="80" rx="8"/>
+  <text class="lbl" x="725" y="118" text-anchor="middle">service impl</text>
+  <text class="sub" x="725" y="136" text-anchor="middle">server implements</text>
+  <text class="sub" x="725" y="152" text-anchor="middle">AppApiService</text>
+
+  <!-- request flow -->
+  <path class="req" d="M190,120 L230,120"/>
+  <path class="req" d="M410,120 L450,120"/>
+  <path class="req" d="M610,120 L650,120"/>
+  <text class="note" x="105" y="205" text-anchor="middle">typed call — no URL string</text>
+  <text class="note" x="320" y="205" text-anchor="middle">single wire metadata</text>
+  <text class="note" x="530" y="205" text-anchor="middle">HTTP → endpoint</text>
+
+  <!-- response flow (reflection-serialized) -->
+  <path class="resp" d="M650,150 L190,150"/>
+  <text class="respnote" x="420" y="250" text-anchor="middle">↩ response: reflection-serialized result (List&lt;GradedFieldDto&gt;)</text>
+  <text class="note" x="420" y="290" text-anchor="middle">Both ends compile against the same interface + registry → server cannot drift from client.</text>
+</svg>

@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -35,6 +36,8 @@ class AdminCrudScreen<T> extends StatefulWidget {
     required this.onCreate,
     required this.onEdit,
     required this.onDelete,
+    required this.createAuthorizer,
+    required this.deleteAuthorizer,
   });
 
   /// The session every backend call is guarded through.
@@ -68,8 +71,15 @@ class AdminCrudScreen<T> extends StatefulWidget {
   /// Opens the edit editor for [item]; returns `true` when the edit was saved.
   final Future<bool> Function(BuildContext context, T item) onEdit;
 
-  /// Deletes [item] (already guarded by the caller's session).
-  final Future<void> Function(AdminBackend backend, T item) onDelete;
+  /// Deletes [item] through its delete action, returning `null` on success or a
+  /// failure message to surface (the action owns the session guard).
+  final Future<String?> Function(T item) onDelete;
+
+  /// The authorizer for the create action, gating the "New …" button.
+  final TomAuthorizer createAuthorizer;
+
+  /// The authorizer for the delete action, gating every row's delete button.
+  final TomAuthorizer deleteAuthorizer;
 
   @override
   State<AdminCrudScreen<T>> createState() => _AdminCrudScreenState<T>();
@@ -124,33 +134,37 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
   Future<void> _delete(T item) async {
     final confirmed = await _confirmDelete(item);
     if (!confirmed || !mounted) return;
-    try {
-      await _session.guard((b) => widget.onDelete(b, item));
-      if (mounted) await _load();
-    } on AdminBackendException catch (e) {
-      if (!mounted) return;
+    // The removal runs through the entity's delete action (`admin.<entity>.
+    // delete`); a returned message is surfaced, success reloads the list.
+    final error = await widget.onDelete(item);
+    if (!mounted) return;
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
+        TomSnackBar(content: TomText(text: error)),
       );
+      return;
     }
+    await _load();
   }
 
   Future<bool> _confirmDelete(T item) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => TomAlertDialog(
         key: const Key('admin-delete-confirm'),
-        title: const Text('Delete'),
-        content: Text('Delete "${widget.titleOf(item)}"?'),
+        title: TomText(text: TomCtr.text('admin.delete.label')),
+        content: TomText(
+            text: TomCtr.text('admin.delete.confirm')
+                .replaceAll('{name}', widget.titleOf(item))),
         actions: [
-          TextButton(
+          TomTextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: TomText(text: TomCtr.text('admin.cancel')),
           ),
-          FilledButton(
+          TomFilledButton(
             key: const Key('admin-delete-confirm-ok'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: TomText(text: TomCtr.text('admin.delete.label')),
           ),
         ],
       ),
@@ -167,15 +181,16 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
           padding: const EdgeInsets.all(12),
           child: Align(
             alignment: Alignment.centerRight,
-            child: FilledButton.icon(
+            child: TomFilledButton(
               key: Key('${widget.tilePrefix}-create'),
+              authorizer: widget.createAuthorizer,
               onPressed: _create,
               icon: const Icon(Icons.add),
-              label: Text(widget.createLabel),
+              child: TomText(text: widget.createLabel),
             ),
           ),
         ),
-        const Divider(height: 1),
+        TomDivider(height: 1),
         Expanded(child: _buildBody()),
       ],
     );
@@ -183,12 +198,12 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: TomCircularProgressIndicator());
     }
     if (_error != null) {
       return Center(
-        child: Text(
-          _error!,
+        child: TomText(
+          text: _error!,
           key: Key('${widget.tilePrefix}-error'),
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
@@ -196,7 +211,8 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
     }
     if (_items.isEmpty) {
       return Center(
-        child: Text(widget.emptyText, key: Key('${widget.tilePrefix}-empty')),
+        child: TomText(
+            text: widget.emptyText, key: Key('${widget.tilePrefix}-empty')),
       );
     }
     return ListView.builder(
@@ -204,14 +220,15 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
       itemCount: _items.length,
       itemBuilder: (context, index) {
         final item = _items[index];
-        return ListTile(
+        return TomListTile(
           key: Key('${widget.tilePrefix}-tile-${widget.idOf(item)}'),
-          title: Text(widget.titleOf(item)),
-          subtitle: Text(widget.subtitleOf(item)),
+          titleText: widget.titleOf(item),
+          subtitle: TomText(text: widget.subtitleOf(item)),
           onTap: () => _edit(item),
-          trailing: IconButton(
+          trailing: TomIconButton(
             key: Key('${widget.tilePrefix}-delete-${widget.idOf(item)}'),
-            tooltip: 'Delete',
+            authorizer: widget.deleteAuthorizer,
+            tooltip: TomCtr.text('admin.delete.label'),
             icon: const Icon(Icons.delete_outline),
             onPressed: () => _delete(item),
           ),

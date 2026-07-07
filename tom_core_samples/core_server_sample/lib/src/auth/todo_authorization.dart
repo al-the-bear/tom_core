@@ -22,26 +22,18 @@ library;
 // authorization types both resolve through this single barrel.
 import 'package:tom_core_server/tom_core_server.dart';
 
-/// Stable resource keys for the gradable [TodoItem] fields. They match the
-/// `resource_key` values seeded by migration `[001]-todo_authz_grants.sql`.
-class TodoItemResourceKeys {
-  const TodoItemResourceKeys._();
-
-  /// Resource key for the item title field.
-  static const String title = 'todo.item.title';
-
-  /// Resource key for the done/complete toggle.
-  static const String done = 'todo.item.done';
-
-  /// Resource key for the priority field.
-  static const String priority = 'todo.item.priority';
-
-  /// Resource key for the assignee field.
-  static const String assigneeId = 'todo.item.assigneeId';
-
-  /// Every gradable key, in display order.
-  static const List<String> all = [title, done, priority, assigneeId];
-}
+/// The gradable todo-item field resource keys, in display order (G-RES-6).
+///
+/// There is no `*ResourceKeys` catalogue class: a field self-addresses by its
+/// own resource key, resolved at use. This bare list is only the *enumeration*
+/// the request-time fold walks — it names the same keys the migration
+/// `[001]-todo_authz_grants.sql` seeds into `tom_resource_grant`.
+const List<String> gradableTodoItemKeys = [
+  'todo.item.title',
+  'todo.item.done',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+];
 
 /// Resolves the effective [TomAuthState] for todo-item fields, for one role.
 ///
@@ -65,9 +57,9 @@ class TodoFieldAuthorizer {
   /// — hidden — for an ungranted key, the closed-safe default).
   TomAuthState stateOf(String resourceKey) => _graded.resolveState(resourceKey);
 
-  /// The effective state for every [TodoItemResourceKeys] field.
+  /// The effective state for every gradable todo-item field.
   Map<String, TomAuthState> get fieldStates => {
-        for (final key in TodoItemResourceKeys.all) key: stateOf(key),
+        for (final key in gradableTodoItemKeys) key: stateOf(key),
       };
 
   /// Whether [resourceKey] is editable (`full`) for this role.

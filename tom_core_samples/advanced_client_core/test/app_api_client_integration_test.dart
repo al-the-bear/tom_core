@@ -14,8 +14,8 @@ library;
 import 'dart:io';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_client_core/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
@@ -44,7 +44,7 @@ void main() {
         expect(health['status'], equals('ok'));
 
         await auth.login(
-            const LoginRequest(username: 'alice', password: 'alice-pass'));
+            LoginRequest(username: 'alice', password: 'alice-pass'));
         final workspaces = await client.listWorkspaces();
         // alice owns at least the seeded starter workspace.
         expect(workspaces, isNotEmpty);

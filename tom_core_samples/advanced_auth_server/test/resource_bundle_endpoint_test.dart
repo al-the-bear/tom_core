@@ -32,11 +32,14 @@ void main() {
 
     test('the loginResources handler returns the login bundle', () async {
       final dto = await AdvancedAuthApiService().loginResources();
-      expect(dto, AuthResourceBundles.loginBundle());
+      // Reflection-first DTOs carry no value `==`; compare the wire payload.
+      expect(dto.texts, AuthResourceBundles.loginBundle().texts);
     });
 
     test('login resources are reachable unauthenticated', () {
-      expect(authApiAccess['authLoginResources']!.checkAccessibility(null),
+      expect(
+          authApi.endpoints['authLoginResources']!.access!
+              .checkAccessibility(null),
           isTrue);
     });
   });
@@ -54,11 +57,12 @@ void main() {
 
     test('the adminResources handler returns the console bundle', () async {
       final dto = await AdvancedAdminApiService().resources();
-      expect(dto, AuthResourceBundles.adminConsoleBundle());
+      // Reflection-first DTOs carry no value `==`; compare the wire payload.
+      expect(dto.texts, AuthResourceBundles.adminConsoleBundle().texts);
     });
 
     test('admin resources require the admin role (reject anon + non-admin)', () {
-      final access = adminApiAccess['adminResources']!;
+      final access = adminApi.endpoints['adminResources']!.access!;
       expect(access.checkAccessibility(null), isFalse);
       expect(access.checkAccessibility(_principal(roles: ['editor'])), isFalse);
       expect(access.checkAccessibility(_principal(roles: ['admin'])), isTrue);

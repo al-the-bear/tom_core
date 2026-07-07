@@ -35,9 +35,11 @@ precedent. So the wire surface is expressed as:
   servers and the client core both implement (plain abstract classes).
 - **A wire registry** (`api_registry.dart`) — `authApi`/`adminApi`/`appApi`
   (`TomApi` + `TomApiEndpoint<Return, Request>`) holding URI, method, and types,
-  with the four-state access captured in companion `*ApiAccess` maps
-  (`TomPublicAccess`/`TomAuthenticatedAccess`/`TomRoleAccess(['admin'])`).
-  `registerAdvancedTodoApis()` registers all three with `tomRemoteApis`.
+  with the four-state access declared directly on each endpoint's
+  `TomApiEndpoint.access`
+  (`TomPublicAccess`/`TomAuthenticatedAccess`/`TomRoleAccess(['admin'])`,
+  G-API-3). `registerAdvancedTodoApis()` registers all three with
+  `tomRemoteApis`.
 
 The server-side `@tomService` endpoint classes are re-declared against this
 registry inside `tom_core_server` when the servers are built (steps 11+).
@@ -72,15 +74,20 @@ unknown role to `ProjectRole.viewer`.
 - **Auth** (`AuthApiService` / `authApi`, `/auth/*`): `login` (public) +
   `refresh`/`logout`/`me` (authenticated).
 - **Admin** (`AdminApiService` / `adminApi`, `/admin/*`): user, role, group,
-  grant-matrix and assignment management — every endpoint `@TomRoleAccess(['admin'])`.
+  grant-matrix and assignment management — every endpoint declares the shared
+  `adminAccess` (`TomRoleAccess(['admin'])`) policy.
 - **App** (`AppApiService` / `appApi`, the todo board): `health` (public) +
   workspaces, projects, lists, items, comments, field-state and sharing
   endpoints (authenticated; resource- and field-level checks are enforced inside
   the handlers, not by these blanket levels).
 
-The reflection seed (`lib/src/reflection_entry.dart`) stays a stub: nothing in
-the contracts package is `@tomReflector` (the DTOs are plain value records and
-the service interfaces are plain abstract classes).
+The wire DTOs are reflection-first (`@tomReflector`, no hand-written
+`toJson`/`fromJson` — the kernel reflection path serializes them). Reflection is
+needed only to run this package's own round-trip tests, so the single seed is
+**test-only**: `test/run_all_tests.dart` → `test/run_all_tests.reflection.dart`
+(regenerate with `./reflection_generation.sh`). The package ships no runtime seed
+(G-REFL-1/2); the servers and clients reflect these DTOs through their own
+combined seed.
 
 ## Authorization model
 
@@ -92,8 +99,9 @@ see/edit?"). Both are enforced **server-side**; the wire DTOs here only carry th
 
 ### Layer 1 — resource-level access (the cross-user share mechanism)
 
-Every app endpoint is gated at the wire by `TomAuthenticatedAccess()` (see
-`appApiAccess`), so only a logged-in principal reaches a handler. Inside the
+Every app endpoint is gated at the wire by `TomAuthenticatedAccess()` (declared
+on each `appApi` endpoint's `TomApiEndpoint.access`), so only a logged-in
+principal reaches a handler. Inside the
 handler, the app server resolves whether the principal may touch a specific
 `Workspace` / `Project` / `TodoList` / `TodoItem`. A principal has access when
 either:
@@ -132,10 +140,9 @@ restrictive: `none < disabled < read < full`):
 | `disabled` | shown, greyed | visible control, inoperative |
 | `none` | hidden | not shown |
 
-The **gradable fields** are the stable resource-key set
-[`TodoItemResourceKeys`](../advanced_todo_domain/lib/src/resource_keys.dart)
-(`todo.item.*`): `title`, `status`, `priority`, `assigneeId`, `dueDate`,
-`estimate`, `description`.
+The **gradable fields** are the stable `todo.item.*` resource-key set (addressed
+by scope + `tomId`, G-RES-6): `title`, `status`, `priority`, `assigneeId`,
+`dueDate`, `estimate`, `description`.
 
 The server projects the resolved per-field states to the client as
 [`GradedFieldDto`](lib/src/graded_field_dto.dart)s (`{resourceKey, access}`) via
@@ -152,7 +159,7 @@ The matrix is **data** owned by the auth server's `auth_db` and edited through
 the authadmin client (`adminGetGrants` / `adminPutGrants`, carrying
 [`GrantMatrixDto`](lib/src/grant_matrix_dto.dart) — the full
 `role → {resourceKey: TomAuthState}` map). The sample seeds it as follows
-(rows = `TodoItemResourceKeys`, columns = `projectRole`):
+(rows = the gradable `todo.item.*` keys, columns = `projectRole`):
 
 | Field (`todo.item.*`) | `owner` | `editor` | `commenter` | `viewer` |
 | --------------------- | ------- | -------- | ----------- | -------- |

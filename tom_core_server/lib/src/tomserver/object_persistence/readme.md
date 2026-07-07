@@ -1,7 +1,7 @@
 # object_persistence
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Annotation-driven object/relational persistence. A reflected entity is mapped to
 a table with `@TomDbTable` / `@TomDbColumn` / `@TomEntityId` / `@TomReference`;

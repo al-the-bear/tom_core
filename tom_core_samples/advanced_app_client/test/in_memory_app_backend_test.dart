@@ -4,17 +4,32 @@
 /// per-principal four-state field matrix, and cross-user sharing.
 ///
 /// These are socket-free: the fake constructs the reflected domain entities
-/// in-process, so `initializeReflection()` (from `advanced_todo_domain`) runs
-/// once in [setUpAll]. The same scenarios are the contract any [AppBackend] must
-/// honour, so when the live backend is wired against a running stack it must
-/// behave identically.
+/// in-process, so the app's combined `initializeReflection()` (from its own
+/// `reflection_seed.dart`) runs once in [setUpAll]. The same scenarios are the
+/// contract any [AppBackend] must honour, so when the live backend is wired
+/// against a running stack it must behave identically.
 library;
 
 import 'package:advanced_app_client/backend/backend.dart';
+import 'package:advanced_app_client/reflection_seed.dart'
+    show initializeReflection;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// The gradable item resource keys the seeded matrix must cover. Steps 21/24/26
+/// derive this from reflection/the resource bundle; here it is the inline
+/// expectation.
+const _gradableItemKeys = <String>[
+  'todo.item.title',
+  'todo.item.status',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+  'todo.item.dueDate',
+  'todo.item.estimate',
+  'todo.item.description',
+];
 
 void main() {
   setUpAll(initializeReflection);
@@ -47,7 +62,7 @@ void main() {
 
     test('TC-26-03: an empty password is rejected', () async {
       await expectLater(
-        backend.login(const LoginRequest(username: 'alice', password: '')),
+        backend.login(LoginRequest(username: 'alice', password: '')),
         throwsA(isA<AppBackendException>()
             .having((e) => e.key, 'key', 'auth.login.failed')),
       );
@@ -125,7 +140,7 @@ void main() {
     test('TC-26-10: a viewer cannot save (no write grade)', () async {
       // Grant carol a viewer share first, then attempt a write.
       await loginAs('alice');
-      await backend.share(const ShareRequest(
+      await backend.share(ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
         granteeUserId: 'u-carol',
@@ -147,7 +162,7 @@ void main() {
     test('TC-26-11: the owner gets full on every gradable field', () async {
       await loginAs('alice');
       final states = await backend.itemFieldStates('i-1');
-      expect(states.keys, containsAll(TodoItemResourceKeys.all));
+      expect(states.keys, containsAll(_gradableItemKeys));
       expect(
           states.values.every((s) => s == TomAuthState.full), isTrue);
     });
@@ -156,9 +171,9 @@ void main() {
         () async {
       await loginAs('bob');
       final states = await backend.itemFieldStates('i-1');
-      expect(states[TodoItemResourceKeys.title], TomAuthState.full);
-      expect(states[TodoItemResourceKeys.assigneeId], TomAuthState.read);
-      expect(states[TodoItemResourceKeys.estimate], TomAuthState.read);
+      expect(states['todo.item.title'], TomAuthState.full);
+      expect(states['todo.item.assigneeId'], TomAuthState.read);
+      expect(states['todo.item.estimate'], TomAuthState.read);
     });
 
     test(
@@ -180,7 +195,7 @@ void main() {
 
       // The owner shares the project with carol as a viewer.
       await loginAs('alice');
-      await backend.share(const ShareRequest(
+      await backend.share(ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
         granteeUserId: 'u-carol',
@@ -192,14 +207,14 @@ void main() {
       await loginAs('carol');
       expect((await backend.listWorkspaces()).map((w) => w.id.get()), ['w-1']);
       final states = await backend.itemFieldStates('i-1');
-      expect(states[TodoItemResourceKeys.status], TomAuthState.disabled);
-      expect(states[TodoItemResourceKeys.title], TomAuthState.read);
+      expect(states['todo.item.status'], TomAuthState.disabled);
+      expect(states['todo.item.title'], TomAuthState.read);
     });
 
     test('TC-26-15: only the owner may share', () async {
       await loginAs('bob'); // editor, not owner
       await expectLater(
-        backend.share(const ShareRequest(
+        backend.share(ShareRequest(
           resourceType: 'project',
           resourceId: 'p-1',
           granteeUserId: 'u-carol',

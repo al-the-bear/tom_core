@@ -27,6 +27,8 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
+import '../resources/app_resource_bundles.dart';
+
 /// Repository for the framework's [TomResourceGrant] table (`tom_resource_grant`).
 ///
 /// The grant table is owned by `tom_core_server` (datasource `main`). The app
@@ -54,9 +56,19 @@ class FieldGradeResolver {
   /// The store the resolver loads grant rows through.
   final GrantStore store;
 
+  /// The gradable `todo.item.<field>` keys the resolver reports a [TomAuthState]
+  /// for, in display order. Defaults to the server resource bundle's gradable
+  /// set ([AppResourceBundles.gradableItemKeys], step 21) so the server derives
+  /// the graded set from the texts it serves rather than a hand-maintained list;
+  /// tests may inject an explicit set.
+  final List<String> gradableItemKeys;
+
   /// Builds the resolver over [store] (the live repository at boot, a seeded
-  /// store under test).
-  const FieldGradeResolver(this.store);
+  /// store under test). [gradableItemKeys] defaults to the server resource
+  /// bundle's gradable set.
+  FieldGradeResolver(this.store, {List<String>? gradableItemKeys})
+      : gradableItemKeys =
+            gradableItemKeys ?? AppResourceBundles.gradableItemKeys();
 
   /// Loads [role]'s grants and folds them into a graded view. Several rows for
   /// the same key widen to the most permissive grade (the framework default).
@@ -66,7 +78,7 @@ class FieldGradeResolver {
   }
 
   /// Resolves the per-field [TomAuthState] for every gradable [TodoItem] field
-  /// ([TodoItemResourceKeys.all]) under [role], in display order.
+  /// ([gradableItemKeys]) under [role], in display order.
   ///
   /// A field with no grant row degrades to [TomAuthState.none] (hidden) — the
   /// closed/safe default the framework codec falls back to.
@@ -75,7 +87,7 @@ class FieldGradeResolver {
   ) async {
     final graded = await gradesForRole(role);
     return {
-      for (final key in TodoItemResourceKeys.all) key: graded.resolveState(key),
+      for (final key in gradableItemKeys) key: graded.resolveState(key),
     };
   }
 }

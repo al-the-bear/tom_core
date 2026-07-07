@@ -352,6 +352,66 @@ void main() {
     });
   });
 
+  group('MariaDbDatasource.parsePort / normalizePort (G-DB-3)', () {
+    // The datasource binds `port` to an int field, but application config may
+    // express it either way — an env substitution (`port: ${DB_PORT:3306}`)
+    // always yields a string. parsePort folds a string port to an int so both
+    // forms work; normalizePort applies it at the config-binding boundary.
+    test('an int port passes through verbatim', () {
+      expect(MariaDbDatasource.parsePort(3306), 3306);
+    });
+
+    test('a string port is parsed to an int', () {
+      expect(MariaDbDatasource.parsePort('3308'), 3308);
+    });
+
+    test('a whitespace-padded string port is trimmed and parsed', () {
+      expect(MariaDbDatasource.parsePort('  3307 '), 3307);
+    });
+
+    test('an unparsable string port throws', () {
+      expect(
+        () => MariaDbDatasource.parsePort('not-a-port'),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+    });
+
+    test('a non-int/non-string port throws', () {
+      expect(
+        () => MariaDbDatasource.parsePort(3306.5),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+    });
+
+    test('a null port throws', () {
+      expect(
+        () => MariaDbDatasource.parsePort(null),
+        throwsA(isA<MariadbDatasourceException>()),
+      );
+    });
+
+    test('normalizePort folds a string port to an int, leaving other keys', () {
+      final normalized = MariaDbDatasource.normalizePort(<String, dynamic>{
+        'host': 'localhost',
+        'port': '3308',
+      });
+      expect(normalized['port'], 3308);
+      expect(normalized['host'], 'localhost');
+    });
+
+    test('normalizePort leaves an int port unchanged', () {
+      final settings = <String, dynamic>{'port': 3306};
+      final normalized = MariaDbDatasource.normalizePort(settings);
+      expect(normalized['port'], 3306);
+    });
+
+    test('normalizePort leaves an absent port unchanged', () {
+      final settings = <String, dynamic>{'host': 'localhost'};
+      final normalized = MariaDbDatasource.normalizePort(settings);
+      expect(normalized.containsKey('port'), isFalse);
+    });
+  });
+
   group('MariaDbXADatasource transaction lifecycle (bug §66)', () {
     test('rollback clears the branch id so the next startTransaction is allowed',
         () async {

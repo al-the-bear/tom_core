@@ -522,9 +522,11 @@ the seed:
 ./reflection_generation.sh
 ```
 
-The script runs `dart run tom_reflection_generator --nested`, which reads
-`build.yaml`'s `generate_for` and emits the seed. (Passing a `build` positional
-argument is wrong — the generator reports "Target not found".)
+The script runs `dart run tom_reflection_generator` flag-free — the generator
+scans the current project only (framework default scan `.`, non-recursive) and
+reads `build.yaml`'s `generate_for` to emit the seed. (Passing a `build`
+positional argument is wrong — it is treated as a target filter and matches
+nothing.)
 
 ---
 

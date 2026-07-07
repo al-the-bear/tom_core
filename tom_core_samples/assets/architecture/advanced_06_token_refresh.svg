@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    Token refresh — the refresh-once-on-401 policy (tomRunWithAuthRetry, G-AUTH-3),
+    applied by authorized_http.dart which injects Authorization: Bearer <authzToken>:
+      1. The client sends the request with the current bearer to the app server.
+      2. 2xx (or any non-401 status) returns as-is — done.
+      3. A 401 triggers EXACTLY ONE AuthClient.refresh against the auth server,
+         which re-mints a fresh token pair (POST /auth/refresh, itself needing a
+         prior login) and stores it.
+      4. The request is retried EXACTLY ONCE with the freshly stored bearer.
+      5. If the retry is still 401, the error surfaces as a typed
+         AuthClientException — it never loops.
+  -->
+  <defs>
+    <marker id="arrow6" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;}
+    .client{fill:#fff3e0;}
+    .app{fill:#e8f5e9;}
+    .auth{fill:#e3f2fd;}
+    .lbl{fill:#212121;font-weight:600;}
+    .sub{fill:#546e7a;font-size:11px;}
+    .flow{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow6);}
+    .ok{stroke:#2e7d32;stroke-width:1.5;fill:none;marker-end:url(#arrow6);}
+    .step{fill:#1565c0;font-weight:700;font-size:12px;}
+    .note{fill:#546e7a;font-size:11px;}
+    .fail{fill:#c62828;font-size:11px;}
+    .okt{fill:#2e7d32;font-size:11px;}
+  </style>
+
+  <rect class="box client" x="30"  y="160" width="180" height="70" rx="8"/>
+  <text class="lbl" x="120" y="188" text-anchor="middle">client</text>
+  <text class="sub" x="120" y="206" text-anchor="middle">authorized_http.dart</text>
+  <text class="sub" x="120" y="222" text-anchor="middle">Bearer &lt;authzToken&gt;</text>
+
+  <rect class="box app"  x="560" y="60" width="200" height="70" rx="8"/>
+  <text class="lbl" x="660" y="88" text-anchor="middle">advanced_app_server</text>
+  <text class="sub" x="660" y="106" text-anchor="middle">validates the bearer</text>
+
+  <rect class="box auth" x="560" y="270" width="200" height="70" rx="8"/>
+  <text class="lbl" x="660" y="298" text-anchor="middle">advanced_auth_server</text>
+  <text class="sub" x="660" y="316" text-anchor="middle">POST /auth/refresh</text>
+
+  <!-- 1: request with current bearer -->
+  <path class="flow" d="M210,175 L560,95"/>
+  <text class="step" x="360" y="120" text-anchor="middle">1</text>
+  <text class="note" x="380" y="138" text-anchor="middle">request + current bearer</text>
+
+  <!-- 2/3: 401 back -->
+  <path class="flow" d="M560,110 L210,190"/>
+  <text class="fail" x="380" y="175" text-anchor="middle">401 (expired)  → step 3</text>
+
+  <!-- 3: refresh -->
+  <path class="flow" d="M210,205 L560,300"/>
+  <text class="step" x="360" y="265" text-anchor="middle">3</text>
+  <text class="note" x="380" y="248" text-anchor="middle">AuthClient.refresh (once)</text>
+
+  <!-- fresh pair back -->
+  <path class="ok" d="M560,320 L210,220"/>
+  <text class="okt" x="380" y="300" text-anchor="middle">fresh token pair → stored</text>
+
+  <!-- 4: retry once -> 2xx -->
+  <path class="ok" d="M240,165 C360,150 460,120 555,100"/>
+  <text class="step" x="300" y="145" text-anchor="middle">4</text>
+  <text class="okt" x="300" y="60" text-anchor="middle">retry once with fresh bearer → 2xx (done)</text>
+
+  <text class="fail" x="30" y="375">5 · still 401 after the retry → typed AuthClientException; never loops. 2xx / any non-401 at step 1 returns as-is.</text>
+</svg>

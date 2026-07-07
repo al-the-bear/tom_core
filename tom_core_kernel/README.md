@@ -1,7 +1,7 @@
 # tom_core_kernel
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Core kernel library for the Tom Framework — the platform-neutral building blocks
 every other Tom layer is composed from.
@@ -249,4 +249,4 @@ the common dependency of the server, Flutter, and DartScript layers. See the
 - **Version:** 1.1.0
 - **Tests:** 1,464 test cases across 17 module suites (run with `testkit :test`
   or `dart test`).
-- **License:** proprietary — see [LICENSE](LICENSE).
+- **License:** BSD-3-Clause — see [LICENSE](LICENSE).

@@ -9,8 +9,6 @@
 /// test points it at the live auth server, the unit tests at a canned transport.
 library;
 
-import 'dart:convert';
-
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -69,7 +67,7 @@ class AuthClient {
     final response = await _transport.send(
       method: 'POST',
       uri: _uri('/auth/login'),
-      body: jsonEncode(request.toJson()),
+      body: dtoToJsonString(request),
     );
     final result = _requireLogin(response, 'auth.login.failed');
     _store(result);
@@ -93,7 +91,7 @@ class AuthClient {
         statusCode: response.statusCode,
       );
     }
-    return ResourceBundleDto.fromJson(response.jsonObject);
+    return dtoFromJson<ResourceBundleDto>(response.jsonObject);
   }
 
   /// Re-issues a fresh token pair for the currently stored session and stores
@@ -138,7 +136,7 @@ class AuthClient {
         statusCode: response.statusCode,
       );
     }
-    return LoginResult.fromJson(response.jsonObject);
+    return dtoFromJson<LoginResult>(response.jsonObject);
   }
 
   /// Stores the token pair so subsequent requests can attach the bearer.

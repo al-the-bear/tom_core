@@ -6,10 +6,12 @@ The domain is the **one source of truth the whole stack agrees on**: the app
 server persists these entities, the clients edit them, the wire contract carries
 them, and the authorization layer grades their fields. This part covers the
 reflected `TomClass` entities and how `@tomReflector` makes them observable and
-persistable; the **single reflection seed** that wires them into a running
-program; the enums and their stored-name/label contract; and
-`resource_keys.dart` — the **scope/form/field source of truth** that the
-authorization (part [07](README_advanced_07_authorization.md)) and resource (part
+persistable; the **test-only reflection seed** that reflects them for the domain's
+own suite (runtime consumers build their own combined seed); the enums and their
+stored-name contract, whose display text resolves
+through `global.*` resource keys (G-RES-5); and the **scope + `tomId`
+addressing** (G-RES-6, no key catalogue) that the authorization (part
+[07](README_advanced_07_authorization.md)) and resource (part
 [08](README_advanced_08_resources_texts.md)) stories both build on.
 
 ## The reflected entities
@@ -18,12 +20,29 @@ Eight entities live in [`advanced_todo_domain`](advanced_todo_domain/README.md),
 each a `@tomReflector class … extends TomClass`. They form a strict **ownership
 chain** plus two satellites:
 
+<!-- Figure: domain ownership chain of advanced_todo_domain (eight @tomReflector
+entities). Chain: Workspace → Project → TodoList → TodoItem; TodoItem owns
+Subtask and TodoComment. Satellites: User, and Share (User × Project →
+ProjectRole). Relations are flat foreign keys (e.g. workspaceId), not nested
+lists, so each entity persists as one row. -->
+
+![Domain ownership chain: Workspace owns Project owns TodoList owns TodoItem, which owns Subtask and TodoComment; User and Share (User × Project → ProjectRole) are satellites.](assets/architecture/advanced_08_domain_ownership.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph LR
+  Workspace --> Project --> TodoList --> TodoItem
+  TodoItem --> Subtask
+  TodoItem --> TodoComment
+  User
+  Share["Share (User × Project → ProjectRole)"]
 ```
-Workspace → Project → TodoList → TodoItem
-                                    ├── Subtask
-                                    └── TodoComment
-User                Share (User × Project → ProjectRole)
-```
+
+Relations are flat foreign keys (e.g. `workspaceId`), not nested lists, so each
+entity persists as one row.
+
+</details>
 
 | Entity | Role |
 | --- | --- |
@@ -67,13 +86,15 @@ without any per-entity boilerplate. Forms in particular lean on it: a `TomForm`
 is itself a reflected `TomClass`, and `bind`/`save` enumerate a form's fields
 through kernel reflection (part [09](README_advanced_09_forms_ui.md)).
 
-## The single reflection seed
+## The reflection seed (test-only for the domain)
 
 The generator only processes files that expose a `main()` and follows the import
-graph from there. The domain's seed is `lib/src/reflection_entry.dart` — a file
-that exists **solely to root the generator**, never run in production. Its
-`main()` simply *touches* each reflected type so the imports are retained and the
-generator can reach every entity:
+graph from there. The domain is a **library** — it has no runtime `main()`, so it
+ships **no reflection seed in `lib/`** (G-REFL-1/2). Reflection is needed only to
+run the domain's own tests, so its single seed lives under `test/`:
+`test/run_all_tests.dart` — a file that exists **solely to root the generator**,
+never run as a program. Its `main()` simply *touches* each reflected type so the
+imports are retained and the generator can reach every entity:
 
 ```dart
 void main() {
@@ -84,20 +105,23 @@ void main() {
 }
 ```
 
-The generator emits `reflection_entry.reflection.dart`, and the barrel
-(`advanced_todo_domain.dart`) re-exports its `initializeReflection`. Consumers
-call `initializeReflection()` **once at startup, before constructing any
-reflected entity**.
+The generator emits `test/run_all_tests.reflection.dart`, and every domain test
+imports that one seed and calls `initializeReflection()` in `setUpAll`. The
+**runtime** consumers — the servers and clients — do not depend on this seed:
+each builds its own combined `initializeReflection()` (domain entities **plus**
+its local DTOs/forms) and calls it once at startup.
 
 > **Last-writer-wins — one seed per program.** The generated
 > `initializeReflection()` *assigns* the reflection data, so exactly one seed may
-> run per program. The domain library carries its own; the clients carry their
-> own seed that covers the domain entities **plus** the client-local forms (which
-> is why those seeds import the domain but do not re-export it — that would
-> collide with the form seed's `initializeReflection`). This build-time
-> constraint is laid out in part [02](README_advanced_02_project_layout_build.md#reflection-generation).
+> run per program. The domain library carries **none**; each runnable carries the
+> one that covers every type it touches — the clients' seed covers the domain
+> entities **plus** the client-local forms (a `TomForm` is itself a reflected
+> `TomClass`), which is why those seeds import the domain but do not re-export it.
+> The servers' single seed is their `bin/` boot root, and the server tests
+> bootstrap through that same seed. This build-time constraint is laid out in part
+> [02](README_advanced_02_project_layout_build.md#reflection-generation).
 
-## Enums: stored-name vs label contract
+## Enums: stored name vs display-text contract
 
 Five closed-set enums live in `enums.dart`: `TodoStatus`, `TodoPriority`,
 `TodoLabel`, `UserStatus`, and `ProjectRole`. Each follows the same two-part
@@ -108,51 +132,52 @@ contract:
   so it round-trips to SQL and JSON **without a custom codec**. Typed accessors
   (`statusValue`, `priorityValue`, `labelValue`, …) convert the stored name back
   to the enum and fall back to a sensible default for an unknown stored value.
-- **Labelled by an extension.** A `…Text` extension gives each value a
-  human-facing `label` (`TodoStatus.inReview.label == 'In review'`). These are
-  the in-code display strings; the *server-delivered* UI texts are a separate,
-  externalized concern (part [08](README_advanced_08_resources_texts.md)).
+- **Display text is a resource key (G-RES-5).** The enums carry **no** hardcoded
+  display strings. A value's user-facing text is addressed by a
+  `global.<enumtype>.<value>` key (`TodoStatus.inReview.resourceKey ==
+  'global.todostatus.inreview'`), resolved through the server-delivered resource
+  bundle at the point of display — the same externalized-text discipline the
+  forms use (part [08](README_advanced_08_resources_texts.md)). The single
+  `EnumResourceKey` extension only *derives the key*; the text itself lives in the
+  bundle's `global.*` namespace.
 
 `ProjectRole { owner, editor, commenter, viewer }` is special: the effective role
 (from ownership or a `Share`) is exactly what the auth server's grant matrix keys
 field grades on — `(ProjectRole, resourceKey) → TomAuthState`.
 
-## `resource_keys.dart` as the scope/form/field source of truth
+## Scope + `tomId` addressing (no key catalogue)
 
-`TodoItemResourceKeys` (in `lib/src/resource_keys.dart`) pins the **named, stable
-keys** for the gradable `TodoItem` fields, so the same key means the same field
-on the server, over the wire, and in the client. Every gradable key is exactly:
+Per **G-RES-6**, resource keys are **addressed by scope + `tomId`, resolved at
+the point of use** — there is *no* class cataloguing them as constants. The
+gradable `TodoItem` fields are named by the convention
 
 ```
 <scope>.<formId>.<field>   ==   todo.item.<field>
 ```
 
-This is the **one-path-two-uses** convention made concrete. The Flutter UI form
-layer derives each field's `basePath` as `<scopePath>.<formId>.<tomId>` and uses
-that single path two ways — as the **authorization** key (no suffix), and as the
-base for the field's **resource** keys (`<basePath>.label`, `.hint`, `.<errorKey>`,
-…). So the keys here are **derived** from `scope` / `formId` / field tokens
-rather than written as free strings, and the form must run under `scope = 'todo'`
-with `formId = 'item'` for each field to self-address as the key the server
-graded:
+so the same key means the same field on the server, over the wire, and in the
+client without any shared symbol to import. This is the **one-path-two-uses**
+convention made concrete. The Flutter UI form layer derives each field's
+`basePath` as `<scopePath>.<formId>.<tomId>` and uses that single path two ways —
+as the **authorization** key (no suffix), and as the base for the field's
+**resource** keys (`<basePath>.label`, `.hint`, `.<errorKey>`, …). The keys are
+therefore **derived** from `scope` / `formId` / the field's `tomId` at
+construction, and the form must run under `scope = 'todo'` with `formId = 'item'`
+for each field to self-address as the key the server graded:
 
 ```dart
-class TodoItemResourceKeys {
-  static const String scope = 'todo';
-  static const String formId = 'item';
-  static String keyFor(String field) => '$scope.$formId.$field';
-
-  static const String titleField = 'title';
-  static const String estimateField = 'estimate'; // NOT 'estimateHours'
-  static const String title = '$scope.$formId.$titleField'; // 'todo.item.title'
-  // …
-}
+// TodoItemForm declares scope-relative tomIds; the 'todo' scope is pushed at the
+// call site (item_detail_screen.dart), so `title` self-addresses as
+// `todo.item.title`.
+TomScope.withScope('todo', TodoItemForm.new); // form basePath == 'todo.item'
+// field tomId 'title'    -> basePath 'todo.item.title'
+// field tomId 'estimate' -> basePath 'todo.item.estimate' (member: estimateHours)
 ```
 
 One deliberate mismatch is worth flagging: the estimate key is `todo.item.estimate`
 even though the entity member is `estimateHours` — **the resource key names the
 *concept*, not the storage field**, so the gradable form field carries
-`tomId: estimateField` (`'estimate'`) while its reflected member stays
+`tomId: 'estimate'` while its reflected member stays
 `estimateHours`. Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 unpacks the full `basePath` convention and this mismatch; part
 [07](README_advanced_07_authorization.md) shows the grant matrix that keys on
@@ -162,8 +187,7 @@ resource bundles keyed on `<basePath>.<suffix>`.
 ## Primary sources
 
 - [`advanced_todo_domain/README.md`](advanced_todo_domain/README.md) — per-entity detail.
-- `advanced_todo_domain/lib/src/` — the entities, `enums.dart`, `resource_keys.dart`, and the `reflection_entry.dart` seed.
-- `advanced_example_specification_plan.md` — A.3 Extended domain model, Phase 1 steps 1–4.
+- `advanced_todo_domain/lib/src/` — the entities and `enums.dart`; the test-only reflection seed is `advanced_todo_domain/test/run_all_tests.dart`.
 
 ---
 

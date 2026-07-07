@@ -1,119 +1,109 @@
+import 'dart:convert';
+
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
     show ProjectRole, UserStatus;
 import 'package:tom_core_kernel/tom_core_kernel.dart' show TomAuthState;
 import 'package:test/test.dart';
 
+// The single test-only reflection seed for this package (G-REFL-2).
+import 'run_all_tests.reflection.dart';
+
+/// Serializes [dto] to a JSON string and back into a map, exercising the exact
+/// wire path a server/client uses (including `DateTime` → ISO string encoding).
+Map<String, Object?> _wire(Object dto) =>
+    jsonDecode(dtoToJsonString(dto)) as Map<String, Object?>;
+
 void main() {
+  // The reflection-first DTOs carry no hand-written serializer; the round-trip
+  // is driven entirely by the kernel reflection path, which requires the DTO
+  // reflection seed to be installed once.
+  setUpAll(initializeReflection);
+
   group('LoginRequest', () {
-    final request = LoginRequest(
-      username: 'alice',
-      password: 's3cret',
-      app: 'todo',
-      org: 'acme',
-    );
-
-    test('equal requests compare equal and share a hash', () {
-      final same = LoginRequest(
-        username: 'alice',
-        password: 's3cret',
-        app: 'todo',
-        org: 'acme',
-      );
-      expect(request, same);
-      expect(request.hashCode, same.hashCode);
-    });
-
-    test('a differing password breaks equality', () {
-      expect(
-        request == LoginRequest(username: 'alice', app: 'todo', org: 'acme'),
-        isFalse,
-      );
-    });
+    LoginRequest request() => LoginRequest(
+          username: 'alice',
+          password: 's3cret',
+          app: 'todo',
+          org: 'acme',
+        );
 
     test('toString never leaks the password', () {
-      expect(request.toString(), isNot(contains('s3cret')));
-      expect(request.toString(), contains('alice'));
+      expect(request().toString(), isNot(contains('s3cret')));
+      expect(request().toString(), contains('alice'));
     });
 
-    test('round-trips through JSON', () {
-      expect(LoginRequest.fromJson(request.toJson()), request);
+    test('round-trips through reflection JSON', () {
+      final restored = dtoFromJson<LoginRequest>(_wire(request()));
+      expect(restored.username, 'alice');
+      expect(restored.password, 's3cret');
+      expect(restored.app, 'todo');
+      expect(restored.org, 'acme');
     });
   });
 
   group('UserDto', () {
-    final user = UserDto(
-      id: 'u1',
-      username: 'alice',
-      displayName: 'Alice',
-      email: 'alice@example.com',
-      status: UserStatus.suspended.name,
-    );
+    UserDto user() => UserDto(
+          id: 'u1',
+          username: 'alice',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          status: UserStatus.suspended.name,
+        );
 
     test('defaults to the active status', () {
       expect(UserDto().statusValue, UserStatus.active);
     });
 
     test('resolves the typed status, falling back to active', () {
-      expect(user.statusValue, UserStatus.suspended);
+      expect(user().statusValue, UserStatus.suspended);
       expect(UserDto(status: 'bogus').statusValue, UserStatus.active);
     });
 
-    test('round-trips through JSON', () {
-      expect(UserDto.fromJson(user.toJson()), user);
+    test('round-trips through reflection JSON', () {
+      final restored = dtoFromJson<UserDto>(_wire(user()));
+      expect(restored.id, 'u1');
+      expect(restored.username, 'alice');
+      expect(restored.displayName, 'Alice');
+      expect(restored.email, 'alice@example.com');
+      expect(restored.statusValue, UserStatus.suspended);
     });
 
     test('toString carries id, username and status', () {
-      expect(user.toString(), contains('u1'));
-      expect(user.toString(), contains('alice'));
-      expect(user.toString(), contains('suspended'));
+      expect(user().toString(), contains('u1'));
+      expect(user().toString(), contains('alice'));
+      expect(user().toString(), contains('suspended'));
     });
   });
 
   group('LoginResult', () {
-    final result = LoginResult(
-      user: UserDto(id: 'u1', username: 'alice'),
-      authToken: 'auth-token',
-      authzToken: 'authz-token',
-      expiresAt: DateTime.utc(2026, 6, 28, 12),
-    );
-
-    test('equal results compare equal and share a hash', () {
-      final same = LoginResult(
-        user: UserDto(id: 'u1', username: 'alice'),
-        authToken: 'auth-token',
-        authzToken: 'authz-token',
-        expiresAt: DateTime.utc(2026, 6, 28, 12),
-      );
-      expect(result, same);
-      expect(result.hashCode, same.hashCode);
-    });
+    LoginResult result() => LoginResult(
+          user: UserDto(id: 'u1', username: 'alice'),
+          authToken: 'auth-token',
+          authzToken: 'authz-token',
+          expiresAt: DateTime.utc(2026, 6, 28, 12),
+        );
 
     test('toString never leaks the bearer tokens', () {
-      expect(result.toString(), isNot(contains('auth-token')));
-      expect(result.toString(), isNot(contains('authz-token')));
-      expect(result.toString(), contains('alice'));
+      expect(result().toString(), isNot(contains('auth-token')));
+      expect(result().toString(), isNot(contains('authz-token')));
+      expect(result().toString(), contains('alice'));
     });
 
-    test('round-trips through JSON with a UTC expiry', () {
-      final restored = LoginResult.fromJson(result.toJson());
-      expect(restored, result);
+    test('round-trips the nested user and a UTC expiry', () {
+      final restored = dtoFromJson<LoginResult>(_wire(result()));
+      expect(restored.user.id, 'u1');
+      expect(restored.user.username, 'alice');
+      expect(restored.authToken, 'auth-token');
+      expect(restored.authzToken, 'authz-token');
+      expect(restored.expiresAt.toUtc(), DateTime.utc(2026, 6, 28, 12));
       expect(restored.expiresAt.isUtc, isTrue);
     });
   });
 
   group('GradedFieldDto', () {
     test('defaults to the closed-safe none access', () {
-      expect(const GradedFieldDto().access, TomAuthState.none);
-    });
-
-    test('equal grades compare equal and share a hash', () {
-      const a = GradedFieldDto(
-          resourceKey: 'todo.item.title', access: TomAuthState.full);
-      const b = GradedFieldDto(
-          resourceKey: 'todo.item.title', access: TomAuthState.full);
-      expect(a, b);
-      expect(a.hashCode, b.hashCode);
+      expect(GradedFieldDto().accessState, TomAuthState.none);
     });
 
     test('parseAccess is closed-safe for unknown/absent tokens', () {
@@ -122,15 +112,17 @@ void main() {
       expect(GradedFieldDto.parseAccess(null), TomAuthState.none);
     });
 
-    test('round-trips through JSON', () {
-      const grade = GradedFieldDto(
+    test('round-trips through reflection JSON', () {
+      final grade = GradedFieldDto(
           resourceKey: 'todo.item.status', access: TomAuthState.read);
-      expect(GradedFieldDto.fromJson(grade.toJson()), grade);
+      final restored = dtoFromJson<GradedFieldDto>(_wire(grade));
+      expect(restored.resourceKey, 'todo.item.status');
+      expect(restored.accessState, TomAuthState.read);
     });
 
     test('toString shows the key and access token', () {
       expect(
-        const GradedFieldDto(
+        GradedFieldDto(
                 resourceKey: 'todo.item.title', access: TomAuthState.read)
             .toString(),
         'GradedFieldDto(todo.item.title -> read)',
@@ -139,57 +131,50 @@ void main() {
   });
 
   group('ShareRequest', () {
-    final share = const ShareRequest(
-      resourceType: 'project',
-      resourceId: 'p1',
-      granteeUserId: 'u2',
-      projectRole: ProjectRole.editor,
-    );
+    ShareRequest share() => ShareRequest(
+          resourceType: 'project',
+          resourceId: 'p1',
+          granteeUserId: 'u2',
+          projectRole: ProjectRole.editor,
+        );
 
     test('defaults to the least-privileged viewer role', () {
-      expect(const ShareRequest().projectRole, ProjectRole.viewer);
+      expect(ShareRequest().projectRoleValue, ProjectRole.viewer);
     });
 
-    test('equal requests compare equal and share a hash', () {
-      const same = ShareRequest(
-        resourceType: 'project',
-        resourceId: 'p1',
-        granteeUserId: 'u2',
-        projectRole: ProjectRole.editor,
-      );
-      expect(share, same);
-      expect(share.hashCode, same.hashCode);
-    });
-
-    test('round-trips through JSON', () {
-      expect(ShareRequest.fromJson(share.toJson()), share);
+    test('round-trips through reflection JSON', () {
+      final restored = dtoFromJson<ShareRequest>(_wire(share()));
+      expect(restored.resourceType, 'project');
+      expect(restored.resourceId, 'p1');
+      expect(restored.granteeUserId, 'u2');
+      expect(restored.projectRoleValue, ProjectRole.editor);
     });
 
     test('an unknown role token degrades to viewer', () {
-      final restored = ShareRequest.fromJson({
+      final restored = dtoFromJson<ShareRequest>({
         'resourceType': 'project',
         'resourceId': 'p1',
         'granteeUserId': 'u2',
         'projectRole': 'bogus',
       });
-      expect(restored.projectRole, ProjectRole.viewer);
+      expect(restored.projectRoleValue, ProjectRole.viewer);
     });
 
     test('toString renders the grant', () {
-      expect(share.toString(), contains('project:p1'));
-      expect(share.toString(), contains('editor'));
+      expect(share().toString(), contains('project:p1'));
+      expect(share().toString(), contains('editor'));
     });
   });
 
   group('GrantMatrixDto', () {
     GrantMatrixDto sampleMatrix() => GrantMatrixDto.fromGrades({
-          'owner': const [
+          'owner': [
             GradedFieldDto(
                 resourceKey: 'todo.item.title', access: TomAuthState.full),
             GradedFieldDto(
                 resourceKey: 'todo.item.status', access: TomAuthState.full),
           ],
-          'viewer': const [
+          'viewer': [
             GradedFieldDto(
                 resourceKey: 'todo.item.title', access: TomAuthState.read),
             GradedFieldDto(
@@ -206,38 +191,9 @@ void main() {
       final matrix = sampleMatrix();
       expect(matrix.accessFor('owner', 'todo.item.title'), TomAuthState.full);
       expect(matrix.accessFor('viewer', 'todo.item.status'), TomAuthState.read);
-      expect(
-          matrix.accessFor('owner', 'unknown.key'), TomAuthState.none);
+      expect(matrix.accessFor('owner', 'unknown.key'), TomAuthState.none);
       expect(matrix.accessFor('commenter', 'todo.item.title'),
           TomAuthState.none);
-    });
-
-    test('equal matrices compare equal regardless of insertion order', () {
-      final a = GrantMatrixDto.fromGrades({
-        'owner': const [
-          GradedFieldDto(
-              resourceKey: 'todo.item.title', access: TomAuthState.full),
-          GradedFieldDto(
-              resourceKey: 'todo.item.status', access: TomAuthState.read),
-        ],
-      });
-      final b = GrantMatrixDto.fromGrades({
-        'owner': const [
-          GradedFieldDto(
-              resourceKey: 'todo.item.status', access: TomAuthState.read),
-          GradedFieldDto(
-              resourceKey: 'todo.item.title', access: TomAuthState.full),
-        ],
-      });
-      expect(a, b);
-      expect(a.hashCode, b.hashCode);
-    });
-
-    test('a single differing cell breaks equality', () {
-      final base = sampleMatrix();
-      final changed =
-          base.withAccess('viewer', 'todo.item.title', TomAuthState.disabled);
-      expect(base == changed, isFalse);
     });
 
     test('withAccess leaves the original instance unchanged', () {
@@ -254,16 +210,17 @@ void main() {
           ['todo.item.status', 'todo.item.title']);
     });
 
-    test('the exposed matrix view is unmodifiable', () {
-      expect(() => GrantMatrixDto().matrix['x'] = {}, throwsUnsupportedError);
-    });
-
-    test('round-trips through JSON, degrading unknown tokens to none', () {
+    test('round-trips through reflection JSON, degrading unknown tokens', () {
       final matrix = sampleMatrix();
-      expect(GrantMatrixDto.fromJson(matrix.toJson()), matrix);
+      final restored = dtoFromJson<GrantMatrixDto>(_wire(matrix));
+      expect(restored.accessFor('owner', 'todo.item.title'), TomAuthState.full);
+      expect(restored.accessFor('viewer', 'todo.item.status'),
+          TomAuthState.read);
 
-      final lenient = GrantMatrixDto.fromJson({
-        'owner': {'todo.item.title': 'bogus'},
+      final lenient = dtoFromJson<GrantMatrixDto>({
+        'matrix': {
+          'owner': {'todo.item.title': 'bogus'},
+        },
       });
       expect(lenient.accessFor('owner', 'todo.item.title'), TomAuthState.none);
     });
@@ -285,42 +242,9 @@ void main() {
       expect(ResourceBundleDto().texts, isEmpty);
     });
 
-    test('exposes an unmodifiable texts view', () {
-      expect(() => ResourceBundleDto().texts['x'] = 'y',
-          throwsUnsupportedError);
-    });
-
-    test('equal bundles compare equal and share a hash', () {
-      expect(sampleBundle(), sampleBundle());
-      expect(sampleBundle().hashCode, sampleBundle().hashCode);
-    });
-
-    test('order-independent equality across keys', () {
-      final a = ResourceBundleDto(const {
-        'login.username.hint': 'Your username',
-        'todo.item.title.label': 'Title',
-      });
-      final b = ResourceBundleDto(const {
-        'todo.item.title.label': 'Title',
-        'login.username.hint': 'Your username',
-      });
-      expect(a, b);
-      expect(a.hashCode, b.hashCode);
-    });
-
-    test('a single differing value breaks equality', () {
-      final changed = ResourceBundleDto(const {
-        'todo.item.title.label': 'Title',
-        'todo.item.status.label': 'State',
-        'todo.item.estimate.error.required': 'An estimate is required',
-        'login.username.hint': 'Your username',
-      });
-      expect(sampleBundle() == changed, isFalse);
-    });
-
-    test('round-trips through JSON', () {
-      expect(ResourceBundleDto.fromJson(sampleBundle().toJson()),
-          sampleBundle());
+    test('round-trips through reflection JSON', () {
+      final restored = dtoFromJson<ResourceBundleDto>(_wire(sampleBundle()));
+      expect(restored.texts, sampleBundle().texts);
     });
 
     test('round-trips a nested-map bundle by value', () {
@@ -332,13 +256,8 @@ void main() {
         },
         'login.username.hint': 'Your username',
       });
-      expect(ResourceBundleDto.fromJson(nested.toJson()), nested);
-    });
-
-    test('a missing or non-map texts decodes to an empty bundle', () {
-      expect(ResourceBundleDto.fromJson(const {}).texts, isEmpty);
-      expect(
-          ResourceBundleDto.fromJson(const {'texts': 'oops'}).texts, isEmpty);
+      final restored = dtoFromJson<ResourceBundleDto>(_wire(nested));
+      expect(restored.texts, nested.texts);
     });
 
     test('toString summarises the key count without dumping values', () {
@@ -348,64 +267,62 @@ void main() {
 
   group('admin CRUD DTOs', () {
     test('CreateUserRequest round-trips and hides the password', () {
-      const request = CreateUserRequest(
+      final request = CreateUserRequest(
         username: 'bob',
         password: 'pw',
         displayName: 'Bob',
         email: 'bob@example.com',
       );
-      expect(CreateUserRequest.fromJson(request.toJson()), request);
+      final restored = dtoFromJson<CreateUserRequest>(_wire(request));
+      expect(restored.username, 'bob');
+      expect(restored.password, 'pw');
+      expect(restored.displayName, 'Bob');
+      expect(restored.email, 'bob@example.com');
       expect(request.toString(), isNot(contains('pw')));
       expect(request.toString(), contains('bob'));
     });
 
-    test('RoleDto round-trips and compares structurally', () {
-      const role = RoleDto(key: 'admin', name: 'Administrator');
-      expect(RoleDto.fromJson(role.toJson()), role);
-      expect(role.hashCode, const RoleDto(key: 'admin', name: 'Administrator').hashCode);
+    test('RoleDto round-trips', () {
+      final role = RoleDto(key: 'admin', name: 'Administrator');
+      final restored = dtoFromJson<RoleDto>(_wire(role));
+      expect(restored.key, 'admin');
+      expect(restored.name, 'Administrator');
       expect(role.toString(), contains('admin'));
     });
 
     group('GroupDto', () {
-      test('round-trips through JSON with members', () {
+      test('round-trips through reflection JSON with members', () {
         final group = GroupDto(
           id: 'g1',
           name: 'Engineering',
           memberUserIds: ['u1', 'u2'],
         );
-        expect(GroupDto.fromJson(group.toJson()), group);
-      });
-
-      test('member order is significant for equality', () {
-        final a = GroupDto(id: 'g1', name: 'Eng', memberUserIds: ['u1', 'u2']);
-        final b = GroupDto(id: 'g1', name: 'Eng', memberUserIds: ['u2', 'u1']);
-        expect(a == b, isFalse);
-      });
-
-      test('exposes an unmodifiable member list', () {
-        final group = GroupDto(memberUserIds: ['u1']);
-        expect(() => group.memberUserIds.add('u2'), throwsUnsupportedError);
-      });
-
-      test('drops non-string members on decode', () {
-        final group = GroupDto.fromJson({
-          'id': 'g1',
-          'name': 'Eng',
-          'memberUserIds': ['u1', 42, 'u2'],
-        });
-        expect(group.memberUserIds, ['u1', 'u2']);
+        final restored = dtoFromJson<GroupDto>(_wire(group));
+        expect(restored.id, 'g1');
+        expect(restored.name, 'Engineering');
+        expect(restored.memberUserIds, ['u1', 'u2']);
       });
     });
 
-    test('AssignmentRequest round-trips and compares structurally', () {
-      const assignment =
+    test('AssignmentRequest round-trips', () {
+      final assignment =
           AssignmentRequest(userId: 'u1', roleKey: 'admin', groupId: 'g1');
-      expect(AssignmentRequest.fromJson(assignment.toJson()), assignment);
-      expect(
-        assignment,
-        const AssignmentRequest(userId: 'u1', roleKey: 'admin', groupId: 'g1'),
-      );
+      final restored = dtoFromJson<AssignmentRequest>(_wire(assignment));
+      expect(restored.userId, 'u1');
+      expect(restored.roleKey, 'admin');
+      expect(restored.groupId, 'g1');
       expect(assignment.toString(), contains('admin'));
+    });
+
+    test('EntityIdRequest round-trips (the by-id path-param DTO)', () {
+      // The server pipeline folds a `{id}` (or mapped `{key}`) path capture onto
+      // `EntityIdRequest.id` and instantiates it via this reflection round-trip
+      // before a by-id handler (delete / read-one) runs — so the DTO must
+      // reflect losslessly from a bare `{id: ...}` map.
+      final request = EntityIdRequest(id: '55');
+      final restored = dtoFromJson<EntityIdRequest>(_wire(request));
+      expect(restored.id, '55');
+      expect(request.toString(), contains('55'));
     });
   });
 }

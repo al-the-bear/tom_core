@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    The shared JWT signing key. The two servers never call each other. The auth
+    server (:8081) MINTS a token signed with a shared signing key; the app server
+    (:8080) VERIFIES the bearer it receives against the SAME key. A token minted
+    at :8081 is therefore trusted at :8080 with no back-channel — the signature
+    is the proof. The auth server is the only issuer; the app server is a pure
+    verifier. Bottom: the single shared signing key both servers hold.
+  -->
+  <defs>
+    <marker id="arrow2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;}
+    .auth{fill:#e3f2fd;}
+    .app{fill:#e8f5e9;}
+    .key{fill:#fff8e1;stroke:#f9a825;stroke-width:1.5;}
+    .lbl{fill:#212121;font-weight:600;}
+    .sub{fill:#546e7a;font-size:11px;}
+    .flow{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow2);}
+    .keyline{stroke:#f9a825;stroke-width:1.5;fill:none;stroke-dasharray:5 4;}
+    .note{fill:#546e7a;font-size:11px;}
+  </style>
+
+  <rect class="box auth" x="40"  y="40" width="250" height="70" rx="8"/>
+  <text class="lbl" x="165" y="66" text-anchor="middle">advanced_auth_server</text>
+  <text class="sub" x="165" y="86" text-anchor="middle">issuer — mints &amp; signs the JWT</text>
+  <text class="sub" x="165" y="102" text-anchor="middle">HTTP :8081</text>
+
+  <rect class="box app" x="470" y="40" width="250" height="70" rx="8"/>
+  <text class="lbl" x="595" y="66" text-anchor="middle">advanced_app_server</text>
+  <text class="sub" x="595" y="86" text-anchor="middle">verifier — checks the signature</text>
+  <text class="sub" x="595" y="102" text-anchor="middle">HTTP :8080</text>
+
+  <!-- token carried by the client bearer (no server-to-server call) -->
+  <path class="flow" d="M290,75 L470,75"/>
+  <text class="note" x="380" y="66" text-anchor="middle">auth-minted bearer token</text>
+  <text class="note" x="380" y="94" text-anchor="middle">(carried by the client — no server↔server call)</text>
+
+  <!-- shared key -->
+  <rect class="key" x="300" y="200" width="160" height="54" rx="8"/>
+  <text class="lbl" x="380" y="224" text-anchor="middle">shared JWT</text>
+  <text class="lbl" x="380" y="242" text-anchor="middle">signing key</text>
+
+  <path class="keyline" d="M165,110 C165,180 300,200 320,205"/>
+  <path class="keyline" d="M595,110 C595,180 460,200 440,205"/>
+  <text class="note" x="118" y="175">signs with</text>
+  <text class="note" x="600" y="175">verifies with</text>
+</svg>

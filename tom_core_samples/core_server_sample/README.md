@@ -204,15 +204,17 @@ request time the server folds the grants for the principal's role into a
 
 ```dart
 final authorizer = TodoFieldAuthorizer.fromGrants(grantsForRole);
-authorizer.stateOf(TodoItemResourceKeys.priority); // -> TomAuthState
-authorizer.canEdit(TodoItemResourceKeys.title);     // full?
-authorizer.canSee(TodoItemResourceKeys.assigneeId); // not none?
+authorizer.stateOf('todo.item.priority');   // -> TomAuthState
+authorizer.canEdit('todo.item.title');      // full?
+authorizer.canSee('todo.item.assigneeId');  // not none?
 ```
 
-`TodoItemResourceKeys` names the four gradable item fields (`todo.item.title`,
-`todo.item.done`, `todo.item.priority`, `todo.item.assigneeId`) — the same keys
-the migration seeds. An ungranted key resolves to `none` (hidden), the
-closed-safe default: a field you forgot to grant is invisible, not editable.
+A field self-addresses by its own resource key — there is no `*ResourceKeys`
+catalogue class (G-RES-6). The four gradable item fields (`todo.item.title`,
+`todo.item.done`, `todo.item.priority`, `todo.item.assigneeId`) are just the keys
+the migration seeds; `gradableTodoItemKeys` enumerates them for the request-time
+fold. An ungranted key resolves to `none` (hidden), the closed-safe default: a
+field you forgot to grant is invisible, not editable.
 
 The seeded demo roles in `[001]-todo_authz_grants.sql` exercise all four states:
 
@@ -440,7 +442,7 @@ Regenerate the reflection code after changing any reflected shape (a record's
 fields, the config class, an endpoint signature):
 
 ```sh
-./reflection_generation.sh   # dart run tom_reflection_generator --nested
+./reflection_generation.sh   # dart run tom_reflection_generator (flag-free)
 ```
 
 The generated `bin/server_start.reflection.dart` is committed and imported by

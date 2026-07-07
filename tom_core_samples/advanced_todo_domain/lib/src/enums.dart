@@ -5,6 +5,10 @@
 /// JSON without a custom codec. The typed accessors on the entities convert the
 /// stored name back to these enums, falling back to a sensible default for an
 /// unknown value.
+///
+/// The enums carry **no** hardcoded display strings (G-RES-5): a value's
+/// user-facing text is a resource key ([EnumResourceKey.resourceKey]) resolved
+/// through the server-sent resource bundle at the point of display.
 library;
 
 /// Workflow state of a `TodoItem` — the board column it currently sits in.
@@ -13,59 +17,14 @@ library;
 /// checklist.
 enum TodoStatus { backlog, todo, inProgress, inReview, done, cancelled }
 
-/// Human-facing labels for [TodoStatus].
-extension TodoStatusText on TodoStatus {
-  /// Display text, e.g. `In review` for [TodoStatus.inReview].
-  String get label => switch (this) {
-        TodoStatus.backlog => 'Backlog',
-        TodoStatus.todo => 'To do',
-        TodoStatus.inProgress => 'In progress',
-        TodoStatus.inReview => 'In review',
-        TodoStatus.done => 'Done',
-        TodoStatus.cancelled => 'Cancelled',
-      };
-}
-
 /// Priority of a `TodoItem`, lowest to highest.
 enum TodoPriority { low, medium, high, critical }
-
-/// Human-facing labels for [TodoPriority].
-extension TodoPriorityText on TodoPriority {
-  /// Display text, e.g. `Critical` for [TodoPriority.critical].
-  String get label => switch (this) {
-        TodoPriority.low => 'Low',
-        TodoPriority.medium => 'Medium',
-        TodoPriority.high => 'High',
-        TodoPriority.critical => 'Critical',
-      };
-}
 
 /// Category label for a `TodoItem`.
 enum TodoLabel { feature, bug, chore, docs, research }
 
-/// Human-facing labels for [TodoLabel].
-extension TodoLabelText on TodoLabel {
-  /// Display text, e.g. `Docs` for [TodoLabel.docs].
-  String get label => switch (this) {
-        TodoLabel.feature => 'Feature',
-        TodoLabel.bug => 'Bug',
-        TodoLabel.chore => 'Chore',
-        TodoLabel.docs => 'Docs',
-        TodoLabel.research => 'Research',
-      };
-}
-
 /// Account lifecycle state of a `User`.
 enum UserStatus { active, suspended }
-
-/// Human-facing labels for [UserStatus].
-extension UserStatusText on UserStatus {
-  /// Display text, e.g. `Suspended` for [UserStatus.suspended].
-  String get label => switch (this) {
-        UserStatus.active => 'Active',
-        UserStatus.suspended => 'Suspended',
-      };
-}
 
 /// The role a principal holds on a shared resource, most to least privileged.
 ///
@@ -74,13 +33,15 @@ extension UserStatusText on UserStatus {
 /// on a `Share` as the role's [Enum.name] in a `TomString`.
 enum ProjectRole { owner, editor, commenter, viewer }
 
-/// Human-facing labels for [ProjectRole].
-extension ProjectRoleText on ProjectRole {
-  /// Display text, e.g. `Commenter` for [ProjectRole.commenter].
-  String get label => switch (this) {
-        ProjectRole.owner => 'Owner',
-        ProjectRole.editor => 'Editor',
-        ProjectRole.commenter => 'Commenter',
-        ProjectRole.viewer => 'Viewer',
-      };
+/// The resource key under which an enum value's display text resolves (G-RES-5).
+///
+/// Shaped `global.<enumtype>.<value>` — e.g. [TodoStatus.inReview] resolves as
+/// `global.todostatus.inreview`. Both segments are lower-cased: the enum type
+/// name (`runtimeType`) and the value's [Enum.name]. The text itself lives in
+/// the server-sent resource bundle, so an enum never carries a hardcoded display
+/// string; the UI resolves this key through the text-resource provider at use.
+extension EnumResourceKey on Enum {
+  /// This value's `global.<enumtype>.<value>` display-text resource key.
+  String get resourceKey =>
+      'global.${runtimeType.toString().toLowerCase()}.${name.toLowerCase()}';
 }

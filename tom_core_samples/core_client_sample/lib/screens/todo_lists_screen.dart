@@ -10,10 +10,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:todo_domain/todo_domain.dart';
 
 import '../api/live_todo_read_client.dart';
 import '../app/app_session.dart';
+import '../domain/enum_text.dart';
 import 'todo_detail_screen.dart';
 
 /// Lists the session's todo items with create / open / refresh actions.
@@ -67,17 +69,18 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
         _loading = false;
         _showingLive = true;
       });
-      _snack('Loaded ${items.length} item(s) from the live server.');
+      _snack(TomCtr.text('todos.live.loaded')
+          .replaceAll('{count}', '${items.length}'));
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      _snack('Live server unreachable: $e');
+      _snack(TomCtr.text('todos.live.unreachable').replaceAll('{error}', '$e'));
     }
   }
 
   void _snack(String message) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+        .showSnackBar(TomSnackBar(content: TomText(text: message)));
   }
 
   Future<void> _openDetail(TodoItem? item) async {
@@ -91,69 +94,74 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Todos'),
+    return TomScaffold(
+      appBar: TomAppBar(
+        title: TomText(text: TomCtr.text('todos.appbar.title')),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(child: Text('role: ${_session.role}')),
+            child: Center(
+              child: TomText(
+                text:
+                    TomCtr.text('todos.role').replaceAll('{role}', _session.role),
+              ),
+            ),
           ),
           if (widget.liveClient != null)
-            IconButton(
-              tooltip: 'Refresh from live server',
+            TomIconButton(
+              tooltip: TomCtr.text('todos.action.refreshLive'),
               icon: const Icon(Icons.cloud_download_outlined),
               onPressed: _loadLive,
             ),
-          IconButton(
-            tooltip: 'Refresh',
+          TomIconButton(
+            tooltip: TomCtr.text('todos.action.refresh'),
             icon: const Icon(Icons.refresh),
             onPressed: _loadLocal,
           ),
-          IconButton(
-            tooltip: 'Log out',
+          TomIconButton(
+            tooltip: TomCtr.text('todos.action.logout'),
             icon: const Icon(Icons.logout),
             onPressed: _session.logout,
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: TomFloatingActionButton(
         onPressed: () => _openDetail(null),
-        tooltip: 'New todo',
+        tooltip: TomCtr.text('todos.action.new'),
         child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
           if (_showingLive)
-            MaterialBanner(
-              content: const Text('Showing live server data (read-only).'),
+            TomMaterialBanner(
+              content: TomText(text: TomCtr.text('todos.live.banner')),
               leading: const Icon(Icons.cloud_done_outlined),
               actions: [
-                TextButton(
+                TomTextButton(
                   onPressed: _loadLocal,
-                  child: const Text('Back to my list'),
+                  child: TomText(text: TomCtr.text('todos.live.back')),
                 ),
               ],
             ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: TomCircularProgressIndicator())
                 : _items.isEmpty
-                    ? const Center(child: Text('No todos yet.'))
+                    ? Center(child: TomText(text: TomCtr.text('todos.empty')))
                     : ListView.builder(
                         itemCount: _items.length,
                         itemBuilder: (context, index) {
                           final item = _items[index];
-                          return ListTile(
+                          return TomListTile(
                             leading: Icon(
                               item.done.get()
                                   ? Icons.check_circle
                                   : Icons.radio_button_unchecked,
                             ),
-                            title: Text(item.title.get()),
-                            subtitle: Text(
-                              '${item.priorityValue.label} · '
-                              '${item.labelValue.label}',
+                            titleText: item.title.get(),
+                            subtitle: TomText(
+                              text: '${enumText(item.priorityValue)} · '
+                                  '${enumText(item.labelValue)}',
                             ),
                             onTap: _showingLive ? null : () => _openDetail(item),
                           );

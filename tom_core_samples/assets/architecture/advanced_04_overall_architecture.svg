@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 470" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    Overall architecture as a wiring diagram (replaces the crowded ASCII).
+    Two clients on the outside, two servers in the middle, the shared JWT signing
+    key closing the loop underneath, and each server's own database:
+      - advanced_authadmin_client logs in at the auth server and drives /admin/*
+        to edit roles + the grant matrix;
+      - advanced_app_client logs in at the auth server, then calls the app server
+        with the bearer; the app server reads the grant matrix and grades each
+        field per request;
+      - advanced_client_core is the shared Flutter-free authenticated HTTP layer
+        both clients use;
+      - advanced_auth_server -> auth_db (:3307); advanced_app_server -> app_db (:3308);
+      - the shared JWT signing key: an auth-minted token verifies at the app server.
+  -->
+  <defs>
+    <marker id="arrow4" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;}
+    .client{fill:#fff3e0;}
+    .auth{fill:#e3f2fd;}
+    .app{fill:#e8f5e9;}
+    .core{fill:#ede7f6;}
+    .db{fill:#eceff1;}
+    .key{fill:#fff8e1;stroke:#f9a825;stroke-width:1.5;}
+    .lbl{fill:#212121;font-weight:600;}
+    .sub{fill:#546e7a;font-size:11px;}
+    .flow{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow4);}
+    .keyline{stroke:#f9a825;stroke-width:1.5;fill:none;stroke-dasharray:5 4;}
+    .note{fill:#546e7a;font-size:11px;}
+  </style>
+
+  <!-- clients -->
+  <rect class="box client" x="30"  y="30" width="200" height="60" rx="8"/>
+  <text class="lbl" x="130" y="55" text-anchor="middle">advanced_authadmin_client</text>
+  <text class="sub" x="130" y="73" text-anchor="middle">admin console (Flutter)</text>
+
+  <rect class="box client" x="590" y="30" width="200" height="60" rx="8"/>
+  <text class="lbl" x="690" y="55" text-anchor="middle">advanced_app_client</text>
+  <text class="sub" x="690" y="73" text-anchor="middle">end-user app (Flutter)</text>
+
+  <!-- shared client_core -->
+  <rect class="box core" x="300" y="30" width="220" height="60" rx="8"/>
+  <text class="lbl" x="410" y="55" text-anchor="middle">advanced_client_core</text>
+  <text class="sub" x="410" y="73" text-anchor="middle">shared authenticated HTTP</text>
+
+  <path class="flow" d="M230,60 L300,60"/>
+  <path class="flow" d="M590,60 L520,60"/>
+
+  <!-- servers -->
+  <rect class="box auth" x="60"  y="190" width="220" height="70" rx="8"/>
+  <text class="lbl" x="170" y="215" text-anchor="middle">advanced_auth_server</text>
+  <text class="sub" x="170" y="233" text-anchor="middle">JWT issuer + /admin/*</text>
+  <text class="sub" x="170" y="249" text-anchor="middle">HTTP :8081</text>
+
+  <rect class="box app"  x="540" y="190" width="220" height="70" rx="8"/>
+  <text class="lbl" x="650" y="215" text-anchor="middle">advanced_app_server</text>
+  <text class="sub" x="650" y="233" text-anchor="middle">secured task API</text>
+  <text class="sub" x="650" y="249" text-anchor="middle">HTTP :8080</text>
+
+  <!-- client_core to servers -->
+  <path class="flow" d="M360,90 C360,150 260,170 220,190"/>
+  <text class="note" x="255" y="150" text-anchor="middle">login + /admin/*</text>
+  <path class="flow" d="M460,90 C460,150 600,170 640,190"/>
+  <text class="note" x="585" y="150" text-anchor="middle">login + board/share</text>
+
+  <!-- databases -->
+  <rect class="box db" x="60"  y="330" width="220" height="50" rx="8"/>
+  <text class="lbl" x="170" y="352" text-anchor="middle">auth_db</text>
+  <text class="sub" x="170" y="368" text-anchor="middle">MariaDB :3307</text>
+
+  <rect class="box db" x="540" y="330" width="220" height="50" rx="8"/>
+  <text class="lbl" x="650" y="352" text-anchor="middle">app_db</text>
+  <text class="sub" x="650" y="368" text-anchor="middle">MariaDB :3308</text>
+
+  <path class="flow" d="M170,260 L170,330"/>
+  <path class="flow" d="M650,260 L650,330"/>
+
+  <!-- shared key -->
+  <rect class="key" x="330" y="330" width="160" height="50" rx="8"/>
+  <text class="lbl" x="410" y="352" text-anchor="middle">shared JWT</text>
+  <text class="lbl" x="410" y="368" text-anchor="middle">signing key</text>
+
+  <path class="keyline" d="M280,225 C300,300 330,340 335,345"/>
+  <path class="keyline" d="M540,225 C520,300 490,340 485,345"/>
+  <text class="note" x="410" y="410" text-anchor="middle">auth-minted token verifies at the app server</text>
+</svg>

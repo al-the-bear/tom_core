@@ -202,9 +202,10 @@ void main() {
    field metadata must be registered before any form is constructed.
 2. **Platform.** `clientPlatformUtils` (from `tom_core_flutter`) selects the
    Flutter platform implementation for kernel code that probes the runtime.
-3. **Resource provider.** An empty provider so any singleton probe resolves; the
-   app supplies its labels through `labelTextOverride`, so no resource file is
-   needed.
+3. **Resource provider.** The `appTexts` bundle (`lib/resources/app_texts.dart`)
+   is installed so every visible string — form-field labels/hints, screen copy,
+   tooltips, errors, and enum display text — resolves through the singleton
+   provider (G-RES-1). No widget carries hardcoded text.
 
 **Why one reflection seed for everything.** The generated
 `initializeReflection()` *assigns* the reflection data (last writer wins), so
@@ -232,8 +233,9 @@ deliberately *not* re-exported, to avoid colliding with its own
 The flow is: **role → matrix → per-field authorizer → render**.
 
 1. On login, `AppSession.login` calls `api.fieldStates(role)` and stores the
-   resulting `Map<String, TomAuthState>` (keyed by the `TodoFieldKeys` resource
-   keys — `todo.item.title`, `todo.item.done`, …).
+   resulting `Map<String, TomAuthState>` (keyed by the plain gradable-field
+   resource keys — `todo.item.title`, `todo.item.done`, … — there is no
+   `*ResourceKeys` catalogue class, G-RES-6).
 2. The detail screen constructs `TodoItemForm(session.fieldStates)`.
 3. The form turns each entry into a `TomAuthorizer.fixed(state)` on the matching
    field:
@@ -245,7 +247,7 @@ The flow is: **role → matrix → per-field authorizer → render**.
    late final priority = TomFormStringDropdown(
      'priority', TodoPriority.medium.name,
      form: this, source: _prioritySource,
-     authorizer: _authFor(TodoFieldKeys.priority),
+     authorizer: _authFor('todo.item.priority'),
    );
    ```
 
@@ -328,10 +330,12 @@ core_client_sample/
 │   ├── api/
 │   │   ├── todo_api.dart               # abstract backend contract + LoginResult / TodoApiException
 │   │   ├── in_memory_todo_api.dart     # seeded offline backend + grant matrix
-│   │   ├── live_todo_read_client.dart  # HTTP read client + pure parsers
-│   │   └── field_keys.dart             # TodoFieldKeys resource-key constants
+│   │   └── live_todo_read_client.dart  # HTTP read client + pure parsers
 │   ├── domain/
-│   │   └── login_credentials.dart      # client-local @tomReflector entity
+│   │   ├── login_credentials.dart      # client-local @tomReflector entity
+│   │   └── enum_text.dart              # resolves a domain enum's display text (G-RES-5)
+│   ├── resources/
+│   │   └── app_texts.dart              # the installed user-facing text bundle (G-RES-1)
 │   ├── forms/
 │   │   ├── login_form.dart             # TomForm<LoginCredentials>
 │   │   └── todo_item_form.dart         # TomForm<TodoItem> with per-field authorizers
@@ -361,8 +365,9 @@ renamed, or a bound entity's shape changes):
 ./reflection_generation.sh
 ```
 
-The script runs `dart run tom_reflection_generator --nested` over
-`lib/reflection_seed.dart` (configured in `build.yaml`). The generated file is
+The script runs `dart run tom_reflection_generator` flag-free over
+`lib/reflection_seed.dart` (configured in `build.yaml`); the generator scans the
+current project only (framework default scan `.`, non-recursive). The generated file is
 large because reflecting a form necessarily reflects its field types — the same
 trade-off the verified `tom_flutter_form_test` accepts.
 

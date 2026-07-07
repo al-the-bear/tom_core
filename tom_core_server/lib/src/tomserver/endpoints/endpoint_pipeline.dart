@@ -11,6 +11,21 @@ import '../transactions/transaction_manager.dart';
 
 import 'endpoint_annotation.dart';
 
+/// Serializes one element of a `List` endpoint result to a JSON-encodable value.
+///
+/// Used as the `toEncodable` for `jsonEncode` when a handler returns a
+/// `List<Object>`: `jsonEncode` handles primitives, maps and nested lists
+/// natively and only calls this for the remaining complex elements. An element
+/// that owns its wire shape ([TomClass]/[TomJsonSerializable]) is serialized
+/// through its `toJson`; every other object — notably the reflection-first wire
+/// DTOs, which carry no hand-written serializer — goes through the kernel
+/// reflection path, matching how a *single* such result is serialized below.
+Object? _encodeResultElement(Object? element) {
+  if (element is TomClass) return element.toJson();
+  if (element is TomJsonSerializable) return element.toJson();
+  return tomReflectionInfo.getValues(element!);
+}
+
 /// Thrown while *serving* a request: access denied, parameter instantiation
 /// failure, a failing error handler, or a result that cannot be converted.
 class TomEndpointHandlerException extends TomServerException {
@@ -100,6 +115,30 @@ class TomEndpointHandler {
     if (type == num) return num.tryParse(raw);
     if (type == bool) return raw == 'true';
     return null;
+  }
+
+  /// Folds the request's URL path parameters into [jsonBodyData] under the
+  /// request-DTO field names declared by [endpoint].`urlParameterMapping`.
+  ///
+  /// Each captured path parameter (shelf route capture, e.g. `id` from
+  /// `/items/{id}`) is written under its mapped field name — or, when the
+  /// mapping has no entry for it, under its own capture name (identity). This
+  /// is what lets a typed request DTO receive `/items/{id}` as `request.id`
+  /// (or `request.itemId` with a `{'id': 'itemId'}` mapping) without a
+  /// bare-`String` handler parameter (G-API-2). Called immediately before the
+  /// DTO is instantiated from the folded map.
+  ///
+  /// Pure and side-effect-free apart from mutating [jsonBodyData], so it is
+  /// unit-testable without a live router (like [coercePrimitiveParameter]).
+  static void injectPathParameters(
+    Map<String, dynamic> jsonBodyData,
+    Request req,
+    TomEndpoint endpoint,
+  ) {
+    final mapping = endpoint.urlParameterMapping;
+    req.params.forEach((captureName, value) {
+      jsonBodyData[mapping[captureName] ?? captureName] = value;
+    });
   }
 
   /// Whether requests are logged when an endpoint does not specify
@@ -272,9 +311,15 @@ class TomEndpointHandler {
             req.method != TomHttpMethod.trace.name) {
           try {
             String body = await req.readAsString();
-            if (body.isNotEmpty) {
-              Map<String, dynamic> jsonBodyData = jsonDecode(body);
-              jsonBodyData.addAll(req.params);
+            // Fold the JSON body (when present) and the mapped URL path
+            // parameters into one map, then build the request DTO from it. Path
+            // parameters must reach the DTO even for a body-less GET
+            // (`GET /items/{id}` -> `request.id`), so the DTO is instantiated
+            // whenever there is a body *or* at least one path parameter.
+            final Map<String, dynamic> jsonBodyData =
+                body.isNotEmpty ? jsonDecode(body) as Map<String, dynamic> : {};
+            injectPathParameters(jsonBodyData, req, metadata.endpoint);
+            if (jsonBodyData.isNotEmpty) {
               try {
                 Object? parameterObject = tomReflectionInfo
                     .createInstanceFromJson(parameterMirror, jsonBodyData);
@@ -300,7 +345,7 @@ class TomEndpointHandler {
               }
             }else{
               tomLog.warn(
-                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty.",
+                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty and no path parameters were present.",
               );
             }
           } catch (ex) {
@@ -447,7 +492,7 @@ class TomEndpointHandler {
           : result is Map<String, Object>
           ? jsonEncode(result)
           : result is List<Object>
-          ? jsonEncode(result)
+          ? jsonEncode(result, toEncodable: _encodeResultElement)
           : tomReflectionInfo.convertToJsonString(result);
 
       Response? response;
@@ -526,9 +571,10 @@ class TomEndpointHandler {
     }
   }
 
-  /// Decides whether [principal] may call this endpoint from its declared
-  /// [TomAccessControl], falling back to the global protection default when the
-  /// endpoint declares no access rule.
+  /// Decides whether [principal] may call this endpoint from its resolved
+  /// [TomAccessControl] — the handler-side override if present, otherwise the
+  /// contract-declared policy (G-API-3) — falling back to the global protection
+  /// default when neither declares an access rule.
   bool checkAccess(TomPrincipal? principal) {
     if (metadata.access != null) {
       return metadata.access!.checkAccessibility(principal);
@@ -810,6 +856,12 @@ class TomEndpointRouting {
   /// [TomMethodMetadata] (endpoint, access control, transaction, and remote-API
   /// tags). Throws on conflicting/duplicate tags or a missing
   /// `@TomApiImplementation` for an API-endpoint method.
+  ///
+  /// Access control follows G-API-3 (C-12): a handler-side `TomAccessControl`
+  /// annotation is a local override and wins; when the handler declares none,
+  /// the endpoint's **contract-declared** policy (`TomApiEndpoint.access` from
+  /// the registry) is extracted, so a registry-based handler is gated without
+  /// restating the policy inline.
   List<TomMethodMetadata> getClassMethodMetadata(ClassMirror classMirror) {
     List<TomMethodMetadata> methodMetadata = [];
     nextDeclaration:
@@ -887,11 +939,18 @@ class TomEndpointRouting {
             // (bug §69). For an inline TomEndpoint, `ai` is null and the class
             // annotation is ignored.
             final TomEndpoint tep = tepTag!.convertToTomEndpoint(ai);
+            // C-12 / G-API-3: a handler-side `TomAccessControl` annotation (`tea`)
+            // is a local override and wins; otherwise the endpoint's
+            // contract-declared policy (`ae.access`, from the registry entry) is
+            // extracted here — so a registry-based handler needs no inline
+            // annotation to be gated. An inline TomEndpoint has no `ae`, so it
+            // keeps whatever the handler declared (or nothing).
+            final TomAccessControl? resolvedAccess = tea ?? ae?.access;
             methodMetadata.add(
               TomMethodMetadata(
                 methodMirror: decl,
                 endpoint: tep,
-                access: tea,
+                access: resolvedAccess,
                 transactionInfo: ti,
                 apiEndpointImplementation: aei,
                 apiEndpoint: ae,

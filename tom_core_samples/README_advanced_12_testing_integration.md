@@ -65,7 +65,7 @@ It is applied at both the login and the bound-form layer, in both clients:
 - `advanced_app_client/test/form_label_resolution_test.dart` installs
   `'login.username.label': 'Username [srv]'` (and the password/hint keys), pumps
   the login screen, and asserts the sentinels render (`:65`, `:78`); a second
-  group does the same for all seven `TodoItemResourceKeys` field labels (`:91`,
+  group does the same for all seven `todo.item.*` field labels (`:91`,
   `:107`).
 - `advanced_app_client/test/item_detail_screen_test.dart` folds the same proof
   into the bound detail form as **TC-30-05** (`:233`): the owner opens the
@@ -154,13 +154,11 @@ A change is done only when all three hold together:
 3. **The cross-tier runner exits 0** with "All tests passed!" against a freshly
    booted stack.
 
-This gate is what `advanced_example_completion.md` records as passing — most
-recently a live re-run on 2026-06-29. Reaching it the first time also surfaced
-and fixed five real `tom_core_server` bugs (zone principal resolution, nullable
-surrogate-key read, the MariaDB `bool`→`1`/`0` bind, query-string parameter
-binding, and pipeline error logging) — recorded in
-`advanced_example_specification_plan.md` §37 (Phase 7). The suites are not
-decoration; they were the instrument that found framework defects.
+This gate was last re-run live on 2026-06-29. Reaching it the first time also
+surfaced and fixed five real `tom_core_server` bugs (zone principal resolution,
+nullable surrogate-key read, the MariaDB `bool`→`1`/`0` bind, query-string
+parameter binding, and pipeline error logging). The suites are not decoration;
+they were the instrument that found framework defects.
 
 ## Test counts
 
@@ -179,19 +177,16 @@ Current green-gate counts (runtime, the authoritative figure):
 > A static grep of `app_server` finds only ~74 `test()`/`testWidgets()` calls
 > against the runtime 77, because several suites emit tests from a loop (e.g.
 > `field_grade_resolver_test.dart` over `ProjectRole.values`,
-> `resource_bundle_endpoint_test.dart` over `TodoItemResourceKeys.allFields`,
+> `resource_bundle_endpoint_test.dart` over the gradable item field tokens,
 > `app_share_endpoints_test.dart` over the not-found keys). The **runtime** count
 > from the green gate is the one to trust.
 
 ## Primary sources
 
-- `advanced_example_specification_plan.md` — A.13 Testing strategy, Phase 7
-- `advanced_example_completion.md` — After Todos 11 & 15; the global green gate
 - `advanced_app_client/test/{form_label_resolution_test.dart, item_detail_screen_test.dart}`,
   `advanced_authadmin_client/test/{admin_login_form_test.dart, form_label_resolution_test.dart}`
 - `advanced_client_core/test/cross_tier_integration_test.dart`,
   `advanced_client_core/tool/run_cross_tier_integration.sh`
-- `advanced_example_specification_plan.md` — §37 (the five `tom_core_server` fixes the gate found)
 
 ---
 

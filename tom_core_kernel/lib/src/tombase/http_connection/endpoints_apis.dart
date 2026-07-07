@@ -29,6 +29,7 @@ library;
 import 'dart:convert';
 
 import '../little_things/exception_base.dart';
+import '../security/access_controls.dart';
 import 'httpmethods.dart';
 import 'mimetypes.dart';
 
@@ -317,6 +318,29 @@ class TomApiEndpoint<ReturnType, RequestType> {
   /// Maps HTTP status codes to response types for error handling.
   final Map<int, Type>? statusCodeResponseTypes;
 
+  /// Binds URL path parameters to typed request-DTO fields.
+  ///
+  /// Keys are the route-capture names as they appear in [uri] (e.g. `id` in
+  /// `/items/{id}`); values are the request-DTO field names the captured value
+  /// is injected under before the DTO is instantiated. When a capture name and
+  /// the field name are identical, the entry is `{'id': 'id'}`; a differently
+  /// named field is `{'id': 'itemId'}`. Path parameters not listed are still
+  /// injected under their capture name (identity), so an empty map means every
+  /// path parameter binds by its own name.
+  final Map<String, String> urlParameterMapping;
+
+  /// The access policy this endpoint is served under, **declared here on the
+  /// contract** (G-API-3). The server pipeline extracts it when the endpoint's
+  /// implementation handler carries no local `TomAccessControl` annotation of
+  /// its own; a handler annotation, when present, overrides this declaration.
+  ///
+  /// `null` means the endpoint declares no contract-side policy, so the server
+  /// falls back to its global protection default (or a handler annotation). Any
+  /// `TomAccessControl` (`TomPublicAccess`, `TomAuthenticatedAccess`,
+  /// `TomRoleAccess`, …) is a valid value; the constants are usually `const`, so
+  /// one shared policy can be referenced by many endpoints without re-stating it.
+  final TomAccessControl? access;
+
   /// Creates a new API endpoint with the specified configuration.
   TomApiEndpoint({
     required this.id,
@@ -338,6 +362,8 @@ class TomApiEndpoint<ReturnType, RequestType> {
     this.requestEncoding,
     this.responseEncoding,
     this.statusCodeResponseTypes,
+    this.urlParameterMapping = const {},
+    this.access,
   }) {
     this.requestTypes = requestTypes ?? [RequestType];
     if (ReturnType == dynamic) {

@@ -1,7 +1,7 @@
 # tom_core_flutter
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Flutter integration layer for the Tom Framework — re-exports
 [`tom_core_kernel`](../tom_core_kernel/README.md) and adds Flutter widgets,
@@ -252,4 +252,4 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 
 - **Version:** 1.1.0
 - **Tests:** 47 test cases across 6 module suites (run with `flutter test`).
-- **License:** proprietary — see [LICENSE](LICENSE).
+- **License:** BSD-3-Clause — see [LICENSE](LICENSE).

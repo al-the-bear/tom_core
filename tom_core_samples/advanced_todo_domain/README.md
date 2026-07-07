@@ -28,10 +28,13 @@ round-trip test per entity plus the gradable-key assertions) passes.
   `TodoLabel`, `UserStatus`, and `ProjectRole`
   (`owner`/`editor`/`commenter`/`viewer`) — each stored as its `name` in a
   `TomString` with a typed accessor on the owning entity.
-- Gradable resource-key constants (`lib/src/resource_keys.dart`):
-  `TodoItemResourceKeys` — the named, stable set of `todo.item.*` keys the
-  four-state field authorization model grades.
-- A reflection seed (`lib/src/reflection_entry.dart` →
-  `reflection_entry.reflection.dart`); regenerate with
-  `./reflection_generation.sh`. Call `initializeReflection()` once before
-  constructing any entity.
+- The gradable `TodoItem` fields are addressed by scope + `tomId` (G-RES-6): a
+  form run under scope `'todo'` with `formId: 'item'` self-addresses each field
+  as a `todo.item.<field>` key, which the four-state field authorization model
+  grades. There is no key-catalogue class — the keys are derived at use.
+- A **test-only** reflection seed (`test/run_all_tests.dart` →
+  `test/run_all_tests.reflection.dart`); regenerate with
+  `./reflection_generation.sh`. The domain is a library and ships no runtime seed
+  (G-REFL-1/2): its own tests call `initializeReflection()` from this seed, while
+  runtime consumers (servers/clients) build and call their own combined seed
+  before constructing any entity.

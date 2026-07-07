@@ -22,7 +22,7 @@ Iterate in order. Each step states its **done** condition.
 
 1. **Meta files.** Ensure `README.md` (summary + overview: what the binary is,
    how to build it, how to register it in the VS Code extension), `CHANGELOG.md`
-   (short, pre-publish), and `LICENSE` (proprietary) exist at the project root.
+   (short, pre-publish), and `LICENSE` (BSD 3-Clause) exist at the project root.
    `CHANGELOG.md` is **missing** — create it. *Done when all three exist and the
    README explains the binary's purpose and usage.*
 2. **Entrypoint clarity.** Review `bin/core_bs.dart`; confirm `main()` is thin

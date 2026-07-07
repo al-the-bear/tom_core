@@ -45,22 +45,25 @@ itself at `:809`).
 
 So when the item form runs under `TomScope.withScope('todo', …)` with
 `formId: 'item'`, the field `title` (tomId `title`) self-addresses as
-`todo.item.title` — *exactly* `TodoItemResourceKeys.title`, the same string the
-server's grade matrix is keyed by (D-A1). One alignment makes the field's
+`todo.item.title` — *exactly* the `todo.item.title` key the server's grade
+matrix is keyed by (D-A1). One alignment makes the field's
 authorization key equal the wire grade key with **zero translation layer**.
 
 The one deliberate exception is the estimate field (D-A2): its grade key is
 `todo.item.estimate`, so the form gives it an explicit `tomId: 'estimate'` for
 addressing while keeping the reflected member name `estimateHours` for the
 save round-trip — `TomField.tomId` and the Dart member name are independent.
-See [03 · Domain model](README_advanced_03_domain_reflection.md#enums-stored-name-vs-label-contract)
-and `advanced_todo_domain/lib/src/resource_keys.dart`.
+See [03 · Domain model](README_advanced_03_domain_reflection.md#enums-stored-name-vs-display-text-contract);
+the `scope`/`formId`/`tomId` segments are plain string literals declared at the
+form (`super(formId: 'item')`) and the scope call site
+(`TomScope.withScope('todo', …)`), not entries in a key catalogue.
 
 ## The grant matrix
 
 A role's field grades are **data**, not code — rows in the auth server's
 `auth_db` `tom_resource_grant` table (`(role_name, resource_key, access_level)`),
-seeded by `[100]-auth_sample_data.sql` and editable through the admin console.
+seeded by `[003]-auth_demo_seed@dev,test.sql` (dev/test only) and editable through
+the admin console.
 The sample seeds the full §A.4 matrix — **7 gradable item fields × 4 project
 roles = 28 rows**:
 
@@ -97,8 +100,8 @@ live; `InMemory*` seeded for socket-free tests):
    items); with neither, the result is `null` (no access).
 2. **Field grades** — *"for that role, which fields, and how?"*
    `FieldGradeResolver` (`.../access/field_grade_resolver.dart`) loads the
-   role's grant rows and folds them, resolving **every** key in
-   `TodoItemResourceKeys.all` to its `TomAuthState`. A field with no grant row
+   role's grant rows and folds them, resolving **every** gradable `todo.item.*`
+   key to its `TomAuthState`. A field with no grant row
    degrades to `none` — closed-safe (D-A4).
 
 The result is sent to the client as a `List<GradedFieldDto>` from the
@@ -130,7 +133,8 @@ in the app routes its layer-1 lookup through it — the login form, the board, t
 dialogs, not just graded item fields. A naive flat map returning the closed-safe
 `none` for any unknown path would therefore hide the login screen. So the
 adapter guards a single explicit **namespace** (`gradableKeys`, defaulting to
-`TodoItemResourceKeys.all`) and resolves in four steps
+the inline `_gradableItemKeys` set of `todo.item.*` keys) and resolves in four
+steps
 (`field_state_authorization_adapter.dart:77-100`):
 
 1. an exact grade for the path wins;
@@ -170,26 +174,25 @@ form-path narrow, (4) per-field authorizer, (5) UI-state controller — each
 ## Route-level role gating for admin CRUD
 
 Field grades govern *content within* a form; whole **operations** are gated at
-the route. Every one of the auth server's fifteen `/admin/*` endpoints is
-annotated `@TomRoleAccess(['admin'])`
-(`advanced_auth_server/lib/src/endpoints/admin_endpoints.dart:644`), so the
-endpoint pipeline rejects a non-admin caller **before** the method runs — the
-role check happens in the pipeline, not in the handler. This is the coarse-grained
-companion to the fine-grained field grades: a viewer never reaches
-`adminCreateUser` at all, and even an admin's field-level edits to a graded item
-are still subject to the matrix above. (Contrast the app server's task endpoints,
-gated only by `@TomAuthenticatedAccess()` — any signed-in user may call them,
+the route. Every one of the auth server's `/admin/*` endpoints
+**declares on the contract** the shared `adminAccess` (`TomRoleAccess(['admin'])`)
+policy (`advanced_todo_contracts/lib/src/api_registry.dart`, `adminApi`), so the
+endpoint pipeline extracts it and rejects a non-admin caller **before** the
+method runs — the role check happens in the pipeline, not in the handler. This is
+the coarse-grained companion to the fine-grained field grades: a viewer never
+reaches `adminCreateUser` at all, and even an admin's field-level edits to a
+graded item are still subject to the matrix above. (Contrast the app server's
+task endpoints, whose contract declares only `TomAuthenticatedAccess()` — any
+signed-in user may call them,
 with per-resource role and per-field grade decided inside by the two resolvers.)
 The endpoint pipeline and annotations are part
 [10](README_advanced_10_servers_endpoints.md).
 
 ## Primary sources
 
-- `advanced_examples_alignment_plan.md` — Why / Key anatomy / D-A1…D-A8
-- `advanced_example_specification_plan.md` — A.4 Authorization model, A.12 Security
-- `advanced_app_client/lib/app/field_state_authorization_adapter.dart`; `advanced_app_server/lib/src/access/{resource_access_resolver,field_grade_resolver}.dart`; `tom_flutter_ui/.../tom_form.dart:807`
-- `advanced_auth_server/database_migrations/auth_db/auth_schema/[100]-auth_sample_data.sql` (the grant matrix); `advanced_auth_server/lib/src/endpoints/admin_endpoints.dart`
-- `advanced_example_completion.md` — After Todos 2, 3, 5; appendix [A1](README_advanced_A1_authorization_state_machine.md)
+- `advanced_app_server/lib/src/access/{resource_access_resolver,field_grade_resolver}.dart`; `tom_flutter_ui/.../tom_form.dart:807`
+- `advanced_auth_server/database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql` (the grant matrix); `advanced_auth_server/lib/src/endpoints/admin_endpoints.dart`
+- Appendix [A1](README_advanced_A1_authorization_state_machine.md)
 
 ---
 

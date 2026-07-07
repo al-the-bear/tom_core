@@ -833,6 +833,9 @@ void main() {
         expect(endpoint.produces, equals(TomMimeType.json));
         expect(endpoint.followRedirects, isFalse);
         expect(endpoint.includeBearerAuthentication, isTrue);
+        // No contract-declared policy by default: the server pipeline falls back
+        // to its global protection default (or a handler-side annotation).
+        expect(endpoint.access, isNull);
       });
 
       test('should create endpoint with all optional fields', () {
@@ -886,6 +889,29 @@ void main() {
         );
 
         expect(endpoint.responseType, equals(Map<String, Object?>));
+      });
+    });
+
+    group('contract-declared access (G-API-3)', () {
+      test('carries the declared TomAccessControl policy', () {
+        const policy = TomRoleAccess(['admin']);
+        final endpoint = TomApiEndpoint(
+          id: 'guardedEndpoint',
+          method: TomHttpMethod.get,
+          access: policy,
+        );
+
+        expect(identical(endpoint.access, policy), isTrue);
+      });
+
+      test('one shared const policy backs many endpoints', () {
+        const authenticated = TomAuthenticatedAccess();
+        final a = TomApiEndpoint(
+          id: 'a', method: TomHttpMethod.get, access: authenticated);
+        final b = TomApiEndpoint(
+          id: 'b', method: TomHttpMethod.get, access: authenticated);
+
+        expect(identical(a.access, b.access), isTrue);
       });
     });
 

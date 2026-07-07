@@ -1,11 +1,69 @@
 {
-  "adminConsole": { "title": "Advanced Todo — Admin console" },
+  "adminConsole": {
+    "title": "Advanced Todo — Admin console",
+    "signOut": "Sign out",
+    "nav": {
+      "users": "Users",
+      "roles": "Roles",
+      "groups": "Groups",
+      "grants": "Grants",
+      "assignments": "Assignments"
+    }
+  },
+  "admin": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": { "label": "Delete", "confirm": "Delete \"{name}\"?" },
+    "users": {
+      "create": "New user",
+      "edit": "Edit user",
+      "empty": "No users yet."
+    },
+    "roles": {
+      "create": "New role",
+      "edit": "Edit role",
+      "empty": "No roles yet."
+    },
+    "groups": {
+      "create": "New group",
+      "edit": "Edit group",
+      "empty": "No groups yet.",
+      "members": "Members",
+      "memberCount": "{count} member",
+      "memberCountPlural": "{count} members"
+    },
+    "assignments": {
+      "title": "Assign roles and groups",
+      "assignTo": "Assign to {name}",
+      "assigned": "Assigned to {name}.",
+      "chooseError": "Choose a role or a group to assign.",
+      "assign": "Assign",
+      "noGroups": "No groups",
+      "groups": "Groups: {groups}",
+      "roleLabel": "Role",
+      "noRole": "— No role —",
+      "groupLabel": "Group",
+      "noGroup": "— No group —"
+    }
+  },
+  "global": {
+    "tomauthstate": {
+      "none": "Hidden",
+      "disabled": "Disabled",
+      "read": "Read",
+      "full": "Full"
+    }
+  },
   "user": {
     "username": { "label": "Username" },
     "password": { "label": "Password" },
     "displayName": { "label": "Display name" },
     "email": { "label": "Email" },
-    "status": { "label": "Status" }
+    "status": {
+      "label": "Status",
+      "active": "Active",
+      "suspended": "Suspended"
+    }
   },
   "role": {
     "key": { "label": "Key" },
@@ -16,7 +74,10 @@
   },
   "grants": {
     "title": "Grant matrix",
+    "unsaved": "Unsaved changes",
     "column": { "none": "None", "read": "Read", "full": "Full" },
-    "save": "Save grants"
+    "save": "Save grants",
+    "empty": "No grants to edit.",
+    "roleColumn": "Role"
   }
 }

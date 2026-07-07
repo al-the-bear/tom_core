@@ -34,5 +34,5 @@
   how to run it (`flutter pub get` → `reflection_generation.sh` →
   `flutter run`), the resource-bootstrap flow, and the project layout. No source
   changes.
-- Added this `CHANGELOG.md` and a `LICENSE` (the workspace proprietary license,
+- Added this `CHANGELOG.md` and a `LICENSE` (the workspace BSD 3-Clause license,
   matching the sibling `tom_core_*` packages).

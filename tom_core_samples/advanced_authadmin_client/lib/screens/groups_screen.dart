@@ -10,7 +10,9 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/admin_actions.dart';
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
 import '../domain/admin_drafts.dart';
@@ -31,17 +33,24 @@ class GroupsScreen extends StatelessWidget {
     return AdminCrudScreen<GroupDto>(
       session: session,
       tilePrefix: 'groups',
-      createLabel: 'New group',
-      emptyText: 'No groups yet.',
+      createLabel: TomCtr.text('admin.groups.create'),
+      emptyText: TomCtr.text('admin.groups.empty'),
       load: (backend) => backend.listGroups(),
       idOf: (group) => group.id,
       titleOf: (group) => group.name,
-      subtitleOf: (group) =>
-          '${group.memberUserIds.length} member'
-          '${group.memberUserIds.length == 1 ? '' : 's'}',
+      subtitleOf: (group) {
+        final count = group.memberUserIds.length;
+        final template = count == 1
+            ? TomCtr.text('admin.groups.memberCount')
+            : TomCtr.text('admin.groups.memberCountPlural');
+        return template.replaceAll('{count}', '$count');
+      },
       onCreate: _create,
       onEdit: _edit,
-      onDelete: (backend, group) => backend.deleteGroup(group.id),
+      onDelete: (group) =>
+          runAdminAction(adminActions.deleteGroup, DeleteGroupContext(session, group.id)),
+      createAuthorizer: adminActions.createGroup.authorizer,
+      deleteAuthorizer: adminActions.deleteGroup.authorizer,
     );
   }
 
@@ -56,7 +65,7 @@ class GroupsScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'New group',
+        title: TomCtr.text('admin.groups.create'),
         children: [
           for (final field in form.editableFields) field.widget,
           _MembershipChecklist(users: users, selected: selected),
@@ -67,12 +76,8 @@ class GroupsScreen extends StatelessWidget {
             name: draft.name.get(),
             memberUserIds: selected.toList(),
           );
-          try {
-            await session.guard((backend) => backend.createGroup(group));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(
+              adminActions.createGroup, CreateGroupContext(session, group));
         },
       );
     } finally {
@@ -91,7 +96,7 @@ class GroupsScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'Edit group',
+        title: TomCtr.text('admin.groups.edit'),
         children: [
           for (final field in form.editableFields) field.widget,
           _MembershipChecklist(users: users, selected: selected),
@@ -103,12 +108,8 @@ class GroupsScreen extends StatelessWidget {
             name: draft.name.get(),
             memberUserIds: selected.toList(),
           );
-          try {
-            await session.guard((backend) => backend.updateGroup(group.id, updated));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(adminActions.updateGroup,
+              UpdateGroupContext(session, group.id, updated));
         },
       );
     } finally {
@@ -124,7 +125,7 @@ class GroupsScreen extends StatelessWidget {
     } on AdminBackendException catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
+          TomSnackBar(content: TomText(text: e.message)),
         );
       }
       return null;
@@ -156,18 +157,19 @@ class _MembershipChecklistState extends State<_MembershipChecklist> {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('Members', style: Theme.of(context).textTheme.labelLarge),
+          child: TomText(
+              text: TomCtr.text('admin.groups.members'),
+              style: Theme.of(context).textTheme.labelLarge),
         ),
         for (final user in widget.users)
-          CheckboxListTile(
+          TomCheckboxListTile(
             key: Key('group-member-${user.id}'),
             dense: true,
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             value: widget.selected.contains(user.id),
-            title: Text(
-              user.displayName.isEmpty ? user.username : user.displayName,
-            ),
+            titleText:
+                user.displayName.isEmpty ? user.username : user.displayName,
             onChanged: (checked) => setState(() {
               if (checked ?? false) {
                 widget.selected.add(user.id);

@@ -78,7 +78,7 @@ void main() {
       final store = InMemoryAppShareStore(shares: demoShares());
       await shareServiceOver(store).share(
         alice,
-        const ShareRequest(
+        ShareRequest(
           resourceType: AppResourceTypes.project,
           resourceId: '1',
           granteeUserId: '$carol',
@@ -109,7 +109,7 @@ void main() {
 
       await shareServiceOver(store).share(
         alice,
-        const ShareRequest(
+        ShareRequest(
           resourceType: AppResourceTypes.project,
           resourceId: '1',
           granteeUserId: '$carol',
@@ -133,7 +133,7 @@ void main() {
       await expectLater(
         () => shareServiceOver(store).share(
           bob, // editor on project 1, not its owner
-          const ShareRequest(
+          ShareRequest(
             resourceType: AppResourceTypes.project,
             resourceId: '1',
             granteeUserId: '$carol',
@@ -153,7 +153,7 @@ void main() {
       await expectLater(
         () => shareServiceOver(store).share(
           dave,
-          const ShareRequest(
+          ShareRequest(
             resourceType: AppResourceTypes.project,
             resourceId: '1',
             granteeUserId: '$carol',
@@ -172,7 +172,7 @@ void main() {
       await expectLater(
         () => shareServiceOver(store).share(
           alice,
-          const ShareRequest(
+          ShareRequest(
             resourceType: AppResourceTypes.project,
             resourceId: 'not-a-number',
             granteeUserId: '$carol',

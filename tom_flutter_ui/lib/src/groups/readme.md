@@ -1,7 +1,7 @@
 # groups
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Collective visibility and authorization control. A `TomUIGroup` lets many
 widgets share one authorization ceiling without tagging every leaf with an id:

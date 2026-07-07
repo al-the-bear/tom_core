@@ -40,7 +40,7 @@ documentation sources.
 Iterate in order. Each step states its **done** condition.
 
 1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
-   (short, pre-publish), and `LICENSE` (proprietary) exist at the project root.
+   (short, pre-publish), and `LICENSE` (BSD 3-Clause) exist at the project root.
    All three are present — verify they are current; bump the `version` and
    update the README catalogue if the widget set changed. *Done when all three
    are present and accurate.*

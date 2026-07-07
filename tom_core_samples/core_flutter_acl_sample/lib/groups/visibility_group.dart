@@ -70,10 +70,10 @@ class _VisibilityDemoState extends State<_VisibilityDemo> {
       children: [
         Row(
           children: [
-            const Text('Show details'),
+            TomText(text: 'Show details'),
             ValueListenableBuilder<AclGroupVisibilityMode>(
               valueListenable: _ctrl.modeNotifier,
-              builder: (_, mode, _) => Switch(
+              builder: (_, mode, _) => TomSwitch(
                 value: mode == AclGroupVisibilityMode.visible,
                 onChanged: (on) => _ctrl.mode = on
                     ? AclGroupVisibilityMode.visible

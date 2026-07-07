@@ -1,7 +1,7 @@
 # scope_ids
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Hierarchical, zone-backed scope identity. `withScope` runs a body under a named
 scope; nested calls build a parent/child chain, and `TomScope.current` reports

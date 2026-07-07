@@ -10,9 +10,10 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/admin_actions.dart';
 import '../app/admin_session.dart';
-import '../backend/backend.dart';
 import '../domain/admin_drafts.dart';
 import '../forms/user_form.dart';
 import 'admin_crud_screen.dart';
@@ -31,8 +32,8 @@ class UsersScreen extends StatelessWidget {
     return AdminCrudScreen<UserDto>(
       session: session,
       tilePrefix: 'users',
-      createLabel: 'New user',
-      emptyText: 'No users yet.',
+      createLabel: TomCtr.text('admin.users.create'),
+      emptyText: TomCtr.text('admin.users.empty'),
       load: (backend) => backend.listUsers(),
       idOf: (user) => user.id,
       titleOf: (user) =>
@@ -40,7 +41,10 @@ class UsersScreen extends StatelessWidget {
       subtitleOf: (user) => '${user.username} · ${user.status}',
       onCreate: _create,
       onEdit: _edit,
-      onDelete: (backend, user) => backend.deleteUser(user.id),
+      onDelete: (user) =>
+          runAdminAction(adminActions.deleteUser, DeleteUserContext(session, user.id)),
+      createAuthorizer: adminActions.createUser.authorizer,
+      deleteAuthorizer: adminActions.deleteUser.authorizer,
     );
   }
 
@@ -52,7 +56,7 @@ class UsersScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'New user',
+        title: TomCtr.text('admin.users.create'),
         children: [for (final field in form.editableFields) field.widget],
         submit: () async {
           if (!await form.save()) return '';
@@ -62,12 +66,8 @@ class UsersScreen extends StatelessWidget {
             displayName: draft.displayName.get(),
             email: draft.email.get(),
           );
-          try {
-            await session.guard((backend) => backend.createUser(request));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(
+              adminActions.createUser, CreateUserContext(session, request));
         },
       );
     } finally {
@@ -87,7 +87,7 @@ class UsersScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'Edit user',
+        title: TomCtr.text('admin.users.edit'),
         children: [for (final field in form.editableFields) field.widget],
         submit: () async {
           if (!await form.save()) return '';
@@ -98,12 +98,8 @@ class UsersScreen extends StatelessWidget {
             email: draft.email.get(),
             status: draft.status.get(),
           );
-          try {
-            await session.guard((backend) => backend.updateUser(user.id, updated));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(adminActions.updateUser,
+              UpdateUserContext(session, user.id, updated));
         },
       );
     } finally {
