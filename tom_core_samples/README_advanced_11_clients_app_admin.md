@@ -88,13 +88,17 @@ so "the session died" is handled in exactly one place: a backend failure keyed
 `app.no_session`/`admin.no_session` clears the principal before rethrowing, so the
 next frame is the login screen (`app_session.dart:172`, `admin_session.dart:142`).
 
-The app session additionally holds the item's grade matrix: `loadFieldStates`
-fetches it (`GET /items/{id}/field-states`) and caches it as
-`currentFieldStates` (`app_session.dart`). The item detail screen then stamps
-each gradable field with a per-field `TomAuthorizer.fixed(states[basePath] ??
-TomAuthState.none)` (`item_detail_screen.dart:99-102`) — there is no installed
-authorization adapter. This is the bridge between "the server said this field is
-`read`" and "the widget renders it read-only."
+The app session additionally holds the principal's `resourceRoles` map, fetched
+once at login (`GET /resource-roles`) and installed as the **global**
+`TomAuthorization` adapter via `AppResourceRoleAdapter`
+(`app_session.dart`, `app_resource_role_adapter.dart`); logout resets it. The
+item detail screen then grades each gradable field **synchronously** — resolving
+the item's resource ceiling through the registry
+(`TomAuthorization.resolveAuth('todo.item:<id>')`) and narrowing it by the shared
+`projectRoleFieldGrades[role]` row, stamped as a per-field
+`TomAuthorizer.fixed(...)` (`item_detail_screen.dart:85-111`). This is the bridge
+between "the principal holds `viewer` on this item" and "the widget renders its
+`title` read-only."
 
 ## The in-memory vs live backend seam
 

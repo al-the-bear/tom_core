@@ -9,9 +9,11 @@ The spine parts each describe one tier in isolation:
 [11](README_advanced_11_clients_app_admin.md) wires the client. This appendix
 threads them onto **one principal opening one item** and follows the bytes the
 whole way: from the keystroke that mints a token, across the second server's
-bearer check, through the two authorization layers, back over the wire as a
-graded matrix, onto each gradable field as a per-field `TomAuthorizer.fixed`, and
-finally onto the field the user sees. It is *synthesized* from the endpoint, access, and client-http sources —
+bearer check, through the resource-role resolution folded into a flat
+`resourceKey → roleName` map fetched once at login, into the global
+`AppResourceRoleAdapter`, and finally onto each gradable field — graded *locally*
+through the framework registry as a per-field `TomAuthorizer.fixed` — the field
+the user sees. It is *synthesized* from the endpoint, access, and client-http sources —
 a single trace, not a transcription of any one file — so the two headline rules
 ([server-delivered texts](README_advanced_08_resources_texts.md),
 [name-driven authorization](README_advanced_07_authorization.md)) can be watched
@@ -31,15 +33,19 @@ producing the credential the second consumes:
 <!-- Figure: request lifecycle — two round-trips. Round-trip 1 (auth server :8081,
 PUBLIC): ① POST /auth/login → AuthClient.login → AuthTokenService.login →
 authenticateUser (verify password) → issue JWT pair (auth + authz, 2h) →
-LoginResult; ② client stores the pair (TomBearerAuthentication). Round-trip 2
-(app server :8080, AUTHENTICATED, Authorization: Bearer): ③ GET
-/items/{id}/field-states → pipeline verifies the JWT → principal into the request
-zone; ④ ResourceRoleResolver.resolveRole (ownership-or-share → ProjectRole); ⑤
-FieldGradeResolver.resolveItemFieldStates (role → per-field grade), grants read
-from the `main` datasource bound to auth_db → [GradedFieldDto]; ⑥ client installs
-them on the adapter and each field renders by its grade. -->
+LoginResult; ② client stores the pair (TomBearerAuthentication) AND, once at
+login, fetches GET /resource-roles → the principal's resourceKey→roleName map,
+installing an AppResourceRoleAdapter as the global TomAuthorization adapter.
+Round-trip 2 (app server :8080, AUTHENTICATED, Authorization: Bearer): ③ GET
+/items/{id} (list/read) → pipeline verifies the JWT → principal into the request
+zone; ④ ResourceRoleResolver.resolveRole (ownership-or-share → ProjectRole)
+already folded into the resourceRoles map; the client then grades each field
+LOCALLY — the item screen resolves the item's resource ceiling through the
+registry and narrows it by the shared projectRoleFieldGrades[role] row, with no
+per-field round-trip. The server computes per-field grades only to ENFORCE the
+WRITE path. -->
 
-![The request lifecycle in two round-trips: round-trip 1 logs in at the auth server to obtain a stored token pair; round-trip 2 sends a bearer-authenticated field-states request that the app server verifies, resolves the role for, grades per field, and returns.](assets/architecture/advanced_07_request_lifecycle.svg)
+![The request lifecycle in two round-trips: round-trip 1 logs in at the auth server to obtain a stored token pair and fetches the principal's resource-roles map once; round-trip 2 sends bearer-authenticated read requests that the app server verifies and answers, while the client grades each field locally through the registry.](assets/architecture/advanced_07_request_lifecycle.svg)
 
 <details><summary>Text / mermaid equivalent</summary>
 
@@ -51,8 +57,8 @@ graph TB
     u1 -. "② store pair (TomBearerAuthentication)" .-> u1
   end
   subgraph RT2["Round-trip 2 · app server :8080 · AUTHENTICATED (Bearer)"]
-    u2[user/client] -- "③ GET /items/{id}/field-states" --> pipe["pipeline verifies JWT → principal into zone<br/>④ ResourceRoleResolver.resolveRole (ownership-or-share → ProjectRole)<br/>⑤ FieldGradeResolver.resolveItemFieldStates (role → per-field grade)<br/>grants read from `main` datasource → auth_db"]
-    pipe -- "[GradedFieldDto] · ⑥ render by grade" --> u2
+    u2[user/client] -- "③ GET /resource-roles (once at login) + GET /items/{id}" --> pipe["pipeline verifies JWT → principal into zone<br/>④ AppReadService.resourceRoles folds ownership + shares → flat resourceKey→roleName map<br/>(ResourceRoleResolver.resolveRole semantics, expanded down the containment subtree)<br/>grants read from `main` datasource → auth_db"]
+    pipe -- "Map&lt;String,String&gt; resourceRoles · ⑥ client installs AppResourceRoleAdapter, grades fields locally" --> u2
   end
   RT1 --> RT2
 ```
@@ -115,7 +121,8 @@ the singleton token store.
 
 ## 2. App-server bearer validation
 
-The client now reads an item's field grades. Every app call goes through
+The client now reads the item (and, once at login, the principal's
+`resourceRoles` map). Every app call goes through
 `AuthorizedHttp.send`, which injects the stored bearer **fresh on each attempt**
 and delegates the self-heal decision to the framework's pluggable policy
 (`tom_core_kernel`'s `tomRunWithAuthRetry`, G-AUTH-3) — the endpoint carries no
@@ -160,11 +167,16 @@ auth-user surrogate key — is the only identity the rest of the trace uses.
 
 ## 3. Ownership / share resolution
 
-The endpoint delegates to `AppReadService.itemFieldStates(userId, itemId)`
-(`app_endpoints.dart:226`), whose **first** act is to resolve *whether `val` may
-touch this item at all, and as what role* — the app server's first authorization
-layer, `ResourceRoleResolver.resolveRole`
-(`advanced_app_server/lib/src/access/resource_role_resolver.dart:117`):
+At login the client also calls `AppReadService.resourceRoles(userId)`
+(via `GET /resource-roles`, `AppApiClient.resourceRoles()`,
+`advanced_client_core/lib/src/api/app_api_client.dart:247`), which folds the
+principal's ownership grants + share delegations and expands each down its
+containment subtree into a flat `resourceKey → roleName` map (a workspace/project
+grant surfaces on every contained list/item). That fold reuses the app server's
+resource-role authorization layer, `ResourceRoleResolver.resolveRole`
+(`advanced_app_server/lib/src/access/resource_role_resolver.dart:117`), whose
+per-item logic resolves *whether `val` may touch this item at all, and as what
+role*:
 
 1. **Fold the principal's effective roles.** The framework
    `TomDelegationResolver.resolveEffectiveRoles(userId, now)` folds the
@@ -185,116 +197,110 @@ layer, `ResourceRoleResolver.resolveRole`
 4. **No match → `null`.** With neither an owning grant nor a covering share in
    the folded map the result is `null` = **no access**.
 
-For our request the resolver returns `ProjectRole.viewer`. Had it returned
-`null`, `itemFieldStates` throws `app.item.not_found` (`:232-237`) — **404**, not
-403: a resource the caller cannot reach is reported *missing*, never leaking that
-it exists ([A1](README_advanced_A1_authorization_state_machine.md), closed-safe).
+For our request the resolver returns `ProjectRole.viewer`, and `val`'s
+`resourceRoles` map carries `todo.item:<id> → viewer`. A resource the caller
+cannot reach simply does not appear in the folded map (and a direct read of it is
+reported *missing* — **404**, not 403 — never leaking that it exists,
+[A1](README_advanced_A1_authorization_state_machine.md), closed-safe).
 
-## 4. Field-grade computation
+## 4. Field grades — resolved locally on the client
 
-The resolved **role** is now mapped to a **per-field grade** — the second
-authorization layer, `FieldGradeResolver.resolveItemFieldStates(role)`
-(`advanced_app_server/lib/src/access/field_grade_resolver.dart:73`):
-
-```dart
-final graded = await gradesForRole(role);    // load the role's grant rows, fold them
-return {
-  for (final key in _gradableItemKeys) key: graded.resolveState(key),
-};
-```
-
-Three facts make this layer the load-bearing one:
-
-- **The grants are data in `auth_db`.** The grade matrix is the
-  `tom_resource_grant` table owned by the auth server; the app server reaches it
-  through the framework's `main` datasource, which the app boot binds to the
-  shared `auth_db` connection (`:30-39`,
-  [Part 05](README_advanced_05_persistence_database.md)). This is why an admin's
-  grant edit on the auth server is visible to the app server with no extra wiring
-  — the cross-tier scenario in [Part 12](README_advanced_12_testing_integration.md)
-  asserts exactly this.
-- **Folding reuses the framework verbatim.** `gradesForRole` defers to
-  `TomGradedAccessControlInformation.fromGrants` (`:65`) — the *same* projection
-  the auth server's admin API uses — so the two tiers agree on grade semantics
-  (a key granted twice widens to the most permissive,
-  [A1](README_advanced_A1_authorization_state_machine.md)).
-- **Absence is `none`.** Every gradable `todo.item.*` key is resolved; a
-  field with **no** grant row degrades to `TomAuthState.none` (hidden) — the
-  closed-safe default (`:73-80`).
-
-For the `viewer` role the seeded matrix yields: `title`/`description`/`priority`/
-`assigneeId`/`dueDate` → `read`, `status` → `disabled`, `estimate` → `none`. That
-map — keyed by `todo.item.<field>`
-([A2](README_advanced_A2_resource_scope_conventions.md)) — is the entire payload.
-
-## 5. Graded DTO over the wire
-
-`itemFieldStates` projects the grade map into the wire shape, one
-`GradedFieldDto` per gradable field in display order
-(`app_endpoints.dart:239-242`):
+The read path no longer ships a per-field grade matrix. Instead the client
+grades each field **locally**, from two pieces already in hand: the item's
+resource-level ceiling (resolved through the framework registry via the installed
+`AppResourceRoleAdapter`) and the shared per-role field-grade rows,
+`projectRoleFieldGrades[role]` — which live in the SHARED DOMAIN, not in the
+client. The item detail screen's `_resolveForm()` is fully **synchronous** (no
+backend round-trip, `advanced_app_client/lib/screens/item_detail_screen.dart:85-111`):
 
 ```dart
-return [
-  for (final entry in states.entries)
-    GradedFieldDto(resourceKey: entry.key, access: entry.value),
-];
+final itemKey = 'todo.item:$id';                              // ResourceRoleKeys.itemType
+final resourceState = TomAuthorization.resolveAuth(itemKey);   // ceiling via the registry
+final role = ProjectRole.values.asNameMap()[session.resourceRoles[itemKey]];
+final grades = projectRoleFieldGrades[role];                   // shared-domain per-role row
+for (final field in form.gradableFields) {
+  field.authorizer =
+      TomAuthorizer.fixed(resourceState.narrow(grades[field.basePath] ?? TomAuthState.none));
+}
 ```
 
-The endpoint pipeline serializes that as a **bare JSON array** of
-`{resourceKey, access}` maps (no envelope) — `appItemFieldStates`,
-`GET /items/{id}/field-states` (`:1017-1021`). On the client, `AppApiClient.itemFieldStates`
-re-reads it with the pure `parseFieldStates` parser
-(`advanced_client_core/lib/src/api/app_api_client.dart:246`,`:145`):
+Three facts keep this closed-safe *and* keep the registry load-bearing:
+
+- **The ceiling comes through the registry.** `TomAuthorization.resolveAuth`
+  routes the `todo.item:<id>` key through the installed `AppResourceRoleAdapter`
+  (`advanced_app_client/lib/app/app_resource_role_adapter.dart`); a key with no
+  role resolves to `none`, so the item's fields collapse — closed-safe.
+- **The grades reuse the shared domain verbatim.** `projectRoleFieldGrades[role]`
+  is the *same* per-role field-grade table the domain declares once, so client and
+  server agree on grade semantics by construction.
+- **The narrow reproduces the matrix.** Because every role's field grades sit at
+  or below its resource ceiling, `resourceState.narrow(grades[basePath] ?? none)`
+  reproduces the §A.4 matrix exactly; a missing grade or a missing role collapses
+  the field to `none` (`:85-111`).
+
+**The server still computes per-field grades — but only to ENFORCE writes**
+(§"The write path", below), never as a read payload. For the `viewer` role the
+shared field-grade row yields: `title`/`description`/`priority`/`assigneeId`/
+`dueDate` → `read`, `status` → `disabled`, `estimate` → `none`, keyed by
+`todo.item.<field>` ([A2](README_advanced_A2_resource_scope_conventions.md)).
+
+## 5. The resourceRoles map over the wire
+
+The only authorization payload the app server ships on a read is the flat
+`resourceRoles` map, served by `AppReadService.resourceRoles(userId)` at
+`GET /resource-roles` (`appResourceRoles`). It is a plain
+`Map<String, String>` — `resourceKey → roleName` — with no `GradedFieldDto`,
+no per-field grade, and no envelope. On the client, `AppApiClient.resourceRoles`
+decodes it (`advanced_client_core/lib/src/api/app_api_client.dart:247`):
 
 ```dart
-List<GradedFieldDto> parseFieldStates(List<Object?> body) =>
-    [for (final e in body) dtoFromJson<GradedFieldDto>(_asObjectMap(e))];
+Future<Map<String, String>> resourceRoles() async { … } // GET /resource-roles → resourceKey→roleName
 ```
 
-Each map is decoded by `dtoFromJson<GradedFieldDto>` — the reflection-first DTO
-helper ([Part 04](README_advanced_04_wire_contracts_dtos.md)), not a hand-written
-`GradedFieldDto.fromJson` (there is none). The `access` **token** rides as a
-plain `String`; the closed-safe conversion happens *at read time* on the typed
-`GradedFieldDto.accessState` accessor. So the wire codec carries the **same
-closed-safe default** the server resolver and the client adapter use: an
-unrecognised `access` token resolves to `TomAuthState.none` via
-`accessState` (`app_api_client.dart:141-146`).
-So a corrupt or unknown grade fails *hidden*, not *open* — the third independent
-`none`-defaulting point [A1](README_advanced_A1_authorization_state_machine.md)
-enumerates.
+Fetched once at login, that map is snapshotted on the session and wrapped in the
+global `AppResourceRoleAdapter` (§6). The closed-safe defaults now live entirely
+on the client resolution path: the adapter resolves an ungranted resource key to
+`none`, a `roleName` with no matching `ProjectRole` yields `none`, and a field
+with no grade in `projectRoleFieldGrades[role]` falls to `none` (§4). So a
+corrupt or missing entry fails *hidden*, not *open* — the same three independent
+`none`-defaulting points [A1](README_advanced_A1_authorization_state_machine.md)
+enumerates, now resolved locally rather than over the wire.
 
 ## 6. Client field rendering
 
-The parsed matrix flows up through the backend seam and is cached on the session.
-`LiveAppBackend.itemFieldStates`
-(`advanced_app_client/lib/backend/live_app_backend.dart:84`) returns it to
-`AppSession.loadFieldStates`
-(`advanced_app_client/lib/app/app_session.dart`), which stores it as the current
-matrix (`currentFieldStates`):
+At login the session snapshots the principal's `resourceRoles` map (field
+`_resourceRoles`) and installs an `AppResourceRoleAdapter(resourceRoles)` as the
+**global** `TomAuthorization` adapter; on logout it resets the adapter
+(`advanced_app_client/lib/app/app_session.dart`, doc lines 10-14). The adapter
+(`advanced_app_client/lib/app/app_resource_role_adapter.dart`) wraps a
+`TomResourceRoleAdapter` over the map and the `TomResourceRoleRegistry`: it gates
+only `<type>:<id>` resource keys (those containing `:`); any dotted path
+(`todo.item.title`, `todo.item.save`, chrome) stays permissive (`full`), matching
+the pre-RCC2 no-adapter behaviour.
+
+When the item detail screen opens an item, `_resolveForm()`
+(`advanced_app_client/lib/screens/item_detail_screen.dart:85-111`) grades each
+gradable field **synchronously** — resolving the item's resource ceiling through
+the registry and narrowing it by the shared `projectRoleFieldGrades[role]` row
+(§4):
 
 ```dart
-void _setFieldStates(Map<String, TomAuthState> states) {
-  _currentFieldStates = states;   // the screen stamps THIS item's grades onto its fields
-}
-```
-
-The item detail screen then stamps each gradable field with a per-field
-authorizer (`advanced_app_client/lib/screens/item_detail_screen.dart:99-102`):
-
-```dart
+final resourceState = TomAuthorization.resolveAuth('todo.item:$id'); // via the installed adapter
+final grades = projectRoleFieldGrades[role];                          // shared-domain row
 for (final field in form.gradableFields) {
   field.authorizer =
-      TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none);
+      TomAuthorizer.fixed(resourceState.narrow(grades[field.basePath] ?? TomAuthState.none));
 }
 ```
 
-There is **no** installed authorization adapter. From here the form takes over:
+There is no per-field installed adapter — the global `AppResourceRoleAdapter`
+plus the fixed per-field authorizer do the work. From here the form takes over:
 each `TodoItemForm` field self-addresses as `todo.item.<field>`
 ([A2](README_advanced_A2_resource_scope_conventions.md)) and runs
 `resolveEffectiveAuth`, whose **layer-4** step
 (`authorizer.effectiveAuth(state)`) applies the fixed grade just stamped
-([A1](README_advanced_A1_authorization_state_machine.md)); layers 1 and 3 stay at
-the permissive no-adapter default. The four states paint the widget:
+([A1](README_advanced_A1_authorization_state_machine.md)). The four states paint
+the widget:
 
 | Field | `val`'s grade | Renders as |
 | --- | --- | --- |
@@ -341,24 +347,27 @@ the app client — but it is the backstop for a client that ignores its grade.
 This whole trace is exactly what the cross-tier integration runner drives
 end-to-end against a freshly booted stack — `advanced_client_core/tool/run_cross_tier_integration.sh`
 + `cross_tier_integration_test.dart` (TC-37-01,
-[Part 12](README_advanced_12_testing_integration.md)). Its first scenario walks
-§1–§6 with a real grade edit in between: the `admin` edits the `viewer` role's
-`todo.item.title` grant through the auth server (§4's grant rows), and a seeded
-`viewer` then re-reads the item's field states from the *app* server and sees the
-new grade — proving the `main`→`auth_db` binding of §4 carries an admin write all
-the way to a rendered field. The runner exiting `0` ("All tests passed!") is the
-live proof that this appendix's six steps hold against sockets, not just on paper.
+[Part 12](README_advanced_12_testing_integration.md)). Its first scenario proves
+an admin grant edit reaches the end-user **write enforcement**: the `viewer`'s
+`todo.item.title` write is rejected at `read`, then accepted after the `admin`
+regrades the `viewer` role's `todo.item.title` grant to `full` through the auth
+server — proving the `main`→`auth_db` binding of the write path (§"The write
+path") carries an admin write all the way to the server's field-write check. The
+runner exiting `0` ("All tests passed!") is the live proof that these steps hold
+against sockets, not just on paper.
 
 ## Primary sources
 
 - `advanced_client_core/lib/src/auth/auth_client.dart:68`,`:145`;
   `advanced_client_core/lib/src/http/authorized_http.dart:56`,`:82-99`
 - `advanced_auth_server/lib/src/endpoints/auth_endpoints.dart:59`,`:95-121`,`:193-200`,`:148`
-- `advanced_app_server/lib/src/endpoints/app_endpoints.dart:226`,`:564`,`:663`,`:904`,`:981`,`:1017-1021`
+- `advanced_app_server/lib/src/endpoints/app_endpoints.dart:564`,`:663`,`:904`,`:981`
 - `advanced_app_server/lib/src/access/resource_role_resolver.dart:117`;
-  `advanced_app_server/lib/src/access/field_grade_resolver.dart:65`,`:73`
-- `advanced_client_core/lib/src/api/app_api_client.dart:145`,`:229`,`:246`;
-  `advanced_app_client/lib/app/app_session.dart` (`loadFieldStates`/`currentFieldStates`); `advanced_app_client/lib/screens/item_detail_screen.dart:99-102`
+  `advanced_app_server/lib/src/access/field_grade_resolver.dart:65`,`:73` (WRITE-path enforcement)
+- `advanced_client_core/lib/src/api/app_api_client.dart:229`,`:247` (`resourceRoles`);
+  `advanced_app_client/lib/app/app_session.dart` (`_resourceRoles`);
+  `advanced_app_client/lib/app/app_resource_role_adapter.dart`;
+  `advanced_app_client/lib/screens/item_detail_screen.dart:85-111`
 - `run_cross_tier_integration.sh` (the same loop, executed live)
 - Companions: [06](README_advanced_06_authentication.md) ·
   [07](README_advanced_07_authorization.md) ·

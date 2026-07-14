@@ -116,20 +116,6 @@ void main() {
       expect(comment.authorId.get(), '2');
       expect(comment.body.get(), 'Looks good to me');
     });
-
-    test('TC-24-07: parseFieldStates maps the per-field grade array', () {
-      final states = parseFieldStates([
-        {'resourceKey': 'todo.item.title', 'access': TomAuthState.full.name},
-        {'resourceKey': 'todo.item.priority', 'access': TomAuthState.read.name},
-        // An unknown access token degrades to none (closed-safe).
-        {'resourceKey': 'todo.item.assigneeId', 'access': 'bogus'},
-      ]);
-      expect(states, hasLength(3));
-      expect(states[0].resourceKey, 'todo.item.title');
-      expect(states[0].accessState, TomAuthState.full);
-      expect(states[1].accessState, TomAuthState.read);
-      expect(states[2].accessState, TomAuthState.none);
-    });
   });
 
   group('AppApiClient over a fake transport', () {
@@ -239,27 +225,6 @@ void main() {
       );
     });
 
-    test('TC-24-13: itemFieldStates GETs the per-item field-state array',
-        () async {
-      storeBearer();
-      final transport = _RoutingTransport({
-        '/items/11/field-states': [
-          HttpJsonResponse(
-              200,
-              jsonEncode([
-                {'resourceKey': 'todo.item.title', 'access': 'full'},
-                {'resourceKey': 'todo.item.priority', 'access': 'read'},
-              ])),
-        ],
-      });
-      final client = clientOver(transport);
-
-      final states = await client.itemFieldStates(EntityIdRequest(id: '11'));
-
-      expect(states.map((s) => s.resourceKey),
-          ['todo.item.title', 'todo.item.priority']);
-      expect(transport.callsTo('/items/11/field-states').single.method, 'GET');
-    });
   });
 }
 

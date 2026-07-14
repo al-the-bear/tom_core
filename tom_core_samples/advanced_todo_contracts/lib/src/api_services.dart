@@ -18,7 +18,6 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 
 import 'admin_dtos.dart';
 import 'entity_id_request.dart';
-import 'graded_field_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
 import 'resource_bundle_dto.dart';
@@ -149,8 +148,8 @@ abstract class AppApiService {
   /// `appListLists` — `GET /lists?projectId=`. Lists in a visible project.
   Future<List<TodoList>> listLists(String projectId);
 
-  /// `appListItems` — `GET /items?listId=`. Items in a visible list; pair with
-  /// [itemFieldStates] for the per-field grade matrix.
+  /// `appListItems` — `GET /items?listId=`. Items in a visible list; the client
+  /// resolves each field's grade locally from its resource-role map ([appResourceRoles]).
   Future<List<TodoItem>> listItems(String listId);
 
   /// `appCreateItem` — `POST /items`. Rejects writes to fields the principal's
@@ -170,11 +169,6 @@ abstract class AppApiService {
   /// `{id}` path capture binds onto `TodoComment.itemId` (a non-identity
   /// `{'id': 'itemId'}` `urlParameterMapping`).
   Future<TodoComment> addComment(TodoComment comment);
-
-  /// `appItemFieldStates` — `GET /items/{id}/field-states`. The four-state
-  /// matrix for *this* principal, one [GradedFieldDto] per gradable field. The
-  /// `{id}` path capture binds onto [EntityIdRequest.id].
-  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request);
 
   /// `appShare` — `POST /share`. Owner shares a resource with a user at a role.
   Future<void> share(ShareRequest request);

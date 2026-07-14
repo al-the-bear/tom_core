@@ -1,17 +1,16 @@
 /// Database-free integration tests for the read endpoints (step 19, RCC3): the
-/// [AppReadService] composes the step-17 [ResourceRoleResolver] and the step-18
-/// field-grade resolver, so the whole read path — visibility filtering plus the
-/// per-field grade matrix — verifies against seeded in-memory stores with no
-/// server or MariaDB.
+/// [AppReadService] composes the step-17 [ResourceRoleResolver], so the read
+/// path — visibility filtering plus the flat resource-role map the client grades
+/// fields against locally (RCC2) — verifies against seeded in-memory stores with
+/// no server or MariaDB.
 ///
 /// The fixture mirrors §A.10 (workspace 1 owned by alice=2, project 1 → lists
-/// 1,2; items 1,2 in list 1) and §A.4 (the grant matrix the auth server seeds),
-/// with bob=3 shared `editor` and carol=4 shared `viewer` on the project. RCC3
-/// expresses ownership as a C-5 owner grant (RCC1) and each share as a C-6
-/// `share`-mode [TomPrincipalDelegation], folded by the framework resolver into
-/// the effective roles the containment rule then walks. The step-19 "Done" bar
-/// is the headline pair: a shared user sees the owner's project, a stranger does
-/// not.
+/// 1,2; items 1,2 in list 1), with bob=3 shared `editor` and carol=4 shared
+/// `viewer` on the project. RCC3 expresses ownership as a C-5 owner grant (RCC1)
+/// and each share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the
+/// framework resolver into the effective roles the containment rule then walks.
+/// The step-19 "Done" bar is the headline pair: a shared user sees the owner's
+/// project, a stranger does not.
 ///
 /// The list endpoints return observable domain entities (built through the
 /// mapping layer), so the registry must be live before they run; the grant and
@@ -20,7 +19,6 @@
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
-import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -34,58 +32,6 @@ const int alice = 2; // workspace owner
 const int bob = 3; // editor, shared on project 1
 const int carol = 4; // viewer, shared on project 1
 const int dave = 99; // stranger — grantee of no share, owner of nothing
-
-// The §A.4 field-grade matrix — the per-field state for each role, the same
-// data the auth server's `[001]-auth_authz_grants.sql` seeds.
-const Map<ProjectRole, Map<String, TomAuthState>> a4Matrix = {
-  ProjectRole.owner: {
-    'todo.item.title': TomAuthState.full,
-    'todo.item.status': TomAuthState.full,
-    'todo.item.priority': TomAuthState.full,
-    'todo.item.assigneeId': TomAuthState.full,
-    'todo.item.dueDate': TomAuthState.full,
-    'todo.item.estimate': TomAuthState.full,
-    'todo.item.description': TomAuthState.full,
-  },
-  ProjectRole.editor: {
-    'todo.item.title': TomAuthState.full,
-    'todo.item.status': TomAuthState.full,
-    'todo.item.priority': TomAuthState.full,
-    'todo.item.assigneeId': TomAuthState.full,
-    'todo.item.dueDate': TomAuthState.full,
-    'todo.item.estimate': TomAuthState.read,
-    'todo.item.description': TomAuthState.full,
-  },
-  ProjectRole.commenter: {
-    'todo.item.title': TomAuthState.read,
-    'todo.item.status': TomAuthState.full,
-    'todo.item.priority': TomAuthState.read,
-    'todo.item.assigneeId': TomAuthState.read,
-    'todo.item.dueDate': TomAuthState.read,
-    'todo.item.estimate': TomAuthState.none,
-    'todo.item.description': TomAuthState.read,
-  },
-  ProjectRole.viewer: {
-    'todo.item.title': TomAuthState.read,
-    'todo.item.status': TomAuthState.read,
-    'todo.item.priority': TomAuthState.read,
-    'todo.item.assigneeId': TomAuthState.none,
-    'todo.item.dueDate': TomAuthState.read,
-    'todo.item.estimate': TomAuthState.none,
-    'todo.item.description': TomAuthState.read,
-  },
-};
-
-/// Flattens [a4Matrix] into the grant rows the auth server seeds.
-List<TomResourceGrant> seedGrants() => [
-      for (final role in a4Matrix.entries)
-        for (final field in role.value.entries)
-          TomResourceGrant(
-            roleName: role.key.name,
-            resourceKey: field.key,
-            accessLevel: field.value,
-          ),
-    ];
 
 // The §A.10 demo records. Fresh instances per call so the resource store and
 // the read store hold independent (but equal) copies.
@@ -145,7 +91,7 @@ ResourceRoleResolver demoResolver() => ResourceRoleResolver(
       ),
     );
 
-/// Wires the read service over the three seeded in-memory stores.
+/// Wires the read service over the two seeded in-memory stores.
 AppReadService demoService() => AppReadService(
       InMemoryAppReadStore(
         workspaces: demoWorkspaces(),
@@ -154,13 +100,7 @@ AppReadService demoService() => AppReadService(
         items: demoItems(),
       ),
       demoResolver(),
-      FieldGradeResolver(InMemoryGrantStore(seedGrants())),
     );
-
-/// Collapses a field-state list into the `resourceKey → state` map [a4Matrix]
-/// rows are expressed in.
-Map<String, TomAuthState> statesMap(List<GradedFieldDto> states) =>
-    {for (final state in states) state.resourceKey: state.accessState};
 
 void main() {
   // The list endpoints build observable domain entities through the mapping
@@ -177,13 +117,6 @@ void main() {
           ['1', '2']);
       expect((await service.listItems(alice, 1)).map((i) => i.id.get()),
           ['1', '2']);
-    });
-
-    test('item field-states reproduce the owner grade row (all full)', () async {
-      expect(
-        statesMap(await service.itemFieldStates(alice, 1)),
-        a4Matrix[ProjectRole.owner],
-      );
     });
   });
 
@@ -203,20 +136,6 @@ void main() {
       // bob has no workspace to list.
       expect(await service.listWorkspaces(bob), isEmpty);
     });
-
-    test('field-states reflect the editor grade row (estimate read-only)', () async {
-      expect(
-        statesMap(await service.itemFieldStates(bob, 1)),
-        a4Matrix[ProjectRole.editor],
-      );
-    });
-
-    test('the viewer grantee gets the viewer grade row', () async {
-      expect(
-        statesMap(await service.itemFieldStates(carol, 1)),
-        a4Matrix[ProjectRole.viewer],
-      );
-    });
   });
 
   group('a stranger sees nothing (the step-19 Done bar)', () {
@@ -225,13 +144,6 @@ void main() {
       expect(await service.listProjects(dave, 1), isEmpty);
       expect(await service.listLists(dave, 1), isEmpty);
       expect(await service.listItems(dave, 1), isEmpty);
-    });
-
-    test('item field-states are denied (closed/safe) for a stranger', () async {
-      expect(
-        () => service.itemFieldStates(dave, 1),
-        throwsA(isA<TomEndpointHandlerException>()),
-      );
     });
   });
 

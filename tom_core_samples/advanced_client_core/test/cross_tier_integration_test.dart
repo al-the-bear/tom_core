@@ -5,16 +5,16 @@
 ///
 /// [TC-37-01] walks the two authorization mechanisms that span the tiers:
 ///
-///  1. **An admin grant edit shows up in the end-user's field matrix.** The
-///     `admin` edits the `viewer` role's `todo.item.title` grant through the
-///     auth server's `/admin/grants`; `carol` (a seeded `viewer` on project 1)
-///     then re-reads item 1's field states from the *app* server and sees the
-///     new grade — proving the app server resolves grades from the very rows the
-///     auth server's admin API writes (the app server's `main` datasource points
-///     at `auth_db`, read-only). This is also the end-to-end proof that the
-///     principal's **resourceRoles** (RCC1's C-5 grants, folded into the token
-///     claim) drive authorization: the matrix a principal sees is exactly what
-///     its resolved roles grant.
+///  1. **An admin grant edit changes what the end-user may write.** The `admin`
+///     edits the `viewer` role's `todo.item.title` grant through the auth
+///     server's `/admin/grants`; `carol` (a seeded `viewer` on project 1) is
+///     first refused a title write (the field is graded `read`), then — after the
+///     admin regrades `title` to `full` — the *same* write succeeds. This proves
+///     the app server's field-grade enforcement reads the very rows the auth
+///     server's admin API writes (the app server's `main` datasource points at
+///     `auth_db`, read-only): a live admin edit is immediately observable in the
+///     end-user's write authorization. (The read side — a principal's
+///     **resourceRoles** driving what it may *see* — is [TC-37-06].)
 ///  2. **A share lets a second user see a project.** `alice` (workspace owner)
 ///     creates a fresh project, `bob` cannot list it, `alice` shares it with
 ///     `bob` as `editor`, and `bob` then lists it — the step-17 ownership-or-share
@@ -61,9 +61,12 @@
 /// than read-modify-write the matrix, the test posts the complete intended
 /// `viewer` row (the §A.4 seed with just `title` flipped); that preserves the
 /// other six fields and is robust to the read-back gap. The test normalises
-/// `title` to `read` first, asserts the `read→full` transition, and restores it
-/// to `read` in `finally`, so it leaves `auth_db` exactly as seeded and is
-/// re-runnable.
+/// `title` to `read` first (carol's write is rejected), regrades it to `full`
+/// (the same write now succeeds), and restores it to `read` in `finally`, so it
+/// leaves `auth_db` exactly as seeded and is re-runnable. carol's successful
+/// write mutates item 1's title in `app_db`; that is harmless (no later check
+/// asserts the title value) and the integration script's fresh-seeded volume
+/// resets it every run.
 ///
 /// **Identity sequencing.** [TomBearerAuthentication] is a single global token
 /// store, so only one principal is "logged in" at a time; the scenario re-logs
@@ -119,8 +122,8 @@ void main() {
         TomBearerAuthentication());
 
     test(
-        'TC-37-01: admin grant edit reaches the end-user matrix, and a share '
-        'reveals a project to a second user', () async {
+        'TC-37-01: admin grant edit reaches the end-user write enforcement, and '
+        'a share reveals a project to a second user', () async {
       // One live transport, shared by the AuthClient and both API clients (the
       // runtime wiring), closed regardless of outcome.
       final transport = IoJsonTransport();
@@ -141,17 +144,35 @@ void main() {
         await auth.login(_adminLogin);
         await admin.putGrants(_viewerRow(TomAuthState.read));
 
-        // --- Beat 2: carol (a viewer) sees title graded `read`. ---
+        // --- Beat 2: carol (a viewer) cannot write title while it is `read`. ---
         await auth.login(_carolLogin);
-        expect(await _carolTitleState(app), equals(TomAuthState.read));
+        final beforeGrant = await _findVisibleItem(app, _carolItemId);
+        expect(beforeGrant, isNotNull,
+            reason: 'carol (viewer) can read item 1 before attempting a write');
+        beforeGrant!.title.set('${beforeGrant.title.get()} (carol edit)');
+        await expectLater(
+          app.updateItem(beforeGrant),
+          throwsA(isA<AppApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)
+              .having((e) => e.key, 'key', 'app.item.field_forbidden')),
+          reason: 'title is graded `read` for the viewer role, so the write is '
+              'rejected field-by-field',
+        );
 
         // --- Beat 3: admin grants viewer.title -> full. ---
         await auth.login(_adminLogin);
         await admin.putGrants(_viewerRow(TomAuthState.full));
 
-        // --- Beat 4: carol re-reads; the app matrix reflects the new grant. ---
+        // --- Beat 4: carol re-fetches and the same title write now succeeds —
+        //     the live admin edit reached the app server's field enforcement. ---
         await auth.login(_carolLogin);
-        expect(await _carolTitleState(app), equals(TomAuthState.full));
+        final afterGrant = await _findVisibleItem(app, _carolItemId);
+        expect(afterGrant, isNotNull);
+        final editedTitle = '${afterGrant!.title.get()} (carol edit)';
+        final saved = await app.updateItem(afterGrant..title.set(editedTitle));
+        expect(saved.title.get(), equals(editedTitle),
+            reason: 'the admin regrade to `full` lets carol write the field the '
+                'app server previously refused');
 
         // --- Beat 5: alice creates a fresh project in her workspace. ---
         await auth.login(_aliceLogin);
@@ -415,13 +436,6 @@ Future<TodoItem?> _findVisibleItem(AppApiClient app, String itemId) async {
     }
   }
   return null;
-}
-
-/// carol's resolved grade for the `title` field on item [_carolItemId], read
-/// from the app server's field-state endpoint.
-Future<TomAuthState> _carolTitleState(AppApiClient app) async {
-  final states = await app.itemFieldStates(EntityIdRequest(id: _carolItemId));
-  return states.firstWhere((g) => g.resourceKey == _titleKey).accessState;
 }
 
 /// The complete `viewer` row from the §A.4 seed with `title` set to [title].

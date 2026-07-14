@@ -8,12 +8,14 @@
            → LoginResult;
         ② client stores the token pair (TomBearerAuthentication).
       ROUND-TRIP 2 (app server :8080, AUTHENTICATED, Authorization: Bearer):
-        ③ GET /items/{id}/field-states → pipeline verifies the JWT → principal into
+        ③ GET /resource-roles → pipeline verifies the JWT → principal into
            the request zone;
-        ④ ResourceRoleResolver.resolveRole (ownership-or-share → ProjectRole);
-        ⑤ FieldGradeResolver.resolveItemFieldStates (role → per-field grade),
-           grants read from the `main` datasource bound to auth_db → [GradedFieldDto];
-        ⑥ client installs them on the adapter; each field renders by its grade.
+        ④ AppReadService.resourceRoles folds the principal's ownership grants +
+           share delegations into effective roles;
+        ⑤ expands each grant down its containment subtree → flat resourceKey →
+           roleName map, grants read from the `main` datasource bound to auth_db;
+        ⑥ client installs it as AppResourceRoleAdapter; each field is graded
+           locally through the registry (narrowed by projectRoleFieldGrades[role]).
     Hinge: the shared JWT signing key lets the app server validate the auth-minted
     token offline, with no callback.
   -->
@@ -66,12 +68,12 @@
   <rect class="box app" x="410" y="240" width="360" height="120" rx="8"/>
   <text class="lbl" x="590" y="264" text-anchor="middle">app server pipeline</text>
   <text class="sub" x="590" y="284" text-anchor="middle">③ verify JWT → principal into request zone</text>
-  <text class="sub" x="590" y="302" text-anchor="middle">④ resolveRole (ownership-or-share → ProjectRole)</text>
-  <text class="sub" x="590" y="320" text-anchor="middle">⑤ resolveItemFieldStates (role → per-field grade)</text>
+  <text class="sub" x="590" y="302" text-anchor="middle">④ resolveRoles (fold ownership grants + shares)</text>
+  <text class="sub" x="590" y="320" text-anchor="middle">⑤ expand each grant down its containment subtree</text>
   <text class="sub" x="590" y="338" text-anchor="middle">grants read from `main` datasource → auth_db</text>
 
   <path class="flow" d="M190,265 L410,265"/>
-  <text class="note" x="300" y="256" text-anchor="middle">GET /items/{id}/field-states</text>
+  <text class="note" x="300" y="256" text-anchor="middle">GET /resource-roles</text>
   <path class="flow" d="M410,300 L190,300"/>
-  <text class="note" x="300" y="318" text-anchor="middle">[GradedFieldDto] — ⑥ render by grade</text>
+  <text class="note" x="300" y="318" text-anchor="middle">Map&lt;String,String&gt; — ⑥ install adapter, grade locally</text>
 </svg>

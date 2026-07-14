@@ -90,14 +90,17 @@ same interface for widget tests — and routes every call through
 `AuthorizedHttp`, so the bearer is attached and a single token expiry self-heals.
 
 The JSON↔entity mapping lives in **pure** top-level `parse*` functions
-(`parseWorkspaces`, `parseProjects`, `parseLists`, `parseItems`, `parseComment`,
-`parseFieldStates`), unit-tested against captured server-shaped responses with
-no socket — mirroring `core_client_sample`'s `LiveTodoReadClient` discipline.
+(`parseWorkspaces`, `parseProjects`, `parseLists`, `parseItems`, `parseComment`),
+unit-tested against captured server-shaped responses with no socket — mirroring
+`core_client_sample`'s `LiveTodoReadClient` discipline. The principal's
+authorization arrives as a flat `resourceKey → roleName` map from
+`GET /resource-roles` (`AppApiClient.resourceRoles`, decoded inline), which the
+app client installs in the framework registry to grade fields locally.
 
 - **Wire shape.** The app server emits the framework serialization of each
   service result: a single entity as `entity.toJson()`, a list as a *bare* JSON
   array of those maps (no `{items:[…]}` envelope), dates as the `@!@`-prefixed
-  ISO string, and the field-state matrix as a bare array of `GradedFieldDto`.
+  ISO string, and the resource-role map as a plain `Map<String, String>`.
 - **Errors.** A `403`/`404` (`{"error": key}` body) surfaces as a typed
   `AppApiException` carrying the server's stable key; a persistent `401` was
   already turned into an `TomAuthExpiredException` by the wrapper.

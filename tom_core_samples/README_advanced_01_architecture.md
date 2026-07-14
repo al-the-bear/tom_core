@@ -242,10 +242,10 @@ the same AppApiService method and its return value is reflection-serialized back
 
 ```mermaid
 graph LR
-  call["client call<br/>appApi.itemFieldStates(id)"] --> def["API definition<br/>contracts interface + api_registry<br/>uri · method · types · access"]
+  call["client call<br/>appApi.resourceRoles()"] --> def["API definition<br/>contracts interface + api_registry<br/>uri · method · types · access"]
   def --> route["routing<br/>server pipeline: match + enforce access"]
   route --> impl["service impl<br/>server implements AppApiService"]
-  impl -. "reflection-serialized result (List&lt;GradedFieldDto&gt;)" .-> call
+  impl -. "reflection-serialized result (Map&lt;String,String&gt;)" .-> call
 ```
 
 The endpoint model and per-endpoint access policy are part
@@ -293,14 +293,16 @@ producing the credential the second consumes.
 
 <!-- Figure: request lifecycle — two round-trips. Round-trip 1 (auth server :8081,
 PUBLIC): POST /auth/login verifies the password and issues a JWT pair
-(auth + authz, 2h) → LoginResult; the client stores the pair. Round-trip 2 (app
-server :8080, AUTHENTICATED, Bearer): GET /items/{id}/field-states → pipeline
-verifies the JWT and puts the principal in the request zone → resolveRole
-(ownership-or-share → ProjectRole) → resolveItemFieldStates (role → per-field
-grade), grants read from the `main` datasource bound to auth_db → [GradedFieldDto];
-the client installs them and renders each field by its grade. -->
+(auth + authz, 2h) → LoginResult; the client stores the pair and, once at login,
+fetches GET /resource-roles → the principal's resourceKey→roleName map, installing
+it as the global AppResourceRoleAdapter. Round-trip 2 (app server :8080,
+AUTHENTICATED, Bearer): GET /items/{id} (list/read) → pipeline verifies the JWT
+and puts the principal in the request zone; the client then grades each field
+LOCALLY — resolving the item's resource ceiling through the registry and narrowing
+it by the shared projectRoleFieldGrades[role] row. The server computes per-field
+grades only to enforce the WRITE path. -->
 
-![The request lifecycle in two round-trips: round-trip 1 logs in at the auth server to obtain a stored token pair; round-trip 2 sends a bearer-authenticated field-states request that the app server verifies, resolves the role for, grades per field, and returns.](assets/architecture/advanced_07_request_lifecycle.svg)
+![The request lifecycle in two round-trips: round-trip 1 logs in at the auth server to obtain a stored token pair and fetches the principal's resource-roles map once; round-trip 2 sends bearer-authenticated read requests, while the client grades each field locally through the registry.](assets/architecture/advanced_07_request_lifecycle.svg)
 
 <details><summary>Text / mermaid equivalent</summary>
 
@@ -312,8 +314,8 @@ graph TB
     u1 -. "② store pair (TomBearerAuthentication)" .-> u1
   end
   subgraph RT2["Round-trip 2 · app server :8080 · AUTHENTICATED (Bearer)"]
-    u2[user/client] -- "③ GET /items/{id}/field-states" --> pipe["pipeline: verify JWT → principal into zone<br/>④ resolveRole (ownership-or-share)<br/>⑤ resolveItemFieldStates (per-field grade) → auth_db"]
-    pipe -- "[GradedFieldDto] · ⑥ render by grade" --> u2
+    u2[user/client] -- "③ GET /resource-roles (once) + GET /items/{id}" --> pipe["pipeline: verify JWT → principal into zone<br/>④ resourceRoles folds ownership + shares → resourceKey→roleName map → auth_db"]
+    pipe -- "Map&lt;String,String&gt; · ⑥ client grades fields locally via registry + projectRoleFieldGrades[role]" --> u2
   end
   RT1 --> RT2
 ```

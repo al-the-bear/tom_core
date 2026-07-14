@@ -144,9 +144,11 @@ authorization is two resolvers the handlers consult per call (introduced in
   (`AppReadService._filterVisible`, `app_endpoints.dart:248`); `null` means the
   resource is simply not in the response.
 - **`FieldGradeResolver`** — maps a resolved `ProjectRole` to the per-field
-  `TomAuthState` matrix from the `tom_resource_grant` table. `itemFieldStates`
-  projects it into `GradedFieldDto`s for the client to render
-  (`app_endpoints.dart:226`); the write path re-checks it.
+  `TomAuthState` matrix from the `tom_resource_grant` table (in `auth_db`, via the
+  `main` datasource). It is used on the **WRITE path** to enforce per-field grades
+  (`_enforceFieldWrites`, below); it no longer serves any read. The app read
+  endpoints hand the client a flat `resourceRoles` map (`GET /resource-roles`),
+  from which the client grades fields locally.
 
 Writes enforce both layers. Structural mutations require a **minimum role**
 (`createProject`/`createItem` need `editor`, `deleteItem` `editor`, `addComment`

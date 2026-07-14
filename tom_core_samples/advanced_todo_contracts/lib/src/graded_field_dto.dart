@@ -2,11 +2,16 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// One resource key paired with its resolved four-state authorization.
 ///
-/// The app server projects a principal's per-field grade into these and ships
-/// them alongside each item (see `GET /items/{id}/field-states`); both Flutter
-/// clients render the grade onto field visibility/interactivity. It carries only
-/// the kernel [TomAuthState] token so the contract stays dependency-clean — the
-/// graded resolver itself lives server-side and never crosses the wire.
+/// This is the per-cell grade of the admin grant matrix ([GrantMatrixDto]): the
+/// auth server's `/admin/grants` path ships a `role → resourceKey → token` map,
+/// and [GrantMatrixDto.gradesFor] projects each row into these DTOs for the
+/// admin console's grant editor. It carries only the kernel [TomAuthState] token
+/// so the contract stays dependency-clean — the graded resolver itself lives
+/// server-side and never crosses the wire.
+///
+/// The app client, by contrast, no longer receives per-field grades over the
+/// wire: it fetches its flat `resourceKey → role` map from `GET /resource-roles`
+/// and resolves each field's grade locally through the framework registry (RCC2).
 ///
 /// A reflection-first wire DTO (G-DTO): `@tomReflector`, plain non-`final`
 /// fields, no hand-written serializer. The framework serializes it through the

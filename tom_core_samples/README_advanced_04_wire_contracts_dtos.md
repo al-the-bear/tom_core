@@ -82,8 +82,9 @@ servers and client core meet:
   grant matrix), `assign`, and `resources`.
 - **`AppApiService`** — the secured task surface: `health`, list/create over
   workspaces / projects / lists / items, `updateItem` / `deleteItem`,
-  `addComment`, **`itemFieldStates`** (the per-field grades), `share` /
-  `revokeShare`, and `resources`.
+  `addComment`, **`resourceRoles`** (`GET /resource-roles → Map<String,String>`,
+  the principal's flat `resourceKey → roleName` map the client grades fields
+  from), `share` / `revokeShare`, and `resources`.
 
 Because both ends compile against these interfaces, the request/response types
 are agreed by construction. The servers implement them (part
@@ -122,7 +123,7 @@ grant matrix — plus resources and login:
 
 | DTO | Endpoint | Purpose |
 | --- | --- | --- |
-| `GradedFieldDto` | `GET /items/{id}/field-states` | One `resourceKey` + its resolved `TomAuthState`. The app server projects a principal's per-field grade into a list of these; both clients render `access` onto field visibility/interactivity. Carries only the kernel `TomAuthState`, so the contract stays dependency-clean — the resolver itself never crosses the wire. |
+| `GradedFieldDto` | `GET /admin/grants` (via `GrantMatrixDto`) | One `resourceKey` + its `access` (`TomAuthState.name` token). It is the per-cell grade of the admin grant matrix `GrantMatrixDto` (`GrantMatrixDto.gradesFor(role)`), served by the auth server's `/admin/grants` path and rendered in the admin console's grant editor. Carries only the kernel `TomAuthState`, so the contract stays dependency-clean. It **no longer travels on any app read** — the app client grades fields locally from the `resourceRoles` map. |
 | `GrantMatrixDto` | `GET/PUT /admin/grants` | The full `(role, resourceKey) → TomAuthState` grid the authadmin editor reads and writes. Held in one reflected `matrix` field as `{role: {resourceKey: token}}`; edits produce a new instance via `withAccess`; `accessFor` is closed-safe. The auth server materialises a PUT into `TomResourceGrant` rows. |
 | `ResourceBundleDto` | the `resources` / `loginResources` endpoints | A bundle of server-delivered UI texts keyed by `<basePath>.<suffix>` (`todo.item.title.label`, `login.username.hint`, …) — exactly the shape `TomTextResourceProvider.from` accepts. The keys agree with the form fields' `basePath`s because both follow the one domain scope/form/field convention. Part [08](README_advanced_08_resources_texts.md). |
 | `LoginRequest` / `LoginResult` / `UserDto` | `POST /auth/login`, `refresh`, `me` | `LoginResult` carries the `UserDto`, the `authToken` + `authzToken`, and `expiresAt`. The bearer story is part [06](README_advanced_06_authentication.md). |

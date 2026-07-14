@@ -165,9 +165,9 @@ class InMemoryAppReadStore implements AppReadStore {
 /// [listWorkspaces] filters by the owner column directly — the same
 /// `owner_id = <principal.id>` predicate the `WorkspaceRecord` `@TomDbScope`
 /// enforces at the database, so the two are reconciled rather than stacked into
-/// a redundant per-row resolver call. The field-state endpoint resolves the
-/// principal's role on an item and projects the step-18 [FieldGradeResolver]'s
-/// per-field grades into [GradedFieldDto]s.
+/// a redundant per-row resolver call. The [resourceRoles] endpoint expands the
+/// principal's ownership grants and share delegations into a flat
+/// `<type>:<id> → role` map the client grades fields against locally (RCC2).
 class AppReadService {
   /// The listing seam candidate rows are enumerated through.
   final AppReadStore store;
@@ -175,18 +175,14 @@ class AppReadService {
   /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
   final ResourceRoleResolver accessResolver;
 
-  /// Resolves a [ProjectRole]'s per-field grades (step 18).
-  final FieldGradeResolver gradeResolver;
-
-  /// Builds the service over its three collaborators (live stores at boot,
+  /// Builds the service over its two collaborators (live stores at boot,
   /// seeded stores under test).
-  const AppReadService(this.store, this.accessResolver, this.gradeResolver);
+  const AppReadService(this.store, this.accessResolver);
 
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppReadService.production() => AppReadService(
         const RepositoryAppReadStore(),
         ResourceRoleResolver.production(),
-        FieldGradeResolver(const RepositoryGrantStore()),
       );
 
   /// Workspaces the principal [userId] owns.
@@ -230,31 +226,6 @@ class AppReadService {
         (r) => r.id,
         itemFromRecord,
       );
-
-  /// The principal [userId]'s per-field grade matrix for the item [itemId], one
-  /// [GradedFieldDto] per gradable field in display order.
-  ///
-  /// Throws [TomEndpointHandlerException] when the principal has no access to the
-  /// item (closed/safe — the item is treated as not found rather than leaking a
-  /// grade matrix for a resource the caller cannot reach).
-  Future<List<GradedFieldDto>> itemFieldStates(int userId, int itemId) async {
-    final role = await accessResolver.resolveRole(
-      userId: userId,
-      resourceType: AppResourceTypes.item,
-      resourceId: itemId,
-    );
-    if (role == null) {
-      throw TomEndpointHandlerException(
-        'app.item.not_found',
-        'No accessible item with id $itemId',
-      );
-    }
-    final states = await gradeResolver.resolveItemFieldStates(role);
-    return [
-      for (final entry in states.entries)
-        GradedFieldDto(resourceKey: entry.key, access: entry.value),
-    ];
-  }
 
   /// The principal [userId]'s effective resource-role map: every resource they
   /// can reach keyed `<type>:<id>` (e.g. `project:1`, `item:1`) → role name.
@@ -1120,11 +1091,6 @@ class AdvancedAppApiService implements AppApiService {
   @override
   Future<List<TodoItem>> listItems(String listId) =>
       _reads.listItems(_principalId, int.tryParse(listId) ?? -1);
-
-  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appItemFieldStates')
-  @override
-  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request) =>
-      _reads.itemFieldStates(_principalId, int.tryParse(request.id) ?? -1);
 
   // ----- Write endpoints (step 20) -----------------------------------------
 

@@ -3,7 +3,7 @@
     Client-call ↔ API-definition ↔ service-impl ↔ routing. One typed method is
     agreed by construction because both ends compile against the same interface:
       - CLIENT CALL: advanced_client_core invokes a typed AppApiService method
-        (e.g. itemFieldStates) — no URL string at the call site;
+        (e.g. listItems) — no URL string at the call site;
       - API DEFINITION: advanced_todo_contracts declares the interface AND the
         api_registry entry (URI, HTTP method, request/response types, per-endpoint
         TomAccessControl) — the single wire metadata;
@@ -40,7 +40,7 @@
   <rect class="box client"   x="20"  y="90" width="170" height="80" rx="8"/>
   <text class="lbl" x="105" y="118" text-anchor="middle">client call</text>
   <text class="sub" x="105" y="136" text-anchor="middle">advanced_client_core</text>
-  <text class="mono" x="105" y="154" text-anchor="middle">appApi.itemFieldStates(id)</text>
+  <text class="mono" x="105" y="154" text-anchor="middle">appApi.listItems(listId)</text>
 
   <rect class="box contract" x="230" y="90" width="180" height="80" rx="8"/>
   <text class="lbl" x="320" y="114" text-anchor="middle">API definition</text>
@@ -68,6 +68,6 @@
 
   <!-- response flow (reflection-serialized) -->
   <path class="resp" d="M650,150 L190,150"/>
-  <text class="respnote" x="420" y="250" text-anchor="middle">↩ response: reflection-serialized result (List&lt;GradedFieldDto&gt;)</text>
+  <text class="respnote" x="420" y="250" text-anchor="middle">↩ response: reflection-serialized result (List&lt;TodoItem&gt;)</text>
   <text class="note" x="420" y="290" text-anchor="middle">Both ends compile against the same interface + registry → server cannot drift from client.</text>
 </svg>

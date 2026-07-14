@@ -9,10 +9,9 @@
 /// **Wire contract.** The app server returns the framework serialization of the
 /// service method's result (`tom_core_server`'s endpoint pipeline): a single
 /// entity as `entity.toJson()` (≡ `TomClass.getValues()`), a list as a *bare*
-/// JSON array of those maps (no `{items:[…]}` envelope), `health()` as a plain
-/// object, and the field-state matrix as a bare array of [GradedFieldDto] maps.
-/// Date fields travel as the `@!@`-prefixed ISO string and the string-backed
-/// enum fields as their `name` token.
+/// JSON array of those maps (no `{items:[…]}` envelope), and `health()` as a
+/// plain object. Date fields travel as the `@!@`-prefixed ISO string and the
+/// string-backed enum fields as their `name` token.
 ///
 /// The `parse*` functions map that JSON to entities **field-by-field** (rather
 /// than the entity's own `setValues`) on purpose: the kernel's `TomList`
@@ -138,18 +137,8 @@ TodoComment parseComment(Map<String, dynamic> json) => TodoComment()
   ..body.set(_str(json['body']))
   ..createdAt.set(_date(json['createdAt']));
 
-/// Parses the `GET /items/{id}/field-states` body — a bare array of
-/// [GradedFieldDto] maps (`{resourceKey, access}`) — into the per-field grade
-/// list for the current principal. An unknown `access` token degrades to
-/// [TomAuthState.none] (closed-safe) at read time via [GradedFieldDto.accessState].
-List<GradedFieldDto> parseFieldStates(List<Object?> body) =>
-    [for (final e in body) dtoFromJson<GradedFieldDto>(_asObjectMap(e))];
-
 Map<String, dynamic> _asMap(Object? element) =>
     (element as Map).cast<String, dynamic>();
-
-Map<String, Object?> _asObjectMap(Object? element) =>
-    (element as Map).cast<String, Object?>();
 
 /// Reads [raw] as a string, falling back to [fallback] (default empty) when it
 /// is absent/null — matching the string-backed entity fields' own defaults.
@@ -242,11 +231,6 @@ class AppApiClient implements AppApiService {
                 body: jsonEncode(comment.toJson())))
             .jsonObject,
       );
-
-  @override
-  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request) async =>
-      parseFieldStates(
-          (await _get('/items/${request.id}/field-states')).jsonArray);
 
   @override
   Future<void> share(ShareRequest request) async =>

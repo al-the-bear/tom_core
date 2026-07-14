@@ -21,7 +21,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'admin_dtos.dart';
 import 'entity_id_request.dart';
-import 'graded_field_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
 import 'resource_bundle_dto.dart';
@@ -298,14 +297,6 @@ final TomApi appApi = TomApi(
       // The demonstrative non-identity mapping: the item id lives on the
       // comment's `itemId` field, so `{id}` → `TodoComment.itemId`.
       urlParameterMapping: const {'id': 'itemId'},
-      access: TomAuthenticatedAccess(),
-    ),
-    TomApiEndpoint<List<GradedFieldDto>, EntityIdRequest>(
-      id: 'appItemFieldStates',
-      uri: '/items/{id}/field-states',
-      method: TomHttpMethod.get,
-      // `{id}` → `EntityIdRequest.id` (identity).
-      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, ShareRequest>(

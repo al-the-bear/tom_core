@@ -24,7 +24,7 @@ stores with no server and no MariaDB; the adapter carries the production wiring
 
 | Logic (unit-tested, no server) | Concern | Surface |
 | --- | --- | --- |
-| `AppReadService` over `AppReadStore` | List workspaces/projects/lists/items; per-field grade states | `GET /workspaces…/items/{id}/field-states` |
+| `AppReadService` over `AppReadStore` | List workspaces/projects/lists/items; the principal's flat resource-role map | `GET /workspaces…/items`, `GET /resource-roles` |
 | `AppWriteService` over `AppWriteStore` + the resolvers | Create/update/delete items, comments, projects with field-grade enforcement | `POST`/`PUT`/`DELETE /items…`, `POST /projects` |
 | `AppShareService` over `ShareDelegationStore` + the resolver | Owner-only share / revoke | `POST /share`, `DELETE /share/{id}` |
 
@@ -103,7 +103,7 @@ ownership/share and per-field grade are enforced inside the handlers.
 | `GET /items` · `POST /items` | authenticated | List / create items (create: editor+, field-graded) |
 | `PUT /items/{id}` · `DELETE /items/{id}` | authenticated | Update (field-graded) / delete (editor+) an item |
 | `POST /items/{id}/comments` | authenticated | Comment on an item (commenter+) |
-| `GET /items/{id}/field-states` | authenticated | The caller's per-field `TomAuthState` for the item |
+| `GET /resource-roles` | authenticated | The caller's flat `resourceKey → roleName` map (client grades fields locally) |
 | `POST /share` | authenticated | **Owner-only** — grant a user a role on a resource |
 | `DELETE /share/{id}` | authenticated | **Owner-only** — revoke a share |
 

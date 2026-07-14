@@ -6,7 +6,8 @@
 /// is unit-tested against captured server responses with no socket. The admin
 /// DTOs (`UserDto`/`RoleDto`/`GroupDto`/`GrantMatrixDto`) are reflection-first
 /// value records, so the parsers are thin, total wrappers over `dtoFromJson<T>`
-/// (the same discipline as `parseFieldStates` over `dtoFromJson<GradedFieldDto>`).
+/// (the same discipline [AppApiClient.resources] uses over
+/// `dtoFromJson<ResourceBundleDto>`).
 ///
 /// **Wire contract.** The auth server returns the framework serialization of the
 /// service method's result (`tom_core_server`'s endpoint pipeline):

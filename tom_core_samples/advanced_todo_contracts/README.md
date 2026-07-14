@@ -144,14 +144,18 @@ The **gradable fields** are the stable `todo.item.*` resource-key set (addressed
 by scope + `tomId`, G-RES-6): `title`, `status`, `priority`, `assigneeId`,
 `dueDate`, `estimate`, `description`.
 
-The server projects the resolved per-field states to the client as
-[`GradedFieldDto`](lib/src/graded_field_dto.dart)s (`{resourceKey, access}`) via
-the `appItemFieldStates` endpoint (`GET /items/{id}/field-states`) — the
-four-state matrix for *this* principal. The app client renders each form field
-through a `TomAuthorizer.fixed(state)`, driven by these **live, per-principal**
-grades rather than an in-memory matrix. Writes are re-checked field-by-field
+The app server ships the principal's flat `resourceKey → roleName` map via the
+`appResourceRoles` endpoint (`GET /resource-roles`); the client installs it as an
+`AppResourceRoleAdapter` in the framework registry and grades each form field
+**locally** — resolving the item's resource ceiling through the registry and
+narrowing it by the shared per-role field-grade rows (`projectRoleFieldGrades`),
+then rendering through a `TomAuthorizer.fixed(state)`. Per-field grades never
+cross the wire on a read. Writes are still re-checked field-by-field
 server-side: a `PUT /items/{id}` touching a field the principal is not `full` on
-is rejected.
+is rejected. [`GradedFieldDto`](lib/src/graded_field_dto.dart)
+(`{resourceKey, access}`) survives only as the per-cell grade of the **admin**
+grant matrix ([`GrantMatrixDto`](lib/src/grant_matrix_dto.dart), the auth
+server's `/admin/grants` path), rendered in the admin console's grant editor.
 
 ### The seed grant matrix (data, not code)
 

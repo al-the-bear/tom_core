@@ -109,8 +109,11 @@ seeded for socket-free tests):
    key to its `TomAuthState`. A field with no grant row
    degrades to `none` — closed-safe (D-A4).
 
-The result is sent to the client as a `List<GradedFieldDto>` from the
-`itemFieldStates` endpoint (`advanced_app_server/lib/src/endpoints/app_endpoints.dart`).
+Server-side these grades feed the **write enforcement** path (below). The app
+client obtains what it needs to grade fields locally from a different, flat read:
+`resourceRoles` (`GET /resource-roles → Map<String,String>`,
+`advanced_app_server/lib/src/endpoints/app_endpoints.dart`), the principal's
+`resourceKey → roleName` map.
 
 > **Authorization is enforced server-side too, not just rendered.** The same
 > `FieldGradeResolver` gates **writes**: `AppWriteService._enforceFieldWrites`
@@ -119,28 +122,39 @@ The result is sent to the client as a `List<GradedFieldDto>` from the
 > the UI *shows*; the server independently re-checks what it *accepts*. A
 > tampered client cannot widen its own grades.
 
-## Per-field stamping on the client (no installed adapter)
+## Per-field grading on the client (global resource adapter + local narrow)
 
-On the client, that grade matrix is applied **per field**, not through a global
-adapter. When the item detail screen opens an item it fetches the item's grade
-matrix (`AppSession.loadFieldStates(itemId)` → `GET /items/{id}/field-states`,
-kept as `AppSession.currentFieldStates`, D-A3) and then stamps each gradable
-field with a **layer-4 fixed authorizer**
-(`advanced_app_client/lib/screens/item_detail_screen.dart:99-102`):
+On the client, field grades are computed **locally**, from two pieces already in
+hand — no per-field READ round-trip. At **login** the session snapshots the
+principal's `resourceRoles` map and installs an
+`AppResourceRoleAdapter(resourceRoles)` as the **global** `TomAuthorization`
+adapter (`advanced_app_client/lib/app/app_resource_role_adapter.dart`); on logout
+it resets the adapter. That adapter gates only `<type>:<id>` resource keys (those
+containing `:`); any dotted path (`todo.item.title`, chrome) stays permissive
+(`full`), matching the pre-RCC2 no-adapter behaviour.
+
+When the item detail screen opens an item, `_resolveForm()` grades each gradable
+field **synchronously** (`advanced_app_client/lib/screens/item_detail_screen.dart:85-111`):
 
 ```dart
+final resourceState = TomAuthorization.resolveAuth('todo.item:$id'); // ceiling via the registry
+final role = ProjectRole.values.asNameMap()[session.resourceRoles['todo.item:$id']];
+final grades = projectRoleFieldGrades[role];                          // shared-domain per-role row
 for (final field in form.gradableFields) {
   field.authorizer =
-      TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none);
+      TomAuthorizer.fixed(resourceState.narrow(grades[field.basePath] ?? TomAuthState.none));
 }
 ```
 
-`states[field.basePath]` is the DB-resolved grade for that field's wire key
-(`todo.item.<field>`); an unsent gradable key defaults to `TomAuthState.none` —
-**closed-safe** (D-A4): the field collapses rather than leaking an editable
-control. There is **no** `TomAuthorization.adapter` on the singleton, so the
-kernel's permissive no-adapter default applies to every *non-gradable* field
-(login, board, dialogs) untouched — the screen never has to carve out a
+`resourceState` is the item's resource-level ceiling resolved through the
+framework registry via the installed adapter (no role → `none`);
+`grades[field.basePath]` is the field's grade from the SHARED-DOMAIN
+`projectRoleFieldGrades[role]` row. Because every role's field grades sit at or
+below its resource ceiling, `resourceState.narrow(...)` reproduces the field-grade
+matrix exactly; a missing role or missing grade collapses the field to
+`TomAuthState.none` — **closed-safe** (D-A4). There is **no** per-field installed
+adapter; the global `AppResourceRoleAdapter` leaves every *non-gradable* dotted
+path (login, board, dialogs) permissive — the screen never has to carve out a
 namespace to keep the login screen visible.
 
 This deliberately replaced an earlier design that installed one
