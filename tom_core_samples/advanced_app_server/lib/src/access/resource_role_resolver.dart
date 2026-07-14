@@ -188,6 +188,23 @@ class _Ref {
   const _Ref(this.type, this.id);
 }
 
+/// Parses a resource key (`<type>:<id>`, e.g. `project:1`) into its type token
+/// and surrogate id, or `null` when it is absent or malformed.
+///
+/// The single parsing seam for the `<type>:<id>` convention [ResourceRoleKeys]
+/// builds keys with: the share revoke path (parsing a delegation's stored
+/// `resourceKey`) and the resource-role expansion (parsing the framework
+/// delegation resolver's effective-role keys) both read keys through it, so the
+/// parse rule lives in exactly one place.
+({String type, int id})? parseResourceKey(String? resourceKey) {
+  if (resourceKey == null) return null;
+  final separator = resourceKey.indexOf(':');
+  if (separator <= 0 || separator == resourceKey.length - 1) return null;
+  final id = int.tryParse(resourceKey.substring(separator + 1));
+  if (id == null) return null;
+  return (type: resourceKey.substring(0, separator), id: id);
+}
+
 /// The query-backed [ResourceContainmentStore] wired at boot.
 ///
 /// Reads parent links through the process-wide singleton repositories. Requires

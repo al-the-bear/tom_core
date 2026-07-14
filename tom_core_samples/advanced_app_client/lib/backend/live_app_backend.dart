@@ -15,17 +15,16 @@
 /// reflected entities, so the bootstrap must call `initializeReflection()` before
 /// the first call.
 ///
-/// **Live resourceRoles are not yet wired (RCB5).** Since RCC2 the app resolves
-/// field grades by installing the principal's `resourceRoles` as a framework
-/// [TomResourceRoleAdapter] (see [resourceRoles]). This Flutter-free client treats
-/// the authorization token as an opaque bearer (`decryptTokens: false`), so it
-/// cannot read the token's `resourceRoles` claim, and the app server exposes no
-/// endpoint that returns it. Until RCB5 delivers one (a readable claim or a
-/// `/resource-roles` endpoint) plus reconciles the surrogate/business id-space,
-/// [resourceRoles] returns empty against the live stack — every field resolves
-/// closed-safe to [TomAuthState.none]. The seeded [InMemoryAppBackend] (what the
-/// widget tests drive) already supplies real grants, so the teaching path is
-/// complete; the live gap is tracked, not silently degraded.
+/// **Live resourceRoles (RCB5).** Since RCC2 the app resolves field grades by
+/// installing the principal's `resourceRoles` as a framework
+/// [TomResourceRoleAdapter] (see [resourceRoles]). This Flutter-free client
+/// treats the authorization token as an opaque bearer (`decryptTokens: false`),
+/// so it cannot read the token's `resourceRoles` claim; instead [resourceRoles]
+/// fetches the grant map from the app server's authenticated
+/// `GET /resource-roles` endpoint, which resolves the principal's ownership
+/// grants and share delegations and expands them down the containment chain. The
+/// keys are `app_db` surrogate ids — the same ids `TodoItem.id` already carries
+/// on the live wire — so `item:<id>` lookups match without id translation.
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';
@@ -117,15 +116,8 @@ class LiveAppBackend implements AppBackend {
       _guard(() => _api.addComment(comment..itemId.set(itemId)));
 
   @override
-  Future<Map<String, String>> resourceRoles() async {
-    // Not yet wired against the live stack (RCB5): the authorization token is an
-    // opaque bearer here (`decryptTokens: false`), so its `resourceRoles` claim
-    // is unreadable, and the app server exposes no endpoint that returns the
-    // grant map. Returning empty is honest — the framework adapter resolves every
-    // resource key to none — rather than silently degrading. The seeded
-    // in-memory backend supplies real grants for the teaching path and tests.
-    return const {};
-  }
+  Future<Map<String, String>> resourceRoles() =>
+      _guard(() => _api.resourceRoles());
 
   @override
   Future<void> share(ShareRequest request) =>

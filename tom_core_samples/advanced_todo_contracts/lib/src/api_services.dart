@@ -193,4 +193,15 @@ abstract class AppApiService {
   /// are display strings, not data (D-A10: the app server serves the app
   /// client's full bundle).
   Future<ResourceBundleDto> resources();
+
+  /// `appResourceRoles` — `GET /resource-roles` (authenticated). The principal's
+  /// effective resource-role map: `<type>:<id>` (e.g. `project:1`, `item:1`) →
+  /// role name (`owner`/`editor`/`viewer`/`commenter`). The app server resolves
+  /// the principal's ownership grants (C-5) and share delegations (C-6) through
+  /// the framework delegation resolver, then expands each grant down its
+  /// containment chain so a project grant surfaces every contained item — the
+  /// exact key set the client's exact-match resource-role adapter needs to grade
+  /// fields (RCC2). The authz token is an opaque bearer client-side, so the map
+  /// is fetched here rather than read from a claim.
+  Future<Map<String, String>> resourceRoles();
 }

@@ -95,12 +95,16 @@ abstract class AppBackend {
   Future<TodoComment> addComment(String itemId, TodoComment comment);
 
   /// The current principal's per-resource role grants, as a
-  /// `resourceKey → roleName` map (`<type>:<id>` keys — e.g. `item:i-1` →
-  /// `'editor'`). This is the client-side view of the bearer token's
-  /// `resourceRoles` claim; the app installs it as a [TomResourceRoleAdapter] at
-  /// login, so the item screen resolves each field's state through the framework
-  /// registry. A resource the principal has no role on is simply absent (the
-  /// adapter resolves it closed-safe to [TomAuthState.none]).
+  /// `resourceKey → roleName` map (`<type>:<id>` keys — e.g. `item:1` →
+  /// `'editor'`). The app installs it as a [TomResourceRoleAdapter] at login, so
+  /// the item screen resolves each field's state through the framework registry.
+  /// A resource the principal has no role on is simply absent (the adapter
+  /// resolves it closed-safe to [TomAuthState.none]). The live backend fetches
+  /// this from the app server's authenticated `/resource-roles` endpoint (the
+  /// token is an opaque bearer client-side); the seeded in-memory backend
+  /// computes it from its own rows. Keys carry each backend's own id space —
+  /// `app_db` surrogate ids on the live wire, the demo's business ids in memory
+  /// — matching the ids that backend's entities expose.
   Future<Map<String, String>> resourceRoles();
 
   /// Shares the named resource with another user at a [ProjectRole].

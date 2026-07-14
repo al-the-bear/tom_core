@@ -332,6 +332,13 @@ final TomApi appApi = TomApi(
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),
+    TomApiEndpoint<Map<String, String>, Object?>(
+      id: 'appResourceRoles',
+      uri: '/resource-roles',
+      method: TomHttpMethod.get,
+      requestTypes: const [],
+      access: TomAuthenticatedAccess(),
+    ),
   ],
 );
 

@@ -259,6 +259,12 @@ class AppApiClient implements AppApiService {
   Future<ResourceBundleDto> resources() async =>
       dtoFromJson<ResourceBundleDto>((await _get('/resources')).jsonObject);
 
+  @override
+  Future<Map<String, String>> resourceRoles() async {
+    final body = (await _get('/resource-roles')).jsonObject;
+    return {for (final entry in body.entries) entry.key: '${entry.value}'};
+  }
+
   Future<HttpJsonResponse> _get(String path,
           [Map<String, String> query = const {}]) =>
       _send('GET', path, query: query);

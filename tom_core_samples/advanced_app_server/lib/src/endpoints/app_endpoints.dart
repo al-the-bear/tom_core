@@ -256,6 +256,78 @@ class AppReadService {
     ];
   }
 
+  /// The principal [userId]'s effective resource-role map: every resource they
+  /// can reach keyed `<type>:<id>` (e.g. `project:1`, `item:1`) → role name.
+  ///
+  /// Resolves the flat effective-role map from the framework delegation resolver
+  /// (ownership grants C-5 ∪ share delegations C-6), then expands each grant down
+  /// its containment subtree — a role on a workspace/project/list surfaces on
+  /// every resource it contains — so the client's exact-match resource-role
+  /// adapter (RCC2) can grade any reachable resource without re-walking ancestry.
+  /// When two grants cover the same resource the strongest role wins
+  /// ([ProjectRole] is declared most-to-least privileged, so the lowest index is
+  /// strongest). This is the read side of the resolver's containment rule: the
+  /// [resolveRole] walk climbs *up* from a target; this expansion walks *down*
+  /// from each grant, and the two agree on which role a principal holds where.
+  Future<Map<String, String>> resourceRoles(int userId) async {
+    final effective = await accessResolver.delegationResolver
+        .resolveEffectiveRoles(userId.toString(), DateTime.now());
+    final roles = <String, ProjectRole>{};
+    void put(String type, int id, ProjectRole role) {
+      final key = ResourceRoleKeys.forResource(type, id);
+      final existing = roles[key];
+      if (existing == null || role.index < existing.index) roles[key] = role;
+    }
+
+    for (final entry in effective.entries) {
+      final target = parseResourceKey(entry.key);
+      if (target == null) continue;
+      await _expandGrant(target.type, target.id, _parseRole(entry.value), put);
+    }
+    return {for (final e in roles.entries) e.key: e.value.name};
+  }
+
+  /// Emits `(type, id)`'s own key at [role] via [put], then recurses into its
+  /// children — so a grant on an ancestor surfaces on every descendant. An
+  /// unknown type contributes only its own key (nothing to walk beneath it).
+  Future<void> _expandGrant(
+    String type,
+    int id,
+    ProjectRole role,
+    void Function(String type, int id, ProjectRole role) put,
+  ) async {
+    put(type, id, role);
+    switch (type) {
+      case AppResourceTypes.workspace:
+        for (final project in await store.projectsInWorkspace(id)) {
+          final projectId = project.id;
+          if (projectId != null) {
+            await _expandGrant(AppResourceTypes.project, projectId, role, put);
+          }
+        }
+      case AppResourceTypes.project:
+        for (final list in await store.listsInProject(id)) {
+          final listId = list.id;
+          if (listId != null) {
+            await _expandGrant(AppResourceTypes.list, listId, role, put);
+          }
+        }
+      case AppResourceTypes.list:
+        for (final item in await store.itemsInList(id)) {
+          final itemId = item.id;
+          if (itemId != null) {
+            await _expandGrant(AppResourceTypes.item, itemId, role, put);
+          }
+        }
+    }
+  }
+
+  /// Parses a stored role token leniently — an unknown token degrades to
+  /// [ProjectRole.viewer] (the least-privileged), mirroring the resolver's own
+  /// lenient parse of delegation role tokens.
+  static ProjectRole _parseRole(String token) =>
+      ProjectRole.values.asNameMap()[token] ?? ProjectRole.viewer;
+
   /// Loads the candidate rows, keeps those the principal can reach (resolved
   /// [ProjectRole] is non-`null`), and projects each survivor into its domain
   /// entity. The single filtering path every list endpoint shares.
@@ -854,7 +926,7 @@ class AppShareService {
   /// (closed/safe).
   Future<void> revokeShare(int userId, int shareId) async {
     final delegation = await store.findDelegation(shareId);
-    final target = _parseResourceKey(delegation?.resourceKey);
+    final target = parseResourceKey(delegation?.resourceKey);
     if (delegation == null || target == null) {
       throw TomEndpointHandlerException(
         'app.share.not_found',
@@ -884,17 +956,6 @@ class AppShareService {
         'Only the resource owner may share or revoke access.',
       );
     }
-  }
-
-  /// Parses a delegation `resourceKey` (`<type>:<id>`) into its type token and
-  /// surrogate id, or `null` when it is absent or malformed.
-  static ({String type, int id})? _parseResourceKey(String? resourceKey) {
-    if (resourceKey == null) return null;
-    final separator = resourceKey.indexOf(':');
-    if (separator <= 0 || separator == resourceKey.length - 1) return null;
-    final id = int.tryParse(resourceKey.substring(separator + 1));
-    if (id == null) return null;
-    return (type: resourceKey.substring(0, separator), id: id);
   }
 }
 
@@ -1111,4 +1172,14 @@ class AdvancedAppApiService implements AppApiService {
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appResources')
   @override
   Future<ResourceBundleDto> resources() async => AppResourceBundles.appBundle();
+
+  // `resourceRoles` (`appResourceRoles`, authenticated `GET /resource-roles`)
+  // serves the caller's effective resource-role map (RCC2/RCB5). The client
+  // holds the authz token as an opaque bearer, so the grade-bearing role map is
+  // fetched here rather than decoded from a token claim; the app server resolves
+  // it from the principal's ownership grants and share delegations.
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appResourceRoles')
+  @override
+  Future<Map<String, String>> resourceRoles() =>
+      _reads.resourceRoles(_principalId);
 }
