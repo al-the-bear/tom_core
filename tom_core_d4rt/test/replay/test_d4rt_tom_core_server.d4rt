@@ -190,6 +190,34 @@ verify(currentTx.isRunning, 'current transaction is running');
 verifyEquals(currentTx.isReadOnly, false, 'transaction defaults to read-write');
 
 # =============================================================================
+# Test: Principal resource grants + delegation (C-6) — regenerated bridge
+# surface (RCA6). Entities are no-arg constructible; every field is a named
+# argument with a default. Statements stay on single lines (the replay runner
+# parses each in isolation). Roles are registered one at a time — the Map-valued
+# registerAll() is unreachable from a script (RCA14).
+# =============================================================================
+
+var grant = TomPrincipalResourceGrant(principalId: 'u1', resourceKey: 'project.1', role: 'owner');
+verifyEquals(grant.principalId, 'u1', 'grant principalId');
+verifyEquals(grant.resourceKey, 'project.1', 'grant resourceKey');
+verifyEquals(grant.role, 'owner', 'grant role');
+verifyEquals(grant.id, -1, 'grant unsaved id defaults to -1');
+
+TomResourceRoleRegistry.reset();
+TomResourceRoleRegistry.register('owner', TomAuthState.full);
+TomResourceRoleRegistry.register('viewer', TomAuthState.read);
+verifyEquals(TomPrincipalResourceRoleResolver.registryStrength('owner', 'viewer'), 'owner', 'stronger role wins (full > read)');
+verifyEquals(TomPrincipalResourceRoleResolver.registryStrength('viewer', 'owner'), 'owner', 'strength ordering is symmetric');
+verifyEquals(TomPrincipalResourceRoleResolver.registryStrength('owner', 'ghost'), 'owner', 'known role beats unregistered');
+TomResourceRoleRegistry.reset();
+
+var delegation = TomPrincipalDelegation(delegatorId: 'a', delegateId: 'b', mode: 'share', resourceKey: 'project.1', role: 'viewer');
+verifyEquals(delegation.delegatorId, 'a', 'delegation delegator');
+verifyEquals(delegation.delegateId, 'b', 'delegation delegate');
+verifyEquals(delegation.delegationMode.name, 'share', 'delegation mode parses to TomDelegationMode.share');
+verifyEquals(delegation.revoked, false, 'delegation not revoked by default');
+
+# =============================================================================
 # Summary
 # =============================================================================
 
