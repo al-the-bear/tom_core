@@ -287,6 +287,61 @@ void main() {
     });
   });
 
+  group('MariaDbDatasource.toPositionalStatement (RCA5)', () {
+    // The MySQL binary protocol binds positional `?` placeholders. The
+    // datasource translates the generated `:name` SQL to that form. A naive
+    // per-name `replaceAll(":$p", "?")` corrupts a placeholder that is a prefix
+    // of another and collapses repeated placeholders into one slot; a
+    // whole-identifier scan in occurrence order fixes both.
+
+    test('a placeholder that prefixes another is not corrupted (:id vs :idx)',
+        () {
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        'a = :id AND b = :idx',
+      );
+      // replaceAll(":id","?") would turn ":idx" into "?x"; the tokeniser keeps
+      // each whole identifier, so both become independent `?` slots.
+      expect(sql, 'a = ? AND b = ?');
+      expect(params, ['id', 'idx']);
+    });
+
+    test('a repeated placeholder gets one `?` slot (and entry) per occurrence',
+        () {
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        'x = :v OR y = :v',
+      );
+      // Two `?` slots need two bind entries; a single collapsed slot would
+      // desynchronise every following positional value.
+      expect(sql, 'x = ? OR y = ?');
+      expect(params, ['v', 'v']);
+    });
+
+    test('names are returned in textual `?` order, not declaration order', () {
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        'b = :second AND a = :first',
+      );
+      expect(sql, 'b = ? AND a = ?');
+      expect(params, ['second', 'first']);
+    });
+
+    test('a colon inside a time/date literal is not a placeholder', () {
+      // `:` followed by a digit (03:04:05) is not an identifier start, so the
+      // scan leaves inlined temporal literals untouched.
+      const withTime = "created > '2026-01-02T03:04:05'";
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(withTime);
+      expect(sql, withTime);
+      expect(params, isEmpty);
+    });
+
+    test('a statement with no placeholders is returned unchanged', () {
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        'SELECT * FROM tasks',
+      );
+      expect(sql, 'SELECT * FROM tasks');
+      expect(params, isEmpty);
+    });
+  });
+
   group('MariadbPreparedStatement.normalizeGeneratedId (bug §71)', () {
     // crud_repository.save reads a freshly inserted row's surrogate key from
     // the insert's own result (lastInsertID), not a follow-up

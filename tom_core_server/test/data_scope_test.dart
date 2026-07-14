@@ -159,6 +159,61 @@ void main() {
     });
   });
 
+  // RCA5: the single per-element IN renderer every id-list repository method
+  // (existsById / findAllById / deleteAllById) shares. N values render N bound
+  // placeholders — never one `?` slot fed a whole Iterable, which the MySQL
+  // driver does not expand.
+  group('TomDataScope.inList (RCA5 IN-list renderer)', () {
+    test('N values render N bound placeholders in one IN list', () {
+      final col = _column('tasks', 'id', int);
+      final p = TomDataScope.inList(b, col, [10, 20, 30]);
+      expect(
+        p.predicate.generate(dialect),
+        'tasks.id IN (:__tomscope_0,:__tomscope_1,:__tomscope_2)',
+      );
+      expect(p.parameters, {
+        '__tomscope_0': 10,
+        '__tomscope_1': 20,
+        '__tomscope_2': 30,
+      });
+    });
+
+    test('the prefix namespaces the parameter names (no scope collision)', () {
+      final col = _column('tasks', 'id', int);
+      final p = TomDataScope.inList(b, col, [1, 2], prefix: '__idlist_');
+      expect(
+        p.predicate.generate(dialect),
+        'tasks.id IN (:__idlist_0,:__idlist_1)',
+      );
+      expect(p.parameters, {'__idlist_0': 1, '__idlist_1': 2});
+    });
+
+    test('a string column dispatches to string placeholders', () {
+      final col = _column('projects', 'code', String);
+      final p = TomDataScope.inList(b, col, ['a', 'b'], prefix: '__idlist_');
+      expect(
+        p.predicate.generate(dialect),
+        'projects.code IN (:__idlist_0,:__idlist_1)',
+      );
+      expect(p.parameters, {'__idlist_0': 'a', '__idlist_1': 'b'});
+    });
+
+    test('an empty value list denies every row with a FALSE predicate', () {
+      final col = _column('tasks', 'id', int);
+      final p = TomDataScope.inList(b, col, const <Object?>[]);
+      expect(p.predicate.generate(dialect), b.boolOp(false).generate(dialect));
+      expect(p.parameters, isEmpty);
+    });
+
+    test('the value never appears in the SQL text (C-7)', () {
+      final col = _column('tasks', 'id', int);
+      final p = TomDataScope.inList(b, col, [42], prefix: '__idlist_');
+      final sql = p.predicate.generate(dialect);
+      expect(sql, isNot(contains('42')));
+      expect(p.predicate.getParameters(dialect), ['__idlist_0']);
+    });
+  });
+
   group('TomDbScope annotation defaults', () {
     test('scope defaults to owner', () {
       const scope = TomDbScope(field: 'owner_id');

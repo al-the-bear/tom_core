@@ -329,19 +329,48 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     return;
   }
 
-  TomPreparedStatement<T>? _deleteAllByIdQuery;
+  /// Namespace for the per-element placeholders the id-list methods
+  /// ([existsById], [findAllById], [deleteAllById]) generate, kept distinct
+  /// from the row-scope prefix (`__tomscope_`) so an id list ANDed with a scope
+  /// cannot collide on parameter names (RCA5).
+  static const String _idListPrefix = '__idlist_';
+
+  /// Builds the `<pk> IN (:__idlist_0, …)` predicate for [ids] with one bound
+  /// placeholder per id, ANDed with the current principal's row scope (C-3)
+  /// when the entity declares one, together with the merged bind-parameter map.
+  ///
+  /// Centralises the IN-list rendering the three id-list methods share: the
+  /// MySQL driver does not expand a bound `Iterable` into `IN (?,?,…)`, so the
+  /// placeholders are generated per element here and the statement is prepared
+  /// per call (its `?` count varies with the id set size). An empty [ids]
+  /// yields a `FALSE` predicate — matching no rows — rather than the invalid
+  /// `IN ()` (RCA5).
+  (TomOperator<TomDbBool>, Map<String, Object?>) _idListPredicate(
+    Iterable<K> ids,
+  ) {
+    final scope = _resolveScope();
+    final idList = TomDataScope.inList(
+      this,
+      primaryKeyColumnInfo,
+      ids,
+      prefix: _idListPrefix,
+    );
+    final where = scope == null
+        ? idList.predicate
+        : and([idList.predicate, scope.predicate]);
+    final params = <String, Object?>{
+      ...idList.parameters,
+      ...?scope?.parameters,
+    };
+    return (where, params);
+  }
+
   @override
   Future<void> deleteAllById(Iterable<K> ids) async {
     // C-3: every named row must be within the principal's data scope.
     await _assertIdsWritable(ids);
-    _deleteAllByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
-      _qsc.compileQuerySentence('''
-delete by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
-      ''')
-          as TomDelete,
-    );
-    await _deleteAllByIdQuery!.execute({"ids": ids});
-    return;
+    final (where, params) = _idListPredicate(ids);
+    await _runPrepared<T>(TomDelete(queryTypes, query: where), params);
   }
 
   TomPreparedStatement<T>? _deleteByIdQuery;
@@ -360,28 +389,25 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     return 1;
   }
 
-  TomPreparedStatement<T>? _existsByIdsQuery;
   @override
   Future<bool> existsById(Iterable<K> ids) async {
-    final scope = _resolveScope();
-    if (scope == null) {
-      _existsByIdsQuery ??= await datasourceInfo.datasource.prepareStatement(
-        _qsc.compileQuerySentence('''
-count by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
-      ''')
-            as TomCount,
-      );
-      List<T> result = await _existsByIdsQuery!.execute({"ids": ids});
-      return result.length == ids.length;
-    }
-    final base =
-        _qsc.compileQuerySentence('''
-count by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
-      ''')
-            as TomCount;
-    final params = <String, Object?>{"ids": ids, ...scope.parameters};
-    List<T> result = await _runPrepared<T>(_scopedCount(base, scope), params);
-    return result.length == ids.length;
+    final idSet = ids.toSet();
+    // The empty set is vacuously contained; short-circuit before emitting the
+    // invalid `IN ()`.
+    if (idSet.isEmpty) return true;
+    final (where, params) = _idListPredicate(idSet);
+    // Every requested id exists iff the COUNT of matching rows equals the
+    // number of distinct ids. The prior code compared the *row count* of a
+    // COUNT query — always 1 — to `ids.length`, so it only ever held for a
+    // single id (RCA5). Under a row scope the count reflects only in-scope
+    // rows, so the check doubles as the writability guard `_assertIdsWritable`
+    // reuses. Prepared per call: the placeholder count tracks the id set size.
+    final result = await _runPrepared<TomCountResult>(
+      TomCount(queryTypes, query: where),
+      params,
+      TomCountResult,
+    );
+    return result.isNotEmpty && result[0].count == idSet.length;
   }
 
   TomPreparedStatement<T>? _findAllQuery;
@@ -410,31 +436,17 @@ SELECT * FROM ${dbTable.table}
     );
   }
 
-  TomPreparedStatement<T>? _findAllByIdQuery;
   @override
   Future<List<T>> findAllById(Iterable<K> ids) async {
-    // Compile through the query-sentence compiler (like `existsById`) so the
-    // `IS IN` list renders as a bound `IN (?)` placeholder rather than an
-    // inline literal — no value is concatenated into the SQL. (The prior
-    // hand-written SQL also embedded the invalid `IS IN` keyword, which the
-    // compiler translates to a proper `IN (...)`.)
-    final scope = _resolveScope();
-    if (scope == null) {
-      _findAllByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
-        _qsc.compileQuerySentence('''
-find by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
-      ''')
-            as TomSelect,
-      );
-      return _maskRows(await _findAllByIdQuery!.execute({"ids": ids}));
-    }
-    final base =
-        _qsc.compileQuerySentence('''
-find by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
-      ''')
-            as TomSelect;
-    final params = <String, Object?>{"ids": ids, ...scope.parameters};
-    return _maskRows(await _runPrepared<T>(_scopedSelect(base, scope), params));
+    // One bound `?` per id (RCA5): the MySQL driver does not expand a bound
+    // Iterable into `IN (?,?,…)`, so `_idListPredicate` renders the placeholders
+    // per element and ANDs the principal's row scope on top. No value is
+    // concatenated into the SQL (C-7); prepared per call as the `?` count
+    // varies with `ids.length`.
+    final (where, params) = _idListPredicate(ids);
+    return _maskRows(
+      await _runPrepared<T>(TomSelect(queryTypes, query: where), params),
+    );
   }
 
   TomPreparedStatement<T>? _findByIdQuery;

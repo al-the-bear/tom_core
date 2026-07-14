@@ -132,17 +132,41 @@ class TomDataScope {
   ) {
     final values = allowedValues(scope, principal);
     if (values == null) return null;
-    if (values.isEmpty) {
-      // No allowed values -> deny every row. `IN ()` is invalid SQL, so a bare
-      // FALSE predicate is the correct empty-set filter.
+    return inList(builder, col, values);
+  }
+
+  /// Builds `<col> IN (:prefix0, :prefix1, …)` binding **one parameter per
+  /// value** in [values] — the single per-element IN renderer every IN-list
+  /// caller shares (RCA5) — returning the predicate with its bind-parameter
+  /// map.
+  ///
+  /// An empty [values] renders a `FALSE` predicate: `IN ()` is invalid SQL, so
+  /// a bare FALSE is the correct empty-set filter (an id-list of no ids matches
+  /// no rows, a scope of no allowed values denies every row). [prefix]
+  /// namespaces the generated parameter names so a caller that ANDs this with
+  /// another bound predicate — e.g. an id list (`__idlist_`) combined with a
+  /// row scope (`__tomscope_`, the default [parameterPrefix]) — cannot collide.
+  ///
+  /// Rendering N placeholders here, rather than binding a whole `Iterable` to a
+  /// single `?`, is what makes `IN (…)` work over the prepared-statement
+  /// protocol: the MySQL driver does not expand a bound list, and no value is
+  /// concatenated into the SQL (C-7).
+  static TomDataScopePredicate inList(
+    TomQueryBuilder builder,
+    TomColumnInformation col,
+    Iterable<Object?> values, {
+    String prefix = parameterPrefix,
+  }) {
+    final list = values.toList();
+    if (list.isEmpty) {
       return TomDataScopePredicate(builder.boolOp(false), const {});
     }
     final parameters = <String, Object?>{};
     final names = <String>[];
-    for (var i = 0; i < values.length; i++) {
-      final name = '$parameterPrefix$i';
+    for (var i = 0; i < list.length; i++) {
+      final name = '$prefix$i';
       names.add(name);
-      parameters[name] = values[i];
+      parameters[name] = list[i];
     }
     return TomDataScopePredicate(inColumn(builder, col, names), parameters);
   }

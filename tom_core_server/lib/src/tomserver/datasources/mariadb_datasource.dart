@@ -281,11 +281,7 @@ class MariaDbDatasource implements TomDataSource {
     if (connection == null || !connection!.connected) {
       await connect();
     }
-    var q = query.generateQuery(sqlDialect);
-    var params = query.getParameters(sqlDialect);
-    for (var p in params) {
-      q = q.replaceAll(":$p", "?");
-    }
+    final (q, params) = toPositionalStatement(query.generateQuery(sqlDialect));
     var preparedStmt = await connection!.prepare(q);
     return MariadbPreparedStatement<T>(
       preparedStmt,
@@ -294,6 +290,35 @@ class MariaDbDatasource implements TomDataSource {
       resultType,
       q,
     );
+  }
+
+  /// The `:name` placeholder token: `:` followed by a Dart-style identifier.
+  ///
+  /// The identifier is matched *whole* (greedy `[A-Za-z0-9_]*`), so `:idx`
+  /// matches as one token — a preceding `:id` cannot claim its prefix. A `:`
+  /// followed by a non-identifier character (e.g. the `03` in a `03:04:05`
+  /// time literal) is not a placeholder and is left untouched.
+  static final RegExp _placeholder = RegExp(r':([A-Za-z_][A-Za-z0-9_]*)');
+
+  /// Translates the generated `:name` [namedSql] into the positional `?` form
+  /// the MySQL binary protocol binds, returning the rewritten SQL and the
+  /// placeholder names in the exact left-to-right order the `?` slots appear.
+  ///
+  /// A whole-identifier scan — not a per-name `replaceAll(":$p", "?")` — is
+  /// essential (RCA5). With `replaceAll`, a placeholder that is a *prefix* of
+  /// another (`:id` vs `:idx`) corrupts the longer one (`:idx` → `?x`), and a
+  /// name that occurs twice collapses to a single positional slot,
+  /// desynchronising every following bind value. Matching each `:identifier`
+  /// once, in order, gives every occurrence its own `?` and its own entry in
+  /// the returned list, so [MariadbPreparedStatement.buildPositionalParameters]
+  /// binds the right value to each slot.
+  static (String, List<String>) toPositionalStatement(String namedSql) {
+    final names = <String>[];
+    final sql = namedSql.replaceAllMapped(_placeholder, (m) {
+      names.add(m.group(1)!);
+      return '?';
+    });
+    return (sql, names);
   }
 
   @override
