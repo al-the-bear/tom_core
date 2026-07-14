@@ -166,4 +166,70 @@ void main() {
       expect(scope.field, 'owner_id');
     });
   });
+
+  // C-3 write/delete enforcement (RCA4). The repository rejects a write that
+  // targets an out-of-scope row: an insert whose scope-field value the principal
+  // is not allowed, and an update/delete of a row the principal could not read.
+  // The reject *decision* is pure — `allowedValues` (per principal) composed
+  // with `permits` (membership) — and is verified connection-free here, exactly
+  // as the read-side predicate is; the live-DB round-trip (a second user's write
+  // to another's row is rejected) is folded into the advanced-sample integration
+  // once the sample adopts `@TomDbScope` (RCA13).
+  group('write-scope membership (C-3 write done-bar)', () {
+    const scope = TomDbScope(field: 'owner_id', scope: 'owner');
+
+    test('a null allowed set opts out — every value is writable', () {
+      // Mirrors a resolver returning null (no scoping): the write is unrestricted.
+      expect(TomDataScope.permits(null, 999), isTrue);
+    });
+
+    test('an empty allowed set denies every write (deny-all)', () {
+      expect(TomDataScope.permits(const <Object?>[], 1), isFalse);
+    });
+
+    test('the value must be one of the allowed scope values', () {
+      expect(TomDataScope.permits(const [1, 2], 2), isTrue);
+      expect(TomDataScope.permits(const [1, 2], 3), isFalse);
+    });
+
+    test('allowedValues resolves the owner scope to the principal id', () {
+      expect(TomDataScope.allowedValues(scope, _principal(7)), [7]);
+    });
+
+    test('allowedValues denies a null (unauthenticated) principal', () {
+      // Empty, not null: an unauthenticated caller writes nothing (secure
+      // default), whereas a genuine opt-out returns null.
+      expect(TomDataScope.allowedValues(scope, null), isEmpty);
+    });
+
+    test('a principal may write its own row but not another principal\'s', () {
+      final aliceAllowed = TomDataScope.allowedValues(scope, _principal(1));
+      expect(TomDataScope.permits(aliceAllowed, 1), isTrue); // Alice's own row
+      expect(TomDataScope.permits(aliceAllowed, 2), isFalse); // Bob's row
+    });
+
+    test('allowedValues throws on an unregistered scope kind', () {
+      const ghost = TomDbScope(field: 'owner_id', scope: 'ghost');
+      expect(
+        () => TomDataScope.allowedValues(ghost, _principal(1)),
+        throwsA(
+          isA<TomDataScopeException>().having(
+            (e) => e.key,
+            'key',
+            'data_scope.build.unknown_scope',
+          ),
+        ),
+      );
+    });
+
+    test('the write-authorization exception carries a client-safe contract', () {
+      final e = TomDataScopeAuthorizationException(
+        'data_scope.write.out_of_scope',
+        'The requested row is not within your data scope.',
+      );
+      expect(e.key, 'data_scope.write.out_of_scope');
+      expect(e.clientThrow, isTrue);
+      expect(e, isA<TomServerException>());
+    });
+  });
 }

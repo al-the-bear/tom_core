@@ -19,6 +19,27 @@ class TomDataScopeException extends TomServerException {
   });
 }
 
+/// Thrown when a write (save/update/delete) targets a row outside the current
+/// principal's `@TomDbScope` (C-3 write enforcement).
+///
+/// The read paths *filter* out-of-scope rows; a write names a specific row (or
+/// creates one), so the correct response is to *reject* — a principal must not
+/// update or delete a row it could not itself read, nor create a row scoped to
+/// a value it is not allowed. Raising this (rather than silently affecting zero
+/// rows) makes the violation explicit to the caller.
+class TomDataScopeAuthorizationException extends TomServerException {
+  /// Creates a data-scope write-authorization exception.
+  TomDataScopeAuthorizationException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.clientThrow,
+  });
+}
+
 /// Maps the current [TomPrincipal] to the set of scope-field values it is
 /// allowed to see for a given scope kind.
 ///
@@ -109,16 +130,7 @@ class TomDataScope {
     TomColumnInformation col,
     TomPrincipal? principal,
   ) {
-    final resolver = TomDataScopeRegistry.resolverFor(scope.scope);
-    if (resolver == null) {
-      throw TomDataScopeException(
-        'data_scope.build.unknown_scope',
-        'No data-scope resolver registered for scope kind "${scope.scope}" '
-            '(field "${scope.field}"). Register one with '
-            'TomDataScopeRegistry.register.',
-      );
-    }
-    final values = resolver(principal);
+    final values = allowedValues(scope, principal);
     if (values == null) return null;
     if (values.isEmpty) {
       // No allowed values -> deny every row. `IN ()` is invalid SQL, so a bare
@@ -134,6 +146,38 @@ class TomDataScope {
     }
     return TomDataScopePredicate(inColumn(builder, col, names), parameters);
   }
+
+  /// Resolves the scope-field values [principal] is allowed for [scope] through
+  /// [TomDataScopeRegistry].
+  ///
+  /// Returns the resolver's result verbatim: `null` when the resolver opts out
+  /// of scoping (every value allowed), an empty list to deny every value, or the
+  /// list of allowed values. Throws [TomDataScopeException] when `scope.scope`
+  /// names a kind no resolver is registered for. Shared by the read-side
+  /// predicate [build] and the write-side membership check [permits].
+  static List<Object?>? allowedValues(TomDbScope scope, TomPrincipal? principal) {
+    final resolver = TomDataScopeRegistry.resolverFor(scope.scope);
+    if (resolver == null) {
+      throw TomDataScopeException(
+        'data_scope.build.unknown_scope',
+        'No data-scope resolver registered for scope kind "${scope.scope}" '
+            '(field "${scope.field}"). Register one with '
+            'TomDataScopeRegistry.register.',
+      );
+    }
+    return resolver(principal);
+  }
+
+  /// Whether [value] falls within the [allowed] scope values a resolver produced
+  /// for a principal (C-3 write membership).
+  ///
+  /// A `null` [allowed] means the resolver opted out of scoping, so every value
+  /// is permitted; an empty list permits nothing (deny-all); otherwise the value
+  /// must be one of the allowed values. This is the pure counterpart of the
+  /// read-side `<col> IN (…)` predicate: a write whose scope-field value is not
+  /// permitted targets a row the principal could not read, and is rejected.
+  static bool permits(List<Object?>? allowed, Object? value) =>
+      allowed == null || allowed.contains(value);
 
   /// Builds `<col> IN (:name0, :name1, …)` referencing [col] against one bound
   /// parameter per name in [parameterNames], dispatching the column/parameter

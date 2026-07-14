@@ -183,6 +183,84 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     return TomDataScope.build(this, scope, col, principal);
   }
 
+  /// Asserts the current principal may write the row keyed by [id] under the
+  /// entity's `@TomDbScope` (C-3 write enforcement). A no-op when the entity
+  /// declares no scope; otherwise a scoped read must find the row — an
+  /// out-of-scope (or absent) row raises [TomDataScopeAuthorizationException].
+  ///
+  /// The guard reuses the *exact* scoped read predicate the read paths apply
+  /// (via [_selectById]), so a principal cannot update or delete a row it could
+  /// not itself read, and the scope values ride the prepared-statement protocol
+  /// as bound parameters (C-7). Modelling it as a scoped visibility read — not
+  /// an atomic `… WHERE id = ? AND <scope>` with a zero-rows-affected test —
+  /// deliberately sidesteps the MariaDB quirk that an `UPDATE` which changes no
+  /// value reports zero affected rows, which would otherwise reject a legitimate
+  /// in-scope no-op write. A missing row and an out-of-scope row are reported
+  /// identically, so existence is not leaked across the scope boundary.
+  Future<void> _assertRowWritable(K id) async {
+    if (TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null) return;
+    if (await _selectById(id) == null) {
+      throw TomDataScopeAuthorizationException(
+        'data_scope.write.out_of_scope',
+        'The requested row is not within your data scope.',
+      );
+    }
+  }
+
+  /// Asserts every id in [ids] is writable under the entity's `@TomDbScope`
+  /// before a bulk delete. A no-op when the entity declares no scope; otherwise
+  /// a scoped existence check must see *all* of them — if any is out of scope
+  /// (or absent) it raises [TomDataScopeAuthorizationException]. Reuses the
+  /// scoped [existsById] so the same bound-parameter predicate governs the
+  /// check and the reads.
+  Future<void> _assertIdsWritable(Iterable<K> ids) async {
+    if (TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null) return;
+    if (!await existsById(ids)) {
+      throw TomDataScopeAuthorizationException(
+        'data_scope.write.out_of_scope',
+        'One or more of the requested rows is not within your data scope.',
+      );
+    }
+  }
+
+  /// Asserts the current principal may create [entity] under the entity's
+  /// `@TomDbScope`: its scope-field value must be one the principal is allowed
+  /// (C-3 write enforcement for inserts). A no-op when the entity declares no
+  /// scope or its resolver opts out; an out-of-scope value raises
+  /// [TomDataScopeAuthorizationException]. Without this a principal could create
+  /// a row scoped to a value it cannot itself read (e.g. owned by someone else),
+  /// silently bypassing the read scope.
+  void _assertInsertWritable(T entity) {
+    final scope = TomAnnotationAnalyzer.findDataScope(queryTypes[0]);
+    if (scope == null) return;
+    final allowed =
+        TomDataScope.allowedValues(scope, getFromCurrentZone<TomPrincipal>());
+    final col = TomAnnotationAnalyzer.determineColumn(scope.field, [
+      persistenceInfo,
+    ]);
+    if (!TomDataScope.permits(allowed, col.getVariableValue(entity))) {
+      throw TomDataScopeAuthorizationException(
+        'data_scope.write.insert_out_of_scope',
+        'You may not create a row outside your data scope.',
+      );
+    }
+  }
+
+  /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
+  /// every shaping option), or [base] unchanged when [scope] is `null`.
+  TomDelete _scopedDelete(TomDelete base, TomDataScopePredicate? scope) {
+    if (scope == null) return base;
+    return TomDelete(
+      base.types,
+      query: and([base.query, scope.predicate]),
+      distinct: base.distinct,
+      orderBy: base.orderBy,
+      ascending: base.ascending,
+      top: base.top,
+      ignoreFields: base.ignoreFields,
+    );
+  }
+
   /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
   /// every shaping option), or [base] unchanged when [scope] is `null`.
   TomSelect _scopedSelect(TomSelect base, TomDataScopePredicate? scope) {
@@ -234,6 +312,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
 
   @override
   Future<void> delete(T entity) async {
+    // C-3: a principal may only delete a row within its data scope.
+    await _assertRowWritable(
+      primaryKeyColumnInfo.getVariableValue(entity) as K,
+    );
     _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
       _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
@@ -250,6 +332,8 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   TomPreparedStatement<T>? _deleteAllByIdQuery;
   @override
   Future<void> deleteAllById(Iterable<K> ids) async {
+    // C-3: every named row must be within the principal's data scope.
+    await _assertIdsWritable(ids);
     _deleteAllByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
       _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
@@ -263,6 +347,8 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
   TomPreparedStatement<T>? _deleteByIdQuery;
   @override
   Future<int> deleteById(K id) async {
+    // C-3: a principal may only delete a row within its data scope.
+    await _assertRowWritable(id);
     _deleteByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
       _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
@@ -528,6 +614,16 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
 
     final insert = isUnsavedKey(primaryKey);
 
+    // C-3 row-level write enforcement. An insert must carry a scope-field value
+    // the principal is allowed (it cannot create a row outside its scope); an
+    // update must target a row already within the principal's scope (it cannot
+    // update a row it could not read). Both raise before any statement runs.
+    if (insert) {
+      _assertInsertWritable(toSave);
+    } else {
+      await _assertRowWritable(primaryKey as K);
+    }
+
     // C-4 column-level write enforcement. For an entity that declares
     // `@TomDbColumn(authKey: …)` columns, a change to one the principal is not
     // `full` on is rejected when the column is *visible* (`read`), and preserved
@@ -694,7 +790,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Map<String, Object?> params,
   ) async {
     TomDelete select = _qsc.compileQuerySentence(querySentence) as TomDelete;
-    await _runPrepared<T>(select, params);
+    // C-3: filter the delete to the principal's scope, mirroring the scoped
+    // reads — a query-based delete cannot reach out-of-scope rows.
+    final scope = _resolveScope();
+    final effective = <String, Object?>{...params, ...?scope?.parameters};
+    await _runPrepared<T>(_scopedDelete(select, scope), effective);
     return 0;
   }
 
@@ -736,7 +836,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomDelete query,
     Map<String, Object?> params,
   ) async {
-    await _runPrepared<T>(query, params);
+    // C-3: AND the principal's scope into the delete predicate (as the scoped
+    // reads do), so a built delete cannot reach out-of-scope rows.
+    final scope = _resolveScope();
+    final effective = <String, Object?>{...params, ...?scope?.parameters};
+    await _runPrepared<T>(_scopedDelete(query, scope), effective);
     return 0;
   }
 
