@@ -16,6 +16,15 @@
 /// Two boundaries are intentionally *not* in this bundle: `MaterialApp.title`
 /// (OS-level app identity, not screen copy) and the non-user-facing diagnostic
 /// `No todo item with id "…"` (a programmer-facing invariant, never rendered).
+///
+/// **Field validators are resources too (G-UI-7).** Each validated field
+/// declares its validators by name under `<basePath>.validators` (a
+/// comma-separated spec, e.g. `required` or `minLength:8`); `TomField` resolves
+/// them through the DI-swappable `TomValidatorRegistry` and *merges* them with
+/// any code-supplied validators the form passes in its constructor. The
+/// validators' error messages are ordinary resources too — a failed validator
+/// emits an `error.<name>` key that resolves here (scoped `<basePath>.<key>`
+/// first, then global `<key>`), so no message string is ever hardcoded.
 library;
 
 /// The installed text bundle. Flat dotted keys → byte-identical display values.
@@ -23,7 +32,11 @@ const Map<String, dynamic> appTexts = {
   // --- Login form fields (scope 'login') ---
   'login.username.label': 'Username',
   'login.username.hintText': 'alice, bob or val',
+  // Resource-declared validator (G-UI-7): resolved by name through the
+  // TomValidatorRegistry, not hand-coded in the form.
+  'login.username.validators': 'required',
   'login.password.label': 'Password',
+  'login.password.validators': 'required',
 
   // --- Login screen ---
   'login.appbar.title': 'Tom Todo — sign in',
@@ -35,6 +48,9 @@ const Map<String, dynamic> appTexts = {
   // --- Todo item form fields (scope 'todo.item' — the single field identity
   //     shared with the authz/wire keys, G-UI-6) ---
   'todo.item.title.label': 'Title',
+  // Resource-declared `required` (G-UI-7) that the form *merges* with a
+  // code-supplied validator in TodoItemForm — see todo_item_form.dart.
+  'todo.item.title.validators': 'required',
   'todo.item.description.label': 'Description',
   'todo.item.done.label': 'Done',
   'todo.item.priority.label': 'Priority',
@@ -69,4 +85,13 @@ const Map<String, dynamic> appTexts = {
   'global.todolabel.chore': 'Chore',
   'global.todolabel.docs': 'Docs',
   'global.todolabel.research': 'Research',
+
+  // --- Validator error messages (G-UI-7 / G-RES-1): error.<name> keys ---
+  // A failed validator emits an `error.<name>` key (built-ins use `error.required`,
+  // `error.minLength`, …); the field resolves it here so no message is hardcoded.
+  // These are global keys — any field's failure resolves through them unless a
+  // field provides a scoped `<basePath>.error.<name>` override.
+  'error.required': 'This field is required.',
+  // The message for TodoItemForm's code-supplied title validator.
+  'error.titleWhitespace': 'Title cannot have leading or trailing spaces.',
 };

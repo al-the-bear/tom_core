@@ -181,6 +181,47 @@ plumbing, and adding a field to the entity is a one-line change to the form. The
 price is that **both the entity and the form must be in the reflected graph** —
 see the next section.
 
+### Validators are resources, not per-field closures (G-UI-7)
+
+A field's validators are declared **by name in the resource bundle**, not
+hand-coded as one-off closures. Each validated field carries a
+`<basePath>.validators` entry — a comma-separated spec — that `TomField`
+resolves through the DI-swappable `TomValidatorRegistry` (built-ins
+`required`/`email`/`minLength`/`maxLength`/`pattern`/`min`/`max`, plus any the
+app registers). The login fields take the pure resource path:
+
+```dart
+// app_texts.dart
+'login.username.validators': 'required',
+'login.password.validators': 'required',
+
+// login_form.dart — no `validators:` argument at all
+late final username = TomFormStringInput('username', '', form: this);
+```
+
+`TomField` **merges** code-supplied and resource-declared validators, so a field
+can have both. `TodoItemForm.title` is the illustration: `required` is declared
+as a resource (the framework built-in, naturally a resource), while an
+app-specific "no leading/trailing whitespace" rule — orthogonal to any built-in —
+stays in code, which is exactly when a code validator is the right tool:
+
+```dart
+// app_texts.dart
+'todo.item.title.validators': 'required',
+
+// todo_item_form.dart
+late final title = TomFormStringInput('title', '', form: this,
+    authorizer: _authFor('title'), validators: [_noSurroundingSpace]);
+// effective validators = [_noSurroundingSpace] (code) + [required] (resource)
+```
+
+**Validation messages are resources too (G-RES-1).** A failed validator emits an
+`error.<name>` key (`error.required`, and the code rule's `error.titleWhitespace`)
+that resolves from the same bundle — scoped `<basePath>.error.<name>` first, then
+global `error.<name>` — so no message string is ever hardcoded. `test/
+validator_resolution_test.dart` (CCS-VAL-01…05) pins the resource-only path, the
+merge, and both resolved messages.
+
 ---
 
 ## 6. Bootstrap: reflection must come first
@@ -192,7 +233,7 @@ void main() {
   initializeReflection();                                   // 1
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils); // 2
   TomTextResourceProvider.setAppResourceProvider(           // 3
-    TomTextResourceProvider.from(const <String, dynamic>{}),
+    TomTextResourceProvider.from(appTexts),
   );
   runApp(TodoApp(session: AppSession(InMemoryTodoApi())));
 }
@@ -380,7 +421,7 @@ flutter test --concurrency=1
 ```
 
 Flutter tests in this workspace are run **serially** (`--concurrency=1`).
-Twenty-six tests cover the four seams:
+Thirty-five tests cover the seams:
 
 | File | Covers |
 | ---- | ------ |
@@ -388,6 +429,8 @@ Twenty-six tests cover the four seams:
 | `live_read_client_test.dart` | the pure `parse*` functions against captured JSON (CCS-LIVE-01…05) |
 | `login_flow_test.dart` | sign in / out, inline error, screen switching (CCS-LOGIN-01…04) |
 | `todo_crud_test.dart` | per-role field rendering + create/validate (CCS-CRUD-01…04) |
+| `todo_item_form_test.dart` | the single field identity: basePath = wire/authz key (CCS-FORM-01…04) |
+| `validator_resolution_test.dart` | resource-declared validators, code+resource merge, resolved messages (CCS-VAL-01…05) |
 
 The widget tests drive `InMemoryTodoApi`, so they are deterministic and
 socket-free.

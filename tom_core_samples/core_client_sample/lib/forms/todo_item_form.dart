@@ -54,12 +54,20 @@ class TodoItemForm extends TomForm<TodoItem> {
       fieldStates['$todoItemScope.$tomId'] ?? TomAuthState.none);
 
   /// Title — required free text.
+  ///
+  /// Illustrates the G-UI-7 *merge*: `TomField` runs this form's code-supplied
+  /// [_noSurroundingSpace] validator **and** the `required` validator declared
+  /// as a resource under `todo.item.title.validators`. `required` is the
+  /// framework built-in (naturally a resource); the whitespace rule is
+  /// app-specific and orthogonal to any built-in, so it stays in code — which is
+  /// exactly when a code validator is the right tool. Both error messages
+  /// (`error.required`, `error.titleWhitespace`) resolve from the bundle.
   late final title = TomFormStringInput(
     'title',
     '',
     form: this,
     authorizer: _authFor('title'),
-    validators: [Validators.required()],
+    validators: [_noSurroundingSpace],
   );
 
   /// Free-text description — always editable (not part of the grant matrix).
@@ -98,6 +106,15 @@ class TodoItemForm extends TomForm<TodoItem> {
   @override
   void createFormElements() {}
 }
+
+/// An app-specific code validator: the title must carry no leading or trailing
+/// whitespace. It passes on the empty string (so the resource-declared
+/// `required` is the one that reports a missing title) and fails only on a
+/// value that differs from its trimmed form. Its `error.titleWhitespace` key
+/// resolves as a resource exactly like the built-ins' keys (G-RES-1).
+ValidationResult _noSurroundingSpace(String value) => value.trim() != value
+    ? const ValidationError('error.titleWhitespace')
+    : const ValidationSuccess();
 
 /// The priority options, labelled through [enumText] (which resolves each value's
 /// `global.todopriority.<value>` resource key, G-RES-5) and valued by the enum
