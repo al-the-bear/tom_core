@@ -134,10 +134,6 @@ grade a field renders at from a database row to a widget:
    (authorizer.effectiveAuth(state));
 7. TomAuthState → the field renders at its grade. -->
 
-<!-- NOTE (RCA7): the SVG below still depicts the retired "repointed onto the
-installed adapter" step; it needs regeneration to show the per-field
-TomAuthorizer.fixed stamp. The alt-text and mermaid here already describe the
-shipped path. -->
 ![The grant matrix to field data path: a tom_resource_grant row is folded into graded access info, resolved to a per-field state map, sent over the wire as GradedFieldDto, cached in the app session, and stamped onto each gradable field as a per-field TomAuthorizer.fixed that TomField resolves into the TomAuthState the field renders at.](assets/architecture/advanced_09_grade_data_path.svg)
 
 <details><summary>Text / mermaid equivalent</summary>

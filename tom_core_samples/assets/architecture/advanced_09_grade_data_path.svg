@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 560" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5">
   <!--
-    The grant matrix → adapter → field data path: the grade a field renders at,
-    traced from a database row to a widget.
+    The grant matrix -> per-field stamp -> field data path: the grade a field
+    renders at, traced from a database row to a widget.
       1. auth_db.tom_resource_grant row (role_name, resource_key, access_level)
-         — RepositoryGrantStore.grantsForRole(role)  [field_grade_resolver.dart:93]
+         - RepositoryGrantStore.grantsForRole(role)  [field_grade_resolver.dart:93]
       2. TomGradedAccessControlInformation.fromGrants(grants)  [field_grade_resolver.dart:65]
-         (folds duplicate keys by widen — most permissive wins)
-      3. resolveItemFieldStates(role) → Map<String,TomAuthState>  [field_grade_resolver.dart:73]
-         (itemFieldStates endpoint → List<GradedFieldDto> over the wire)
-      4. AppSession.loadFieldStates → adapter.states = matrix (repoint, no reinstall)
-         (installed once: TomAuthorization.adapter = …  [main.dart:42])
-      5. TomField.resolveEffectiveAuth() layer 1  [tom_form.dart:809]
-         (TomAuthorization.resolveAuth('todo.item.title'))
-      6. FieldStateAuthorizationAdapter.resolveAuth(path)  [field_state_authorization_adapter.dart:78]
-      7. TomAuthState → the field renders at its grade.
+         (folds duplicate keys by widen - most permissive wins)
+      3. resolveItemFieldStates(role) -> Map<String,TomAuthState>  [field_grade_resolver.dart:73]
+         (itemFieldStates endpoint -> List<GradedFieldDto> over the wire)
+      4. AppSession.loadFieldStates -> currentFieldStates matrix  (cached per open item)
+      5. field.authorizer = TomAuthorizer.fixed(states[basePath] ?? none)
+         (per-field stamp, no installed adapter)  [item_detail_screen.dart:99-102]
+      6. TomField.resolveEffectiveAuth() layer 4  [tom_form.dart:823]
+         (authorizer.effectiveAuth(state))
+      7. TomAuthState -> the field renders at its grade.
   -->
   <defs>
     <marker id="arrow9" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
@@ -56,24 +56,24 @@
   <text class="cite" x="630" y="226" text-anchor="end">field_grade_resolver.dart:73</text>
 
   <rect class="box client" x="120" y="236" width="520" height="42" rx="7"/>
-  <text class="mono" x="380" y="262" text-anchor="middle">AppSession.loadFieldStates → adapter.states = matrix</text>
+  <text class="mono" x="380" y="262" text-anchor="middle">AppSession.loadFieldStates → currentFieldStates matrix (cached per item)</text>
 
   <path class="flow" d="M380,278 L380,308"/>
-  <text class="side" x="390" y="298">installed once: TomAuthorization.adapter = … (repoint, no reinstall)</text>
-  <text class="cite" x="630" y="298" text-anchor="end">main.dart:42</text>
+  <text class="side" x="390" y="298">per-field stamp on each gradable field — no installed adapter</text>
+  <text class="cite" x="630" y="298" text-anchor="end">item_detail_screen.dart:99-102</text>
 
   <rect class="box client" x="120" y="308" width="520" height="42" rx="7"/>
-  <text class="mono" x="380" y="334" text-anchor="middle">TomField.resolveEffectiveAuth() layer 1</text>
+  <text class="mono" x="380" y="334" text-anchor="middle">field.authorizer = TomAuthorizer.fixed(states[basePath] ?? none)</text>
 
   <path class="flow" d="M380,350 L380,380"/>
-  <text class="side" x="390" y="370">TomAuthorization.resolveAuth('todo.item.title')</text>
-  <text class="cite" x="630" y="370" text-anchor="end">tom_form.dart:809</text>
+  <text class="side" x="390" y="370">authorizer.effectiveAuth(state) at layer 4</text>
+  <text class="cite" x="630" y="370" text-anchor="end">tom_form.dart:823</text>
 
   <rect class="box client" x="120" y="380" width="520" height="42" rx="7"/>
-  <text class="mono" x="380" y="406" text-anchor="middle">FieldStateAuthorizationAdapter.resolveAuth(path)</text>
+  <text class="mono" x="380" y="406" text-anchor="middle">TomField.resolveEffectiveAuth() layer 4</text>
 
   <path class="flow" d="M380,422 L380,452"/>
-  <text class="cite" x="630" y="442" text-anchor="end">field_state_authorization_adapter.dart:78</text>
+  <text class="side" x="390" y="442">the per-field grade wins over the permissive layer-1 default</text>
 
   <rect class="box render" x="120" y="452" width="520" height="42" rx="7"/>
   <text class="lbl" x="380" y="478" text-anchor="middle" font-weight="600">TomAuthState → the field renders at its grade</text>
