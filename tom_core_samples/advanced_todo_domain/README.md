@@ -1,7 +1,7 @@
 # advanced_todo_domain
 
 Shared, reflected domain model for the **advanced Tom Core full-stack sample**
-(see `../../../../../_ai/quests/tom_core/advanced_example_specification_plan.md`).
+(see [`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 This is the single source of truth for the whole stack — the app server
 persists these entities, both Flutter clients edit them, and the four-state

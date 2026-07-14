@@ -1,7 +1,7 @@
 # advanced_app_client
 
 End-user Flutter app for the **advanced Tom Core full-stack sample** (see
-`../../../../../_ai/quests/tom_core/advanced_example_specification_plan.md`).
+[`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 Logs in against `advanced_auth_server`, presents the bearer token on every call
 to `advanced_app_server`, and renders a status-column task board with per-field

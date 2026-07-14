@@ -1,7 +1,7 @@
 # advanced_todo_contracts
 
 Shared wire contracts for the **advanced Tom Core full-stack sample**
-(see `../../../../../_ai/quests/tom_core/advanced_example_specification_plan.md`).
+(see [`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 The single definition of the over-the-wire surface, depended on by both servers
 (which implement it) and the shared client core (which calls it).

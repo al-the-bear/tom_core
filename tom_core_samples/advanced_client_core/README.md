@@ -1,8 +1,7 @@
 # advanced_client_core
 
 Flutter-free `dart:io` client core for the **advanced Tom Core full-stack
-sample** (see
-`../../../../../_ai/quests/tom_core/advanced_example_specification_plan.md`).
+sample** (see [`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 The authenticated HTTP layer shared by `advanced_app_client` and
 `advanced_authadmin_client`. Nothing here imports Flutter, so the JSON↔DTO

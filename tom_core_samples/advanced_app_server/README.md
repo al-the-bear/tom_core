@@ -1,7 +1,7 @@
 # advanced_app_server
 
 App server for the **advanced Tom Core full-stack sample** (see
-`../../../../../_ai/quests/tom_core/advanced_example_specification_plan.md`).
+[`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 A secured task-manager API on `tom_core_server`. It trusts the JWT signing key
 shared with `advanced_auth_server`, validates the bearer token on every request,

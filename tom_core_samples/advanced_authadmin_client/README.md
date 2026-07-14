@@ -1,7 +1,7 @@
 # advanced_authadmin_client
 
 Administrator Flutter console for the **advanced Tom Core full-stack sample**
-(see `../../../../../_ai/quests/tom_core/advanced_example_specification_plan.md`).
+(see [`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 Logs in with the `admin` role and manages users, roles, groups, role
 assignments, and the `projectRole` × field grant matrix via the auth server's

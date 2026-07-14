@@ -41,7 +41,7 @@ INSERT INTO auth_group_members (id, group_id, user_id) VALUES
   (2, 1, 3)
 ON DUPLICATE KEY UPDATE user_id = VALUES(user_id);
 
--- Seed grant matrix — §A.4 of advanced_example_specification_plan.md:
+-- Seed grant matrix (see ../../../../README_advanced_07_authorization.md):
 --
 --   Field        owner  editor  commenter  viewer
 --   title        full   full    read       read

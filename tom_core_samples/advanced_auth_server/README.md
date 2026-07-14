@@ -1,7 +1,7 @@
 # advanced_auth_server
 
 Auth server for the **advanced Tom Core full-stack sample** (see
-`../../../../../_ai/quests/tom_core/advanced_example_specification_plan.md`).
+[`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 Two surfaces in one boot on `tom_core_server`: a JWT **authentication** issuer
 (`/auth/login`, `/auth/refresh`, `/auth/me`, `/auth/logout`) and a role-gated
