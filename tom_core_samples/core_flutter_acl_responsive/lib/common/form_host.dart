@@ -15,8 +15,14 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// A stateful preview that creates [create] inside the [scopeId] scope, runs
 /// the optional [bind], renders [builder], and disposes the form on teardown.
-class FormHost<F extends TomForm<TomClass>> extends StatefulWidget {
-  const FormHost({
+// Why: extends [TomStatefulWidget] (paired with [TomState]) rather than raw
+// StatefulWidget so the host conforms to G-UI-1/G-UI-2 and its [buildContent]
+// re-enters the construction-time [TomScope]. It owns no tomId/resources of its
+// own, so [TomStatefulWidget] — the sanctioned base for scope-participating
+// stateful chrome — is the correct base, not a family base. Construction reads
+// [TomScope.current] → the constructor is non-const.
+class FormHost<F extends TomForm<TomClass>> extends TomStatefulWidget {
+  FormHost({
     super.key,
     required this.scopeId,
     required this.create,
@@ -42,7 +48,8 @@ class FormHost<F extends TomForm<TomClass>> extends StatefulWidget {
   State<FormHost<F>> createState() => _FormHostState<F>();
 }
 
-class _FormHostState<F extends TomForm<TomClass>> extends State<FormHost<F>> {
+class _FormHostState<F extends TomForm<TomClass>>
+    extends TomState<FormHost<F>> {
   late final F _form;
 
   @override
@@ -59,5 +66,5 @@ class _FormHostState<F extends TomForm<TomClass>> extends State<FormHost<F>> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.builder(context, _form);
+  Widget buildContent(BuildContext context) => widget.builder(context, _form);
 }

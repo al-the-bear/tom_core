@@ -18,8 +18,15 @@ import 'code_block.dart';
 /// A single showcase entry: a [title], the verbatim [code] snippet, and the
 /// live [child] widget the snippet produces. An optional [note] surfaces a
 /// caveat (e.g. a state that depends on a specific feature).
-class ShowcaseCell extends StatelessWidget {
-  const ShowcaseCell({
+// Why: extends [TomStatelessWidget] (not raw StatelessWidget) so the chrome
+// itself conforms to G-UI-1/G-UI-2 — the sample's own UI is built from Tom*
+// bases too. [TomStatelessWidget] is the framework's sanctioned base for a
+// non-Tom layout wrapper (no tomId/resources of its own) that still enters the
+// [TomScope]; a family base (e.g. TomContainerBase) would attach a spurious
+// authorization/family identity this teaching cell must not carry. Its
+// construction runs [TomScope.current], so the constructor cannot be const.
+class ShowcaseCell extends TomStatelessWidget {
+  ShowcaseCell({
     super.key,
     required this.title,
     required this.code,
@@ -42,7 +49,7 @@ class ShowcaseCell extends StatelessWidget {
   final String? note;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
 
     final codeView = CodeBlock(code);
@@ -50,21 +57,21 @@ class ShowcaseCell extends StatelessWidget {
 
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(text: title, style: theme.textTheme.titleMedium),
             if (note != null) ...[
-              const SizedBox(height: 4),
+              TomSizedBox(height: 4),
               TomText(
                 text: note!,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.secondary),
               ),
             ],
-            const SizedBox(height: 12),
+            TomSizedBox(height: 12),
             // G-UI-4: the `code | preview` split reflows through an AclBuilder
             // row breakpoint rather than a hand-rolled MediaQuery compare — the
             // two columns share one row while the cell is at least 720px wide
@@ -86,15 +93,19 @@ class ShowcaseCell extends StatelessWidget {
 
 /// A bordered surface that frames the live widget so it reads as a preview
 /// rather than part of the page chrome.
-class _PreviewSurface extends StatelessWidget {
-  const _PreviewSurface({required this.child});
+// Why: same rationale as [ShowcaseCell] — a scope-participating layout wrapper,
+// so it derives from [TomStatelessWidget] and frames its content with
+// [TomContainer]/[TomAlign] rather than raw Container/Align. Non-const for the
+// same reason (construction enters [TomScope.current]).
+class _PreviewSurface extends TomStatelessWidget {
+  _PreviewSurface({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    return TomContainer(
       constraints: const BoxConstraints(minHeight: 64),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -102,7 +113,7 @@ class _PreviewSurface extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.outlineVariant),
       ),
-      child: Align(
+      child: TomAlign(
         alignment: Alignment.centerLeft,
         child: child,
       ),

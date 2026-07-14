@@ -155,6 +155,17 @@ Live forms are owned by **`FormHost<F>`**, which creates the form inside a
 `TomScope`, binds it to a fresh entity, and disposes it on teardown — so each
 group file states *what* to render, never the binding ceremony.
 
+**The scaffold conforms to G-UI-1/G-UI-2.** `ShowcaseCell`, `_PreviewSurface`,
+`CodeBlock` and `GroupScreen` derive from `TomStatelessWidget`, and `FormHost`
+from `TomStatefulWidget` + `TomState`; layout uses `TomColumn` / `TomPadding` /
+`TomContainer` / `TomAlign` / `TomListView` / `TomSizedBox` / `TomDecoratedBox` /
+`TomStack` / `TomPositioned` and `demoBox` returns a `TomContainer` — no raw
+Flutter widgets. These wrappers own no `tomId`/resources and no family identity,
+so `TomStatelessWidget`/`TomStatefulWidget` (not a family base) is the sanctioned
+base; because that base captures `TomScope.current` at construction, the widgets
+are non-const. See the G-UI-2 clarification in
+[`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md).
+
 ---
 
 ## 6. Mechanism 1 — Breakpoint field style

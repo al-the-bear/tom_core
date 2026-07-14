@@ -26,7 +26,7 @@ void main() {
     const marker = Key('cell-child-marker');
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
             child: ShowcaseCell(

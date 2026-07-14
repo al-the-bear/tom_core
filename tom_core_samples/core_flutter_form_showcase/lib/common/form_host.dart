@@ -18,8 +18,14 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// A stateful preview that creates [create] inside the [scopeId] scope, runs
 /// the optional [bind], renders [builder], and disposes the form on teardown.
-class FormHost<F extends TomForm<TomClass>> extends StatefulWidget {
-  const FormHost({
+// Why: extends [TomStatefulWidget] (paired with [TomState]) rather than raw
+// StatefulWidget so the host conforms to G-UI-1/G-UI-2 and its [buildContent]
+// re-enters the construction-time [TomScope]. It owns no tomId/resources of its
+// own, so [TomStatefulWidget] — the sanctioned base for scope-participating
+// stateful chrome — is the correct base, not a family base. Construction reads
+// [TomScope.current] → the constructor is non-const.
+class FormHost<F extends TomForm<TomClass>> extends TomStatefulWidget {
+  FormHost({
     super.key,
     required this.scopeId,
     required this.create,
@@ -45,7 +51,8 @@ class FormHost<F extends TomForm<TomClass>> extends StatefulWidget {
   State<FormHost<F>> createState() => _FormHostState<F>();
 }
 
-class _FormHostState<F extends TomForm<TomClass>> extends State<FormHost<F>> {
+class _FormHostState<F extends TomForm<TomClass>>
+    extends TomState<FormHost<F>> {
   late final F _form;
 
   @override
@@ -62,16 +69,18 @@ class _FormHostState<F extends TomForm<TomClass>> extends State<FormHost<F>> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.builder(context, _form);
+  Widget buildContent(BuildContext context) => widget.builder(context, _form);
 }
 
 /// The list-form counterpart of [FormHost]. [TomListForm] extends
 /// [TomObservable] (not [TomForm]), so it needs its own lifecycle owner: this
 /// host creates the list form in [scopeId], binds it to a [TomList] of items,
 /// and renders [builder]. Used by the list and master-detail cells.
+// Why: same rationale as [FormHost] — a scope-participating stateful chrome
+// wrapper, so it extends [TomStatefulWidget] + [TomState] and is non-const.
 class ListFormHost<TItem extends TomClass, TForm extends TomForm<TItem>>
-    extends StatefulWidget {
-  const ListFormHost({
+    extends TomStatefulWidget {
+  ListFormHost({
     super.key,
     required this.scopeId,
     required this.create,
@@ -100,7 +109,7 @@ class ListFormHost<TItem extends TomClass, TForm extends TomForm<TItem>>
 }
 
 class _ListFormHostState<TItem extends TomClass, TForm extends TomForm<TItem>>
-    extends State<ListFormHost<TItem, TForm>> {
+    extends TomState<ListFormHost<TItem, TForm>> {
   late final TomListForm<TItem, TForm> _listForm;
 
   @override
@@ -117,5 +126,6 @@ class _ListFormHostState<TItem extends TomClass, TForm extends TomForm<TItem>>
   }
 
   @override
-  Widget build(BuildContext context) => widget.builder(context, _listForm);
+  Widget buildContent(BuildContext context) =>
+      widget.builder(context, _listForm);
 }

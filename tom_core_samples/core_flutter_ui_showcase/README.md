@@ -44,6 +44,16 @@ Tom widgets resolve their inputs in the constructor body (`late final` fields),
 so they are **not** `const`-constructible. None of the snippets wrap a Tom
 widget in `const`; copy them as-is.
 
+The **chrome itself follows the same rule and conforms to G-UI-1/G-UI-2**:
+`ShowcaseCell`, `_PreviewSurface`, `CodeBlock` and `GroupScreen` derive from
+`TomStatelessWidget` (the sanctioned base for a scope-participating layout
+wrapper that owns no `tomId`/resources and no family identity) and lay out with
+`TomColumn` / `TomPadding` / `TomContainer` / `TomAlign` / `TomListView` /
+`TomSizedBox` / `TomDecoratedBox` / `TomStack` / `TomPositioned` — no raw
+`StatelessWidget` or `Column`/`Container`. That base captures `TomScope.current`
+at construction, so these widgets are non-const too. See the G-UI-2 clarification
+in [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md).
+
 ## Component groups
 
 Each group below maps to one file in `lib/groups/` and one screen in the app.

@@ -82,6 +82,16 @@ halves are always present so an empty snippet can never slip through.
 > same one used by [`core_flutter_ui_showcase`](../core_flutter_ui_showcase); this
 > sample is its ACL counterpart.
 
+> **The chrome conforms to G-UI-1/G-UI-2 too.** The teaching widgets are not raw
+> Flutter: `ShowcaseCell`, `_PreviewSurface`, `CodeBlock` and `GroupScreen` derive
+> from `TomStatelessWidget` and lay out with `TomColumn` / `TomPadding` /
+> `TomContainer` / `TomAlign` / `TomListView` / `TomSizedBox` / `TomDecoratedBox`
+> / `TomStack` / `TomPositioned`; `demoBox` returns a `TomContainer`. They own no
+> `tomId`/resources and no family identity, so `TomStatelessWidget` (not a family
+> base) is the sanctioned base — see the G-UI-2 clarification in
+> [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md). Because that
+> base captures `TomScope.current` at construction, these widgets cannot be `const`.
+
 ---
 
 ## The capabilities

@@ -29,7 +29,7 @@ final ShowcaseGroup familySwapGroup = ShowcaseGroup(
       'entity. The 700px breakpoint picks which renders; styleBpOverrides flips '
       'the form style to match. Edits survive the swap.',
   icon: Icons.swap_horiz_outlined,
-  cells: (context) => const [
+  cells: (context) => [
     ShowcaseCell(
       title: 'Material ↔ Cupertino at 700px',
       note: 'Resize across 700px: the whole field family swaps, yet the shared '

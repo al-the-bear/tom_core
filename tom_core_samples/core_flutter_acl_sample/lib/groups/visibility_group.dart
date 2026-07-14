@@ -22,7 +22,7 @@ final ShowcaseGroup visibilityGroup = ShowcaseGroup(
   summary: 'startGroup/endGroup name a group; an AclBinaryVisibilityController '
       'shows, hides or disables it reactively via setGroupVisibilityController.',
   icon: Icons.visibility_outlined,
-  cells: (context) => const [
+  cells: (context) => [
     ShowcaseCell(
       title: 'Toggle a named group',
       note: 'Flip the switch to hide or reveal the "details" group. The summary '

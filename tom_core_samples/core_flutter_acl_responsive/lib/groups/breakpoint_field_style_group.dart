@@ -26,7 +26,7 @@ final ShowcaseGroup breakpointFieldStyleGroup = ShowcaseGroup(
       "*BpOverrides re-style the same form per tier — no app-code branching. "
       'Resize the window: label, fonts, gaps and error chrome react live.',
   icon: Icons.format_size_outlined,
-  cells: (context) => const [
+  cells: (context) => [
     ShowcaseCell(
       title: 'Width-reactive field anatomy',
       note: 'Crossing 400px: label floating → above, fonts bump, gaps grow, '

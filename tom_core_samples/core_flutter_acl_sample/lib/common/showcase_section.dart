@@ -38,24 +38,28 @@ class ShowcaseGroup {
 }
 
 /// A full-screen scroll of one group's cells.
-class GroupScreen extends StatelessWidget {
-  const GroupScreen({super.key, required this.group});
+// Why: extends [TomStatelessWidget] so the screen container is a Tom base too
+// (G-UI-1/G-UI-2). It carries no tomId/resources, so a family base would be
+// wrong; [TomStatelessWidget] is the sanctioned base for scope-participating
+// chrome. Construction enters [TomScope.current] → the constructor is non-const.
+class GroupScreen extends TomStatelessWidget {
+  GroupScreen({super.key, required this.group});
 
   final ShowcaseGroup group;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomScaffold(
       appBar: TomAppBar(
         backgroundColor: theme.colorScheme.inversePrimary,
         title: TomText(text: group.title),
       ),
-      body: ListView(
+      body: TomListView(
         padding: const EdgeInsets.all(16),
         children: [
           TomText(text: group.summary, style: theme.textTheme.bodyLarge),
-          const SizedBox(height: 16),
+          TomSizedBox(height: 16),
           ...group.cells(context),
         ],
       ),

@@ -365,7 +365,15 @@ error resolution `:868`; `ScreenElementsProvider`
 - **G-UI-2** — **New UI components derive from the `Tom*` base classes**
   (`TomNodeBase` → `TomPolicyNodeBase` → `TomFamilyBase` → family bases) so they
   inherit authorization, scope, and resource behavior. A component that extends
-  `StatelessWidget` directly, bypassing the hierarchy, is a defect.
+  `StatelessWidget` directly, bypassing the hierarchy, is a defect. A **layout
+  wrapper that owns no `tomId`/resources and no family identity** (a screen
+  container, demo page, or teaching-chrome widget that merely arranges Tom
+  children) derives from **`TomStatelessWidget` / `TomStatefulWidget` + `TomState`**
+  (`tom_flutter_ui/lib/src/widget_base/tom_scope_widgets.dart`) — the sanctioned
+  bases that capture and re-enter the construction-time `TomScope` without
+  attaching a spurious authorization/family identity. These bases are non-const
+  (construction reads `TomScope.current`), so their subclasses' constructors
+  cannot be `const`. Raw `StatelessWidget`/`StatefulWidget` remains the defect.
 - **G-UI-3** — Layout uses **`AclBuilder`**. Unauthorized components are
   **hidden** when `setAclDefaultHideUnauthorized()` is set (drops
   `TomAuthState.none` components). Application code does not manually check auth

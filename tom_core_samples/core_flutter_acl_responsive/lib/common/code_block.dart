@@ -14,25 +14,29 @@ import 'package:flutter/services.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Renders a Dart snippet in a bordered monospace panel with a copy button.
-class CodeBlock extends StatelessWidget {
-  const CodeBlock(this.code, {super.key});
+// Why: extends [TomStatelessWidget] so even the code panel is built on a Tom
+// base (G-UI-1/G-UI-2). It has no tomId/resources, so a family base would be
+// wrong; [TomStatelessWidget] is the sanctioned base for scope-participating
+// chrome. Construction enters [TomScope.current] → the constructor is non-const.
+class CodeBlock extends TomStatelessWidget {
+  CodeBlock(this.code, {super.key});
 
   /// The verbatim Dart source that produced the sibling layout.
   final String code;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final trimmed = code.trim();
-    return DecoratedBox(
+    return TomDecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.outlineVariant),
       ),
-      child: Stack(
+      child: TomStack(
         children: [
-          Padding(
+          TomPadding(
             padding: const EdgeInsets.fromLTRB(12, 12, 40, 12),
             child: TomSelectableText(
               text: trimmed,
@@ -43,11 +47,11 @@ class CodeBlock extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
+          TomPositioned(
             top: 2,
             right: 2,
             child: TomIconButton(
-              icon: const Icon(Icons.copy, size: 16),
+              icon: TomIcon(icon: Icons.copy, size: 16),
               tooltip: 'Copy snippet',
               onPressed: () =>
                   Clipboard.setData(ClipboardData(text: trimmed)),

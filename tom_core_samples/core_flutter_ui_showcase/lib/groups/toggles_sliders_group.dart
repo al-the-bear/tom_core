@@ -18,7 +18,7 @@ final ShowcaseGroup togglesSlidersGroup = ShowcaseGroup(
   summary: 'Switches, checkboxes and sliders — the interactive value '
       'widgets that report changes through onChanged.',
   icon: Icons.tune,
-  cells: (context) => const [
+  cells: (context) => [
     ShowcaseCell(
       title: 'TomSwitch',
       code: "TomSwitch(\n"
