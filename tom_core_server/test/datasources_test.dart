@@ -381,6 +381,43 @@ void main() {
       expect(sql, 'a = "x:y" AND b = ?');
       expect(params, ['p']);
     });
+
+    test('a `:name`-looking substring inside a backtick identifier is safe '
+        '(RCB10)', () {
+      // A bound :p next to a `weird:col` backtick identifier must yield exactly
+      // one `?`; the `:col` inside the backticks is a quoted identifier, not a
+      // placeholder.
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        'SELECT `weird:col` FROM t WHERE b = :p',
+      );
+      expect(sql, 'SELECT `weird:col` FROM t WHERE b = ?');
+      expect(params, ['p']);
+    });
+
+    test('a doubled backtick escapes a literal backtick inside an identifier '
+        '(RCB10)', () {
+      // ``a`` `:x` `` is one identifier (the `` `` `` is an escaped backtick), so
+      // `:x` never leaves the identifier — only the trailing bound :p is a slot.
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        'SELECT `a``:x` FROM t WHERE b = :p',
+      );
+      expect(sql, 'SELECT `a``:x` FROM t WHERE b = ?');
+      expect(params, ['p']);
+    });
+
+    test('a backslash is a literal character inside a backtick identifier, not '
+        'an escape (RCB10)', () {
+      // Distinguishes the backtick rule from the string-literal rule: under
+      // string-literal escaping the `\` before the closing backtick would
+      // escape it and swallow the rest of the SQL (zero slots). Backtick
+      // identifiers have no backslash escaping, so the backtick still closes and
+      // the following bound :p is the sole `?`.
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        r'SELECT `a\` FROM t WHERE b = :p',
+      );
+      expect(sql, r'SELECT `a\` FROM t WHERE b = ?');
+      expect(params, ['p']);
+    });
   });
 
   group('SqlPlaceholderScan.extractNames (RCC6, shared with crud_repository)',
@@ -399,6 +436,16 @@ void main() {
       expect(
         SqlPlaceholderScan.extractNames('x = :v OR y = :v'),
         ['v', 'v'],
+      );
+    });
+
+    test('extractNames skips a `:name`-looking backtick identifier (RCB10)', () {
+      // The repository's raw-bind path inherits the same backtick awareness as
+      // the datasource rewrite: `weird:col` is a quoted identifier, so only the
+      // real bound :p is extracted.
+      expect(
+        SqlPlaceholderScan.extractNames('`weird:col` = :p'),
+        ['p'],
       );
     });
   });

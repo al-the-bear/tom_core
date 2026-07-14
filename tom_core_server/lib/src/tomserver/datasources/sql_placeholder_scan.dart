@@ -15,18 +15,28 @@
 /// a spurious slot, desynchronising every following positional bind (RCC6).
 ///
 /// This is the single implementation both consumers share. It walks the SQL
-/// character by character, copying the contents of single- or double-quoted
-/// string literals verbatim, and only recognises a `:name` placeholder in
-/// ordinary (outside-literal) text. Inside a literal both escape conventions the
-/// dialect can emit are honoured: a backslash escapes the next character
-/// (MariaDB's default mode) and a doubled delimiter (`''` / `""`) is an escaped
-/// delimiter that keeps the scan inside the literal.
+/// character by character, copying the contents of quoted spans verbatim, and
+/// only recognises a `:name` placeholder in ordinary (outside-quotes) text.
+/// Three quoting forms are skipped, each with the escape rule its delimiter
+/// actually uses:
+///
+///  - **String literals** (`'…'` / `"…"`). Both escape conventions the dialect
+///    can emit are honoured: a backslash escapes the next character (MariaDB's
+///    default mode) and a doubled delimiter (`''` / `""`) is an escaped
+///    delimiter that keeps the scan inside the literal.
+///  - **Backtick-quoted identifiers** (`` `…` ``). MySQL/MariaDB identifiers
+///    have **no** backslash escaping — a backslash is a literal character — and
+///    a literal backtick is written doubled (`` `` ``). So the backtick span is
+///    skipped with the doubled-delimiter rule only. A generated identifier is a
+///    Dart field name and never contains a colon, so this is a robustness guard
+///    (RCB10) against hand-written or future SQL rather than a live trigger.
 class SqlPlaceholderScan {
   SqlPlaceholderScan._();
 
   static const int _colon = 0x3A; // :
   static const int _singleQuote = 0x27; // '
   static const int _doubleQuote = 0x22; // "
+  static const int _backtick = 0x60; // `
   static const int _backslash = 0x5C; // \
   static const int _underscore = 0x5F; // _
   static const int _zero = 0x30; // 0
@@ -50,7 +60,13 @@ class SqlPlaceholderScan {
     while (i < length) {
       final c = namedSql.codeUnitAt(i);
       if (c == _singleQuote || c == _doubleQuote) {
-        i = _copyLiteral(namedSql, i, c, out);
+        i = _copyQuoted(namedSql, i, c, out, escapeWithBackslash: true);
+        continue;
+      }
+      if (c == _backtick) {
+        // Backtick identifiers have no backslash escaping; only a doubled
+        // backtick escapes a literal backtick.
+        i = _copyQuoted(namedSql, i, c, out, escapeWithBackslash: false);
         continue;
       }
       if (c == _colon &&
@@ -79,19 +95,28 @@ class SqlPlaceholderScan {
   /// statement rather than rewriting the SQL.
   static List<String> extractNames(String namedSql) => toPositional(namedSql).$2;
 
-  /// Copies the string literal that opens at [start] (its delimiter is [quote])
+  /// Copies the quoted span that opens at [start] (its delimiter is [quote])
   /// into [out] verbatim, returning the index just past the closing delimiter.
   ///
-  /// A backslash escapes the following character; a doubled delimiter is an
-  /// escaped delimiter that stays inside the literal. An unterminated literal
-  /// (which balanced generated SQL never produces) is copied to the end.
-  static int _copyLiteral(String sql, int start, int quote, StringBuffer out) {
+  /// When [escapeWithBackslash] is true a backslash escapes the following
+  /// character (string-literal rule, MariaDB's default mode); when false a
+  /// backslash is an ordinary character (backtick-identifier rule). In both
+  /// cases a doubled delimiter is an escaped delimiter that stays inside the
+  /// span. An unterminated span (which balanced generated SQL never produces)
+  /// is copied to the end.
+  static int _copyQuoted(
+    String sql,
+    int start,
+    int quote,
+    StringBuffer out, {
+    required bool escapeWithBackslash,
+  }) {
     final length = sql.length;
     out.writeCharCode(quote); // opening delimiter
     var i = start + 1;
     while (i < length) {
       final c = sql.codeUnitAt(i);
-      if (c == _backslash && i + 1 < length) {
+      if (escapeWithBackslash && c == _backslash && i + 1 < length) {
         out.writeCharCode(c);
         out.writeCharCode(sql.codeUnitAt(i + 1));
         i += 2;
