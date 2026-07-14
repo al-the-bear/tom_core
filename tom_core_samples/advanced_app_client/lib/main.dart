@@ -32,6 +32,7 @@
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
@@ -48,6 +49,10 @@ const String _clientEnvironment =
 
 Future<void> main() async {
   initializeReflection();
+  // Establishes the shared ProjectRole → TomAuthState grade vocabulary the
+  // framework's TomResourceRoleAdapter resolves resource keys through (C-5);
+  // every advanced_* runtime registers the identical mapping at boot.
+  registerProjectRoleVocabulary();
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
   AdvancedClientConfig.registerDefault();
 

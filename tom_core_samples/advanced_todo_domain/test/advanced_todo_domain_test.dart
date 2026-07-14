@@ -1,5 +1,6 @@
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart' show TomString;
+import 'package:tom_core_kernel/tom_core_kernel.dart'
+    show TomAuthState, TomResourceRoleRegistry, TomString;
 import 'package:test/test.dart';
 
 // The single test-only reflection seed for this package (G-REFL-2).
@@ -257,6 +258,55 @@ void main() {
       expect(TodoLabel.docs.resourceKey, 'global.todolabel.docs');
       expect(UserStatus.suspended.resourceKey, 'global.userstatus.suspended');
       expect(ProjectRole.commenter.resourceKey, 'global.projectrole.commenter');
+    });
+  });
+
+  group('resource-role vocabulary', () {
+    setUp(TomResourceRoleRegistry.reset);
+    tearDown(TomResourceRoleRegistry.reset);
+
+    test('maps owner/editor to full and commenter/viewer to read (C-5)', () {
+      registerProjectRoleVocabulary();
+      expect(
+        TomResourceRoleRegistry.stateFor(ProjectRole.owner.name),
+        TomAuthState.full,
+      );
+      expect(
+        TomResourceRoleRegistry.stateFor(ProjectRole.editor.name),
+        TomAuthState.full,
+      );
+      expect(
+        TomResourceRoleRegistry.stateFor(ProjectRole.commenter.name),
+        TomAuthState.read,
+      );
+      expect(
+        TomResourceRoleRegistry.stateFor(ProjectRole.viewer.name),
+        TomAuthState.read,
+      );
+    });
+
+    test('registers a grade for every ProjectRole', () {
+      registerProjectRoleVocabulary();
+      for (final role in ProjectRole.values) {
+        expect(
+          TomResourceRoleRegistry.stateFor(role.name),
+          isNotNull,
+          reason: 'ProjectRole.${role.name} must have a grade mapping',
+        );
+      }
+    });
+
+    test('is idempotent — re-registering re-establishes the same mapping', () {
+      registerProjectRoleVocabulary();
+      registerProjectRoleVocabulary();
+      expect(
+        TomResourceRoleRegistry.stateFor(ProjectRole.owner.name),
+        TomAuthState.full,
+      );
+      expect(
+        TomResourceRoleRegistry.stateFor(ProjectRole.viewer.name),
+        TomAuthState.read,
+      );
     });
   });
 }

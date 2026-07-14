@@ -56,6 +56,10 @@ import 'package:advanced_auth_server/advanced_auth_server.dart';
 // `tomRemoteApis` registry the endpoint router resolves URIs from.
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 
+// Registers the ProjectRole → TomAuthState resource-role vocabulary the
+// framework's TomResourceRoleAdapter resolves grades through (C-5).
+import 'package:advanced_todo_domain/advanced_todo_domain.dart';
+
 import 'auth_server_start.reflection.dart';
 
 /// HTTP port the auth server binds (overridable via the `port` config key / env
@@ -250,6 +254,10 @@ Future<void> main(List<String> args) async {
   TomAuthenticationServer.globalSettingJwtOrganization = 'tom';
 
   initializeReflection();
+  // Establishes the shared ProjectRole → TomAuthState grade vocabulary the
+  // framework's TomResourceRoleAdapter resolves resource keys through (C-5).
+  // Every advanced_* runtime registers the identical mapping at boot.
+  registerProjectRoleVocabulary();
   initializeRuntime();
   initializeServerResources();
 
