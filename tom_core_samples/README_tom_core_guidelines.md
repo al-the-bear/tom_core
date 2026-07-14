@@ -251,6 +251,18 @@ tree; applied versions are skipped (idempotent).
   seeding.** An admin account is needed in production; demo accounts are
   demo-only. They MUST live in different migration files so a production deploy
   applies the admin seed without the demo users.
+- **G-MIG-4** — **Environment-selective migrations are expressed by a filename
+  tag**, not by application branching. A migration whose description carries a
+  `@<env>[,<env>…]` suffix (e.g. `[003]-app_demo_seed@dev,test.sql`) applies
+  **only** in the named environments; an untagged migration applies everywhere.
+  The active environment is resolved from `TomRuntime` (never a raw `Platform`
+  read, G-ENV-1), defaulting production-safe when uninitialized, so a production
+  apply omits every `@dev`/`@test`-tagged seed while all schema (untagged)
+  migrations still run. Anchor:
+  `tom_core_server/.../db_migration/db_migration.dart:103`
+  (`appliesInEnvironment`), `:222` (`resolveActiveEnvironment`). This is the
+  mechanism that makes G-MIG-3's "production applies the admin seed without the
+  demo users" enforceable — the admin seed is untagged, the demo seed is tagged.
 
 ---
 
@@ -369,6 +381,15 @@ error resolution `:868`; `ScreenElementsProvider`
 - **G-UI-6** — A form declares field ids **directly as `String`s** in
   `createFormElements()`; there is **no class defining tomIds**. A form's **scope
   is usually a Flutter route**.
+- **G-UI-7** — **Field validators are declared as resources and resolved by
+  name**, not hand-coded as one-off closures per field. A field's
+  `<basePath>.validators` resource declaration is resolved through the DI-swappable
+  `TomValidatorRegistry` (built-ins `required`/`email`/`minLength`/`maxLength`/
+  `pattern`/`min`/`max`, plus app-registered ones via `register(name, factory)`);
+  `TomField` merges code-supplied and resource-declared validators. Validation
+  **error messages are resources** (G-RES-1), resolved through the scoped→global
+  resource path — never a hardcoded message string. Anchor:
+  `tom_flutter_ui/lib/src/forms/validation/validator_registry.dart:35`.
 
 ---
 
