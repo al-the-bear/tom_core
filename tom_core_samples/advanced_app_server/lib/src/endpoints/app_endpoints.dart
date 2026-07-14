@@ -157,11 +157,17 @@ class InMemoryAppReadStore implements AppReadStore {
 
 /// Pure read logic over an [AppReadStore], filtered by the principal's access.
 ///
-/// Every list endpoint enumerates the candidate rows and keeps only those the
-/// principal can reach — the step-17 [ResourceRoleResolver] computes the
-/// effective [ProjectRole] (ownership-or-share) and `null` means invisible. The
-/// field-state endpoint resolves the principal's role on an item and projects
-/// the step-18 [FieldGradeResolver]'s per-field grades into [GradedFieldDto]s.
+/// The project/list/item list endpoints enumerate the candidate rows and keep
+/// only those the principal can reach — the step-17 [ResourceRoleResolver]
+/// computes the effective [ProjectRole] (ownership-or-share) and `null` means
+/// invisible. Workspaces are the exception (RCC4): their visibility is
+/// *owner-only* (shares never target or flow up to a workspace), so
+/// [listWorkspaces] filters by the owner column directly — the same
+/// `owner_id = <principal.id>` predicate the `WorkspaceRecord` `@TomDbScope`
+/// enforces at the database, so the two are reconciled rather than stacked into
+/// a redundant per-row resolver call. The field-state endpoint resolves the
+/// principal's role on an item and projects the step-18 [FieldGradeResolver]'s
+/// per-field grades into [GradedFieldDto]s.
 class AppReadService {
   /// The listing seam candidate rows are enumerated through.
   final AppReadStore store;
@@ -183,14 +189,19 @@ class AppReadService {
         FieldGradeResolver(const RepositoryGrantStore()),
       );
 
-  /// Workspaces the principal [userId] owns or is shared into.
-  Future<List<Workspace>> listWorkspaces(int userId) => _filterVisible(
-        userId,
-        AppResourceTypes.workspace,
-        store.allWorkspaces,
-        (r) => r.id,
-        workspaceFromRecord,
-      );
+  /// Workspaces the principal [userId] owns.
+  ///
+  /// Workspace visibility is owner-only (shares never target or flow up to a
+  /// workspace), so this filters by the owner column — the identical predicate
+  /// the `WorkspaceRecord` `@TomDbScope` applies at the database (RCC4). The
+  /// repository read is already owner-scoped by that annotation; applying the
+  /// same predicate here filters the database-free [InMemoryAppReadStore] too,
+  /// so both stores agree without a redundant per-row [ResourceRoleResolver]
+  /// call.
+  Future<List<Workspace>> listWorkspaces(int userId) async => [
+        for (final record in await store.allWorkspaces())
+          if (record.ownerId == userId) workspaceFromRecord(record),
+      ];
 
   /// Visible projects in the workspace [workspaceId] for the principal [userId].
   Future<List<Project>> listProjects(int userId, int workspaceId) =>

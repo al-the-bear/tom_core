@@ -44,8 +44,21 @@ const String appDatasource = 'app_db';
 
 /// A workspace row in `app_workspaces` — the root of the ownership chain
 /// `Workspace → Project → TodoList → TodoItem` the access resolver walks.
+///
+/// **C-3 row scope (RCC4).** The workspace is the one entity whose read
+/// visibility is *owner-only*: a workspace is reachable iff the caller owns it
+/// (shares never target a workspace and never flow upward — see
+/// `AppReadService`). That makes it faithfully expressible as a framework
+/// `@TomDbScope`, so every repository read is owner-scoped at the database
+/// (`WHERE owner_id = <principal.id>`) independently of any service-layer
+/// filter. The project/list/item records are deliberately **not** scoped: their
+/// visibility folds ownership *and* `share`-mode delegations over the
+/// containment chain, which a single-column `IN (…)` scope would AND-hide
+/// (silently dropping legitimately shared rows), so they keep the
+/// `ResourceRoleResolver` filter instead.
 @tomReflector
 @TomDbTable(datasource: appDatasource, table: 'app_workspaces', primaryKeyField: 'id')
+@TomDbScope(field: 'ownerId')
 class WorkspaceRecord {
   /// Surrogate primary key (`null` until first persisted).
   @TomEntityId()

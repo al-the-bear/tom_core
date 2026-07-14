@@ -299,6 +299,7 @@ final _data = <r.Reflection, r.ReflectorData>{
             table: 'app_workspaces',
             primaryKeyField: 'id',
           ),
+          const prefix61.TomDbScope(field: 'ownerId'),
         ],
         null,
       ),
