@@ -61,7 +61,11 @@ credentials are (sample only — never ship them):
 ## Endpoints
 
 `POST` / `PUT` bodies are JSON; the `Authorization: Bearer <authzToken>` header
-carries the login's `authzToken` (the token that carries the resolved roles).
+carries the login's `authzToken` (the token that carries the resolved roles). Its
+encrypted access-control payload includes the principal's **effective**
+`resourceRoles` map — the C-5 ownership grants **and** the C-6 `share`-mode
+delegations folded through `TomDelegationResolver.resolveEffectiveRoles` at issue
+time (RCB7), the same fold the app server re-resolves live at enforcement.
 
 | Method & path | Access | Purpose |
 | --- | --- | --- |

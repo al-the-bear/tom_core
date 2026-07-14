@@ -46,12 +46,21 @@ InMemoryAuthUserStore _storeWith({List<UserRecord> extraUsers = const []}) {
 }
 
 /// A token service over a freshly seeded store, signing with a fixed issuer.
-AuthTokenService _service({List<UserRecord> extraUsers = const []}) =>
+/// The effective-role resolver folds C-5 grants and C-6 shares; both default to
+/// empty for the credential/token-lifecycle tests.
+AuthTokenService _service({
+  List<UserRecord> extraUsers = const [],
+  List<TomPrincipalResourceGrant> grants = const [],
+  List<TomPrincipalDelegation> shares = const [],
+}) =>
     AuthTokenService(
       AdvancedAuthenticationService(
         _storeWith(extraUsers: extraUsers),
-        TomPrincipalResourceRoleResolver(
-          InMemoryPrincipalResourceGrantStore(const []),
+        TomDelegationResolver(
+          InMemoryPrincipalDelegationStore(shares),
+          TomPrincipalResourceRoleResolver(
+            InMemoryPrincipalResourceGrantStore(grants),
+          ),
         ),
       ),
       issuer: 'tom',

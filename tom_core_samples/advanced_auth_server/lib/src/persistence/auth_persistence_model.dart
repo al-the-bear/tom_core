@@ -199,3 +199,19 @@ class PrincipalResourceGrantRepository
 
 /// Process-wide singleton repository instance.
 final principalResourceGrantRepository = PrincipalResourceGrantRepository();
+
+/// Repository for the framework's [TomPrincipalDelegation] table
+/// (`tom_principal_delegation`) — the per-delegate delegation rows, of which the
+/// sample uses only C-6 `share`-mode grants ("owner shares a resource with a
+/// grantee"). The login folds a delegate's active shares into
+/// `TomAccessControlInformation.resourceRoles` (RCB7) so the minted token's
+/// effective-role claim matches what the servers enforce.
+///
+/// Like the grant table it binds the framework default `main` datasource, which
+/// the boot (step 13) delegates to `auth_db`, so the delegation rows the app
+/// server writes on `main` are read here through the same physical schema.
+class PrincipalDelegationRepository
+    extends TomSqlDatasourceRepository<TomPrincipalDelegation, int> {}
+
+/// Process-wide singleton repository instance.
+final principalDelegationRepository = PrincipalDelegationRepository();

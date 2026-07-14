@@ -189,11 +189,25 @@ const LoginUnauthorizedErrorHandler _loginErrorHandler =
 class AdvancedAuthApiService implements AuthApiService {
   /// Production token logic: verifies credentials through the repository-backed
   /// store and signs with the server-wide JWT issuer.
-  final AuthTokenService _tokens = AuthTokenService(
+  ///
+  /// Built lazily so constructing the component for a token-free endpoint (the
+  /// pure `loginResources`/text path) does not eagerly instantiate the grant and
+  /// delegation repositories — which analyse their framework entities through
+  /// reflection and so require the runtime seed only the login/boot path sets up.
+  late final AuthTokenService _tokens = AuthTokenService(
     AdvancedAuthenticationService(
       const RepositoryAuthUserStore(),
-      TomPrincipalResourceRoleResolver(
-        RepositoryPrincipalResourceGrantStore(principalResourceGrantRepository),
+      // Fold both authorization layers into the token's resourceRoles claim: the
+      // C-5 ownership grants and the C-6 `share`-mode delegations, both read from
+      // `auth_db` (RCB7) — the same rows the app server re-resolves at
+      // enforcement time.
+      TomDelegationResolver(
+        RepositoryPrincipalDelegationStore(principalDelegationRepository),
+        TomPrincipalResourceRoleResolver(
+          RepositoryPrincipalResourceGrantStore(
+            principalResourceGrantRepository,
+          ),
+        ),
       ),
     ),
   );

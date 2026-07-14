@@ -49,16 +49,21 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
   /// The store the login reads the account, roles, and groups through.
   final AuthUserStore store;
 
-  /// Resolves the authenticated principal's per-resource role grants (C-5) into
+  /// Resolves the authenticated principal's **effective** per-resource roles into
   /// the `resourceKey → roleName` map carried on
   /// [TomAccessControlInformation.resourceRoles].
   ///
-  /// Reads the framework [TomPrincipalResourceGrant] rows keyed by the user's
-  /// (stringified) id and folds duplicate resources by role strength, so a login
-  /// mints a token that already carries the caller's resource roles — the app
-  /// server and client then resolve resource-level grades through the framework
-  /// registry rather than a bespoke resolver (C-5, G-AUTHZ-5).
-  final TomPrincipalResourceRoleResolver resourceRoleResolver;
+  /// Folds both authorization layers the sample uses through the one framework
+  /// path: the principal's own C-5 [TomPrincipalResourceGrant] rows (ownership)
+  /// **and** the C-6 `share`-mode [TomPrincipalDelegation] rows targeting them
+  /// (RCB7), keyed by the user's (stringified) id and collapsed to the stronger
+  /// role per resource. This is the same fold
+  /// [TomDelegationResolver.resolveEffectiveRoles] applies at enforcement time,
+  /// applied here at issue time — so the minted token's effective-role claim
+  /// matches what the app server (which re-resolves the same rows from `auth_db`)
+  /// enforces and what the app server's `/resource-roles` endpoint returns to the
+  /// client (C-5/C-6, G-AUTHZ-5).
+  final TomDelegationResolver resourceRoleResolver;
 
   /// Builds the service over [store] and [resourceRoleResolver] (repository-backed
   /// collaborators at boot, seeded in-memory ones under test).
@@ -98,10 +103,14 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
 
     final roleKeys = await store.roleKeysForUser(record.id!);
     final groupNames = await store.groupNamesForUser(record.id!);
-    // Per-resource role grants (C-5): the principal id is the user's surrogate
-    // id stringified, matching how the write paths stamp ownership grants.
-    final resourceRoles =
-        await resourceRoleResolver.resolveResourceRoles(record.id!.toString());
+    // Effective per-resource roles (C-5 ownership grants ∪ C-6 active share
+    // delegations): the principal id is the user's surrogate id stringified,
+    // matching how the write paths stamp ownership grants and shares. Resolved
+    // "now" so only currently-active delegations fold in.
+    final resourceRoles = await resourceRoleResolver.resolveEffectiveRoles(
+      record.id!.toString(),
+      DateTime.now(),
+    );
 
     final principal = TomPrincipal(
       authenticated: true,
