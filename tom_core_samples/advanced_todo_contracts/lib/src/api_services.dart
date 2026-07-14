@@ -138,6 +138,25 @@ abstract class AppApiService {
   /// is shared into.
   Future<List<Workspace>> listWorkspaces();
 
+  /// `appCreateWorkspace` — `POST /workspaces`. The principal becomes the owner
+  /// both ways: the persisted `ownerId` column is stamped with their id (so the
+  /// framework `@TomDbScope(field: 'ownerId')` owner-scope makes the row theirs)
+  /// and an explicit C-5 owner grant is recorded (mirroring `createProject`).
+  Future<Workspace> createWorkspace(Workspace workspace);
+
+  /// `appUpdateWorkspace` — `PUT /workspaces/{id}`. **Owner-only by
+  /// construction**: the update routes through the framework CRUD repository,
+  /// whose `@TomDbScope` write enforcement rejects an update to a workspace the
+  /// caller does not own with a `TomDataScopeAuthorizationException` — the app
+  /// server maps that to **403** (the RCB9 live write-rejection path). The `{id}`
+  /// path capture binds onto `Workspace.id` via `urlParameterMapping`.
+  Future<Workspace> updateWorkspace(Workspace workspace);
+
+  /// `appDeleteWorkspace` — `DELETE /workspaces/{id}`. Owner-only by the same
+  /// `@TomDbScope` write enforcement as [updateWorkspace]. The `{id}` path
+  /// capture binds onto [EntityIdRequest.id].
+  Future<void> deleteWorkspace(EntityIdRequest request);
+
   /// `appListProjects` — `GET /projects?workspaceId=`. Visible projects in a
   /// workspace.
   Future<List<Project>> listProjects(String workspaceId);

@@ -350,6 +350,17 @@ class AppReadService {
 /// is the live store over the step-14 repository singletons; [InMemoryAppWriteStore]
 /// is a seeded, database-free store the field-grade enforcement tests drive.
 abstract class AppWriteStore {
+  /// Inserts or updates [record], returning the saved workspace row.
+  ///
+  /// This is the one **scoped-entity** write seam (RCB9): [WorkspaceRecord]
+  /// carries `@TomDbScope(field: 'ownerId')`, so on the live repository an
+  /// update/delete of a row the caller does not own raises
+  /// [TomDataScopeAuthorizationException] before any statement runs.
+  Future<WorkspaceRecord> saveWorkspace(WorkspaceRecord record);
+
+  /// Deletes the workspace row with [id] (owner-scoped on the live repository).
+  Future<void> deleteWorkspace(int id);
+
   /// Returns the item row for [id], or `null` when it does not exist.
   Future<ItemRecord?> findItem(int id);
 
@@ -377,6 +388,13 @@ class RepositoryAppWriteStore implements AppWriteStore {
   const RepositoryAppWriteStore();
 
   @override
+  Future<WorkspaceRecord> saveWorkspace(WorkspaceRecord record) =>
+      workspaceRepository.save(record);
+
+  @override
+  Future<void> deleteWorkspace(int id) => workspaceRepository.deleteById(id);
+
+  @override
   Future<ItemRecord?> findItem(int id) => itemRepository.findById(id);
 
   @override
@@ -401,10 +419,12 @@ class RepositoryAppWriteStore implements AppWriteStore {
 /// through [AppWriteService], and assert the persisted row reflects only the
 /// permitted fields — no connection or reflection.
 class InMemoryAppWriteStore implements AppWriteStore {
+  final List<WorkspaceRecord> _workspaces;
   final List<ItemRecord> _items;
   final List<ProjectRecord> _projects;
   final List<CommentRecord> _comments;
 
+  int _nextWorkspaceId = 1;
   int _nextItemId = 1;
   int _nextProjectId = 1;
   int _nextCommentId = 1;
@@ -412,12 +432,15 @@ class InMemoryAppWriteStore implements AppWriteStore {
   /// Seeds the store with the given rows (each list defaults to empty); the
   /// auto-increment counters advance past any seeded ids.
   InMemoryAppWriteStore({
+    List<WorkspaceRecord> workspaces = const [],
     List<ItemRecord> items = const [],
     List<ProjectRecord> projects = const [],
     List<CommentRecord> comments = const [],
-  })  : _items = [...items],
+  })  : _workspaces = [...workspaces],
+        _items = [...items],
         _projects = [...projects],
         _comments = [...comments] {
+    _nextWorkspaceId = _maxId(_workspaces.map((w) => w.id)) + 1;
     _nextItemId = _maxId(_items.map((i) => i.id)) + 1;
     _nextProjectId = _maxId(_projects.map((p) => p.id)) + 1;
     _nextCommentId = _maxId(_comments.map((c) => c.id)) + 1;
@@ -425,6 +448,12 @@ class InMemoryAppWriteStore implements AppWriteStore {
 
   static int _maxId(Iterable<int?> ids) =>
       ids.fold<int>(0, (max, id) => (id != null && id > max) ? id : max);
+
+  /// The persisted workspace rows (test introspection). The database-free store
+  /// does *not* enforce the framework `@TomDbScope` owner-scope (that lives in
+  /// the live repository and is exercised in the RCB9 integration script); here
+  /// a save/delete always succeeds, so the create path can be unit-tested.
+  List<WorkspaceRecord> get workspaces => List.unmodifiable(_workspaces);
 
   /// The persisted item rows (test introspection).
   List<ItemRecord> get items => List.unmodifiable(_items);
@@ -434,6 +463,21 @@ class InMemoryAppWriteStore implements AppWriteStore {
 
   /// The persisted comment rows (test introspection).
   List<CommentRecord> get comments => List.unmodifiable(_comments);
+
+  @override
+  Future<WorkspaceRecord> saveWorkspace(WorkspaceRecord record) async {
+    if (record.id == null) {
+      record.id = _nextWorkspaceId++;
+      _workspaces.add(record);
+    } else {
+      _replaceById(_workspaces, record, (w) => w.id == record.id);
+    }
+    return record;
+  }
+
+  @override
+  Future<void> deleteWorkspace(int id) async =>
+      _workspaces.removeWhere((w) => w.id == id);
 
   @override
   Future<ItemRecord?> findItem(int id) async {
@@ -644,6 +688,55 @@ class AppWriteService {
     );
     return projectFromRecord(saved);
   }
+
+  /// Creates [workspace] owned by the caller (RCB9's scoped-entity create).
+  ///
+  /// The caller "becomes the owner" two ways, mirroring [createProject]: the
+  /// persisted `ownerId` column is stamped with their id — so the framework
+  /// `@TomDbScope(field: 'ownerId')` owner-scope makes the row theirs and the
+  /// C-3 *insert*-scope check permits it (a principal may only create a row
+  /// scoped to a value they are allowed) — and an explicit C-5 owner grant is
+  /// recorded so the login folds it into `aci.resourceRoles`.
+  Future<Workspace> createWorkspace(int userId, Workspace workspace) async {
+    final record = workspaceToRecord(workspace)
+      ..id = null
+      ..ownerId = userId
+      ..createdAt = DateTime.now();
+    final saved = await store.saveWorkspace(record);
+    await ownershipWriter.recordOwner(
+      userId.toString(),
+      ResourceRoleKeys.workspace(saved.id!),
+    );
+    return workspaceFromRecord(saved);
+  }
+
+  /// Updates the workspace [workspaceId] (its mutable name), owner-only *by
+  /// construction* (RCB9's live write-rejection path).
+  ///
+  /// The save routes through the framework CRUD repository, whose C-3 write
+  /// enforcement first asserts the target row is within the caller's owner-scope
+  /// — a non-owner's update raises [TomDataScopeAuthorizationException] before
+  /// any statement runs, which the app server maps to a 403. There is
+  /// deliberately **no pre-read** here (which would surface a not-found instead):
+  /// the point of RCB9 is to let the framework exception fire. `ownerId` is
+  /// re-stamped with the caller's id — a no-op for the legitimate owner, and
+  /// never reached by a non-owner.
+  Future<Workspace> updateWorkspace(
+    int userId,
+    int workspaceId,
+    Workspace workspace,
+  ) async {
+    final record = workspaceToRecord(workspace)
+      ..id = workspaceId
+      ..ownerId = userId;
+    return workspaceFromRecord(await store.saveWorkspace(record));
+  }
+
+  /// Deletes the workspace [workspaceId], owner-only by the same C-3 write
+  /// enforcement as [updateWorkspace]: a non-owner's delete raises
+  /// [TomDataScopeAuthorizationException] (mapped to 403).
+  Future<void> deleteWorkspace(int userId, int workspaceId) =>
+      store.deleteWorkspace(workspaceId);
 
   /// Creates [item] in its list; the principal must edit (or own) the list and
   /// be `full` on every gradable field they populate. The creator is recorded as
@@ -971,11 +1064,26 @@ const String appEndpointAccessDeniedKey =
 ///   caller cannot reach is reported missing, never leaking its existence).
 /// - `app.access.forbidden` / `app.item.field_forbidden` (and the pipeline's
 ///   pre-invocation [appEndpointAccessDeniedKey]) → **403**.
+/// - a framework [TomDataScopeAuthorizationException] (a non-owner's write to a
+///   `@TomDbScope` row, RCB9) → **403**, carrying its own
+///   `data_scope.write.out_of_scope` key.
 Response? appForbiddenOrNotFound(
   Request request,
   Object error,
   StackTrace stack,
 ) {
+  // RCB9: a framework data-scope *write* rejection — a non-owner updating or
+  // deleting a `@TomDbScope` row (the sample's workspace write path) — surfaces
+  // as a 403 carrying the framework's own stable key
+  // (`data_scope.write.out_of_scope`), distinct from the app's own
+  // `app.access.forbidden`. Checked before the `TomException` narrowing so it is
+  // mapped regardless of the exception's place in the hierarchy.
+  if (error is TomDataScopeAuthorizationException) {
+    return Response.forbidden(
+      jsonEncode({'error': error.key}),
+      headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
+    );
+  }
   if (error is! TomException) return null;
   switch (error.key) {
     case 'app.item.not_found':
@@ -1094,6 +1202,24 @@ class AdvancedAppApiService implements AppApiService {
   @override
   Future<List<Workspace>> listWorkspaces() =>
       _reads.listWorkspaces(_principalId);
+
+  // ----- Workspace write endpoints (RCB9 scoped-entity write path) ----------
+
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateWorkspace')
+  @override
+  Future<Workspace> createWorkspace(Workspace workspace) =>
+      _writes.createWorkspace(_principalId, workspace);
+
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateWorkspace')
+  @override
+  Future<Workspace> updateWorkspace(Workspace workspace) =>
+      _writes.updateWorkspace(
+          _principalId, int.tryParse(workspace.id.get()) ?? -1, workspace);
+
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appDeleteWorkspace')
+  @override
+  Future<void> deleteWorkspace(EntityIdRequest request) =>
+      _writes.deleteWorkspace(_principalId, int.tryParse(request.id) ?? -1);
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListProjects')
   @override

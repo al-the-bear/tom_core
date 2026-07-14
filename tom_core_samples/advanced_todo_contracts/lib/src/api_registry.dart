@@ -241,6 +241,34 @@ final TomApi appApi = TomApi(
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),
+    // The RCB9 scoped-entity write path: create/update/delete a workspace. The
+    // creator becomes the owner (an explicit C-5 grant plus the `ownerId`
+    // column), and update/delete are owner-only *by construction* — the
+    // framework `@TomDbScope(field: 'ownerId')` write enforcement rejects a
+    // non-owner's write with a `TomDataScopeAuthorizationException` (mapped to
+    // 403), the one scoped-entity client write path in the sample.
+    TomApiEndpoint<Workspace, Workspace>(
+      id: 'appCreateWorkspace',
+      uri: '/workspaces',
+      method: TomHttpMethod.post,
+      access: TomAuthenticatedAccess(),
+    ),
+    TomApiEndpoint<Workspace, Workspace>(
+      id: 'appUpdateWorkspace',
+      uri: '/workspaces/{id}',
+      method: TomHttpMethod.put,
+      // `{id}` → `Workspace.id` (identity): the addressed workspace.
+      urlParameterMapping: const {'id': 'id'},
+      access: TomAuthenticatedAccess(),
+    ),
+    TomApiEndpoint<Object?, EntityIdRequest>(
+      id: 'appDeleteWorkspace',
+      uri: '/workspaces/{id}',
+      method: TomHttpMethod.delete,
+      // `{id}` → `EntityIdRequest.id` (identity).
+      urlParameterMapping: const {'id': 'id'},
+      access: TomAuthenticatedAccess(),
+    ),
     TomApiEndpoint<List<Project>, Object?>(
       id: 'appListProjects',
       uri: '/projects',

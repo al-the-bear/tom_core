@@ -40,13 +40,13 @@
 ///    `read`, not `full` — and the app server rejects the write field-by-field
 ///    (`app.item.field_forbidden`, HTTP 403).
 ///  - [TC-37-05] **a second user's WRITE/DELETE of another principal's row is
-///    rejected.** `carol` (a `viewer`, below `editor`) tries to delete `alice`'s
-///    item 1 and is denied (`app.access.forbidden`, HTTP 403) — the reachable
-///    live counterpart of RCA4's connection-free write-scope tests. (The literal
-///    `TomDataScopeAuthorizationException` fires only on a `@TomDbScope` entity's
-///    write; the advanced sample scopes only `WorkspaceRecord`, which has no
-///    write endpoint, so that exact exception is covered at the framework unit
-///    level — see the RCC5 decision notes and RCB9.)
+///    rejected at the service layer.** `carol` (a `viewer`, below `editor`) tries
+///    to delete `alice`'s item 1 and is denied (`app.access.forbidden`, HTTP 403)
+///    — the reachable live counterpart of RCA4's connection-free write-scope
+///    tests. This is the *service-layer* rejection (the item write is gated by the
+///    role/field-grade check before it reaches the DB scope); the *framework's*
+///    own `TomDataScopeAuthorizationException` — thrown by the CRUD repository on a
+///    `@TomDbScope` row write — is the distinct live check in [TC-37-08].
 ///  - [TC-37-06] **the live resource-role map reflects ownership and shares
 ///    (RCB5).** `alice` reads `GET /resource-roles` and holds `owner` over her
 ///    workspace's project and items (a C-5 owner grant expanded down the
@@ -62,6 +62,18 @@
 ///    in the service filter). The revoke-side negative is covered at the project
 ///    level by [TC-37-03], so this check asserts only the positive item-level
 ///    reach and stays independent of that test's share id.
+///  - [TC-37-08] **the framework's `@TomDbScope` write-scope exception fires live
+///    (RCB9).** `WorkspaceRecord` is owner-scoped (`@TomDbScope(field: 'ownerId')`)
+///    and now has a client write path (create/update/delete). `bob` creates his
+///    own workspace (owner-by-construction — the create stamps `ownerId` to his id
+///    and records the C-5 owner grant) and renames it (an owner update succeeds),
+///    then tries to update *and* delete `alice`'s workspace 1: both are rejected
+///    with HTTP 403 carrying the framework key `data_scope.write.out_of_scope`.
+///    This is the CRUD repository's `TomDataScopeAuthorizationException` — the
+///    non-owner's `save`/`deleteById` scope-filters the target row to null and the
+///    repository refuses the write — mapped to 403 by the app server's
+///    `appForbiddenOrNotFound`. It is the live end-to-end counterpart RCB9 adds
+///    because TC-37-05's rejection is only the service-layer `app.access.forbidden`.
 ///
 /// **Why the grant edit writes the whole `viewer` row.** `adminPutGrants`
 /// replaces grants *per role* (`replaceGrantsForRole`), and `adminGetGrants`
@@ -120,6 +132,13 @@ const _titleKey = 'todo.item.title';
 // fresh-seeded runs the integration script guarantees (`docker compose down -v`).
 const _seededBobShareId = '1';
 const _sharedProjectId = '1';
+
+// The framework write-scope key the CRUD repository throws when a non-owner
+// writes/deletes a `@TomDbScope` row (`WorkspaceRecord.ownerId`). The app
+// server's `appForbiddenOrNotFound` maps `TomDataScopeAuthorizationException`
+// to a 403 carrying this exact key (distinct from the service-layer
+// `app.access.forbidden`). See TC-37-08 and RCB9.
+const _dataScopeWriteKey = 'data_scope.write.out_of_scope';
 
 void main() {
   setUpAll(initializeReflection);
@@ -431,6 +450,77 @@ void main() {
         markTestSkipped(_skipMessage(e));
         return;
       } finally {
+        c.transport.close();
+      }
+    });
+
+    test(
+        "TC-37-08: a non-owner's workspace UPDATE/DELETE raises the framework "
+        'TomDataScopeAuthorizationException (RCB9 scoped-entity write)', () async {
+      // The one client write path onto a `@TomDbScope` entity. `WorkspaceRecord`
+      // carries `@TomDbScope(field: 'ownerId')`, so an update/delete of a
+      // workspace the caller does not own is rejected by the framework CRUD
+      // repository *before any statement runs* — the literal
+      // `TomDataScopeAuthorizationException`, mapped by the app server to a 403
+      // carrying its own `data_scope.write.out_of_scope` key (distinct from the
+      // service-layer `app.access.forbidden` TC-37-05 asserts). This is the live
+      // end-to-end reach of RCA4's connection-free framework write-scope tests.
+      final c = _liveClients();
+      String? bobWorkspaceId;
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // Positive create: bob makes his own workspace and becomes its owner (the
+        // `ownerId` column plus the C-5 grant); the insert-scope check permits a
+        // row scoped to his own id.
+        await c.auth.login(_bobLogin);
+        final created = await c.app
+            .createWorkspace(Workspace()..name.set('Bob cross-tier workspace'));
+        bobWorkspaceId = created.id.get();
+        expect(bobWorkspaceId, isNotEmpty);
+        expect(created.ownerId.get(), _bobUserId,
+            reason: 'the creator is stamped as the workspace owner');
+
+        // Positive owner update: bob renames his own workspace — the write-scope
+        // permits a row within his owner-scope.
+        final renamed =
+            await c.app.updateWorkspace(created..name.set('Bob renamed'));
+        expect(renamed.name.get(), 'Bob renamed');
+
+        // Negative update: bob updates alice's seeded workspace 1, which he does
+        // not own — the framework write-scope rejects it with its own key.
+        await expectLater(
+          c.app.updateWorkspace(
+              Workspace()..id.set(_aliceWorkspaceId)..name.set('hijack')),
+          throwsA(isA<AppApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)
+              .having((e) => e.key, 'key', _dataScopeWriteKey)),
+          reason: 'a non-owner may not update a @TomDbScope workspace row',
+        );
+
+        // Negative delete: the same framework rejection on the delete path.
+        await expectLater(
+          c.app.deleteWorkspace(EntityIdRequest(id: _aliceWorkspaceId)),
+          throwsA(isA<AppApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)
+              .having((e) => e.key, 'key', _dataScopeWriteKey)),
+          reason: 'a non-owner may not delete a @TomDbScope workspace row',
+        );
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        // Owner delete (also the positive delete-path proof): bob removes his own
+        // workspace, leaving app_db as seeded. A fresh-seeded next run resets it
+        // regardless, so a failure here never blocks re-runs.
+        if (bobWorkspaceId != null && bobWorkspaceId.isNotEmpty) {
+          try {
+            await c.auth.login(_bobLogin);
+            await c.app.deleteWorkspace(EntityIdRequest(id: bobWorkspaceId));
+          } on SocketException {
+            // Servers unreachable — nothing to clean up.
+          }
+        }
         c.transport.close();
       }
     });

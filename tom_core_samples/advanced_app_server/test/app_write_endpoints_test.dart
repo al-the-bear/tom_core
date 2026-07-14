@@ -468,4 +468,42 @@ void main() {
       expect(store.projects, isEmpty);
     });
   });
+
+  group('createWorkspace ownership (RCB9 scoped-entity create)', () {
+    // The scoped-entity write path. `createWorkspace` has no share/role gate: any
+    // authenticated principal may create their *own* workspace, and the creator
+    // "becomes the owner" both ways — the `ownerId` column is stamped with their
+    // id (so the framework `@TomDbScope(field: 'ownerId')` owner-scope makes the
+    // row theirs; the live insert-scope check permits it) and an explicit C-5
+    // owner grant is recorded. The database-free store cannot enforce the scope
+    // (that fires only against the live repository, exercised in the RCB9
+    // integration script), so these tests assert the creator↔owner wiring.
+    test('persists the workspace with the creator as its owner', () async {
+      final store = seededWriteStore();
+      final created = await writeServiceOver(store).createWorkspace(
+        dave,
+        Workspace()..name.set('Dave\'s space'),
+      );
+
+      expect(created.name.get(), 'Dave\'s space');
+      expect(created.id.get(), isNotEmpty); // surrogate key assigned
+      expect(created.ownerId.get(), '$dave'); // creator stamped as owner
+      expect(store.workspaces, hasLength(1));
+      expect(store.workspaces.single.ownerId, dave);
+    });
+
+    test('stamps the creator as the workspace C-5 owner (RCC1)', () async {
+      final store = seededWriteStore();
+      final owner = InMemoryOwnershipGrantWriter();
+      final created = await writeServiceOver(store, ownershipWriter: owner)
+          .createWorkspace(dave, Workspace()..name.set('Dave\'s space'));
+
+      expect(owner.grants, hasLength(1));
+      final grant = owner.grants.single;
+      expect(grant.principalId, '$dave');
+      expect(grant.resourceKey,
+          ResourceRoleKeys.workspace(int.parse(created.id.get())));
+      expect(grant.role, ProjectRole.owner.name);
+    });
+  });
 }

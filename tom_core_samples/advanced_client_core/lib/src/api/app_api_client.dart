@@ -190,6 +190,26 @@ class AppApiClient implements AppApiService {
       parseWorkspaces((await _get('/workspaces')).jsonArray);
 
   @override
+  Future<Workspace> createWorkspace(Workspace workspace) async =>
+      parseWorkspace(
+        (await _send('POST', '/workspaces',
+                body: jsonEncode(workspace.toJson())))
+            .jsonObject,
+      );
+
+  @override
+  Future<Workspace> updateWorkspace(Workspace workspace) async =>
+      parseWorkspace(
+        (await _send('PUT', '/workspaces/${workspace.id.get()}',
+                body: jsonEncode(workspace.toJson())))
+            .jsonObject,
+      );
+
+  @override
+  Future<void> deleteWorkspace(EntityIdRequest request) async =>
+      _send('DELETE', '/workspaces/${request.id}');
+
+  @override
   Future<List<Project>> listProjects(String workspaceId) async =>
       parseProjects(
           (await _get('/projects', {'workspaceId': workspaceId})).jsonArray);
