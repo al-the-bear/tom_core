@@ -1,18 +1,22 @@
-/// Database-free integration tests for the read endpoints (step 19): the
-/// [AppReadService] composes the step-17 resource-access resolver and the
-/// step-18 field-grade resolver, so the whole read path — visibility filtering
-/// plus the per-field grade matrix — verifies against seeded in-memory stores
-/// with no server or MariaDB.
+/// Database-free integration tests for the read endpoints (step 19, RCC3): the
+/// [AppReadService] composes the step-17 [ResourceRoleResolver] and the step-18
+/// field-grade resolver, so the whole read path — visibility filtering plus the
+/// per-field grade matrix — verifies against seeded in-memory stores with no
+/// server or MariaDB.
 ///
 /// The fixture mirrors §A.10 (workspace 1 owned by alice=2, project 1 → lists
 /// 1,2; items 1,2 in list 1) and §A.4 (the grant matrix the auth server seeds),
-/// with bob=3 shared `editor` and carol=4 shared `viewer` on the project. The
-/// step-19 "Done" bar is the headline pair: a shared user sees the owner's
-/// project, a stranger does not.
+/// with bob=3 shared `editor` and carol=4 shared `viewer` on the project. RCC3
+/// expresses ownership as a C-5 owner grant (RCC1) and each share as a C-6
+/// `share`-mode [TomPrincipalDelegation], folded by the framework resolver into
+/// the effective roles the containment rule then walks. The step-19 "Done" bar
+/// is the headline pair: a shared user sees the owner's project, a stranger does
+/// not.
 ///
 /// The list endpoints return observable domain entities (built through the
-/// mapping layer), so the registry must be live before they run; the grant rows
-/// and the persistence records are plain classes and need no reflection.
+/// mapping layer), so the registry must be live before they run; the grant and
+/// delegation rows and the persistence records are plain classes and need no
+/// reflection.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
@@ -95,22 +99,51 @@ List<ItemRecord> demoItems() => [
       ItemRecord()..id = 1..listId = 1,
       ItemRecord()..id = 2..listId = 1,
     ];
-List<ShareRecord> demoShares() => [
-      ShareRecord()
-        ..id = 1
-        ..resourceType = AppResourceTypes.project
-        ..resourceId = 1
-        ..granteeUserId = bob
-        ..projectRole = ProjectRole.editor.name
-        ..grantedById = alice,
-      ShareRecord()
-        ..id = 2
-        ..resourceType = AppResourceTypes.project
-        ..resourceId = 1
-        ..granteeUserId = carol
-        ..projectRole = ProjectRole.viewer.name
-        ..grantedById = alice,
+
+/// Alice owns the whole tree via a single workspace-level owner grant (RCC1);
+/// the containment rule flows it down to the project, lists and items.
+List<TomPrincipalResourceGrant> demoGrants() => [
+      TomPrincipalResourceGrant(
+        principalId: '$alice',
+        resourceKey: ResourceRoleKeys.workspace(1),
+        role: ProjectRole.owner.name,
+      ),
     ];
+
+/// The two shares as C-6 `share`-mode delegations: bob `editor`, carol `viewer`
+/// on project 1 (RCC3).
+List<TomPrincipalDelegation> demoShares() => [
+      TomPrincipalDelegation(
+        mode: TomDelegationMode.share.name,
+        delegatorId: '$alice',
+        delegateId: '$bob',
+        resourceKey: ResourceRoleKeys.project(1),
+        role: ProjectRole.editor.name,
+      ),
+      TomPrincipalDelegation(
+        mode: TomDelegationMode.share.name,
+        delegatorId: '$alice',
+        delegateId: '$carol',
+        resourceKey: ResourceRoleKeys.project(1),
+        role: ProjectRole.viewer.name,
+      ),
+    ];
+
+/// The framework resolver folding the demo ownership grants and share
+/// delegations into the effective `resourceKey → roleName` map.
+ResourceRoleResolver demoResolver() => ResourceRoleResolver(
+      InMemoryResourceContainmentStore(
+        projects: demoProjects(),
+        lists: demoLists(),
+        items: demoItems(),
+      ),
+      TomDelegationResolver(
+        InMemoryPrincipalDelegationStore(demoShares()),
+        TomPrincipalResourceRoleResolver(
+          InMemoryPrincipalResourceGrantStore(demoGrants()),
+        ),
+      ),
+    );
 
 /// Wires the read service over the three seeded in-memory stores.
 AppReadService demoService() => AppReadService(
@@ -120,13 +153,7 @@ AppReadService demoService() => AppReadService(
         lists: demoLists(),
         items: demoItems(),
       ),
-      ResourceAccessResolver(InMemoryAppResourceStore(
-        workspaces: demoWorkspaces(),
-        projects: demoProjects(),
-        lists: demoLists(),
-        items: demoItems(),
-        shares: demoShares(),
-      )),
+      demoResolver(),
       FieldGradeResolver(InMemoryGrantStore(seedGrants())),
     );
 

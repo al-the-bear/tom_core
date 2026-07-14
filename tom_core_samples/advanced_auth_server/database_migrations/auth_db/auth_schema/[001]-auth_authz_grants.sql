@@ -35,3 +35,26 @@ CREATE TABLE IF NOT EXISTS tom_principal_resource_grant (
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_principal_resource_grant (principal_id, resource_key)
 );
+
+-- C-6 per-principal delegation rows. The table DDL is the canonical
+-- `tom_principal_delegation` shape published by tom_core_server
+-- (TomPrincipalDelegation.createTableSql) — reused verbatim so the sample and
+-- the framework agree on the storage shape. A `share`-mode row is a delegator
+-- lending a named `role` on one `resource_key` to a delegate; the framework's
+-- TomDelegationResolver folds these in alongside the C-5 direct grants above.
+-- RCC3 moved the app server's cross-user shares here: the app share endpoints
+-- write `share`-mode rows and resolve them back through the framework delegation
+-- resolver, so the same `main`/auth_db schema is the sole resource-access path.
+CREATE TABLE IF NOT EXISTS tom_principal_delegation (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  delegator_id VARCHAR(255) NOT NULL,
+  delegate_id VARCHAR(255) NOT NULL,
+  mode VARCHAR(32) NOT NULL,
+  resource_key VARCHAR(255) NULL,
+  role VARCHAR(255) NULL,
+  valid_from DATETIME NULL,
+  valid_to DATETIME NULL,
+  revoked TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_tom_principal_delegation_delegate (delegate_id)
+);

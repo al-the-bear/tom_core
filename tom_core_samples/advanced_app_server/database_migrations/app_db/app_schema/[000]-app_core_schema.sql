@@ -1,13 +1,18 @@
 -- app_db application schema: the workspaces/projects/lists/items the app server
--- serves, plus the `app_shares` rows that grant cross-user access. Column names
--- match the @TomDbColumn mappings in lib/src/persistence/app_persistence_model.dart
--- (step 14) exactly, so the records read/write these tables with no aliasing.
+-- serves. Column names match the @TomDbColumn mappings in
+-- lib/src/persistence/app_persistence_model.dart (step 14) exactly, so the
+-- records read/write these tables with no aliasing.
 --
--- The user-id columns (owner_id, assignee_id, reporter_id, author_id,
--- grantee_user_id, granted_by_id) are logical references to auth_db.auth_users —
--- a *different* database, so no FK constraint is declared across the boundary;
--- the values mirror the auth seed (1=admin, 2=alice, 3=bob, 4=carol). Same-db
--- parents (workspace_id, project_id, list_id, item_id) are real foreign keys.
+-- Cross-user *shares* are NOT an app_db table: RCC3 migrated them to framework
+-- `share`-mode tom_principal_delegation rows in auth_db (see the auth server's
+-- [001]-auth_authz_grants migration), resolved alongside the C-5 ownership
+-- grants — so there is one framework enforcement path and no `app_shares` table.
+--
+-- The user-id columns (owner_id, assignee_id, reporter_id, author_id) are
+-- logical references to auth_db.auth_users — a *different* database, so no FK
+-- constraint is declared across the boundary; the values mirror the auth seed
+-- (1=admin, 2=alice, 3=bob, 4=carol). Same-db parents (workspace_id, project_id,
+-- list_id, item_id) are real foreign keys.
 --
 -- This migration is DDL only. The starter rows that make the app non-empty on
 -- first run live in the separate sample-data migration [100]-app_sample_data.sql,
@@ -90,21 +95,4 @@ CREATE TABLE IF NOT EXISTS app_subtasks (
   KEY fk_app_subtasks_item (item_id),
   CONSTRAINT fk_app_subtasks_item
     FOREIGN KEY (item_id) REFERENCES app_items (id) ON DELETE CASCADE
-);
-
--- app_shares: the cross-user access grant. `resource_type` names which table the
--- polymorphic `resource_id` keys into ('project'/'list'/'item'); `project_role`
--- is one of owner/editor/commenter/viewer. No FK on resource_id (it is
--- polymorphic) nor on the auth-user columns (cross-database).
-CREATE TABLE IF NOT EXISTS app_shares (
-  id               BIGINT      NOT NULL AUTO_INCREMENT,
-  resource_type    VARCHAR(32) NOT NULL,
-  resource_id      BIGINT      NULL,
-  grantee_user_id  BIGINT      NULL,
-  project_role     VARCHAR(32) NULL,
-  granted_by_id    BIGINT      NULL,
-  created_at       DATETIME    NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_app_shares (resource_type, resource_id, grantee_user_id),
-  KEY ix_app_shares_grantee (grantee_user_id)
 );

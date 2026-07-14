@@ -34,7 +34,7 @@ authenticateUser (verify password) → issue JWT pair (auth + authz, 2h) →
 LoginResult; ② client stores the pair (TomBearerAuthentication). Round-trip 2
 (app server :8080, AUTHENTICATED, Authorization: Bearer): ③ GET
 /items/{id}/field-states → pipeline verifies the JWT → principal into the request
-zone; ④ ResourceAccessResolver.resolveRole (ownership-or-share → ProjectRole); ⑤
+zone; ④ ResourceRoleResolver.resolveRole (ownership-or-share → ProjectRole); ⑤
 FieldGradeResolver.resolveItemFieldStates (role → per-field grade), grants read
 from the `main` datasource bound to auth_db → [GradedFieldDto]; ⑥ client installs
 them on the adapter and each field renders by its grade. -->
@@ -51,7 +51,7 @@ graph TB
     u1 -. "② store pair (TomBearerAuthentication)" .-> u1
   end
   subgraph RT2["Round-trip 2 · app server :8080 · AUTHENTICATED (Bearer)"]
-    u2[user/client] -- "③ GET /items/{id}/field-states" --> pipe["pipeline verifies JWT → principal into zone<br/>④ ResourceAccessResolver.resolveRole (ownership-or-share → ProjectRole)<br/>⑤ FieldGradeResolver.resolveItemFieldStates (role → per-field grade)<br/>grants read from `main` datasource → auth_db"]
+    u2[user/client] -- "③ GET /items/{id}/field-states" --> pipe["pipeline verifies JWT → principal into zone<br/>④ ResourceRoleResolver.resolveRole (ownership-or-share → ProjectRole)<br/>⑤ FieldGradeResolver.resolveItemFieldStates (role → per-field grade)<br/>grants read from `main` datasource → auth_db"]
     pipe -- "[GradedFieldDto] · ⑥ render by grade" --> u2
   end
   RT1 --> RT2
@@ -163,23 +163,27 @@ auth-user surrogate key — is the only identity the rest of the trace uses.
 The endpoint delegates to `AppReadService.itemFieldStates(userId, itemId)`
 (`app_endpoints.dart:226`), whose **first** act is to resolve *whether `val` may
 touch this item at all, and as what role* — the app server's first authorization
-layer, `ResourceAccessResolver.resolveRole`
-(`advanced_app_server/lib/src/access/resource_access_resolver.dart:115`):
+layer, `ResourceRoleResolver.resolveRole`
+(`advanced_app_server/lib/src/access/resource_role_resolver.dart:117`):
 
-1. **Build the containment chain.** `_ancestry` walks parent foreign keys
+1. **Fold the principal's effective roles.** The framework
+   `TomDelegationResolver.resolveEffectiveRoles(userId, now)` folds the
+   principal's C-5 ownership grants (`tom_principal_resource_grant`) and C-6
+   `share`-mode delegations (`tom_principal_delegation`) into one flat
+   `resourceKey → roleName` map — the same enforcement path the whole framework
+   uses. Ownership is now an explicit `owner` grant, not an implicit
+   `workspace.owner_id` chain; a share is a delegation, not a bespoke row.
+2. **Walk the containment chain.** `_ancestry` walks parent foreign keys
    `item → list → project → workspace`, with the target itself always first so a
-   direct share still matches even if a parent link is broken (`:147-157`).
-2. **Ownership short-circuits.** If the chain reaches a workspace and its
-   `ownerId == userId`, the principal is `ProjectRole.owner` — the strongest
-   role, done (`:125-128`). `val` does **not** own Alice's workspace, so this
-   misses.
-3. **Strongest share wins.** Otherwise the resolver scans `val`'s shares and
-   keeps the **strongest** whose `(resourceType, resourceId)` covers the target
-   *or any ancestor* — a share on the project covers its lists and items
-   (`:131-139`; `ProjectRole` is declared strongest-first, so the lowest index
-   wins). `val` was shared in as `viewer`, so `best == ProjectRole.viewer`.
-4. **No match → `null`.** With neither ownership nor a covering share the result
-   is `null` = **no access**.
+   direct grant/share still matches even if a parent link is broken.
+3. **Strongest role over the chain wins.** The resolver keeps the strongest
+   `ProjectRole` whose `resourceKey` matches the target *or any ancestor* in the
+   folded map — so an `owner` grant on the workspace flows down to its items, and
+   a `share` on the project covers its lists and items (`ProjectRole` is declared
+   strongest-first, so the lowest index wins). `val` was shared in as `viewer`,
+   so the result is `ProjectRole.viewer`.
+4. **No match → `null`.** With neither an owning grant nor a covering share in
+   the folded map the result is `null` = **no access**.
 
 For our request the resolver returns `ProjectRole.viewer`. Had it returned
 `null`, `itemFieldStates` throws `app.item.not_found` (`:232-237`) — **404**, not
@@ -351,7 +355,7 @@ live proof that this appendix's six steps hold against sockets, not just on pape
   `advanced_client_core/lib/src/http/authorized_http.dart:56`,`:82-99`
 - `advanced_auth_server/lib/src/endpoints/auth_endpoints.dart:59`,`:95-121`,`:193-200`,`:148`
 - `advanced_app_server/lib/src/endpoints/app_endpoints.dart:226`,`:564`,`:663`,`:904`,`:981`,`:1017-1021`
-- `advanced_app_server/lib/src/access/resource_access_resolver.dart:115`,`:147`;
+- `advanced_app_server/lib/src/access/resource_role_resolver.dart:117`;
   `advanced_app_server/lib/src/access/field_grade_resolver.dart:65`,`:73`
 - `advanced_client_core/lib/src/api/app_api_client.dart:145`,`:229`,`:246`;
   `advanced_app_client/lib/app/app_session.dart` (`loadFieldStates`/`currentFieldStates`); `advanced_app_client/lib/screens/item_detail_screen.dart:99-102`

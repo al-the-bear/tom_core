@@ -258,43 +258,4 @@ void main() {
       expect(subtask.done.get(), isFalse);
     });
   });
-
-  group('share mapping', () {
-    test('round-trips a share, converting the polymorphic resource id', () {
-      final created = DateTime.utc(2026, 5, 5);
-      final record = ShareRecord()
-        ..id = 6
-        ..resourceType = 'project'
-        ..resourceId = 3
-        ..granteeUserId = 9
-        ..projectRole = ProjectRole.editor.name
-        ..grantedById = 7
-        ..createdAt = created;
-
-      final share = shareFromRecord(record);
-      expect(share.resourceType.get(), 'project');
-      expect(share.resourceId.get(), '3');
-      expect(share.granteeUserId.get(), '9');
-      expect(share.projectRoleValue, ProjectRole.editor);
-      expect(share.grantedById.get(), '7');
-      expect(share.createdAt.get(), created);
-
-      final back = shareToRecord(share);
-      expect(back.resourceType, 'project');
-      expect(back.resourceId, 3);
-      expect(back.granteeUserId, 9);
-      expect(back.projectRole, ProjectRole.editor.name);
-      expect(back.grantedById, 7);
-    });
-
-    test('an absent stored role degrades to viewer', () {
-      final share = shareFromRecord(ShareRecord()..id = 1);
-      expect(share.projectRoleValue, ProjectRole.viewer);
-    });
-
-    test('an unpersisted share maps to a null primary key (INSERT)', () {
-      final share = Share()..resourceType.set('item');
-      expect(shareToRecord(share).id, isNull);
-    });
-  });
 }

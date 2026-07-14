@@ -1,19 +1,22 @@
-/// Database-free integration tests for the write endpoints (step 20): the
-/// [AppWriteService] composes the step-17 resource-access resolver and the
-/// step-18 field-grade resolver, so the whole write path — role gating plus
-/// per-field grade enforcement — verifies against seeded in-memory stores with
-/// no server or MariaDB.
+/// Database-free integration tests for the write endpoints (step 20, RCC3): the
+/// [AppWriteService] composes the step-17 [ResourceRoleResolver] and the step-18
+/// field-grade resolver, so the whole write path — role gating plus per-field
+/// grade enforcement — verifies against seeded in-memory stores with no server
+/// or MariaDB.
 ///
 /// The fixture mirrors §A.10 (workspace 1 owned by alice=2, project 1 → list 1,
 /// item 1 in list 1) and §A.4 (the grant matrix the auth server seeds), with
 /// bob=3 shared `editor`, erin=5 shared `commenter`, and carol=4 shared `viewer`
-/// on project 1. The step-20 "Done" bar is the headline triple: a `viewer` `PUT`
-/// to `title` is rejected, an `editor` `PUT` succeeds, and the persisted row
-/// reflects only the permitted fields.
+/// on project 1. RCC3 expresses ownership as a C-5 owner grant (RCC1) and each
+/// share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the framework
+/// resolver into the effective roles the containment rule walks. The step-20
+/// "Done" bar is the headline triple: a `viewer` `PUT` to `title` is rejected, an
+/// `editor` `PUT` succeeds, and the persisted row reflects only the permitted
+/// fields.
 ///
 /// The write service maps payloads through the domain↔record layer (which builds
-/// observable entities), so the registry must be live; the grant rows and the
-/// persistence records are plain classes and need no reflection.
+/// observable entities), so the registry must be live; the grant and delegation
+/// rows and the persistence records are plain classes and need no reflection.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
@@ -86,7 +89,6 @@ List<TomResourceGrant> seedGrants() => [
 
 // The §A.10 demo records. Fresh instances per call so the resource store and
 // the write store hold independent (but equal) copies.
-List<WorkspaceRecord> demoWorkspaces() => [WorkspaceRecord()..id = 1..ownerId = alice];
 List<ProjectRecord> demoProjects() => [ProjectRecord()..id = 1..workspaceId = 1];
 List<ListRecord> demoLists() => [ListRecord()..id = 1..projectId = 1];
 
@@ -104,29 +106,38 @@ ItemRecord demoItem() => ItemRecord()
   ..reporterId = alice
   ..estimateHours = 4.0;
 
-List<ShareRecord> demoShares() => [
-      ShareRecord()
-        ..id = 1
-        ..resourceType = AppResourceTypes.project
-        ..resourceId = 1
-        ..granteeUserId = bob
-        ..projectRole = ProjectRole.editor.name
-        ..grantedById = alice,
-      ShareRecord()
-        ..id = 2
-        ..resourceType = AppResourceTypes.project
-        ..resourceId = 1
-        ..granteeUserId = carol
-        ..projectRole = ProjectRole.viewer.name
-        ..grantedById = alice,
-      ShareRecord()
-        ..id = 3
-        ..resourceType = AppResourceTypes.project
-        ..resourceId = 1
-        ..granteeUserId = erin
-        ..projectRole = ProjectRole.commenter.name
-        ..grantedById = alice,
+/// Alice owns the whole tree via a single workspace-level owner grant (RCC1);
+/// the containment rule flows it down to the project, lists and item.
+List<TomPrincipalResourceGrant> demoGrants() => [
+      TomPrincipalResourceGrant(
+        principalId: '$alice',
+        resourceKey: ResourceRoleKeys.workspace(1),
+        role: ProjectRole.owner.name,
+      ),
     ];
+
+/// The three shares as C-6 `share`-mode delegations on project 1: bob `editor`,
+/// carol `viewer`, erin `commenter` (RCC3). None target the workspace, so a
+/// grantee holds no role there.
+List<TomPrincipalDelegation> demoShares() => [
+      shareDelegation(delegate: bob, role: ProjectRole.editor),
+      shareDelegation(delegate: carol, role: ProjectRole.viewer),
+      shareDelegation(delegate: erin, role: ProjectRole.commenter),
+    ];
+
+/// Builds a `share`-mode delegation from alice on project 1 (unbounded window,
+/// not revoked).
+TomPrincipalDelegation shareDelegation({
+  required int delegate,
+  required ProjectRole role,
+}) =>
+    TomPrincipalDelegation(
+      mode: TomDelegationMode.share.name,
+      delegatorId: '$alice',
+      delegateId: '$delegate',
+      resourceKey: ResourceRoleKeys.project(1),
+      role: role.name,
+    );
 
 /// Wires a write service over a caller-supplied [writeStore] (so a test can
 /// inspect what was persisted) and freshly-seeded resolver stores. A test that
@@ -138,13 +149,19 @@ AppWriteService writeServiceOver(
 }) =>
     AppWriteService(
       writeStore,
-      ResourceAccessResolver(InMemoryAppResourceStore(
-        workspaces: demoWorkspaces(),
-        projects: demoProjects(),
-        lists: demoLists(),
-        items: [demoItem()],
-        shares: demoShares(),
-      )),
+      ResourceRoleResolver(
+        InMemoryResourceContainmentStore(
+          projects: demoProjects(),
+          lists: demoLists(),
+          items: [demoItem()],
+        ),
+        TomDelegationResolver(
+          InMemoryPrincipalDelegationStore(demoShares()),
+          TomPrincipalResourceRoleResolver(
+            InMemoryPrincipalResourceGrantStore(demoGrants()),
+          ),
+        ),
+      ),
       FieldGradeResolver(InMemoryGrantStore(seedGrants())),
       ownershipWriter ?? InMemoryOwnershipGrantWriter(),
     );

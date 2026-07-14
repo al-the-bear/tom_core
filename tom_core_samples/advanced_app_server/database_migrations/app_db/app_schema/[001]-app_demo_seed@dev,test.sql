@@ -10,7 +10,10 @@
 -- exist only when auth_db's [003]-auth_demo_seed (also `@dev,test`) was applied.
 --
 -- Seed: a starter workspace owned by alice (auth user 2), one project with two
--- lists and three items, a comment from bob, two subtasks, and two shares.
+-- lists and three items, a comment from bob, and two subtasks. Cross-user
+-- *shares* are NOT seeded here: RCC3 migrated them to framework `share`-mode
+-- tom_principal_delegation rows in auth_db (see the auth server's
+-- [003]-auth_demo_seed migration), so there is no `app_shares` table to seed.
 
 INSERT INTO app_workspaces (id, name, owner_id, created_at) VALUES
   (1, 'Acme Engineering', 2, '2026-01-02 09:00:00')
@@ -51,12 +54,8 @@ INSERT INTO app_subtasks (id, item_id, title, done, position) VALUES
   (2, 1, 'Pick the hero imagery',   0, 1)
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
--- Cross-user access: alice (granted_by 2) shares the project with bob (editor)
--- and carol (viewer). On first run, bob and carol already see project 1 through
--- these rows — the cross-user mechanism is visible with no API call.
-INSERT INTO app_shares
-  (id, resource_type, resource_id, grantee_user_id, project_role, granted_by_id, created_at)
-VALUES
-  (1, 'project', 1, 3, 'editor', 2, '2026-02-04 08:00:00'),
-  (2, 'project', 1, 4, 'viewer', 2, '2026-02-04 08:05:00')
-ON DUPLICATE KEY UPDATE project_role = VALUES(project_role);
+-- Cross-user shares (alice → bob editor / carol viewer on project 1) are seeded
+-- as framework `share`-mode tom_principal_delegation rows in auth_db, alongside
+-- the ownership grants — see the auth server's [003]-auth_demo_seed migration.
+-- The app server resolves them through the framework delegation resolver, so
+-- there is no `app_shares` seed here.

@@ -9,7 +9,7 @@
 ///   `app_db` repository singletons; [InMemoryAppReadStore] is a seeded,
 ///   database-free store for tests.
 /// - [AppReadService] is the pure read logic over an [AppReadStore]: it filters
-///   every listed row through the step-17 [ResourceAccessResolver]
+///   every listed row through the step-17 [ResourceRoleResolver]
 ///   (ownership-or-share → effective [ProjectRole], `null` = invisible) and
 ///   projects an item's per-field grades through the step-18 [FieldGradeResolver].
 ///   It has no server/zone dependency (only the resolvers' own seams), so the
@@ -20,10 +20,11 @@
 ///   (role minimums for create/delete/comment) and, for item writes, enforces
 ///   the four-state field grade — a change to any field the caller is not `full`
 ///   on rejects the write, and the persisted row overlays only permitted fields.
-/// - [AppShareStore] / [AppShareService] are the cross-user sharing counterpart
-///   (step 21): only an `owner` of the target resource may create a [ShareRecord]
-///   (which immediately grants the grantee access, since the resource-access
-///   resolver reads shares) or revoke one.
+/// - [AppShareService] is the cross-user sharing counterpart (step 21, RCC3):
+///   only an `owner` of the target resource may create a `share`-mode
+///   `TomPrincipalDelegation` (which immediately grants the grantee access, since
+///   the resource-role resolver folds delegations into the effective roles) or
+///   revoke one.
 /// - [AdvancedAppApiService] is the thin `@tomComponent` adapter the endpoint
 ///   pipeline routes to. It binds each [AppApiService] method to its registry
 ///   endpoint (`tomRemoteApis['app'][...]`), sources the caller's principal from
@@ -50,7 +51,8 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 import '../access/field_grade_resolver.dart';
 import '../access/ownership_grant_writer.dart';
-import '../access/resource_access_resolver.dart';
+import '../access/resource_role_resolver.dart';
+import '../access/share_delegation_store.dart';
 import '../persistence/app_mapping.dart';
 import '../persistence/app_persistence_model.dart';
 import '../resources/app_resource_bundles.dart';
@@ -58,7 +60,7 @@ import '../resources/app_resource_bundles.dart';
 /// The listing seam the read operations enumerate candidate rows through.
 ///
 /// The read service needs only to list the children of a parent (and every
-/// workspace); the per-row visibility decision is the [ResourceAccessResolver]'s
+/// workspace); the per-row visibility decision is the [ResourceRoleResolver]'s
 /// job. Putting the listing behind a small interface lets the service run against
 /// the live repositories at boot and a seeded in-memory store under test, with
 /// identical filtering on both.
@@ -156,7 +158,7 @@ class InMemoryAppReadStore implements AppReadStore {
 /// Pure read logic over an [AppReadStore], filtered by the principal's access.
 ///
 /// Every list endpoint enumerates the candidate rows and keeps only those the
-/// principal can reach — the step-17 [ResourceAccessResolver] computes the
+/// principal can reach — the step-17 [ResourceRoleResolver] computes the
 /// effective [ProjectRole] (ownership-or-share) and `null` means invisible. The
 /// field-state endpoint resolves the principal's role on an item and projects
 /// the step-18 [FieldGradeResolver]'s per-field grades into [GradedFieldDto]s.
@@ -165,7 +167,7 @@ class AppReadService {
   final AppReadStore store;
 
   /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
-  final ResourceAccessResolver accessResolver;
+  final ResourceRoleResolver accessResolver;
 
   /// Resolves a [ProjectRole]'s per-field grades (step 18).
   final FieldGradeResolver gradeResolver;
@@ -177,7 +179,7 @@ class AppReadService {
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppReadService.production() => AppReadService(
         const RepositoryAppReadStore(),
-        const ResourceAccessResolver(RepositoryAppResourceStore()),
+        ResourceRoleResolver.production(),
         FieldGradeResolver(const RepositoryGrantStore()),
       );
 
@@ -270,7 +272,7 @@ class AppReadService {
 
 /// The write-side persistence seam the [AppWriteService] mutates through.
 ///
-/// Mirrors the [AppReadStore]/[AppResourceStore] split: the write service needs
+/// Mirrors the [AppReadStore]/[ResourceContainmentStore] split: the write service needs
 /// to load a single item (to diff a `PUT` against the stored row), insert/update
 /// items, projects and comments, and delete an item. [RepositoryAppWriteStore]
 /// is the live store over the step-14 repository singletons; [InMemoryAppWriteStore]
@@ -493,7 +495,7 @@ List<String> get gradableItemFieldKeys =>
 /// layers the reads use.
 ///
 /// Every mutation first resolves the principal's effective [ProjectRole] on the
-/// target through the step-17 [ResourceAccessResolver] (no access → the resource
+/// target through the step-17 [ResourceRoleResolver] (no access → the resource
 /// is treated as not-found, closed/safe). It then enforces the §A.4 policy:
 ///
 /// - **Role gating.** Structural mutations check a minimum role —
@@ -516,7 +518,7 @@ class AppWriteService {
   final AppWriteStore store;
 
   /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
-  final ResourceAccessResolver accessResolver;
+  final ResourceRoleResolver accessResolver;
 
   /// Resolves a [ProjectRole]'s per-field grades (step 18).
   final FieldGradeResolver gradeResolver;
@@ -536,7 +538,7 @@ class AppWriteService {
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppWriteService.production() => AppWriteService(
         const RepositoryAppWriteStore(),
-        const ResourceAccessResolver(RepositoryAppResourceStore()),
+        ResourceRoleResolver.production(),
         FieldGradeResolver(const RepositoryGrantStore()),
         const RepositoryOwnershipGrantWriter(),
       );
@@ -777,114 +779,27 @@ class AppWriteService {
     ..updatedAt = record.updatedAt;
 }
 
-/// The persistence seam the [AppShareService] reads and mutates shares through.
-///
-/// Sharing needs to insert a new [ShareRecord], load one by id (to authorize a
-/// revoke against the share's target), and delete it. [RepositoryAppShareStore]
-/// is the live store over the step-14 [shareRepository] singleton;
-/// [InMemoryAppShareStore] is a seeded, database-free store the step-21 tests
-/// drive and introspect.
-abstract class AppShareStore {
-  /// Inserts (when `id` is `null`) or updates [record], returning the saved row
-  /// (an insert carries the assigned surrogate key).
-  Future<ShareRecord> saveShare(ShareRecord record);
-
-  /// Returns the share row for [id], or `null` when it does not exist.
-  Future<ShareRecord?> findShare(int id);
-
-  /// Deletes the share row with [id].
-  Future<void> deleteShare(int id);
-}
-
-/// The query-backed [AppShareStore] wired at boot.
-///
-/// Writes through the process-wide [shareRepository] singleton. Requires a live
-/// `app_db` connection and the reflection runtime, so it is exercised end-to-end
-/// (the unit tests use [InMemoryAppShareStore]).
-class RepositoryAppShareStore implements AppShareStore {
-  /// Creates the repository-backed store (stateless; reads the singleton).
-  const RepositoryAppShareStore();
-
-  @override
-  Future<ShareRecord> saveShare(ShareRecord record) =>
-      shareRepository.save(record);
-
-  @override
-  Future<ShareRecord?> findShare(int id) => shareRepository.findById(id);
-
-  @override
-  Future<void> deleteShare(int id) => shareRepository.deleteById(id);
-}
-
-/// A seeded, database-free [AppShareStore] for tests (and local scaffolding).
-///
-/// Holds the share rows directly and assigns a surrogate key on insert. The
-/// [shares] getter lets a test assert the persisted grant — and feed it into an
-/// [InMemoryAppResourceStore] to prove the new share *immediately grants the
-/// grantee access* (the step-21 "Done" bar), with no connection or reflection.
-class InMemoryAppShareStore implements AppShareStore {
-  final List<ShareRecord> _shares;
-
-  int _nextShareId = 1;
-
-  /// Seeds the store with the given rows (defaults to empty); the auto-increment
-  /// counter advances past any seeded ids.
-  InMemoryAppShareStore({List<ShareRecord> shares = const []})
-      : _shares = [...shares] {
-    _nextShareId =
-        _shares.fold<int>(0, (max, s) => (s.id != null && s.id! > max) ? s.id! : max) +
-            1;
-  }
-
-  /// The persisted share rows (test introspection).
-  List<ShareRecord> get shares => List.unmodifiable(_shares);
-
-  @override
-  Future<ShareRecord> saveShare(ShareRecord record) async {
-    if (record.id == null) {
-      record.id = _nextShareId++;
-      _shares.add(record);
-    } else {
-      final index = _shares.indexWhere((s) => s.id == record.id);
-      if (index >= 0) {
-        _shares[index] = record;
-      } else {
-        _shares.add(record);
-      }
-    }
-    return record;
-  }
-
-  @override
-  Future<ShareRecord?> findShare(int id) async {
-    for (final share in _shares) {
-      if (share.id == id) return share;
-    }
-    return null;
-  }
-
-  @override
-  Future<void> deleteShare(int id) async =>
-      _shares.removeWhere((s) => s.id == id);
-}
-
-/// Cross-user sharing — the `POST /share` / `DELETE /share/{id}` logic (step 21).
+/// Cross-user sharing — the `POST /share` / `DELETE /share/{id}` logic (step 21,
+/// RCC3-migrated to framework delegation).
 ///
 /// Both operations are **owner-only**: the principal must resolve to
 /// [ProjectRole.owner] on the shared resource (via the step-17
-/// [ResourceAccessResolver]). Creating a share writes a [ShareRecord], which the
-/// resolver reads on the grantee's next request — so the grant takes effect
-/// immediately, with no further wiring. Revoking deletes the row, authorized
-/// against the share's own target.
+/// [ResourceRoleResolver]). Creating a share writes a `share`-mode
+/// [TomPrincipalDelegation] through the [ShareDelegationStore] — the framework
+/// [TomDelegationResolver] the resolver reads folds it into the grantee's
+/// effective roles on their next request, so the grant takes effect immediately
+/// with no parallel share table. Revoking deletes the delegation row, authorized
+/// against the share's own target (parsed back from the delegation's
+/// `resourceKey`).
 ///
 /// Like the read/write services it has no server/zone dependency (only the store
 /// and the resolver's seam), so the share path unit-tests against seeded stores.
 class AppShareService {
-  /// The persistence seam shares are read and written through.
-  final AppShareStore store;
+  /// The delegation-write seam shares are persisted and revoked through.
+  final ShareDelegationStore store;
 
   /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
-  final ResourceAccessResolver accessResolver;
+  final ResourceRoleResolver accessResolver;
 
   /// Builds the service over its collaborators (live stores at boot, seeded
   /// stores under test).
@@ -892,13 +807,14 @@ class AppShareService {
 
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppShareService.production() => AppShareService(
-        const RepositoryAppShareStore(),
-        const ResourceAccessResolver(RepositoryAppResourceStore()),
+        const RepositoryShareDelegationStore(),
+        ResourceRoleResolver.production(),
       );
 
   /// Grants [request.granteeUserId] the [request.projectRole] on the resource
-  /// `(request.resourceType, request.resourceId)`. Only the resource's `owner`
-  /// may share. The principal who creates the share is recorded as the grantor.
+  /// `(request.resourceType, request.resourceId)` as a `share`-mode delegation.
+  /// Only the resource's `owner` may share; the principal who creates the share
+  /// is the delegation's delegator.
   Future<void> share(int userId, ShareRequest request) async {
     final resourceId = int.tryParse(request.resourceId);
     final granteeId = int.tryParse(request.granteeUserId);
@@ -909,31 +825,33 @@ class AppShareService {
       );
     }
     await _requireOwner(userId, request.resourceType, resourceId);
-    final record = ShareRecord()
-      ..id = null
-      ..resourceType = request.resourceType
-      ..resourceId = resourceId
-      ..granteeUserId = granteeId
-      ..projectRole = request.projectRole
-      ..grantedById = userId
-      ..createdAt = DateTime.now();
-    await store.saveShare(record);
+    await store.saveShare(
+      TomPrincipalDelegation(
+        mode: TomDelegationMode.share.name,
+        delegatorId: userId.toString(),
+        delegateId: granteeId.toString(),
+        resourceKey:
+            ResourceRoleKeys.forResource(request.resourceType, resourceId),
+        role: request.projectRole,
+      ),
+    );
   }
 
-  /// Revokes the share [shareId]. Only an `owner` of the share's target resource
-  /// may revoke it; an unknown share is reported as not found (closed/safe).
+  /// Revokes the share [shareId] (a `share`-mode delegation id). Only an `owner`
+  /// of the share's target resource may revoke it; an unknown share, or one
+  /// whose `resourceKey` cannot be parsed, is reported as not found
+  /// (closed/safe).
   Future<void> revokeShare(int userId, int shareId) async {
-    final share = await store.findShare(shareId);
-    final resourceType = share?.resourceType;
-    final resourceId = share?.resourceId;
-    if (share == null || resourceType == null || resourceId == null) {
+    final delegation = await store.findDelegation(shareId);
+    final target = _parseResourceKey(delegation?.resourceKey);
+    if (delegation == null || target == null) {
       throw TomEndpointHandlerException(
         'app.share.not_found',
         'No share with id $shareId',
       );
     }
-    await _requireOwner(userId, resourceType, resourceId);
-    await store.deleteShare(shareId);
+    await _requireOwner(userId, target.type, target.id);
+    await store.deleteDelegation(shareId);
   }
 
   /// Asserts the principal [userId] is the `owner` of `(resourceType,
@@ -955,6 +873,17 @@ class AppShareService {
         'Only the resource owner may share or revoke access.',
       );
     }
+  }
+
+  /// Parses a delegation `resourceKey` (`<type>:<id>`) into its type token and
+  /// surrogate id, or `null` when it is absent or malformed.
+  static ({String type, int id})? _parseResourceKey(String? resourceKey) {
+    if (resourceKey == null) return null;
+    final separator = resourceKey.indexOf(':');
+    if (separator <= 0 || separator == resourceKey.length - 1) return null;
+    final id = int.tryParse(resourceKey.substring(separator + 1));
+    if (id == null) return null;
+    return (type: resourceKey.substring(0, separator), id: id);
   }
 }
 
@@ -1026,14 +955,21 @@ Response? appForbiddenOrNotFound(
 @TomApiImplementation(apiId: 'app')
 class AdvancedAppApiService implements AppApiService {
   /// Production read logic over the repository-backed stores.
-  final AppReadService _reads = AppReadService.production();
+  ///
+  /// Wired lazily: constructing the repository-backed resolvers analyses their
+  /// framework-reflected persistence types, which is only valid once the boot
+  /// has run `initializeReflection()`. Deferring to first use keeps the pure
+  /// [resources]/[health] endpoints reflection-free and matches production,
+  /// where the first request always follows boot-time reflection.
+  late final AppReadService _reads = AppReadService.production();
 
   /// Production write logic (role gating + field-grade enforcement) over the
-  /// repository-backed stores.
-  final AppWriteService _writes = AppWriteService.production();
+  /// repository-backed stores (lazily wired; see [_reads]).
+  late final AppWriteService _writes = AppWriteService.production();
 
-  /// Production share logic (owner-only) over the repository-backed stores.
-  final AppShareService _shares = AppShareService.production();
+  /// Production share logic (owner-only) over the repository-backed stores
+  /// (lazily wired; see [_reads]).
+  late final AppShareService _shares = AppShareService.production();
 
   /// The authenticated caller's auth-user id (the surrogate key the `app_db`
   /// rows reference cross-database). Resolved from the per-request principal the

@@ -151,16 +151,20 @@ graph TB
 </details>
 
 Two server layers feed the matrix at the top. **Resource access**
-(`ResourceAccessResolver`) answers *"may this principal touch this object, and as
-what role?"* by walking the containment chain `item → list → project →
-workspace`: owning the top workspace short-circuits to `ProjectRole.owner`,
-else the **strongest** covering `Share` wins (`ProjectRole` is declared
-`owner, editor, commenter, viewer` — most-to-least privileged, so the lowest
-index is strongest, `enums.dart:75`), else `null` (no access → closed/safe 404).
-**Field grades** (`FieldGradeResolver`) then maps that role to the per-field
-matrix above. Both resolvers are pure over a small store seam
-(`RepositoryGrantStore`/`RepositoryAppResourceStore` live; `InMemory*` seeded for
-tests), which is what lets the socket-free suites reproduce the exact matrix.
+(`ResourceRoleResolver`) answers *"may this principal touch this object, and as
+what role?"* by folding the principal's C-5 ownership grants and C-6 `share`-mode
+delegations through the framework `TomDelegationResolver` into a flat
+`resourceKey → role` map, then keeping the strongest role over the containment
+chain `item → list → project → workspace`: an `owner` grant on the workspace
+flows down to its items, else the **strongest** covering share wins
+(`ProjectRole` is declared `owner, editor, commenter, viewer` — most-to-least
+privileged, so the lowest index is strongest, `enums.dart:75`), else `null` (no
+access → closed/safe 404). **Field grades** (`FieldGradeResolver`) then maps that
+role to the per-field matrix above. Both resolvers are pure over a small store
+seam (`RepositoryGrantStore` for the grade matrix; the framework grant/delegation
+stores plus `RepositoryResourceContainmentStore` for roles — live; `InMemory*`
+seeded for tests), which is what lets the socket-free suites reproduce the exact
+matrix.
 
 ### Why per-field stamping, and why layer 1 stays out of the way
 
@@ -225,7 +229,7 @@ for a commenter still has its write rejected.
 - `tom_core_kernel/lib/src/tombase/security/tom_authorization.dart` (the `TomAuthState` lattice + `narrow`/`widen`)
 - `tom_flutter_ui/lib/src/forms/tom_form.dart:614-617` (basePath), `:807` (`resolveEffectiveAuth` five layers)
 - `advanced_app_client/lib/screens/item_detail_screen.dart:99-102` (the per-field `TomAuthorizer.fixed` stamp)
-- `advanced_app_server/lib/src/access/{field_grade_resolver,resource_access_resolver}.dart`; `advanced_todo_contracts/lib/src/graded_field_dto.dart`
+- `advanced_app_server/lib/src/access/{field_grade_resolver,resource_role_resolver}.dart`; `advanced_todo_contracts/lib/src/graded_field_dto.dart`
 - Companion: [07 · Authorization](README_advanced_07_authorization.md)
 
 ---

@@ -91,20 +91,21 @@ The sample runs **two physically separate databases**, one per server:
 
 | Database | Owned by | Host port | Holds |
 | --- | --- | --- | --- |
-| **`auth_db`** | `advanced_auth_server` | **3307** | `auth_users`, `auth_roles`, `auth_groups`, `auth_group_members`, `auth_user_roles`, and the reused `tom_resource_grant` matrix |
-| **`app_db`** | `advanced_app_server` | **3308** | `app_workspaces`, `app_projects`, `app_lists`, `app_items`, `app_comments`, `app_subtasks`, `app_shares` |
+| **`auth_db`** | `advanced_auth_server` | **3307** | `auth_users`, `auth_roles`, `auth_groups`, `auth_group_members`, `auth_user_roles`, the reused `tom_resource_grant` matrix, and the framework authorization tables `tom_principal_resource_grant` (C-5 ownership) and `tom_principal_delegation` (C-6 shares) |
+| **`app_db`** | `advanced_app_server` | **3308** | `app_workspaces`, `app_projects`, `app_lists`, `app_items`, `app_comments`, `app_subtasks` |
 
 Splitting identity from application data means a user-id in `app_db` points at a
 principal that lives in a *different* database. Those columns — `owner_id`,
-`assignee_id`, `reporter_id`, `author_id`, `grantee_user_id`, `granted_by_id` —
-are stored as the auth user's surrogate `int` id and are **logical references,
-not enforced foreign keys**: no FK constraint is (or can be) declared across the
-database boundary, so the value simply *mirrors* `auth_db.auth_users.id`. A token
-minted by the auth server therefore resolves to the same numeric id on the app
-side. Within a single database, parent links (`workspace_id`, `project_id`,
-`list_id`, `item_id`) **are** real foreign keys with `ON DELETE CASCADE`. The
-`app_shares.resource_id` is the one same-db exception: it is *polymorphic*
-(`resource_type` names the table), so it carries no FK either.
+`assignee_id`, `reporter_id`, `author_id` — are stored as the auth user's
+surrogate `int` id and are **logical references, not enforced foreign keys**: no
+FK constraint is (or can be) declared across the database boundary, so the value
+simply *mirrors* `auth_db.auth_users.id`. A token minted by the auth server
+therefore resolves to the same numeric id on the app side. Within a single
+database, parent links (`workspace_id`, `project_id`, `list_id`, `item_id`)
+**are** real foreign keys with `ON DELETE CASCADE`. Cross-user shares are **not**
+an `app_db` table anymore: RCC3 migrated them to `share`-mode
+`tom_principal_delegation` rows in `auth_db` (the delegate/resource/role are
+plain columns there, resolved by the framework `TomDelegationResolver`).
 
 The two databases publish **3307** and **3308** — neither is **3306** — so
 `auth_db`, `app_db`, and any host-local MariaDB run side by side on one machine

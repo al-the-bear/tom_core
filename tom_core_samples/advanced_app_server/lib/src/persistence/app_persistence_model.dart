@@ -1,11 +1,17 @@
 /// `app_db` persistence records — the app server's relational view of the
-/// task-management model (workspaces, projects, lists, items, comments,
-/// subtasks, and shares).
+/// task-management model (workspaces, projects, lists, items, comments, and
+/// subtasks).
+///
+/// Cross-user *shares* are no longer an `app_db` record: RCC3 migrated them to
+/// framework `share`-mode `TomPrincipalDelegation` rows on the shared
+/// `tom_principal_delegation` table (see `share_delegation_store.dart`), so the
+/// resource-role resolver enforces ownership and shares through one framework
+/// path.
 ///
 /// These are the server-side counterparts of the observable domain entities:
 /// `advanced_todo_domain` carries the form-bindable `TomClass` entities
-/// ([Workspace], [Project], [TodoList], [TodoItem], [TodoComment], [Subtask],
-/// [Share]) whose fields are `TomString` / `TomBool` / `TomList` value holders
+/// ([Workspace], [Project], [TodoList], [TodoItem], [TodoComment], [Subtask])
+/// whose fields are `TomString` / `TomBool` / `TomList` value holders
 /// and whose ids are display strings, while the object-persistence layer needs
 /// the opposite shape — plain typed fields, an integer surrogate primary key,
 /// explicit integer foreign-key columns, and no nested collections. The pure
@@ -268,50 +274,3 @@ class SubtaskRepository extends TomSqlDatasourceRepository<SubtaskRecord, int> {
 
 /// Process-wide singleton repository instance.
 final subtaskRepository = SubtaskRepository();
-
-/// A share row in `app_shares` — the cross-user access grant the resource
-/// resolver (step 17) reads.
-///
-/// [resourceType] / [resourceId] address the granted object polymorphically
-/// (a workspace, project, list, or item), so [resourceId] is the int surrogate
-/// key of a row in the matching `app_*` table and [resourceType] names which
-/// table. [projectRole] is stored as the `ProjectRole` name.
-@tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_shares', primaryKeyField: 'id')
-class ShareRecord {
-  /// Surrogate primary key.
-  @TomEntityId()
-  @TomDbColumn(columnName: 'id', isReadOnly: true)
-  int? id;
-
-  /// Kind of resource granted (`workspace` / `project` / `list` / `item`).
-  @TomDbColumn(columnName: 'resource_type')
-  String? resourceType;
-
-  /// Surrogate id of the granted resource within [resourceType]'s table.
-  @TomDbColumn(columnName: 'resource_id')
-  int? resourceId;
-
-  /// Auth `auth_users.id` the access is granted to.
-  @TomDbColumn(columnName: 'grantee_user_id')
-  int? granteeUserId;
-
-  /// Role granted on the resource, stored as the `ProjectRole` name
-  /// (`owner` / `editor` / `commenter` / `viewer`).
-  @TomDbColumn(columnName: 'project_role')
-  String? projectRole;
-
-  /// Auth `auth_users.id` of the principal who created the share.
-  @TomDbColumn(columnName: 'granted_by_id')
-  int? grantedById;
-
-  /// When the share was created; `null` until persisted.
-  @TomDbColumn(columnName: 'created_at')
-  DateTime? createdAt;
-}
-
-/// Repository for [ShareRecord].
-class ShareRepository extends TomSqlDatasourceRepository<ShareRecord, int> {}
-
-/// Process-wide singleton repository instance.
-final shareRepository = ShareRepository();

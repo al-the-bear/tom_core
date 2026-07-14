@@ -205,28 +205,7 @@ Subtask subtaskFromRecord(SubtaskRecord record) => Subtask()
   ..done.set(record.done ?? false)
   ..position.set(record.position ?? 0);
 
-// ---------------------------------------------------------------------------
-// Share.
-// ---------------------------------------------------------------------------
-
-/// Flattens a [Share] into its [ShareRecord]. The polymorphic
-/// [Share.resourceId] converts to the integer surrogate key of the granted row.
-ShareRecord shareToRecord(Share share) => ShareRecord()
-  ..id = _idOrNull(share.id.get())
-  ..resourceType = share.resourceType.get()
-  ..resourceId = _idOrNull(share.resourceId.get())
-  ..granteeUserId = _idOrNull(share.granteeUserId.get())
-  ..projectRole = share.projectRole.get()
-  ..grantedById = _idOrNull(share.grantedById.get())
-  ..createdAt = share.createdAt.get();
-
-/// Rebuilds a [Share] from its [ShareRecord]. An absent stored role degrades to
-/// [ProjectRole.viewer] (the least-privileged) through the entity's accessor.
-Share shareFromRecord(ShareRecord record) => Share()
-  ..id.set(_idString(record.id))
-  ..resourceType.set(record.resourceType ?? '')
-  ..resourceId.set(_idString(record.resourceId))
-  ..granteeUserId.set(_idString(record.granteeUserId))
-  ..projectRole.set(record.projectRole ?? ProjectRole.viewer.name)
-  ..grantedById.set(_idString(record.grantedById))
-  ..createdAt.set(record.createdAt);
+// Cross-user shares have no `app_db` record mapping: RCC3 migrated them to
+// framework `share`-mode `TomPrincipalDelegation` rows (see
+// `share_delegation_store.dart`), which the share service builds directly from
+// the wire `ShareRequest` — no domain `Share`↔record round-trip.

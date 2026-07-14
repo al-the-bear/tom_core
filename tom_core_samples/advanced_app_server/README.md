@@ -26,13 +26,16 @@ stores with no server and no MariaDB; the adapter carries the production wiring
 | --- | --- | --- |
 | `AppReadService` over `AppReadStore` | List workspaces/projects/lists/items; per-field grade states | `GET /workspaces…/items/{id}/field-states` |
 | `AppWriteService` over `AppWriteStore` + the resolvers | Create/update/delete items, comments, projects with field-grade enforcement | `POST`/`PUT`/`DELETE /items…`, `POST /projects` |
-| `AppShareService` over `AppShareStore` + the resolver | Owner-only share / revoke | `POST /share`, `DELETE /share/{id}` |
+| `AppShareService` over `ShareDelegationStore` + the resolver | Owner-only share / revoke | `POST /share`, `DELETE /share/{id}` |
 
 Two resolvers underpin authorization (both database-free over their own seam):
 
-- **`ResourceAccessResolver`** — ownership-or-share → the principal's effective
-  `ProjectRole` on a resource (strongest share wins; walks
-  `item → list → project → workspace`). `null` means no access.
+- **`ResourceRoleResolver`** — ownership-or-share → the principal's effective
+  `ProjectRole` on a resource. It resolves through the framework
+  `TomDelegationResolver` (C-5 ownership grants + C-6 `share`-mode
+  `TomPrincipalDelegation` rows; strongest role wins), then keeps the strongest
+  over the `item → list → project → workspace` containment chain. `null` means no
+  access.
 - **`FieldGradeResolver`** — `ProjectRole` → per-field `TomAuthState` (the §A.4
   grant matrix the auth server owns), so a write touching a field the role is
   not `full` on is rejected server-side.

@@ -21,9 +21,13 @@
 /// HTTP 403/404 (the mapping step 20 deferred to the boot).
 ///
 /// Two datasources are wired (`assets/datasources_default.yaml`): `app_db` holds
-/// the app's own tables, and `main` points at the auth server's `auth_db` so the
-/// field-grade resolver reads the `tom_resource_grant` matrix the auth server
-/// owns. The app server only *reads* grants; it never writes them.
+/// the app's own tables, and `main` points at the auth server's `auth_db` — home
+/// of the framework authorization tables. The field-grade resolver *reads* the
+/// `tom_resource_grant` matrix the auth server seeds; the app server also
+/// *writes* to `main`: RCC1 stamps ownership as `tom_principal_resource_grant`
+/// rows, and RCC3 records cross-user shares as `share`-mode
+/// `tom_principal_delegation` rows — both resolved back through the framework
+/// delegation resolver as the sole resource-access enforcement path.
 ///
 /// Run it from the package root (relative asset/migration paths resolve against
 /// the CWD), with the auth server (and its DB) already up so tokens verify and

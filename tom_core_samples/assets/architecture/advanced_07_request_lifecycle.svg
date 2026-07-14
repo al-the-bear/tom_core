@@ -10,7 +10,7 @@
       ROUND-TRIP 2 (app server :8080, AUTHENTICATED, Authorization: Bearer):
         ③ GET /items/{id}/field-states → pipeline verifies the JWT → principal into
            the request zone;
-        ④ ResourceAccessResolver.resolveRole (ownership-or-share → ProjectRole);
+        ④ ResourceRoleResolver.resolveRole (ownership-or-share → ProjectRole);
         ⑤ FieldGradeResolver.resolveItemFieldStates (role → per-field grade),
            grants read from the `main` datasource bound to auth_db → [GradedFieldDto];
         ⑥ client installs them on the adapter; each field renders by its grade.

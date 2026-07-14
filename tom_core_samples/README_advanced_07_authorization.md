@@ -88,16 +88,21 @@ server's admin API uses, so the two tiers agree on grade semantics.
 ## The two server resolvers
 
 The app server computes a caller's grades in **two layers** (§A.4), each pure
-over a small store seam (`RepositoryGrantStore`/`RepositoryAppResourceStore`
-live; `InMemory*` seeded for socket-free tests):
+over a small store seam (`RepositoryGrantStore` for the grade matrix; the
+framework `RepositoryPrincipalResourceGrantStore` / `RepositoryPrincipalDelegationStore`
+plus the app's `RepositoryResourceContainmentStore` for roles — `InMemory*`
+seeded for socket-free tests):
 
 1. **Resource access** — *"may this principal touch this object, and as what
-   role?"* `ResourceAccessResolver` (`advanced_app_server/lib/src/access/resource_access_resolver.dart`)
-   walks the containment chain `item → list → project → workspace`: owning the
-   top workspace (`workspace.ownerId == userId`) short-circuits to
-   `ProjectRole.owner`; otherwise the **strongest** `Share` whose target is the
-   resource or any ancestor wins (a share on a project covers its lists and
-   items); with neither, the result is `null` (no access).
+   role?"* `ResourceRoleResolver` (`advanced_app_server/lib/src/access/resource_role_resolver.dart`)
+   folds the principal's roles through the framework `TomDelegationResolver` —
+   the C-5 ownership grants (`tom_principal_resource_grant`) and C-6 `share`-mode
+   delegations (`tom_principal_delegation`) — into one flat `resourceKey → role`
+   map, then keeps the strongest `ProjectRole` over the containment chain
+   `item → list → project → workspace`: an `owner` grant on the workspace flows
+   down to its items, and the **strongest** share whose target is the resource or
+   any ancestor wins (a share on a project covers its lists and items); with
+   neither, the result is `null` (no access).
 2. **Field grades** — *"for that role, which fields, and how?"*
    `FieldGradeResolver` (`.../access/field_grade_resolver.dart`) loads the
    role's grant rows and folds them, resolving **every** gradable `todo.item.*`
@@ -181,7 +186,7 @@ The endpoint pipeline and annotations are part
 
 ## Primary sources
 
-- `advanced_app_server/lib/src/access/{resource_access_resolver,field_grade_resolver}.dart`; `tom_flutter_ui/.../tom_form.dart:807`
+- `advanced_app_server/lib/src/access/{resource_role_resolver,field_grade_resolver}.dart`; `tom_flutter_ui/.../tom_form.dart:807`
 - `advanced_auth_server/database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql` (the grant matrix); `advanced_auth_server/lib/src/endpoints/admin_endpoints.dart`
 - Appendix [A1](README_advanced_A1_authorization_state_machine.md)
 

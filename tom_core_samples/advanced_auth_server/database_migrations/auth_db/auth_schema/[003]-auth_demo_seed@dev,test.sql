@@ -13,7 +13,8 @@
 -- boot-time job (seedDemoPasswords), never raw SQL.
 
 -- Demo end-users. They carry no global role row — their per-project access is
--- granted at runtime through Share records in the app server, not here.
+-- granted through C-5 ownership grants and C-6 `share`-mode delegation rows in
+-- this schema (see below), resolved by the framework, not by app-server tables.
 INSERT INTO auth_users (id, username, display_name, email, status) VALUES
   (2, 'alice', 'Alice Lovelace', 'alice@example.com', 'active'),
   (3, 'bob',   'Bob Turing',     'bob@example.com',   'active'),
@@ -22,7 +23,8 @@ ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);
 
 -- The four projectRoles the grant matrix keys on. They exist as rows so the
 -- authadmin client can list/manage them; they are *assigned* per-resource via
--- Share, not globally. (The global `admin` role lives in [002].)
+-- ownership grants and `share`-mode delegations, not globally. (The global
+-- `admin` role lives in [002].)
 INSERT INTO auth_roles (id, role_key, name) VALUES
   (2, 'owner',     'Owner'),
   (3, 'editor',    'Editor'),
@@ -93,8 +95,8 @@ ON DUPLICATE KEY UPDATE access_level = VALUES(access_level);
 -- createItem) stamp the same `owner` grant for whoever creates a resource, so
 -- first-run demo ownership and runtime-created ownership share one representation.
 -- resource_key is `<type>:<id>` (see ResourceRoleKeys in advanced_todo_domain).
--- Shares (bob editor / carol viewer) are NOT seeded here — they migrate to C-6
--- delegation in RCC3; RCC1 owns owner grants only.
+-- Shares (bob editor / carol viewer) are C-6 `share`-mode delegations, seeded
+-- below; RCC1 owns owner grants only.
 INSERT INTO tom_principal_resource_grant (principal_id, resource_key, role) VALUES
   ('2', 'workspace:1', 'owner'),
   ('2', 'project:1',   'owner'),
@@ -103,4 +105,20 @@ INSERT INTO tom_principal_resource_grant (principal_id, resource_key, role) VALU
   ('2', 'item:1',      'owner'),
   ('2', 'item:2',      'owner'),
   ('2', 'item:3',      'owner')
+ON DUPLICATE KEY UPDATE role = VALUES(role);
+
+-- C-6 cross-user shares (RCC3). Alice (delegator 2) shares project 1 with bob
+-- (editor) and carol (viewer) as `share`-mode tom_principal_delegation rows.
+-- The framework's TomDelegationResolver folds these in alongside each delegate's
+-- direct grants, so on first run bob and carol already see project 1 through the
+-- one framework enforcement path — no app_shares table, no bespoke resolver.
+-- The app share endpoints write the identical shape at runtime. resource_key is
+-- `<type>:<id>` (see ResourceRoleKeys in advanced_todo_domain); role carries the
+-- ProjectRole `.name`. valid_from/valid_to are unbounded and revoked is 0, so the
+-- shares are active at every timestamp.
+INSERT INTO tom_principal_delegation
+  (id, delegator_id, delegate_id, mode, resource_key, role, revoked)
+VALUES
+  (1, '2', '3', 'share', 'project:1', 'editor', 0),
+  (2, '2', '4', 'share', 'project:1', 'viewer', 0)
 ON DUPLICATE KEY UPDATE role = VALUES(role);

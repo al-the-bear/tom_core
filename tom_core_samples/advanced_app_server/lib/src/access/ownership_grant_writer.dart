@@ -3,7 +3,7 @@
 /// in the shared `main`/`auth_db` grant table.
 ///
 /// This is the write half of RCC1's ownership model. Ownership used to be an
-/// *implicit* `workspace.owner_id` chain the bespoke [ResourceAccessResolver]
+/// *implicit* `workspace.owner_id` chain the bespoke resolver once
 /// walked; RCC1 makes it an *explicit* owner grant so the login can fold it into
 /// [TomAccessControlInformation.resourceRoles] and the app/client resolve
 /// resource-level access through the framework registry (C-5, G-AUTHZ-5). The

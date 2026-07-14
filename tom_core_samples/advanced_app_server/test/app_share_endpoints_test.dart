@@ -1,18 +1,20 @@
-/// Database-free tests for the share endpoints (step 21): the [AppShareService]
-/// composes the step-17 [ResourceAccessResolver] over a seeded in-memory share
-/// store, so the whole `POST /share` / `DELETE /share/{id}` owner-only path —
-/// and the headline "a created share immediately grants the grantee access" bar
-/// — verifies with no server or MariaDB.
+/// Database-free tests for the share endpoints (step 21, RCC3): the
+/// [AppShareService] composes the [ResourceRoleResolver] over a seeded in-memory
+/// share-delegation store, so the whole `POST /share` / `DELETE /share/{id}`
+/// owner-only path — and the headline "a created share immediately grants the
+/// grantee access" bar — verifies with no server or MariaDB.
 ///
 /// The fixture mirrors §A.10 (workspace 1 owned by alice=2) and the prior steps'
 /// seeds: bob=3 starts as an `editor` shared on project 1; carol=4 holds no
-/// share; dave=99 is a stranger. The share service writes a [ShareRecord], and
-/// because the resolver reads exactly those rows, feeding the persisted share
-/// back into an [InMemoryAppResourceStore] proves the grant is effective on the
-/// grantee's very next request.
+/// share; dave=99 is a stranger. A share is now a C-6 `share`-mode
+/// [TomPrincipalDelegation]; because the same [InMemoryShareDelegationStore]
+/// instance is both the write seam and the framework [PrincipalDelegationStore]
+/// read seam, feeding the persisted share back into a [TomDelegationResolver]
+/// proves the grant is effective on the grantee's very next request.
 ///
-/// Shares and persistence records are plain classes, so this suite needs no
-/// reflection and no live registry.
+/// Ownership is a seeded C-5 owner grant (RCC1); each principal holds at most one
+/// role per resource key, so the fold never breaks a per-key tie and the suite
+/// needs no reflection and no live role-vocabulary registry.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
@@ -28,54 +30,59 @@ const int bob = 3; // editor, shared on project 1
 const int carol = 4; // no share — a candidate grantee
 const int dave = 99; // stranger — owns nothing, shares nothing
 
-// The §A.10 demo records. Fresh instances per call so each store holds its own
-// independent (but equal) copy.
-List<WorkspaceRecord> demoWorkspaces() => [WorkspaceRecord()..id = 1..ownerId = alice];
-List<ProjectRecord> demoProjects() => [ProjectRecord()..id = 1..workspaceId = 1];
-List<ListRecord> demoLists() => [ListRecord()..id = 1..projectId = 1];
-List<ItemRecord> demoItems() => [ItemRecord()..id = 1..listId = 1];
-
-/// The single pre-existing share: bob is an `editor` on project 1.
-List<ShareRecord> demoShares() => [
-      ShareRecord()
-        ..id = 1
-        ..resourceType = AppResourceTypes.project
-        ..resourceId = 1
-        ..granteeUserId = bob
-        ..projectRole = ProjectRole.editor.name
-        ..grantedById = alice,
-    ];
-
-/// A share service over a caller-supplied [shareStore] (so a test can inspect
-/// what was persisted) and a resolver seeded from the same share rows.
-AppShareService shareServiceOver(InMemoryAppShareStore shareStore) =>
-    AppShareService(
-      shareStore,
-      ResourceAccessResolver(InMemoryAppResourceStore(
-        workspaces: demoWorkspaces(),
-        projects: demoProjects(),
-        lists: demoLists(),
-        items: demoItems(),
-        shares: shareStore.shares,
-      )),
+/// The demo containment tree: project 1 in workspace 1; list 1 in project 1;
+/// item 1 in list 1.
+InMemoryResourceContainmentStore demoContainment() =>
+    InMemoryResourceContainmentStore(
+      projects: [ProjectRecord()..id = 1..workspaceId = 1],
+      lists: [ListRecord()..id = 1..projectId = 1],
+      items: [ItemRecord()..id = 1..listId = 1],
     );
 
-/// A resolver reading exactly the rows in [shares] — used to prove a freshly
-/// persisted share is effective.
-ResourceAccessResolver resolverOver(List<ShareRecord> shares) =>
-    ResourceAccessResolver(InMemoryAppResourceStore(
-      workspaces: demoWorkspaces(),
-      projects: demoProjects(),
-      lists: demoLists(),
-      items: demoItems(),
-      shares: shares,
-    ));
+/// Alice owns the whole tree via a single workspace-level owner grant.
+List<TomPrincipalResourceGrant> demoGrants() => [
+      TomPrincipalResourceGrant(
+        principalId: '$alice',
+        resourceKey: ResourceRoleKeys.workspace(1),
+        role: ProjectRole.owner.name,
+      ),
+    ];
+
+/// The single pre-existing share: bob is an `editor` on project 1.
+List<TomPrincipalDelegation> demoShares() => [
+      TomPrincipalDelegation(
+        id: 1,
+        mode: TomDelegationMode.share.name,
+        delegatorId: '$alice',
+        delegateId: '$bob',
+        resourceKey: ResourceRoleKeys.project(1),
+        role: ProjectRole.editor.name,
+      ),
+    ];
+
+/// A resolver reading the delegation rows in [delegations] plus the demo
+/// ownership grants — used to prove a freshly persisted share is effective.
+ResourceRoleResolver resolverOver(PrincipalDelegationStore delegations) =>
+    ResourceRoleResolver(
+      demoContainment(),
+      TomDelegationResolver(
+        delegations,
+        TomPrincipalResourceRoleResolver(
+          InMemoryPrincipalResourceGrantStore(demoGrants()),
+        ),
+      ),
+    );
+
+/// A share service over a caller-supplied [store] (so a test can inspect what
+/// was persisted) and a resolver reading the same delegation rows.
+AppShareService shareServiceOver(InMemoryShareDelegationStore store) =>
+    AppShareService(store, resolverOver(store));
 
 void main() {
   group('share (POST /share) — owner-only', () {
     test('the owner shares a project; the persisted row records the grant',
         () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       await shareServiceOver(store).share(
         alice,
         ShareRequest(
@@ -86,20 +93,22 @@ void main() {
         ),
       );
 
-      final saved = store.shares.firstWhere((s) => s.granteeUserId == carol);
-      expect(saved.id, isNotNull); // surrogate key assigned
-      expect(saved.resourceType, AppResourceTypes.project);
-      expect(saved.resourceId, 1);
-      expect(saved.projectRole, ProjectRole.commenter.name);
-      expect(saved.grantedById, alice); // the sharer is recorded as the grantor
+      final saved =
+          store.delegations.firstWhere((d) => d.delegateId == '$carol');
+      expect(saved.id, greaterThan(0)); // surrogate key assigned
+      expect(saved.mode, TomDelegationMode.share.name);
+      expect(saved.resourceKey, ResourceRoleKeys.project(1));
+      expect(saved.role, ProjectRole.commenter.name);
+      expect(saved.delegatorId, '$alice'); // the sharer is recorded as delegator
     });
 
-    test('a created share immediately grants the grantee access (the step-21 Done bar)',
+    test(
+        'a created share immediately grants the grantee access (the step-21 Done bar)',
         () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       // carol has no role on project 1 to begin with.
       expect(
-        await resolverOver(store.shares).resolveRole(
+        await resolverOver(store).resolveRole(
           userId: carol,
           resourceType: AppResourceTypes.project,
           resourceId: 1,
@@ -119,7 +128,7 @@ void main() {
 
       // The very next resolve over the now-persisted rows sees the grant.
       expect(
-        await resolverOver(store.shares).resolveRole(
+        await resolverOver(store).resolveRole(
           userId: carol,
           resourceType: AppResourceTypes.project,
           resourceId: 1,
@@ -129,7 +138,7 @@ void main() {
     });
 
     test('a non-owner editor may not share (forbidden)', () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       await expectLater(
         () => shareServiceOver(store).share(
           bob, // editor on project 1, not its owner
@@ -144,12 +153,12 @@ void main() {
             .having((e) => e.key, 'key', 'app.access.forbidden')),
       );
       // Nothing was persisted beyond the seed.
-      expect(store.shares, hasLength(1));
+      expect(store.delegations, hasLength(1));
     });
 
     test('a stranger may not share (forbidden, not leaked as missing)',
         () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       await expectLater(
         () => shareServiceOver(store).share(
           dave,
@@ -163,12 +172,12 @@ void main() {
         throwsA(isA<TomEndpointHandlerException>()
             .having((e) => e.key, 'key', 'app.access.forbidden')),
       );
-      expect(store.shares, hasLength(1));
+      expect(store.delegations, hasLength(1));
     });
 
     test('a non-numeric resource or grantee id is rejected as invalid',
         () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       await expectLater(
         () => shareServiceOver(store).share(
           alice,
@@ -182,22 +191,22 @@ void main() {
         throwsA(isA<TomEndpointHandlerException>()
             .having((e) => e.key, 'key', 'app.share.invalid')),
       );
-      expect(store.shares, hasLength(1));
+      expect(store.delegations, hasLength(1));
     });
   });
 
   group('revokeShare (DELETE /share/{id}) — owner-only', () {
     test('the owner revokes a share; the row is deleted', () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       await shareServiceOver(store).revokeShare(alice, 1);
-      expect(store.shares, isEmpty);
+      expect(store.delegations, isEmpty);
     });
 
     test('revoking removes the grantee\'s access', () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       // bob has editor access via share 1.
       expect(
-        await resolverOver(store.shares).resolveRole(
+        await resolverOver(store).resolveRole(
           userId: bob,
           resourceType: AppResourceTypes.project,
           resourceId: 1,
@@ -208,7 +217,7 @@ void main() {
       await shareServiceOver(store).revokeShare(alice, 1);
 
       expect(
-        await resolverOver(store.shares).resolveRole(
+        await resolverOver(store).resolveRole(
           userId: bob,
           resourceType: AppResourceTypes.project,
           resourceId: 1,
@@ -218,24 +227,24 @@ void main() {
     });
 
     test('a non-owner may not revoke (forbidden)', () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       await expectLater(
         () => shareServiceOver(store).revokeShare(bob, 1),
         throwsA(isA<TomEndpointHandlerException>()
             .having((e) => e.key, 'key', 'app.access.forbidden')),
       );
-      expect(store.shares, hasLength(1)); // untouched
+      expect(store.delegations, hasLength(1)); // untouched
     });
 
     test('revoking an unknown share is reported as not found (closed/safe)',
         () async {
-      final store = InMemoryAppShareStore(shares: demoShares());
+      final store = InMemoryShareDelegationStore(delegations: demoShares());
       await expectLater(
         () => shareServiceOver(store).revokeShare(alice, 999),
         throwsA(isA<TomEndpointHandlerException>()
             .having((e) => e.key, 'key', 'app.share.not_found')),
       );
-      expect(store.shares, hasLength(1));
+      expect(store.delegations, hasLength(1));
     });
   });
 

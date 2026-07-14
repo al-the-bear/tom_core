@@ -134,12 +134,15 @@ The `/app` blanket `TomAuthenticatedAccess` proves identity; the board's real
 authorization is two resolvers the handlers consult per call (introduced in
 [Part 07](README_advanced_07_authorization.md), here seen at the wire):
 
-- **`ResourceAccessResolver`** — maps `(userId, resourceType, resourceId)` to an
-  *effective* `ProjectRole`, or `null` for no access. It walks ownership and the
-  `ShareRecord` rows (strongest share wins), climbing item → list → project →
-  workspace. Every list endpoint filters each candidate row through it and drops
-  the invisible ones (`AppReadService._filterVisible`, `app_endpoints.dart:248`);
-  `null` means the resource is simply not in the response.
+- **`ResourceRoleResolver`** — maps `(userId, resourceType, resourceId)` to an
+  *effective* `ProjectRole`, or `null` for no access. It resolves the principal's
+  flat effective-role map through the framework `TomDelegationResolver` — the C-5
+  ownership grants (RCC1) and C-6 `share`-mode `TomPrincipalDelegation` rows
+  (RCC3), strongest role wins — then keeps the strongest role over the target's
+  containment chain, climbing item → list → project → workspace. Every list
+  endpoint filters each candidate row through it and drops the invisible ones
+  (`AppReadService._filterVisible`, `app_endpoints.dart:248`); `null` means the
+  resource is simply not in the response.
 - **`FieldGradeResolver`** — maps a resolved `ProjectRole` to the per-field
   `TomAuthState` matrix from the `tom_resource_grant` table. `itemFieldStates`
   projects it into `GradedFieldDto`s for the client to render
@@ -152,9 +155,10 @@ the payload *changes* must be graded `full` for the caller, or the whole write i
 rejected with `app.item.field_forbidden`; the persisted row overlays only the
 permitted fields, so server-owned columns and non-`full` fields keep their stored
 value (`_enforceFieldWrites`, `app_endpoints.dart:663`). Sharing is **owner-only**
-— only an `owner` of the target may create or revoke a `ShareRecord`, and a new
-share takes effect immediately because the resolver reads shares on the grantee's
-next request (`AppShareService`, `app_endpoints.dart:839`).
+— only an `owner` of the target may create or revoke a `share`-mode
+`TomPrincipalDelegation`, and a new share takes effect immediately because the
+resolver reads the delegation rows on the grantee's next request
+(`AppShareService`, `app_endpoints.dart:839`).
 
 The denials are **closed/safe**: a resource the caller cannot reach is reported as
 *not found* (404, `app.item.not_found` / `app.share.not_found`), never as
@@ -227,7 +231,7 @@ Putting it together, a single authenticated board request flows:
    `TomAuthenticatedAccess` requires a principal, `TomRoleAccess(['admin'])`
    requires the role. A denial throws the access-denied key (→ server handler →
    403).
-4. **Authorize** — inside the handler, `ResourceAccessResolver` filters
+4. **Authorize** — inside the handler, `ResourceRoleResolver` filters
    visibility and `FieldGradeResolver` (plus `_enforceFieldWrites` on writes)
    enforce the four-state grade. Unreachable → 404; refused → 403.
 5. **Respond** — the result is serialized; service-thrown
