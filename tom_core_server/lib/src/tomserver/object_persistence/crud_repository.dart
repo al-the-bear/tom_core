@@ -142,7 +142,11 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     this.queryTypes = queryTypes ?? this.queryTypes;
     this.resultType = resultType ?? this.resultType;
     _qsc = TomQuerySentenceCompiler(this.queryTypes);
-    var persistenceInfo = TomAnnotationAnalyzer.analysePersistentType(
+    // Assign the `persistenceInfo` field (not a shadowing local): the scope
+    // resolver (`_resolveScope`) reads it long after construction, so a local
+    // here would leave the `late` field uninitialised and only fail the first
+    // time a scoped read runs (LateInitializationError).
+    persistenceInfo = TomAnnotationAnalyzer.analysePersistentType(
       this.queryTypes[0],
     );
     dbTable = persistenceInfo.table;

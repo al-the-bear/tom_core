@@ -1,8 +1,9 @@
-/// End-to-end cross-tier integration test (step 37, Phase 7): the whole stack —
-/// both servers and both databases — exercised through the real client tier in
-/// one scripted scenario.
+/// End-to-end cross-tier integration test (step 37, Phase 7; extended for RCC5):
+/// the whole stack — both servers and both databases — exercised through the
+/// real client tier in one scripted scenario, then the RCC5 live-DB C-5/C-6
+/// authorization checks over the same stack.
 ///
-/// The scenario walks the two authorization mechanisms that span the tiers:
+/// [TC-37-01] walks the two authorization mechanisms that span the tiers:
 ///
 ///  1. **An admin grant edit shows up in the end-user's field matrix.** The
 ///     `admin` edits the `viewer` role's `todo.item.title` grant through the
@@ -10,11 +11,42 @@
 ///     then re-reads item 1's field states from the *app* server and sees the
 ///     new grade — proving the app server resolves grades from the very rows the
 ///     auth server's admin API writes (the app server's `main` datasource points
-///     at `auth_db`, read-only).
+///     at `auth_db`, read-only). This is also the end-to-end proof that the
+///     principal's **resourceRoles** (RCC1's C-5 grants, folded into the token
+///     claim) drive authorization: the matrix a principal sees is exactly what
+///     its resolved roles grant.
 ///  2. **A share lets a second user see a project.** `alice` (workspace owner)
 ///     creates a fresh project, `bob` cannot list it, `alice` shares it with
 ///     `bob` as `editor`, and `bob` then lists it — the step-17 ownership-or-share
 ///     resolver in action over the live wire.
+///
+/// **RCC5 — the live-DB C-5/C-6 checks folded onto the same stack.** Each is an
+/// independent, health-gated test that skips when the stack is down (like
+/// TC-37-01), so the socket-free unit suites keep the always-on coverage and
+/// these prove the live path when an operator brings the stack up via
+/// `tool/run_cross_tier_integration.sh`:
+///
+///  - [TC-37-02] **row-scope reads are filtered.** RCC4 owner-scopes workspace
+///    reads (`@TomDbScope(field: 'ownerId')`): `alice` (owner of workspace 1)
+///    lists it, `bob` (not the owner) does not — the DB row scope and the
+///    service filter agree, so a non-owner never sees another principal's
+///    workspace.
+///  - [TC-37-03] **a delegation grants, then withholds.** The seeded C-6
+///    `share`-mode delegation (id 1: `bob` → `editor` on project 1) makes
+///    project 1 visible to `bob`; `alice` (the owner) revokes it and `bob` loses
+///    the project; the share is restored so the run stays re-runnable.
+///  - [TC-37-04] **a write to a viewer resource is rejected.** `carol` (a
+///    `viewer` on project 1) changes item 1's `title` — a field her role grades
+///    `read`, not `full` — and the app server rejects the write field-by-field
+///    (`app.item.field_forbidden`, HTTP 403).
+///  - [TC-37-05] **a second user's WRITE/DELETE of another principal's row is
+///    rejected.** `carol` (a `viewer`, below `editor`) tries to delete `alice`'s
+///    item 1 and is denied (`app.access.forbidden`, HTTP 403) — the reachable
+///    live counterpart of RCA4's connection-free write-scope tests. (The literal
+///    `TomDataScopeAuthorizationException` fires only on a `@TomDbScope` entity's
+///    write; the advanced sample scopes only `WorkspaceRecord`, which has no
+///    write endpoint, so that exact exception is covered at the framework unit
+///    level — see the RCC5 decision notes and RCB9.)
 ///
 /// **Why the grant edit writes the whole `viewer` row.** `adminPutGrants`
 /// replaces grants *per role* (`replaceGrantsForRole`), and `adminGetGrants`
@@ -63,6 +95,13 @@ const _bobUserId = '3';
 const _aliceWorkspaceId = '1';
 const _carolItemId = '1';
 const _titleKey = 'todo.item.title';
+
+// The seeded C-6 share the RCC5 delegation check revokes and restores: row id 1
+// in `[003]-auth_demo_seed` is alice(2) → bob(3) `editor` on `project:1`. The id
+// is an explicit seed value (not an auto-increment), so it is stable across the
+// fresh-seeded runs the integration script guarantees (`docker compose down -v`).
+const _seededBobShareId = '1';
+const _sharedProjectId = '1';
 
 void main() {
   setUpAll(initializeReflection);
@@ -158,7 +197,186 @@ void main() {
         }
       }
     });
+
+    // --- RCC5: live-DB C-5/C-6 authorization checks over the same stack. ------
+
+    test(
+        'TC-37-02: row-scope reads are filtered — a non-owner never sees '
+        "another principal's workspace (RCC4 @TomDbScope)", () async {
+      final c = _liveClients();
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // alice owns workspace 1 — the owner scope lets it through.
+        await c.auth.login(_aliceLogin);
+        final aliceWorkspaces = await c.app.listWorkspaces();
+        expect(aliceWorkspaces.map((w) => w.id.get()),
+            contains(_aliceWorkspaceId),
+            reason: 'the owner sees her own workspace');
+
+        // bob owns no workspace — the owner scope filters alice's out. bob is a
+        // seeded share on project 1, but a share never targets or flows up to a
+        // workspace, so the row scope hides it.
+        await c.auth.login(_bobLogin);
+        final bobWorkspaces = await c.app.listWorkspaces();
+        expect(bobWorkspaces.map((w) => w.id.get()),
+            isNot(contains(_aliceWorkspaceId)),
+            reason: 'the workspace owner scope hides a non-owner');
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        c.transport.close();
+      }
+    });
+
+    test(
+        'TC-37-03: a delegation grants, then withholds — revoking the seeded '
+        'share removes the grantee\'s access', () async {
+      final c = _liveClients();
+      var revoked = false;
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // Grant (seeded, active): bob sees project 1 through the editor share.
+        await c.auth.login(_bobLogin);
+        expect(await _canSeeProject(c.app, _sharedProjectId), isTrue,
+            reason: 'the seeded share grants bob the project');
+
+        // Withhold: alice (the owner) revokes the seeded delegation.
+        await c.auth.login(_aliceLogin);
+        await c.app.revokeShare(_seededBobShareId);
+        revoked = true;
+
+        // bob's only path to project 1 was that share — it is now gone.
+        await c.auth.login(_bobLogin);
+        expect(await _canSeeProject(c.app, _sharedProjectId), isFalse,
+            reason: 'revoking the delegation withholds bob the project');
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        // Restore bob's access so the run leaves the shared grant in place (a
+        // fresh row id; the fresh-seeded next run resets it regardless).
+        if (revoked) {
+          try {
+            await c.auth.login(_aliceLogin);
+            await c.app.share(ShareRequest(
+              resourceType: 'project',
+              resourceId: _sharedProjectId,
+              granteeUserId: _bobUserId,
+              projectRole: ProjectRole.editor,
+            ));
+          } on SocketException {
+            // Servers unreachable — nothing to restore.
+          }
+        }
+        c.transport.close();
+      }
+    });
+
+    test(
+        'TC-37-04: a write to a viewer resource is rejected — carol cannot '
+        'change a field her role only reads', () async {
+      final c = _liveClients();
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        await c.auth.login(_carolLogin);
+        // A faithful baseline: fetch the stored item, flip only its title (a
+        // field the `viewer` role grades `read`, not `full`).
+        final stored = await _findVisibleItem(c.app, _carolItemId);
+        expect(stored, isNotNull,
+            reason: 'carol (viewer) can read item 1 before attempting a write');
+        stored!.title.set('${stored.title.get()} (carol edit)');
+
+        await expectLater(
+          c.app.updateItem(stored),
+          throwsA(isA<AppApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)
+              .having((e) => e.key, 'key', 'app.item.field_forbidden')),
+          reason: 'a below-`full` field write is rejected field-by-field',
+        );
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        c.transport.close();
+      }
+    });
+
+    test(
+        "TC-37-05: a second user's delete of another principal's row is "
+        'rejected (write-scope counterpart)', () async {
+      final c = _liveClients();
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // carol is a `viewer` on project 1 — below the `editor` a delete needs —
+        // so deleting alice's item 1 is denied. The row is not carol's to mutate.
+        await c.auth.login(_carolLogin);
+        await expectLater(
+          c.app.deleteItem(EntityIdRequest(id: _carolItemId)),
+          throwsA(isA<AppApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)
+              .having((e) => e.key, 'key', 'app.access.forbidden')),
+          reason: 'a non-editor may not delete another principal\'s item',
+        );
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        c.transport.close();
+      }
+    });
   });
+}
+
+/// One live transport plus the auth/admin/app clients that share it — the
+/// runtime wiring each RCC5 check builds (and closes) independently.
+({
+  IoJsonTransport transport,
+  AuthClient auth,
+  AdminApiClient admin,
+  AppApiClient app,
+}) _liveClients() {
+  final transport = IoJsonTransport();
+  final authBase = Uri.parse(_authBaseUri);
+  final appBase = Uri.parse(_appBaseUri);
+  final auth = AuthClient(authBase, transport: transport);
+  final authorized = AuthorizedHttp(transport, auth);
+  return (
+    transport: transport,
+    auth: auth,
+    admin: AdminApiClient(authBase, authorized),
+    app: AppApiClient(appBase, authorized),
+  );
+}
+
+/// The uniform skip message when the live stack is unreachable at test time.
+String _skipMessage(SocketException e) =>
+    'auth/app server not reachable on $_authBaseUri/$_appBaseUri — run '
+    'tool/run_cross_tier_integration.sh (or start both servers + their '
+    'databases) to run this end-to-end test ($e)';
+
+/// Whether the logged-in principal can currently see project [projectId] in
+/// alice's workspace — the visibility the share grants and the revoke withholds.
+Future<bool> _canSeeProject(AppApiClient app, String projectId) async {
+  final projects = await app.listProjects(_aliceWorkspaceId);
+  return projects.any((p) => p.id.get() == projectId);
+}
+
+/// The stored [itemId] as the logged-in principal sees it, walking the visible
+/// project → list → item chain in alice's workspace, or `null` when unreachable.
+Future<TodoItem?> _findVisibleItem(AppApiClient app, String itemId) async {
+  for (final project in await app.listProjects(_aliceWorkspaceId)) {
+    for (final list in await app.listLists(project.id.get())) {
+      for (final item in await app.listItems(list.id.get())) {
+        if (item.id.get() == itemId) return item;
+      }
+    }
+  }
+  return null;
 }
 
 /// carol's resolved grade for the `title` field on item [_carolItemId], read

@@ -255,7 +255,10 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <Object>[
           prefix36.tomReflector,
           prefix29.tomComponent,
-          const prefix56.TomApiImplementation(apiId: 'app'),
+          const prefix56.TomApiImplementation(
+            apiId: 'app',
+            errorHandler: const prefix3.AppEndpointErrorHandler(),
+          ),
         ],
         null,
       ),

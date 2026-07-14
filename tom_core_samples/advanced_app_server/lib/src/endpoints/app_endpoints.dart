@@ -946,6 +946,45 @@ Response? appForbiddenOrNotFound(
   }
 }
 
+/// The per-endpoint [TomErrorHandler] that maps the app services' closed/safe
+/// denial keys to 403/404 when a service **method itself** throws.
+///
+/// Two distinct places raise the denial keys, and they surface at *different*
+/// layers. A *pre-invocation* access check (the pipeline's contract-declared
+/// `TomAuthenticatedAccess`) throws outside the per-endpoint try/catch, so it
+/// escapes to the server-level [appServerErrorHandler]. But an *in-method*
+/// denial — `deleteItem` rejecting a viewer, `updateItem` rejecting a
+/// forbidden field write — is caught by the endpoint pipeline's per-endpoint
+/// handler (`TomEndpoint.errorHandler`), which otherwise defaults to
+/// [TomDefaultErrorHandler] and turns every such throw into an opaque 500. This
+/// handler, declared on the `@TomApiImplementation`, is that per-endpoint
+/// handler: it reuses [appForbiddenOrNotFound] to map the keys and falls back
+/// to the framework default for genuine faults.
+class AppEndpointErrorHandler extends TomErrorHandler {
+  /// Const so it can be supplied as the `@TomApiImplementation` annotation's
+  /// `errorHandler`.
+  const AppEndpointErrorHandler();
+
+  @override
+  Response handleErrorDefault(
+    Object error,
+    Object stacktrace,
+    Request r,
+    Object? result,
+  ) =>
+      appForbiddenOrNotFound(
+        r,
+        error,
+        stacktrace is StackTrace ? stacktrace : StackTrace.current,
+      ) ??
+      const TomDefaultErrorHandler().handleErrorDefault(
+        error,
+        stacktrace,
+        r,
+        result,
+      );
+}
+
 /// The `@tomComponent` implementing the registry's `app` API.
 ///
 /// Bound to the `appApi` endpoints (`tomRemoteApis['app']`); the bean container
@@ -963,7 +1002,7 @@ Response? appForbiddenOrNotFound(
 /// endpoints (`share`/`revokeShare`) to [AppShareService] (owner-only).
 @tomReflector
 @tomComponent
-@TomApiImplementation(apiId: 'app')
+@TomApiImplementation(apiId: 'app', errorHandler: AppEndpointErrorHandler())
 class AdvancedAppApiService implements AppApiService {
   /// Production read logic over the repository-backed stores.
   ///

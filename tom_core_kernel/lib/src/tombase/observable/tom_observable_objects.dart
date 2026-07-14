@@ -955,7 +955,11 @@ class TomClass extends TomObject<Map<String, TomObject>>
       // Atomically replace all elements — fires onBeforeClear / onAfterReset
       // lifecycle hooks so registered TomListLifecycleListeners (e.g.
       // TomListForm) can tear down and recreate sub-state in one pass.
-      member.resetWith(newElements);
+      // Use the loosely-typed variant: `newElements` is a
+      // `List<TomObject<dynamic>>` whose reified type is not `List<E>`, so the
+      // covariant `resetWith(Iterable<E>)` parameter check would reject it even
+      // though every element is really an `E`.
+      member._resetWithDynamic(newElements);
     } else {
       for (final e in newElements) {
         member.add(e);
@@ -973,29 +977,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
     for (var key in _value.keys) {
       var value = _value[key]!;
       try {
-        // Check if it's a TomClass BEFORE calling .get() since TomClass.get() throws
-        if (value is TomClass) {
-          result[key] = (value).getValues();
-        } else {
-          var valueValue = value.get();
-          // TODO: add serialization/deserialization for other DateTime-derived classes
-          if (value is TomDateTime || value is TomNDateTime) {
-            // Emit `<prefix><iso8601>` for round-trip via setValues(),
-            // which strips the prefix and DateTime.parse()s the rest
-            // (see setOrMergeValues above). Nullable variants emit `null`
-            // when the underlying value is unset.
-            result[key] = valueValue == null
-                ? null
-                : "${TomDateTime.serializationPrefix}"
-                    "${(valueValue as DateTime).toIso8601String()}";
-          } else if (value is TomOTimezoned) {
-            result[key] = valueValue != null
-                ? valueValue.toString()
-                : value.getSerializationPrefix();
-          } else {
-            result[key] = valueValue;
-          }
-        }
+        result[key] = _serializeMember(value);
       } on TomObservableException {
         // A nested TomClass member already wrapped and logged the failure
         // (and named its own offending key); propagate it unchanged rather
@@ -1016,6 +998,39 @@ class TomClass extends TomObject<Map<String, TomObject>>
       }
     }
     return result;
+  }
+
+  /// Serializes a single observable member to a JSON-safe value.
+  ///
+  /// Applies the same per-type handling to a member as [getValues] applies to a
+  /// `TomClass`'s own fields — and, crucially, is reused for the **elements** of
+  /// a [TomList]. A `TomList<TomString>` (or a list of nested `TomClass`) would
+  /// otherwise leak raw `TomObject` instances into `jsonEncode`, since
+  /// `TomList.get()` returns the backing `List<E>` without unwrapping its
+  /// elements. Nested lists recurse element-by-element.
+  static Object? _serializeMember(TomObject value) {
+    // Check for TomClass before calling .get(), since TomClass.get() throws.
+    if (value is TomClass) return value.getValues();
+    if (value is TomList) {
+      return [for (final element in value) _serializeMember(element)];
+    }
+    final valueValue = value.get();
+    // TODO: add serialization/deserialization for other DateTime-derived classes
+    if (value is TomDateTime || value is TomNDateTime) {
+      // Emit `<prefix><iso8601>` for round-trip via setValues(), which strips
+      // the prefix and DateTime.parse()s the rest (see setOrMergeValues above).
+      // Nullable variants emit `null` when the underlying value is unset.
+      return valueValue == null
+          ? null
+          : "${TomDateTime.serializationPrefix}"
+              "${(valueValue as DateTime).toIso8601String()}";
+    }
+    if (value is TomOTimezoned) {
+      return valueValue != null
+          ? valueValue.toString()
+          : value.getSerializationPrefix();
+    }
+    return valueValue;
   }
 
   /// Populates this [TomClass] from a JSON string.
@@ -1369,7 +1384,19 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// [TomClass._setListMember] uses this method so that observers such as
   /// `TomListForm` can teardown / recreate their sub-form instances when
   /// a parent form writes its bind-time snapshot back via `setValues()`.
-  void resetWith(Iterable<E> elements) {
+  void resetWith(Iterable<E> elements) => _resetWithDynamic(elements);
+
+  /// Loosely-typed variant of [resetWith] used by deserialization.
+  ///
+  /// [TomClass._setListMember] builds new elements reflectively into a
+  /// `List<TomObject<dynamic>>`; every element is really an `E`, but the list's
+  /// *reified* type is not `List<E>`. Passing it to [resetWith] fails the
+  /// covariant `Iterable<E>` parameter check at method entry, before the body
+  /// runs. This variant's parameter type does not mention `E`, so no
+  /// whole-container covariant check happens — each element is instead checked
+  /// individually via `add`'s covariant parameter, exactly like the
+  /// element-by-element path in [_setListMember].
+  void _resetWithDynamic(Iterable<TomObject<dynamic>> elements) {
     // Snapshot the listener list before iterating to guard against
     // concurrent modification inside a listener callback.
     final listeners = List.of(_lifecycleListeners);
@@ -1380,7 +1407,9 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     _value.clear();
     for (final e in elements) {
       e.addObserver(this);
-      _value.add(e);
+      // Covariant per-element check: `e` is really an `E` even though the
+      // source container was typed `List<TomObject<dynamic>>`.
+      _value.add(e as E);
     }
     for (final l in listeners) {
       l.onAfterReset(this);

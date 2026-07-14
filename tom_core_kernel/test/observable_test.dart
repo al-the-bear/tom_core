@@ -4,6 +4,8 @@
 /// Run: `dart run build_runner build` before executing these tests.
 library;
 
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -44,6 +46,18 @@ class TestTask extends TomClass {
   final title = TomString("");
   final completed = TomBool(false);
   final priority = TomInt(0);
+}
+
+/// Test class exercising `TomList` element serialization: a
+/// `TomList<TomString>` (scalar elements) and a `TomList<TestTask>` (nested
+/// `TomClass` elements). Reproduces the RCC5 bug where `toJson()` left raw
+/// `TomObject` list elements in the map, so `jsonEncode` threw
+/// `JsonUnsupportedObjectError`.
+@tomReflector
+class TestTaggedItem extends TomClass {
+  final title = TomString("");
+  final tags = TomList<TomString>();
+  final subtasks = TomList<TestTask>();
 }
 
 /// Test class for TomMap with TomClass values
@@ -436,6 +450,65 @@ void main() {
 
       expect(~person.name, equals("Carol"));
       expect(~person.age, equals(35));
+    });
+
+    test('toJson unwraps TomList elements so jsonEncode round-trips', () {
+      // Before the fix, a TomList member serialized to a List of raw TomObject
+      // instances (TomList.get() returns the backing list without unwrapping),
+      // so jsonEncode(toJson()) threw JsonUnsupportedObjectError.
+      final item = TestTaggedItem();
+      item.title | "release";
+      item.tags.append(TomString("urgent")).append(TomString("backend"));
+      final sub = TestTask();
+      sub.title | "write tests";
+      sub.completed | true;
+      item.subtasks.append(sub);
+
+      final json = item.toJson();
+
+      // Scalar list elements become plain strings, not TomString instances.
+      expect(json["tags"], equals(["urgent", "backend"]));
+      // Nested-TomClass list elements are recursively serialized to maps.
+      final subtasks = json["subtasks"] as List;
+      expect(subtasks.single, isA<Map>());
+      expect((subtasks.single as Map)["title"], equals("write tests"));
+
+      // The whole point: the map is now jsonEncode-safe, and the encoded form
+      // decodes back to the same scalar list.
+      expect(() => jsonEncode(json), returnsNormally);
+      final decoded = jsonDecode(jsonEncode(json)) as Map<String, dynamic>;
+      expect(decoded["tags"], equals(["urgent", "backend"]));
+    });
+
+    test('fromJson rebuilds a scalar TomList without a reified-type failure', () {
+      // Symmetric counterpart of the serialize fix: setValues() rebuilds a
+      // TomList<TomString> member reflectively into a List<TomObject<dynamic>>
+      // and used to hand the whole list to resetWith(Iterable<E>). At runtime
+      // E is TomString, so the covariant whole-container check threw
+      // "type 'List<TomObject<dynamic>>' is not a subtype of type
+      // 'Iterable<TomString>' of 'elements'". Deserializing a scalar list must
+      // succeed and preserve the element values.
+      final source = TestTaggedItem();
+      source.title | "release";
+      source.tags.append(TomString("frontend")).append(TomString("design"));
+      final sub = TestTask();
+      sub.title | "write tests";
+      sub.completed | true;
+      source.subtasks.append(sub);
+
+      final wire = jsonEncode(source.toJson());
+
+      final rebuilt = TestTaggedItem();
+      expect(() => rebuilt.fromJson(wire), returnsNormally);
+
+      expect(rebuilt.title.get(), equals("release"));
+      // Scalar list elements reconstructed as TomString with the right values.
+      expect(rebuilt.tags.map((e) => e.get()).toList(),
+          equals(["frontend", "design"]));
+      // Nested-TomClass list elements reconstructed from their maps.
+      expect(rebuilt.subtasks.length, equals(1));
+      expect(rebuilt.subtasks.first.title.get(), equals("write tests"));
+      expect(rebuilt.subtasks.first.completed.get(), isTrue);
     });
 
     test('nested TomClass observation', () {
