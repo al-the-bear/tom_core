@@ -287,4 +287,166 @@ void main() {
       expect(e, isA<TomServerException>());
     });
   });
+
+  // RCB8: the async, union/OR data scope. Where the synchronous resolver renders
+  // one `<col> IN (…)` AND-predicate, an async resolver contributes an OR of one
+  // `IN` list per id-set, so a row scope can be the *union* of independently
+  // computed sets (owned ids ∪ shared-via-containment ids) resolved from another
+  // database. Verified connection-free at the predicate level, exactly as the
+  // synchronous scope is.
+  group('async union scope registry (RCB8)', () {
+    test('registerAsync registers an async kind; isAsync/asyncResolverFor see it',
+        () {
+      expect(TomDataScopeRegistry.isAsync('visible'), isFalse);
+      TomDataScopeRegistry.registerAsync('visible', (p) async => [
+            [1],
+          ]);
+      expect(TomDataScopeRegistry.isAsync('visible'), isTrue);
+      expect(TomDataScopeRegistry.asyncResolverFor('visible'), isNotNull);
+    });
+
+    test('reset clears async registrations too', () {
+      TomDataScopeRegistry.registerAsync('visible', (p) async => const [[]]);
+      TomDataScopeRegistry.reset();
+      expect(TomDataScopeRegistry.isAsync('visible'), isFalse);
+      expect(TomDataScopeRegistry.asyncResolverFor('visible'), isNull);
+    });
+
+    test('the sync and async seams are disjoint per kind', () {
+      // A kind registered async is not visible to the sync resolver lookup, and
+      // the built-in sync kinds are not async.
+      expect(TomDataScopeRegistry.isAsync('owner'), isFalse);
+      TomDataScopeRegistry.registerAsync('visible', (p) async => const [[1]]);
+      expect(TomDataScopeRegistry.resolverFor('visible'), isNull);
+      expect(TomDataScopeRegistry.isAsync('visible'), isTrue);
+    });
+  });
+
+  group('async union predicate (TomDataScope.anyOf, RCB8)', () {
+    final col = _column('projects', 'id', int);
+
+    test('two id-sets render an OR of two IN lists, values bound (C-7)', () {
+      final p = TomDataScope.anyOf(b, col, [
+        [1, 2],
+        [3],
+      ]);
+      final sql = p.predicate.generate(dialect);
+      expect(sql, contains('projects.id IN (:__tomscope_0_0,:__tomscope_0_1)'));
+      expect(sql, contains('projects.id IN (:__tomscope_1_0)'));
+      expect(sql, contains(' OR '));
+      // Grouped, so it survives AND-composition (see the leak-guard test below).
+      expect(sql.trim(), startsWith('('));
+      expect(p.parameters, {
+        '__tomscope_0_0': 1,
+        '__tomscope_0_1': 2,
+        '__tomscope_1_0': 3,
+      });
+      // The shared id 3 is bound, never inlined (its placeholder index is 1_0).
+      expect(sql, isNot(contains('3')));
+    });
+
+    test('a single id-set renders the plain IN list (no OR wrapper)', () {
+      final p = TomDataScope.anyOf(b, col, [
+        [1, 2],
+      ]);
+      expect(p.predicate.generate(dialect),
+          'projects.id IN (:__tomscope_0_0,:__tomscope_0_1)');
+      expect(p.parameters, {'__tomscope_0_0': 1, '__tomscope_0_1': 2});
+    });
+
+    test('an empty group contributes a FALSE disjunct (owned ∪ ∅ = owned)', () {
+      final p = TomDataScope.anyOf(b, col, [
+        [1],
+        <Object?>[],
+      ]);
+      final sql = p.predicate.generate(dialect);
+      expect(sql, contains('projects.id IN (:__tomscope_0_0)'));
+      expect(sql, contains(b.boolOp(false).generate(dialect)));
+      expect(sql, contains(' OR '));
+      expect(p.parameters, {'__tomscope_0_0': 1});
+    });
+
+    test('no id-sets deny every row with a FALSE predicate (deny-all)', () {
+      final p = TomDataScope.anyOf(b, col, const []);
+      expect(p.predicate.generate(dialect), b.boolOp(false).generate(dialect));
+      expect(p.parameters, isEmpty);
+    });
+
+    test('the union is parenthesised so AND-composition cannot leak rows', () {
+      // The repository ANDs the scope into the base WHERE: `base AND <scope>`.
+      // An unparenthesised `a OR b` binds as `(base AND a) OR b`, letting the
+      // second id-set escape the base filter (a row leak). Grouping makes it
+      // `base AND (a OR b)` — a single intersecting AND-operand.
+      final base = TomDataScope.inList(
+          b, _column('projects', 'workspace_id', int), [9],
+          prefix: '__idlist_');
+      final union = TomDataScope.anyOf(b, col, [
+        [1],
+        [3],
+      ]);
+      final combined = b.and([base.predicate, union.predicate]).generate(dialect);
+      expect(combined, matches(RegExp(r'AND\s*\(.*OR.*\)')));
+    });
+  });
+
+  group('async union build + opt-out (TomDataScope.buildAsync, RCB8)', () {
+    final col = _column('projects', 'id', int);
+
+    test('resolves the registered async resolver into the union predicate',
+        () async {
+      TomDataScopeRegistry.registerAsync('visible', (p) async => [
+            [p!.user.id], // owned
+            [3], // shared
+          ]);
+      const scope = TomDbScope(field: 'id', scope: 'visible');
+      final p = await TomDataScope.buildAsync(b, scope, col, _principal(1));
+      expect(p, isNotNull);
+      expect(p!.parameters.values, containsAll(<Object?>[1, 3]));
+      expect(p.predicate.generate(dialect), contains(' OR '));
+    });
+
+    test('a resolver returning null opts out of scoping entirely', () async {
+      TomDataScopeRegistry.registerAsync('visible', (p) async => null);
+      const scope = TomDbScope(field: 'id', scope: 'visible');
+      expect(await TomDataScope.buildAsync(b, scope, col, _principal(1)), isNull);
+    });
+
+    test('a resolver returning no id-sets denies every row (deny-all)', () async {
+      TomDataScopeRegistry.registerAsync('visible', (p) async => const []);
+      const scope = TomDbScope(field: 'id', scope: 'visible');
+      final p = await TomDataScope.buildAsync(b, scope, col, _principal(1));
+      expect(p!.predicate.generate(dialect), b.boolOp(false).generate(dialect));
+    });
+
+    test('an unregistered async scope kind throws TomDataScopeException',
+        () async {
+      const scope = TomDbScope(field: 'id', scope: 'ghost-async');
+      expect(
+        () => TomDataScope.buildAsync(b, scope, col, _principal(1)),
+        throwsA(
+          isA<TomDataScopeException>().having(
+            (e) => e.key,
+            'key',
+            'data_scope.build.unknown_async_scope',
+          ),
+        ),
+      );
+    });
+  });
+
+  group('runUnscoped re-entrancy guard (RCB8)', () {
+    test('isBypassed is false outside, true inside a runUnscoped body',
+        () async {
+      expect(TomDataScope.isBypassed, isFalse);
+      await TomDataScope.runUnscoped(() async {
+        expect(TomDataScope.isBypassed, isTrue);
+      });
+      expect(TomDataScope.isBypassed, isFalse);
+    });
+
+    test('a null-returning body still restores the unscoped state', () async {
+      await TomDataScope.runUnscoped(() async => null);
+      expect(TomDataScope.isBypassed, isFalse);
+    });
+  });
 }

@@ -237,6 +237,15 @@ Future<void> main(List<String> args) async {
 
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
 
+  // RCB8: register the async `visible:project|list|item` data scopes so the CRUD
+  // repository pushes each caller's owned ∪ shared id-set to `app_db` as an
+  // OR-union predicate — the DB-side counterpart of the app read service's
+  // in-memory visibility filter. Must run after *both* reflection init and
+  // datasource init: it eagerly builds the production repositories, which
+  // resolve their reflected persistence types and their datasource metadata at
+  // construction time. Registered before serving.
+  registerAppDataScopes();
+
   initializeJwtSigning();
   warnIfDevelopmentSigningKey();
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/types_operator.dart';
@@ -50,6 +52,25 @@ class TomDataScopeAuthorizationException extends TomServerException {
 /// secure default.
 typedef TomDataScopeResolver = List<Object?>? Function(TomPrincipal? principal);
 
+/// Maps the current [TomPrincipal] to the **union of id-sets** it is allowed to
+/// see for a given scope kind, resolved *asynchronously* (e.g. by querying a
+/// second database for share-mode delegations).
+///
+/// Where a [TomDataScopeResolver] renders a single `<col> IN (…)` AND-predicate,
+/// an async resolver contributes an OR of one `IN` list per group, so the row
+/// scope can be the **union** of independently-computed id-sets (owned ids ∪
+/// shared-via-containment ids) rather than a single intersecting set. Each inner
+/// list is one id-set; the groups are OR-ed together (their union is the visible
+/// set). The interpretation of the outer result mirrors the sync resolver:
+///
+///  - `null` opts out of scoping entirely (every row visible);
+///  - an empty outer list denies every row (deny-all — the secure default a
+///    `null` principal resolves to);
+///  - `[[a, b], [c]]` renders `(<col> IN (a, b) OR <col> IN (c))`;
+///  - `[[a, b]]` renders the plain `<col> IN (a, b)` (a single group, no OR).
+typedef TomAsyncDataScopeResolver =
+    Future<List<List<Object?>>?> Function(TomPrincipal? principal);
+
 /// Registry of the named row-scope resolvers a `@TomDbScope` can reference.
 ///
 /// Two resolvers are registered out of the box:
@@ -60,8 +81,16 @@ typedef TomDataScopeResolver = List<Object?>? Function(TomPrincipal? principal);
 ///    principal sees nothing.
 ///
 /// Applications register their own scope kinds (e.g. `'organization'`,
-/// `'tenant'`) via [register]; [reset] restores just the built-ins (used by
-/// tests to undo custom registrations).
+/// `'tenant'`) via [register] (synchronous, single AND-predicate) or
+/// [registerAsync] (asynchronous, union/OR predicate over multiple id-sets);
+/// [reset] restores just the built-ins (used by tests to undo custom
+/// registrations).
+///
+/// A scope kind is resolved by *one* seam: [isAsync] tells the repository which
+/// path to take. Registering an async resolver for a kind already registered
+/// synchronously (or vice versa) is not meaningful — a kind is either a sync
+/// value-list scope or an async union scope, and the two maps are kept disjoint
+/// by the callers (a kind is registered in exactly one of them).
 class TomDataScopeRegistry {
   TomDataScopeRegistry._();
 
@@ -74,19 +103,43 @@ class TomDataScopeRegistry {
 
   static final Map<String, TomDataScopeResolver> _resolvers = _defaults();
 
-  /// Registers (or replaces) the [resolver] for the scope kind [scope].
+  static final Map<String, TomAsyncDataScopeResolver> _asyncResolvers = {};
+
+  /// Registers (or replaces) the synchronous [resolver] for the scope kind
+  /// [scope].
   static void register(String scope, TomDataScopeResolver resolver) {
     _resolvers[scope] = resolver;
   }
 
-  /// The resolver for scope kind [scope], or `null` if none is registered.
+  /// Registers (or replaces) the asynchronous [resolver] for the scope kind
+  /// [scope] — the union/OR path a shared-entity scope uses to fold ownership
+  /// and share-mode delegations resolved from another database into one visible
+  /// id-set (RCB8).
+  static void registerAsync(String scope, TomAsyncDataScopeResolver resolver) {
+    _asyncResolvers[scope] = resolver;
+  }
+
+  /// The synchronous resolver for scope kind [scope], or `null` if none is
+  /// registered.
   static TomDataScopeResolver? resolverFor(String scope) => _resolvers[scope];
 
-  /// Restores the built-in resolvers, discarding any custom registrations.
+  /// The asynchronous resolver for scope kind [scope], or `null` if none is
+  /// registered.
+  static TomAsyncDataScopeResolver? asyncResolverFor(String scope) =>
+      _asyncResolvers[scope];
+
+  /// Whether scope kind [scope] resolves asynchronously (registered via
+  /// [registerAsync]). The repository dispatches on this to pick the async
+  /// union path over the synchronous value-list path.
+  static bool isAsync(String scope) => _asyncResolvers.containsKey(scope);
+
+  /// Restores the built-in resolvers, discarding any custom registrations
+  /// (synchronous *and* asynchronous).
   static void reset() {
     _resolvers
       ..clear()
       ..addAll(_defaults());
+    _asyncResolvers.clear();
   }
 }
 
@@ -104,6 +157,22 @@ class TomDataScopePredicate {
   TomDataScopePredicate(this.predicate, this.parameters);
 }
 
+/// A zone marker that suppresses row-scope resolution for the reads performed
+/// inside it (installed by [TomDataScope.runUnscoped]).
+///
+/// An **async** data-scope resolver (RCB8) enumerates a principal's visible
+/// id-set by reading the very entities it scopes — walking the containment tree
+/// through the same repositories. Those nested reads must **not** re-enter scope
+/// resolution, or the resolver would recurse into itself indefinitely. A
+/// resolver runs its enumeration inside [TomDataScope.runUnscoped], which places
+/// this marker in the zone; the repository's scope resolution opts out whenever
+/// it is present.
+class TomDataScopeBypass {
+  /// Creates the bypass marker (a plain sentinel; its mere presence in the zone
+  /// is the signal).
+  const TomDataScopeBypass();
+}
+
 /// Builds the row-scope predicate for an entity's `@TomDbScope` from the
 /// current principal's allowed values, using one bound parameter per value.
 class TomDataScope {
@@ -112,6 +181,22 @@ class TomDataScope {
   /// The prefix of the generated scope parameter names (`__tomscope_0`, …),
   /// chosen so it cannot collide with an application's own bind names.
   static const String parameterPrefix = '__tomscope_';
+
+  /// Whether the current zone suppresses row-scope resolution — i.e. we are
+  /// inside a [runUnscoped] body (an async resolver enumerating its own visible
+  /// set). The repository consults this before resolving a scope so the
+  /// resolver's enumeration reads do not re-enter scope resolution.
+  static bool get isBypassed =>
+      getFromCurrentZone<TomDataScopeBypass>() != null;
+
+  /// Runs [body] with row-scope resolution suppressed for every read it
+  /// performs (RCB8). An async data-scope resolver wraps its containment
+  /// enumeration in this so the reads that *compute* the visible id-set are not
+  /// themselves re-scoped — the guard against unbounded resolver recursion.
+  static Future<T> runUnscoped<T>(Future<T> Function() body) => runZoned(
+        body,
+        zoneValues: const {TomDataScopeBypass: TomDataScopeBypass()},
+      );
 
   /// Builds the scope predicate for [scope] on column [col] from [principal]'s
   /// allowed values, resolved through [TomDataScopeRegistry].
@@ -133,6 +218,79 @@ class TomDataScope {
     final values = allowedValues(scope, principal);
     if (values == null) return null;
     return inList(builder, col, values);
+  }
+
+  /// Builds the row-scope predicate for an **async** [scope] on column [col]
+  /// from [principal]'s allowed id-sets, resolved through the async resolver
+  /// registered in [TomDataScopeRegistry] (RCB8).
+  ///
+  /// Returns:
+  ///  - `null` when the resolver opts out (its result is `null`) — no scoping;
+  ///  - a `FALSE` predicate when the resolver denies every row (empty result);
+  ///  - the union predicate [anyOf] renders otherwise — `<col> IN (…)` for a
+  ///    single id-set, or `(<col> IN (…) OR <col> IN (…))` when the resolver
+  ///    contributes several id-sets (owned ids ∪ shared-via-containment ids).
+  ///
+  /// Throws [TomDataScopeException] if `scope.scope` names a kind no async
+  /// resolver is registered for.
+  static Future<TomDataScopePredicate?> buildAsync(
+    TomQueryBuilder builder,
+    TomDbScope scope,
+    TomColumnInformation col,
+    TomPrincipal? principal,
+  ) async {
+    final resolver = TomDataScopeRegistry.asyncResolverFor(scope.scope);
+    if (resolver == null) {
+      throw TomDataScopeException(
+        'data_scope.build.unknown_async_scope',
+        'No async data-scope resolver registered for scope kind '
+            '"${scope.scope}" (field "${scope.field}"). Register one with '
+            'TomDataScopeRegistry.registerAsync.',
+      );
+    }
+    final groups = await resolver(principal);
+    if (groups == null) return null;
+    return anyOf(builder, col, groups);
+  }
+
+  /// Builds the **union** predicate over the id-set [groups] for column [col]:
+  /// an OR of one `<col> IN (…)` list per group, so the visible set is the
+  /// union of the groups (owned ids ∪ shared-via-containment ids) rather than
+  /// their intersection (RCB8 (b)).
+  ///
+  /// An empty [groups] renders a `FALSE` deny-all predicate (no group can match
+  /// any row). A single group renders the plain `IN` list — no `OR` wrapper —
+  /// so the common one-set case is identical to [inList]. Each group's
+  /// placeholders are namespaced by its index (`__tomscope_0_`, `__tomscope_1_`,
+  /// …) on top of the shared [parameterPrefix], so the OR-ed `IN` lists cannot
+  /// collide on bind names, and every value still rides the prepared-statement
+  /// protocol as a bound parameter (C-7).
+  ///
+  /// A multi-group union is wrapped in an explicit parenthesis group. The
+  /// caller ANDs this predicate into a larger `WHERE` (`base AND <scope>`); an
+  /// unparenthesised `a OR b` would bind as `(base AND a) OR b`, letting the
+  /// second id-set escape the base filter and leak rows. Grouping makes the
+  /// union a single AND-operand — `base AND (a OR b)` — so it intersects the
+  /// base query exactly as a single `IN` list does.
+  static TomDataScopePredicate anyOf(
+    TomQueryBuilder builder,
+    TomColumnInformation col,
+    List<List<Object?>> groups,
+  ) {
+    if (groups.isEmpty) {
+      return TomDataScopePredicate(builder.boolOp(false), const {});
+    }
+    final predicates = <TomOperator<TomDbBool>>[];
+    final parameters = <String, Object?>{};
+    for (var g = 0; g < groups.length; g++) {
+      final sub = inList(builder, col, groups[g], prefix: '$parameterPrefix${g}_');
+      predicates.add(sub.predicate);
+      parameters.addAll(sub.parameters);
+    }
+    final combined = predicates.length == 1
+        ? predicates.first
+        : builder.group(builder.or(predicates));
+    return TomDataScopePredicate(combined, parameters);
   }
 
   /// Builds `<col> IN (:prefix0, :prefix1, …)` binding **one parameter per

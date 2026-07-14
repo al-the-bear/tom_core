@@ -350,6 +350,10 @@ final _data = <r.Reflection, r.ReflectorData>{
             table: 'app_projects',
             primaryKeyField: 'id',
           ),
+          const prefix61.TomDbScope(
+            field: 'id',
+            scope: prefix4.projectVisibilityScope,
+          ),
         ],
         null,
       ),
@@ -392,6 +396,10 @@ final _data = <r.Reflection, r.ReflectorData>{
             datasource: prefix4.appDatasource,
             table: 'app_lists',
             primaryKeyField: 'id',
+          ),
+          const prefix61.TomDbScope(
+            field: 'id',
+            scope: prefix4.listVisibilityScope,
           ),
         ],
         null,
@@ -471,6 +479,10 @@ final _data = <r.Reflection, r.ReflectorData>{
             datasource: prefix4.appDatasource,
             table: 'app_items',
             primaryKeyField: 'id',
+          ),
+          const prefix61.TomDbScope(
+            field: 'id',
+            scope: prefix4.itemVisibilityScope,
           ),
         ],
         null,

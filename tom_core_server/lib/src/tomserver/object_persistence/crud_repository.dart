@@ -178,13 +178,28 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// parameters — never concatenated into the SQL (C-7). Because the number of
   /// allowed values (and thus placeholders) varies per principal, a scoped read
   /// path prepares a fresh statement rather than reusing a cached one.
-  TomDataScopePredicate? _resolveScope() {
+  ///
+  /// A scope kind registered asynchronously (RCB8) resolves through
+  /// [TomDataScope.buildAsync] — the union/OR path that folds ownership and
+  /// share-mode delegations (resolved from another database) into the visible
+  /// id-set; every other kind takes the synchronous single-`IN` path. The
+  /// method is async so the union path can await its cross-database resolution;
+  /// the sync path completes synchronously via the returned already-completed
+  /// future.
+  Future<TomDataScopePredicate?> _resolveScope() async {
+    // Inside an async resolver's own enumeration (RCB8), scope resolution is
+    // suppressed so the reads that *compute* the visible id-set are not
+    // themselves re-scoped — the guard against unbounded resolver recursion.
+    if (TomDataScope.isBypassed) return null;
     final scope = TomAnnotationAnalyzer.findDataScope(queryTypes[0]);
     if (scope == null) return null;
     final col = TomAnnotationAnalyzer.determineColumn(scope.field, [
       persistenceInfo,
     ]);
     final principal = getFromCurrentZone<TomPrincipal>();
+    if (TomDataScopeRegistry.isAsync(scope.scope)) {
+      return TomDataScope.buildAsync(this, scope, col, principal);
+    }
     return TomDataScope.build(this, scope, col, principal);
   }
 
@@ -235,9 +250,17 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// [TomDataScopeAuthorizationException]. Without this a principal could create
   /// a row scoped to a value it cannot itself read (e.g. owned by someone else),
   /// silently bypassing the read scope.
+  ///
+  /// An **async** union scope (RCB8) is a no-op here: it scopes on the primary
+  /// key (`id IN (visible…)`), but a fresh insert has no id yet, so there is no
+  /// scope-field value to check — insert authorization for such entities is
+  /// enforced at the service layer (the caller must hold a create grant on the
+  /// parent). Applying the read scope to a null/unassigned id would reject every
+  /// legitimate insert.
   void _assertInsertWritable(T entity) {
     final scope = TomAnnotationAnalyzer.findDataScope(queryTypes[0]);
     if (scope == null) return;
+    if (TomDataScopeRegistry.isAsync(scope.scope)) return;
     final allowed =
         TomDataScope.allowedValues(scope, getFromCurrentZone<TomPrincipal>());
     final col = TomAnnotationAnalyzer.determineColumn(scope.field, [
@@ -350,10 +373,10 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   /// per call (its `?` count varies with the id set size). An empty [ids]
   /// yields a `FALSE` predicate — matching no rows — rather than the invalid
   /// `IN ()` (RCA5).
-  (TomOperator<TomDbBool>, Map<String, Object?>) _idListPredicate(
+  Future<(TomOperator<TomDbBool>, Map<String, Object?>)> _idListPredicate(
     Iterable<K> ids,
-  ) {
-    final scope = _resolveScope();
+  ) async {
+    final scope = await _resolveScope();
     final idList = TomDataScope.inList(
       this,
       primaryKeyColumnInfo,
@@ -374,7 +397,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   Future<void> deleteAllById(Iterable<K> ids) async {
     // C-3: every named row must be within the principal's data scope.
     await _assertIdsWritable(ids);
-    final (where, params) = _idListPredicate(ids);
+    final (where, params) = await _idListPredicate(ids);
     await _runPrepared<T>(TomDelete(queryTypes, query: where), params);
   }
 
@@ -400,7 +423,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     // The empty set is vacuously contained; short-circuit before emitting the
     // invalid `IN ()`.
     if (idSet.isEmpty) return true;
-    final (where, params) = _idListPredicate(idSet);
+    final (where, params) = await _idListPredicate(idSet);
     // Every requested id exists iff the COUNT of matching rows equals the
     // number of distinct ids. The prior code compared the *row count* of a
     // COUNT query — always 1 — to `ids.length`, so it only ever held for a
@@ -418,7 +441,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   TomPreparedStatement<T>? _findAllQuery;
   @override
   Future<List<T>> findAll() async {
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     if (scope == null) {
       _findAllQuery ??= await datasourceInfo.datasource.prepareStatement(
         TomLiteralSelect(
@@ -448,7 +471,7 @@ SELECT * FROM ${dbTable.table}
     // per element and ANDs the principal's row scope on top. No value is
     // concatenated into the SQL (C-7); prepared per call as the `?` count
     // varies with `ids.length`.
-    final (where, params) = _idListPredicate(ids);
+    final (where, params) = await _idListPredicate(ids);
     return _maskRows(
       await _runPrepared<T>(TomSelect(queryTypes, query: where), params),
     );
@@ -474,7 +497,7 @@ SELECT * FROM ${dbTable.table}
   /// This is the raw read [findById] masks and [save] diffs its update against —
   /// a write must be measured against the true stored value, not a masked null.
   Future<T?> _selectById(K id) async {
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     List<T> result;
     if (scope == null) {
       final params = {"id": id};
@@ -518,7 +541,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   TomPreparedStatement<TomCountResult>? _countQuery;
   @override
   Future<TomDbInt> count() async {
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     List<TomCountResult> result;
     if (scope == null) {
       _countQuery ??= await datasourceInfo.datasource
@@ -790,7 +813,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Type? resultType,
   ]) async {
     TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     final rows = await _runPrepared<T>(
       _scopedSelect(select, scope),
@@ -810,7 +833,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomDelete select = _qsc.compileQuerySentence(querySentence) as TomDelete;
     // C-3: filter the delete to the principal's scope, mirroring the scoped
     // reads — a query-based delete cannot reach out-of-scope rows.
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     await _runPrepared<T>(_scopedDelete(select, scope), effective);
     return 0;
@@ -822,7 +845,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Map<String, Object?> params,
   ) async {
     TomCount select = _qsc.compileQuerySentence(querySentence) as TomCount;
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     List<TomCountResult> result = await _runPrepared<TomCountResult>(
       _scopedCount(select, scope),
@@ -842,7 +865,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomSelect query,
     Map<String, Object?> params,
   ) async {
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     return _maskRows(
       await _runPrepared<T>(_scopedSelect(query, scope), effective),
@@ -856,7 +879,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   ) async {
     // C-3: AND the principal's scope into the delete predicate (as the scoped
     // reads do), so a built delete cannot reach out-of-scope rows.
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     await _runPrepared<T>(_scopedDelete(query, scope), effective);
     return 0;
@@ -867,7 +890,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomCount query,
     Map<String, Object?> params,
   ) async {
-    final scope = _resolveScope();
+    final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     List<TomCountResult> result = await _runPrepared<TomCountResult>(
       _scopedCount(query, scope),

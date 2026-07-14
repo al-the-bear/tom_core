@@ -53,6 +53,15 @@
 ///    containment chain); `bob` holds only `editor` over the shared project's
 ///    subtree (the seeded C-6 share) and no workspace role — the same map the
 ///    app client installs as its exact-match resource-role adapter (RCC2).
+///  - [TC-37-07] **the DB-side union scope reaches a shared subtree at the item
+///    level (RCB8).** With RCB8 the project/list/item reads are filtered at
+///    `app_db` by the async union scope `(id IN (owned…) OR id IN (shared…))` on
+///    the surrogate `id`. `bob`, whose only grant is an `editor` share on project
+///    1, walks project → list → item to the shared item — proof the shared
+///    disjunct expands *down* the containment chain at the database (not merely
+///    in the service filter). The revoke-side negative is covered at the project
+///    level by [TC-37-03], so this check asserts only the positive item-level
+///    reach and stays independent of that test's share id.
 ///
 /// **Why the grant edit writes the whole `viewer` row.** `adminPutGrants`
 /// replaces grants *per role* (`replaceGrantsForRole`), and `adminGetGrants`
@@ -381,6 +390,43 @@ void main() {
         expect(bobRoles[ResourceRoleKeys.project(1)], ProjectRole.editor.name);
         expect(bobRoles[ResourceRoleKeys.item(1)], ProjectRole.editor.name);
         expect(bobRoles.containsKey(ResourceRoleKeys.workspace(1)), isFalse);
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        c.transport.close();
+      }
+    });
+
+    test(
+        'TC-37-07: the DB-side union scope reaches a shared subtree at the item '
+        'level — a share-only user lists the shared project\'s descendant item '
+        '(RCB8)', () async {
+      final c = _liveClients();
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // bob's only grant is an active `editor` share on project 1 (the seeded
+        // delegation, or TC-37-03's identical restored replacement — either way
+        // an editor share on project 1). With RCB8 the project/list/item reads
+        // are filtered at app_db by the async union scope
+        // `(id IN (owned…) OR id IN (shared…))` on the surrogate `id`, so bob
+        // reaching item 1 — a grandchild of the shared project, which he does
+        // not own and was never directly shared — proves the shared disjunct
+        // expands *down* the containment chain (project → list → item) at the
+        // database, not merely in the service filter.
+        //
+        // The negative (revoking the share hides the subtree) is covered at the
+        // project level by TC-37-03; the item-level negative follows by the same
+        // containment, so this check asserts only the positive reach and stays
+        // independent of TC-37-03's revoke/restore of the seeded share id.
+        await c.auth.login(_bobLogin);
+        expect(await _canSeeProject(c.app, _sharedProjectId), isTrue,
+            reason: 'the active editor share makes the shared project visible');
+        final sharedItem = await _findVisibleItem(c.app, _carolItemId);
+        expect(sharedItem, isNotNull,
+            reason: 'the DB list/item union scope reaches the shared subtree, '
+                'so bob lists the item under the shared project');
       } on SocketException catch (e) {
         markTestSkipped(_skipMessage(e));
         return;

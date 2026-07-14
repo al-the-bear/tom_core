@@ -53,6 +53,7 @@ import '../access/field_grade_resolver.dart';
 import '../access/ownership_grant_writer.dart';
 import '../access/resource_role_resolver.dart';
 import '../access/share_delegation_store.dart';
+import '../access/visible_resource_resolver.dart';
 import '../persistence/app_mapping.dart';
 import '../persistence/app_persistence_model.dart';
 import '../resources/app_resource_bundles.dart';
@@ -157,27 +158,40 @@ class InMemoryAppReadStore implements AppReadStore {
 
 /// Pure read logic over an [AppReadStore], filtered by the principal's access.
 ///
-/// The project/list/item list endpoints enumerate the candidate rows and keep
-/// only those the principal can reach — the step-17 [ResourceRoleResolver]
-/// computes the effective [ProjectRole] (ownership-or-share) and `null` means
-/// invisible. Workspaces are the exception (RCC4): their visibility is
-/// *owner-only* (shares never target or flow up to a workspace), so
-/// [listWorkspaces] filters by the owner column directly — the same
-/// `owner_id = <principal.id>` predicate the `WorkspaceRecord` `@TomDbScope`
-/// enforces at the database, so the two are reconciled rather than stacked into
-/// a redundant per-row resolver call. The [resourceRoles] endpoint expands the
-/// principal's ownership grants and share delegations into a flat
-/// `<type>:<id> → role` map the client grades fields against locally (RCC2).
+/// The project/list/item list endpoints keep only the rows in the principal's
+/// **visible id-set** — the owned ∪ shared ids the step-RCB8
+/// [VisibleResourceResolver] computes (the same set the record's async
+/// `@TomDbScope` pushes to the database). On the live store the repository read
+/// is already scoped, so this membership filter is a reconciliation no-op; on
+/// the database-free [InMemoryAppReadStore] (which is not DB-scoped) it is what
+/// enforces visibility — the two stores agree by construction. Workspaces are
+/// the RCC4 exception: their visibility is *owner-only* (shares never target or
+/// flow up to a workspace), so [listWorkspaces] filters by the owner column
+/// directly — the same `owner_id = <principal.id>` predicate the
+/// `WorkspaceRecord` synchronous `@TomDbScope` enforces at the database. The
+/// [resourceRoles] endpoint expands the principal's ownership grants and share
+/// delegations into a flat `<type>:<id> → role` map the client grades fields
+/// against locally (RCC2).
 class AppReadService {
   /// The listing seam candidate rows are enumerated through.
   final AppReadStore store;
 
   /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
+  /// Still used by [resourceRoles] to expand the client's grading map; the
+  /// list endpoints resolve visibility through [visibleResolver] instead (RCB8).
   final ResourceRoleResolver accessResolver;
 
-  /// Builds the service over its two collaborators (live stores at boot,
-  /// seeded stores under test).
-  const AppReadService(this.store, this.accessResolver);
+  /// Resolves a principal's visible id-set (owned ∪ shared) per entity type —
+  /// the same set the async `@TomDbScope` pushes to the database (RCB8). Derived
+  /// from [store] and the [accessResolver]'s framework delegation resolver, so
+  /// the service-layer reconciliation and the DB scope share one source of truth.
+  final VisibleResourceResolver visibleResolver;
+
+  /// Builds the service over its collaborators (live stores at boot, seeded
+  /// stores under test), deriving the [visibleResolver] from them.
+  AppReadService(this.store, this.accessResolver)
+      : visibleResolver =
+            VisibleResourceResolver(store, accessResolver.delegationResolver);
 
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppReadService.production() => AppReadService(
@@ -201,7 +215,7 @@ class AppReadService {
 
   /// Visible projects in the workspace [workspaceId] for the principal [userId].
   Future<List<Project>> listProjects(int userId, int workspaceId) =>
-      _filterVisible(
+      _filterByVisibility(
         userId,
         AppResourceTypes.project,
         () => store.projectsInWorkspace(workspaceId),
@@ -210,7 +224,8 @@ class AppReadService {
       );
 
   /// Visible lists in the project [projectId] for the principal [userId].
-  Future<List<TodoList>> listLists(int userId, int projectId) => _filterVisible(
+  Future<List<TodoList>> listLists(int userId, int projectId) =>
+      _filterByVisibility(
         userId,
         AppResourceTypes.list,
         () => store.listsInProject(projectId),
@@ -219,7 +234,8 @@ class AppReadService {
       );
 
   /// Visible items in the list [listId] for the principal [userId].
-  Future<List<TodoItem>> listItems(int userId, int listId) => _filterVisible(
+  Future<List<TodoItem>> listItems(int userId, int listId) =>
+      _filterByVisibility(
         userId,
         AppResourceTypes.item,
         () => store.itemsInList(listId),
@@ -299,28 +315,30 @@ class AppReadService {
   static ProjectRole _parseRole(String token) =>
       ProjectRole.values.asNameMap()[token] ?? ProjectRole.viewer;
 
-  /// Loads the candidate rows, keeps those the principal can reach (resolved
-  /// [ProjectRole] is non-`null`), and projects each survivor into its domain
-  /// entity. The single filtering path every list endpoint shares.
-  Future<List<R>> _filterVisible<T, R>(
+  /// Loads the candidate rows and keeps those whose id is in the principal's
+  /// visible id-set for [resourceType] (owned ∪ shared, resolved by
+  /// [visibleResolver]), projecting each survivor into its domain entity — the
+  /// single filtering path every list endpoint shares (RCB8).
+  ///
+  /// The visible set is computed once per call (not per row), then each
+  /// candidate is a set-membership test. On the live store the rows are already
+  /// database-scoped to this same set, so the filter is a reconciliation no-op;
+  /// on the in-memory store it is the sole visibility gate. This mirrors how
+  /// [listWorkspaces] reconciles the owner-only workspace scope (RCC4).
+  Future<List<R>> _filterByVisibility<T, R>(
     int userId,
     String resourceType,
     Future<List<T>> Function() loadCandidates,
     int? Function(T) idOf,
     R Function(T) project,
   ) async {
-    final visible = <R>[];
-    for (final record in await loadCandidates()) {
-      final id = idOf(record);
-      if (id == null) continue;
-      final role = await accessResolver.resolveRole(
-        userId: userId,
-        resourceType: resourceType,
-        resourceId: id,
-      );
-      if (role != null) visible.add(project(record));
-    }
-    return visible;
+    final visible =
+        await visibleResolver.visibleIds(resourceType, userId.toString());
+    return [
+      for (final record in await loadCandidates())
+        if (idOf(record) != null && visible.contains(idOf(record)))
+          project(record),
+    ];
   }
 }
 
