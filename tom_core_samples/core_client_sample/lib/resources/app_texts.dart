@@ -32,12 +32,13 @@ const Map<String, dynamic> appTexts = {
   'login.error.unknownAccount': 'Unknown account. Try alice, bob or val.',
   'login.error.emptyPassword': 'Password must not be empty.',
 
-  // --- Todo item form fields (scope 'todoItem') ---
-  'todoItem.title.label': 'Title',
-  'todoItem.description.label': 'Description',
-  'todoItem.done.label': 'Done',
-  'todoItem.priority.label': 'Priority',
-  'todoItem.assigneeId.label': 'Assignee id',
+  // --- Todo item form fields (scope 'todo.item' — the single field identity
+  //     shared with the authz/wire keys, G-UI-6) ---
+  'todo.item.title.label': 'Title',
+  'todo.item.description.label': 'Description',
+  'todo.item.done.label': 'Done',
+  'todo.item.priority.label': 'Priority',
+  'todo.item.assigneeId.label': 'Assignee id',
 
   // --- Todo list screen ---
   'todos.appbar.title': 'Todos',

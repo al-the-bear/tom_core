@@ -10,11 +10,14 @@
 /// `bind`/`save` performs writes straight into the bound [TodoItem].
 ///
 /// The form carries no hardcoded label text (G-RES-1) and no `*ResourceKeys`
-/// catalogue class (G-RES-6): each field self-addresses by its own resource key.
-/// Constructed directly (not under an enclosing scope), its `basePath` is
-/// `todoItem`, so each field's label resolves from `todoItem.<tomId>.label` in
-/// the installed [appTexts] bundle; the grant keys are plain `todo.item.<field>`
-/// literals — the same wire keys the server seeds.
+/// catalogue class (G-RES-6): each field self-addresses by a **single field
+/// identity** (G-UI-6) — the form's scope [todoItemScope] (`todo.item`) plus the
+/// field's `tomId`. Because the form is constructed directly (not under an
+/// enclosing scope) with that scope as its `formId`, every field's `basePath`
+/// is `todo.item.<tomId>`, which is *simultaneously* the label key base
+/// (`todo.item.<tomId>.label`, resolved from the installed [appTexts] bundle)
+/// and the authz/wire key the server seeds and the field-state matrix is keyed
+/// by. There is no second `todoItem.*` addressing scheme beside the wire keys.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -22,6 +25,12 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:todo_domain/todo_domain.dart';
 
 import '../domain/enum_text.dart';
+
+/// The single resource scope every [TodoItemForm] field derives its identity
+/// from: label key `todo.item.<tomId>.label` and authz/wire key
+/// `todo.item.<tomId>` are both composed from this one string. It is the
+/// resource path the form edits, so it doubles as the form's `formId`.
+const String todoItemScope = 'todo.item';
 
 /// A bound, authorization-aware editor for a single [TodoItem].
 @tomReflector
@@ -33,20 +42,23 @@ class TodoItemForm extends TomForm<TodoItem> {
   /// closed-safe default), matching the api's resolver — so an unconfigured
   /// field hides rather than leaking an editable control. The non-gradable
   /// fields ([description]) are always [TomAuthState.full].
-  TodoItemForm(this.fieldStates) : super(formId: 'todoItem');
+  TodoItemForm(this.fieldStates) : super(formId: todoItemScope);
 
   /// The resolved [TomAuthState] per gradable-field resource key.
   final Map<String, TomAuthState> fieldStates;
 
-  TomAuthorizer _authFor(String key) =>
-      TomAuthorizer.fixed(fieldStates[key] ?? TomAuthState.none);
+  /// Builds the fixed authorizer for the field named [tomId], resolving its
+  /// grade from the matrix under the same identity its `basePath` uses:
+  /// `todo.item.<tomId>` (so the label and grant keys never diverge).
+  TomAuthorizer _authFor(String tomId) => TomAuthorizer.fixed(
+      fieldStates['$todoItemScope.$tomId'] ?? TomAuthState.none);
 
   /// Title — required free text.
   late final title = TomFormStringInput(
     'title',
     '',
     form: this,
-    authorizer: _authFor('todo.item.title'),
+    authorizer: _authFor('title'),
     validators: [Validators.required()],
   );
 
@@ -63,7 +75,7 @@ class TodoItemForm extends TomForm<TodoItem> {
     'done',
     false,
     form: this,
-    authorizer: _authFor('todo.item.done'),
+    authorizer: _authFor('done'),
   );
 
   /// Priority — a dropdown over the [TodoPriority] names, gated by `priority`.
@@ -72,7 +84,7 @@ class TodoItemForm extends TomForm<TodoItem> {
     TodoPriority.medium.name,
     form: this,
     source: _prioritySource,
-    authorizer: _authFor('todo.item.priority'),
+    authorizer: _authFor('priority'),
   );
 
   /// Assignee id — gated by `assigneeId`.
@@ -80,7 +92,7 @@ class TodoItemForm extends TomForm<TodoItem> {
     'assigneeId',
     '',
     form: this,
-    authorizer: _authFor('todo.item.assigneeId'),
+    authorizer: _authFor('assigneeId'),
   );
 
   @override
