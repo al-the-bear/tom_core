@@ -336,6 +336,21 @@ Save calls `_form.save()` then `session.api.saveItem(item)`. Because the form is
 constructed with the session's matrix, the screen needs **no role logic of its
 own** — the four states do the work.
 
+**Notifications and navigation: Tom *widget* + Flutter *mechanism* (G-UI-1).**
+Two touchpoints on `TodoListsScreen` use a Flutter mechanism rather than a Tom
+one, and that is deliberate. The snackbar is shown with
+`ScaffoldMessenger.of(context).showSnackBar(TomSnackBar(...))`: the *widget* is
+Tom-native (`TomSnackBar`), and `ScaffoldMessenger` is the framework-sanctioned
+presenter — `TomSnackBar`'s own documentation prescribes exactly this call, and
+tom_flutter_ui presents snackbars the same way internally. The detail screen is
+opened with `Navigator.of(context).push(MaterialPageRoute(...))`: G-UI-6 says a
+form's scope "is usually a Flutter route", tom_flutter_ui offers no Tom route
+type, and the framework itself navigates through `Navigator` directly. Both
+call sites carry a load-bearing `// Why:` comment. Whether tom_flutter_ui should
+grow a Tom-native snackbar presenter and/or a scope-establishing `TomPageRoute`
+is an open framework question tracked as quest todo **RCD2** — not a defect in
+this sample.
+
 ---
 
 ## 10. The live read path
