@@ -185,3 +185,17 @@ class UserRoleRepository
 
 /// Process-wide singleton repository instance.
 final userRoleRepository = UserRoleRepository();
+
+/// Repository for the framework's [TomPrincipalResourceGrant] table
+/// (`tom_principal_resource_grant`) — the per-principal-per-resource role grants
+/// (C-5) the login folds into `TomAccessControlInformation.resourceRoles`.
+///
+/// The entity carries the framework default `main` datasource, which the boot
+/// (step 13) delegates to `auth_db`, so the grant rows live in the same physical
+/// schema as the identity tables — reachable here and, through the same `main`
+/// delegation, from the app server that writes ownership grants.
+class PrincipalResourceGrantRepository
+    extends TomSqlDatasourceRepository<TomPrincipalResourceGrant, int> {}
+
+/// Process-wide singleton repository instance.
+final principalResourceGrantRepository = PrincipalResourceGrantRepository();

@@ -12,6 +12,7 @@
 library;
 
 export 'src/access/field_grade_resolver.dart';
+export 'src/access/ownership_grant_writer.dart';
 export 'src/access/resource_access_resolver.dart';
 export 'src/endpoints/app_endpoints.dart';
 export 'src/persistence/app_mapping.dart';

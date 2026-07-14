@@ -22,5 +22,6 @@
 /// ```
 library;
 
+export 'src/authz/resource_keys.dart';
 export 'src/authz/resource_role_vocabulary.dart';
 export 'src/entities.dart';

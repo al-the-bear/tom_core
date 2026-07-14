@@ -28,6 +28,7 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../auth/authentication_service.dart';
+import '../persistence/auth_persistence_model.dart';
 import '../resources/auth_resource_bundles.dart';
 
 /// Builds the signed token pair and the wire DTOs from a verified login.
@@ -189,7 +190,12 @@ class AdvancedAuthApiService implements AuthApiService {
   /// Production token logic: verifies credentials through the repository-backed
   /// store and signs with the server-wide JWT issuer.
   final AuthTokenService _tokens = AuthTokenService(
-    AdvancedAuthenticationService(const RepositoryAuthUserStore()),
+    AdvancedAuthenticationService(
+      const RepositoryAuthUserStore(),
+      TomPrincipalResourceRoleResolver(
+        RepositoryPrincipalResourceGrantStore(principalResourceGrantRepository),
+      ),
+    ),
   );
 
   @TomApiEndpointImplementation(

@@ -49,6 +49,7 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../access/field_grade_resolver.dart';
+import '../access/ownership_grant_writer.dart';
 import '../access/resource_access_resolver.dart';
 import '../persistence/app_mapping.dart';
 import '../persistence/app_persistence_model.dart';
@@ -520,15 +521,24 @@ class AppWriteService {
   /// Resolves a [ProjectRole]'s per-field grades (step 18).
   final FieldGradeResolver gradeResolver;
 
-  /// Builds the service over its three collaborators (live stores at boot,
+  /// Records the creator's C-5 ownership grant when a resource is created (RCC1).
+  final OwnershipGrantWriter ownershipWriter;
+
+  /// Builds the service over its four collaborators (live stores at boot,
   /// seeded stores under test).
-  const AppWriteService(this.store, this.accessResolver, this.gradeResolver);
+  const AppWriteService(
+    this.store,
+    this.accessResolver,
+    this.gradeResolver,
+    this.ownershipWriter,
+  );
 
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppWriteService.production() => AppWriteService(
         const RepositoryAppWriteStore(),
         const ResourceAccessResolver(RepositoryAppResourceStore()),
         FieldGradeResolver(const RepositoryGrantStore()),
+        const RepositoryOwnershipGrantWriter(),
       );
 
   /// Creates [project] in its workspace; the principal must own or edit that
@@ -550,7 +560,15 @@ class AppWriteService {
       ProjectRole.editor,
       'create projects in this workspace',
     );
-    return projectFromRecord(await store.saveProject(record));
+    final saved = await store.saveProject(record);
+    // RCC1: the creator becomes the project's owner — stamp the explicit C-5
+    // owner grant so the login folds it into aci.resourceRoles (ownership is no
+    // longer only the implicit workspace chain the bespoke resolver walks).
+    await ownershipWriter.recordOwner(
+      userId.toString(),
+      ResourceRoleKeys.project(saved.id!),
+    );
+    return projectFromRecord(saved);
   }
 
   /// Creates [item] in its list; the principal must edit (or own) the list and
@@ -585,7 +603,14 @@ class AppWriteService {
       ..createdAt = now
       ..updatedAt = now;
     final toPersist = _enforceFieldWrites(baseline, incoming, grades);
-    return itemFromRecord(await store.saveItem(toPersist));
+    final saved = await store.saveItem(toPersist);
+    // RCC1: the creator (also the reporter) owns the new item — stamp the C-5
+    // owner grant so ownership is an explicit, resolvable resource role.
+    await ownershipWriter.recordOwner(
+      userId.toString(),
+      ResourceRoleKeys.item(saved.id!),
+    );
+    return itemFromRecord(saved);
   }
 
   /// Applies the caller's [item] payload to the stored item [itemId] under

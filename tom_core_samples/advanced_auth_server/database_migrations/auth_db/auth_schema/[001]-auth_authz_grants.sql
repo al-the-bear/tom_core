@@ -16,3 +16,22 @@ CREATE TABLE IF NOT EXISTS tom_resource_grant (
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_resource_grant_role_key (role_name, resource_key)
 );
+
+-- C-5 per-principal-per-resource role grants. The table DDL is the canonical
+-- `tom_principal_resource_grant` shape published by tom_core_server
+-- (TomPrincipalResourceGrant.createTableSql) — reused verbatim so the sample and
+-- the framework agree on the storage shape. A row is `(principal_id, resource_key)
+-- -> role`; the unique key enforces at most one direct role per principal per
+-- resource. The entity carries the framework default `main` datasource, which the
+-- auth boot (step 13) delegates to auth_db, so these grants live in the same
+-- physical schema as the identity tables and are reachable from the app server
+-- (which binds its own `main` to this schema). RCC1 seeds ownership grants here;
+-- the login folds them into TomAccessControlInformation.resourceRoles.
+CREATE TABLE IF NOT EXISTS tom_principal_resource_grant (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  principal_id VARCHAR(255) NOT NULL,
+  resource_key VARCHAR(255) NOT NULL,
+  role VARCHAR(255) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_tom_principal_resource_grant (principal_id, resource_key)
+);

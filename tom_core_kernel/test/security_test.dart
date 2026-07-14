@@ -844,6 +844,34 @@ void main() {
       );
 
       test(
+        'should preserve the user\'s resourceRoles (C-5 per-resource role map)',
+        () {
+          // resourceRoles carry the principal's per-resource role assignments
+          // (resourceKey → roleName); they are NOT derived from role/group
+          // inheritance, so completion must pass them through unchanged. The
+          // token minting path (bearer_authentication) runs the principal ACI
+          // through this method, so dropping them here silently strips
+          // resourceRoles from every minted token.
+          var definition = TomAccessControlDefinition(
+            roles: [TomRole(name: 'user')],
+          );
+          var userAci = TomAccessControlInformation(
+            roles: ['user'],
+            resourceRoles: const {'project:1': 'owner', 'item:9': 'viewer'},
+          );
+
+          // Act
+          var result = definition.completeFromDefinition(userAci);
+
+          // Assert — the per-resource role map survives completion intact.
+          expect(result.resourceRoles, {
+            'project:1': 'owner',
+            'item:9': 'viewer',
+          });
+        },
+      );
+
+      test(
         'resolved entitlements are entitlements, not a copy of groups (bug §11)',
         () {
           // Distinct group and entitlement names so a groups/entitlements mixup

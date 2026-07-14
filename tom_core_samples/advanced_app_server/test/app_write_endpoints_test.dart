@@ -129,8 +129,13 @@ List<ShareRecord> demoShares() => [
     ];
 
 /// Wires a write service over a caller-supplied [writeStore] (so a test can
-/// inspect what was persisted) and freshly-seeded resolver stores.
-AppWriteService writeServiceOver(InMemoryAppWriteStore writeStore) =>
+/// inspect what was persisted) and freshly-seeded resolver stores. A test that
+/// asserts ownership grants passes its own [ownershipWriter] to introspect the
+/// recorded owner grants (RCC1); the default writer discards them.
+AppWriteService writeServiceOver(
+  InMemoryAppWriteStore writeStore, {
+  OwnershipGrantWriter? ownershipWriter,
+}) =>
     AppWriteService(
       writeStore,
       ResourceAccessResolver(InMemoryAppResourceStore(
@@ -141,6 +146,7 @@ AppWriteService writeServiceOver(InMemoryAppWriteStore writeStore) =>
         shares: demoShares(),
       )),
       FieldGradeResolver(InMemoryGrantStore(seedGrants())),
+      ownershipWriter ?? InMemoryOwnershipGrantWriter(),
     );
 
 /// A new write store seeded with the demo item.
@@ -329,6 +335,40 @@ void main() {
       expect(store.items, hasLength(2));
     });
 
+    test('creating an item stamps the creator as its C-5 owner (RCC1)',
+        () async {
+      final store = seededWriteStore();
+      final owner = InMemoryOwnershipGrantWriter();
+      final created = await writeServiceOver(store, ownershipWriter: owner)
+          .createItem(
+        bob,
+        TodoItem()
+          ..listId.set('1')
+          ..title.set('Fresh task'),
+      );
+
+      expect(owner.grants, hasLength(1));
+      final grant = owner.grants.single;
+      expect(grant.principalId, '$bob');
+      expect(grant.resourceKey, ResourceRoleKeys.item(int.parse(created.id.get())));
+      expect(grant.role, ProjectRole.owner.name);
+    });
+
+    test('a rejected create records no ownership grant', () async {
+      final store = seededWriteStore();
+      final owner = InMemoryOwnershipGrantWriter();
+      await expectLater(
+        () => writeServiceOver(store, ownershipWriter: owner).createItem(
+          carol,
+          TodoItem()
+            ..listId.set('1')
+            ..title.set('No'),
+        ),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+      expect(owner.grants, isEmpty);
+    });
+
     test('a creator may not populate a field they are not full on', () async {
       // An editor is only `read` on estimate, so creating an item carrying an
       // estimate is rejected.
@@ -372,6 +412,26 @@ void main() {
       expect(created.name.get(), 'New project');
       expect(created.id.get(), isNotEmpty);
       expect(store.projects, hasLength(1));
+    });
+
+    test('creating a project stamps the creator as its C-5 owner (RCC1)',
+        () async {
+      final store = seededWriteStore();
+      final owner = InMemoryOwnershipGrantWriter();
+      final created = await writeServiceOver(store, ownershipWriter: owner)
+          .createProject(
+        alice,
+        Project()
+          ..workspaceId.set('1')
+          ..name.set('New project'),
+      );
+
+      expect(owner.grants, hasLength(1));
+      final grant = owner.grants.single;
+      expect(grant.principalId, '$alice');
+      expect(
+          grant.resourceKey, ResourceRoleKeys.project(int.parse(created.id.get())));
+      expect(grant.role, ProjectRole.owner.name);
     });
 
     test('a project-only editor may not create a sibling workspace project',

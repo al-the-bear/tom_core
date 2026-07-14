@@ -48,7 +48,12 @@ InMemoryAuthUserStore _storeWith({List<UserRecord> extraUsers = const []}) {
 /// A token service over a freshly seeded store, signing with a fixed issuer.
 AuthTokenService _service({List<UserRecord> extraUsers = const []}) =>
     AuthTokenService(
-      AdvancedAuthenticationService(_storeWith(extraUsers: extraUsers)),
+      AdvancedAuthenticationService(
+        _storeWith(extraUsers: extraUsers),
+        TomPrincipalResourceRoleResolver(
+          InMemoryPrincipalResourceGrantStore(const []),
+        ),
+      ),
       issuer: 'tom',
     );
 

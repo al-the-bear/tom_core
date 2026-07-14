@@ -84,3 +84,23 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('viewer',    'todo.item.estimate',    'none'),
   ('viewer',    'todo.item.description', 'read')
 ON DUPLICATE KEY UPDATE access_level = VALUES(access_level);
+
+-- C-5 ownership grants (RCC1). Ownership is now a per-principal-per-resource
+-- role grant that the login folds into TomAccessControlInformation.resourceRoles,
+-- rather than an implicit `workspace.owner_id` chain read by the bespoke
+-- resolver. Alice (auth user 2) owns the whole demo tree: her starter workspace,
+-- its project, both lists and all three items. The write paths (createProject/
+-- createItem) stamp the same `owner` grant for whoever creates a resource, so
+-- first-run demo ownership and runtime-created ownership share one representation.
+-- resource_key is `<type>:<id>` (see ResourceRoleKeys in advanced_todo_domain).
+-- Shares (bob editor / carol viewer) are NOT seeded here — they migrate to C-6
+-- delegation in RCC3; RCC1 owns owner grants only.
+INSERT INTO tom_principal_resource_grant (principal_id, resource_key, role) VALUES
+  ('2', 'workspace:1', 'owner'),
+  ('2', 'project:1',   'owner'),
+  ('2', 'list:1',      'owner'),
+  ('2', 'list:2',      'owner'),
+  ('2', 'item:1',      'owner'),
+  ('2', 'item:2',      'owner'),
+  ('2', 'item:3',      'owner')
+ON DUPLICATE KEY UPDATE role = VALUES(role);

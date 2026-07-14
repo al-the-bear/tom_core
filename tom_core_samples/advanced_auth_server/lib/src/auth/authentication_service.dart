@@ -49,9 +49,20 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
   /// The store the login reads the account, roles, and groups through.
   final AuthUserStore store;
 
-  /// Builds the service over [store] (a repository-backed store at boot, a
-  /// seeded in-memory store under test).
-  AdvancedAuthenticationService(this.store);
+  /// Resolves the authenticated principal's per-resource role grants (C-5) into
+  /// the `resourceKey → roleName` map carried on
+  /// [TomAccessControlInformation.resourceRoles].
+  ///
+  /// Reads the framework [TomPrincipalResourceGrant] rows keyed by the user's
+  /// (stringified) id and folds duplicate resources by role strength, so a login
+  /// mints a token that already carries the caller's resource roles — the app
+  /// server and client then resolve resource-level grades through the framework
+  /// registry rather than a bespoke resolver (C-5, G-AUTHZ-5).
+  final TomPrincipalResourceRoleResolver resourceRoleResolver;
+
+  /// Builds the service over [store] and [resourceRoleResolver] (repository-backed
+  /// collaborators at boot, seeded in-memory ones under test).
+  AdvancedAuthenticationService(this.store, this.resourceRoleResolver);
 
   /// Resolves [authData] into an authenticated [TomAuthenticationInfo], or throws
   /// [LoginException] when the login is rejected.
@@ -87,6 +98,10 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
 
     final roleKeys = await store.roleKeysForUser(record.id!);
     final groupNames = await store.groupNamesForUser(record.id!);
+    // Per-resource role grants (C-5): the principal id is the user's surrogate
+    // id stringified, matching how the write paths stamp ownership grants.
+    final resourceRoles =
+        await resourceRoleResolver.resolveResourceRoles(record.id!.toString());
 
     final principal = TomPrincipal(
       authenticated: true,
@@ -107,7 +122,11 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
         email: record.email,
         attributes: {},
       ),
-      aci: TomAccessControlInformation(roles: roleKeys, groups: groupNames),
+      aci: TomAccessControlInformation(
+        roles: roleKeys,
+        groups: groupNames,
+        resourceRoles: resourceRoles,
+      ),
     );
 
     // The definition mirrors the user's directly-assigned roles/groups; the

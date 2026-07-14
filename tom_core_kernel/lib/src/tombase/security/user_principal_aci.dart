@@ -301,6 +301,12 @@ class TomAccessControlDefinition {
       groups: result.groups.toList(),
       entitlements: result.entitlements.toList(),
       resourceKeys: result.resourceKeys.toList(),
+      // resourceRoles are the principal's per-resource role assignments
+      // (resourceKey → roleName), not derived from role/group inheritance, so
+      // they pass through unchanged. The `_TomAci` fold above does not track
+      // them; carry the user-provided map so the completed ACI (and thus the
+      // minted bearer token) keeps the C-5 resource roles.
+      resourceRoles: userProvided.resourceRoles,
     );
   }
 

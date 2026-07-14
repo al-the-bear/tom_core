@@ -56,11 +56,21 @@ InMemoryAuthUserStore _storeWith({
   );
 }
 
+/// Builds a resolver over a seeded in-memory grant store, so the login folds the
+/// given per-principal-per-resource [grants] into `aci.resourceRoles`. Defaults
+/// to no grants (the common case for the credential-path tests).
+TomPrincipalResourceRoleResolver _resolverWith([
+  List<TomPrincipalResourceGrant> grants = const [],
+]) =>
+    TomPrincipalResourceRoleResolver(
+      InMemoryPrincipalResourceGrantStore(grants),
+    );
+
 void main() {
   group('AdvancedAuthenticationService.authenticateUser', () {
     test('accepts the right password and builds the authenticated principal',
         () async {
-      final service = AdvancedAuthenticationService(_storeWith());
+      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
 
       final info = await service.authenticateUser(_login('ada', 's3cret'));
 
@@ -72,14 +82,17 @@ void main() {
 
     test('the principal carries the user\'s expected roles and groups',
         () async {
-      final service = AdvancedAuthenticationService(_storeWith(
-        roleKeysByUserId: const {
-          1: ['editor', 'viewer'],
-        },
-        groupNamesByUserId: const {
-          1: ['Engineering'],
-        },
-      ));
+      final service = AdvancedAuthenticationService(
+        _storeWith(
+          roleKeysByUserId: const {
+            1: ['editor', 'viewer'],
+          },
+          groupNamesByUserId: const {
+            1: ['Engineering'],
+          },
+        ),
+        _resolverWith(),
+      );
 
       final info = await service.authenticateUser(_login('ada', 's3cret'));
 
@@ -89,8 +102,42 @@ void main() {
       expect(info.acd.toString(), contains('2 roles'));
     });
 
+    test('the principal carries the user\'s resource roles from grants (C-5)',
+        () async {
+      // Ada (id 1) owns a project and is a viewer of an item; the login folds
+      // her grant rows into aci.resourceRoles keyed by resource key.
+      final service = AdvancedAuthenticationService(
+        _storeWith(),
+        _resolverWith([
+          TomPrincipalResourceGrant(
+            principalId: '1',
+            resourceKey: ResourceRoleKeys.project(7),
+            role: ProjectRole.owner.name,
+          ),
+          TomPrincipalResourceGrant(
+            principalId: '1',
+            resourceKey: ResourceRoleKeys.item(9),
+            role: ProjectRole.viewer.name,
+          ),
+          // A grant for a different principal must not leak into ada's map.
+          TomPrincipalResourceGrant(
+            principalId: '2',
+            resourceKey: ResourceRoleKeys.project(7),
+            role: ProjectRole.editor.name,
+          ),
+        ]),
+      );
+
+      final info = await service.authenticateUser(_login('ada', 's3cret'));
+
+      expect(info.principal.aci.resourceRoles, {
+        'project:7': 'owner',
+        'item:9': 'viewer',
+      });
+    });
+
     test('rejects the wrong password with a LoginException', () async {
-      final service = AdvancedAuthenticationService(_storeWith());
+      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
 
       await expectLater(
         service.authenticateUser(_login('ada', 'wrong')),
@@ -99,7 +146,7 @@ void main() {
     });
 
     test('rejects an unknown user with a LoginException', () async {
-      final service = AdvancedAuthenticationService(_storeWith());
+      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
 
       await expectLater(
         service.authenticateUser(_login('nobody', 's3cret')),
@@ -117,6 +164,7 @@ void main() {
       );
       final service = AdvancedAuthenticationService(
         _storeWith(extraUsers: [suspended]),
+        _resolverWith(),
       );
 
       await expectLater(
@@ -140,6 +188,7 @@ void main() {
         ..status = UserStatus.active.name;
       final service = AdvancedAuthenticationService(
         _storeWith(extraUsers: [seeded]),
+        _resolverWith(),
       );
 
       await expectLater(
@@ -149,7 +198,7 @@ void main() {
     });
 
     test('unknown user and wrong password share the same generic key', () async {
-      final service = AdvancedAuthenticationService(_storeWith());
+      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
 
       Future<String> keyFor(String user, String password) async {
         try {
