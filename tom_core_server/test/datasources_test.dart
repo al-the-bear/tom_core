@@ -340,6 +340,67 @@ void main() {
       expect(sql, 'SELECT * FROM tasks');
       expect(params, isEmpty);
     });
+
+    test('a `:name`-looking substring inside a string literal is not a slot',
+        () {
+      // RCC6: a bound :p ANDed with an inlined 'x:y' literal must yield exactly
+      // one `?`; the `:y` inside the quotes is literal text, not a placeholder.
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        "a = 'x:y' AND b = :p",
+      );
+      expect(sql, "a = 'x:y' AND b = ?");
+      expect(params, ['p']);
+    });
+
+    test('a doubled-quote escape keeps the scan inside the literal', () {
+      // 'x:y''z:w' is one literal (the '' is an escaped quote), so neither
+      // `:y` nor `:w` is a placeholder — only the trailing bound :p is.
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        "a = 'x:y''z:w' AND b = :p",
+      );
+      expect(sql, "a = 'x:y''z:w' AND b = ?");
+      expect(params, ['p']);
+    });
+
+    test('a backslash escape inside a literal is honoured (MariaDB default)',
+        () {
+      // The dialect escapes embedded quotes/backslashes; a `\\'` sequence keeps
+      // the scan inside the literal so the following `:z` stays literal text.
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        "a = 'x\\':z' AND b = :p",
+      );
+      expect(sql, "a = 'x\\':z' AND b = ?");
+      expect(params, ['p']);
+    });
+
+    test('a `:name`-looking substring inside a double-quoted literal is safe',
+        () {
+      final (sql, params) = MariaDbDatasource.toPositionalStatement(
+        'a = "x:y" AND b = :p',
+      );
+      expect(sql, 'a = "x:y" AND b = ?');
+      expect(params, ['p']);
+    });
+  });
+
+  group('SqlPlaceholderScan.extractNames (RCC6, shared with crud_repository)',
+      () {
+    test('extractNames mirrors toPositional and skips literal content', () {
+      // crud_repository._extractPlaceholderNames delegates here, so raw
+      // statements prepared by the repository inherit the same quote-aware
+      // tokenisation as the datasource's positional rewrite.
+      expect(
+        SqlPlaceholderScan.extractNames("a = 'x:y' AND b = :p OR c = :q"),
+        ['p', 'q'],
+      );
+    });
+
+    test('extractNames returns repeats in textual order', () {
+      expect(
+        SqlPlaceholderScan.extractNames('x = :v OR y = :v'),
+        ['v', 'v'],
+      );
+    });
   });
 
   group('MariadbPreparedStatement.normalizeGeneratedId (bug §71)', () {

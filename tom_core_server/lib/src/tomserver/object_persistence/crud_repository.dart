@@ -3,6 +3,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../datasources/queries.dart';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/sql_dialects.dart';
+import '../datasources/sql_placeholder_scan.dart';
 import '../datasources/types_operator.dart';
 
 import 'persistence_annotations.dart';
@@ -774,12 +775,13 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   /// Extracts `:name` placeholder names from [sql] in textual order (repeats
   /// included), so a raw statement can be prepared and its values bound
   /// positionally in the order the `?` slots appear.
-  static List<String> _extractPlaceholderNames(String sql) {
-    return [
-      for (final m in RegExp(r':([A-Za-z_][A-Za-z0-9_]*)').allMatches(sql))
-        m.group(1)!,
-    ];
-  }
+  ///
+  /// Delegates to the shared, quote-aware [SqlPlaceholderScan.extractNames] so
+  /// this extraction and [MariaDbDatasource.toPositionalStatement]'s positional
+  /// rewrite tokenise identically — including skipping a `:name`-looking
+  /// substring inside an inlined string literal (RCC6).
+  static List<String> _extractPlaceholderNames(String sql) =>
+      SqlPlaceholderScan.extractNames(sql);
 
   @override
   Future<Iterable<T>> findByQuerySentence(

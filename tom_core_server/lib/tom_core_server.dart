@@ -19,6 +19,7 @@ export 'src/tomserver/datasources/mariadb_datasource.dart';
 export 'src/tomserver/datasources/mariadb_sql_dialect.dart';
 export 'src/tomserver/datasources/queries.dart';
 export 'src/tomserver/datasources/sql_dialects.dart';
+export 'src/tomserver/datasources/sql_placeholder_scan.dart';
 export 'src/tomserver/datasources/types_operator.dart';
 export 'src/tomserver/db_migration/db_migration.dart';
 export 'src/tomserver/db_migration/mariadb_migration_adapter.dart';
