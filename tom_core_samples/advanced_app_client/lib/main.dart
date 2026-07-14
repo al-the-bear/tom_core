@@ -26,9 +26,15 @@
 ///
 /// The two backends are not chosen by an inline `if`: the launch flag selects an
 /// environment *name* ([_clientEnvironment]) and the kernel bean locator installs
-/// the one backend registered for that environment (G-DI-3/G-DI-5). There is no
-/// per-field authorization adapter installed — the item detail screen stamps each
-/// gradable field with its DB-resolved grade directly (G-AUTHZ-1).
+/// the one backend registered for that environment (G-DI-3/G-DI-5).
+///
+/// Authorization resolves through the framework registry (RCC2): boot registers
+/// the shared `ProjectRole → TomAuthState` vocabulary
+/// ([registerProjectRoleVocabulary]), and on login the [AppSession] installs the
+/// principal's per-resource role grants as the [TomAuthorization] adapter, so the
+/// item detail screen resolves each field's resource-level ceiling through the
+/// [TomResourceRoleRegistry] and narrows it by the shared field-grade matrix —
+/// rather than stamping a DB-resolved grade directly.
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';

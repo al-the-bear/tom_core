@@ -9,12 +9,23 @@
 /// presents, and a single token expiry self-heals.
 ///
 /// The class is a thin adapter: it forwards each [AppBackend] method to its
-/// client-core counterpart, folds the server's per-field grade list into the
-/// UI-shaped `resourceKey → TomAuthState` map, and normalises the client core's
-/// transport exceptions (`AuthClientException`/`AppApiException`/
-/// `TomAuthExpiredException`) into the single [AppBackendException] the screens
-/// catch. The parsers it relies on build reflected entities, so the bootstrap
-/// must call `initializeReflection()` before the first call.
+/// client-core counterpart and normalises the client core's transport exceptions
+/// (`AuthClientException`/`AppApiException`/`TomAuthExpiredException`) into the
+/// single [AppBackendException] the screens catch. The parsers it relies on build
+/// reflected entities, so the bootstrap must call `initializeReflection()` before
+/// the first call.
+///
+/// **Live resourceRoles are not yet wired (RCB5).** Since RCC2 the app resolves
+/// field grades by installing the principal's `resourceRoles` as a framework
+/// [TomResourceRoleAdapter] (see [resourceRoles]). This Flutter-free client treats
+/// the authorization token as an opaque bearer (`decryptTokens: false`), so it
+/// cannot read the token's `resourceRoles` claim, and the app server exposes no
+/// endpoint that returns it. Until RCB5 delivers one (a readable claim or a
+/// `/resource-roles` endpoint) plus reconciles the surrogate/business id-space,
+/// [resourceRoles] returns empty against the live stack — every field resolves
+/// closed-safe to [TomAuthState.none]. The seeded [InMemoryAppBackend] (what the
+/// widget tests drive) already supplies real grants, so the teaching path is
+/// complete; the live gap is tracked, not silently degraded.
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';
@@ -23,22 +34,6 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'app_backend.dart';
-
-/// The gradable item leaf keys, in display order, used to fold the server's bare
-/// grade list into a closed-safe per-key map (an unsent key defaults to `none`).
-///
-/// Addressed by scope + `tomId` (`todo.item.<field>`), resolved at use rather
-/// than pulled from a key-catalogue class (G-RES-6). Steps 24–26 derive this set
-/// from the item form's field `tomId`s; it is the interim client source.
-const _gradableItemKeys = <String>[
-  'todo.item.title',
-  'todo.item.status',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-  'todo.item.dueDate',
-  'todo.item.estimate',
-  'todo.item.description',
-];
 
 /// An [AppBackend] backed by the live auth + app servers through
 /// `advanced_client_core`.
@@ -122,18 +117,15 @@ class LiveAppBackend implements AppBackend {
       _guard(() => _api.addComment(comment..itemId.set(itemId)));
 
   @override
-  Future<Map<String, TomAuthState>> itemFieldStates(String itemId) =>
-      _guard(() async {
-        final graded =
-            await _api.itemFieldStates(EntityIdRequest(id: itemId));
-        // Fold the bare grade list into a closed-safe per-key map: every
-        // gradable key is present, an unsent one defaulting to none.
-        final byKey = {for (final g in graded) g.resourceKey: g.accessState};
-        return {
-          for (final key in _gradableItemKeys)
-            key: byKey[key] ?? TomAuthState.none,
-        };
-      });
+  Future<Map<String, String>> resourceRoles() async {
+    // Not yet wired against the live stack (RCB5): the authorization token is an
+    // opaque bearer here (`decryptTokens: false`), so its `resourceRoles` claim
+    // is unreadable, and the app server exposes no endpoint that returns the
+    // grant map. Returning empty is honest — the framework adapter resolves every
+    // resource key to none — rather than silently degrading. The seeded
+    // in-memory backend supplies real grants for the teaching path and tests.
+    return const {};
+  }
 
   @override
   Future<void> share(ShareRequest request) =>

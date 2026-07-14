@@ -1,7 +1,8 @@
-/// Contract tests for the seeded [InMemoryAppBackend] (step 26): the offline
-/// teaching backend the app's widgets bind in tests, exercised across the seam's
-/// whole surface — login, the workspace→project→list→item reads, item save, the
-/// per-principal four-state field matrix, and cross-user sharing.
+/// Contract tests for the seeded [InMemoryAppBackend] (step 26, RCC2): the
+/// offline teaching backend the app's widgets bind in tests, exercised across the
+/// seam's whole surface — login, the workspace→project→list→item reads, item
+/// save, the per-principal-per-resource role grants ([AppBackend.resourceRoles]),
+/// and cross-user sharing.
 ///
 /// These are socket-free: the fake constructs the reflected domain entities
 /// in-process, so the app's combined `initializeReflection()` (from its own
@@ -15,21 +16,7 @@ import 'package:advanced_app_client/reflection_seed.dart'
     show initializeReflection;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-/// The gradable item resource keys the seeded matrix must cover. Steps 21/24/26
-/// derive this from reflection/the resource bundle; here it is the inline
-/// expectation.
-const _gradableItemKeys = <String>[
-  'todo.item.title',
-  'todo.item.status',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-  'todo.item.dueDate',
-  'todo.item.estimate',
-  'todo.item.description',
-];
 
 void main() {
   setUpAll(initializeReflection);
@@ -158,31 +145,30 @@ void main() {
     });
   });
 
-  group('field-states (the four-state matrix per principal)', () {
-    test('TC-26-11: the owner gets full on every gradable field', () async {
+  group('resourceRoles (per-principal-per-resource role grants)', () {
+    test('TC-26-11: the owner holds the owner role on the project and its items',
+        () async {
       await loginAs('alice');
-      final states = await backend.itemFieldStates('i-1');
-      expect(states.keys, containsAll(_gradableItemKeys));
-      expect(
-          states.values.every((s) => s == TomAuthState.full), isTrue);
+      final roles = await backend.resourceRoles();
+      expect(roles['project:p-1'], 'owner');
+      expect(roles['item:i-1'], 'owner');
+      expect(roles['item:i-2'], 'owner');
     });
 
-    test('TC-26-12: an editor is read on assignee/estimate, full elsewhere',
+    test('TC-26-12: a shared editor holds the editor role on the project + items',
         () async {
       await loginAs('bob');
-      final states = await backend.itemFieldStates('i-1');
-      expect(states['todo.item.title'], TomAuthState.full);
-      expect(states['todo.item.assigneeId'], TomAuthState.read);
-      expect(states['todo.item.estimate'], TomAuthState.read);
+      final roles = await backend.resourceRoles();
+      expect(roles['project:p-1'], 'editor');
+      expect(roles['item:i-1'], 'editor');
     });
 
     test(
-        'TC-26-13: an unshared user gets none on every field (closed-safe)',
+        'TC-26-13: an unshared user holds no grants (closed-safe → empty map)',
         () async {
       await loginAs('carol');
-      final states = await backend.itemFieldStates('i-1');
-      expect(
-          states.values.every((s) => s == TomAuthState.none), isTrue);
+      final roles = await backend.resourceRoles();
+      expect(roles, isEmpty);
     });
   });
 
@@ -202,13 +188,14 @@ void main() {
         projectRole: ProjectRole.viewer,
       ));
 
-      // After: carol now sees the workspace and gets the viewer field matrix
-      // (status renders disabled, the rest read-only).
+      // After: carol now sees the workspace and holds the viewer role on the
+      // shared project and its items — the client narrows that into the viewer
+      // field matrix (status disabled, the rest read-only).
       await loginAs('carol');
       expect((await backend.listWorkspaces()).map((w) => w.id.get()), ['w-1']);
-      final states = await backend.itemFieldStates('i-1');
-      expect(states['todo.item.status'], TomAuthState.disabled);
-      expect(states['todo.item.title'], TomAuthState.read);
+      final roles = await backend.resourceRoles();
+      expect(roles['project:p-1'], 'viewer');
+      expect(roles['item:i-1'], 'viewer');
     });
 
     test('TC-26-15: only the owner may share', () async {

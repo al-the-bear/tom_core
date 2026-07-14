@@ -5,5 +5,6 @@
 /// `lib/screens/` and are reached through the shell, not bound directly.
 library;
 
+export 'app_resource_role_adapter.dart';
 export 'app_root.dart';
 export 'app_session.dart';

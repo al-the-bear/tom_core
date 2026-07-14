@@ -1,11 +1,17 @@
-/// The signed-in session: who is logged in, the token pair, and the four-state
-/// field matrix for the item currently in view (step 27).
+/// The signed-in session: who is logged in, the token pair, and the principal's
+/// per-resource role grants (step 27, RCC2).
 ///
 /// A [ChangeNotifier] so the app shell ([AdvancedTodoApp]) rebuilds the home on
 /// every login/logout — navigation between "signed out" and "signed in" is a
 /// pure function of [isLoggedIn], not imperative routing. The session owns the
 /// single injected [AppBackend]; swap [InMemoryAppBackend] for [LiveAppBackend]
 /// in one place (and the widget tests inject their own).
+///
+/// On login the session installs the principal's `resourceRoles` as the global
+/// [TomAuthorization] adapter (an [AppResourceRoleAdapter]), so every screen
+/// resolves resource keys through the framework's [TomResourceRoleRegistry]; on
+/// logout it resets the adapter. This is what lets the item screen grade fields
+/// through the registry rather than stamping a DB-resolved matrix directly.
 ///
 /// Every screen reaches the backend through [guard] (or the convenience
 /// wrappers built on it), so a dead session surfaces uniformly: when the live
@@ -19,6 +25,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../backend/backend.dart';
+import 'app_resource_role_adapter.dart';
 
 /// Holds the authenticated principal and drives login/logout for the app shell.
 class AppSession extends ChangeNotifier {
@@ -32,7 +39,7 @@ class AppSession extends ChangeNotifier {
   String _authToken = '';
   String _authzToken = '';
   DateTime? _expiresAt;
-  Map<String, TomAuthState> _currentFieldStates = const {};
+  Map<String, String> _resourceRoles = const {};
 
   /// The provider contents captured just before [login] installed the full
   /// bundle, restored on logout so a re-login starts from the same chrome.
@@ -58,10 +65,12 @@ class AppSession extends ChangeNotifier {
   /// When the stored token pair expires (UTC), or null when logged out.
   DateTime? get expiresAt => _expiresAt;
 
-  /// The four-state matrix for the item the detail screen is currently showing,
-  /// keyed by the gradable item resource keys (`todo.item.*`). Empty until
-  /// [loadFieldStates] is called for an item (and cleared on every login/logout).
-  Map<String, TomAuthState> get currentFieldStates => _currentFieldStates;
+  /// The principal's per-resource role grants, `resourceKey → roleName`
+  /// (`<type>:<id>` keys, e.g. `item:i-1` → `'editor'`). Snapshotted from the
+  /// backend at login and installed as the [TomAuthorization] adapter; empty when
+  /// logged out. The item screen reads a resource's role from here to pick the
+  /// field-grade row it narrows the framework-resolved resource state by.
+  Map<String, String> get resourceRoles => _resourceRoles;
 
   /// Fetches the public login resource bundle through the backend seam and
   /// installs it as the singleton [TomTextResourceProvider], so the sign-in
@@ -107,7 +116,12 @@ class AppSession extends ChangeNotifier {
     _authToken = result.authToken;
     _authzToken = result.authzToken;
     _expiresAt = result.expiresAt;
-    _setFieldStates(const {});
+    // Snapshot the principal's per-resource role grants and install them as the
+    // framework authorization adapter, so every screen resolves resource keys
+    // through the TomResourceRoleRegistry (RCC2). Non-resource-key lookups stay
+    // permissive via [AppResourceRoleAdapter].
+    _resourceRoles = await backend.resourceRoles();
+    TomAuthorization.adapter = AppResourceRoleAdapter(_resourceRoles);
     // Now authenticated: pull the full bundle so every post-login screen renders
     // server-delivered texts. Reachable only with a session, hence after login.
     await _installFullResources();
@@ -124,25 +138,6 @@ class AppSession extends ChangeNotifier {
       // have nothing to invalidate, so the local clear is authoritative.
     }
     _clearSession();
-  }
-
-  /// Loads the four-state matrix for [itemId] and stores it as the current
-  /// matrix, returning it so the detail screen can apply it per field. Runs
-  /// through [guard], so a dead session routes back to login instead of
-  /// surfacing a raw failure.
-  Future<Map<String, TomAuthState>> loadFieldStates(String itemId) async {
-    final states = await guard((backend) => backend.itemFieldStates(itemId));
-    _setFieldStates(states);
-    notifyListeners();
-    return states;
-  }
-
-  /// Stores [states] as the current matrix (the DB-resolved grades for the item
-  /// now in view). The detail screen reads the returned matrix and stamps each
-  /// gradable field with its grade; the session holds no authorization
-  /// indirection of its own.
-  void _setFieldStates(Map<String, TomAuthState> states) {
-    _currentFieldStates = states;
   }
 
   /// Runs [op] against the backend, logging out automatically when the failure
@@ -177,7 +172,10 @@ class AppSession extends ChangeNotifier {
     _authToken = '';
     _authzToken = '';
     _expiresAt = null;
-    _setFieldStates(const {});
+    _resourceRoles = const {};
+    // Drop the authorization adapter so a logged-out app resolves permissively
+    // again (no principal, no grants); the next login reinstalls it.
+    TomAuthorization.reset();
     // Reset the provider to the pre-login chrome so a re-login starts clean — no
     // full-bundle keys linger. Only undo an install that actually happened.
     final base = _preLoginTexts;

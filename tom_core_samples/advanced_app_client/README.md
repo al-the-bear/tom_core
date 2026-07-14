@@ -32,20 +32,23 @@ backend, so the same widgets drive either implementation:
 
 - **`InMemoryAppBackend`** — a seeded, socket-free fake the widget and contract
   tests bind. It constructs the reflected domain entities in-process and mirrors
-  the server's ownership + sharing model and per-role four-state field matrix, so
-  it is the contract any live backend must honour.
+  the server's ownership + sharing model, exposing the principal's per-resource
+  role grants through `resourceRoles()`, so it is the contract any live backend
+  must honour.
 - **`LiveAppBackend`** — the production wiring: a thin adapter over an
   `AuthClient` (login/token storage against `advanced_auth_server`) and an
   `AppApiClient` (the board API against `advanced_app_server`) sharing one
-  `JsonTransport`. It folds the server's per-field grade list into the UI-shaped
-  `resourceKey → TomAuthState` map and normalises the client core's transport
-  exceptions into the single `AppBackendException` the screens catch.
+  `JsonTransport`. It normalises the client core's transport exceptions into the
+  single `AppBackendException` the screens catch. Its `resourceRoles()` returns
+  empty for now — the opaque bearer carries no readable grant claim (tracked as
+  RCB5); the seeded in-memory backend supplies the real grants the widget tests
+  drive.
 
 ```dart
 final AppBackend backend = InMemoryAppBackend(); // or LiveAppBackend(auth, api)
 await backend.login(LoginRequest(username: 'alice', password: 'pw'));
 final workspaces = await backend.listWorkspaces();
-final states = await backend.itemFieldStates('i-1'); // resourceKey → TomAuthState
+final roles = await backend.resourceRoles(); // resourceKey → roleName ('item:i-1' → 'owner')
 ```
 
 ## App shell (bootstrap + session)
@@ -58,8 +61,11 @@ bean. Pass `--dart-define=TEST_MODE=true` to boot on the seeded
 `InMemoryAppBackend` instead.
 
 `AppSession` (`lib/app/app_session.dart`) is a `ChangeNotifier` holding the
-signed-in principal, the token pair, and the four-state matrix for the item in
-view. `AdvancedTodoApp` (`lib/app/app_root.dart`) rebuilds its home from
+signed-in principal, the token pair, and the principal's per-resource role
+grants. On login it installs those grants as the framework `TomAuthorization`
+adapter (an `AppResourceRoleAdapter`), so screens resolve resource keys through
+the `TomResourceRoleRegistry`; logout resets the adapter.
+`AdvancedTodoApp` (`lib/app/app_root.dart`) rebuilds its home from
 `session.isLoggedIn`, so the login↔board switch is state-driven. Every screen
 reaches the backend through `AppSession.guard`, so a dropped session (the live
 stack's post-refresh `401`, keyed `auth.session_expired`) clears the principal
@@ -90,14 +96,17 @@ item-detail editor.
 ## Item-detail screen
 
 `lib/screens/item_detail_screen.dart` is the bound editor (keyed
-`item-detail-screen`). On open it loads the item's `resourceKey → TomAuthState`
-matrix (`AppSession.loadFieldStates`) and builds a `TodoItemForm`
-(`lib/forms/todo_item_form.dart`) with it, so the four ACL states render
-distinctly per role: `owner` edits every field; `editor` sees the assignee and
-estimate read-only; `commenter` loses priority/estimate entirely; `viewer`
-toggles nothing — the status control renders disabled while the rest are
-read-only. A field absent from the matrix degrades to `TomAuthState.none`
-(hidden — the closed-safe default).
+`item-detail-screen`). On open it resolves the item's resource-level ceiling
+through the framework registry (`TomAuthorization.resolveAuth('item:<id>')`, via
+the login-installed adapter) and **narrows** it by the field's per-role grade
+from the shared `projectRoleFieldGrades` matrix (in `advanced_todo_domain`),
+stamping the result on each gradable field of a `TodoItemForm`
+(`lib/forms/todo_item_form.dart`). The composition reproduces the four ACL states
+per role: `owner` edits every field; `editor` sees the assignee and estimate
+read-only; `commenter` loses priority/estimate entirely; `viewer` toggles
+nothing — the status control renders disabled while the rest are read-only. With
+no role the resource ceiling resolves to `TomAuthState.none` and every field
+collapses (the closed-safe default — the registry stays the load-bearing gate).
 
 Save (keyed `item-save-button`) is offered only when at least one gradable field
 is editable; it runs the form's reflection round-trip (`save()` writes the typed

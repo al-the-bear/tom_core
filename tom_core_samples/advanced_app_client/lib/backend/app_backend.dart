@@ -11,9 +11,10 @@
 /// The seam speaks the shared **wire contracts** ([LoginRequest]/[LoginResult]/
 /// [ShareRequest]) and the reflected **domain entities** ([Workspace]/[Project]/
 /// [TodoList]/[TodoItem]/[TodoComment]) — exactly the currency the live client
-/// core exchanges — plus one UI-shaped convenience, [itemFieldStates], which
-/// folds the server's per-field grade list into a `resourceKey → TomAuthState`
-/// map the bound forms render directly.
+/// core exchanges — plus one authorization convenience, [resourceRoles], which
+/// exposes the principal's `resourceKey → roleName` grants so the app can install
+/// the framework's [TomResourceRoleAdapter] and resolve field states through the
+/// registry.
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
@@ -77,8 +78,8 @@ abstract class AppBackend {
   /// Lists in the visible project [projectId].
   Future<List<TodoList>> listLists(String projectId);
 
-  /// Items in the visible list [listId]; pair with [itemFieldStates] for the
-  /// per-field grade matrix.
+  /// Items in the visible list [listId]; the principal's per-resource role
+  /// (from [resourceRoles]) drives each item's field grades.
   Future<List<TodoItem>> listItems(String listId);
 
   /// Creates ([TodoItem.id] empty) or updates an item, returning the persisted
@@ -93,11 +94,14 @@ abstract class AppBackend {
   /// persisted comment.
   Future<TodoComment> addComment(String itemId, TodoComment comment);
 
-  /// The four-state grade for each gradable field of item [itemId], resolved for
-  /// the current principal and keyed by the gradable item resource keys
-  /// (`todo.item.*`). An ungranted field resolves to [TomAuthState.none] (hidden
-  /// — the closed-safe default), matching the server's resolver.
-  Future<Map<String, TomAuthState>> itemFieldStates(String itemId);
+  /// The current principal's per-resource role grants, as a
+  /// `resourceKey → roleName` map (`<type>:<id>` keys — e.g. `item:i-1` →
+  /// `'editor'`). This is the client-side view of the bearer token's
+  /// `resourceRoles` claim; the app installs it as a [TomResourceRoleAdapter] at
+  /// login, so the item screen resolves each field's state through the framework
+  /// registry. A resource the principal has no role on is simply absent (the
+  /// adapter resolves it closed-safe to [TomAuthState.none]).
+  Future<Map<String, String>> resourceRoles();
 
   /// Shares the named resource with another user at a [ProjectRole].
   Future<void> share(ShareRequest request);

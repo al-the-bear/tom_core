@@ -1,10 +1,12 @@
-/// Widget tests for the item-detail screen (step 30): the bound
-/// `TomForm<TodoItem>` whose per-field controls are driven by the session's
-/// four-state grade matrix.
+/// Widget tests for the item-detail screen (step 30, RCC2): the bound
+/// `TomForm<TodoItem>` whose per-field controls are graded through the framework
+/// authorization registry.
 ///
 /// This is the heart of what the sample teaches — the *same* [ItemDetailScreen]
-/// (and the [TodoItemForm] it builds) renders differently per role because it is
-/// constructed with the principal's resolved field matrix:
+/// (and the [TodoItemForm] it builds) renders differently per role because it
+/// resolves each field's resource-level ceiling through the framework registry
+/// (the login-installed [TomResourceRoleAdapter]) and narrows it by the shared
+/// per-role field-grade matrix:
 ///
 /// - `owner` (alice) edits every gradable field — a full editor with a Save.
 /// - `viewer` (carol, shared in for the test) sees read-only fields, a *disabled*
@@ -26,9 +28,10 @@ import 'package:advanced_app_client/reflection_seed.dart';
 import 'package:advanced_app_client/screens/item_detail_screen.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 // The app seed owns the authoritative `initializeReflection`; the domain is a
-// library and ships no seed, so this import only pulls the enum it needs.
+// library and ships no seed, so this import pulls only the enum and the shared
+// role→state vocabulary registrar the tests need.
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show ProjectRole;
+    show ProjectRole, registerProjectRoleVocabulary;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -40,14 +43,20 @@ void main() {
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(const <String, dynamic>{}),
     );
+    // The registry is the load-bearing gate: without the shared vocabulary,
+    // every role resolves to `none` and all fields collapse. `main` registers it
+    // at boot; each test installs the same mapping so `session.login` can resolve
+    // the principal's resource-level ceiling through the framework adapter.
+    registerProjectRoleVocabulary();
   });
 
-  // The role matrix is driven purely by the screen stamping each gradable field
-  // with its DB-resolved grade (a per-field fixed authorizer keyed by basePath).
-  // No authorization adapter is installed, so the four-role render matrix is
-  // reproduced without any global singleton state; the reset keeps the singleton
-  // clean between tests regardless.
-  tearDown(TomAuthorization.reset);
+  // Login installs an [AppResourceRoleAdapter] as the [TomAuthorization]
+  // singleton and the vocabulary populates the [TomResourceRoleRegistry]; reset
+  // both between tests so no adapter or role mapping leaks across cases.
+  tearDown(() {
+    TomAuthorization.reset();
+    TomResourceRoleRegistry.reset();
+  });
 
   /// A tall viewport so the detail form's fields and Save button all fit
   /// on-screen (the default 800×600 window scrolls controls out of reach).
@@ -81,9 +90,11 @@ void main() {
 
     final backend = InMemoryAppBackend();
     final session = AppSession(backend);
-    // No adapter is installed: the detail screen stamps each gradable field with
-    // its DB-resolved grade from the matrix `loadFieldStates` returns, exactly as
-    // `main` wires it. The four-role render matrix is reproduced purely from that.
+    // `session.login` (below) snapshots the principal's per-resource role grants
+    // and installs them as the framework [TomAuthorization] adapter, exactly as
+    // `main` wires it. The detail screen then resolves each field's ceiling
+    // through the registry and narrows by the shared field-grade matrix — the
+    // four-role render matrix falls out of that composition.
 
     if (shareCarolAs != null) {
       await session.login(login('alice'));

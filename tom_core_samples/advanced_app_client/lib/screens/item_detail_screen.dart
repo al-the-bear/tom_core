@@ -1,13 +1,19 @@
 /// The item-detail screen the board opens when a card is tapped — a bound
-/// `TomForm<TodoItem>` whose per-field controls are driven live by the session's
-/// four-state grade matrix (step 30).
+/// `TomForm<TodoItem>` whose per-field controls are graded through the framework
+/// authorization registry (step 30, RCC2).
 ///
-/// This is where the authorization model becomes visible end-to-end: on open the
-/// screen loads the item's `resourceKey → TomAuthState` matrix
-/// ([AppSession.loadFieldStates]) and constructs a [TodoItemForm] with it, so the
-/// *same* editor renders differently per role — `owner` edits every field;
-/// `viewer` sees read-only fields with a disabled status control and no estimate
-/// at all (an ungranted field resolves to [TomAuthState.none] and collapses).
+/// This is where the authorization model becomes visible end-to-end. On open the
+/// screen resolves the item's **resource-level** state through the framework —
+/// `TomAuthorization.resolveAuth('item:<id>')`, which routes through the
+/// [AppResourceRoleAdapter] the session installed at login → the principal's role
+/// on the item → the [TomResourceRoleRegistry]. It then **narrows** that ceiling
+/// by the field's per-role grade from the shared [projectRoleFieldGrades] matrix
+/// and stamps the result on the field. The composition reproduces the §A.4 matrix
+/// exactly, so the *same* editor renders differently per role — `owner` edits
+/// every field; `viewer` sees read-only fields with a disabled status control and
+/// no estimate (an ungranted field resolves to [TomAuthState.none] and collapses)
+/// — while the registry stays the load-bearing gate (no role → resource state
+/// `none` → every field collapses).
 ///
 /// Save writes the form back into the bound [TodoItem] through the reflection
 /// round-trip and persists it via [AppSession.guard]. Because only `full` fields
@@ -28,7 +34,6 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../actions/app_actions.dart';
 import '../app/app_session.dart';
-import '../backend/backend.dart';
 import '../forms/todo_item_form.dart';
 
 /// Bound, authorization-aware editor for a single [TodoItem].
@@ -51,7 +56,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   late final TodoItem _item = widget.item;
   final TextEditingController _commentController = TextEditingController();
 
-  bool _loading = true;
   bool _busy = false;
   bool _postingComment = false;
   String? _error;
@@ -62,7 +66,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _resolveForm();
   }
 
   @override
@@ -72,48 +76,39 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     super.dispose();
   }
 
-  /// Loads the item's four-state matrix and builds the bound form against it.
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      // Load the item's DB-resolved grade matrix (keyed by wire resource key,
-      // `todo.item.<field>`). The screen stamps it onto the form's fields; there
-      // is no installed authorization adapter to route the grades implicitly.
-      final states = await _session.loadFieldStates(_item.id.get());
-      if (!mounted) return;
-      // Run the form under the gradable scope so each field's basePath equals
-      // its wire resource key (`todo.item.<field>`).
-      final form = TomScope.withScope(
-        'todo',
-        TodoItemForm.new,
-      );
-      form.bind(_item);
-      // Stamp each gradable field with its DB-resolved grade via a per-field
-      // fixed authorizer (layer 4). An unsent gradable key is closed-safe
-      // ([TomAuthState.none], D-A4): the field collapses rather than leaking an
-      // editable control. Non-gradable chrome (login, board) keeps the
-      // framework's permissive default — this screen installs no global adapter.
-      for (final field in form.gradableFields) {
-        field.authorizer =
-            TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none);
-      }
-      setState(() {
-        _form = form;
-        _loading = false;
-      });
-    } on AppBackendException catch (e) {
-      // A lost session is already handled by [AppSession.guard] (the principal
-      // is cleared and the shell rebuilds to login); we only surface other
-      // failures inline here.
-      if (!mounted) return;
-      setState(() {
-        _error = e.message;
-        _loading = false;
-      });
+  /// Builds the bound form, grading each field through the framework registry.
+  ///
+  /// Resolution is now synchronous: the principal's per-resource role grants are
+  /// already on the session (snapshotted + installed as the [TomAuthorization]
+  /// adapter at login, RCC2), so there is no backend round-trip to await — this
+  /// runs once from [initState], before the first build.
+  void _resolveForm() {
+    final itemKey = '${ResourceRoleKeys.itemType}:${_item.id.get()}';
+    // The item's resource-level state, resolved through the framework registry:
+    // the installed AppResourceRoleAdapter maps the principal's role on this item
+    // to a TomAuthState via the TomResourceRoleRegistry (no role → none).
+    final resourceState = TomAuthorization.resolveAuth(itemKey);
+    // The principal's role on the item picks the per-field grade row; the field
+    // grades live in the shared domain (projectRoleFieldGrades), not here.
+    final role = ProjectRole.values.asNameMap()[_session.resourceRoles[itemKey]];
+    final grades = role == null
+        ? const <String, TomAuthState>{}
+        : (projectRoleFieldGrades[role] ?? const <String, TomAuthState>{});
+
+    // Run the form under the gradable scope so each field's basePath equals its
+    // wire resource key (`todo.item.<field>`).
+    final form = TomScope.withScope('todo', TodoItemForm.new);
+    form.bind(_item);
+    // Each gradable field's state is the framework-resolved resource ceiling
+    // narrowed by the field's per-role grade. Because every role's field grades
+    // sit at or below its resource ceiling, the narrow reproduces the §A.4 matrix
+    // exactly — while keeping the registry load-bearing: no role → resource state
+    // none → the field collapses (closed-safe, D-A4).
+    for (final field in form.gradableFields) {
+      final fieldGrade = grades[field.basePath] ?? TomAuthState.none;
+      field.authorizer = TomAuthorizer.fixed(resourceState.narrow(fieldGrade));
     }
+    _form = form;
   }
 
   /// Validates the form and runs the [SaveItemAction], then pops with `true` so
@@ -180,9 +175,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) {
-      return Center(child: TomCircularProgressIndicator());
-    }
     final form = _form;
     if (form == null) {
       return Center(

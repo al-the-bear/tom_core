@@ -1,17 +1,19 @@
 /// The default backend: a seeded, fully working in-memory [AppBackend] (step 26).
 ///
 /// It mirrors what `advanced_app_server` exposes — the same demo accounts, a
-/// small workspace→project→list→item tree, and the **same four-state field
-/// authorization matrix** the auth server seeds — so the client behaves
-/// identically whether it runs against this backend (the offline teaching
-/// default, and what the widget tests drive) or the live stack. Keeping the
-/// matrix and the ownership/share model here in one place is what lets the four
-/// ACL states render distinctly without a server or database.
+/// small workspace→project→list→item tree, and the **same per-resource role
+/// grants** the auth server seeds — so the client behaves identically whether it
+/// runs against this backend (the offline teaching default, and what the widget
+/// tests drive) or the live stack. Keeping the ownership/share model here in one
+/// place is what lets the four ACL states render distinctly without a server or
+/// database: [resourceRoles] exposes each accessible resource's [ProjectRole],
+/// which the app installs as a framework [TomResourceRoleAdapter] and the item
+/// screen narrows by the shared [projectRoleFieldGrades] matrix.
 ///
 /// The principal is implicit in the session: [login] records the current user,
 /// and every later call filters by what that user owns or is shared into and
-/// resolves field grades through their effective [ProjectRole] on the resource —
-/// exactly the seam the live server enforces from the bearer token.
+/// resolves their effective [ProjectRole] on the resource — exactly the seam the
+/// live server enforces from the bearer token.
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
@@ -131,63 +133,6 @@ class InMemoryAppBackend implements AppBackend {
     'alice': 'u-alice',
     'bob': 'u-bob',
     'carol': 'u-carol',
-  };
-
-  /// The resolved per-field [TomAuthState] for each [ProjectRole].
-  ///
-  /// This is the client-side twin of the grants `advanced_auth_server` seeds.
-  /// Read down the columns to see all four states:
-  ///
-  /// | field       | owner | editor | commenter | viewer   |
-  /// | ----------- | ----- | ------ | --------- | -------- |
-  /// | title       | full  | full   | read      | read     |
-  /// | status      | full  | full   | read      | disabled |
-  /// | priority    | full  | full   | none      | read     |
-  /// | assigneeId  | full  | read   | read      | read     |
-  /// | dueDate     | full  | full   | read      | read     |
-  /// | estimate    | full  | read   | none      | none     |
-  /// | description | full  | full   | read      | read     |
-  ///
-  /// `owner` is fully editable; `editor` cannot reassign or edit the estimate
-  /// (read); `commenter` cannot see `priority`/`estimate` (none); `viewer` can
-  /// toggle nothing — `status` renders disabled while the rest are read-only.
-  static const Map<ProjectRole, Map<String, TomAuthState>> _grantMatrix = {
-    ProjectRole.owner: {
-      'todo.item.title': TomAuthState.full,
-      'todo.item.status': TomAuthState.full,
-      'todo.item.priority': TomAuthState.full,
-      'todo.item.assigneeId': TomAuthState.full,
-      'todo.item.dueDate': TomAuthState.full,
-      'todo.item.estimate': TomAuthState.full,
-      'todo.item.description': TomAuthState.full,
-    },
-    ProjectRole.editor: {
-      'todo.item.title': TomAuthState.full,
-      'todo.item.status': TomAuthState.full,
-      'todo.item.priority': TomAuthState.full,
-      'todo.item.assigneeId': TomAuthState.read,
-      'todo.item.dueDate': TomAuthState.full,
-      'todo.item.estimate': TomAuthState.read,
-      'todo.item.description': TomAuthState.full,
-    },
-    ProjectRole.commenter: {
-      'todo.item.title': TomAuthState.read,
-      'todo.item.status': TomAuthState.read,
-      'todo.item.priority': TomAuthState.none,
-      'todo.item.assigneeId': TomAuthState.read,
-      'todo.item.dueDate': TomAuthState.read,
-      'todo.item.estimate': TomAuthState.none,
-      'todo.item.description': TomAuthState.read,
-    },
-    ProjectRole.viewer: {
-      'todo.item.title': TomAuthState.read,
-      'todo.item.status': TomAuthState.disabled,
-      'todo.item.priority': TomAuthState.read,
-      'todo.item.assigneeId': TomAuthState.read,
-      'todo.item.dueDate': TomAuthState.read,
-      'todo.item.estimate': TomAuthState.none,
-      'todo.item.description': TomAuthState.read,
-    },
   };
 
   void _seed() {
@@ -413,22 +358,28 @@ class InMemoryAppBackend implements AppBackend {
   }
 
   @override
-  Future<Map<String, TomAuthState>> itemFieldStates(String itemId) async {
+  Future<Map<String, String>> resourceRoles() async {
     final principal = _principalId;
-    final item = _items.firstWhere(
-      (i) => i.id.get() == itemId,
-      orElse: () => throw AppBackendException('No item with id "$itemId".',
-          key: 'app.item.not_found'),
-    );
-    final project = _projectOfList(item.listId.get());
-    final role = project == null ? null : _roleOnProject(project, principal);
-    final granted = role == null ? const {} : _grantMatrix[role]!;
-    // The gradable keys are the grant-matrix columns (the owner map carries the
-    // full set); resolve each at use rather than from a key-catalogue class.
-    return {
-      for (final key in _grantMatrix[ProjectRole.owner]!.keys)
-        key: granted[key] ?? TomAuthState.none,
-    };
+    // The principal's effective role on every resource they can reach: each
+    // accessible project, and every item within it (the sample grants at project
+    // level, so an item inherits its project's role). Keyed `<type>:<id>` (the
+    // shared convention), the value is the role's [Enum.name] — exactly the
+    // `resourceRoles` claim the live token carries and the app installs as a
+    // [TomResourceRoleAdapter].
+    final roles = <String, String>{};
+    for (final project in _projects) {
+      final role = _roleOnProject(project, principal);
+      if (role == null) continue;
+      roles['${ResourceRoleKeys.projectType}:${project.id.get()}'] = role.name;
+      for (final list
+          in _lists.where((l) => l.projectId.get() == project.id.get())) {
+        for (final item
+            in _items.where((i) => i.listId.get() == list.id.get())) {
+          roles['${ResourceRoleKeys.itemType}:${item.id.get()}'] = role.name;
+        }
+      }
+    }
+    return roles;
   }
 
   @override
