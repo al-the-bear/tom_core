@@ -8,6 +8,7 @@
 
 import 'package:core_flutter_acl_sample/acl_app.dart';
 import 'package:core_flutter_acl_sample/common/showcase_cell.dart';
+import 'package:core_flutter_acl_sample/common/chrome_texts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -15,7 +16,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 void main() {
   setUp(() {
     TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(const <String, dynamic>{}),
+      TomTextResourceProvider.from(chromeTexts),
     );
   });
 

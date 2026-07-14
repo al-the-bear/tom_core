@@ -71,10 +71,12 @@ flutter pub get
 flutter run            # any device / chrome / macos / linux
 ```
 
-There is nothing to configure. Labels are supplied inline via
-`labelTextOverride`, so the sample needs **no resource bundle** — any
-unresolved error key falls through to its raw key, which is intentionally
-instructive when you see it in a validation message.
+There is nothing to configure. The **teaching** text is supplied inline: form
+labels via `labelTextOverride`, and any unresolved error key falls through to its
+raw key, which is intentionally instructive when you see it in a validation
+message. The only resources the sample installs are its own **application
+chrome** (the home screen's app-bar title and the code panel's copy-button
+tooltip) — see §5.
 
 ---
 
@@ -141,7 +143,7 @@ Two things happen before the first frame ([`lib/main.dart`](lib/main.dart)):
 void main() {
   initializeReflection();                       // 1. register reflected types
   TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(const <String, dynamic>{}),  // 2. empty provider
+    TomTextResourceProvider.from(chromeTexts),  // 2. interactive-chrome bundle
   );
   runApp(const ShowcaseApp());
 }
@@ -150,9 +152,10 @@ void main() {
 1. **`initializeReflection()`** (from the generated
    `reflection_seed.reflection.dart`) registers every reflected type. It **must**
    run before any form is constructed.
-2. An **empty resource provider** is installed so any widget that probes the
-   singleton finds a valid scope. The showcase resolves labels through
-   `labelTextOverride`, so the empty map is deliberate.
+2. The **`chromeTexts` bundle** is installed. The showcase resolves its teaching
+   labels through `labelTextOverride` (nothing to wire up), but its own
+   interactive chrome — the code panel's copy-button tooltip — is a resource per
+   G-RES-1 (see §5 and `lib/common/chrome_texts.dart`).
 
 `TomTextResourceProvider` is not re-exported by the `tom_flutter_ui` barrel — it
 is imported from `package:tom_core_kernel/tom_core_kernel.dart`.
@@ -204,6 +207,17 @@ and no family identity, so `TomStatelessWidget`/`TomStatefulWidget` (not a famil
 base) is the sanctioned base; because that base captures `TomScope.current` at
 construction, the widgets are non-const. See the G-UI-2 clarification in
 [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md).
+
+**Which strings are hardcoded vs resources (G-RES-1).** The teaching content is a
+deliberate copy-paste exemption: group titles/summaries, the `code:` bodies, and
+the form field labels (via `labelTextOverride`) stay inline so a reader can lift a
+snippet verbatim. The scaffold's own **application chrome** — the home screen's
+app-bar title (`showcase.app.title`) and the code panel's copy-button tooltip
+(`showcase.codeBlock.copyTooltip`) — is real on-screen text, so G-RES-1 applies
+and it resolves through the `chromeTexts` bundle installed in `main` (and in each
+test's `setUp`). The only string kept hardcoded outside the bundle is
+`MaterialApp.title` — OS-level app identity, not on-screen copy. See
+`lib/common/chrome_texts.dart`.
 
 ---
 

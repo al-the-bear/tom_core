@@ -70,7 +70,9 @@ class _VisibilityDemoState extends State<_VisibilityDemo> {
       children: [
         Row(
           children: [
-            TomText(text: 'Show details'),
+            // Interactive chrome (the demo's own toggle label), not a teaching
+            // snippet — resolved as a resource per G-RES-1 (see chrome_texts.dart).
+            TomText(text: TomCtr.text('showcase.visibility.showDetails')),
             ValueListenableBuilder<AclGroupVisibilityMode>(
               valueListenable: _ctrl.modeNotifier,
               builder: (_, mode, _) => TomSwitch(

@@ -92,6 +92,18 @@ halves are always present so an empty snippet can never slip through.
 > [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md). Because that
 > base captures `TomScope.current` at construction, these widgets cannot be `const`.
 
+> **Which strings are hardcoded vs resources (G-RES-1).** The ACL snippets are a
+> deliberate copy-paste exemption: group titles/summaries and the `code:` bodies
+> (plus the direct-parameter widgets they render) stay hardcoded so a reader can
+> lift them verbatim. The showcase's own **application chrome** is not exempt —
+> the home screen's app-bar title (`showcase.app.title`), the code panel's
+> copy-button tooltip (`showcase.codeBlock.copyTooltip`) and the group-visibility
+> demo's toggle label (`showcase.visibility.showDetails`) are real on-screen text,
+> so G-RES-1 applies and they resolve through the `chromeTexts` bundle that `main`
+> installs (the widget tests install it in their `setUp`). The only string kept
+> hardcoded outside the bundle is `MaterialApp.title` — OS-level app identity, not
+> on-screen copy. See `lib/common/chrome_texts.dart`.
+
 ---
 
 ## The capabilities

@@ -49,6 +49,8 @@ class AclApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // OS-level app identity (task switcher / window title), not on-screen copy
+      // — intentionally hardcoded, outside the G-RES-1 resource bundle.
       title: 'Tom Core — ACL Feature Tour',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -67,7 +69,8 @@ class _AclHome extends StatelessWidget {
   Widget build(BuildContext context) {
     return TomScaffold(
       appBar: TomAppBar(
-        title: TomText(text: 'Tom Core — ACL Feature Tour'),
+        // On-screen app-bar copy → resource per G-RES-1 (see chrome_texts.dart).
+        title: TomText(text: TomCtr.text('showcase.app.title')),
       ),
       body: ListView.separated(
         itemCount: aclGroups.length,

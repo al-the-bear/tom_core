@@ -36,9 +36,22 @@ halves are always present so an empty snippet can never slip through.
 ### A note on resources and `const`
 
 The showcase uses the **direct-parameter** form of every widget — `label:`,
-`text:`, `value:`, `icon:` — rather than resource keys. That means no
-`TomTextResourceProvider` lookup is triggered, so each snippet compiles and runs
-on its own with nothing to wire up first.
+`text:`, `value:`, `icon:` — rather than resource keys, so each **teaching
+snippet** compiles and runs on its own with nothing to wire up first. That
+hardcoding is a deliberate copy-paste exemption for the snippets only.
+
+**Which strings are hardcoded vs resources (G-RES-1).** The exemption stops at
+the teaching content. The group titles/summaries and the `code:` snippet bodies
+(plus the direct-parameter demo widgets they render, e.g.
+`TomIconButton(tooltip: 'Favorite')`) stay hardcoded — a reader must be able to
+lift them verbatim. But the showcase's own **application chrome** — the home
+screen's app-bar title (`showcase.app.title`) and the code panel's copy-button
+tooltip (`showcase.codeBlock.copyTooltip`) — is real on-screen text, not a
+snippet, so G-RES-1 applies: each is a resource key resolved through the
+`chromeTexts` bundle that `main` installs (and the widget tests install in their
+`setUp`). The only string kept hardcoded outside the bundle is
+`MaterialApp.title` — OS-level app identity, not on-screen copy. See
+`lib/common/chrome_texts.dart`.
 
 Tom widgets resolve their inputs in the constructor body (`late final` fields),
 so they are **not** `const`-constructible. None of the snippets wrap a Tom

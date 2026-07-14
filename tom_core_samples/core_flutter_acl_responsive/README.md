@@ -118,7 +118,7 @@ a form's fields through kernel reflection — so reflection has to be registered
 void main() {
   initializeReflection();                       // from reflection_seed.dart
   TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(const <String, dynamic>{}),
+    TomTextResourceProvider.from(chromeTexts),  // interactive-chrome bundle
   );
   runApp(const ResponsiveApp());
 }
@@ -165,6 +165,17 @@ so `TomStatelessWidget`/`TomStatefulWidget` (not a family base) is the sanctione
 base; because that base captures `TomScope.current` at construction, the widgets
 are non-const. See the G-UI-2 clarification in
 [`README_tom_core_guidelines.md`](../README_tom_core_guidelines.md).
+
+**Which strings are hardcoded vs resources (G-RES-1).** The teaching content is a
+deliberate copy-paste exemption: group titles/summaries, the `code:` bodies, and
+the form field labels (resolved through `labelTextOverride`) stay inline so a
+reader can lift a snippet verbatim. The showcase's own **application chrome** is
+not exempt — the home screen's app-bar title (`showcase.app.title`) and the code
+panel's copy-button tooltip (`showcase.codeBlock.copyTooltip`) are real on-screen
+text, so G-RES-1 applies and they resolve through the `chromeTexts` bundle that
+`main` installs (the widget tests install it in their `setUp`). The only string
+kept hardcoded outside the bundle is `MaterialApp.title` — OS-level app identity,
+not on-screen copy. See `lib/common/chrome_texts.dart`.
 
 ---
 

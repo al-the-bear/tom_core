@@ -39,6 +39,8 @@ class ShowcaseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // OS-level app identity (task switcher / window title), not on-screen copy
+      // — intentionally hardcoded, outside the G-RES-1 resource bundle.
       title: 'Tom Flutter UI — Component Showcase',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -57,7 +59,8 @@ class _ShowcaseHome extends StatelessWidget {
   Widget build(BuildContext context) {
     return TomScaffold(
       appBar: TomAppBar(
-        title: TomText(text: 'Tom Flutter UI — Component Showcase'),
+        // On-screen app-bar copy → resource per G-RES-1 (see chrome_texts.dart).
+        title: TomText(text: TomCtr.text('showcase.app.title')),
       ),
       body: ListView.separated(
         itemCount: showcaseGroups.length,

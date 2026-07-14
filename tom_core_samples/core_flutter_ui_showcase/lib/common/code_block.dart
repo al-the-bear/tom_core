@@ -51,7 +51,9 @@ class CodeBlock extends TomStatelessWidget {
             right: 2,
             child: TomIconButton(
               icon: TomIcon(icon: Icons.copy, size: 16),
-              tooltip: 'Copy snippet',
+              // Interactive chrome, not a teaching snippet: resolved as a resource
+              // per G-RES-1 (see chrome_texts.dart).
+              tooltip: TomCtr.text('showcase.codeBlock.copyTooltip'),
               onPressed: () =>
                   Clipboard.setData(ClipboardData(text: trimmed)),
             ),
