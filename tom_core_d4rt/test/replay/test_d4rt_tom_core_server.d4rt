@@ -193,8 +193,10 @@ verifyEquals(currentTx.isReadOnly, false, 'transaction defaults to read-write');
 # Test: Principal resource grants + delegation (C-6) — regenerated bridge
 # surface (RCA6). Entities are no-arg constructible; every field is a named
 # argument with a default. Statements stay on single lines (the replay runner
-# parses each in isolation). Roles are registered one at a time — the Map-valued
-# registerAll() is unreachable from a script (RCA14).
+# parses each in isolation). Roles are declared in one Map-valued registerAll()
+# call: RCC7 (tom_d4rt >=1.12.0) coerces a script Map whose values are bridged
+# enums into a native Map<String, TomAuthState>, so the one-at-a-time register()
+# the earlier bridge needed (RCA14) is no longer required.
 # =============================================================================
 
 var grant = TomPrincipalResourceGrant(principalId: 'u1', resourceKey: 'project.1', role: 'owner');
@@ -204,8 +206,7 @@ verifyEquals(grant.role, 'owner', 'grant role');
 verifyEquals(grant.id, -1, 'grant unsaved id defaults to -1');
 
 TomResourceRoleRegistry.reset();
-TomResourceRoleRegistry.register('owner', TomAuthState.full);
-TomResourceRoleRegistry.register('viewer', TomAuthState.read);
+TomResourceRoleRegistry.registerAll({'owner': TomAuthState.full, 'viewer': TomAuthState.read});
 verifyEquals(TomPrincipalResourceRoleResolver.registryStrength('owner', 'viewer'), 'owner', 'stronger role wins (full > read)');
 verifyEquals(TomPrincipalResourceRoleResolver.registryStrength('viewer', 'owner'), 'owner', 'strength ordering is symmetric');
 verifyEquals(TomPrincipalResourceRoleResolver.registryStrength('owner', 'ghost'), 'owner', 'known role beats unregistered');

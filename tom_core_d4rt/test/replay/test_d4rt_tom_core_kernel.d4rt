@@ -266,28 +266,24 @@ verifyEquals(cleanup.silent, true, 'silent setter round-trips');
 # state, so reset() first to make the test order-independent.
 # =============================================================================
 
-# Compare the enum's `.name` rather than the value itself: a TomAuthState passed
-# d4rt -> native -> d4rt does not round-trip to an identical object, so `==`
-# against the enum literal is unreliable; the `.name` string is stable.
-#
-# Roles are registered one at a time with register(): the Map-valued registerAll()
-# cannot be reached from a script because the d4rt bridge does not convert a Map
-# with bridged-enum values into Map<String, TomAuthState> (tracked as RCA14). The
-# single-value register() converts the enum correctly, so the registry and adapter
-# both resolve real native TomAuthState values here.
+# Roles are declared in one call with the Map-valued registerAll(), and every
+# TomAuthState is compared with `==` against the enum literal. RCC7 (tom_d4rt
+# >=1.12.0) coerces a script Map whose values are bridged enums into a native
+# Map<String, TomAuthState> and round-trips a native-stored enum back to an equal
+# value, so neither the one-at-a-time register() nor the `.name`-string
+# comparison the earlier bridge needed (RCA14) is required any more.
 #
 # Statements are kept on single lines: the replay runner parses each statement in
 # isolation and does not reliably reassemble multi-line expressions.
 TomResourceRoleRegistry.reset();
-TomResourceRoleRegistry.register('owner', TomAuthState.full);
-TomResourceRoleRegistry.register('viewer', TomAuthState.read);
-verifyEquals(TomResourceRoleRegistry.stateFor('owner').name, 'full', 'registry: owner -> full');
-verifyEquals(TomResourceRoleRegistry.stateFor('viewer').name, 'read', 'registry: viewer -> read');
+TomResourceRoleRegistry.registerAll({'owner': TomAuthState.full, 'viewer': TomAuthState.read});
+verifyEquals(TomResourceRoleRegistry.stateFor('owner'), TomAuthState.full, 'registry: owner -> full');
+verifyEquals(TomResourceRoleRegistry.stateFor('viewer'), TomAuthState.read, 'registry: viewer -> read');
 verifyEquals(TomResourceRoleRegistry.stateFor('ghost'), null, 'registry: unknown role -> null (denial)');
 var roleAdapter = TomResourceRoleAdapter({'project.1': 'owner', 'project.2': 'viewer'});
-verifyEquals(roleAdapter.resolveAuth('project.1').name, 'full', 'adapter: owned resource -> full');
-verifyEquals(roleAdapter.stateOf('project.2').name, 'read', 'adapter: viewer resource -> read');
-verifyEquals(roleAdapter.resolveAuth('project.404').name, 'none', 'adapter: no role on resource -> none (no fallback)');
+verifyEquals(roleAdapter.resolveAuth('project.1'), TomAuthState.full, 'adapter: owned resource -> full');
+verifyEquals(roleAdapter.stateOf('project.2'), TomAuthState.read, 'adapter: viewer resource -> read');
+verifyEquals(roleAdapter.resolveAuth('project.404'), TomAuthState.none, 'adapter: no role on resource -> none (no fallback)');
 TomResourceRoleRegistry.reset();
 
 # =============================================================================

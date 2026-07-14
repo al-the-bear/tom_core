@@ -8,7 +8,9 @@ environment:
 
 dependencies:
   # D4rt runtime
-  tom_d4rt: ">=1.11.0"
+  # >=1.12.0 carries the RCC7 enum-bridging fix (Map<String,Enum> value
+  # coercion + native-stored enum round-trip) the replays rely on.
+  tom_d4rt: ">=1.12.0"
   
   # D4rt base REPL with dcli bridges
   # >=1.1.6 carries the duplicate-export fix required for AOT compilation.
