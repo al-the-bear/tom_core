@@ -39,7 +39,7 @@ bottom; each links to the next.
 | 04 | [Wire contracts & DTOs](README_advanced_04_wire_contracts_dtos.md) | The contracts package: DTOs, the typed service interfaces, the api registry, the domain↔wire boundary. |
 | 05 | [Persistence & the two databases](README_advanced_05_persistence_database.md) | Persistence mapping; CRUD repositories; the two-database design; datasources config; the schema vs sample-data migration split. |
 | 06 | [Authentication (JWT)](README_advanced_06_authentication.md) | Token issuance; password hashing; the bearer token and shared signing key; the client auth layer and token refresh. |
-| 07 | [Authorization](README_advanced_07_authorization.md) | The four-state field authorization model; scope/form/field → `basePath` → grade; the installed adapter; implicit vs override paths; route gating. |
+| 07 | [Authorization](README_advanced_07_authorization.md) | The four-state field authorization model; scope/form/field → `basePath` → grade; the per-field `TomAuthorizer.fixed` stamping (no installed adapter); closed-safe default; route gating. |
 | 08 | [Resources & text externalization](README_advanced_08_resources_texts.md) | The no-hard-coded-labels rule; server-delivered resources; `<basePath>.<suffix>` keying; the scope/form/field JSON files; bundle bootstrap. |
 | 09 | [Forms & UI](README_advanced_09_forms_ui.md) | `TomForm`/`TomField`; `basePath` derivation; bound reflected forms; scoped vs unscoped; the `tom_flutter_ui` components and screens. |
 | 10 | [Servers & the secured endpoint pipeline](README_advanced_10_servers_endpoints.md) | The endpoint pipeline; per-endpoint access policies; bearer validation; ownership/share resolution; health; boot order. |

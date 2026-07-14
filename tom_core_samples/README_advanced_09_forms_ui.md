@@ -160,11 +160,12 @@ the client packages add no field widgets of their own:
 | `TomFormNDoubleInput` | nullable numbers (the estimate, `decimals: 1`) |
 | `StaticSelectableSource` / `SelectableItem` | a fixed option list, *valued by the wire/enum token, labelled from the bundle via the enum's `global.<enumtype>.<value>` key (G-RES-5)* |
 | `Validators.required()` | declarative per-field validation |
-| `TomAuthorizer.fixed(state)` | a per-field grade override (the admin forms' stable-key fields — part 07) |
+| `TomAuthorizer.fixed(state)` | a per-field grade (the item screen's DB-resolved grades and the admin forms' stable-key fields — part 07) |
 
 Each component derives its `basePath` from the form (above) and resolves its
 label/hint/options from the installed resource bundle (part 08) and its grade
-from the installed adapter (part 07). The dropdowns illustrate the
+from the per-field `TomAuthorizer.fixed` the item screen stamps on it (part 07).
+The dropdowns illustrate the
 stored-name-vs-display-text split from part
 [03](README_advanced_03_domain_reflection.md): the `SelectableItem` `value` is
 the enum `name` the entity stores, while its label is resolved from the bundle

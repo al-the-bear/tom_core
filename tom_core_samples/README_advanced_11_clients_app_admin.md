@@ -38,8 +38,8 @@ against the item's `resourceKey → TomAuthState` matrix so each field renders a
 its grade (owner edits all, viewer is read-only, an ungranted field is hidden);
 and the **share dialog** grants another user a `ProjectRole` on the selected
 project — owner-only, a non-owner's share refused inline. The item editor's grades
-come from the session's authorization adapter (below), so the four-state model is
-live over the wire, not faked in the widget.
+come from the session's fetched field-state matrix, stamped per field (below), so
+the four-state model is live over the wire, not faked in the widget.
 
 ## The admin console
 
@@ -88,12 +88,13 @@ so "the session died" is handled in exactly one place: a backend failure keyed
 `app.no_session`/`admin.no_session` clears the principal before rethrowing, so the
 next frame is the login screen (`app_session.dart:172`, `admin_session.dart:142`).
 
-The app session additionally owns a `FieldStateAuthorizationAdapter`: on every
-`loadFieldStates` it repoints the adapter's matrix, and because the bootstrap
-installed that same instance on the `TomAuthorization` singleton
-(`main.dart`), the live item form sees the new grades with no reinstall
-(`app_session.dart:46`, `:149`). This is the bridge between "the server said
-this field is `read`" and "the widget renders it read-only."
+The app session additionally holds the item's grade matrix: `loadFieldStates`
+fetches it (`GET /items/{id}/field-states`) and caches it as
+`currentFieldStates` (`app_session.dart`). The item detail screen then stamps
+each gradable field with a per-field `TomAuthorizer.fixed(states[basePath] ??
+TomAuthState.none)` (`item_detail_screen.dart:99-102`) — there is no installed
+authorization adapter. This is the bridge between "the server said this field is
+`read`" and "the widget renders it read-only."
 
 ## The in-memory vs live backend seam
 
@@ -132,9 +133,11 @@ frame (`advanced_app_client/lib/main.dart`,
    in-memory backend seeds its reflected tree in its constructor.
 2. **`setCurrentPlatform(clientPlatformUtils)`** registers the Flutter client
    platform so kernel runtime probes get the Flutter implementation.
-3. *(app client only)* **`TomAuthorization.adapter = session.authorizationAdapter`**
-   installs the field-state adapter once, so every gradable field resolves its
-   authorization implicitly through the matrix the session feeds it.
+3. *(app client only)* **`AdvancedClientConfig.registerDefault()`** registers the
+   config bean the backend selector reads its server URLs from (G-ENV-2). There
+   is **no** authorization-adapter install step: the item detail screen stamps
+   each gradable field with its DB-resolved grade directly via
+   `TomAuthorizer.fixed` (G-AUTHZ-1).
 4. **`await session.loadLoginResources()`** fetches the public login bundle
    through the backend seam and installs it as the singleton
    `TomTextResourceProvider`, so the sign-in screen renders server-delivered

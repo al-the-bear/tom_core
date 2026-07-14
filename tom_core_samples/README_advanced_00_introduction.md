@@ -47,11 +47,12 @@ to them:
   field's `basePath` — the client ships no UI strings. (Part
   [08](README_advanced_08_resources_texts.md), appendix
   [A2](README_advanced_A2_resource_scope_conventions.md).)
-- **UI authorization is driven by scope/form/field names**, not hand-wired: one
-  installed adapter resolves each field's four-state grade from its `basePath`,
-  and per-field authorizers are a *narrowing override* only. (Part
-  [07](README_advanced_07_authorization.md), appendix
-  [A1](README_advanced_A1_authorization_state_machine.md).)
+- **UI authorization is driven by scope/form/field names**, not hand-wired: the
+  screen fetches each field's DB-resolved four-state grade (keyed by `basePath`)
+  and stamps it onto the field with a per-field `TomAuthorizer.fixed`; there is
+  no installed authorization adapter, and an unsent grade is closed-safe
+  (`TomAuthState.none`). (Part [07](README_advanced_07_authorization.md),
+  appendix [A1](README_advanced_A1_authorization_state_machine.md).)
 
 ## Who this guide is for
 

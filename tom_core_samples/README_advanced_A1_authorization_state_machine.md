@@ -6,9 +6,9 @@
 and named its moving parts. This appendix is the **mechanical** companion: the
 state lattice and its `narrow`/`widen` algebra, the exact five-layer resolution
 in `TomField.resolveEffectiveAuth()`, the closed-safe default as it actually
-falls out of the code, the full grant-matrix → adapter → field data path, and a
-**worked resolution trace** of one field for each of the four roles. Where doc 07
-says *what*, this appendix says *exactly how, line by line*.
+falls out of the code, the full grant-matrix → per-field stamp → field data path,
+and a **worked resolution trace** of one field for each of the four roles. Where
+doc 07 says *what*, this appendix says *exactly how, line by line*.
 
 ## The four states as a lattice
 
@@ -60,18 +60,22 @@ running `state` and narrows it:
 | 5 | **UI-state controller** | `:827` `uiStateController!.apply(state)` | a build-time `TomUIStateController` callback |
 
 Layer 1 seeds `state`; layers 2–5 each apply only if their hook is present, and
-each can only restrict. The item form uses **layer 1 only** (no group, no
-authorizer, no controller) — its grades come entirely from the installed adapter
-— so for a graded item field the effective state is *exactly* what
-`resolveAuth(basePath)` returns, narrowed by the form node (which the adapter
-deliberately keeps permissive, below). The admin user/role forms add a **layer 4**
-`TomAuthorizer.fixed` for create-vs-edit shaping, which has no server matrix
-behind it (see doc 07, "Implicit vs override paths").
+each can only restrict. Because the sample installs **no** authorization adapter,
+layer 1 (`TomAuthorization.resolveAuth(basePath)`) returns the kernel's permissive
+no-adapter default (`full`) for every field — the grade a gradable item field
+renders at comes from **layer 4** instead: the item detail screen stamps each
+gradable field with `field.authorizer = TomAuthorizer.fixed(states[basePath] ??
+TomAuthState.none)` (`item_detail_screen.dart:99-102`). So for a graded item
+field the effective state is `layer1(full).narrow(layer3(full)).narrow(layer4)`,
+which reduces to the **layer-4 fixed grade** the server resolved. The admin
+user/role forms also add a **layer 4** `TomAuthorizer.fixed`, there for
+create-vs-edit shaping rather than a server matrix (see doc 07).
 
 > The skeleton called this "layers 1–4"; the live `resolveEffectiveAuth` has
 > **five** — the build-time `TomUIStateController` is the fifth. The sample's
-> forms exercise layers 1, 3, and (admin only) 4; layers 2 and 5 are framework
-> capability the sample does not need.
+> forms exercise layers 3 and 4 (layer 1 stays at the permissive default since no
+> adapter is installed); layers 2 and 5 are framework capability the sample does
+> not need.
 
 ### Why `basePath` is the key
 
@@ -100,34 +104,41 @@ defaulting to `none`, so no single omission can leak an editable control:
    resolves to `none` via `graded.resolveState(key)`
    (`field_grade_resolver.dart:73-80`). The matrix sent to the client is total
    over the field set — there are no "missing" keys, only explicit `none`s.
-3. **Client adapter.** A *known* gradable leaf with no entry in the live matrix
-   returns `none` (`field_state_authorization_adapter.dart:95`).
+3. **Client per-field stamp.** The item screen stamps each gradable field with
+   `TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none)`
+   (`item_detail_screen.dart:99-102`): a gradable key missing from the live matrix
+   falls to `none`.
 
 The same value at all three layers is what makes the lattice's "unknown =
 denied" property hold end-to-end.
 
-## The grant matrix → adapter → field data path
+## The grant matrix → per-field stamp → field data path
 
 The grade a field renders at travels a fixed path from a database row to a
 widget. Tracing it once makes every other authorization claim in the guide
 concrete:
 
-<!-- Figure: the grant matrix → adapter → field data path, tracing the grade a
-field renders at from a database row to a widget:
+<!-- Figure: the grant matrix → per-field stamp → field data path, tracing the
+grade a field renders at from a database row to a widget:
 1. auth_db.tom_resource_grant row (role_name, resource_key, access_level) —
    RepositoryGrantStore.grantsForRole(role) [field_grade_resolver.dart:93];
 2. TomGradedAccessControlInformation.fromGrants(grants) [field_grade_resolver.dart:65]
    (folds duplicate keys by widen — most permissive wins);
 3. resolveItemFieldStates(role) → Map<String,TomAuthState> [field_grade_resolver.dart:73]
    (itemFieldStates endpoint → List<GradedFieldDto> over the wire);
-4. AppSession.loadFieldStates → adapter.states = matrix (repoint, no reinstall;
-   installed once: TomAuthorization.adapter = … [main.dart:42]);
-5. TomField.resolveEffectiveAuth() layer 1 [tom_form.dart:809]
-   (TomAuthorization.resolveAuth('todo.item.title'));
-6. FieldStateAuthorizationAdapter.resolveAuth(path) [field_state_authorization_adapter.dart:78];
+4. AppSession.loadFieldStates → currentFieldStates matrix (cached per open item);
+5. item_detail_screen.dart:99-102 — field.authorizer =
+   TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none) (per-field, no
+   installed adapter);
+6. TomField.resolveEffectiveAuth() layer 4 [tom_form.dart:823]
+   (authorizer.effectiveAuth(state));
 7. TomAuthState → the field renders at its grade. -->
 
-![The grant matrix to field data path: a tom_resource_grant row is folded into graded access info, resolved to a per-field state map, sent over the wire as GradedFieldDto, repointed onto the installed adapter, and resolved by TomField into the TomAuthState the field renders at.](assets/architecture/advanced_09_grade_data_path.svg)
+<!-- NOTE (RCA7): the SVG below still depicts the retired "repointed onto the
+installed adapter" step; it needs regeneration to show the per-field
+TomAuthorizer.fixed stamp. The alt-text and mermaid here already describe the
+shipped path. -->
+![The grant matrix to field data path: a tom_resource_grant row is folded into graded access info, resolved to a per-field state map, sent over the wire as GradedFieldDto, cached in the app session, and stamped onto each gradable field as a per-field TomAuthorizer.fixed that TomField resolves into the TomAuthState the field renders at.](assets/architecture/advanced_09_grade_data_path.svg)
 
 <details><summary>Text / mermaid equivalent</summary>
 
@@ -135,10 +146,10 @@ field renders at from a database row to a widget:
 graph TB
   row["auth_db.tom_resource_grant row<br/>(role_name, resource_key, access_level)"] -- "grantsForRole(role) · field_grade_resolver.dart:93" --> fold["TomGradedAccessControlInformation.fromGrants(grants)<br/>field_grade_resolver.dart:65 · widen, most permissive wins"]
   fold -- "field_grade_resolver.dart:73" --> map["resolveItemFieldStates(role) → Map&lt;String,TomAuthState&gt;<br/>itemFieldStates endpoint → List&lt;GradedFieldDto&gt; over the wire"]
-  map --> adapter["AppSession.loadFieldStates → adapter.states = matrix<br/>installed once: TomAuthorization.adapter = … · main.dart:42"]
-  adapter -- "tom_form.dart:809" --> field["TomField.resolveEffectiveAuth() layer 1<br/>TomAuthorization.resolveAuth('todo.item.title')"]
-  field --> fsaa["FieldStateAuthorizationAdapter.resolveAuth(path)<br/>field_state_authorization_adapter.dart:78"]
-  fsaa --> state["TomAuthState → the field renders at its grade"]
+  map --> session["AppSession.loadFieldStates → currentFieldStates matrix<br/>cached per open item"]
+  session -- "item_detail_screen.dart:99-102" --> stamp["field.authorizer = TomAuthorizer.fixed(states[basePath] ?? none)<br/>per-field, no installed adapter"]
+  stamp -- "tom_form.dart:823" --> field["TomField.resolveEffectiveAuth() layer 4<br/>authorizer.effectiveAuth(state)"]
+  field --> state["TomAuthState → the field renders at its grade"]
 ```
 
 </details>
@@ -155,51 +166,49 @@ matrix above. Both resolvers are pure over a small store seam
 (`RepositoryGrantStore`/`RepositoryAppResourceStore` live; `InMemory*` seeded for
 tests), which is what lets the socket-free suites reproduce the exact matrix.
 
-### The adapter's four-step resolution
+### Why per-field stamping, and why layer 1 stays out of the way
 
-The adapter is installed on the `TomAuthorization` **singleton**, so *every*
-field — login, board, dialogs, not just graded item fields — routes its layer-1
-lookup through it. A flat map returning the closed-safe `none` for any unknown
-path would hide the login screen. So the adapter resolves in four explicit steps
-(`field_state_authorization_adapter.dart:78-99`):
+Because no adapter is installed, layer 1 (`TomAuthorization.resolveAuth`) and
+layer 3 (the form-node narrow) both resolve to the kernel's permissive default
+(`full`) for *every* path — login, board, dialogs, and the gradable item fields
+alike. That is deliberately harmless: the grade a gradable field renders at is
+applied at **layer 4** instead, by the per-field `TomAuthorizer.fixed` the item
+screen stamps on it (`item_detail_screen.dart:99-102`). Two properties fall out:
 
-| Step | Condition | Result | Why |
-| --- | --- | --- | --- |
-| 1 | exact entry in `states` | that grade | the common case for a graded leaf |
-| 2 | path is a structural **ancestor** of a gradable key (`todo`, `todo.item`) | `full` | keeps the **layer-3 form narrow** a no-op; the matrix carries no `todo.item` row |
-| 3 | path **is** a gradable leaf, absent from the matrix | `none` | closed-safe (D-A4) |
-| 4 | path **outside** the gradable namespace | `full` | the kernel's no-adapter default — stays out of login/board/dialogs |
+| Path | Resolves to | Why |
+| --- | --- | --- |
+| a gradable leaf **present** in the matrix | its grade (layer 4) | `TomAuthorizer.fixed(states[basePath])` |
+| a gradable leaf **absent** from the matrix | `none` (layer 4) | `states[basePath] ?? TomAuthState.none` — closed-safe (D-A4) |
+| the form node `todo.item` / scope `todo` | `full` (layers 1+3) | no adapter, so the permissive default — the form narrow is a no-op |
+| any non-gradable field (login, board, dialogs) | `full` (layers 1+3) | no adapter and no layer-4 stamp — stays untouched |
 
-Step 2 is the subtle one. Layer 3 of `resolveEffectiveAuth` narrows every field
-by the **form node** `todo.item` (`tom_form.dart:817`). The server's matrix is
-keyed only by leaf field keys and carries no `todo.item` row, so if the adapter
-resolved that ancestor to the closed-safe `none`, layer 3 would narrow *every*
-field to `none` and hide the whole form. Resolving a gradable-key ancestor
-permissively (`full`) makes the form narrow a no-op while a genuinely ungraded
-leaf still degrades to `none` at step 3. The `gradableKeys` namespace (defaulting
-to the inline `_gradableItemKeys` set of `todo.item.*` keys) is exactly the
-boundary between "this
-adapter's concern" (closed-safe) and "everything else" (permissive).
+This is what an earlier design achieved with a single installed
+`FieldStateAuthorizationAdapter` that had to special-case a `gradableKeys`
+namespace so a closed-safe `none` would not hide the login form. Stamping each
+gradable field directly moves the closed-safe `none` onto exactly the fields that
+opt into grading, so layers 1 and 3 never need a permissive-ancestor carve-out —
+they simply stay at the framework default (D-A5).
 
 ## Worked role matrix
 
 Take one field — `assigneeId` (`todo.item.assigneeId`) — and trace its effective
 state for each role, using the seeded §A.4 grant matrix (doc 07) and the
-resolution layers above. The item form has no group, no authorizer, no
-controller, so the effective state is `layer1.narrow(layer3)`, and layer 3
-(`todo.item`) resolves to `full` (adapter step 2) — a no-op. So the effective
-state equals the **layer-1 grade**:
+resolution layers above. The item field carries one per-field authorizer (layer
+4) and no group or controller, and — with no adapter installed — layers 1 and 3
+both stay at the permissive default (`full`). So the effective state is
+`full.narrow(full).narrow(layer4)`, which reduces to the **layer-4 stamped
+grade**:
 
-| Role | grant row `todo.item.assigneeId` | adapter step | layer 1 | effective | renders as |
-| --- | --- | --- | --- | --- | --- |
-| owner | `full` | 1 (exact) | `full` | `full` | editable |
-| editor | `full` | 1 (exact) | `full` | `full` | editable |
-| commenter | `read` | 1 (exact) | `read` | `read` | read-only |
-| viewer | *(no row → `none`)* | 1 (exact, server sent `none`) | `none` | `none` | **hidden** |
+| Role | grant row `todo.item.assigneeId` | layer-4 stamp `states[basePath]` | effective | renders as |
+| --- | --- | --- | --- | --- |
+| owner | `full` | `full` | `full` | editable |
+| editor | `full` | `full` | `full` | editable |
+| commenter | `read` | `read` | `read` | read-only |
+| viewer | *(no row → `none`)* | `none` (server sent `none`) | `none` | **hidden** |
 
 The viewer row is the instructive one: the server's `FieldGradeResolver` sent an
 explicit `none` for `assigneeId` (it resolves *every* key, `field_grade_resolver.dart:78`),
-so the adapter hits at step 1 with that explicit `none` — the field collapses. A
+so the per-field stamp is `TomAuthorizer.fixed(none)` — the field collapses. A
 different field tells the rest of the story:
 
 - **`estimate`** is `full / read / none / none` for owner / editor / commenter /
@@ -211,15 +220,15 @@ different field tells the rest of the story:
 Crucially the same rendering is **re-checked server-side on write**:
 `AppWriteService._enforceFieldWrites` requires every field a payload *changes* to
 be graded `full` for the caller's role ([Part 10](README_advanced_10_servers_endpoints.md)).
-The client adapter governs what the UI *shows*; the server independently governs
-what it *accepts* — a tampered client that renders `assigneeId` editable for a
-commenter still has its write rejected.
+The client's per-field stamps govern what the UI *shows*; the server independently
+governs what it *accepts* — a tampered client that renders `assigneeId` editable
+for a commenter still has its write rejected.
 
 ## Primary sources
 
 - `tom_core_kernel/lib/src/tombase/security/tom_authorization.dart` (the `TomAuthState` lattice + `narrow`/`widen`)
 - `tom_flutter_ui/lib/src/forms/tom_form.dart:614-617` (basePath), `:807` (`resolveEffectiveAuth` five layers)
-- `advanced_app_client/lib/app/field_state_authorization_adapter.dart:78-99` (the four-step resolution)
+- `advanced_app_client/lib/screens/item_detail_screen.dart:99-102` (the per-field `TomAuthorizer.fixed` stamp)
 - `advanced_app_server/lib/src/access/{field_grade_resolver,resource_access_resolver}.dart`; `advanced_todo_contracts/lib/src/graded_field_dto.dart`
 - Companion: [07 · Authorization](README_advanced_07_authorization.md)
 

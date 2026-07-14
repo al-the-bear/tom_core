@@ -10,8 +10,8 @@ The spine parts each describe one tier in isolation:
 threads them onto **one principal opening one item** and follows the bytes the
 whole way: from the keystroke that mints a token, across the second server's
 bearer check, through the two authorization layers, back over the wire as a
-graded matrix, into the installed adapter, and finally onto the field the user
-sees. It is *synthesized* from the endpoint, access, and client-http sources —
+graded matrix, onto each gradable field as a per-field `TomAuthorizer.fixed`, and
+finally onto the field the user sees. It is *synthesized* from the endpoint, access, and client-http sources —
 a single trace, not a transcription of any one file — so the two headline rules
 ([server-delivered texts](README_advanced_08_resources_texts.md),
 [name-driven authorization](README_advanced_07_authorization.md)) can be watched
@@ -261,30 +261,36 @@ enumerates.
 
 ## 6. Client field rendering
 
-The parsed matrix flows up through the backend seam and into the installed
-adapter. `LiveAppBackend.itemFieldStates`
+The parsed matrix flows up through the backend seam and is cached on the session.
+`LiveAppBackend.itemFieldStates`
 (`advanced_app_client/lib/backend/live_app_backend.dart:84`) returns it to
 `AppSession.loadFieldStates`
-(`advanced_app_client/lib/app/app_session.dart:149`), which stores it as the
-current matrix **and pushes it into the adapter** the form resolves against
-(`:160-163`):
+(`advanced_app_client/lib/app/app_session.dart`), which stores it as the current
+matrix (`currentFieldStates`):
 
 ```dart
 void _setFieldStates(Map<String, TomAuthState> states) {
-  _currentFieldStates = states;
-  authorizationAdapter.states = states;   // the form now resolves grades for THIS item
+  _currentFieldStates = states;   // the screen stamps THIS item's grades onto its fields
 }
 ```
 
-That adapter was installed **once** at startup —
-`TomAuthorization.adapter = session.authorizationAdapter`
-(`advanced_app_client/lib/main.dart:42`). From here the form takes over: each
-`TodoItemForm` field self-addresses as `todo.item.<field>`
+The item detail screen then stamps each gradable field with a per-field
+authorizer (`advanced_app_client/lib/screens/item_detail_screen.dart:99-102`):
+
+```dart
+for (final field in form.gradableFields) {
+  field.authorizer =
+      TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none);
+}
+```
+
+There is **no** installed authorization adapter. From here the form takes over:
+each `TodoItemForm` field self-addresses as `todo.item.<field>`
 ([A2](README_advanced_A2_resource_scope_conventions.md)) and runs
-`resolveEffectiveAuth`, whose layer-1 lookup is
-`TomAuthorization.resolveAuth(basePath)` — answered by the adapter we just fed
-([A1](README_advanced_A1_authorization_state_machine.md)). The four states paint
-the widget:
+`resolveEffectiveAuth`, whose **layer-4** step
+(`authorizer.effectiveAuth(state)`) applies the fixed grade just stamped
+([A1](README_advanced_A1_authorization_state_machine.md)); layers 1 and 3 stay at
+the permissive no-adapter default. The four states paint the widget:
 
 | Field | `val`'s grade | Renders as |
 | --- | --- | --- |
@@ -348,7 +354,7 @@ live proof that this appendix's six steps hold against sockets, not just on pape
 - `advanced_app_server/lib/src/access/resource_access_resolver.dart:115`,`:147`;
   `advanced_app_server/lib/src/access/field_grade_resolver.dart:65`,`:73`
 - `advanced_client_core/lib/src/api/app_api_client.dart:145`,`:229`,`:246`;
-  `advanced_app_client/lib/app/app_session.dart:149`,`:160`; `advanced_app_client/lib/main.dart:42`
+  `advanced_app_client/lib/app/app_session.dart` (`loadFieldStates`/`currentFieldStates`); `advanced_app_client/lib/screens/item_detail_screen.dart:99-102`
 - `run_cross_tier_integration.sh` (the same loop, executed live)
 - Companions: [06](README_advanced_06_authentication.md) ·
   [07](README_advanced_07_authorization.md) ·

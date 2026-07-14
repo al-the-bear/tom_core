@@ -9,10 +9,10 @@ what the client form resolves against — so granting a role `read` on
 `todo.item.title` makes the title field render read-only with no per-screen
 glue. This part covers the four-state grade model, how a field's `basePath`
 *becomes* its grade key, the grant matrix and the two server resolvers that
-compute it, the one adapter installed at startup, the implicit (adapter) vs
-override (`TomAuthorizer.fixed`) paths, and the route-level role gate that
-guards admin CRUD. The state machine itself is the deep dive in
-[A1](README_advanced_A1_authorization_state_machine.md).
+compute it, how the item screen stamps each gradable field with a per-field
+`TomAuthorizer.fixed` (there is **no** installed authorization adapter), and the
+route-level role gate that guards admin CRUD. The state machine itself is the
+deep dive in [A1](README_advanced_A1_authorization_state_machine.md).
 
 ## The four-state field authorization model
 
@@ -114,57 +114,48 @@ The result is sent to the client as a `List<GradedFieldDto>` from the
 > the UI *shows*; the server independently re-checks what it *accepts*. A
 > tampered client cannot widen its own grades.
 
-## The single installed adapter
+## Per-field stamping on the client (no installed adapter)
 
-On the client, that grade matrix flows into **one** adapter installed **once**
-at startup — `FieldStateAuthorizationAdapter`
-(`advanced_app_client/lib/app/field_state_authorization_adapter.dart`), set as
-`TomAuthorization.adapter = session.authorizationAdapter`
-(`advanced_app_client/lib/main.dart:42`). It is a `TomAuthorizationAdapter`
-over a **repointable** `Map<String, TomAuthState> states` matrix: as the session
-opens each item it assigns that item's freshly fetched matrix
-(`AppSession.currentFieldStates`, D-A3), and the installed singleton reflects
-the item in view with no reinstall. The adapter never calls the backend — it is
-a pure projection of state the session already holds, which keeps `resolveAuth`
-synchronous as it must be.
+On the client, that grade matrix is applied **per field**, not through a global
+adapter. When the item detail screen opens an item it fetches the item's grade
+matrix (`AppSession.loadFieldStates(itemId)` → `GET /items/{id}/field-states`,
+kept as `AppSession.currentFieldStates`, D-A3) and then stamps each gradable
+field with a **layer-4 fixed authorizer**
+(`advanced_app_client/lib/screens/item_detail_screen.dart:99-102`):
 
-Because the adapter sits on the `TomAuthorization` **singleton**, *every* field
-in the app routes its layer-1 lookup through it — the login form, the board, the
-dialogs, not just graded item fields. A naive flat map returning the closed-safe
-`none` for any unknown path would therefore hide the login screen. So the
-adapter guards a single explicit **namespace** (`gradableKeys`, defaulting to
-the inline `_gradableItemKeys` set of `todo.item.*` keys) and resolves in four
-steps
-(`field_state_authorization_adapter.dart:77-100`):
+```dart
+for (final field in form.gradableFields) {
+  field.authorizer =
+      TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none);
+}
+```
 
-1. an exact grade for the path wins;
-2. a structural **ancestor** of a gradable key (the form node `todo.item`, the
-   scope `todo`) resolves **permissively** (`full`) so the layer-3 form narrow
-   does not clobber the per-field grades;
-3. a **known** gradable leaf with no grade in the live matrix → `none`
-   (closed-safe);
-4. anything **outside** the namespace → `full` (the kernel's no-adapter
-   default), staying out of the way of login/board/dialogs.
+`states[field.basePath]` is the DB-resolved grade for that field's wire key
+(`todo.item.<field>`); an unsent gradable key defaults to `TomAuthState.none` —
+**closed-safe** (D-A4): the field collapses rather than leaking an editable
+control. There is **no** `TomAuthorization.adapter` on the singleton, so the
+kernel's permissive no-adapter default applies to every *non-gradable* field
+(login, board, dialogs) untouched — the screen never has to carve out a
+namespace to keep the login screen visible.
 
-## Implicit vs override paths
+This deliberately replaced an earlier design that installed one
+`FieldStateAuthorizationAdapter` on the `TomAuthorization` singleton and
+repointed its matrix per item. That approach forced the adapter to special-case
+a `gradableKeys` namespace (so a closed-safe `none` would not hide the login
+form) and routed *every* field's layer-1 lookup through the singleton. Stamping
+each gradable field directly is simpler, keeps `none` scoped to the fields that
+opt into grading, and needs no global installation step (D-A5).
 
-The sample deliberately shows **both** authorization paths, clearly labelled —
-because not every form should be driven by a server matrix.
+## Where per-field authorizers also appear
 
-- **Implicit (the adapter path).** The item form (`todo_item_form.dart`) carries
-  **no** per-field authorizers: each field's grade comes entirely from the
-  installed adapter via layer 1. The realignment *removed* the old
-  `TomAuthorizer.fixed(...)` and the `*Override` label arguments rather than
-  keeping them as a fallback — a fixed authorizer (layer 4) or a label override
-  (highest priority) would re-short-circuit the lookup and the resource/grade
-  systems would never be exercised (D-A5, D-A8). This is the headline rule in
-  action: scope the form correctly and authorization is automatic.
-- **Override (the per-field authorizer path).** The admin user and role forms
-  (`advanced_authadmin_client/lib/forms/user_form.dart`, `role_form.dart`)
-  **keep** `TomAuthorizer.fixed(...)` — the create-vs-edit shaping (`username`
-  read-only on edit, a stable key) is a legitimate **layer-4** concern with no
-  server grade matrix behind it. The group form has neither, needing no shaping.
-  This is the *correct* use of the override layer (D-A5).
+The item screen is not the only place a per-field `TomAuthorizer.fixed(...)`
+appears — the admin user and role forms
+(`advanced_authadmin_client/lib/forms/user_form.dart`, `role_form.dart`) use it
+for **create-vs-edit shaping** (`username` read-only on edit, a stable key),
+which is a legitimate **layer-4** concern with no server grade matrix behind it.
+The group form has neither, needing no shaping. Both uses — the item screen's
+DB-resolved grades and the admin forms' create/edit shaping — are the *correct*
+use of the layer-4 authorizer (D-A5).
 
 The full five-layer order is in `TomField.resolveEffectiveAuth()`
 (`tom_form.dart:807`): (1) resource-based via `basePath`, (2) group auth, (3)
