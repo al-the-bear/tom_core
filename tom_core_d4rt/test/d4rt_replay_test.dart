@@ -242,6 +242,50 @@ void main() {
     );
   });
 
+  group('tom_doc_scanner', () {
+    test(
+      'tom_doc_scanner classes',
+      () async {
+        final result = await helper
+            .runReplay('test/replay/test_d4rt_tom_doc_scanner.d4rt');
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
+  });
+
+  group('tom_doc_specs', () {
+    test(
+      'tom_doc_specs classes',
+      () async {
+        final result =
+            await helper.runReplay('test/replay/test_d4rt_tom_doc_specs.d4rt');
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
+  });
+
+  group('tom_md2latex', () {
+    test(
+      'tom_md2latex classes',
+      () async {
+        final result =
+            await helper.runReplay('test/replay/test_d4rt_tom_md2latex.d4rt');
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
+  });
+
+  group('tom_md2pdf', () {
+    test(
+      'tom_md2pdf classes',
+      () async {
+        final result =
+            await helper.runReplay('test/replay/test_d4rt_tom_md2pdf.d4rt');
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
+  });
+
   group('tom_vscode', () {
     test(
       'tom_vscode_scripting_api classes',

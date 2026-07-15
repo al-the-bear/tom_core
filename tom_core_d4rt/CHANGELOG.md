@@ -1,3 +1,14 @@
+## 1.0.1
+
+### Testing
+
+- **Wired every bridge-module replay test into the Dart harness.** The
+  `test_d4rt_tom_doc_scanner`, `test_d4rt_tom_doc_specs`, `test_d4rt_tom_md2latex`,
+  and `test_d4rt_tom_md2pdf` replay files existed under `test/replay/` but were
+  not referenced by `test/d4rt_replay_test.dart`, so `dart test` / `testkit`
+  never ran them. Added a group per module; the harness now covers all 11
+  bridged Tom packages (`d4rt test` is 24/24 green). No source or bridge change.
+
 ## 1.0.0
 
 - Initial release of the D4rt scripting tool with full Tom Framework bridge
