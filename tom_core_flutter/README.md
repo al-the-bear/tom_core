@@ -229,6 +229,6 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 
 ## Status
 
-- **Version:** 1.2.0
-- **Tests:** 5 module suites (run with `flutter test`).
+- **Version:** 1.2.1
+- **Tests:** 47 tests across 5 module suites (run with `flutter test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

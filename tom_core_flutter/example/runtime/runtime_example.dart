@@ -26,11 +26,17 @@ void run() {
       'isMobile=${utils.isMobile()}');
   print('isolate=${utils.getIsolateName()}');
 
+  // Example 4: the browser location is web-only; on native it is null. The
+  // variant's toString names which implementation was selected.
+  print('browserLocation=${utils.getBrowserLocation()}');
+  print('variant=$utils');
+
   // Assertions — running under the VM (native IO branch): not web, and exactly
   // one of desktop/mobile families applies.
   assert(!utils.isWeb());
   assert(utils.isDesktop() || utils.isMobile());
   assert(utils.getIsolateName().isNotEmpty);
+  assert(utils.getBrowserLocation() == null);
 }
 
 void main() => run();

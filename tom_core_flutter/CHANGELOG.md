@@ -1,3 +1,28 @@
+## 1.2.1
+
+### Tests / Examples
+
+- **Full-surface scaling (RCF3).** Closed the remaining public-surface gaps in
+  the per-module test and example coverage (no public API change; 39 → 47 test
+  cases across the 5 module suites).
+  - **little_things**: added forwarding tests for the two constructor arguments
+    that were previously unexercised — `stack` (the raw trace object, plus the
+    derived `stackTrace` string) and `autoLog` — on both `TomClientException`
+    and `TomClientUIException`; extended the example to show `parameters` +
+    `stack` forwarding.
+  - **resources**: added coverage for the `withDefault` named constructor of all
+    four typed subclasses (`TomStringProperty`, `TomIntProperty`,
+    `TomDoubleProperty`, `TomBoolProperty`) across both the present-key and
+    absent-key branches (previously only `Int`/`String` were exercised);
+    extended the example with `TomDoubleProperty` and a present-wins-over-default
+    case.
+  - **runtime**: added tests for the previously-uncovered
+    `TomFlutterPlatformUtils` surface — `getBrowserLocation()` (null on the
+    native branch), `toString()` (identifies the IO variant), and `out` /
+    `outError` (side-effect-only, no throw); extended the example accordingly.
+  - **observing** and **security** already covered their full public surface
+    (no additions needed).
+
 ## 1.2.0
 
 ### Removed

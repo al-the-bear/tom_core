@@ -25,6 +25,25 @@ void main() {
       final ex = TomClientException('client.error', 'msg');
       expect(ex, isNot(isA<TomClientUIException>()));
     });
+
+    // Full-surface: the constructor forwards every optional argument to the
+    // kernel TomException. `parameters`/`rootException` are covered above; these
+    // pin the remaining two — `stack` (the raw trace object) and `autoLog`.
+    test('forwards the stack trace object to the kernel exception', () {
+      final trace = StackTrace.current;
+      final ex = TomClientException('client.error', 'msg', stack: trace);
+      expect(identical(ex.stack, trace), isTrue);
+      // The formatted representation is derived from the forwarded trace.
+      expect(ex.stackTrace, isNotEmpty);
+    });
+
+    test('forwards the autoLog flag (default false, honours true)', () {
+      expect(TomClientException('client.error', 'msg').autoLog, isFalse);
+      expect(
+        TomClientException('client.error', 'msg', autoLog: true).autoLog,
+        isTrue,
+      );
+    });
   });
 
   group('TomClientUIException', () {
@@ -34,6 +53,20 @@ void main() {
       expect(ex, isA<TomException>());
       expect(ex.key, 'ui.error');
       expect(ex.defaultUserMessage, 'Please try again');
+    });
+
+    test('forwards stack, parameters and autoLog through both super calls', () {
+      final trace = StackTrace.current;
+      final ex = TomClientUIException(
+        'ui.error',
+        'Please try again',
+        parameters: {'retryable': true},
+        stack: trace,
+        autoLog: true,
+      );
+      expect(ex.parameters, {'retryable': true});
+      expect(identical(ex.stack, trace), isTrue);
+      expect(ex.autoLog, isTrue);
     });
 
     test('type discriminates user-facing from internal client errors', () {

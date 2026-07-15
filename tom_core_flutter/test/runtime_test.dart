@@ -104,4 +104,22 @@ void main() {
   test('reports a non-empty isolate name', () {
     expect(clientPlatformUtils.getIsolateName(), isNotEmpty);
   });
+
+  test('has no browser location on the native branch', () {
+    // getBrowserLocation is meaningful only on the web variant; the native IO
+    // implementation returns null.
+    expect(clientPlatformUtils.getBrowserLocation(), isNull);
+  });
+
+  test('toString identifies the native IO variant', () {
+    expect(clientPlatformUtils.toString(), contains('io'));
+  });
+
+  test('out and outError write without throwing', () {
+    // Both delegate to print on the native branch; assert they are callable and
+    // side-effect-only (no return, no throw).
+    final utils = clientPlatformUtils;
+    expect(() => utils.out('hello'), returnsNormally);
+    expect(() => utils.outError('oops'), returnsNormally);
+  });
 }

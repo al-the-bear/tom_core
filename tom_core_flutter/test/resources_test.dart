@@ -53,6 +53,31 @@ void main() {
       expect(TomStringProperty.withDefault('app.title', 'Fallback').get(),
           'Fallback');
     });
+
+    // Full-surface: every typed subclass exposes a `withDefault` named
+    // constructor. Exercise all four across both branches (present key wins /
+    // absent key falls back) so no subclass constructor is left uncovered.
+    test('all four typed subclasses honour a present config value', () {
+      installConfig({
+        'app.title': 'Present',
+        'app.retries': 9,
+        'app.ratio': 2.5,
+        'app.flag': true,
+      });
+      expect(TomStringProperty.withDefault('app.title', 'x').get(), 'Present');
+      expect(TomIntProperty.withDefault('app.retries', 0).get(), 9);
+      expect(TomDoubleProperty.withDefault('app.ratio', 0.0).get(), 2.5);
+      expect(TomBoolProperty.withDefault('app.flag', false).get(), isTrue);
+    });
+
+    test('all four typed subclasses fall back when the key is absent', () {
+      installConfig({});
+      expect(TomStringProperty.withDefault('app.title', 'Fallback').get(),
+          'Fallback');
+      expect(TomIntProperty.withDefault('app.retries', 5).get(), 5);
+      expect(TomDoubleProperty.withDefault('app.ratio', 1.25).get(), 1.25);
+      expect(TomBoolProperty.withDefault('app.flag', true).get(), isTrue);
+    });
   });
 
   group('type mismatch', () {

@@ -18,25 +18,34 @@ void run() {
     TomConfigResourceProvider.from({
       'app.title': 'Tom Demo',
       'app.retries': 3,
+      'app.ratio': 1.5,
       'app.flag': true,
     }),
   );
 
-  // Example 1: typed properties resolve their value at construction.
+  // Example 1: all four typed properties resolve their value at construction.
   final title = TomStringProperty('app.title');
   final retries = TomIntProperty('app.retries');
+  final ratio = TomDoubleProperty('app.ratio');
   final flag = TomBoolProperty('app.flag');
-  print('title=${~title} retries=${retries.get()} flag=${~flag}');
+  print('title=${~title} retries=${retries.get()} '
+      'ratio=${~ratio} flag=${~flag}');
 
   // Example 2: a default fills in when the key is absent.
   final timeout = TomIntProperty.withDefault('app.timeout', 30);
   print('timeout (defaulted)=${~timeout}');
 
+  // Example 3: withDefault prefers a present config value over the default.
+  final ratioOrDefault = TomDoubleProperty.withDefault('app.ratio', 9.9);
+  print('ratio (present wins over default)=${~ratioOrDefault}');
+
   // Assertions
   assert(~title == 'Tom Demo');
   assert(retries.get() == 3);
+  assert(~ratio == 1.5);
   assert(~flag == true);
   assert(~timeout == 30);
+  assert(~ratioOrDefault == 1.5);
 }
 
 void main() => run();

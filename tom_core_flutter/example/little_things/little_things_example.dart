@@ -30,10 +30,24 @@ void run() {
   print('surfaced ui identical: ${identical(surfacedUi, uiError)}');
   print('surfaced internal wraps root: ${surfacedInternal.rootException == internal}');
 
+  // Example 4: the client exceptions forward the full kernel payload —
+  // `parameters` for diagnostics, `stack` for the captured trace, and
+  // `autoLog` to log on creation.
+  final detailed = TomClientException(
+    'upload.failed',
+    'Upload failed',
+    parameters: {'bytes': 2048, 'endpoint': '/files'},
+    stack: StackTrace.current,
+  );
+  print('detailed params: ${detailed.parameters}');
+  print('detailed stack captured: ${detailed.stackTrace.isNotEmpty}');
+
   // Assertions
   assert(internal is! TomClientUIException);
   assert(identical(surfacedUi, uiError));
   assert(surfacedInternal.rootException == internal);
+  assert(detailed.parameters!['bytes'] == 2048);
+  assert(detailed.stackTrace.isNotEmpty);
 }
 
 void main() => run();
