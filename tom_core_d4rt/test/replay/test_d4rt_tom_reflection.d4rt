@@ -151,6 +151,55 @@ verifyNotNull(VariableMirror, 'VariableMirror class exists');
 verifyNotNull(ParameterMirror, 'ParameterMirror class exists');
 
 # =============================================================================
+# Test: remaining constructable capability + value classes (RCF5)
+# InvokingMetaCapability(Type) carries a metadata Type like the other
+# *MetaCapability markers; Comment(text, trimmedText, isDocComment) is a value
+# object whose three getters must round-trip through the bridge.
+# =============================================================================
+
+var invMeta = InvokingMetaCapability(String);
+verifyNotNull(invMeta, 'InvokingMetaCapability created');
+verifyNotNull(invMeta.metadataType, 'InvokingMetaCapability metadataType getter');
+
+var comment = Comment('/// docs', 'docs', true);
+verifyEquals(comment.text, '/// docs', 'Comment text preserved');
+verifyEquals(comment.trimmedText, 'docs', 'Comment trimmedText preserved');
+verifyEquals(comment.isDocComment, true, 'Comment isDocComment preserved');
+
+# =============================================================================
+# Test: remaining capability CLASS tokens (RCF5)
+# These are the class tokens for capabilities previously reached only through
+# their const singleton (metadataCapability, uriCapability, …) or that require a
+# Reflection instance to construct (Global*/ImportAttached — existence only).
+# Pinning the class token fails the replay if a generator regression drops the
+# bridge registration.
+# =============================================================================
+
+verifyNotNull(MetadataCapability, 'MetadataCapability class exists');
+verifyNotNull(TypeRelationsCapability, 'TypeRelationsCapability class exists');
+verifyNotNull(LibraryDependenciesCapability, 'LibraryDependenciesCapability class exists');
+verifyNotNull(UriCapability, 'UriCapability class exists');
+verifyNotNull(TypeAnnotationQuantifyCapability, 'TypeAnnotationQuantifyCapability class exists');
+verifyNotNull(ReflecteeQuantifyCapability, 'ReflecteeQuantifyCapability class exists');
+verifyNotNull(GlobalQuantifyCapability, 'GlobalQuantifyCapability class exists');
+verifyNotNull(GlobalQuantifyMetaCapability, 'GlobalQuantifyMetaCapability class exists');
+verifyNotNull(ImportAttachedCapability, 'ImportAttachedCapability class exists');
+
+# =============================================================================
+# Test: remaining mirror interfaces + SourceLocation (RCF5)
+# Abstract types — existence only, matching the mirror-interface block above.
+# Together with that block these pin every bridged mirror type.
+# =============================================================================
+
+verifyNotNull(ClosureMirror, 'ClosureMirror class exists');
+verifyNotNull(FunctionTypeMirror, 'FunctionTypeMirror class exists');
+verifyNotNull(TypeVariableMirror, 'TypeVariableMirror class exists');
+verifyNotNull(TypedefMirror, 'TypedefMirror class exists');
+verifyNotNull(LibraryDependencyMirror, 'LibraryDependencyMirror class exists');
+verifyNotNull(CombinatorMirror, 'CombinatorMirror class exists');
+verifyNotNull(SourceLocation, 'SourceLocation class exists');
+
+# =============================================================================
 # Summary
 # =============================================================================
 

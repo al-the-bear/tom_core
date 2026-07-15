@@ -1,3 +1,25 @@
+## 1.0.2
+
+### Tests
+
+- **Extended the `tom_reflection` replay to exhaustive per-bridge coverage
+  (RCF5).** `test/replay/test_d4rt_tom_reflection.d4rt` now references *every*
+  class the `tom_reflection_bridges.b.dart` container registers — no bridged
+  type is left unexercised. Added the previously-uncovered constructable markers
+  and value objects (`InvokingMetaCapability(Type)` with its `metadataType`
+  getter; `Comment(text, trimmedText, isDocComment)` with all three getters
+  round-tripping), the remaining capability class tokens
+  (`MetadataCapability`, `TypeRelationsCapability`,
+  `LibraryDependenciesCapability`, `UriCapability`,
+  `TypeAnnotationQuantifyCapability`, `ReflecteeQuantifyCapability`,
+  `GlobalQuantifyCapability`, `GlobalQuantifyMetaCapability`,
+  `ImportAttachedCapability`), and the remaining mirror interfaces plus
+  `SourceLocation` (`ClosureMirror`, `FunctionTypeMirror`, `TypeVariableMirror`,
+  `TypedefMirror`, `LibraryDependencyMirror`, `CombinatorMirror`). A registered
+  name→reference cross-check confirms zero gaps. Replay green (Result: PASSED,
+  206 lines executed); full 24-group harness green. No source or bridge change —
+  bridged public behaviour is unchanged.
+
 ## 1.0.1
 
 ### Documentation
