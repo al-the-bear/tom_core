@@ -1,0 +1,266 @@
+# Tom Core Server API Reference: Cache Module
+
+Named in-memory caches with optional time-based expiry and LRU eviction, served
+from the main isolate and transparently forwarded to from worker isolates.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Class Hierarchy](#class-hierarchy)
+- [Classes](#classes)
+  - [TomCacheException](#tomcacheexception)
+  - [TomCacheEntry](#tomcacheentry)
+  - [TomCacheManager](#tomcachemanager)
+  - [TomCache](#tomcache)
+  - [TomCacheStoreMessage](#tomcachestoremessage)
+  - [TomCacheRemoveMessage](#tomcacheremovemessage)
+  - [TomCacheRetrieveMessage](#tomcacheretrievemessage)
+- [Global Functions and Constants](#global-functions-and-constants)
+
+## Overview
+
+Source: `lib/src/tomserver/cache/server_cache.dart`.
+
+`TomCache` is a named in-memory cache of `TomCacheEntry` values keyed by string.
+A cache may be unbounded (a plain map with optional time-based expiry) or
+bounded (`maximumEntries` set, LRU eviction). Two background timers can be
+installed: a deletion timer that drops expired entries and a clearance timer that
+empties the whole cache. The static `…NameCache` / `…TypeCache` helpers look the
+cache up through `TomCacheManager` and, in a worker isolate that does not hold
+the cache, forward the operation to the main isolate.
+
+`TomCacheManager` holds the named `TomCache` instances for an isolate and decides
+whether operations run locally or are forwarded. `TomCacheException` is raised
+when an operation cannot complete. `TomCacheStoreMessage`,
+`TomCacheRemoveMessage`, and `TomCacheRetrieveMessage` are cross-isolate commands
+that carry store/remove/read operations to the main isolate.
+
+## Class Hierarchy
+
+```
+TomServerException  (little_things)
+    └── TomCacheException
+
+TomCacheEntry
+
+TomCacheManager
+
+TomCache
+
+TomCommand  (kernel)
+    ├── TomCacheStoreMessage
+    ├── TomCacheRemoveMessage
+    └── TomCacheRetrieveMessage
+```
+
+## Classes
+
+### TomCacheException
+
+Raised by the cache API when an operation cannot be completed: the named cache
+does not exist in this isolate (and cannot be forwarded), or a retrieved value
+does not match the requested type parameter.
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomCacheException(
+  String key,
+  String userMessage, {
+  Map<String, dynamic>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool? autoLog,
+})
+```
+
+### TomCacheEntry
+
+A single cached value paired with the optional `deletionTime` after which it is
+considered expired.
+
+#### Constructors
+
+```dart
+TomCacheEntry(Object? value, [DateTime? deletionTime])
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `deletionTime` | `DateTime?` | The instant after which this entry is expired; `null` means it does not expire on its own. |
+| `value` | `Object?` | The cached value. |
+
+### TomCacheManager
+
+Holds the set of named `TomCache` instances for an isolate and decides whether
+cache operations run locally or are forwarded to the creator isolate.
+
+#### Constructors
+
+```dart
+TomCacheManager([bool useInThisIsolate = false])
+```
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `setCurrent` | `static TomCacheManager setCurrent(TomCacheManager manager)` | Replaces the process-wide current manager and returns it. |
+| `getCache` | `static TomCache? getCache(String name)` | Returns the cache registered under `name`, or `null` if none is. |
+| `addCache` | `static void addCache(TomCache cache)` | Registers `cache` under its `cacheName`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `useInThisIsolate` | `bool` | Whether caches are served from this isolate; always `true` in the main isolate, `false` in a worker forwards missing-cache operations to the creator. |
+
+### TomCache
+
+A named in-memory cache of `TomCacheEntry` values keyed by string, either
+unbounded or bounded (LRU).
+
+#### Constructors
+
+```dart
+TomCache(
+  String cacheName, {
+  int? deleteEntriesAfterSeconds,
+  int? deletionIntervalSeconds = 3600,
+  int? maximumEntries,
+  int? clearIntervalSeconds,
+})
+
+factory TomCache.forType(
+  Type type, {
+  int? deleteEntriesAfterSeconds,
+  int? deletionIntervalSeconds = 3600,
+  int? maximumEntries,
+  int? clearIntervalSeconds,
+})
+```
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `fromTypeCache` | `static Future<T?> fromTypeCache<T>(String key)` | Reads the value of type `T` keyed by `key` from the cache named after `T`. |
+| `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate. |
+| `toTypeCache` | `static Future<int> toTypeCache<T>(String key, Object? value)` | Stores `value` under `key` in the cache named after `T`. |
+| `toNameCache` | `static Future<int> toNameCache(String cacheName, String key, Object? value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; always returns `0`. |
+| `removeFromTypeCache` | `static Future<int> removeFromTypeCache<T>(String key)` | Removes the entry keyed by `key` from the cache named after `T`. |
+| `removeFromNameCache` | `static Future<int> removeFromNameCache(String cacheName, String key)` | Removes the entry keyed by `key` from cache `cacheName`; forwards from a worker isolate; always returns `0`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `cacheName` | `String` | The name this cache is registered under in `TomCacheManager` (final). |
+| `deletionIntervalSeconds` | `int?` | How often (seconds) the deletion timer sweeps expired entries; `null` disables it (default 3600, final). |
+| `deleteEntriesAfterSeconds` | `int?` | Default lifetime (seconds) applied when no explicit deletion time is given; `null` means no age expiry (final). |
+| `clearIntervalSeconds` | `int?` | How often (seconds) the clearance timer empties the whole cache; `null` disables it (final). |
+| `maximumEntries` | `int?` | Upper bound on entries; `null` makes the cache unbounded, a value turns on LRU eviction (final). |
+| `deletionTimer` | `Timer?` | The periodic timer that sweeps expired entries, or `null` if disabled. |
+| `clearanceTimer` | `Timer?` | The periodic timer that clears the whole cache, or `null` if disabled. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `removeEntry` | `void removeEntry(String key)` | Removes the entry stored under `key`, unlinking it from the MRU list if the cache is bounded; a no-op when the key is absent. |
+| `getEntry` | `TomCacheEntry? getEntry(String key)` | Returns the entry under `key`, or `null` if absent; in a bounded cache the entry is promoted to most-recently-used. Does not check expiry. |
+| `putEntry` | `void putEntry(String key, TomCacheEntry entry)` | Stores `entry` under `key` at the most-recently-used position; in a bounded cache, exceeding `maximumEntries` evicts the least-recently-used entry. |
+| `createTimers` | `void createTimers()` | Cancels any running timers and installs the deletion and/or clearance timers for which an interval is configured. |
+| `stopTimers` | `void stopTimers()` | Cancels the deletion and clearance timers if they are running. |
+| `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`. |
+| `createClearanceTimer` | `Timer createClearanceTimer()` | Builds the periodic timer that empties the entire cache. |
+
+### TomCacheStoreMessage
+
+Cross-isolate command that stores `value` under `key` in cache `cacheName`,
+dispatched to the main isolate when a worker stores into a cache it does not
+hold.
+
+- **Extends:** `TomCommand`
+
+#### Constructors
+
+```dart
+TomCacheStoreMessage(String cacheName, String key, Object? value, DateTime? deletionTime)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `cacheName` | `String` | Name of the target cache. |
+| `key` | `String` | Entry key. |
+| `value` | `Object?` | Value to store. |
+| `deletionTime` | `DateTime?` | Optional expiry instant. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<bool> execute()` | *(override)* Stores the value in the main-isolate cache and returns `true`. |
+
+### TomCacheRemoveMessage
+
+Cross-isolate command that removes `key` from cache `cacheName`, dispatched to
+the main isolate when a worker removes from a cache it does not hold.
+
+- **Extends:** `TomCommand`
+
+#### Constructors
+
+```dart
+TomCacheRemoveMessage(String cacheName, String key)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `cacheName` | `String` | Name of the target cache. |
+| `key` | `String` | Entry key to remove. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<bool> execute()` | *(override)* Removes the entry from the main-isolate cache and returns `true`. |
+
+### TomCacheRetrieveMessage
+
+Cross-isolate command that reads `key` from cache `cacheName` and returns the
+value, dispatched to the main isolate when a worker reads from a cache it does
+not hold.
+
+- **Extends:** `TomCommand`
+
+#### Constructors
+
+```dart
+TomCacheRetrieveMessage(String cacheName, String key)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `cacheName` | `String` | Name of the target cache. |
+| `key` | `String` | Entry key to read. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<Object?> execute()` | *(override)* Reads the entry from the main-isolate cache and returns its value. |
+
+## Global Functions and Constants
+
+None — this module exposes no top-level functions or constants.

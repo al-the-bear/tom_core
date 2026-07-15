@@ -1,3 +1,23 @@
+## 1.1.1
+
+### Documentation
+
+- **API reference (OT7).** Added a per-module API summary set under
+  `doc/api_reference/` following
+  `_copilot_guidelines/dart/api_summary_creation.md` — one
+  `api_summary_{module}.md` for each of the 13 real modules (`authentication`,
+  `authorization`, `cache`, `cmdline`, `configuration`, `datasources`,
+  `db_migration`, `endpoints`, `healthcheck`, `little_things`,
+  `object_persistence`, `server`, `transactions`) plus an
+  `api_summary_index.md` with quick navigation, per-module type tables, and an
+  alphabetical type index (~110 public types). Each summary lists only the
+  public surface (constructors, properties, methods, operators, enums, and
+  top-level functions/constants) cross-checked against the actual source and
+  the package barrel. Placed under `doc/api_reference/` because this repo
+  gitignores `**/doc/api/` (reserved for generated `dart doc` HTML). This
+  delivers the "optional API summaries" deferred from the 1.1.0 OT3 pass
+  (quest todo RCE4). No source or public API change.
+
 ## 1.1.0
 
 > **OT3 verification (2026-07-15).** Re-confirmed the whole-package gates —

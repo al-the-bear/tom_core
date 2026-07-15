@@ -238,6 +238,11 @@ apps get the full kernel API through one dependency. See the
 
 - Per-module guides under [`doc/`](doc/) — one markdown file per module
   (`doc/object_persistence.md`, `doc/datasources.md`, `doc/endpoints.md`, …).
+- Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
+  start at
+  [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md)
+  for the type index and one `api_summary_{module}.md` per module.
+  (`doc/api/` is reserved for generated `dart doc` HTML and is gitignored.)
 - [`tom_core_kernel`](../tom_core_kernel/README.md) — the platform-neutral
   building blocks this layer is composed from.
 - [`tom_core_d4rt`](../tom_core_d4rt/README.md) — exposes the server API to
@@ -245,7 +250,7 @@ apps get the full kernel API through one dependency. See the
 
 ## Status
 
-- **Version:** 1.1.0
+- **Version:** 1.1.1
 - **Tests:** 218 test cases across 15 module suites (run with `testkit :test`
   or `dart test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

@@ -1,0 +1,134 @@
+# Tom Core Server API Reference: Server Module
+
+The HTTP entry point of a Tom server application: the `TomServer` that assembles
+a shelf pipeline (context setup, error handling, authentication, logging) in
+front of the endpoint router and binds it to a socket, plus the middleware,
+helpers, and per-request state that make up that pipeline.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Class Hierarchy](#class-hierarchy)
+- [Classes](#classes)
+  - [TomRequestId](#tomrequestid)
+  - [TomRequestLogInfo](#tomrequestloginfo)
+  - [TomServer](#tomserver)
+- [Global Functions and Constants](#global-functions-and-constants)
+
+## Overview
+
+Source: `lib/src/tomserver/server/server.dart`.
+
+`TomServer` is built from a `TomBaseServerConfiguration`. Its `start` method
+initialises the endpoint `Router` (via `TomEndpointRouting`), composes a shelf
+`Pipeline` — `contextSetupMiddleware` (seeds a `TomRequestLogInfo`), an outer
+error layer, `tomDefaultAuthenticationMiddleware`, an inner error layer, and
+`tomLoggingMiddleware` — optionally wraps the router in a `Cascade` with pre/post
+handlers, and binds the socket (with TLS unless `noSsl`).
+
+The module exposes the composable middleware as top-level functions
+(`contextSetupMiddleware`, `tomDefaultAuthenticationMiddleware`,
+`tomLoggingMiddleware`), a credential helper (`extractAuthentication`), and a
+`noopHandler`. Per-request state travels in the request context
+(`TomRequestLogInfo`) and the request zone (`TomRequestId`).
+
+## Class Hierarchy
+
+```
+TomRequestId
+TomRequestLogInfo
+TomServer
+```
+
+All three classes are standalone (no Tom base class).
+
+## Classes
+
+### TomRequestId
+
+A per-request correlation id. `tomDefaultAuthenticationMiddleware` creates one
+per incoming request and publishes it into the request zone, so any code under
+that request can recover it with `getFromCurrentZone<TomRequestId>()`.
+
+#### Constructors
+
+```dart
+TomRequestId()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `uuid` | `String` | A freshly generated v4 UUID identifying this request (`late final`). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Returns `"TomRequestId: <uuid>"`. |
+
+### TomRequestLogInfo
+
+Per-request logging state carried in the shelf request context.
+`contextSetupMiddleware` seeds one under `contextName`; `tomLoggingMiddleware`
+reads it to decide whether to emit the access-log line and mark it logged.
+
+#### Constructors
+
+```dart
+TomRequestLogInfo()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `contextName` | `static const String` | The request-context key under which the `TomRequestLogInfo` is stored (`"loggingInfo"`). |
+| `hasBeenLogged` | `bool` | Whether the access-log line for this request has already been emitted. |
+| `shouldBeLogged` | `bool` | Whether this request should produce an access-log line at all. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Compact `should=`/`has=` description. |
+
+### TomServer
+
+The HTTP entry point of a Tom server application. Built from a
+`TomBaseServerConfiguration`, it assembles a shelf `Pipeline` in front of the
+endpoint `Router` and binds it to a socket in `start`.
+
+#### Constructors
+
+```dart
+TomServer(TomBaseServerConfiguration configuration)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configuration` | `TomBaseServerConfiguration` | The configuration that drives binding, TLS, and pipeline composition. |
+| `securityContext` | `SecurityContext?` | The TLS security context, built from the configuration when SSL is on. |
+| `router` | `Router?` | The endpoint router, initialised during `start`. |
+| `errorHandler` | `Response? Function(Request, Object, StackTrace)` | Maps a thrown error to a JSON error response (HTTP 500); overridable via the configuration. |
+| `authenticationErrorHandler` | `Response? Function(Request, Object, StackTrace)?` | Error handler applied by the outer pipeline layer; defaults to the configuration's handler, falling back to `errorHandler`. |
+| `loggingMiddleware` | `Middleware` | The middleware that emits the per-request access log (`late`; from the configuration). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `start` | `void start()` | *(async)* Initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. Fire-and-forget; does not return the `HttpServer`. |
+
+## Global Functions and Constants
+
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `contextSetupMiddleware` | `Middleware contextSetupMiddleware(String id, [Map<String, Object>? context])` | A pass-through shelf `Middleware` that merges `context` into a copy of the request context before the inner handler runs (`id` labels it for tracing). |
+| `extractAuthentication` | `(TomPrincipal?, TomClientJwtToken?) extractAuthentication(Request req)` | Extracts bearer credentials from the `Authorization` header, returning `(principal, token)`; either element is `null` when absent or unparseable (errors are swallowed). |
+| `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` and runs the inner handler in a zone exposing the request, execution context, principal, token, and a fresh `TomRequestId`. |
+| `tomLoggingMiddleware` | `Middleware tomLoggingMiddleware()` | The default request-logging middleware: emits one access-log line per request, guarded by the request's `TomRequestLogInfo`. |
+| `noopHandler` | `Handler noopHandler(String id, int statusCode)` | A `Handler` that ignores the request and always replies with `statusCode` (`id` labels it for tracing). |
