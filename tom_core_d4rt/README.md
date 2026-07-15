@@ -97,6 +97,26 @@ d4rt> var s = TomString('hi');
 d4rt> print(s.value);             // prints: hi
 ```
 
+## Examples
+
+Runnable DartScript examples live in [`example/`](example/) — one per key bridge
+module, written from a script author's point of view. Each prints its real
+runtime results in normal mode and self-asserts in `-test` mode:
+
+```bash
+dart run bin/d4rt.dart -run-replay example/01_crypto_example.d4rt          # prints results
+dart run bin/d4rt.dart -run-replay example/01_crypto_example.d4rt -test    # asserts, exit 0 on pass
+example/run_examples.sh                                                    # run all three
+```
+
+| File | Bridge module | Shows |
+| ---- | ------------- | ----- |
+| `01_crypto_example.d4rt` | crypto | Argon2 hash + verify round-trip, salt generation, JWT/RSA types |
+| `02_logging_example.d4rt` | logging | `TomLogger` construction, level by enum/name, log lines per severity |
+| `03_security_example.d4rt` | security | Principal model, ACL access checks, bearer auth, resource-role authorization |
+
+See [`example/README.md`](example/README.md) for details.
+
 ## Binaries: `d4rt` and `core_bs`
 
 This package and its sibling [`tom_core_bridge`](../tom_core_bridge/README.md)

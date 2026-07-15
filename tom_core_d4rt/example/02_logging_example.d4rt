@@ -1,0 +1,64 @@
+# =============================================================================
+# tom_core_d4rt example — Logging bridge (tom_core_kernel / tom_basics)
+#
+# Demonstrates the logging surface a DartScript author can call: constructing a
+# TomLogger, setting its level by enum value and by name, reading back the
+# active level, and emitting log lines at each severity.
+#
+# Run it (prints real results):
+#   dart run bin/d4rt.dart -run-replay example/02_logging_example.d4rt
+# Run it as a self-check (asserts, exit 0 on success):
+#   dart run bin/d4rt.dart -run-replay example/02_logging_example.d4rt -test
+#
+# Each statement is on a single line: the replay runner parses statements in
+# isolation and does not reassemble multi-line expressions.
+# =============================================================================
+
+print('=== 02: Logging bridge example ===');
+
+# --- 1. Construct a logger ----------------------------------------------------
+print('1. Construct a logger:');
+var logger = TomLogger();
+print('   - created TomLogger, default level pattern: ' + logger.logLevel.levelPattern.toString());
+
+# --- 2. Set the level by an enum value ----------------------------------------
+print('2. Set level by TomLogLevel enum:');
+logger.setLogLevel(TomLogLevel.warn);
+var warnPattern = logger.logLevel.levelPattern;
+print('   - after setLogLevel(warn), pattern: ' + warnPattern.toString());
+
+# --- 3. Set the level by name -------------------------------------------------
+print('3. Set level by name:');
+logger.setLogLevelByName('info');
+var infoPattern = logger.logLevel.levelPattern;
+print('   - after setLogLevelByName("info"), pattern: ' + infoPattern.toString());
+
+# --- 4. Switch to a verbose level and back ------------------------------------
+print('4. Switch to trace, then back to error:');
+logger.setLogLevel(TomLogLevel.trace);
+var tracePattern = logger.logLevel.levelPattern;
+print('   - after setLogLevel(trace), pattern: ' + tracePattern.toString());
+logger.setLogLevel(TomLogLevel.error);
+var errorPattern = logger.logLevel.levelPattern;
+print('   - after setLogLevel(error), pattern: ' + errorPattern.toString());
+
+# --- 5. Emit log lines at each severity ---------------------------------------
+print('5. Emit log lines (visible depending on the active level):');
+logger.setLogLevelByName('info');
+logger.trace('trace: fine-grained diagnostic detail');
+logger.debug('debug: developer diagnostic');
+logger.info('info: normal operational message');
+logger.warn('warn: something looks off');
+logger.error('error: an operation failed');
+print('   - emitted trace/debug/info/warn/error without throwing');
+
+# =============================================================================
+# Assertions (checked in -test mode)
+# =============================================================================
+verifyNotNull(logger, 'TomLogger constructed');
+verifyEquals(warnPattern, 16, 'setLogLevel(warn) yields level pattern 16');
+verifyEquals(infoPattern, 8, 'setLogLevelByName("info") yields level pattern 8');
+verifyEquals(tracePattern, 1, 'setLogLevel(trace) yields level pattern 1');
+verify(errorPattern != tracePattern, 'error level differs from trace level');
+
+testSummary();

@@ -1,0 +1,63 @@
+# =============================================================================
+# tom_core_d4rt example — Crypto bridge (tom_core_kernel / tom_crypto)
+#
+# Demonstrates the crypto surface a DartScript author can call: Argon2
+# password hashing + verification, salt generation, the tunable global hash
+# settings, and the JWT/RSA types the bridge exposes.
+#
+# Run it (prints real results):
+#   dart run bin/d4rt.dart -run-replay example/01_crypto_example.d4rt
+# Run it as a self-check (asserts, exit 0 on success):
+#   dart run bin/d4rt.dart -run-replay example/01_crypto_example.d4rt -test
+#
+# Each statement is on a single line: the replay runner parses statements in
+# isolation and does not reassemble multi-line expressions.
+# =============================================================================
+
+print('=== 01: Crypto bridge example ===');
+
+# --- 1. Inspect the default hashing configuration -----------------------------
+print('1. Default hashing configuration:');
+var saltLength = TomPasswordHasher.globalSettingDefaultSaltLength;
+print('   - default salt length (bytes): ' + saltLength.toString());
+var hashSpec = TomPasswordHasher.globalSettingDefaultHashSpec;
+print('   - default hash spec: ' + hashSpec);
+
+# --- 2. Generate a cryptographically secure salt ------------------------------
+print('2. Salt generation:');
+var salt = TomPasswordHasher.generateSalt(16);
+print('   - generated 16-byte salt (hex, ' + salt.length.toString() + ' chars): ' + salt);
+
+# --- 3. Hash a password, then verify it round-trips ---------------------------
+print('3. Hash + verify round-trip:');
+var record = TomPasswordHasher.hashPassword('correct horse battery staple');
+var storedHash = record.$1;
+var storedSpec = record.$2;
+print('   - stored hash (salt + separator + hash): ' + storedHash);
+print('   - stored spec: ' + storedSpec);
+var acceptsCorrect = TomPasswordHasher.verifyPassword('correct horse battery staple', storedHash, storedSpec);
+print('   - verify with correct password: ' + acceptsCorrect.toString());
+var rejectsWrong = TomPasswordHasher.verifyPassword('Tr0ub4dor&3', storedHash, storedSpec);
+print('   - verify with wrong password: ' + rejectsWrong.toString());
+
+# --- 4. JWT and RSA types exposed by the bridge -------------------------------
+print('4. JWT / RSA types:');
+var jwtError = TomJwtTokenException('JWT_EXPIRED', 'Token has expired');
+print('   - JWT exception key: ' + jwtError.key);
+print('   - JWT exception message: ' + jwtError.defaultUserMessage);
+print('   - RSA hash identifier: ' + tomRsaHashIdentifier.toString());
+
+# =============================================================================
+# Assertions (checked in -test mode)
+# =============================================================================
+verifyEquals(saltLength, 16, 'default salt length is 16 bytes');
+verifyEquals(hashSpec, 'Argon2;2i,13,4,65536,4,128', 'default hash spec is Argon2i');
+verifyEquals(salt.length, 32, '16-byte salt is 32 hex chars');
+verifyNotNull(storedHash, 'hashPassword produced a hash');
+verify(storedHash.length > 64, 'stored hash embeds salt and derived key');
+verifyEquals(acceptsCorrect, true, 'correct password verifies');
+verifyEquals(rejectsWrong, false, 'wrong password is rejected');
+verifyEquals(jwtError.key, 'JWT_EXPIRED', 'JWT exception preserves its key');
+verifyNotNull(tomRsaHashIdentifier, 'RSA hash identifier is available');
+
+testSummary();

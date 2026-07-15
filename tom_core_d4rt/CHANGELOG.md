@@ -1,5 +1,18 @@
 ## 1.0.1
 
+### Examples
+
+- **Added runnable DartScript examples for the key bridge modules.** New
+  `example/` folder with one `.d4rt` script per module — `01_crypto_example.d4rt`
+  (Argon2 hash + verify round-trip, salt generation, JWT/RSA types),
+  `02_logging_example.d4rt` (`TomLogger` construction, level by enum/name, log
+  lines per severity), and `03_security_example.d4rt` (principal model, ACL
+  access checks, bearer auth, resource-role authorization). Each prints real
+  runtime results in normal mode and self-asserts with `verify*` in `-test`
+  mode; `example/run_examples.sh` runs all three (3/3 green). Added an
+  `example/README.md` and an Examples section to the package README. No source
+  or bridge change.
+
 ### Testing
 
 - **Wired every bridge-module replay test into the Dart harness.** The
