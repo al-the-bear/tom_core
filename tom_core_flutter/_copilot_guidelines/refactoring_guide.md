@@ -46,30 +46,48 @@ Consult these to understand intended usage before refactoring a module:
 
 Iterate in order. Each step states its **done** condition.
 
-1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
+> **OT2 baseline pass done (2026-07-15).** Every bounded step passes its
+> automated gate: `dart analyze` is clean and `flutter test --concurrency=1`
+> is 59/59 green. The four placeholder modules (`camera/`, `localstorage/`,
+> `preferences/`, `qrcode/`) and the empty `iding/` folder were already removed
+> (recorded in `CHANGELOG.md` 1.1.0), and all review-findings issues are
+> resolved. The six real modules each already received a full per-module pass
+> (dartdoc + `doc/{module}.md` + executable example + test suite). The
+> open-ended **deepening** work — scaling test/example surface coverage and
+> optional `doc/api/api_summary_{module}.md` files — is tracked as quest todo
+> **RCE3** (the kernel reference has no `api.dart`/`doc/api` either).
+
+1. **Meta files.** ✅ **Done (OT2, 2026-07-15).** `README.md` (customized,
+   ~10 KB), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
+   accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
    (short, pre-publish), and `LICENSE` (BSD 3-Clause — match the existing
    `LICENSE` wording) exist at the project root. Create any missing; customize
    the template `README.md`. *Done when all three exist and the README
    describes the package accurately.*
-2. **Per-module pass — `camera/`.** Run the Per-Module Workflow below
-   (implement or remove if placeholder).
-3. **Per-module pass — `forms/`.**
-4. **Per-module pass — `little_things/`.**
-5. **Per-module pass — `localstorage/`.** (Implement or remove if placeholder.)
-6. **Per-module pass — `observing/`.**
-7. **Per-module pass — `preferences/`.** (Implement or remove if placeholder.)
-8. **Per-module pass — `qrcode/`.** (Implement or remove if placeholder.)
-9. **Per-module pass — `resources/`.**
-10. **Per-module pass — `runtime/`.**
-11. **Per-module pass — `security/`.** Verify `security/authentication.dart` is
-    exported from the package barrel.
-12. **Barrel exports & dead code.** Verify every public symbol is exported from
+2. **Per-module pass — `camera/`.** ✅ **Done (OT2) — removed** (placeholder,
+   see CHANGELOG 1.1.0 §Removed).
+3. **Per-module pass — `forms/`.** ✅ **Done (OT2).** Deepening → RCE3.
+4. **Per-module pass — `little_things/`.** ✅ **Done (OT2).** Deepening → RCE3.
+5. **Per-module pass — `localstorage/`.** ✅ **Done (OT2) — removed** (placeholder).
+6. **Per-module pass — `observing/`.** ✅ **Done (OT2).** Deepening → RCE3.
+7. **Per-module pass — `preferences/`.** ✅ **Done (OT2) — removed** (placeholder).
+8. **Per-module pass — `qrcode/`.** ✅ **Done (OT2) — removed** (placeholder).
+9. **Per-module pass — `resources/`.** ✅ **Done (OT2).** Deepening → RCE3.
+10. **Per-module pass — `runtime/`.** ✅ **Done (OT2).** Deepening → RCE3.
+11. **Per-module pass — `security/`.** ✅ **Done (OT2).** `security/authentication.dart`
+    is exported from the package barrel.
+12. **Barrel exports & dead code.** ✅ **Done (OT2, 2026-07-15).** Barrel exports
+    all six modules incl. `authentication.dart`; the unused `_onChange` is gone;
+    `dart analyze` clean. Verify every public symbol is exported from
     `lib/`; remove unused private declarations. *Done when `dart analyze` is
     clean.*
-13. **Whole-package QA.** Run `dart analyze` (zero warnings) and `flutter test`
-    (all green; never run Flutter test invocations in parallel). *Done when
-    analyzer and tests are clean.*
-14. **Final review.** Re-read each module doc and `api.dart`; confirm docs only
+13. **Whole-package QA.** ✅ **Done (OT2, 2026-07-15).** `dart analyze` clean +
+    `flutter test --concurrency=1` 59/59 green. Run `dart analyze` (zero
+    warnings) and `flutter test` (all green; never run Flutter test invocations
+    in parallel). *Done when analyzer and tests are clean.*
+14. **Final review.** ✅ **Done (OT2, 2026-07-15).** Module docs re-read;
+    `doc/review_findings.md` annotated as resolved; `CHANGELOG.md` updated.
+    Re-read each module doc and `api.dart`; confirm docs only
     describe features that exist and cover all public API. Update `CHANGELOG.md`.
 
 ---

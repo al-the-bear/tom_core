@@ -1,5 +1,12 @@
 ## 1.1.0
 
+### Verified
+
+- **OT2 refactoring pass (2026-07-15)**: confirmed the whole-package gates —
+  `dart analyze` clean and `flutter test --concurrency=1` 59/59 green — and that
+  every review finding is resolved (see `doc/review_findings.md`). No code
+  change; deeper per-module surface coverage tracked as quest todo RCE3.
+
 ### Documentation
 
 - **Forms module**: added dartdoc to `TomFieldOld`, `TomEmailField`,

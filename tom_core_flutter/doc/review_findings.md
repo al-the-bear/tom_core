@@ -2,6 +2,16 @@
 
 Date: 10 January 2026
 
+> **Status: all findings resolved (OT2 refactoring pass, 2026-07-15).** This
+> document is kept as a historical record. Every issue below has been fixed:
+> the broken `Awesome` test/example are gone; `pubspec.yaml` has
+> `publish_to: none` and an accurate description; the unused `_onChange` is
+> removed; `security/authentication.dart` is exported from the barrel; the
+> README is customized (~10 KB); the empty `iding/` folder and the four
+> placeholder modules (`camera/`, `localstorage/`, `preferences/`, `qrcode/`)
+> were removed (see `CHANGELOG.md` 1.1.0). The package now passes `dart analyze`
+> clean and `flutter test --concurrency=1` 59/59 green.
+
 ## Critical Issues
 
 | Priority | File | Issue |
