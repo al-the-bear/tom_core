@@ -64,6 +64,21 @@ Iterate in order. Each step states its **done** condition.
 > the README. The open-ended **deepening** work — scaling test/example surface
 > coverage and optional `doc/api/api_summary_{module}.md` files — is tracked as
 > quest todo **RCE4** (the kernel reference has no `api.dart`/`doc/api` either).
+>
+> ✅ **RCE4 done (2026-07-15) — api-summary parity settled + verified.** The
+> api-summary question is closed in favour of **symmetry**: all four core
+> packages (`tom_core_kernel` per RCE2, this package via OT7, `tom_core_flutter`
+> per OT6, `tom_core_d4rt` per OT8) carry a hand-written `doc/api_reference/`
+> summary set (`doc/api/` is gitignored for generated HTML, so summaries live in
+> `doc/api_reference/`). This package's 13 per-module summaries plus
+> `api_summary_index.md` were verified present and accurate against source
+> (healthcheck spot-checked exactly); `dart analyze` is clean and — no source or
+> doc changed in this pass — the OT3 `testkit :test` 422/422 baseline stands. The
+> open-ended depth half (scale example/test surface coverage to the full public
+> API of each of the 13 modules) is a genuinely large, low-priority residual with
+> no demonstrated defect, so it is tracked as quest todo **RCF4**
+> (`rcf4-server-example-test-surface-scaling`) — same character as kernel's RCF1
+> and flutter's RCF3 — rather than rushed into this doc-parity pass.
 
 1. **Meta files.** ✅ **Done (OT3, 2026-07-15).** `README.md` (customized, 253
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
