@@ -1,5 +1,11 @@
 ## 1.1.0
 
+> **OT3 verification (2026-07-15).** Re-confirmed the whole-package gates —
+> `dart analyze` clean and `testkit :test` 422/422 green — and that all 13 real
+> modules carry a one-to-one `doc/<module>.md`, `example/<module>/`, and
+> `test/<module>_test.dart`. No code change; deeper per-module surface coverage
+> and optional API summaries are tracked as quest todo RCE4.
+
 This release is a documentation, test, and example pass over every module of
 `tom_core_server` — adding dartdoc to all public symbols, a `doc/<module>.md`
 guide, an executable example, and a test suite per module — plus a handful of

@@ -25,7 +25,7 @@ Located in `lib/src/tomserver/` (keep in sync with the folder):
 | `datasources/` | Data source abstractions (MariaDB, SQL dialects) |
 | `db_migration/` | Database migration utilities (MariaDB adapter) |
 | `endpoints/` | HTTP endpoint annotations and pipeline |
-| `externalapis/` | External API integrations |
+| ~~`externalapis/`~~ | **Removed (OT3)** — empty placeholder, deleted (CHANGELOG 1.1.0) |
 | `healthcheck/` | Health check endpoints |
 | `little_things/` | Small utility functions |
 | `object_persistence/` | ORM / CRUD repository, query builder, annotations |
@@ -54,31 +54,52 @@ Consult these to understand intended usage before refactoring a module:
 
 Iterate in order. Each step states its **done** condition.
 
-1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
+> **OT3 baseline pass done (2026-07-15).** Every bounded step passes its
+> automated gate: `dart analyze` is clean and `testkit :test` is 422/422 green.
+> The `externalapis/` placeholder module and four empty `server/` placeholder
+> files (`diagnostics.dart`, `forms.dart`, `monitoring.dart`, `websocket.dart`)
+> were already removed (CHANGELOG 1.1.0 §Removed). All 13 real modules each
+> already received a full per-module pass — dartdoc + `doc/{module}.md` +
+> executable example + test suite — and a final-review accuracy pass trued up
+> the README. The open-ended **deepening** work — scaling test/example surface
+> coverage and optional `doc/api/api_summary_{module}.md` files — is tracked as
+> quest todo **RCE4** (the kernel reference has no `api.dart`/`doc/api` either).
+
+1. **Meta files.** ✅ **Done (OT3, 2026-07-15).** `README.md` (customized, 253
+   lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
+   accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
    (short, pre-publish), and `LICENSE` (BSD 3-Clause — match the existing
    `LICENSE` wording) exist at the project root. Create any missing; customize
    the template `README.md`. *Done when all three exist and the README
    describes the package accurately.*
-2. **Per-module pass — `authentication/`.** Run the Per-Module Workflow below.
-3. **Per-module pass — `authorization/`.**
-4. **Per-module pass — `cache/`.**
-5. **Per-module pass — `cmdline/`.**
-6. **Per-module pass — `configuration/`.**
-7. **Per-module pass — `datasources/`.**
-8. **Per-module pass — `db_migration/`.**
-9. **Per-module pass — `endpoints/`.**
-10. **Per-module pass — `externalapis/`.** (Implement or remove if placeholder.)
-11. **Per-module pass — `healthcheck/`.**
-12. **Per-module pass — `little_things/`.**
-13. **Per-module pass — `object_persistence/`.**
-14. **Per-module pass — `server/`.**
-15. **Per-module pass — `transactions/`.**
-16. **Barrel exports & dead code.** Verify every public symbol is exported from
+2. **Per-module pass — `authentication/`.** ✅ **Done (OT3).** Deepening → RCE4.
+3. **Per-module pass — `authorization/`.** ✅ **Done (OT3).** Deepening → RCE4.
+4. **Per-module pass — `cache/`.** ✅ **Done (OT3).** Deepening → RCE4.
+5. **Per-module pass — `cmdline/`.** ✅ **Done (OT3).** Deepening → RCE4.
+6. **Per-module pass — `configuration/`.** ✅ **Done (OT3).** Deepening → RCE4.
+7. **Per-module pass — `datasources/`.** ✅ **Done (OT3).** Deepening → RCE4.
+8. **Per-module pass — `db_migration/`.** ✅ **Done (OT3).** Deepening → RCE4.
+9. **Per-module pass — `endpoints/`.** ✅ **Done (OT3).** Deepening → RCE4.
+10. **Per-module pass — `externalapis/`.** ✅ **Done (OT3) — removed** (empty
+    placeholder, see CHANGELOG 1.1.0 §Removed).
+11. **Per-module pass — `healthcheck/`.** ✅ **Done (OT3).** Deepening → RCE4.
+12. **Per-module pass — `little_things/`.** ✅ **Done (OT3).** Deepening → RCE4.
+13. **Per-module pass — `object_persistence/`.** ✅ **Done (OT3).** Deepening → RCE4.
+14. **Per-module pass — `server/`.** ✅ **Done (OT3).** Four empty placeholder
+    files removed; `doc/server.md` records the "Not Yet Implemented" surface.
+    Deepening → RCE4.
+15. **Per-module pass — `transactions/`.** ✅ **Done (OT3).** Deepening → RCE4.
+16. **Barrel exports & dead code.** ✅ **Done (OT3, 2026-07-15).** Barrel exports
+    every module; `dart analyze` clean. Verify every public symbol is exported from
     `lib/`; remove unused declarations. *Done when `dart analyze` is clean.*
-17. **Whole-package QA.** Run `dart analyze` (zero warnings) and `testkit :test`
-    (all green). Confirm reflection is initialized and `build.yaml` lists every
-    file needing generation. *Done when analyzer and tests are clean.*
-18. **Final review.** Re-read each module doc and `api.dart`; confirm docs only
+17. **Whole-package QA.** ✅ **Done (OT3, 2026-07-15).** `dart analyze` clean +
+    `testkit :test` 422/422 green. Run `dart analyze` (zero warnings) and
+    `testkit :test` (all green). Confirm reflection is initialized and
+    `build.yaml` lists every file needing generation. *Done when analyzer and
+    tests are clean.*
+18. **Final review.** ✅ **Done (OT3, 2026-07-15).** Module docs re-read; README
+    accuracy pass done (CHANGELOG 1.1.0 §Documentation); CHANGELOG updated.
+    Re-read each module doc and `api.dart`; confirm docs only
     describe features that exist and cover all public API. Update `CHANGELOG.md`.
 
 ---
