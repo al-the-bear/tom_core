@@ -55,7 +55,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const ShowcaseApp());
+    await tester.pumpWidget(ShowcaseApp());
     await tester.pump();
 
     for (final group in showcaseGroups) {

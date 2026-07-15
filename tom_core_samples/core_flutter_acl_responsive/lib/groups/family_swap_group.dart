@@ -54,14 +54,17 @@ final ShowcaseGroup familySwapGroup = ShowcaseGroup(
 /// A self-contained family-swap surface: two pre-built forms on one shared
 /// entity, the active one chosen by the 700 px breakpoint, with a badge and a
 /// shared-state panel that proves values survive the swap.
-class FamilySwapDemo extends StatefulWidget {
-  const FamilySwapDemo({super.key});
+// Why: extends [TomStatefulWidget]/[TomState] (not raw) so the demo payload
+// conforms to G-UI-2 and its layout uses Tom primitives. No tomId/resources →
+// scope bases, which are non-const (construction reads [TomScope.current]).
+class FamilySwapDemo extends TomStatefulWidget {
+  FamilySwapDemo({super.key});
 
   @override
-  State<FamilySwapDemo> createState() => _FamilySwapDemoState();
+  TomState<FamilySwapDemo> createState() => _FamilySwapDemoState();
 }
 
-class _FamilySwapDemoState extends State<FamilySwapDemo> {
+class _FamilySwapDemoState extends TomState<FamilySwapDemo> {
   late final FamilyForm _materialForm;
   late final FamilyForm _cupertinoForm;
 
@@ -91,24 +94,24 @@ class _FamilySwapDemoState extends State<FamilySwapDemo> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomFormStyleScope(
       style: const TomFormStyle(),
       styleBpOverrides: [
         (familySwapBreakpoint, TomCupertinoFormStyle.cupertino),
       ],
-      child: LayoutBuilder(
+      child: TomLayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final wide = width >= familySwapBreakpoint;
           final form = wide ? _materialForm : _cupertinoForm;
-          return Column(
+          return TomColumn(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _BreakpointBadge(width: width, family: form.family),
-              const SizedBox(height: 12),
+              TomSizedBox(height: 12),
               _FormColumn(form: form),
-              const SizedBox(height: 12),
+              TomSizedBox(height: 12),
               _StatePanel(form: _materialForm),
             ],
           );
@@ -118,28 +121,32 @@ class _FamilySwapDemoState extends State<FamilySwapDemo> {
   }
 }
 
-class _BreakpointBadge extends StatelessWidget {
-  const _BreakpointBadge({required this.width, required this.family});
+// Why: scope-participating layout wrapper (no tomId/resources) →
+// [TomStatelessWidget], non-const; raw layout primitives swapped for Tom ones.
+class _BreakpointBadge extends TomStatelessWidget {
+  _BreakpointBadge({required this.width, required this.family});
 
   final double width;
   final FormFieldFamily family;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     final wide = width >= familySwapBreakpoint;
-    return Container(
+    return TomContainer(
       color: theme.colorScheme.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
+      child: TomRow(
         children: [
-          Icon(
-            wide ? Icons.desktop_mac_outlined : Icons.phone_iphone_outlined,
+          TomIcon(
+            icon: wide
+                ? Icons.desktop_mac_outlined
+                : Icons.phone_iphone_outlined,
             size: 18,
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(width: 8),
-          Expanded(
+          TomSizedBox(width: 8),
+          TomExpanded(
             child: TomText(
               text: 'width: ${width.toStringAsFixed(0)} px '
                   '→ family: ${family.kind.name} '
@@ -154,21 +161,23 @@ class _BreakpointBadge extends StatelessWidget {
   }
 }
 
-class _FormColumn extends StatelessWidget {
-  const _FormColumn({required this.form});
+// Why: scope-participating layout wrapper (no tomId/resources) →
+// [TomStatelessWidget], non-const; raw layout primitives swapped for Tom ones.
+class _FormColumn extends TomStatelessWidget {
+  _FormColumn({required this.form});
 
   final FamilyForm form;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(12),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
+            TomPadding(
               padding: const EdgeInsets.only(bottom: 6),
               child: TomText(
                 text: 'Active family: ${form.family.kind.name}',
@@ -177,13 +186,13 @@ class _FormColumn extends StatelessWidget {
               ),
             ),
             form.fullName.widget,
-            const SizedBox(height: 8),
+            TomSizedBox(height: 8),
             form.quantity.widget,
-            const SizedBox(height: 8),
+            TomSizedBox(height: 8),
             form.ratio.widget,
-            const SizedBox(height: 8),
+            TomSizedBox(height: 8),
             form.notifyMe.widget,
-            const SizedBox(height: 8),
+            TomSizedBox(height: 8),
             form.eventDate.widget,
           ],
         ),
@@ -194,25 +203,27 @@ class _FormColumn extends StatelessWidget {
 
 /// Reads the shared entity through the Material form's observables (the same
 /// `TomObject`s the Cupertino form binds), proving the single source of truth.
-class _StatePanel extends StatelessWidget {
-  const _StatePanel({required this.form});
+// Why: scope-participating layout wrapper (no tomId/resources) →
+// [TomStatelessWidget], non-const; raw layout primitives swapped for Tom ones.
+class _StatePanel extends TomStatelessWidget {
+  _StatePanel({required this.form});
 
   final FamilyForm form;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     String dateStr(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
     return TomCard(
       color: theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(12),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
+            TomPadding(
               padding: const EdgeInsets.only(bottom: 6),
               child: TomText(
                   text: 'Shared state (ResponsiveProfile)',
@@ -234,22 +245,22 @@ class _StatePanel extends StatelessWidget {
                   ('notifyMe', '${form.notifyMe.get()}'),
                   ('eventDate', dateStr(form.eventDate.get())),
                 ];
-                return Column(
+                return TomColumn(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (final (name, value) in rows)
-                      Padding(
+                      TomPadding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
+                        child: TomRow(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(
+                            TomSizedBox(
                               width: 110,
                               child: TomText(
                                   text: name,
                                   style: theme.textTheme.bodySmall),
                             ),
-                            Expanded(
+                            TomExpanded(
                               child: TomText(
                                 text: value,
                                 style: theme.textTheme.bodySmall

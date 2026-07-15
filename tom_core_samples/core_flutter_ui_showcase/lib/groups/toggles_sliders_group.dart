@@ -48,18 +48,22 @@ final ShowcaseGroup togglesSlidersGroup = ShowcaseGroup(
   ],
 );
 
-class _SwitchDemo extends StatefulWidget {
-  const _SwitchDemo();
+// Why: extends [TomStatefulWidget]/[TomState] (not raw) so the demo payload
+// conforms to G-UI-2. It owns demo-local state (the switch value) but no
+// tomId/resources → scope bases, which are non-const (construction reads
+// [TomScope.current]). The value/onChanged behaviour is unchanged.
+class _SwitchDemo extends TomStatefulWidget {
+  _SwitchDemo();
 
   @override
-  State<_SwitchDemo> createState() => _SwitchDemoState();
+  TomState<_SwitchDemo> createState() => _SwitchDemoState();
 }
 
-class _SwitchDemoState extends State<_SwitchDemo> {
+class _SwitchDemoState extends TomState<_SwitchDemo> {
   bool _on = true;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSwitch(
       value: _on,
       onChanged: (v) => setState(() => _on = v),
@@ -67,18 +71,20 @@ class _SwitchDemoState extends State<_SwitchDemo> {
   }
 }
 
-class _CheckboxDemo extends StatefulWidget {
-  const _CheckboxDemo();
+// Why: as above — demo-local checkbox state, scope base, non-const, unchanged
+// behaviour.
+class _CheckboxDemo extends TomStatefulWidget {
+  _CheckboxDemo();
 
   @override
-  State<_CheckboxDemo> createState() => _CheckboxDemoState();
+  TomState<_CheckboxDemo> createState() => _CheckboxDemoState();
 }
 
-class _CheckboxDemoState extends State<_CheckboxDemo> {
+class _CheckboxDemoState extends TomState<_CheckboxDemo> {
   bool _checked = true;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomCheckbox(
       value: _checked,
       onChanged: (v) => setState(() => _checked = v ?? false),
@@ -86,19 +92,21 @@ class _CheckboxDemoState extends State<_CheckboxDemo> {
   }
 }
 
-class _SliderDemo extends StatefulWidget {
-  const _SliderDemo();
+// Why: as above — demo-local slider value, scope base, non-const, unchanged
+// behaviour; raw SizedBox swapped for [TomSizedBox].
+class _SliderDemo extends TomStatefulWidget {
+  _SliderDemo();
 
   @override
-  State<_SliderDemo> createState() => _SliderDemoState();
+  TomState<_SliderDemo> createState() => _SliderDemoState();
 }
 
-class _SliderDemoState extends State<_SliderDemo> {
+class _SliderDemoState extends TomState<_SliderDemo> {
   double _value = 40;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
+  Widget buildContent(BuildContext context) {
+    return TomSizedBox(
       width: 240,
       child: TomSlider(
         value: _value,

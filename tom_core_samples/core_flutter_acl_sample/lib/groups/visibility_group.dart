@@ -45,16 +45,20 @@ final ShowcaseGroup visibilityGroup = ShowcaseGroup(
   ],
 );
 
-/// Interactive child for the visibility cell: a [Switch] drives an
+/// Interactive child for the visibility cell: a [TomSwitch] drives an
 /// [AclBinaryVisibilityController] bound to a named ACL group.
-class _VisibilityDemo extends StatefulWidget {
-  const _VisibilityDemo();
+// Why: extends [TomStatefulWidget]/[TomState] (not raw) so the interactive demo
+// payload conforms to G-UI-2, and its layout scaffolding uses Tom primitives.
+// It owns no tomId/resources → a family base would be wrong; the scope bases are
+// non-const (construction reads [TomScope.current]).
+class _VisibilityDemo extends TomStatefulWidget {
+  _VisibilityDemo();
 
   @override
-  State<_VisibilityDemo> createState() => _VisibilityDemoState();
+  TomState<_VisibilityDemo> createState() => _VisibilityDemoState();
 }
 
-class _VisibilityDemoState extends State<_VisibilityDemo> {
+class _VisibilityDemoState extends TomState<_VisibilityDemo> {
   final AclBinaryVisibilityController _ctrl = AclBinaryVisibilityController();
 
   @override
@@ -64,16 +68,16 @@ class _VisibilityDemoState extends State<_VisibilityDemo> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget buildContent(BuildContext context) {
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        TomRow(
           children: [
             // Interactive chrome (the demo's own toggle label), not a teaching
             // snippet — resolved as a resource per G-RES-1 (see chrome_texts.dart).
             TomText(text: TomCtr.text('showcase.visibility.showDetails')),
-            ValueListenableBuilder<AclGroupVisibilityMode>(
+            TomValueListenableBuilder<AclGroupVisibilityMode>(
               valueListenable: _ctrl.modeNotifier,
               builder: (_, mode, _) => TomSwitch(
                 value: mode == AclGroupVisibilityMode.visible,
@@ -84,7 +88,7 @@ class _VisibilityDemoState extends State<_VisibilityDemo> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        TomSizedBox(height: 8),
         AclBuilder()
             .setGroupVisibilityController('details', _ctrl)
             .append(demoBox('Summary (always shown)', Colors.teal))

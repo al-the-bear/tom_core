@@ -16,14 +16,17 @@ import '../domain/showcase_entities.dart';
 import '../forms/order_item_form.dart';
 
 /// A self-contained master-detail editor over a seeded order-items list.
-class _MasterDetailDemo extends StatefulWidget {
-  const _MasterDetailDemo();
+// Why: extends [TomStatefulWidget]/[TomState] (not raw) so the demo payload
+// conforms to G-UI-2. No tomId/resources → scope bases, which are non-const
+// (construction reads [TomScope.current]).
+class _MasterDetailDemo extends TomStatefulWidget {
+  _MasterDetailDemo();
 
   @override
-  State<_MasterDetailDemo> createState() => _MasterDetailDemoState();
+  TomState<_MasterDetailDemo> createState() => _MasterDetailDemoState();
 }
 
-class _MasterDetailDemoState extends State<_MasterDetailDemo> {
+class _MasterDetailDemoState extends TomState<_MasterDetailDemo> {
   late final OrderItemListForm _listForm;
 
   @override
@@ -40,8 +43,8 @@ class _MasterDetailDemoState extends State<_MasterDetailDemo> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
+  Widget buildContent(BuildContext context) {
+    return TomSizedBox(
       height: 440,
       child: TomMasterDetailListForm<OrderItem, OrderItemForm>(
         listForm: _listForm,
@@ -60,8 +63,10 @@ class _MasterDetailDemoState extends State<_MasterDetailDemo> {
   }
 }
 
-class _MasterPane extends StatelessWidget {
-  const _MasterPane({
+// Why: scope-participating layout wrapper (no tomId/resources) →
+// [TomStatelessWidget], non-const; raw layout primitives swapped for Tom ones.
+class _MasterPane extends TomStatelessWidget {
+  _MasterPane({
     required this.listForm,
     required this.selectedIndex,
     required this.selectIndex,
@@ -72,21 +77,21 @@ class _MasterPane extends StatelessWidget {
   final Future<void> Function(int? index) selectIndex;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          TomPadding(
             padding: const EdgeInsets.all(8),
             child: TomText(
                 text: 'Items (${listForm.length})',
                 style: theme.textTheme.titleSmall),
           ),
           TomDivider(height: 1),
-          Expanded(
-            child: ListView.builder(
+          TomExpanded(
+            child: TomListView.builder(
               itemCount: listForm.length,
               itemBuilder: (context, index) {
                 final item = listForm[index].currentBinding;
@@ -112,7 +117,7 @@ class _MasterPane extends StatelessWidget {
             ),
           ),
           TomDivider(height: 1),
-          Padding(
+          TomPadding(
             padding: const EdgeInsets.all(4),
             child: TomListFormToolbar<OrderItem, OrderItemForm>(
               listForm: listForm,
@@ -126,25 +131,27 @@ class _MasterPane extends StatelessWidget {
   }
 }
 
-class _DetailPane extends StatelessWidget {
-  const _DetailPane({required this.form});
+// Why: scope-participating layout wrapper (no tomId/resources) →
+// [TomStatelessWidget], non-const; raw layout primitives swapped for Tom ones.
+class _DetailPane extends TomStatelessWidget {
+  _DetailPane({required this.form});
 
   final OrderItemForm form;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomCard(
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(12),
-        child: ListenableBuilder(
+        child: TomListenableBuilder(
           listenable: form.changes,
-          builder: (context, _) => SingleChildScrollView(
-            child: Column(
+          builder: (context, _) => TomSingleChildScrollView(
+            child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                TomRow(
                   children: [
-                    Expanded(
+                    TomExpanded(
                       child: TomText(
                           text: 'Item detail',
                           style: Theme.of(context).textTheme.titleSmall),
@@ -156,27 +163,27 @@ class _DetailPane extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                TomSizedBox(height: 8),
                 form.productName.widget,
-                const SizedBox(height: 8),
+                TomSizedBox(height: 8),
                 form.quantity.widget,
-                const SizedBox(height: 8),
+                TomSizedBox(height: 8),
                 form.unitPrice.widget,
-                const SizedBox(height: 8),
+                TomSizedBox(height: 8),
                 form.notes.widget,
-                const SizedBox(height: 12),
+                TomSizedBox(height: 12),
                 TomErrorView(form: form, title: 'Item errors'),
-                const SizedBox(height: 12),
-                Wrap(
+                TomSizedBox(height: 12),
+                TomWrap(
                   spacing: 8,
                   children: [
                     TomFilledButton(
-                      icon: const Icon(Icons.save, size: 16),
+                      icon: TomIcon(icon: Icons.save, size: 16),
                       label: 'Save',
                       onPressed: () => form.save(),
                     ),
                     TomOutlinedButton(
-                      icon: const Icon(Icons.undo, size: 16),
+                      icon: TomIcon(icon: Icons.undo, size: 16),
                       label: 'Discard',
                       onPressed: () => form.discard(),
                     ),
@@ -212,7 +219,7 @@ final ShowcaseGroup masterDetailGroup = ShowcaseGroup(
           "  detailBuilder: (context, _, rowForm) =>\n"
           "      DetailPane(form: rowForm),\n"
           ")",
-      child: const _MasterDetailDemo(),
+      child: _MasterDetailDemo(),
     ),
   ],
 );

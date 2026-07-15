@@ -44,7 +44,7 @@ void main() {
             child: Center(
               child: SizedBox(
                 width: width,
-                child: const BreakpointFieldStyleDemo(),
+                child: BreakpointFieldStyleDemo(),
               ),
             ),
           ),

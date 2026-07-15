@@ -51,7 +51,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const AclApp());
+    await tester.pumpWidget(AclApp());
     await tester.pump();
 
     for (final group in aclGroups) {

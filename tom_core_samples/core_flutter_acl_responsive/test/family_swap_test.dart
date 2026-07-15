@@ -45,7 +45,7 @@ void main() {
             child: Center(
               child: SizedBox(
                 width: width,
-                child: const FamilySwapDemo(),
+                child: FamilySwapDemo(),
               ),
             ),
           ),

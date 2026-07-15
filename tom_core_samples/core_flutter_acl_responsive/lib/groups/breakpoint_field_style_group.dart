@@ -54,15 +54,18 @@ final ShowcaseGroup breakpointFieldStyleGroup = ShowcaseGroup(
 /// A self-contained, width-reactive form whose field style resolves per tier
 /// from a single [TomFormStyleScope]. The badge row reads back the resolved
 /// tier so the behaviour is observable both in the app and in tests.
-class BreakpointFieldStyleDemo extends StatefulWidget {
-  const BreakpointFieldStyleDemo({super.key});
+// Why: extends [TomStatefulWidget]/[TomState] (not raw) so the demo payload
+// conforms to G-UI-2 and its layout uses Tom primitives. No tomId/resources →
+// scope bases, which are non-const (construction reads [TomScope.current]).
+class BreakpointFieldStyleDemo extends TomStatefulWidget {
+  BreakpointFieldStyleDemo({super.key});
 
   @override
-  State<BreakpointFieldStyleDemo> createState() =>
+  TomState<BreakpointFieldStyleDemo> createState() =>
       _BreakpointFieldStyleDemoState();
 }
 
-class _BreakpointFieldStyleDemoState extends State<BreakpointFieldStyleDemo> {
+class _BreakpointFieldStyleDemoState extends TomState<BreakpointFieldStyleDemo> {
   late final CompanyForm _form;
 
   @override
@@ -114,15 +117,15 @@ class _BreakpointFieldStyleDemoState extends State<BreakpointFieldStyleDemo> {
       );
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
+  Widget buildContent(BuildContext context) {
+    return TomLayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        return Column(
+        return TomColumn(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _BadgeRow(width: width),
-            const SizedBox(height: 12),
+            TomSizedBox(height: 12),
             TomFormStyleScope(
               style: _style,
               child: TomAclBuilder(id: 'bpFieldStyleAcl', elementProvider: _form)
@@ -145,20 +148,22 @@ class _BreakpointFieldStyleDemoState extends State<BreakpointFieldStyleDemo> {
 /// Echoes the resolved breakpoint tier as a `Wrap` of `label: value` badges.
 /// The resolution mirrors the override lists in [_style] so the badges are the
 /// ground truth for both the reader and the tests.
-class _BadgeRow extends StatelessWidget {
-  const _BadgeRow({required this.width});
+// Why: scope-participating layout wrapper (no tomId/resources) →
+// [TomStatelessWidget], non-const; raw `Wrap` swapped for [TomWrap].
+class _BadgeRow extends TomStatelessWidget {
+  _BadgeRow({required this.width});
 
   final double width;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final gap = width >= 700 ? '8px' : (width >= 400 ? '4px' : '2px');
     final border = width >= 400 ? 'on' : 'off';
     final icon = width >= 500 ? 'on' : 'off';
     final label = width >= 700 ? 'inline' : (width >= 400 ? 'above' : 'floating');
     final font = width >= 700 ? '15px' : (width >= 400 ? '13px' : '11px');
 
-    return Wrap(
+    return TomWrap(
       spacing: 8,
       runSpacing: 8,
       children: [
@@ -177,16 +182,18 @@ class _BadgeRow extends StatelessWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label, required this.value});
+// Why: scope-participating layout wrapper (no tomId/resources) →
+// [TomStatelessWidget], non-const; raw `Container` swapped for [TomContainer].
+class _Badge extends TomStatelessWidget {
+  _Badge({required this.label, required this.value});
 
   final String label;
   final String value;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    return TomContainer(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: scheme.primaryContainer,

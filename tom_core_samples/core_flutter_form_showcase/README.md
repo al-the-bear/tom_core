@@ -145,7 +145,7 @@ void main() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(chromeTexts),  // 2. interactive-chrome bundle
   );
-  runApp(const ShowcaseApp());
+  runApp(ShowcaseApp());
 }
 ```
 

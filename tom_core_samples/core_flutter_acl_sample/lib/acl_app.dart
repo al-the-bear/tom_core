@@ -42,12 +42,18 @@ final List<ShowcaseGroup> aclGroups = [
 ];
 
 /// Root widget of the ACL feature tour.
-class AclApp extends StatelessWidget {
+// Why: extends [TomStatelessWidget] (not raw StatelessWidget) so the app shell
+// conforms to G-UI-2 — the sample's own root is a Tom base too. It owns no
+// tomId/resources, so a family base would attach a spurious identity;
+// [TomStatelessWidget] is the sanctioned base for a scope-participating shell.
+// Construction reads [TomScope.current] (safe at runApp — it falls back to the
+// default scope), so the constructor cannot be const.
+class AclApp extends TomStatelessWidget {
   /// Creates the ACL feature-tour application.
-  const AclApp({super.key});
+  AclApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return MaterialApp(
       // OS-level app identity (task switcher / window title), not on-screen copy
       // — intentionally hardcoded, outside the G-RES-1 resource bundle.
@@ -57,32 +63,34 @@ class AclApp extends StatelessWidget {
         colorSchemeSeed: Colors.teal,
         useMaterial3: true,
       ),
-      home: const _AclHome(),
+      home: _AclHome(),
     );
   }
 }
 
-class _AclHome extends StatelessWidget {
-  const _AclHome();
+// Why: the home screen is a scope-participating chrome container with no
+// tomId/resources → [TomStatelessWidget], non-const for the same reason.
+class _AclHome extends TomStatelessWidget {
+  _AclHome();
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomScaffold(
       appBar: TomAppBar(
         // On-screen app-bar copy → resource per G-RES-1 (see chrome_texts.dart).
         title: TomText(text: TomCtr.text('showcase.app.title')),
       ),
-      body: ListView.separated(
+      body: TomListView.separated(
         itemCount: aclGroups.length,
         separatorBuilder: (_, _) => TomDivider(height: 1),
         itemBuilder: (context, index) {
           final group = aclGroups[index];
           return TomListTile(
-            leading: Icon(group.icon),
+            leading: TomIcon(icon: group.icon),
             titleText: group.title,
             subtitle: TomText(text: group.summary),
             isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
+            trailing: TomIcon(icon: Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => GroupScreen(group: group),

@@ -26,5 +26,5 @@ void main() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(chromeTexts),
   );
-  runApp(const ResponsiveApp());
+  runApp(ResponsiveApp());
 }

@@ -93,7 +93,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const ResponsiveApp());
+    await tester.pumpWidget(ResponsiveApp());
     await tester.pump();
 
     for (final group in responsiveGroups) {

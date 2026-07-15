@@ -16,14 +16,17 @@ import '../forms/order_item_form.dart';
 
 /// A self-contained editable order-items list: inline rows plus a toolbar,
 /// tracking the selected row so the toolbar's remove/move act on it.
-class _InlineOrderList extends StatefulWidget {
-  const _InlineOrderList();
+// Why: extends [TomStatefulWidget]/[TomState] (not raw) so the demo payload
+// conforms to G-UI-2. No tomId/resources → scope bases, which are non-const
+// (construction reads [TomScope.current]).
+class _InlineOrderList extends TomStatefulWidget {
+  _InlineOrderList();
 
   @override
-  State<_InlineOrderList> createState() => _InlineOrderListState();
+  TomState<_InlineOrderList> createState() => _InlineOrderListState();
 }
 
-class _InlineOrderListState extends State<_InlineOrderList> {
+class _InlineOrderListState extends TomState<_InlineOrderList> {
   late final OrderItemListForm _listForm;
   int? _selectedIndex;
 
@@ -43,13 +46,13 @@ class _InlineOrderListState extends State<_InlineOrderList> {
   void _select(int? index) => setState(() => _selectedIndex = index);
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
+  Widget buildContent(BuildContext context) {
+    return TomSizedBox(
       height: 460,
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
+          TomExpanded(
             child: TomInlineListForm<OrderItem, OrderItemForm>(
               listForm: _listForm,
               reorderable: true,
@@ -61,16 +64,17 @@ class _InlineOrderListState extends State<_InlineOrderList> {
                     : null,
                 child: TomInkWell(
                   onTap: () => _select(index),
-                  child: Padding(
+                  child: TomPadding(
                     padding: const EdgeInsets.all(8),
-                    child: Row(
+                    child: TomRow(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TomReorderHandle(index: index),
-                        const SizedBox(width: 8),
-                        Expanded(flex: 3, child: rowForm.productName.widget),
-                        const SizedBox(width: 8),
-                        Expanded(child: rowForm.quantity.widget),
+                        TomSizedBox(width: 8),
+                        TomExpanded(
+                            flex: 3, child: rowForm.productName.widget),
+                        TomSizedBox(width: 8),
+                        TomExpanded(child: rowForm.quantity.widget),
                       ],
                     ),
                   ),
@@ -117,7 +121,7 @@ final ShowcaseGroup listsGroup = ShowcaseGroup(
           "  selectedIndex: selectedIndex,\n"
           "  onSelectionChanged: select,\n"
           ")",
-      child: const _InlineOrderList(),
+      child: _InlineOrderList(),
     ),
   ],
 );

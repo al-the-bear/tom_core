@@ -33,12 +33,16 @@ final List<ShowcaseGroup> showcaseGroups = [
 ];
 
 /// Root widget of the forms showcase.
-class ShowcaseApp extends StatelessWidget {
+// Why: extends [TomStatelessWidget] (not raw StatelessWidget) so the app shell
+// conforms to G-UI-2. It owns no tomId/resources, so a family base would attach
+// a spurious identity; construction reads [TomScope.current] (safe at runApp —
+// falls back to the default scope) so the constructor cannot be const.
+class ShowcaseApp extends TomStatelessWidget {
   /// Creates the showcase application.
-  const ShowcaseApp({super.key});
+  ShowcaseApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return MaterialApp(
       // OS-level app identity (task switcher / window title), not on-screen copy
       // — intentionally hardcoded, outside the G-RES-1 resource bundle.
@@ -48,32 +52,34 @@ class ShowcaseApp extends StatelessWidget {
         colorSchemeSeed: Colors.indigo,
         useMaterial3: true,
       ),
-      home: const _ShowcaseHome(),
+      home: _ShowcaseHome(),
     );
   }
 }
 
-class _ShowcaseHome extends StatelessWidget {
-  const _ShowcaseHome();
+// Why: scope-participating chrome container with no tomId/resources →
+// [TomStatelessWidget], non-const for the same reason.
+class _ShowcaseHome extends TomStatelessWidget {
+  _ShowcaseHome();
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomScaffold(
       appBar: TomAppBar(
         // On-screen app-bar copy → resource per G-RES-1 (see chrome_texts.dart).
         title: TomText(text: TomCtr.text('showcase.app.title')),
       ),
-      body: ListView.separated(
+      body: TomListView.separated(
         itemCount: showcaseGroups.length,
         separatorBuilder: (_, _) => TomDivider(height: 1),
         itemBuilder: (context, index) {
           final group = showcaseGroups[index];
           return TomListTile(
-            leading: Icon(group.icon),
+            leading: TomIcon(icon: group.icon),
             titleText: group.title,
             subtitle: TomText(text: group.summary),
             isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
+            trailing: TomIcon(icon: Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => GroupScreen(group: group),

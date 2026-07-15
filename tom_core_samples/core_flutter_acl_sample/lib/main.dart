@@ -21,5 +21,5 @@ void main() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(chromeTexts),
   );
-  runApp(const AclApp());
+  runApp(AclApp());
 }

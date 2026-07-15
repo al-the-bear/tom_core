@@ -120,7 +120,7 @@ void main() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(chromeTexts),  // interactive-chrome bundle
   );
-  runApp(const ResponsiveApp());
+  runApp(ResponsiveApp());
 }
 ```
 
