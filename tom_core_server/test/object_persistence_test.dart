@@ -345,6 +345,146 @@ void main() {
       expect(b.text(payload).generate(dialect), "'''; DROP TABLE users; --'");
     });
   });
+
+  // Full-surface scaling (RCF4): the remaining comparison builders the DSL
+  // exposes. eq/gte were already covered above; these are the rest of the
+  // binary comparison family, each rendering its own SQL operator.
+  group('remaining comparison operators', () {
+    test('neq renders a <> b', () {
+      expect(b.neq(b.intOp(1), b.intOp(2)).generate(dialect), '1 <> 2');
+    });
+
+    test('lt renders a < b', () {
+      expect(b.lt(b.intOp(1), b.intOp(2)).generate(dialect), '1 < 2');
+    });
+
+    test('lte renders a <= b', () {
+      expect(b.lte(b.intOp(1), b.intOp(2)).generate(dialect), '1 <= 2');
+    });
+
+    test('gt renders a > b', () {
+      expect(b.gt(b.intOp(2), b.intOp(1)).generate(dialect), '2 > 1');
+    });
+  });
+
+  // Full-surface scaling (RCF4): the null-test, negated-match and
+  // regex-match predicate builders (isNull / like were already covered).
+  group('remaining string / null predicates', () {
+    test('isNotNull renders <col> IS NOT NULL', () {
+      final col = _column('users', 'name');
+      expect(
+        b.isNotNull(b.textF('name', col)).generate(dialect),
+        'users.name IS NOT NULL',
+      );
+    });
+
+    test('notLike renders <col> NOT LIKE <pattern>', () {
+      final col = _column('users', 'name');
+      expect(
+        b.notLike(b.textF('name', col), b.text('A%')).generate(dialect),
+        "users.name NOT LIKE 'A%'",
+      );
+    });
+
+    test('regexp renders <col> REGEXP <pattern>', () {
+      final col = _column('users', 'name');
+      expect(
+        b.regexp(b.textF('name', col), b.text('^A')).generate(dialect),
+        "users.name REGEXP '^A'",
+      );
+    });
+  });
+
+  // Full-surface scaling (RCF4): the literal builders beyond int/string.
+  // The standard dialect renders numbers/bools bare and dates single-quoted;
+  // dateOp is *not* zero-padded (it interpolates `year-month-day` directly).
+  group('remaining literal builders', () {
+    test('doubleOp renders the value bare', () {
+      expect(b.doubleOp(1.5).generate(dialect), '1.5');
+    });
+
+    test('boolOp renders true / false bare', () {
+      expect(b.boolOp(true).generate(dialect), 'true');
+      expect(b.boolOp(false).generate(dialect), 'false');
+    });
+
+    test('dateTimeOp renders a single-quoted ISO-8601 timestamp', () {
+      final ts = DateTime.utc(2026, 7, 15, 9, 30);
+      expect(
+        b.dateTimeOp(ts).generate(dialect),
+        "'${ts.toIso8601String()}'",
+      );
+    });
+
+    test('dateOp renders single-quoted YYYY-M-D without padding', () {
+      final d = DateTime(2026, 7, 5);
+      expect(b.dateOp(d).generate(dialect), "'2026-7-5'");
+    });
+  });
+
+  // Full-surface scaling (RCF4): the typed column-reference builders beyond
+  // int/string. Every DbCol renders as the qualified `table.column` regardless
+  // of its SQL type, and collects itself as a field.
+  group('remaining typed column references', () {
+    test('doubleF renders table.column and is collected as a field', () {
+      final col = _column('products', 'price');
+      final ref = b.doubleF('price', col);
+      expect(ref.generate(dialect), 'products.price');
+      expect(ref.getFields(dialect), {'products.price'});
+    });
+
+    test('boolF renders table.column', () {
+      final col = _column('users', 'active');
+      expect(b.boolF('active', col).generate(dialect), 'users.active');
+    });
+
+    test('dateTimeF renders table.column', () {
+      final col = _column('events', 'occurred_at');
+      expect(
+        b.dateTimeF('occurredAt', col).generate(dialect),
+        'events.occurred_at',
+      );
+    });
+
+    test('dateF renders table.column', () {
+      final col = _column('invoices', 'due_date');
+      expect(b.dateF('dueDate', col).generate(dialect), 'invoices.due_date');
+    });
+  });
+
+  // Full-surface scaling (RCF4): the dialect's own `objectOp` value-dispatch
+  // and the list/null literal helpers. `objectOp` is the public entry point
+  // that turns an arbitrary Dart value into the matching SQL literal by runtime
+  // type — the one place the whole literal table is exercised together.
+  group('dialect objectOp value dispatch', () {
+    test('null becomes the SQL NULL literal', () {
+      expect(dialect.objectOp(null), 'NULL');
+      expect(dialect.nullOp(), 'NULL');
+    });
+
+    test('a String is quoted and escaped', () {
+      expect(dialect.objectOp("O'Brien"), "'O''Brien'");
+    });
+
+    test('int and double render bare', () {
+      expect(dialect.objectOp(42), '42');
+      expect(dialect.objectOp(1.5), '1.5');
+    });
+
+    test('bool renders bare', () {
+      expect(dialect.objectOp(true), 'true');
+    });
+
+    test('DateTime renders as a quoted ISO-8601 timestamp', () {
+      final ts = DateTime.utc(2026, 7, 15, 9, 30);
+      expect(dialect.objectOp(ts), "'${ts.toIso8601String()}'");
+    });
+
+    test('an Iterable renders as a comma-separated literal list', () {
+      expect(dialect.objectOp([1, 2, 'a']), "1,2,'a'");
+      expect(dialect.iterableOp([1, 2, 'a']), "1,2,'a'");
+    });
+  });
 }
 
 /// A plain type with no persistence reflection, used to drive the analyzer's

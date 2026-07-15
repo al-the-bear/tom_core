@@ -70,6 +70,43 @@ void run() {
     assert(e.key == 'between_expression.must_have_two_values');
   }
 
+  // 6. The rest of the comparison family (<>, <, <=, >) alongside eq/gte.
+  final pred6 = b.or([
+    b.neq(b.intF('age', ageCol), b.intOp(0)),
+    b.lt(b.intF('age', ageCol), b.intOp(18)),
+    b.gt(b.intF('age', ageCol), b.intOp(65)),
+  ]);
+  print('6. ${pred6.generate(dialect)}');
+  assert(pred6.generate(dialect) ==
+      'users.age <> 0 OR users.age < 18 OR users.age > 65');
+
+  // 7. Negated / regex string matching and a non-null test.
+  final pred7 = b.and([
+    b.isNotNull(b.textF('name', nameCol)),
+    b.notLike(b.textF('name', nameCol), b.text('Z%')),
+    b.regexp(b.textF('name', nameCol), b.text('^[A-M]')),
+  ]);
+  print('7. ${pred7.generate(dialect)}');
+  assert(pred7.generate(dialect) ==
+      "users.name IS NOT NULL AND users.name NOT LIKE 'Z%'"
+          " AND users.name REGEXP '^[A-M]'");
+
+  // 8. Typed literals: double/bool render bare, dates single-quoted (unpadded).
+  print('8. double=${b.doubleOp(1.5).generate(dialect)} '
+      'bool=${b.boolOp(true).generate(dialect)} '
+      'date=${b.dateOp(DateTime(2026, 7, 5)).generate(dialect)}');
+  assert(b.doubleOp(1.5).generate(dialect) == '1.5');
+  assert(b.boolOp(true).generate(dialect) == 'true');
+  assert(b.dateOp(DateTime(2026, 7, 5)).generate(dialect) == "'2026-7-5'");
+
+  // 9. The dialect's objectOp turns any Dart value into its SQL literal by
+  //    runtime type — the single entry point behind the literal builders.
+  print('9. ${dialect.objectOp(null)} / ${dialect.objectOp("O'Brien")} / '
+      '${dialect.objectOp([1, 2, 'a'])}');
+  assert(dialect.objectOp(null) == 'NULL');
+  assert(dialect.objectOp("O'Brien") == "'O''Brien'");
+  assert(dialect.objectOp([1, 2, 'a']) == "1,2,'a'");
+
   print('\nObject-persistence example completed.');
 }
 

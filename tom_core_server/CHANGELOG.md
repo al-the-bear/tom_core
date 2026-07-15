@@ -1,3 +1,27 @@
+## 1.1.2
+
+### Tests / Examples
+
+- **object_persistence full-surface scaling (RCF4, module 1 of 13).** Closed the
+  connection-free public-surface gaps in the `object_persistence` query DSL and
+  the SQL dialect (no public API change; 422 → 443 test cases). The prior
+  `object_persistence_test.dart` covered `eq`/`gte`/`like`/`isNull`/`isIn`/
+  `between` plus the save/annotation/injection paths; this pass added the
+  remaining `TomQueryBuilder` builders and the dialect's value dispatch:
+  - **comparisons**: `neq` (`<>`), `lt` (`<`), `lte` (`<=`), `gt` (`>`);
+  - **string / null predicates**: `isNotNull`, `notLike`, `regexp`;
+  - **literal builders**: `doubleOp`, `boolOp`, `dateTimeOp` (quoted ISO-8601),
+    `dateOp` (unpadded `YYYY-M-D` — pinned so the non-padding is intentional);
+  - **typed column references**: `doubleF`, `boolF`, `dateTimeF`, `dateF` (each
+    renders the qualified `table.column` and collects itself as a field);
+  - **dialect `objectOp` dispatch**: the runtime-type literal table
+    (null→`NULL`, String→quoted+escaped, int/double/bool→bare, DateTime→quoted
+    ISO-8601, Iterable→comma list) plus `nullOp`/`iterableOp`.
+
+  The example gained matching steps 6–9. This is the first module of the RCF4
+  per-module surface-scaling residual; the remaining 12 modules are filed as
+  RCG1 for later iteration.
+
 ## 1.1.1
 
 ### Documentation
