@@ -118,7 +118,8 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
       },
     );
     if (saved && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      TomMessenger.showSnackBar(
+        context,
         TomSnackBar(
             content: TomText(
                 text: TomCtr.text('admin.assignments.assigned')
@@ -135,7 +136,8 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
       return await op();
     } on AdminBackendException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        TomMessenger.showSnackBar(
+          context,
           TomSnackBar(content: TomText(text: e.message)),
         );
       }

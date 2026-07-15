@@ -479,7 +479,8 @@ class TomBottomSheet extends TomDialogBase {
 /// - [closeIconColor] — resolved from `$tomId.closeIconColor`
 ///
 /// ```dart
-/// ScaffoldMessenger.of(context).showSnackBar(
+/// TomMessenger.showSnackBar(
+///   context,
 ///   TomSnackBar(
 ///     tomId: 'saveSuccess',  // Resolves content, colors from resources
 ///     action: TomSnackBarAction(tomId: 'undo', onPressed: handleUndo),

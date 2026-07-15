@@ -153,7 +153,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     if (error == null) {
       _commentController.clear();
       setState(() => _postingComment = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      TomMessenger.showSnackBar(
+        context,
         TomSnackBar(
             content: TomText(text: TomCtr.text('board.item.comment.added'))),
       );

@@ -80,7 +80,7 @@ class _ShowcaseHome extends TomStatelessWidget {
             isThreeLine: true,
             trailing: TomIcon(icon: Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
+              TomPageRoute<void>(
                 builder: (_) => GroupScreen(group: group),
               ),
             ),

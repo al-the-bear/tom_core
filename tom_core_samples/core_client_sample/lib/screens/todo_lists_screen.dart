@@ -79,28 +79,15 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
   }
 
   void _snack(String message) {
-    // Why (G-UI-1): the snackbar *widget* is Tom-native (`TomSnackBar`, whose
-    // content is a `TomText`). The *presenter* is `ScaffoldMessenger` — a Flutter
-    // messenger API, not a widget — and tom_flutter_ui provides no Tom-native
-    // presenter: `TomSnackBar`'s own doc (tom_dialogs.dart) prescribes exactly
-    // `ScaffoldMessenger.of(context).showSnackBar(TomSnackBar(...))`, and the
-    // framework itself presents this way internally (tom_form_file_field.dart).
-    // So this is the framework-sanctioned path, not a raw-Material shortcut. The
-    // open question of a Tom-native presenter is tracked as RCD2.
-    ScaffoldMessenger.of(context)
-        .showSnackBar(TomSnackBar(content: TomText(text: message)));
+    TomMessenger.showSnackBar(
+      context,
+      TomSnackBar(content: TomText(text: message)),
+    );
   }
 
   Future<void> _openDetail(TodoItem? item) async {
-    // Why (G-UI-1 / G-UI-6): a form's scope "is usually a Flutter route"
-    // (G-UI-6), so navigation is expected to go through Flutter's `Navigator`.
-    // tom_flutter_ui provides no Tom route type — it uses `Navigator` and raw
-    // `MaterialPageRoute`/pops directly throughout its own form fields — so
-    // `MaterialPageRoute` is the only available page-route here, not a bypass of
-    // a Tom equivalent. Whether tom_flutter_ui should offer a scope-establishing
-    // `TomPageRoute` is tracked as RCD2.
     final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
+      TomPageRoute(
         builder: (_) => TodoDetailScreen(session: _session, item: item),
       ),
     );

@@ -92,7 +92,8 @@ class _GrantsScreenState extends State<GrantsScreen> {
     if (!mounted) return;
     if (error != null) {
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      TomMessenger.showSnackBar(
+        context,
         TomSnackBar(content: TomText(text: error)),
       );
       return;
@@ -109,7 +110,8 @@ class _GrantsScreenState extends State<GrantsScreen> {
     } on AdminBackendException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      TomMessenger.showSnackBar(
+        context,
         TomSnackBar(content: TomText(text: e.message)),
       );
     }

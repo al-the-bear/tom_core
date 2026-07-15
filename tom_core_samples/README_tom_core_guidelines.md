@@ -361,7 +361,16 @@ error resolution `:868`; `ScreenElementsProvider`
 
 - **G-UI-1** — If the app has a Flutter UI, **`tom_flutter_ui` provides ALL UI
   needs**. Raw Material/Cupertino widgets for app-level UI are not used where a
-  Tom component exists.
+  Tom component exists. This extends to the Flutter *mechanisms* a screen calls,
+  not just the widgets it composes: transient messages are shown through
+  **`TomMessenger`** (`TomMessenger.showSnackBar(context, …)` /
+  `showSnackBarIfPresent` / `showMessage`) rather than `ScaffoldMessenger`
+  directly, and page navigation uses **`TomPageRoute`** rather than
+  `MaterialPageRoute`. `TomPageRoute` is not cosmetic — it captures the active
+  `TomScope` at push time and re-enters it around the pushed screen's builder, so
+  the screen constructs in the pushing scope instead of the Navigator's zone
+  (which the scope-aware widget bases would otherwise resolve against the wrong
+  scope, see G-UI-2/G-UI-6).
 - **G-UI-2** — **New UI components derive from the `Tom*` base classes**
   (`TomNodeBase` → `TomPolicyNodeBase` → `TomFamilyBase` → family bases) so they
   inherit authorization, scope, and resource behavior. A component that extends

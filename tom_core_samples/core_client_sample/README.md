@@ -336,20 +336,18 @@ Save calls `_form.save()` then `session.api.saveItem(item)`. Because the form is
 constructed with the session's matrix, the screen needs **no role logic of its
 own** — the four states do the work.
 
-**Notifications and navigation: Tom *widget* + Flutter *mechanism* (G-UI-1).**
-Two touchpoints on `TodoListsScreen` use a Flutter mechanism rather than a Tom
-one, and that is deliberate. The snackbar is shown with
-`ScaffoldMessenger.of(context).showSnackBar(TomSnackBar(...))`: the *widget* is
-Tom-native (`TomSnackBar`), and `ScaffoldMessenger` is the framework-sanctioned
-presenter — `TomSnackBar`'s own documentation prescribes exactly this call, and
-tom_flutter_ui presents snackbars the same way internally. The detail screen is
-opened with `Navigator.of(context).push(MaterialPageRoute(...))`: G-UI-6 says a
-form's scope "is usually a Flutter route", tom_flutter_ui offers no Tom route
-type, and the framework itself navigates through `Navigator` directly. Both
-call sites carry a load-bearing `// Why:` comment. Whether tom_flutter_ui should
-grow a Tom-native snackbar presenter and/or a scope-establishing `TomPageRoute`
-is an open framework question tracked as quest todo **RCD2** — not a defect in
-this sample.
+**Notifications and navigation: Tom presenter + Tom route (G-UI-1).**
+Two touchpoints on `TodoListsScreen` go through Tom primitives rather than the
+raw Flutter mechanisms. The snackbar is shown with
+`TomMessenger.showSnackBar(context, TomSnackBar(...))`: `TomMessenger` is
+tom_flutter_ui's Tom-owned presenter, wrapping `ScaffoldMessenger` the same way
+the Tom widgets wrap their Flutter counterparts. The detail screen is opened
+with `Navigator.of(context).push(TomPageRoute(...))`: `TomPageRoute` captures
+the active `TomScope` at push time and re-enters it around the pushed screen's
+builder, so the screen constructs in the pushing scope rather than the
+Navigator's zone — closing the scope-propagation gap G-UI-6 warns about (a
+form's scope "is usually a Flutter route"). Both primitives were added by quest
+todo **RCD2**.
 
 ---
 

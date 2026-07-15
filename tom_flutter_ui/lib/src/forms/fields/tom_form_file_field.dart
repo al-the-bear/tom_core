@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_construction_helpers.dart';
+import '../../widgets/dialogs/tom_messenger.dart';
 import '../decoration/tom_generic_field_decoration_mixin.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
@@ -199,9 +200,7 @@ mixin _FileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
     final err = field.checkFile(picked);
     if (err != null) {
       if (!mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text(err)),
-      );
+      TomMessenger.showSnackBarIfPresent(context, SnackBar(content: Text(err)));
       return;
     }
     field.setValue(picked);

@@ -35,6 +35,7 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
   setUpAll(initializeReflection);
@@ -123,7 +124,7 @@ void main() {
         body: Builder(
           builder: (context) => ElevatedButton(
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<bool>(
+              TomPageRoute<bool>(
                 builder: (_) => ItemDetailScreen(session: session, item: item),
               ),
             ),

@@ -148,7 +148,7 @@ class _BoardScreenState extends State<BoardScreen> {
 
   Future<void> _openItem(TodoItem item) async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(
+      TomPageRoute(
         builder: (_) => ItemDetailScreen(session: _session, item: item),
       ),
     );
@@ -161,7 +161,8 @@ class _BoardScreenState extends State<BoardScreen> {
     if (projectId == null) return;
     final shared = await showShareDialog(context, _session, projectId);
     if (shared == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      TomMessenger.showSnackBar(
+        context,
         TomSnackBar(content: TomText(text: TomCtr.text('board.shared'))),
       );
     }

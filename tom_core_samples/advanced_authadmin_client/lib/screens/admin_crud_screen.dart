@@ -139,7 +139,8 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
     final error = await widget.onDelete(item);
     if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      TomMessenger.showSnackBar(
+        context,
         TomSnackBar(content: TomText(text: error)),
       );
       return;

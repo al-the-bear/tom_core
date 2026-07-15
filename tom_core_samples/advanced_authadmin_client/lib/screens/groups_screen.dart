@@ -124,7 +124,8 @@ class GroupsScreen extends StatelessWidget {
       return await session.guard((backend) => backend.listUsers());
     } on AdminBackendException catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        TomMessenger.showSnackBar(
+          context,
           TomSnackBar(content: TomText(text: e.message)),
         );
       }
