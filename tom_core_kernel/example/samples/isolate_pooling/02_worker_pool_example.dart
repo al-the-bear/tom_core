@@ -171,9 +171,9 @@ class WorkDistributionExample {
     taskCount = 8;
     taskResults = [];
 
-    // Execute tasks sequentially to avoid type issues with pool.execute
+    // Execute tasks sequentially so each result is collected in task order.
     for (int i = 0; i < taskCount; i++) {
-      final result = await (pool.execute(IdentifiedTaskCommand(i, 10000)) as Future<Object?>);
+      final result = await pool.execute(IdentifiedTaskCommand(i, 10000));
       taskResults.add(result as Map<String, dynamic>);
     }
 
@@ -206,13 +206,13 @@ class SequentialVsParallelExample {
     // Sequential execution
     final seqStopwatch = Stopwatch()..start();
     for (final n in ranges) {
-      await (pool.execute(CountPrimesCommand(n)) as Future<Object?>);
+      await pool.execute(CountPrimesCommand(n));
     }
     sequentialTimeMs = seqStopwatch.elapsedMilliseconds;
 
-    // Parallel execution using explicit cast
+    // Parallel execution: fan the tasks out across the pool, then await all.
     final parStopwatch = Stopwatch()..start();
-    final futures = ranges.map((n) => pool.execute(CountPrimesCommand(n)) as Future<Object?>).toList();
+    final futures = ranges.map((n) => pool.execute(CountPrimesCommand(n))).toList();
     await Future.wait(futures);
     parallelTimeMs = parStopwatch.elapsedMilliseconds;
 

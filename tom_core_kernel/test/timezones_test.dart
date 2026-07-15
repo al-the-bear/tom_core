@@ -1065,7 +1065,7 @@ void main() {
         final londonDt = utcDt.convertToTimezone(london);
 
         // Verify with TZDateTime
-        final utcLocation = tz.getLocation('UTC');
+        final utcLocation = tz.UTC;
         final londonLocation = tz.getLocation('Europe/London');
         final tzUtcDt = tz.TZDateTime(utcLocation, 2024, 6, 15, 12, 0);
         final tzLondonDt = tz.TZDateTime.from(tzUtcDt, londonLocation);
@@ -1091,7 +1091,7 @@ void main() {
         final londonDt = utcDt.convertToTimezone(london);
 
         // Verify with TZDateTime
-        final utcLocation = tz.getLocation('UTC');
+        final utcLocation = tz.UTC;
         final londonLocation = tz.getLocation('Europe/London');
         final tzUtcDt = tz.TZDateTime(utcLocation, 2024, 1, 15, 12, 0);
         final tzLondonDt = tz.TZDateTime.from(tzUtcDt, londonLocation);
@@ -1241,7 +1241,7 @@ void main() {
         final nyAfter = afterDst.convertToTimezone(newYork);
 
         // Verify with TZDateTime
-        final utcLocation = tz.getLocation('UTC');
+        final utcLocation = tz.UTC;
         final nyLocation = tz.getLocation('America/New_York');
         final tzBeforeUtc = tz.TZDateTime(utcLocation, 2024, 3, 10, 6, 30);
         final tzAfterUtc = tz.TZDateTime(utcLocation, 2024, 3, 10, 7, 30);
@@ -1342,7 +1342,7 @@ void main() {
         final tokyoTime = utcTime.convertToTimezone(tokyo);
 
         // Verify with TZDateTime (using base date 1970-01-01)
-        final utcLocation = tz.getLocation('UTC');
+        final utcLocation = tz.UTC;
         final tokyoLocation = tz.getLocation('Asia/Tokyo');
         final tzUtcDt = tz.TZDateTime(utcLocation, 1970, 1, 1, 23, 0);
         final tzTokyoDt = tz.TZDateTime.from(tzUtcDt, tokyoLocation);

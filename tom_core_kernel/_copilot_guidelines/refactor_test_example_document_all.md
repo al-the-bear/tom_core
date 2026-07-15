@@ -43,33 +43,44 @@ The generated `version.versioner.dart` is tooling output — never hand-edit it.
 
 Iterate through these steps in order. Each step states its **done** condition.
 
-1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
+> **OT1 baseline pass done (2026-07-15).** Steps 1, 14, and 15 are complete —
+> the package passes every automated gate (`dart analyze` clean, `testkit :test`
+> 1636/1636 green). The per-module deep passes (Steps 2–13) are tracked as a
+> resumable iteration under quest todo **RCE2** (one module per iteration); see
+> `_ai/quests/tom_core/todos.tom_core.todo.yaml`.
+
+1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
+   lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
+   accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
    (short, pre-publish list of recent changes), and `LICENSE` (BSD 3-Clause —
    copy the wording from the existing `LICENSE`) exist at the project root.
    Create any that are missing; customize a template `README.md`.
    *Done when all three exist and the README describes the package accurately.*
-2. **Per-module pass — `beanlocator/`.** Run the Per-Module Workflow below.
-3. **Per-module pass — `context/`.**
-4. **Per-module pass — `http_connection/`.**
-5. **Per-module pass — `isolate_pooling/`.**
-6. **Per-module pass — `json/`.**
-7. **Per-module pass — `little_things/`.**
-8. **Per-module pass — `logging/`.**
-9. **Per-module pass — `resources/`.**
-10. **Per-module pass — `scope_ids/`.**
-11. **Per-module pass — `security/`.**
-12. **Per-module pass — `settings/`.**
-13. **Per-module pass — `shutdown_cleanup/`.**
-14. **Barrel exports.** Verify every public symbol of every module is exported
+2. **Per-module pass — `beanlocator/`.** *(RCE2)* Run the Per-Module Workflow below.
+3. **Per-module pass — `context/`.** *(RCE2)*
+4. **Per-module pass — `http_connection/`.** *(RCE2)*
+5. **Per-module pass — `isolate_pooling/`.** *(RCE2)*
+6. **Per-module pass — `json/`.** *(RCE2)*
+7. **Per-module pass — `little_things/`.** *(RCE2)*
+8. **Per-module pass — `logging/`.** *(RCE2)*
+9. **Per-module pass — `resources/`.** *(RCE2)*
+10. **Per-module pass — `scope_ids/`.** *(RCE2)*
+11. **Per-module pass — `security/`.** *(RCE2)*
+12. **Per-module pass — `settings/`.** *(RCE2)*
+13. **Per-module pass — `shutdown_cleanup/`.** *(RCE2)*
+14. **Barrel exports.** ✅ **Done (OT1, 2026-07-15).** `lib/tom_core_kernel.dart`
+    exports all 15 modules (38 directives); analyzer clean ⇒ no unreachable public
+    type. Verify every public symbol of every module is exported
     from the package barrel(s) in `lib/`. *Done when `dart analyze` is clean and
     no public type is unreachable from the package entrypoint.*
-15. **Whole-package QA.** Run `dart analyze` (zero warnings) and `testkit :test`
-    (all green). Confirm reflection is initialized for examples/tests and that
-    `build.yaml` lists every file needing generation. *Done when analyzer and
-    test suite are both clean.*
-16. **Final review.** Re-read each module doc and `api.dart`; confirm docs only
-    describe features that exist and cover all public API. Update `CHANGELOG.md`
-    with a one-line summary of the refactoring pass.
+15. **Whole-package QA.** ✅ **Done (OT1, 2026-07-15).** `dart analyze` clean +
+    `testkit :test` 1636/1636 green (serial). Run `dart analyze` (zero warnings)
+    and `testkit :test` (all green). Confirm reflection is initialized for
+    examples/tests and that `build.yaml` lists every file needing generation.
+    *Done when analyzer and test suite are both clean.*
+16. **Final review.** *(RCE2 — after the per-module passes.)* Re-read each module
+    doc and `api.dart`; confirm docs only describe features that exist and cover
+    all public API. Update `CHANGELOG.md` with a one-line summary of the pass.
 
 > Modules `observable/`, `reflection/`, and `timezoned/` are intentionally
 > **excluded** from the per-module passes — they are stable. Document and test

@@ -48,6 +48,8 @@ library;
 // Imports
 // =============================================================================
 
+import 'dart:async';
+
 import 'package:tom_basics/tom_basics.dart';
 
 import '../isolate_pooling/tom_worker.dart';
@@ -184,15 +186,20 @@ class TomIsolateLogOutput extends TomLogOutput {
     String? origin,
   ]) {
     if (logLevel.matches(loggerLevel)) {
-      workerPool.execute(
-        TomInterIsolateLogMessage(
-          loggerLevel,
-          logLevel,
-          level,
-          convertToString(message),
-          isolateName,
-          timeStamp,
-          origin,
+      // Log dispatch is intentionally fire-and-forget: an output must never
+      // block or fail the caller that emitted the log line, so the pooled
+      // delivery future is deliberately not awaited.
+      unawaited(
+        workerPool.execute(
+          TomInterIsolateLogMessage(
+            loggerLevel,
+            logLevel,
+            level,
+            convertToString(message),
+            isolateName,
+            timeStamp,
+            origin,
+          ),
         ),
       );
     }
