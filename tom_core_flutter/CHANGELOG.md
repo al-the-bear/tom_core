@@ -1,3 +1,19 @@
+## 1.1.1
+
+### Documentation
+
+- **API reference (OT6).** Added a per-module API summary set under
+  `doc/api_reference/` following
+  `_copilot_guidelines/dart/api_summary_creation.md` — one
+  `api_summary_{module}.md` per module (`forms`, `little_things`, `observing`,
+  `resources`, `runtime`, `security`) plus an `api_summary_index.md` with quick
+  navigation, per-module type tables, and an alphabetical type index. Each
+  summary lists only the public surface (constructors, properties, methods,
+  operators, and top-level functions) cross-checked against the actual source
+  and the package barrel. The runtime summary documents the single exported
+  getter `clientPlatformUtils` and the three compile-time `TomFlutterPlatformUtils`
+  variants (io / web / neutral). No source or public API change.
+
 ## 1.1.0
 
 ### Verified

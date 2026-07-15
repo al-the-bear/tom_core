@@ -243,6 +243,11 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 - Per-module guides under [`doc/`](doc/) — one markdown file per module
   (`doc/observing.md`, `doc/forms.md`, `doc/resources.md`, `doc/runtime.md`,
   `doc/security.md`, `doc/little_things.md`).
+- Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
+  start at
+  [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md)
+  for the type index and one `api_summary_{module}.md` per module.
+  (`doc/api/` is reserved for generated `dart doc` HTML and is gitignored.)
 - [`tom_core_kernel`](../tom_core_kernel/README.md) — the platform-neutral
   building blocks re-exported here.
 - [`tom_flutter_ui`](../tom_flutter_ui/README.md) — the full UI/forms/ACL
@@ -250,6 +255,6 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 
 ## Status
 
-- **Version:** 1.1.0
+- **Version:** 1.1.1
 - **Tests:** 47 test cases across 6 module suites (run with `flutter test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
