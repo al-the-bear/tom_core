@@ -67,6 +67,20 @@ Iterate through these steps in order. Each step states its **done** condition.
 > running examples under `dart run --enable-asserts`). `dart analyze` clean;
 > `testkit :test` 1647/1647 (serial). The remaining 11 modules continue under quest
 > todo **RCG1**.
+>
+> ✅ **RCG1 first module done (2026-07-15) — `security/` sub-steps 1–4.** One
+> bounded iteration: private-only DRY refactor of `access_controls.dart`
+> (`TomRoleAccess` + `TomGroupAccess` identical bodies → shared private
+> `_principalAciContainsAny` helper; `TomEntitlementAccess` left separate as its
+> regex rule is genuinely different; public signatures frozen), example surface
+> scaled (new `04_graded_access_example.dart` covering the four-state
+> `TomGradedAccess`/`TomAuthState` surface that had zero example coverage, wired
+> into `00_run_all_examples.dart`), test surface scaled (`security_test.dart`
+> 1647 → 1650, pinning the extracted helper's contract), and 1 latent
+> example-assertion bug fixed in `02_access_control_example.dart` (stale
+> assertions of a since-fixed group-constructor bug, surfaced under
+> `--enable-asserts`). `dart analyze` clean; `testkit :test` 1650/1650 (serial).
+> The remaining 10 modules continue under quest todo **RCH1**.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -84,7 +98,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 8. **Per-module pass — `logging/`.** *(RCE2)*
 9. **Per-module pass — `resources/`.** *(RCE2)*
 10. **Per-module pass — `scope_ids/`.** *(RCE2)*
-11. **Per-module pass — `security/`.** *(RCE2)*
+11. **Per-module pass — `security/`.** ✅ **Sub-steps 1–4 done (RCG1, 2026-07-15).** Documentation half done under RCE2.
 12. **Per-module pass — `settings/`.** *(RCE2)*
 13. **Per-module pass — `shutdown_cleanup/`.** *(RCE2)*
 14. **Barrel exports.** ✅ **Done (OT1, 2026-07-15).** `lib/tom_core_kernel.dart`

@@ -362,15 +362,14 @@ void run() {
   assert(roleManagerOrAdminRegular == false, 'Manager/Admin access should deny regular');
 
   // Example 6: TomGroupAccess
-  // Note: Due to a bug in TomAccessControlInformation constructor,
-  // groups are populated from resourceKeys instead of the groups parameter.
-  // The assertions below reflect the actual runtime behavior.
-  assert(groupAdminsAdmin == false, 'Admins group denies (groups bug in library)');
+  // admin is in {administrators, all-employees}; regular is in
+  // {developers, all-employees}.
+  assert(groupAdminsAdmin == true, 'Admins group allows admin');
   assert(groupAdminsRegular == false, 'Admins group denies regular');
   assert(groupDevsAdmin == false, 'Devs group denies admin');
-  assert(groupDevsRegular == false, 'Devs group denies (groups bug in library)');
-  assert(groupEmployeesAdmin == false, 'Employees group denies (groups bug in library)');
-  assert(groupEmployeesRegular == false, 'Employees group denies (groups bug in library)');
+  assert(groupDevsRegular == true, 'Devs group allows regular');
+  assert(groupEmployeesAdmin == true, 'Employees group allows admin');
+  assert(groupEmployeesRegular == true, 'Employees group allows regular');
 
   // Example 7: TomEntitlementAccess
   assert(entDashboardEditAdmin == true, 'Dashboard edit should allow admin');

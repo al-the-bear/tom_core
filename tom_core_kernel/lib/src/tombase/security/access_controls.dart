@@ -481,6 +481,32 @@ class TomEntitlementAccess extends TomAccessControl {
 }
 
 // =============================================================================
+// SHARED MATCHING HELPER
+// =============================================================================
+
+/// Returns `true` when [principal] is non-null and any entry in [candidates]
+/// is present in the ACI string collection chosen by [selectCollection].
+///
+/// [TomRoleAccess] and [TomGroupAccess] share an identical accessibility rule —
+/// "granted if the principal's ACI lists any of the requested names" —
+/// differing only in which ACI collection they consult. This helper *is* that
+/// rule; each class supplies the collection selector. Entitlement access is
+/// deliberately not routed through here: it matches by regular expression
+/// rather than exact containment, a genuinely different rule.
+bool _principalAciContainsAny(
+  TomPrincipal? principal,
+  List<String> candidates,
+  List<String> Function(TomAccessControlInformation aci) selectCollection,
+) {
+  if (principal == null) return false;
+  final collection = selectCollection(principal.aci);
+  for (final candidate in candidates) {
+    if (collection.contains(candidate)) return true;
+  }
+  return false;
+}
+
+// =============================================================================
 // ROLE-BASED ACCESS CONTROL
 // =============================================================================
 
@@ -508,16 +534,8 @@ class TomRoleAccess extends TomAccessControl {
   const TomRoleAccess(this.roles);
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) {
-    if (principal != null) {
-      for (var r in roles) {
-        if (principal.aci.roles.contains(r)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
+  bool checkAccessibility(TomPrincipal? principal) =>
+      _principalAciContainsAny(principal, roles, (aci) => aci.roles);
 }
 
 // =============================================================================
@@ -549,16 +567,8 @@ class TomGroupAccess extends TomAccessControl {
   const TomGroupAccess(this.groups);
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) {
-    if (principal != null) {
-      for (var g in groups) {
-        if (principal.aci.groups.contains(g)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
+  bool checkAccessibility(TomPrincipal? principal) =>
+      _principalAciContainsAny(principal, groups, (aci) => aci.groups);
 }
 
 // =============================================================================

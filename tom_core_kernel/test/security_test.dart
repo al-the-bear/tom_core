@@ -1381,6 +1381,15 @@ void main() {
       var principal = createTestPrincipal(roles: []);
       expect(access.checkAccessibility(principal), isFalse);
     });
+
+    test('should deny access when access declares no roles (empty candidates)',
+        () {
+      // Pins the shared _principalAciContainsAny contract: an empty candidate
+      // list can never match, regardless of what the principal holds.
+      var access = const TomRoleAccess([]);
+      var principal = createTestPrincipal(roles: ['admin']);
+      expect(access.checkAccessibility(principal), isFalse);
+    });
   });
 
   group('TomGroupAccess', () {
@@ -1405,6 +1414,21 @@ void main() {
       var access = const TomGroupAccess(['hr', 'management']);
       var principal = createTestPrincipalWithGroups(groups: ['management']);
       expect(access.checkAccessibility(principal), isTrue);
+    });
+
+    test('should deny access when principal has empty groups', () {
+      // Parity with the TomRoleAccess empty-collection case — both share the
+      // extracted _principalAciContainsAny helper.
+      var access = const TomGroupAccess(['engineering']);
+      var principal = createTestPrincipalWithGroups(groups: []);
+      expect(access.checkAccessibility(principal), isFalse);
+    });
+
+    test('should deny access when access declares no groups (empty candidates)',
+        () {
+      var access = const TomGroupAccess([]);
+      var principal = createTestPrincipalWithGroups(groups: ['engineering']);
+      expect(access.checkAccessibility(principal), isFalse);
     });
   });
 

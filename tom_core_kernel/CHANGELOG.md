@@ -1,3 +1,39 @@
+## 1.1.2
+
+### Refactor
+
+- **`security/` per-module pass (RCG1).** Internal DRY refactor with frozen
+  public signatures: `TomRoleAccess` and `TomGroupAccess` had byte-for-byte
+  identical `checkAccessibility` bodies — extracted the shared rule into a
+  private `_principalAciContainsAny` helper (each class supplies its ACI
+  collection selector). `TomEntitlementAccess` is deliberately left separate:
+  regex matching is a genuinely different rule, not coincidental duplication.
+
+### Examples
+
+- **Added `example/security/04_graded_access_example.dart`** covering the
+  four-state `TomGradedAccess` / `TomAuthState` surface, which previously had no
+  runnable example: full/read/disabled/none resolution, the `read`→`full` and
+  `disabled`→`read` defaulting, `checkAccessibility`'s collapse to
+  `showsContent`, the `TomAuthState` predicates, and the binary→four-state
+  default bridge. Wired into `00_run_all_examples.dart`. Self-asserts under
+  `dart run --enable-asserts`.
+
+### Fixes
+
+- **Fixed a latent stale assertion in `02_access_control_example.dart`.** Its
+  Example-6 group assertions documented a since-fixed constructor bug ("groups
+  populated from resourceKeys"); the `TomAccessControlInformation` constructor
+  now correctly populates `_groups`, so the assertions failed under
+  `--enable-asserts`. Corrected them to the real group-membership outcomes and
+  removed the obsolete bug note.
+
+### Tests
+
+- **`security_test.dart`** +3 tests pinning the extracted helper's contract
+  (empty candidate list denies; Role/Group parity for an empty ACI collection).
+  Suite 1647 → 1650, all green (serial).
+
 ## 1.1.1
 
 ### Documentation
