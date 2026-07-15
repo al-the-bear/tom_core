@@ -11,7 +11,6 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
-| Forms | [api_summary_forms.md](api_summary_forms.md) | Legacy observable form fields + form aggregate (`TomFieldOld`, `TomFormOld`). |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Client-side exception types (`TomClientException`, `TomClientUIException`). |
 | Observing | [api_summary_observing.md](api_summary_observing.md) | Kernel-observable → Flutter bridges (`TomObservingWidget`, `ValueListenableObserver`). |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Typed config properties (`TomProperty` and typed subclasses). |
@@ -19,15 +18,6 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | Security | [api_summary_security.md](api_summary_security.md) | Client 2FA annotation (`TomClient2FAAdaptor`). |
 
 ## Modules
-
-### Forms (`lib/src/tomclient/forms/`)
-
-| Type | Kind | Description |
-| ---- | ---- | ----------- |
-| `TomFieldOld<T>` | class | Observable form field resolving text from kernel resources. |
-| `TomEmailField<T>` | class | Field with a built-in e-mail validator. |
-| `TomPasswordField<T>` | class | Field with a built-in password validator (`obscureText` default `true`). |
-| `TomFormOld` | class | Observable collection of fields with form-wide validate/save/errors. |
 
 ### Little Things (`lib/src/tomclient/little_things/`)
 
@@ -79,14 +69,10 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomClientException` | Little Things |
 | `TomClientUIException` | Little Things |
 | `TomDoubleProperty` | Resources |
-| `TomEmailField<T>` | Forms |
-| `TomFieldOld<T>` | Forms |
 | `TomFlutterPlatformUtils` | Runtime |
-| `TomFormOld` | Forms |
 | `TomIntProperty` | Resources |
 | `TomObservingWidget<T>` | Observing |
 | `TomObservingWidgetState<T>` | Observing |
-| `TomPasswordField<T>` | Forms |
 | `TomProperty<T>` | Resources |
 | `TomStringProperty` | Resources |
 | `ValueListenableObserver<T>` | Observing |

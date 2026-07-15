@@ -7,8 +7,6 @@ export 'package:tom_core_kernel/tom_core_kernel.dart';
 
 export 'src/tomclient/observing/tom_observing_widget.dart';
 export 'src/tomclient/observing/value_listenable_observer.dart';
-export 'src/tomclient/forms/tom_fields.dart';
-export 'src/tomclient/forms/tom_form.dart';
 export 'src/tomclient/little_things/client_exceptions.dart';
 export 'src/tomclient/resources/tom_properties.dart';
 export 'src/tomclient/runtime/platform_detection_client.dart';

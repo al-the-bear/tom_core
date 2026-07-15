@@ -5,9 +5,6 @@ import 'dart:math' as prefix0;
 import 'package:timezone/src/date_time.dart' as prefix1;
 import 'package:timezone/src/location.dart' as prefix2;
 import 'package:tom_basics/src/logging/logging.dart' as prefix3;
-import 'package:tom_core_flutter/src/tomclient/forms/tom_fields.dart'
-    as prefix4;
-import 'package:tom_core_flutter/src/tomclient/forms/tom_form.dart' as prefix5;
 import 'package:tom_core_flutter/src/tomclient/security/authentication.dart'
     as prefix6;
 import 'package:tom_core_kernel/src/tombase/beanlocator/bean_locator.dart'
@@ -340,7 +337,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         null,
         (o) {
           return o is prefix11.TomObject &&
-              o is! prefix4.TomFieldOld &&
               o is! prefix11.TomString &&
               o is! prefix11.TomInt &&
               o is! prefix11.TomDouble &&
@@ -1761,7 +1757,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <Object>[prefix12.tomReflector],
         null,
         (o) {
-          return o is prefix11.TomMap && o is! prefix5.TomFormOld;
+          return o is prefix11.TomMap;
         },
         const <int>[75, 76],
         32,

@@ -1,3 +1,19 @@
+## 1.2.0
+
+### Removed
+
+- **Legacy forms module (RCF2).** Removed the back-compat `forms` module
+  (`TomFieldOld`, `TomEmailField`, `TomPasswordField`, `TomFormOld`) — its two
+  source files, both barrel exports, the executable example (`example/forms/`),
+  the test suite (`test/forms_test.dart`), and the module docs (`doc/forms.md`,
+  `doc/api_reference/api_summary_forms.md`). These primitives were superseded by
+  the declarative forms framework in `tom_flutter_ui` (`TomForm` +
+  `TomFormStringInput` et al.); per the no-back-compat policy the old surface is
+  deleted rather than deprecated. The sole in-workspace consumer, the
+  `tom_uam_client` sample app, was migrated onto `tom_flutter_ui`'s `TomForm` in
+  the same pass. README, CHANGELOG, and the API summary index were updated to
+  drop the module.
+
 ## 1.1.1
 
 ### Documentation

@@ -4,8 +4,8 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Flutter integration layer for the Tom Framework — re-exports
-[`tom_core_kernel`](../tom_core_kernel/README.md) and adds Flutter widgets,
-form primitives, and client utilities.
+[`tom_core_kernel`](../tom_core_kernel/README.md) and adds Flutter widgets and
+client utilities.
 
 ## Overview
 
@@ -20,8 +20,6 @@ Flutter-specific extensions through a single import.
 What it adds on top of the kernel is deliberately small:
 
 - **Observing widgets** that rebuild when a kernel `TomObservable` notifies.
-- **Form primitives** — the foundational field/form objects (`TomFieldOld`,
-  `TomFormOld`) that bind observable values to validation.
 - **UI-bound properties** — typed `TomProperty<T>` accessors over the kernel
   resource tree.
 - **Client platform detection** — the Flutter/web/IO variant selector for the
@@ -32,12 +30,12 @@ What it adds on top of the kernel is deliberately small:
 ### Relationship to `tom_flutter_ui`
 
 `tom_core_flutter` is the **low-level binding** layer; it is *not* the
-application widget toolkit. The rich, ACL-aware widget set — the modern forms
-framework, the advanced-container-layout engine, theming, and `resource_auth`
-— lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). The form types here
-carry the `Old` suffix (`TomFieldOld`, `TomFormOld`) precisely because they are
-the original primitives; new UI work should reach for `tom_flutter_ui`'s forms
-instead.
+application widget toolkit. The rich, ACL-aware widget set — the declarative
+forms framework, the advanced-container-layout engine, theming, and
+`resource_auth` — lives in
+[`tom_flutter_ui`](../tom_flutter_ui/README.md). Any UI or forms work should
+reach for `tom_flutter_ui`; `tom_core_flutter` only carries the kernel binding
+helpers.
 
 The two demo/test harnesses make the split concrete:
 [`tom_flutter_form_test`](../tom_flutter_form_test) and
@@ -66,7 +64,7 @@ import 'package:tom_core_flutter/tom_core_flutter.dart';
 ```
 
 **SDK:** Dart `^3.10.4` with the Flutter SDK. Modules that use reflection
-(forms, security adaptors) require `dart run build_runner build` to generate
+(security adaptors) require `dart run build_runner build` to generate
 `*.reflection.dart`.
 
 ## Features
@@ -78,14 +76,6 @@ import 'package:tom_core_flutter/tom_core_flutter.dart';
 | `TomObservingWidget<T extends TomObservable>` | A `StatefulWidget` that rebuilds its `child` builder whenever the bound `subState` notifies |
 | `TomObservingWidgetState<T>` | The `TomObserver` state behind the widget (registers/rebuilds on notify) |
 | `ValueListenableObserver<T extends TomObservable>` | Bridges a kernel `TomObservable` to a Flutter `Listenable`/listener |
-
-### Forms (`forms`)
-
-| Type | What it is |
-| ---- | ---------- |
-| `TomFieldOld<T>` | Observable form field (`TomObject<T>`) with validation passes and `save()` |
-| `TomEmailField<T>` / `TomPasswordField<T>` | Specialised field primitives with built-in validators |
-| `TomFormOld` | A `TomMap<String, TomFieldOld>` aggregating fields into a validated form |
 
 ### Resources (`resources`)
 
@@ -139,7 +129,6 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | Example | Demonstrates |
 | ------- | ------------ |
 | [`example/observing/`](example/observing/observing_example.dart) | `ValueListenableObserver` bridging a `TomObservable` to a Flutter listener |
-| [`example/forms/`](example/forms/forms_example.dart) | Building `TomFieldOld`/`TomFormOld`, the two validation passes, reading values via `save()` |
 | [`example/resources/`](example/resources/resources_example.dart) | Resolving typed config via `TomProperty` subclasses and `.withDefault` |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils` and querying its predicates |
 | [`example/security/`](example/security/security_example.dart) | Applying the `TomClient2FAAdaptor` marker annotation and reading back its `type` |
@@ -167,20 +156,6 @@ TomObservingWidget<TomString>(
 name | 'Grace'; // widget now shows "Grace"
 ```
 
-### Binding form fields
-
-```dart
-final email = TomEmailField<String>();
-final password = TomPasswordField<String>();
-final form = TomFormOld()
-  ..['email'] = email
-  ..['password'] = password;
-
-email | 'ada@example.com';
-final isValid = form.validate(); // runs each field's validators
-final values = form.save();      // collects the field values
-```
-
 ### Reading typed configuration
 
 ```dart
@@ -202,9 +177,9 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
              │
    import 'package:tom_core_flutter/tom_core_flutter.dart'
              │  (re-exports the kernel + tom_reflection)
-   ┌─────────┼──────────┬───────────┬───────────┐
- observing  forms   resources   runtime     security
- (rebuild) (TomFieldOld) (TomProperty) (platform) (2FA marker)
+   ┌─────────┼───────────┬───────────┐
+ observing  resources   runtime     security
+ (rebuild) (TomProperty) (platform) (2FA marker)
              │
        tom_core_kernel  (TomObservable, TomObject, TomPlatformUtils, …)
 ```
@@ -213,7 +188,6 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
 | ---- | -------------- |
 | `TomObservingWidget` | Rebuilds a subtree when its observable notifies |
 | `ValueListenableObserver` | Adapts a `TomObservable` to a Flutter listener |
-| `TomFieldOld` / `TomFormOld` | Foundational observable form field / form |
 | `TomProperty<T>` | Typed accessor over the kernel resource tree |
 | `clientPlatformUtils` | Selects the concrete `TomPlatformUtils` for Flutter |
 | `TomClient2FAAdaptor` | Marks a client two-factor adaptor class |
@@ -241,7 +215,7 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 ## Further documentation
 
 - Per-module guides under [`doc/`](doc/) — one markdown file per module
-  (`doc/observing.md`, `doc/forms.md`, `doc/resources.md`, `doc/runtime.md`,
+  (`doc/observing.md`, `doc/resources.md`, `doc/runtime.md`,
   `doc/security.md`, `doc/little_things.md`).
 - Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
   start at
@@ -255,6 +229,6 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 
 ## Status
 
-- **Version:** 1.1.1
-- **Tests:** 47 test cases across 6 module suites (run with `flutter test`).
+- **Version:** 1.2.0
+- **Tests:** 5 module suites (run with `flutter test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
