@@ -1,3 +1,43 @@
+## 1.1.3
+
+### Refactor
+
+- **`logging/` per-module pass (RCH1).** Internal DRY refactor with frozen
+  public signatures. `TomIsolateLogOutput.output` and
+  `TomCreatorLogOutput.output` built the *identical* `TomInterIsolateLogMessage`
+  record before dispatch (only the destination differs — worker pool vs. back
+  to the creator); extracted that byte-for-byte construction into a private
+  `_interIsolateMessage(...)` helper so the record's shape lives in one place.
+  The two `output` bodies stay separate: their dispatch/fallback logic is a
+  genuinely different concern, not coincidental duplication. Replaced the stale
+  `// TODO: add error handling` note inside `TomRemoteLogOutput.output` with an
+  explanatory comment; the resilience enhancement it hinted at (retry-with-
+  backoff, bounded replay queue) is filed as **RCI2** in the tom_core quest
+  todos rather than attempted inline in a signature-frozen pass.
+
+### Examples
+
+- **Added `example/logging/04_isolate_and_remote_logging_example.dart`** covering
+  the kernel-owned isolate/remote logging surface, which previously had no
+  runnable example (examples `01`–`03` only exercise the `tom_basics`
+  `TomLogger` foundation). It drives — connection-free (zero-size worker pools,
+  no configured endpoint) — `TomInterIsolateLogMessage`, `TomLoggingExecutor`,
+  `TomIsolateLogOutput` (level gating), `TomCreatorLogOutput` (off-isolate
+  fallback + gating), `TomLoggingWorkerContext`/`TomIsolateLogging`,
+  `TomRemoteLogMessage`/`TomRemoteLogResult`/`TomLoggingContext`,
+  `TomRemoteLogOutput` (no-endpoint fallback), and `TomRemoteLogServer`
+  (receive, sender-prefixing, CWE-117 control-character sanitization). Wired
+  into `00_run_all_examples.dart` (now async). Self-asserts under
+  `dart run --enable-asserts`.
+
+### Tests
+
+- **Closed the `TomLoggingWorkerContext` test gap.** Added a group asserting it
+  is a `TomWorkerContext` and that `initializeIsolate()` registers a
+  `TomLoggingExecutor` on `TomWorker.executors` and returns `true` (with the
+  global executor list snapshotted and restored). Kernel suite 1650 → 1652,
+  all green; `dart analyze` clean.
+
 ## 1.1.2
 
 ### Refactor

@@ -241,7 +241,12 @@ class TomRemoteLogOutput extends TomLogOutput {
             remoteMessage,
             response,
           );
-          // TODO: add error handling, like retry and wait, queue last X messages etc.
+          // A *returned* (non-thrown) transport error means the endpoint
+          // answered but rejected the record; surface it locally so it is not
+          // silently dropped. Resilience beyond this (retry-with-backoff, a
+          // bounded replay queue of the last N records) is a deliberate
+          // enhancement tracked separately — see RCI residual in the tom_core
+          // quest todos — and is intentionally not attempted inline here.
           if (error != null && error.hasError) {
             print(
               "Sending log message to endpoint returned $result, error: $error",

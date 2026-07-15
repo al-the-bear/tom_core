@@ -149,6 +149,36 @@ class TomInterIsolateLogMessage {
   }
 }
 
+/// Packages a single emitted log line into the [TomInterIsolateLogMessage]
+/// that the isolate-routing outputs dispatch.
+///
+/// [TomIsolateLogOutput] (route to a worker pool) and [TomCreatorLogOutput]
+/// (route back to the creator) build the *identical* record before dispatch —
+/// only the destination differs, not the construction. Keeping that one shared
+/// construction here means a change to the record's shape (a new field, a
+/// different field order) lands in a single place instead of drifting between
+/// the two outputs. Callers pass [message] already reduced to its string form
+/// via their inherited [TomLogOutput.convertToString].
+TomInterIsolateLogMessage _interIsolateMessage(
+  TomLogLevel loggerLevel,
+  TomLogLevel logLevel,
+  String level,
+  String message,
+  String isolateName,
+  DateTime timeStamp,
+  String? origin,
+) {
+  return TomInterIsolateLogMessage(
+    loggerLevel,
+    logLevel,
+    level,
+    message,
+    isolateName,
+    timeStamp,
+    origin,
+  );
+}
+
 // =============================================================================
 // Isolate-Aware Log Outputs
 // =============================================================================
@@ -191,7 +221,7 @@ class TomIsolateLogOutput extends TomLogOutput {
       // delivery future is deliberately not awaited.
       unawaited(
         workerPool.execute(
-          TomInterIsolateLogMessage(
+          _interIsolateMessage(
             loggerLevel,
             logLevel,
             level,
@@ -240,7 +270,7 @@ class TomCreatorLogOutput extends TomLogOutput {
     if (logLevel.matches(loggerLevel)) {
       if (TomWorker.canSendToCreator()) {
         TomWorker.sendToCreator(
-          TomInterIsolateLogMessage(
+          _interIsolateMessage(
             loggerLevel,
             logLevel,
             level,

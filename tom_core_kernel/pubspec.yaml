@@ -1,6 +1,6 @@
 name: tom_core_kernel
 description: Core kernel library for the TOM framework containing base modules.
-version: 1.1.2
+version: 1.1.3
 publish_to: none
 
 environment:

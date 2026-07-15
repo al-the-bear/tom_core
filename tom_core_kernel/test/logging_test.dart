@@ -1398,6 +1398,36 @@ void main() {
       expect(tomLog.logOutput, isA<TomCreatorLogOutput>());
     });
   });
+
+  // =========================================================================
+  // TOM LOGGING WORKER CONTEXT
+  // =========================================================================
+
+  group('TomLoggingWorkerContext', () {
+    test('is a TomWorkerContext', () {
+      final context = _emptyLoggingContext();
+      expect(context, isA<TomWorkerContext>());
+    });
+
+    test('initializeIsolate registers a TomLoggingExecutor and returns true',
+        () async {
+      // initializeIsolate mutates the global TomWorker.executors list, so
+      // snapshot it and restore afterwards to avoid leaking into other tests.
+      final before = List<TomExecutor>.from(TomWorker.executors);
+      addTearDown(() {
+        TomWorker.executors
+          ..clear()
+          ..addAll(before);
+      });
+
+      final context = _emptyLoggingContext();
+      final result = await context.initializeIsolate();
+
+      expect(result, isTrue);
+      expect(TomWorker.executors.length, equals(before.length + 1));
+      expect(TomWorker.executors.last, isA<TomLoggingExecutor>());
+    });
+  });
 }
 
 /// Builds a logging worker context for zero-size pools (no isolates spawned).

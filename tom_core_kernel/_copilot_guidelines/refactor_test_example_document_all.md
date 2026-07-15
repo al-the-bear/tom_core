@@ -81,6 +81,24 @@ Iterate through these steps in order. Each step states its **done** condition.
 > assertions of a since-fixed group-constructor bug, surfaced under
 > `--enable-asserts`). `dart analyze` clean; `testkit :test` 1650/1650 (serial).
 > The remaining 10 modules continue under quest todo **RCH1**.
+>
+> ✅ **RCH1 first module done (2026-07-15) — `logging/` sub-steps 1–4.** One
+> bounded iteration: private-only DRY refactor of `logging_isolate.dart`
+> (`TomIsolateLogOutput.output` + `TomCreatorLogOutput.output` built the
+> identical `TomInterIsolateLogMessage` record → shared private
+> `_interIsolateMessage(...)` helper; the two dispatch bodies left separate as
+> their routing/fallback is genuinely different; public signatures frozen) plus a
+> stale `// TODO` in `TomRemoteLogOutput.output` replaced by an explanatory
+> comment (retry/replay-queue resilience filed as **RCI2**). Example surface
+> scaled (new `04_isolate_and_remote_logging_example.dart` covering the
+> kernel-owned isolate/remote surface — inter-isolate record, executor, isolate
+> & creator outputs with gating/fallback, worker context, remote message/result/
+> context, remote output, and the remote server incl. CWE-117 sanitization —
+> which had zero example coverage; wired into `00_run_all_examples.dart`, now
+> async). Test surface scaled (`logging_test.dart` closed the
+> `TomLoggingWorkerContext.initializeIsolate` gap; 1650 → 1652). `dart analyze`
+> clean; every example self-asserts under `--enable-asserts`; `testkit :test`
+> 1652/1652 (serial). The remaining 9 modules continue under quest todo **RCI1**.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -95,7 +113,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 5. **Per-module pass — `isolate_pooling/`.** *(RCE2)*
 6. **Per-module pass — `json/`.** *(RCE2)*
 7. **Per-module pass — `little_things/`.** *(RCE2)*
-8. **Per-module pass — `logging/`.** *(RCE2)*
+8. **Per-module pass — `logging/`.** ✅ **Sub-steps 1–4 done (RCH1, 2026-07-15).** Documentation half done under RCE2.
 9. **Per-module pass — `resources/`.** *(RCE2)*
 10. **Per-module pass — `scope_ids/`.** *(RCE2)*
 11. **Per-module pass — `security/`.** ✅ **Sub-steps 1–4 done (RCG1, 2026-07-15).** Documentation half done under RCE2.
