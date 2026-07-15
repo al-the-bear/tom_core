@@ -14,9 +14,3 @@ targets:
           - test/security_test.dart
         options:
           formatted: true
-      # The d4rt bridge builder (auto-applied via the tom_d4rt_generator dev
-      # dependency) currently fails to compile against the resolved analyzer,
-      # which would break the build script. tom_core_flutter generates no d4rt
-      # bridges, so it is disabled here.
-      tom_d4rt_generator:d4rt_bridge_builder:
-        enabled: false
