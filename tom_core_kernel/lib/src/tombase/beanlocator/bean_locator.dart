@@ -268,8 +268,8 @@ class TomBean<T> {
     return result;
   }
 
-  /// Registers a bean by type and creates a handle for it. 
-  /// 
+  /// Registers a bean by type and creates a handle for it.
+  ///
   /// [t] The type to register the bean under.
   /// [bean] The bean instance to register.
   ///
@@ -279,11 +279,11 @@ class TomBean<T> {
   /// ```dart
   /// TomBean.withType(UserService, UserServiceImpl());
   /// ```
-  /// 
+  ///
   /// Note: This will take precedence over any @TomComponent registrations for the same type.
   /// This is useful for testing or if environment/platform-specific selection is not desired or
   /// cannot be expressed via annotations.
-  factory TomBean.withType( Type t, Object bean) {
+  factory TomBean.withType(Type t, Object bean) {
     TomBean<T> result = TomBean();
     result._bean = bean as T;
 
@@ -709,135 +709,74 @@ class _TomImplementationInfo {
   /// 3. Environment match: environment matches, no platform constraint
   /// 4. Default: no environment or platform constraints
   ///
-  /// Returns null if no suitable implementation is found.
+  /// Each tier reuses the same single-winner scan ([_findSingleMatch]); only
+  /// the candidate predicate differs. Returns null if no tier matches.
   static ClassMirror? _findImplementation(
     List<_TomImplementationInfo> infos,
     TomComponent tc,
   ) {
-    ClassMirror? result;
+    // The active environment/platform are stable for the duration of one
+    // resolution, so read them once rather than per candidate per tier.
+    final env = TomRuntime.getCurrentEnvironment();
+    final platform = TomRuntime.getCurrentPlatform();
 
-    // Priority 1: Exact match (both environment and platform)
-    result = _findExactMatch(infos, tc);
-    if (result != null) return result;
-
-    // Priority 2: Platform match only
-    result = _findPlatformMatch(infos, tc);
-    if (result != null) return result;
-
-    // Priority 3: Environment match only
-    result = _findEnvironmentMatch(infos, tc);
-    if (result != null) return result;
-
-    // Priority 4: Default (no constraints)
-    return _findDefaultMatch(infos, tc);
+    return _findSingleMatch(
+          infos,
+          tc,
+          (info) => info.environment == env && info.platform == platform,
+          "platform and environment match",
+        ) ??
+        _findSingleMatch(
+          infos,
+          tc,
+          (info) =>
+              info.platform == platform && info.environment == noTomEnvironment,
+          "platform match",
+        ) ??
+        _findSingleMatch(
+          infos,
+          tc,
+          (info) =>
+              info.environment == env && info.platform == noTomPlatform,
+          "environment match",
+        ) ??
+        _findSingleMatch(
+          infos,
+          tc,
+          (info) =>
+              info.environment == noTomEnvironment &&
+              info.platform == noTomPlatform,
+          "default match without environment or platform",
+        );
   }
 
-  /// Finds implementation matching both environment and platform.
-  static ClassMirror? _findExactMatch(
+  /// Returns the single candidate satisfying [matches], or null if none does.
+  ///
+  /// When more than one candidate matches, the first is returned and each
+  /// extra match is logged as a warning — an ambiguous binding is a wiring
+  /// problem the caller should see, but it must not crash discovery.
+  /// [matchDescription] names the tier for the trace log.
+  static ClassMirror? _findSingleMatch(
     List<_TomImplementationInfo> infos,
     TomComponent tc,
+    bool Function(_TomImplementationInfo info) matches,
+    String matchDescription,
   ) {
     ClassMirror? result;
 
     for (var info in infos) {
-      if (info.environment == TomRuntime.getCurrentEnvironment() &&
-          info.platform == TomRuntime.getCurrentPlatform()) {
-        if (result == null) {
-          tomLog.trace(
-            "Interface ${tc.getType()} platform and environment match "
-            "for ${info.classMirror.qualifiedName}",
-          );
-          result = info.classMirror;
-        } else {
-          tomLog.warn(
-            "Found two implementations for ${tc.getType()}: "
-            "${result.qualifiedName} and ${info.classMirror.qualifiedName}",
-          );
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /// Finds implementation matching platform only (no environment constraint).
-  static ClassMirror? _findPlatformMatch(
-    List<_TomImplementationInfo> infos,
-    TomComponent tc,
-  ) {
-    ClassMirror? result;
-
-    for (var info in infos) {
-      if (info.platform == TomRuntime.getCurrentPlatform() &&
-          info.environment == noTomEnvironment) {
-        if (result == null) {
-          tomLog.trace(
-            "Interface ${tc.getType()} platform match "
-            "for ${info.classMirror.qualifiedName}",
-          );
-          result = info.classMirror;
-        } else {
-          tomLog.warn(
-            "Found two implementations for ${tc.getType()}: "
-            "${result.qualifiedName} and ${info.classMirror.qualifiedName}",
-          );
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /// Finds implementation matching environment only (no platform constraint).
-  static ClassMirror? _findEnvironmentMatch(
-    List<_TomImplementationInfo> infos,
-    TomComponent tc,
-  ) {
-    ClassMirror? result;
-
-    for (var info in infos) {
-      if (info.environment == TomRuntime.getCurrentEnvironment() &&
-          info.platform == noTomPlatform) {
-        if (result == null) {
-          tomLog.trace(
-            "Interface ${tc.getType()} environment match "
-            "for ${info.classMirror.qualifiedName}",
-          );
-          result = info.classMirror;
-        } else {
-          tomLog.warn(
-            "Found two implementations for ${tc.getType()}: "
-            "${result.qualifiedName} and ${info.classMirror.qualifiedName}",
-          );
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /// Finds default implementation (no environment or platform constraints).
-  static ClassMirror? _findDefaultMatch(
-    List<_TomImplementationInfo> infos,
-    TomComponent tc,
-  ) {
-    ClassMirror? result;
-
-    for (var info in infos) {
-      if (info.environment == noTomEnvironment &&
-          info.platform == noTomPlatform) {
-        if (result == null) {
-          tomLog.trace(
-            "Interface ${tc.getType()}: Default match without environment "
-            "or platform for ${info.classMirror.qualifiedName}",
-          );
-          result = info.classMirror;
-        } else {
-          tomLog.warn(
-            "Found two implementations for ${tc.getType()}: "
-            "${result.qualifiedName} and ${info.classMirror.qualifiedName}",
-          );
-        }
+      if (!matches(info)) continue;
+      if (result == null) {
+        tomLog.trace(
+          "Interface ${tc.getType()} $matchDescription "
+          "for ${info.classMirror.qualifiedName}",
+        );
+        result = info.classMirror;
+      } else {
+        tomLog.warn(
+          "Found two implementations for ${tc.getType()}: "
+          "${result.qualifiedName} and ${info.classMirror.qualifiedName}",
+        );
       }
     }
 

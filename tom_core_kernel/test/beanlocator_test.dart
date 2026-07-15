@@ -84,6 +84,18 @@ void main() {
     TomBean.resetBeanContext();
   });
 
+  /// Runs [body] and returns the `key` of the [TomBeanLocatorException] it
+  /// throws, or a sentinel if it did not throw. Lets tests pin the *specific*
+  /// error contract (which key), not merely that *some* exception was raised.
+  String keyOfThrow(void Function() body) {
+    try {
+      body();
+    } on TomBeanLocatorException catch (e) {
+      return e.key;
+    }
+    return '<did-not-throw>';
+  }
+
   // ==========================================================================
   // TomComponent Tests
   // ==========================================================================
@@ -368,6 +380,121 @@ void main() {
     test('instantiates concrete @tomComponent beans by runtime type', () {
       final bean = TomBean.getBeanByType(DiscoveredConcreteService);
       expect(bean, isA<DiscoveredConcreteService>());
+    });
+  });
+
+  // ==========================================================================
+  // Type resolution happy paths + caching
+  // ==========================================================================
+  group('type resolution', () {
+    test('resolves a bean registered by type through its interface', () {
+      TomBean.withType(TestService, TestServiceImpl());
+
+      final resolved = TomBean<TestService>().get();
+
+      expect(resolved, isA<TestServiceImpl>());
+      expect(resolved.doSomething(), equals('done'));
+    });
+
+    test('callable syntax works on a type-resolved bean', () {
+      TomBean.withType(TestService, TestServiceImpl());
+
+      final bean = TomBean<TestService>();
+
+      // bean() == bean.get() — resolve then call through.
+      expect(bean().doSomething(), equals('done'));
+    });
+
+    test('caches the resolved instance on the handle', () {
+      final service = AnotherService('cached');
+      TomBean.withType(AnotherService, service);
+
+      final bean = TomBean<AnotherService>();
+      expect(identical(bean.get(), service), isTrue);
+
+      // Wiping the global context does not un-resolve an already-resolved
+      // handle: get() returns the cached instance without touching the context.
+      TomBean.resetBeanContext();
+      expect(identical(bean.get(), service), isTrue);
+    });
+
+    test('throws no_bean_found_uninitialized when nothing matches the type', () {
+      expect(
+        keyOfThrow(() => TomBean<AnotherService>().get()),
+        equals('beanlocator.bean_access.no_bean_found_uninitialized'),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // Exception-key contract: each failure path raises its documented key.
+  // ==========================================================================
+  group('exception keys', () {
+    test('duplicate named registration', () {
+      TomBean.withName('dupKey', AnotherService('a'));
+      expect(
+        keyOfThrow(() => TomBean.withName('dupKey', AnotherService('b'))),
+        equals('beanlocator.initialization.duplicate_bean_with_name'),
+      );
+    });
+
+    test('duplicate typed registration', () {
+      TomBean.withType(TestService, TestServiceImpl());
+      expect(
+        keyOfThrow(() => TomBean.withType(TestService, TestServiceImpl())),
+        equals('beanlocator.initialization.duplicate_bean_with_type'),
+      );
+    });
+
+    test('named lookup miss', () {
+      expect(
+        keyOfThrow(() => TomBean<AnotherService>.fromName('absent').get()),
+        equals('beanlocator.bean_access.bean_not_found_by_name'),
+      );
+    });
+
+    test('named lookup type mismatch', () {
+      TomBean.withName('mismatch', TestServiceImpl());
+      expect(
+        keyOfThrow(() => TomBean<int>.fromName('mismatch').get()),
+        equals('beanlocator.bean_access.bean_not_found_by_type'),
+      );
+    });
+
+    test('ambiguous type resolution', () {
+      TomBean.withType(AmbiguousServiceA, AmbiguousServiceA());
+      TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
+      expect(
+        keyOfThrow(() => TomBean<AmbiguousService>().get()),
+        equals('beanlocator.bean_access.more_than_one_implementation_found'),
+      );
+    });
+
+    test('installByEnvironment with no matching factory', () {
+      expect(
+        keyOfThrow(
+          () => TomBean.installByEnvironment<EnvBackend>(
+            {'prod': LiveEnvBackend.new},
+            environment: 'staging',
+          ),
+        ),
+        equals('beanlocator.environment.no_factory_for_environment'),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // installByEnvironment returns a usable handle
+  // ==========================================================================
+  group('installByEnvironment handle', () {
+    test('the returned handle resolves the installed implementation', () {
+      final handle = TomBean.installByEnvironment<EnvBackend>(
+        {'test': TestEnvBackend.new},
+        environment: 'test',
+      );
+
+      expect(handle.get(), isA<TestEnvBackend>());
+      expect(handle().mode(), equals('test'));
     });
   });
 

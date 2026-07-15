@@ -206,8 +206,12 @@ void run() {
   final byName = TomBean.getBeanByName('ex2_primaryPayment');
   print('   - getBeanByName("ex2_primaryPayment"): ${byName.runtimeType}');
 
-  // Get by type (if registered)
-  final loggerBean = TomBean.withName('ex2_logger', ConsoleLoggingService());
+  // Register the same logger under both a name and its type so it can be
+  // resolved either way: fromName('ex2_logger') (used by the service pattern
+  // below) and getBeanByType(ConsoleLoggingService) (used here).
+  final loggerService = ConsoleLoggingService();
+  TomBean.withName('ex2_logger', loggerService);
+  TomBean.withType(ConsoleLoggingService, loggerService);
   final byType = TomBean.getBeanByType(ConsoleLoggingService);
   print('   - getBeanByType(ConsoleLoggingService): ${byType.runtimeType}');
 
@@ -269,8 +273,9 @@ void run() {
   assert(byName is PrimaryPaymentGateway);
   assert(byType is ConsoleLoggingService);
 
-  // Example 5: Error handling
-  assert(errorKey == 'beanlocator.bean_access.no_bean_found_uninitialized');
+  // Example 5: Error handling. A *named* lookup miss raises the by-name key
+  // (an unnamed/type lookup miss would instead raise no_bean_found_uninitialized).
+  assert(errorKey == 'beanlocator.bean_access.bean_not_found_by_name');
   assert(errorMessage.contains('PaymentGateway'));
 
   // Example 6: Service pattern

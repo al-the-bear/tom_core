@@ -152,7 +152,10 @@ void run() {
   print('     Type: ${byNameResult.runtimeType}');
   print('     Value: $byNameResult');
 
-  // Get by type
+  // Get by type. Named registration does not populate the type index, so we
+  // also register the primary instance under its type to demonstrate the
+  // type accessor returning a live value.
+  TomBean.withType(DatabaseConfig, primaryDb);
   final byTypeResult = TomBean.getBeanByType(DatabaseConfig);
   print('   - TomBean.getBeanByType(DatabaseConfig):');
   print('     Type: ${byTypeResult?.runtimeType}');
@@ -235,8 +238,9 @@ void run() {
   // Example 5: Access methods
   assert(identical(viaGet, viaCallable));
 
-  // Example 6: Error handling
-  assert(caughtKey == 'beanlocator.bean_access.no_bean_found_uninitialized');
+  // Example 6: Error handling. A *named* lookup miss raises the by-name key
+  // (an unnamed/type lookup miss would instead raise no_bean_found_uninitialized).
+  assert(caughtKey == 'beanlocator.bean_access.bean_not_found_by_name');
   assert(caughtMessage.contains('DatabaseConfig'));
 
   // Example 7: Existence check

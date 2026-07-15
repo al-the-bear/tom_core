@@ -131,9 +131,12 @@ class InitializationSequenceExample {
     final isDevMode = currentEnv.isDevelopment;
     final isTestMode = currentEnv.isTest;
 
-    // Query platform capabilities
-    final isWeb = platform?.name.contains('web') ?? false;
-    final isServer = platform?.name.contains('standalone') ?? true;
+    // Query platform capabilities. A platform's `name` is the host OS
+    // (web / linux / macos / windows / android / ios) — NOT a "standalone"
+    // label; the standalone *utils* class is a separate concept. "Server-side"
+    // therefore just means "a native (non-web) host".
+    final isWeb = platform?.name == 'web';
+    final isServer = platform != null && !isWeb;
 
     // Assertions
     assert(hasParent == true);

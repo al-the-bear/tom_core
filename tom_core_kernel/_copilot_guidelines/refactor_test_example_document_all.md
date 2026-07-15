@@ -56,6 +56,17 @@ Iterate through these steps in order. Each step states its **done** condition.
 > per-module `api_summary_*.md` plus `api_summary_index.md` (kernel 1.1.1). The
 > open-ended internal-refactor + example/test-surface scaling (sub-steps 1–4) is
 > deferred as low-priority depth work under quest todo **RCF1**.
+>
+> ✅ **RCF1 first module done (2026-07-15) — `beanlocator/` sub-steps 1–4.** One
+> bounded module iteration: a private-only DRY refactor of `bean_locator.dart`
+> (four `_find*Match` methods → one `_findImplementation` chain + `_findSingleMatch`
+> helper; public signatures frozen), example surface scaled (new
+> `04_type_and_environment_registration_example.dart` covering the type/env-keyed
+> API), test surface scaled (`beanlocator_test.dart` 29 → 40 tests, all documented
+> exception keys asserted), and 4 latent example-assertion bugs fixed (surfaced by
+> running examples under `dart run --enable-asserts`). `dart analyze` clean;
+> `testkit :test` 1647/1647 (serial). The remaining 11 modules continue under quest
+> todo **RCG1**.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -64,7 +75,7 @@ Iterate through these steps in order. Each step states its **done** condition.
    copy the wording from the existing `LICENSE`) exist at the project root.
    Create any that are missing; customize a template `README.md`.
    *Done when all three exist and the README describes the package accurately.*
-2. **Per-module pass — `beanlocator/`.** *(RCE2)* Run the Per-Module Workflow below.
+2. **Per-module pass — `beanlocator/`.** ✅ **Sub-steps 1–4 done (RCF1, 2026-07-15).** Documentation half done under RCE2. Run the Per-Module Workflow below.
 3. **Per-module pass — `context/`.** *(RCE2)*
 4. **Per-module pass — `http_connection/`.** *(RCE2)*
 5. **Per-module pass — `isolate_pooling/`.** *(RCE2)*
