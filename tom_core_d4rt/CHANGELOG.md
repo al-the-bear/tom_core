@@ -1,3 +1,27 @@
+## 1.0.3
+
+### Tests
+
+- **Drove the `tom_basics` replay to exhaustive per-bridge coverage (RCG5).**
+  `test/replay/test_d4rt_tom_basics.d4rt` now references *every* class the
+  `tom_basics_bridges.b.dart` container registers — a registered name→reference
+  cross-check confirms zero gaps (11/11). The one previously-uncovered class,
+  `TomLogger`, was exercised at the class level (it had only been reached
+  indirectly via the `tomLog` global): direct construction, the static
+  fixed-width label constants (`INFO`/`ERROR`/`SEVERE`/`TRAFFIC`), the static
+  `globalSettingInfoEnabled` enable-flag round-trip and `fallback` instance, the
+  level stack (`setLogLevel`, `setLogLevelByName`, `pushLogLevel`/`popLogLevel`),
+  the per-name overrides (`addNameLevel`/`getNameLevel`/`removeNameLevel`,
+  `setLogLevelExceptions`), every level method
+  (`info`/`debug`/`warn`/`error`/`trace`/`traffic`/`severe`/`fatal`/`status`),
+  `output`, the `logOutput` getter/setter, and `toString`. Note: the package
+  resolves the *published* `tom_basics 1.0.0`, which predates the RCE6 LIFO fix,
+  so the post-pop assertion is coverage-only (that `popLogLevel` executes and
+  leaves a valid level); tightening it to the RCE6 restore value awaits
+  republishing `tom_basics` and bumping the constraint here. Replay green
+  (Result: PASSED); full 24-group harness green; `dart analyze` clean. No source
+  or bridge change — bridged public behaviour is unchanged.
+
 ## 1.0.2
 
 ### Tests

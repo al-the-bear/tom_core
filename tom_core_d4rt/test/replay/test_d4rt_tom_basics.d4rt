@@ -154,6 +154,84 @@ verifyNotNull(TomRuntime.getEnvironments(), 'TomRuntime.getEnvironments returns 
 verifyNotNull(TomRuntime.getPlatforms(), 'TomRuntime.getPlatforms returns a list');
 verifyNotNull(TomRuntime.printReport(), 'TomRuntime.printReport returns a string');
 
+# =============================================================================
+# Test: TomLogger class surface (RCG5 — closes the last tom_basics gap) (20 tests)
+# =============================================================================
+# The `tomLog` global (tested above) is a TomLogger, but the CLASS itself was
+# never constructed/exercised by name. Drive its full bridged surface here:
+# static label constants, static enable flags, the level stack, per-name
+# overrides, and every log method.
+
+var logger = TomLogger();
+verifyNotNull(logger, 'TomLogger constructed directly');
+
+# Static level-name label constants (fixed-width 7-char labels)
+verifyEquals(TomLogger.INFO, 'INFO   ', 'TomLogger.INFO label constant');
+verifyEquals(TomLogger.ERROR, 'ERROR  ', 'TomLogger.ERROR label constant');
+verifyEquals(TomLogger.SEVERE, 'SEVERE ', 'TomLogger.SEVERE label constant');
+verifyEquals(TomLogger.TRAFFIC, 'TRAFFIC', 'TomLogger.TRAFFIC label constant');
+
+# Static enable-flag setter/getter round-trips (restore to avoid side effects)
+TomLogger.globalSettingInfoEnabled = false;
+verifyEquals(TomLogger.globalSettingInfoEnabled, false, 'globalSettingInfoEnabled setter round-trips');
+TomLogger.globalSettingInfoEnabled = true;
+verifyEquals(TomLogger.globalSettingInfoEnabled, true, 'globalSettingInfoEnabled restored to true');
+verifyNotNull(TomLogger.fallback, 'TomLogger.fallback static instance resolves');
+
+# logLevel getter + setLogLevel (RCE6: current level IS the stack top)
+logger.setLogLevel(TomLogLevel.warn);
+verifyEquals(logger.logLevel.levelPattern, 16, 'setLogLevel makes warn the current level');
+
+# setLogLevelByName resolves via TomLogLevel.byName (case-insensitive)
+logger.setLogLevelByName('info');
+verifyEquals(logger.logLevel.levelPattern, 8, 'setLogLevelByName(info) sets info as current level');
+
+# push/pop level-stack bridge methods. NOTE: tom_core_d4rt resolves the
+# PUBLISHED tom_basics 1.0.0, which predates the RCE6 LIFO fix — so we assert
+# only the push (current level becomes the pushed level, true in every version)
+# and that pop executes and yields a valid level. Tightening the post-pop
+# assertion to the RCE6 LIFO restore value is filed as an RCH residual (needs
+# tom_basics republished with RCE6 + the constraint bumped here).
+logger.pushLogLevel(TomLogLevel.trace);
+verifyEquals(logger.logLevel.levelPattern, 1, 'pushLogLevel(trace) makes trace the current level');
+logger.popLogLevel();
+verifyNotNull(logger.logLevel, 'popLogLevel executes and leaves a valid current level');
+
+# Per-name level overrides round-trip
+logger.addNameLevel('MyService', TomLogLevel.debug);
+verifyEquals(logger.getNameLevel('MyService').levelPattern, 2, 'addNameLevel/getNameLevel round-trip');
+logger.removeNameLevel('MyService');
+verifyEquals(logger.getNameLevel('MyService'), null, 'removeNameLevel clears the override');
+
+# setLogLevelExceptions parses <name>=<level> pairs (uppercase level names)
+logger.setLogLevelExceptions('DatabaseService=DEBUG,ApiClient=TRACE');
+verifyEquals(logger.getNameLevel('ApiClient').levelPattern, 1, 'setLogLevelExceptions parses per-name TRACE');
+
+# Every level method executes without throwing
+logger.info('info via TomLogger instance');
+logger.debug('debug message');
+logger.warn('warn message');
+logger.error('error message');
+logger.trace('trace message');
+logger.traffic('traffic message');
+logger.severe('severe message');
+logger.fatal('fatal message');
+logger.status('status message');
+verify(true, 'all TomLogger level methods executed without throwing');
+
+# output(messageLogLevel, level, message) explicit call
+logger.output(TomLogLevel.info, TomLogger.INFO, 'explicit output call');
+verify(true, 'TomLogger.output executed');
+
+# logOutput getter/setter round-trip
+var loggerOut = TomConsoleLogOutput();
+logger.logOutput = loggerOut;
+verifyNotNull(logger.logOutput, 'logOutput getter returns the assigned output');
+
+# toString
+verifyNotNull(logger.toString(), 'TomLogger.toString produces a string');
+
+# =============================================================================
 # Note: TomLoggable (§46) is an abstract mixin with no constructor and no
 # statics; its only member is the `logRepresentation` getter, which requires a
 # concrete TomLoggable instance not constructable connection-free here. Its

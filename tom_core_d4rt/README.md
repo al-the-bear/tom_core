@@ -240,8 +240,9 @@ DartScript. See the [repository map](../README.md) for the full picture.
 
 ## Status
 
-- **Version:** 1.0.2
+- **Version:** 1.0.3
 - **Tests:** 33 test cases across 3 suites (replay + dcli-compat; run with
   `dart test` or the `bin/d4rtrun.b.dart` replay runner). The `tom_reflection`
-  replay now exercises every bridged class the container registers (RCF5).
+  (RCF5) and `tom_basics` (RCG5) replays now each exercise every bridged class
+  their containers register (zero-gap cross-check).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
