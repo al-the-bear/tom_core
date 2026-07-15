@@ -219,6 +219,53 @@ verifyEquals(delegation.delegationMode.name, 'share', 'delegation mode parses to
 verifyEquals(delegation.revoked, false, 'delegation not revoked by default');
 
 # =============================================================================
+# Test: Remaining query-DSL operators + literals (RCE5 deepening)
+# Same connection-free pattern as the operator section above: build predicates
+# from literals, name them via analyze(), and render through the dialect.
+# =============================================================================
+
+# Additional literals — double and bool wrap their value and self-describe
+var dblLit = DoubleLiteral(3.14);
+verifyEquals(dblLit.operant1, 3.14, 'DoubleLiteral wraps its value');
+verifyContains(dblLit.analyze(0), 'DoubleLiteral', 'DoubleLiteral analyze names the operator');
+var boolLit = BoolLiteral(true);
+verifyEquals(boolLit.operant1, true, 'BoolLiteral wraps its value');
+verifyContains(boolLit.analyze(0), 'BoolLiteral', 'BoolLiteral analyze names the operator');
+
+# Not-equal comparison
+var neq = Neq(StringLiteral('name'), StringLiteral('ada'));
+verifyContains(neq.analyze(0), 'Neq', 'Neq analyze names the operator');
+verifyNotNull(neq.generate(dialect), 'Neq renders through the dialect');
+
+# Greater-than-or-equal / less-than-or-equal over integer literals
+var gte = Gte(IntegerLiteral(5), IntegerLiteral(3));
+verifyContains(gte.analyze(0), 'Gte', 'Gte analyze names the operator');
+var lte = Lte(IntegerLiteral(1), IntegerLiteral(2));
+verifyContains(lte.analyze(0), 'Lte', 'Lte analyze names the operator');
+
+# NOT LIKE pattern match
+var notLike = NotLike(StringLiteral('name'), StringLiteral('%x%'));
+verifyContains(notLike.analyze(0), 'NotLike', 'NotLike analyze names the operator');
+verifyNotNull(notLike.generate(dialect), 'NotLike renders through the dialect');
+
+# BETWEEN over a two-element bounds list
+var between = Between(IntegerLiteral(5), [IntegerLiteral(1), IntegerLiteral(10)]);
+verifyNotNull(between.operant1, 'Between left operand present');
+verifyContains(between.analyze(0), 'Between', 'Between analyze names the operator');
+
+# REGEXP pattern match
+var regexp = Regexp(StringLiteral('name'), StringLiteral('^a.*'));
+verifyContains(regexp.analyze(0), 'Regexp', 'Regexp analyze names the operator');
+
+# IS NULL / IS NOT NULL null-predicate wrappers
+var isNull = IsNull(StringLiteral('name'));
+verifyNotNull(isNull.operant1, 'IsNull wraps its operand');
+verifyContains(isNull.analyze(0), 'IsNull', 'IsNull analyze names the operator');
+verifyNotNull(isNull.generate(dialect), 'IsNull renders through the dialect');
+var isNotNull = IsNotNull(StringLiteral('name'));
+verifyContains(isNotNull.analyze(0), 'IsNotNull', 'IsNotNull analyze names the operator');
+
+# =============================================================================
 # Summary
 # =============================================================================
 

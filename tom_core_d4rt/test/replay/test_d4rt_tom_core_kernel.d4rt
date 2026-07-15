@@ -287,6 +287,60 @@ verifyEquals(roleAdapter.resolveAuth('project.404'), TomAuthState.none, 'adapter
 TomResourceRoleRegistry.reset();
 
 # =============================================================================
+# Test: TomDouble boxed scalar (RCE5 deepening) (4 tests)
+# =============================================================================
+
+var boxedDouble = TomDouble(3.5);
+verifyNotNull(boxedDouble, 'TomDouble created');
+verifyEquals(boxedDouble.get(), 3.5, 'TomDouble.get returns initial value');
+verifyEquals(boxedDouble.isNull, false, 'TomDouble is not null');
+boxedDouble.set(9.25);
+verifyEquals(boxedDouble.get(), 9.25, 'TomDouble.set updates value');
+
+# =============================================================================
+# Test: Nullable observable scalars (RCE5 deepening) (10 tests)
+# =============================================================================
+
+var nStr = TomNString(null);
+verifyNotNull(nStr, 'TomNString created with null');
+verifyEquals(nStr.get(), null, 'TomNString.get returns null initial value');
+verifyEquals(nStr.isNull, true, 'TomNString reports isNull for null value');
+nStr.set('present');
+verifyEquals(nStr.get(), 'present', 'TomNString.set updates value');
+verifyEquals(nStr.isNull, false, 'TomNString not null after set');
+
+var nInt = TomNInt(null);
+verifyEquals(nInt.get(), null, 'TomNInt.get returns null');
+nInt.set(7);
+verifyEquals(nInt.get(), 7, 'TomNInt.set updates value');
+
+var nDouble = TomNDouble(null);
+verifyEquals(nDouble.get(), null, 'TomNDouble.get returns null');
+
+var nBool = TomNBool(null);
+verifyEquals(nBool.get(), null, 'TomNBool.get returns null');
+
+# =============================================================================
+# Test: Remaining access controls (§17 security) (RCE5 deepening) (8 tests)
+# =============================================================================
+
+var noAccess = TomNoAccess();
+verifyNotNull(noAccess, 'TomNoAccess constructed');
+verifyEquals(noAccess.checkAccessibility(null), false, 'TomNoAccess denies null principal');
+
+var publicAccess = TomPublicAccess();
+verifyNotNull(publicAccess, 'TomPublicAccess constructed');
+verifyEquals(publicAccess.checkAccessibility(null), true, 'TomPublicAccess allows null principal');
+
+var authedAccess = TomAuthenticatedAccess();
+verifyNotNull(authedAccess, 'TomAuthenticatedAccess constructed');
+verifyEquals(authedAccess.checkAccessibility(null), false, 'TomAuthenticatedAccess denies null principal');
+
+var guestAccess = TomGuestAccess();
+verifyNotNull(guestAccess, 'TomGuestAccess constructed');
+verifyEquals(guestAccess.checkAccessibility(null), false, 'TomGuestAccess denies null principal');
+
+# =============================================================================
 # Summary
 # =============================================================================
 

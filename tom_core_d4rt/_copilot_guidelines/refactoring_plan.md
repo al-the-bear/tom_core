@@ -46,6 +46,33 @@ with the folder):
 
 Iterate in order. Each step states its **done** condition.
 
+> ✅ **RCE5 partial (2026-07-15) — core-owned replay coverage deepened.** OT4 wired
+> all bridged Tom packages into the Dart harness (`test/d4rt_replay_test.dart`,
+> 24/24 green), but each `test/replay/test_d4rt_*.d4rt` file was a representative
+> smoke test rather than exhaustive per-class coverage. RCE5 is the depth work.
+> This pass deepened the two **core-owned** modules — the reason this package
+> exists — verified against the freshly-compiled binary and the full harness
+> (24/24 green, `dart analyze` clean):
+> - **`tom_core_kernel/`** replay (+~22 assertions): `TomDouble` boxed scalar; the
+>   four nullable observable scalars (`TomNString`/`TomNInt`/`TomNDouble`/`TomNBool`
+>   — null init, `get`/`set`, `isNull`); and the remaining access-control family
+>   (`TomNoAccess`/`TomPublicAccess`/`TomAuthenticatedAccess`/`TomGuestAccess` via
+>   `checkAccessibility(null)`).
+> - **`tom_core_server/`** replay (+~20 assertions): the uncovered query-DSL
+>   operators (`Neq`, `Gte`, `Lte`, `NotLike`, `Between`, `Regexp`, `IsNull`,
+>   `IsNotNull`) and literals (`DoubleLiteral`, `BoolLiteral`), reusing the
+>   connection-free analyze/generate pattern.
+>
+> The **exhaustive remainder** — every bridged class/enum/extension across the
+> other ~11 external-package replay files (`tom_basics`, `tom_build`,
+> `tom_reflection`, `tom_dist_ledger`, `tom_process_monitor`, `tom_doc_scanner`,
+> `tom_doc_specs`, `tom_md2latex`, `tom_md2pdf`, `tom_crypto`, `tom_vscode`), plus
+> the datasource/repository/endpoint surfaces in kernel/server that need a MariaDB
+> database or a live connection — is tracked as quest todo **RCF5**
+> (`rcf5-d4rt-exhaustive-per-bridge-coverage`), low priority. Regenerating bridges
+> requires `tom_d4rt_generator` (absent in some checkouts); a pre-generated
+> `bin/d4rt_test` lets the harness skip generation.
+
 1. **Meta files.** Ensure `README.md` (summary + overview, incl. CLI usage),
    `CHANGELOG.md` (short, pre-publish), and `LICENSE` (BSD 3-Clause) exist at the
    project root. All three are present — verify they are current. *Done when all
