@@ -680,8 +680,10 @@ class AppWriteService {
     );
     final saved = await store.saveProject(record);
     // RCC1: the creator becomes the project's owner — stamp the explicit C-5
-    // owner grant so the login folds it into aci.resourceRoles (ownership is no
-    // longer only the implicit workspace chain the bespoke resolver walks).
+    // owner grant so enforcement (which re-resolves grants/shares live from the
+    // DB on every request) and the `/resource-roles` endpoint both see the
+    // ownership, rather than only the implicit workspace chain the bespoke
+    // resolver walks.
     await ownershipWriter.recordOwner(
       userId.toString(),
       ResourceRoleKeys.project(saved.id!),
@@ -696,7 +698,8 @@ class AppWriteService {
   /// `@TomDbScope(field: 'ownerId')` owner-scope makes the row theirs and the
   /// C-3 *insert*-scope check permits it (a principal may only create a row
   /// scoped to a value they are allowed) — and an explicit C-5 owner grant is
-  /// recorded so the login folds it into `aci.resourceRoles`.
+  /// recorded so live enforcement and the `/resource-roles` endpoint both see
+  /// the ownership.
   Future<Workspace> createWorkspace(int userId, Workspace workspace) async {
     final record = workspaceToRecord(workspace)
       ..id = null

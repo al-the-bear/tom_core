@@ -49,25 +49,21 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
   /// The store the login reads the account, roles, and groups through.
   final AuthUserStore store;
 
-  /// Resolves the authenticated principal's **effective** per-resource roles into
-  /// the `resourceKey → roleName` map carried on
-  /// [TomAccessControlInformation.resourceRoles].
+  /// Builds the service over [store] (a repository-backed store at boot, a seeded
+  /// in-memory one under test).
   ///
-  /// Folds both authorization layers the sample uses through the one framework
-  /// path: the principal's own C-5 [TomPrincipalResourceGrant] rows (ownership)
-  /// **and** the C-6 `share`-mode [TomPrincipalDelegation] rows targeting them
-  /// (RCB7), keyed by the user's (stringified) id and collapsed to the stronger
-  /// role per resource. This is the same fold
-  /// [TomDelegationResolver.resolveEffectiveRoles] applies at enforcement time,
-  /// applied here at issue time — so the minted token's effective-role claim
-  /// matches what the app server (which re-resolves the same rows from `auth_db`)
-  /// enforces and what the app server's `/resource-roles` endpoint returns to the
-  /// client (C-5/C-6, G-AUTHZ-5).
-  final TomDelegationResolver resourceRoleResolver;
-
-  /// Builds the service over [store] and [resourceRoleResolver] (repository-backed
-  /// collaborators at boot, seeded in-memory ones under test).
-  AdvancedAuthenticationService(this.store, this.resourceRoleResolver);
+  /// The login deliberately does **not** fold the principal's effective
+  /// per-resource roles (C-5 ownership grants ∪ C-6 active share delegations) into
+  /// the minted token (RCD3, option b). The bearer token is opaque to the client
+  /// and never read for enforcement: the app server re-resolves the live grant and
+  /// delegation rows from `auth_db` on every request (so a revoked share stops
+  /// granting access immediately, not at token expiry), and the client reads its
+  /// current effective roles from the app server's `/resource-roles` endpoint.
+  /// A `resourceRoles` claim baked into the 2-hour token would therefore have no
+  /// reader and could only go stale — so the login leaves it empty and
+  /// [TomAccessControlInformation.resourceRoles] is populated live downstream, not
+  /// at issue time.
+  AdvancedAuthenticationService(this.store);
 
   /// Resolves [authData] into an authenticated [TomAuthenticationInfo], or throws
   /// [LoginException] when the login is rejected.
@@ -103,14 +99,6 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
 
     final roleKeys = await store.roleKeysForUser(record.id!);
     final groupNames = await store.groupNamesForUser(record.id!);
-    // Effective per-resource roles (C-5 ownership grants ∪ C-6 active share
-    // delegations): the principal id is the user's surrogate id stringified,
-    // matching how the write paths stamp ownership grants and shares. Resolved
-    // "now" so only currently-active delegations fold in.
-    final resourceRoles = await resourceRoleResolver.resolveEffectiveRoles(
-      record.id!.toString(),
-      DateTime.now(),
-    );
 
     final principal = TomPrincipal(
       authenticated: true,
@@ -134,7 +122,6 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
       aci: TomAccessControlInformation(
         roles: roleKeys,
         groups: groupNames,
-        resourceRoles: resourceRoles,
       ),
     );
 

@@ -61,11 +61,12 @@ credentials are (sample only — never ship them):
 ## Endpoints
 
 `POST` / `PUT` bodies are JSON; the `Authorization: Bearer <authzToken>` header
-carries the login's `authzToken` (the token that carries the resolved roles). Its
-encrypted access-control payload includes the principal's **effective**
-`resourceRoles` map — the C-5 ownership grants **and** the C-6 `share`-mode
-delegations folded through `TomDelegationResolver.resolveEffectiveRoles` at issue
-time (RCB7), the same fold the app server re-resolves live at enforcement.
+carries the login's `authzToken` (the token that carries the encrypted roles and
+groups). The token deliberately does **not** carry a per-resource role map (RCD3,
+option b): the bearer is opaque and never read for enforcement, so the effective
+`resourceRoles` map (C-5 ownership grants ∪ C-6 `share`-mode delegations) is
+resolved **live** instead — the app server re-resolves it from `auth_db` on every
+request and exposes it through `GET /resource-roles`, which the client reads.
 
 | Method & path | Access | Purpose |
 | --- | --- | --- |

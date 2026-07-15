@@ -87,21 +87,23 @@ A successful login mints **two** JWTs, mirroring what
 
 - the **authentication token** (`authToken`) — the public principal payload;
 - the **authorization token** (`authzToken`) — the same public payload plus the
-  *encrypted* access-control data (the roles/groups definition **and the folded
-  per-resource role map**).
+  *encrypted* access-control data (the roles/groups definition).
 
-The encrypted access-control payload's `resourceRoles` map is the principal's
-**effective** per-resource roles, folded at *issue time* through the same
-framework path the app server enforces on: `AdvancedAuthenticationService`
-resolves it with `TomDelegationResolver.resolveEffectiveRoles`, folding the C-5
-ownership grants (`tom_principal_resource_grant`) **and** the C-6 `share`-mode
-delegations (`tom_principal_delegation`) into one flat `resourceKey → role` map,
-strongest role per resource (RCB7). Resolving "now" means only currently-active
-delegations fold in. The claim therefore matches what the app server's
-`ResourceRoleResolver` re-resolves live from `auth_db` at enforcement time and
-what its `GET /resource-roles` endpoint returns — the client reads the map from
-that endpoint (RCB5), not by decrypting the token, so the folded claim is a
-consistency guarantee rather than the client's read path.
+The login deliberately does **not** bake the principal's effective per-resource
+role map into the token (RCD3, option b). The bearer token is opaque to the
+client and is never read for enforcement, so a `resourceRoles` claim would have
+no reader and could only go stale over the token's 2-hour life. Instead the
+per-resource role map is resolved **live** wherever it is needed: the app
+server's `ResourceRoleResolver` re-resolves the C-5 ownership grants
+(`tom_principal_resource_grant`) **and** the C-6 `share`-mode delegations
+(`tom_principal_delegation`) from `auth_db` on every request via
+`TomDelegationResolver.resolveEffectiveRoles` (strongest role per resource,
+resolving "now" so a revoked share stops granting access immediately, not at
+token expiry), and its `GET /resource-roles` endpoint returns that same live map
+to the client. The client reads its roles from that endpoint (RCB5), never from
+the token — so there is a single live source of truth rather than a token claim
+that must be kept consistent with it. `AdvancedAuthenticationService` therefore
+leaves `aci.resourceRoles` empty at issue time.
 
 Both are built by `TomBearerAuthentication.convertPrincipalToTokenPayload` +
 `TomServerJwtToken(...).getJWT(issuer)`, signed under the issuer `'tom'`

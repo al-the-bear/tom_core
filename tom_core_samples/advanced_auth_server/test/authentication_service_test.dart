@@ -56,42 +56,11 @@ InMemoryAuthUserStore _storeWith({
   );
 }
 
-/// Builds the effective-role resolver over seeded in-memory grant and delegation
-/// stores, so the login folds the given C-5 [grants] and C-6 `share`-mode
-/// [shares] into `aci.resourceRoles`. Defaults to neither (the common case for
-/// the credential-path tests).
-TomDelegationResolver _resolverWith({
-  List<TomPrincipalResourceGrant> grants = const [],
-  List<TomPrincipalDelegation> shares = const [],
-}) =>
-    TomDelegationResolver(
-      InMemoryPrincipalDelegationStore(shares),
-      TomPrincipalResourceRoleResolver(
-        InMemoryPrincipalResourceGrantStore(grants),
-      ),
-    );
-
-/// A C-6 `share`-mode delegation lending [delegateId] the [role] on [resourceKey],
-/// granted by [delegatorId] (always active — no time bounds).
-TomPrincipalDelegation _share({
-  required String delegatorId,
-  required String delegateId,
-  required String resourceKey,
-  required ProjectRole role,
-}) =>
-    TomPrincipalDelegation(
-      mode: TomDelegationMode.share.name,
-      delegatorId: delegatorId,
-      delegateId: delegateId,
-      resourceKey: resourceKey,
-      role: role.name,
-    );
-
 void main() {
   group('AdvancedAuthenticationService.authenticateUser', () {
     test('accepts the right password and builds the authenticated principal',
         () async {
-      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
+      final service = AdvancedAuthenticationService(_storeWith());
 
       final info = await service.authenticateUser(_login('ada', 's3cret'));
 
@@ -112,7 +81,6 @@ void main() {
             1: ['Engineering'],
           },
         ),
-        _resolverWith(),
       );
 
       final info = await service.authenticateUser(_login('ada', 's3cret'));
@@ -123,115 +91,22 @@ void main() {
       expect(info.acd.toString(), contains('2 roles'));
     });
 
-    test('the principal carries the user\'s resource roles from grants (C-5)',
-        () async {
-      // Ada (id 1) owns a project and is a viewer of an item; the login folds
-      // her grant rows into aci.resourceRoles keyed by resource key.
-      final service = AdvancedAuthenticationService(
-        _storeWith(),
-        _resolverWith(grants: [
-          TomPrincipalResourceGrant(
-            principalId: '1',
-            resourceKey: ResourceRoleKeys.project(7),
-            role: ProjectRole.owner.name,
-          ),
-          TomPrincipalResourceGrant(
-            principalId: '1',
-            resourceKey: ResourceRoleKeys.item(9),
-            role: ProjectRole.viewer.name,
-          ),
-          // A grant for a different principal must not leak into ada's map.
-          TomPrincipalResourceGrant(
-            principalId: '2',
-            resourceKey: ResourceRoleKeys.project(7),
-            role: ProjectRole.editor.name,
-          ),
-        ]),
-      );
-
-      final info = await service.authenticateUser(_login('ada', 's3cret'));
-
-      expect(info.principal.aci.resourceRoles, {
-        'project:7': 'owner',
-        'item:9': 'viewer',
-      });
-    });
-
     test(
-        'the principal carries roles shared to it via C-6 delegations, '
-        'folded with its own grants (RCB7)', () async {
-      // Ada (id 1) owns project 7 (C-5) and is separately shared `editor` on
-      // project 5 by user 2 (C-6). The login folds both into aci.resourceRoles,
-      // so the minted token's claim matches what the app server enforces.
-      final service = AdvancedAuthenticationService(
-        _storeWith(),
-        _resolverWith(
-          grants: [
-            TomPrincipalResourceGrant(
-              principalId: '1',
-              resourceKey: ResourceRoleKeys.project(7),
-              role: ProjectRole.owner.name,
-            ),
-          ],
-          shares: [
-            _share(
-              delegatorId: '2',
-              delegateId: '1',
-              resourceKey: ResourceRoleKeys.project(5),
-              role: ProjectRole.editor,
-            ),
-            // A share to a different delegate must not leak into ada's map.
-            _share(
-              delegatorId: '1',
-              delegateId: '2',
-              resourceKey: ResourceRoleKeys.project(7),
-              role: ProjectRole.viewer,
-            ),
-          ],
-        ),
-      );
+        'the login does not fold effective per-resource roles into the token '
+        '(RCD3, option b)', () async {
+      // The bearer token is opaque and never read for enforcement; the app
+      // server re-resolves grants/shares live from auth_db and the client reads
+      // its roles from /resource-roles. So the login leaves aci.resourceRoles
+      // empty rather than baking a claim that could only go stale.
+      final service = AdvancedAuthenticationService(_storeWith());
 
       final info = await service.authenticateUser(_login('ada', 's3cret'));
 
-      expect(info.principal.aci.resourceRoles, {
-        'project:7': 'owner',
-        'project:5': 'editor',
-      });
-    });
-
-    test(
-        'a C-6 share on an already-owned resource collapses to the stronger '
-        'role (RCB7)', () async {
-      // Ada owns project 7 (owner) and is also shared `viewer` on it — the fold
-      // keeps the stronger `owner`, so a weaker share never demotes ownership.
-      final service = AdvancedAuthenticationService(
-        _storeWith(),
-        _resolverWith(
-          grants: [
-            TomPrincipalResourceGrant(
-              principalId: '1',
-              resourceKey: ResourceRoleKeys.project(7),
-              role: ProjectRole.owner.name,
-            ),
-          ],
-          shares: [
-            _share(
-              delegatorId: '2',
-              delegateId: '1',
-              resourceKey: ResourceRoleKeys.project(7),
-              role: ProjectRole.viewer,
-            ),
-          ],
-        ),
-      );
-
-      final info = await service.authenticateUser(_login('ada', 's3cret'));
-
-      expect(info.principal.aci.resourceRoles, {'project:7': 'owner'});
+      expect(info.principal.aci.resourceRoles, isEmpty);
     });
 
     test('rejects the wrong password with a LoginException', () async {
-      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
+      final service = AdvancedAuthenticationService(_storeWith());
 
       await expectLater(
         service.authenticateUser(_login('ada', 'wrong')),
@@ -240,7 +115,7 @@ void main() {
     });
 
     test('rejects an unknown user with a LoginException', () async {
-      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
+      final service = AdvancedAuthenticationService(_storeWith());
 
       await expectLater(
         service.authenticateUser(_login('nobody', 's3cret')),
@@ -258,7 +133,6 @@ void main() {
       );
       final service = AdvancedAuthenticationService(
         _storeWith(extraUsers: [suspended]),
-        _resolverWith(),
       );
 
       await expectLater(
@@ -282,7 +156,6 @@ void main() {
         ..status = UserStatus.active.name;
       final service = AdvancedAuthenticationService(
         _storeWith(extraUsers: [seeded]),
-        _resolverWith(),
       );
 
       await expectLater(
@@ -292,7 +165,7 @@ void main() {
     });
 
     test('unknown user and wrong password share the same generic key', () async {
-      final service = AdvancedAuthenticationService(_storeWith(), _resolverWith());
+      final service = AdvancedAuthenticationService(_storeWith());
 
       Future<String> keyFor(String user, String password) async {
         try {

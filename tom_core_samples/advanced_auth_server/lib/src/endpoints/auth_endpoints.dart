@@ -28,7 +28,6 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../auth/authentication_service.dart';
-import '../persistence/auth_persistence_model.dart';
 import '../resources/auth_resource_bundles.dart';
 
 /// Builds the signed token pair and the wire DTOs from a verified login.
@@ -190,26 +189,13 @@ class AdvancedAuthApiService implements AuthApiService {
   /// Production token logic: verifies credentials through the repository-backed
   /// store and signs with the server-wide JWT issuer.
   ///
-  /// Built lazily so constructing the component for a token-free endpoint (the
-  /// pure `loginResources`/text path) does not eagerly instantiate the grant and
-  /// delegation repositories — which analyse their framework entities through
-  /// reflection and so require the runtime seed only the login/boot path sets up.
-  late final AuthTokenService _tokens = AuthTokenService(
-    AdvancedAuthenticationService(
-      const RepositoryAuthUserStore(),
-      // Fold both authorization layers into the token's resourceRoles claim: the
-      // C-5 ownership grants and the C-6 `share`-mode delegations, both read from
-      // `auth_db` (RCB7) — the same rows the app server re-resolves at
-      // enforcement time.
-      TomDelegationResolver(
-        RepositoryPrincipalDelegationStore(principalDelegationRepository),
-        TomPrincipalResourceRoleResolver(
-          RepositoryPrincipalResourceGrantStore(
-            principalResourceGrantRepository,
-          ),
-        ),
-      ),
-    ),
+  /// The login does not fold effective per-resource roles into the token (RCD3,
+  /// option b): the token is an opaque bearer, enforcement re-resolves the C-5
+  /// grant and C-6 delegation rows live from `auth_db` on every request, and the
+  /// client reads its current roles from the app server's `/resource-roles`
+  /// endpoint — so no grant/delegation repository is wired here.
+  final AuthTokenService _tokens = AuthTokenService(
+    AdvancedAuthenticationService(const RepositoryAuthUserStore()),
   );
 
   @TomApiEndpointImplementation(
