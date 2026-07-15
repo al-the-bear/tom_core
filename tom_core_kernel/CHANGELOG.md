@@ -1,3 +1,20 @@
+## 1.1.1
+
+### Documentation
+
+- **Added a per-module API reference under `doc/api_reference/`.** Fifteen
+  hand-written summaries — one per barrel-exported `tombase` module
+  (`beanlocator`, `context`, `http_connection`, `isolate_pooling`, `json`,
+  `little_things`, `logging`, `observable`, `reflection`, `resources`,
+  `scope_ids`, `security`, `settings`, `shutdown_cleanup`, `timezoned`) — plus a
+  cross-module `api_summary_index.md`. Each summary follows the standard format
+  (overview with source paths, class hierarchy, per-class constructors and
+  static/instance members, enums, top-level functions/constants; public members
+  only). Verified against the actual public declarations and the package barrel.
+  This restores documentation symmetry with `tom_core_server`,
+  `tom_core_flutter`, and `tom_core_d4rt`, which already carry `doc/api_reference/`
+  sets, and linked the reference from the README. No source or behaviour change.
+
 ## 1.1.0
 
 ### Added

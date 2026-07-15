@@ -237,6 +237,9 @@ the common dependency of the server, Flutter, and DartScript layers. See the
 
 - Per-module guides under [`doc/`](doc/) — one folder per module
   (`doc/observable/`, `doc/security/`, `doc/scope_ids/`, …).
+- Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
+  one summary per barrel-exported module plus a cross-module type index; start at
+  [`api_summary_index.md`](doc/api_reference/api_summary_index.md).
 - [`tom_core_server`](../tom_core_server/README.md) — the server runtime built on
   this kernel.
 - [`tom_core_flutter`](../tom_core_flutter/README.md) /
@@ -246,7 +249,7 @@ the common dependency of the server, Flutter, and DartScript layers. See the
 
 ## Status
 
-- **Version:** 1.1.0
+- **Version:** 1.1.1
 - **Tests:** 1,464 test cases across 17 module suites (run with `testkit :test`
   or `dart test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

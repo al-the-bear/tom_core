@@ -48,6 +48,14 @@ Iterate through these steps in order. Each step states its **done** condition.
 > 1636/1636 green). The per-module deep passes (Steps 2–13) are tracked as a
 > resumable iteration under quest todo **RCE2** (one module per iteration); see
 > `_ai/quests/tom_core/todos.tom_core.todo.yaml`.
+>
+> ✅ **RCE2 done (2026-07-15) — documentation half.** The Per-Module Workflow's
+> API-documentation deliverable (sub-steps 6–8: the `api.dart`-equivalent
+> reference + "docs cover all public API, describe nothing absent") is complete
+> for all 15 barrel modules: `doc/api_reference/` now holds one verified
+> per-module `api_summary_*.md` plus `api_summary_index.md` (kernel 1.1.1). The
+> open-ended internal-refactor + example/test-surface scaling (sub-steps 1–4) is
+> deferred as low-priority depth work under quest todo **RCF1**.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and

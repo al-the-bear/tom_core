@@ -1,0 +1,140 @@
+# Tom Core Kernel API Reference: Shutdown Cleanup Module
+
+A system for managing orderly cleanup when a process receives termination
+signals, coordinating custom signal handlers, closables, and disposables, with a
+reflection-based adaptor for objects lacking explicit interfaces.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Class Hierarchy](#class-hierarchy)
+- [Classes](#classes)
+  - [TomDisposable](#tomdisposable)
+  - [TomClosable](#tomclosable)
+  - [TomCloseAdaptor](#tomcloseadaptor)
+  - [TomShutdownCleanup](#tomshutdowncleanup)
+- [Global Functions and Constants](#global-functions-and-constants)
+
+## Overview
+
+Source: `lib/src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart`.
+
+This module coordinates graceful process termination. `TomShutdownCleanup` listens
+for SIGHUP and SIGINT (and any additional signals added via `addSignal`) and, on
+the first signal — or on a manual `performShutdown` call — runs three cleanup
+phases in order: registered signal handlers, then closables (`TomClosable`), then
+disposables (`TomDisposable`). Each callout is isolated so a failing handler
+never blocks the rest, and cleanup runs at most once per instance. `TomClosable`
+and `TomDisposable` are the interfaces objects implement to participate;
+`TomCloseAdaptor` uses reflection to wrap objects that expose a `close()` /
+`dispose()` (or custom-named) method without implementing those interfaces. The
+`TomSignalHandler` typedef names the signal-handler function shape, and the
+global `tomShutdownCleanup` instance covers most needs.
+
+## Class Hierarchy
+
+```
+TomDisposable  (abstract interface)
+
+TomClosable  (abstract interface)
+    └── TomCloseAdaptor  (implements TomClosable)
+
+TomShutdownCleanup
+```
+
+## Classes
+
+### TomDisposable
+
+Interface for objects that need cleanup logic executed when the process
+terminates. `dispose` is called automatically by `TomShutdownCleanup`.
+
+- **Extends:** abstract class.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `dispose` | `void dispose()` | Disposes of resources held by this object; called automatically during shutdown cleanup. |
+
+### TomClosable
+
+Interface for objects that need to be closed when the process terminates. `close`
+is called automatically by `TomShutdownCleanup`.
+
+- **Extends:** abstract class.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `close` | `void close()` | Closes resources (connections, streams, etc.) held by this object; called automatically during shutdown cleanup. |
+
+### TomCloseAdaptor
+
+Adaptor that wraps objects with `close`/`dispose` methods to implement
+`TomClosable`, using reflection to find and invoke the method. Useful for
+integrating third-party objects. The target method must have no required
+parameters, and the object's class must be registered with the Tom reflector.
+
+- **Implements:** `TomClosable`
+
+#### Constructors
+
+```dart
+TomCloseAdaptor(Object closableObject, [String? methodName])
+```
+
+Throws an `Exception` if no close/dispose method is found or the method requires
+parameters.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `closableObject` | `Object` | The object being adapted for closure. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `close` | `void close()` | *(override)* Invokes the resolved close/dispose method on the wrapped object. |
+
+### TomShutdownCleanup
+
+Central coordinator for graceful shutdown cleanup. Automatically listens for
+SIGHUP and SIGINT; on the first signal (or a manual `performShutdown`) it runs
+signal handlers, then closables, then disposables, exactly once.
+
+#### Constructors
+
+```dart
+TomShutdownCleanup()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `paused` | `bool` | When true, signal handling is paused and signals are ignored (for REPLs with their own CTRL-C handling) (default `false`). |
+| `silent` | `bool` | When true, suppresses output messages during shutdown (default `false`). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `performShutdown` | `void performShutdown({ProcessSignal signal = ProcessSignal.sigint, bool fromSignal = false})` | Triggers cleanup once across the instance's life; the manual path (`fromSignal` false) always runs quietly, the signal path honours `paused` and `silent`. |
+| `addSignalHandler` | `void addSignalHandler(TomSignalHandler handler)` | Adds a custom signal handler, executed first (before closables and disposables). |
+| `addClosable` | `void addClosable(TomClosable closable)` | Adds a closable object, closed after signal handlers but before disposables. |
+| `addDisposable` | `void addDisposable(TomDisposable disposable)` | Adds a disposable object, disposed last. |
+| `addSignal` | `void addSignal(ProcessSignal processSignal)` | Registers an additional OS signal to listen for (SIGHUP and SIGINT are registered by default). |
+| `cancelAll` | `Future<void> cancelAll()` | Cancels every registered OS-signal watcher subscription; safe to call more than once. |
+| `dispose` | `Future<void> dispose()` | Tears the instance down by cancelling its signal watchers (delegates to `cancelAll`). |
+| `start` | `void start()` | Emits a diagnostic log line confirming the cleanup system is in use; performs no initialization. |
+
+## Global Functions and Constants
+
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `TomSignalHandler` | `typedef TomSignalHandler = void Function(ProcessSignal onData)` | Handler function type for processing system signals; the `onData` parameter carries the received signal. |
+| `tomShutdownCleanup` | `final TomShutdownCleanup tomShutdownCleanup` | Global default `TomShutdownCleanup` instance, automatically listening for SIGHUP and SIGINT. |
