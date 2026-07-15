@@ -1,3 +1,27 @@
+## 1.0.4
+
+### Tests
+
+- **Drove the `tom_build` replay to exhaustive connection-free per-bridge
+  coverage (RCH5).** `test/replay/test_d4rt_tom_build.d4rt` now references every
+  *connection-free* class the `tom_build_bridges.b.dart` container registers — a
+  registered name→reference cross-check (excluding comment lines) confirms the
+  only remaining gaps are the five IO-driver classes that require a live
+  filesystem/process (`WorkspaceAnalyzer`, `ReflectionGeneratorRunner`,
+  `TomShell`, `TomFs`, `TomGlob`). The 17 previously-uncovered value/config and
+  static-utility classes are now exercised: the value carriers
+  `ReflectionGeneratorRunnerResult`, `TomShellException`, `MetadataModes`,
+  `WorkspaceModes`, `ModeTypeConfig`, `ModeEntry`, `ActionModeConfiguration`,
+  `ActionModeEntry`, `ActionConfig`, `GroupDef`, `ProjectTypeDef` (constructed
+  and their getters asserted); and the static utilities `TomEnv`
+  (`resolveWith`/`has`/`isMacOS`), `TomMaps` (`merge`/`flatten`/`get`/`has`),
+  `ScriptYaml.parse`, `TomZoned` (`current`/`root`/`has`), and the
+  `ToolContext.isInitialized` / `TomWs.isLoaded`/`osName` context probes. This
+  brings tom_build to 55/60 connection-free classes covered, with only the five
+  IO drivers deferred (see the RCI residual). Empirically confirmed during this
+  pass: `TomMaps.get` performs a **literal** single-level key lookup (not
+  dotted-path traversal), so the assertion uses a flat-key get.
+
 ## 1.0.3
 
 ### Tests

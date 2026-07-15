@@ -240,9 +240,13 @@ DartScript. See the [repository map](../README.md) for the full picture.
 
 ## Status
 
-- **Version:** 1.0.3
+- **Version:** 1.0.4
 - **Tests:** 33 test cases across 3 suites (replay + dcli-compat; run with
   `dart test` or the `bin/d4rtrun.b.dart` replay runner). The `tom_reflection`
-  (RCF5) and `tom_basics` (RCG5) replays now each exercise every bridged class
-  their containers register (zero-gap cross-check).
+  (RCF5) and `tom_basics` (RCG5) replays each exercise every bridged class
+  their containers register (zero-gap cross-check); the `tom_build` replay
+  (RCH5) covers every connection-free bridged class (55/60), with only the five
+  IO-driver classes (`WorkspaceAnalyzer`, `ReflectionGeneratorRunner`,
+  `TomShell`, `TomFs`, `TomGlob`) deferred as they need a live
+  filesystem/process.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

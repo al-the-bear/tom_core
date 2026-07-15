@@ -199,9 +199,119 @@ verifyEquals(workspaceParser.workspacePath, '/ws/root', 'WorkspaceParser.workspa
 var tomContext = TomContext(workspace: tomWorkspace, workspacePath: '/ws/root');
 verifyEquals(tomContext.workspacePath, '/ws/root', 'TomContext.workspacePath');
 
-# Note: IO drivers (WorkspaceAnalyzer, ReflectionGeneratorRunner, TomShell/
-# TomFs/TomGlob) and the exhaustive remainder are deferred — they require a
-# live filesystem/process. See completion_steps.tom_core.md.
+# =============================================================================
+# Test: Reflection-generator runner result (§47) (2 tests)
+# =============================================================================
+
+var runnerResult = ReflectionGeneratorRunnerResult(success: true, projectPath: '/p');
+verifyEquals(runnerResult.success, true, 'ReflectionGeneratorRunnerResult.success');
+verifyEquals(runnerResult.projectPath, '/p', 'ReflectionGeneratorRunnerResult.projectPath');
+
+# =============================================================================
+# Test: TomEnv static resolution + probes (3 tests)
+# =============================================================================
+
+# resolveWith passes plain text through unchanged; has() reports absent keys as
+# false; isMacOS is a platform bool (present regardless of host).
+verifyEquals(TomEnv.resolveWith('plain', {}), 'plain', 'TomEnv.resolveWith passthrough');
+verifyEquals(TomEnv.has('__TOM_NOPE__'), false, 'TomEnv.has absent key');
+verifyNotNull(TomEnv.isMacOS, 'TomEnv.isMacOS');
+
+# =============================================================================
+# Test: TomMaps static deep-map ops (4 tests)
+# =============================================================================
+
+var merged = TomMaps.merge({'a': 1}, {'b': 2});
+verifyEquals(merged['a'], 1, 'TomMaps.merge keeps base');
+verifyEquals(merged['b'], 2, 'TomMaps.merge adds override');
+var flattened = TomMaps.flatten({'a': {'b': 1}});
+verifyEquals(flattened['a.b'], 1, 'TomMaps.flatten dotted key');
+verifyEquals(TomMaps.get({'a': 1}, 'a'), 1, 'TomMaps.get present key');
+verifyEquals(TomMaps.has({'a': 1}, 'a'), true, 'TomMaps.has present path');
+
+# =============================================================================
+# Test: TomShellException carrier (2 tests)
+# =============================================================================
+
+var shellEx = TomShellException(command: 'ls', exitCode: 1, stderr: 'e', stdout: 'o');
+verifyEquals(shellEx.command, 'ls', 'TomShellException.command');
+verifyEquals(shellEx.exitCode, 1, 'TomShellException.exitCode');
+
+# =============================================================================
+# Test: Workspace-modes metadata model (§47 value classes) (8 tests)
+# =============================================================================
+
+var metadataModes = MetadataModes(defaultMode: 'dev');
+verifyEquals(metadataModes.defaultMode, 'dev', 'MetadataModes.defaultMode');
+verifyNotNull(metadataModes.supportedModes, 'MetadataModes.supportedModes');
+
+var workspaceModes = WorkspaceModes(defaultMode: 'dev', modeTypes: ['build']);
+verifyEquals(workspaceModes.defaultMode, 'dev', 'WorkspaceModes.defaultMode');
+verifyEquals(workspaceModes.modeTypes[0], 'build', 'WorkspaceModes.modeTypes');
+
+var modeTypeConfig = ModeTypeConfig(defaultMode: 'dev');
+verifyEquals(modeTypeConfig.defaultMode, 'dev', 'ModeTypeConfig.defaultMode');
+verifyNotNull(modeTypeConfig.entries, 'ModeTypeConfig.entries');
+
+var modeEntry = ModeEntry(description: 'd', modes: ['x']);
+verifyEquals(modeEntry.description, 'd', 'ModeEntry.description');
+verifyEquals(modeEntry.modes[0], 'x', 'ModeEntry.modes');
+
+# =============================================================================
+# Test: Action-mode configuration model (§47 value classes) (3 tests)
+# =============================================================================
+
+var actionModeConfig = ActionModeConfiguration();
+verifyNotNull(actionModeConfig.entries, 'ActionModeConfiguration.entries');
+
+var actionModeEntry = ActionModeEntry(description: 'd');
+verifyEquals(actionModeEntry.description, 'd', 'ActionModeEntry.description');
+verifyNotNull(actionModeEntry.modes, 'ActionModeEntry.modes');
+
+# =============================================================================
+# Test: Action config + workspace definitions (§47 value classes) (4 tests)
+# =============================================================================
+
+var actionConfig = ActionConfig(commands: ['build']);
+verifyEquals(actionConfig.commands[0], 'build', 'ActionConfig.commands');
+
+var groupDef = GroupDef(name: 'core', projects: ['a']);
+verifyEquals(groupDef.name, 'core', 'GroupDef.name');
+verifyEquals(groupDef.projects[0], 'a', 'GroupDef.projects');
+
+var projectTypeDef = ProjectTypeDef(name: 'dart_package');
+verifyEquals(projectTypeDef.name, 'dart_package', 'ProjectTypeDef.name');
+
+# =============================================================================
+# Test: ScriptYaml static parse (1 test)
+# =============================================================================
+
+# parse() is a pure string→Map transform (no filesystem IO).
+var parsedYaml = ScriptYaml.parse('name: svc');
+verifyEquals(parsedYaml['name'], 'svc', 'ScriptYaml.parse');
+
+# =============================================================================
+# Test: TomZoned ambient-zone accessors (3 tests)
+# =============================================================================
+
+# current/root expose the ambient zones; has() reports an unbound key as false.
+verifyNotNull(TomZoned.current, 'TomZoned.current');
+verifyNotNull(TomZoned.root, 'TomZoned.root');
+verifyEquals(TomZoned.has('__TOM_UNBOUND__'), false, 'TomZoned.has unbound key');
+
+# =============================================================================
+# Test: Tool/workspace context probes (3 tests)
+# =============================================================================
+
+# isInitialized / isLoaded are process-shared static flags (no workspace loaded
+# by this suite); osName reads the platform. All are connection-free probes.
+verifyNotNull(ToolContext.isInitialized, 'ToolContext.isInitialized');
+verifyNotNull(TomWs.isLoaded, 'TomWs.isLoaded');
+verifyNotNull(TomWs.osName, 'TomWs.osName');
+
+# Note: only the IO drivers (WorkspaceAnalyzer, ReflectionGeneratorRunner,
+# TomShell/TomFs/TomGlob) remain deferred — they require a live
+# filesystem/process. See completion_steps.tom_core.md.
 
 # =============================================================================
 # Summary
