@@ -56,6 +56,23 @@ Iterate in order. Each step states its **done** condition.
 > open-ended **deepening** work — scaling test/example surface coverage and
 > optional `doc/api/api_summary_{module}.md` files — is tracked as quest todo
 > **RCE3** (the kernel reference has no `api.dart`/`doc/api` either).
+>
+> ✅ **RCE3 done (2026-07-15) — api-summary parity settled + verified.** The
+> api-summary question is closed in favour of **symmetry**: all four core
+> packages (`tom_core_kernel` per RCE2, `tom_core_server`, `tom_core_d4rt`, and
+> this package via OT6) now carry a hand-written `doc/api_reference/` summary set
+> (`doc/api/` is gitignored for generated HTML, so summaries live in
+> `doc/api_reference/`). This package's six per-module summaries
+> (`forms`, `little_things`, `observing`, `resources`, `runtime`, `security`)
+> plus `api_summary_index.md` were re-verified accurate against current source;
+> `dart analyze` is clean and the OT2 59/59 serial baseline stands unchanged.
+> Two follow-ups were filed rather than rushed into a doc pass: **RCF2** —
+> remove the explicitly-legacy `forms/` module (`TomFormOld`/`TomFieldOld` etc.,
+> superseded by `tom_flutter_ui`'s widget-based `TomForm`) and migrate its only
+> consumer `tom_uam_client` onto the `tom_flutter_ui` API (medium priority,
+> architectural rewrite requiring a `tom_flutter_ui` dependency the client does
+> not yet carry); and **RCF3** — scale example/test surface coverage for the
+> five remaining modules (low priority, same depth character as kernel's RCF1).
 
 1. **Meta files.** ✅ **Done (OT2, 2026-07-15).** `README.md` (customized,
    ~10 KB), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -66,7 +83,9 @@ Iterate in order. Each step states its **done** condition.
    describes the package accurately.*
 2. **Per-module pass — `camera/`.** ✅ **Done (OT2) — removed** (placeholder,
    see CHANGELOG 1.1.0 §Removed).
-3. **Per-module pass — `forms/`.** ✅ **Done (OT2).** Deepening → RCE3.
+3. **Per-module pass — `forms/`.** ✅ **Done (OT2).** Legacy module
+   (`TomFormOld`/`TomFieldOld`) — scheduled for removal + `tom_uam_client`
+   migration under **RCF2** (see RCE3 done-marker above).
 4. **Per-module pass — `little_things/`.** ✅ **Done (OT2).** Deepening → RCE3.
 5. **Per-module pass — `localstorage/`.** ✅ **Done (OT2) — removed** (placeholder).
 6. **Per-module pass — `observing/`.** ✅ **Done (OT2).** Deepening → RCE3.
