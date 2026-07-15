@@ -1,5 +1,20 @@
 ## 1.0.1
 
+### Documentation
+
+- **Added a per-module API reference under `doc/api_reference/`.** Because
+  `tom_core_d4rt` is a bridge package, the reference documents the package's own
+  thin public surface — not the upstream types it forwards. Four files plus an
+  index: `api_summary_registration.md` (`TomDartscriptBridges`),
+  `api_summary_cli.md` (`D4rtRepl`, `d4rtMain`, `TomVersionInfo`),
+  `api_summary_bridges.md` (the shared static contract of the eleven generated
+  `Tom*Bridge` containers, a class→package map, and the relaxer factory
+  functions), and `api_summary_index.md` (type index). Each bridge container
+  entry links to the bridged package's authoritative guide under `doc/`, which
+  remains the source of truth for the bridged types. Reconciled the `pubspec`
+  version (`1.0.0` → `1.0.1`) with this already-open CHANGELOG section and linked
+  the reference from the README. No source or bridge change.
+
 ### Examples
 
 - **Added runnable DartScript examples for the key bridge modules.** New

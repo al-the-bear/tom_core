@@ -228,14 +228,19 @@ DartScript. See the [repository map](../README.md) for the full picture.
 - [`doc/testing.md`](doc/testing.md) — replay-based bridge testing.
 - [`doc/cli.md`](doc/cli.md) — as-built CLI wiring (thin `bin/d4rt.dart` → `lib/src/cli/`).
 - [`doc/d4rt_cli_api_design.md`](doc/d4rt_cli_api_design.md) — forward-looking CLI / API design notes.
+- Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
+  the package's own public surface (registration, CLI/REPL, version info, and the
+  shared `Tom*Bridge` container contract). Start at
+  [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md).
 - Per-bridge generation notes under [`doc/`](doc/) — one markdown file per group
-  (`doc/tom_core_kernel.md`, `doc/tom_core_server.md`, …).
+  (`doc/tom_core_kernel.md`, `doc/tom_core_server.md`, …); these remain the
+  authoritative reference for the *bridged* types each container forwards.
 - [`tom_core_bridge`](../tom_core_bridge/README.md) — the `core_bs` VS Code
   bridge server that links this bridge set.
 
 ## Status
 
-- **Version:** 1.0.0
+- **Version:** 1.0.1
 - **Tests:** 33 test cases across 3 suites (replay + dcli-compat; run with
   `dart test` or the `bin/d4rtrun.b.dart` replay runner).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
