@@ -159,6 +159,38 @@ Iterate through these steps in order. Each step states its **done** condition.
 > 1681/1681 (serial); kernel 1.1.5 → 1.1.6. The remaining 7 refactorable modules
 > continue under quest todos **RCK2–RCK8**; the isolate-pool liveness supervision
 > carved out of this pass is filed as **RCJ1**.
+>
+> ✅ **RCK2 done (2026-07-16) — `resources/` sub-steps 1–4.** One bounded
+> iteration: private-only DRY refactor of `tom_resource_provider.dart`. Both
+> providers resolved a key with the same rule (dot-notation tree walk via
+> `getObjectFromTree`, then a flat-key fallback), duplicated across **eight**
+> accessor bodies — `TomTextResourceProvider.{exists, existsObject, getObject,
+> getObjectOrNull, getText, getTextOrNull}` and `TomConfigResourceProvider.
+> {exists, getText}`. Extracted two file-private top-level helpers holding that
+> rule once: `_resolveObjectOrNull(resources, path)` (any value type) backs the
+> object family, and `_resolveStringOrNull(resources, path)` (String only, but
+> still consulting the flat key when the tree walk lands on a non-String) backs
+> the text family; every accessor is now a one-line expression differing only in
+> its missing-value fallback (`?? key`, `!= null`, or the raw value). The
+> text/object split is preserved deliberately — collapsing the text family onto
+> the object helper would drop the flat-String fallback for a literal dotted key
+> (e.g. `'a.b'` present alongside a nested `'a'→'b'`), a genuine semantic
+> difference, not coincidental duplication. Public signatures and all dartdoc
+> frozen. Example surface scaled (new `03_app_singleton_example.dart` covering
+> the app-wide singleton surface — the static `loader`, loader-driven default
+> constructor, `getAppResources`/`getAppConfig` lazy init, `setApp*Provider`
+> replacement, singleton identity, and text/config singleton independence —
+> which examples 01/02 did not cover; wired into `00_run_all_examples.dart`; no
+> latent example bug surfaced under `--enable-asserts`). Test surface scaled
+> (`resources_test.dart` 98 → 102: a `shared resolution contract` group pinning
+> the flat-String fallback on a non-String tree hit, object-family resolution at
+> a hierarchical path, the object-vs-text divergence on a nested non-String, and
+> config/text object-family parity). No reflection regen needed — no new
+> reflected types or annotations, signatures frozen (`resources_test.dart` is in
+> `build.yaml` `generate_for` but does not import its generated part). `dart
+> analyze` clean; every example self-asserts under `--enable-asserts`; `testkit
+> :test` 1685/1685 (serial); kernel 1.1.6 → 1.1.7. No residual carved out —
+> nothing deferred, no new RCJ filed.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -174,7 +206,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 6. **Per-module pass — `json/`.** *(RCE2)*
 7. **Per-module pass — `little_things/`.** *(RCE2)*
 8. **Per-module pass — `logging/`.** ✅ **Sub-steps 1–4 done (RCH1, 2026-07-15).** Documentation half done under RCE2.
-9. **Per-module pass — `resources/`.** *(RCE2)*
+9. **Per-module pass — `resources/`.** ✅ **Sub-steps 1–4 done (RCK2, 2026-07-16).** Documentation half done under RCE2.
 10. **Per-module pass — `scope_ids/`.** *(RCE2)*
 11. **Per-module pass — `security/`.** ✅ **Sub-steps 1–4 done (RCG1, 2026-07-15).** Documentation half done under RCE2.
 12. **Per-module pass — `settings/`.** *(RCE2)*

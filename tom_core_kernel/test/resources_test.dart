@@ -855,6 +855,68 @@ void main() {
       });
     });
 
+    // -------------------------------------------------------------------------
+    // Shared resolution contract (pins the RCK2 private-helper extraction:
+    // both providers resolve a key as "tree walk first, flat-key fallback",
+    // with the text family additionally consulting the flat key when the tree
+    // walk lands on a non-String).
+    // -------------------------------------------------------------------------
+    group('shared resolution contract', () {
+      test('text family falls back to a flat dotted key when the tree walk '
+          'lands on a non-String', () {
+        // 'a.b' resolves via the tree to an int, but a literal 'a.b' String key
+        // also exists. The text accessors must surface the flat String rather
+        // than treating the non-String tree hit as final.
+        final provider = TomTextResourceProvider.from({
+          'a': {'b': 5},
+          'a.b': 'flat literal',
+        });
+        expect(provider.getText('a.b'), equals('flat literal'));
+        expect(provider.getTextOrNull('a.b'), equals('flat literal'));
+        expect(provider.exists('a.b'), isTrue);
+      });
+
+      test('object family returns a non-String value at a hierarchical path', () {
+        final provider = TomTextResourceProvider.from({
+          'app': {'retries': 3},
+        });
+        expect(provider.getObject('app.retries'), equals(3));
+        expect(provider.getObjectOrNull('app.retries'), equals(3));
+        expect(provider.existsObject('app.retries'), isTrue);
+      });
+
+      test('object family surfaces a non-String tree hit that the text family '
+          'reports absent', () {
+        // No flat fallback here: a nested int is visible to the object family
+        // but not the text family.
+        final provider = TomTextResourceProvider.from({
+          'app': {'retries': 3},
+        });
+        expect(provider.existsObject('app.retries'), isTrue);
+        expect(provider.exists('app.retries'), isFalse);
+        expect(provider.getTextOrNull('app.retries'), isNull);
+        expect(provider.getText('app.retries'), equals('app.retries'));
+      });
+
+      test('config and text object families resolve identically for the same '
+          'map', () {
+        final map = {
+          'api': {'timeout': 30000},
+          'flag': true,
+        };
+        final config = TomConfigResourceProvider.from(map);
+        final text = TomTextResourceProvider.from(map);
+
+        // exists / existsObject and getText / getObject share the object rule.
+        expect(config.exists('api.timeout'), equals(text.existsObject('api.timeout')));
+        expect(config.exists('missing'), equals(text.existsObject('missing')));
+        expect(config.getText('flag'), equals(text.getObject('flag')));
+        expect(config.getText('missing'), equals(text.getObject('missing')));
+        // Both echo the key back on a miss.
+        expect(config.getText('missing'), equals('missing'));
+      });
+    });
+
     group('loader function behavior', () {
       test('should support loader that returns empty map', () {
         TomTextResourceProvider.loader = () => {};

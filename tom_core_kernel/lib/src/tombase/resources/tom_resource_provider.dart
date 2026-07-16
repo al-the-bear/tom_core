@@ -30,6 +30,50 @@ library;
 import '../json/map_merge_and_process.dart';
 
 // =============================================================================
+// Shared Resolution Helpers
+// =============================================================================
+
+// Both providers resolve a key the same way: attempt a dot-notation tree walk
+// first, then fall back to a flat-key lookup. [getObjectFromTree] returns a
+// non-null value on success and *throws* when the path cannot be resolved, so a
+// thrown walk always falls through to the flat lookup. These two file-private
+// helpers hold that resolution rule in one place; every accessor on both
+// providers is expressed in terms of them, differing only in the missing-value
+// fallback each returns.
+
+/// Resolves the raw object at [path] in [resources].
+///
+/// Returns the tree value when the dotted [path] resolves, otherwise the
+/// flat-key value `resources[path]`, otherwise `null`. Backs the object-family
+/// accessors (any value type is accepted).
+Object? _resolveObjectOrNull(Map<String, dynamic> resources, String path) {
+  try {
+    return getObjectFromTree(resources, path);
+  } catch (_) {
+    // Path not resolvable as a tree walk — fall back to a flat-key lookup.
+  }
+  return resources[path];
+}
+
+/// Resolves the String value at [path] in [resources].
+///
+/// Returns the tree value when the dotted [path] resolves to a String,
+/// otherwise the flat-key value when it is a String, otherwise `null`. Backs
+/// the text-family accessors, which only surface String content. The flat-key
+/// leg is consulted even when the tree walk lands on a non-String value, so a
+/// literal dotted key (e.g. `'a.b'`) still resolves.
+String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
+  try {
+    final value = getObjectFromTree(resources, path);
+    if (value is String) return value;
+  } catch (_) {
+    // Path not resolvable as a tree walk — fall back to a flat-key lookup.
+  }
+  final flat = resources[path];
+  return flat is String ? flat : null;
+}
+
+// =============================================================================
 // Text Resource Provider
 // =============================================================================
 
@@ -165,15 +209,7 @@ class TomTextResourceProvider {
   /// [s] - The resource key or path to check.
   ///
   /// Returns `true` if a String value exists at the path, `false` otherwise.
-  bool exists(String s) {
-    try {
-      dynamic value = getObjectFromTree(resources, s);
-      if (value is String) return true;
-    } catch (ex) {
-      // fall through
-    }
-    return resources[s] != null && resources[s] is String;
-  }
+  bool exists(String s) => _resolveStringOrNull(resources, s) != null;
 
   /// Checks if an object resource exists at the given path.
   ///
@@ -186,15 +222,7 @@ class TomTextResourceProvider {
   /// [s] - The resource key or path to check.
   ///
   /// Returns `true` if any value exists at the path, `false` otherwise.
-  bool existsObject(String s) {
-    try {
-      getObjectFromTree(resources, s);
-      return true;
-    } catch (ex) {
-      // fall through
-    }
-    return resources[s] != null;
-  }
+  bool existsObject(String s) => _resolveObjectOrNull(resources, s) != null;
 
   /// Retrieves the object resource at the given path.
   ///
@@ -210,15 +238,7 @@ class TomTextResourceProvider {
   /// [s] - The resource key or path to retrieve.
   ///
   /// Returns the value if found (can be any type), or the key [s] if not found.
-  Object getObject(String s) {
-    try {
-      dynamic value = getObjectFromTree(resources, s);
-      return value;
-    } catch (ex) {
-      // fall through
-    }
-    return resources[s] != null ? resources[s]! : s;
-  }
+  Object getObject(String s) => _resolveObjectOrNull(resources, s) ?? s;
 
   /// Retrieves the object resource at the given path.
   ///
@@ -234,15 +254,7 @@ class TomTextResourceProvider {
   /// [s] - The resource key or path to retrieve.
   ///
   /// Returns the value if found (can be any type), or null if not found.
-  Object? getObjectOrNull(String s) {
-    try {
-      dynamic value = getObjectFromTree(resources, s);
-      return value;
-    } catch (ex) {
-      // fall through
-    }
-    return resources[s] != null ? resources[s]! : null;
-  }
+  Object? getObjectOrNull(String s) => _resolveObjectOrNull(resources, s);
 
   /// Retrieves the text value at the given path.
   ///
@@ -255,17 +267,7 @@ class TomTextResourceProvider {
   /// [s] - The resource key or path to retrieve.
   ///
   /// Returns the text value if found, or the key [s] if not found.
-  String getText(String s) {
-    try {
-      dynamic value = getObjectFromTree(resources, s);
-      if (value is String) return value;
-    } catch (ex) {
-      // fall through
-    }
-    return (resources[s] != null && resources[s] is String)
-        ? resources[s]! as String
-        : s;
-  }
+  String getText(String s) => _resolveStringOrNull(resources, s) ?? s;
 
   /// Retrieves the text value at the given path.
   ///
@@ -278,17 +280,7 @@ class TomTextResourceProvider {
   /// [s] - The resource key or path to retrieve.
   ///
   /// Returns the text value if found, or null if not found.
-  String? getTextOrNull(String s) {
-    try {
-      dynamic value = getObjectFromTree(resources, s);
-      if (value is String) return value;
-    } catch (ex) {
-      // fall through
-    }
-    return (resources[s] != null && resources[s] is String)
-        ? resources[s]! as String
-        : null;
-  }
+  String? getTextOrNull(String s) => _resolveStringOrNull(resources, s);
 }
 
 // =============================================================================
@@ -425,15 +417,7 @@ class TomConfigResourceProvider {
   /// [s] - The configuration key or path to check.
   ///
   /// Returns `true` if any value exists at the path, `false` otherwise.
-  bool exists(String s) {
-    try {
-      getObjectFromTree(resources, s);
-      return true;
-    } catch (ex) {
-      // fall through
-    }
-    return resources[s] != null;
-  }
+  bool exists(String s) => _resolveObjectOrNull(resources, s) != null;
 
   /// Retrieves the configuration value at the given path.
   ///
@@ -446,13 +430,5 @@ class TomConfigResourceProvider {
   /// [s] - The configuration key or path to retrieve.
   ///
   /// Returns the value if found (can be any type), or the key [s] if not found.
-  Object getText(String s) {
-    try {
-      dynamic value = getObjectFromTree(resources, s);
-      return value;
-    } catch (ex) {
-      // fall through
-    }
-    return resources[s] != null ? resources[s]! : s;
-  }
+  Object getText(String s) => _resolveObjectOrNull(resources, s) ?? s;
 }

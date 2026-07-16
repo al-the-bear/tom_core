@@ -12,6 +12,7 @@ library;
 
 import '01_resource_provider_example.dart' as resource_provider;
 import '02_resource_fallback_example.dart' as resource_fallback;
+import '03_app_singleton_example.dart' as app_singleton;
 
 void main() {
   print(
@@ -27,6 +28,7 @@ void main() {
 
   resource_provider.run();
   resource_fallback.run();
+  app_singleton.run();
 
   print(
     '╔═══════════════════════════════════════════════════════════════════╗',

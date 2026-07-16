@@ -1,3 +1,39 @@
+## 1.1.7
+
+### Changed
+
+- **`resources/` per-module pass (RCK2).** Private-only DRY refactor of
+  `tom_resource_provider.dart` with frozen public signatures. Both providers
+  resolved a key the same way — a dot-notation tree walk (`getObjectFromTree`)
+  then a flat-key fallback — duplicated across eight accessor bodies
+  (`TomTextResourceProvider.{exists, existsObject, getObject, getObjectOrNull,
+  getText, getTextOrNull}` and `TomConfigResourceProvider.{exists, getText}`).
+  That rule now lives once in two file-private helpers: `_resolveObjectOrNull`
+  (any value type) backs the object family and `_resolveStringOrNull` (String
+  only) backs the text family, each accessor reduced to a one-line expression
+  differing solely in its missing-value fallback. The text/object split is kept
+  deliberately: the text helper still consults the flat key when the tree walk
+  lands on a non-String, so a literal dotted key resolves — a genuine semantic
+  difference, not coincidental duplication.
+
+### Examples
+
+- **New `example/resources/03_app_singleton_example.dart`** covering the
+  application-wide singleton surface that examples 01/02 omit: the static
+  `loader` field, the loader-driven default constructor,
+  `getAppResources`/`getAppConfig` lazy initialization, `setAppResourceProvider`/
+  `setAppConfigProvider` replacement, singleton identity, and the independence of
+  the text and config singletons. Wired into `00_run_all_examples.dart`;
+  self-asserts under `--enable-asserts`.
+
+### Tests
+
+- **Added a `shared resolution contract` group to `test/resources_test.dart`**
+  (98 → 102) pinning the extracted helpers: the flat-String fallback on a
+  non-String tree hit (literal dotted key beside a nested value), object-family
+  resolution at a hierarchical path, the object-vs-text divergence on a nested
+  non-String, and config/text object-family parity.
+
 ## 1.1.6
 
 ### Changed
