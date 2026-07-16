@@ -1,3 +1,35 @@
+## 1.1.9
+
+### Changed
+
+- **`settings/` per-module pass (RCK4).** Audit of
+  `settings_client_authorization.dart` (two serialization DTOs —
+  `TomGetSettingsMessage`, `TomGetSettingsResult`). No genuine within-module
+  duplication exists to extract: the classes are independent data holders and
+  the constructor's `?? <T>{}` / `?? <T>[]` defaulting is idiomatic per-field
+  initialization, not extractable logic. The one honest, signature-preserving
+  cleanup: removed the dead `= ""` field initializers on `TomGetSettingsResult`'s
+  eight nullable `String?` fields (`organization`, `process`, `application`,
+  `country`, `language`, `clientCountry`, `clientLanguage`, `clientTimeZone`).
+  Every one is an initializing formal (`this.x`) in the constructor, so the
+  field-level `= ""` never took effect — the real default was already `null`
+  (as the existing tests assert). The initializer was dead code that misled
+  readers about the default; removing it changes no runtime behaviour and no
+  public signature. `TomGetSettingsMessage.authorizationToken = ""` is
+  deliberately left — it has no initializing formal, so its `= ""` is the live
+  default (`''`). Constructor dartdoc corrected ("all string parameters default
+  to null"). No consumer relied on a `""` default (verified across samples and
+  tom_uam — they only write the fields), so no adaptation was needed.
+
+### Examples & Tests
+
+- No additions needed: `example/settings/01_client_authorization_example.dart`
+  (15 scenarios) and `test/settings_test.dart` (72 cases) already cover the full
+  public surface of both DTOs, including the null-default guard that pins the
+  dead-initializer removal ("should create result with default null optional
+  strings") and the reflection JSON round-trip. No reflection regen — field
+  types and names unchanged. Suite: 1690 passing.
+
 ## 1.1.8
 
 ### Changed

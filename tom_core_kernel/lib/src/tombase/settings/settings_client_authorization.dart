@@ -159,17 +159,20 @@ class TomGetSettingsResult {
   ///
   /// May differ from the requested organization if the server
   /// applies defaults or overrides.
-  String? organization = "";
+  ///
+  /// Defaults to null (the constructor's initializing formal supplies the
+  /// value; there is no field-level default).
+  String? organization;
 
   /// The business process context.
   ///
   /// Identifies which business process or workflow is active.
-  String? process = "";
+  String? process;
 
   /// The application identifier.
   ///
   /// Specifies which application configuration to use.
-  String? application = "";
+  String? application;
 
   // ---------------------------------------------------------------------------
   // Localization Settings
@@ -179,31 +182,31 @@ class TomGetSettingsResult {
   ///
   /// The country code used for server-side localization decisions.
   /// May differ from [clientCountry] based on server configuration.
-  String? country = "";
+  String? country;
 
   /// Server-determined language setting.
   ///
   /// The language code used for server-side localization.
   /// May differ from [clientLanguage] based on server configuration.
-  String? language = "";
+  String? language;
 
   /// Client's preferred country code.
   ///
   /// The country setting as determined by or requested from the client.
   /// Follows ISO 3166-1 alpha-2 format (e.g., 'US', 'GB', 'DE').
-  String? clientCountry = "";
+  String? clientCountry;
 
   /// Client's preferred language code.
   ///
   /// The language setting as determined by or requested from the client.
   /// Follows ISO 639-1 format (e.g., 'en', 'de', 'fr').
-  String? clientLanguage = "";
+  String? clientLanguage;
 
   /// Client's timezone identifier.
   ///
   /// The timezone used for date/time display and calculations.
   /// Uses IANA timezone database identifiers (e.g., 'America/New_York').
-  String? clientTimeZone = "";
+  String? clientTimeZone;
 
   // ---------------------------------------------------------------------------
   // Constructor
@@ -213,8 +216,8 @@ class TomGetSettingsResult {
   ///
   /// All collection parameters default to fresh, empty **mutable** collections
   /// (a new instance per result), so callers can mutate them in place — e.g.
-  /// `result.roles.add(...)` or `result.config['k'] = v`. String parameters
-  /// default to null or empty strings.
+  /// `result.roles.add(...)` or `result.config['k'] = v`. All string parameters
+  /// default to null.
   TomGetSettingsResult({
     Map<String, Object?>? texts,
     Map<String, Object?>? config,

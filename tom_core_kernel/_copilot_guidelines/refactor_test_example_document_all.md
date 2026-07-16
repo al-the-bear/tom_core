@@ -221,6 +221,34 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `--enable-asserts`; `testkit :test` 1690/1690 (serial); kernel 1.1.7 → 1.1.8.
 > No residual carved out — nothing deferred, no new RCJ filed.
 
+> ✅ **RCK4 done (2026-07-16) — `settings/` sub-steps 1–4.** One bounded
+> iteration, audit outcome. `settings_client_authorization.dart` holds two
+> independent serialization DTOs (`TomGetSettingsMessage`,
+> `TomGetSettingsResult`) with no shared logic — no genuine within-module
+> duplication to extract (the constructor's `?? <T>{}` / `?? <T>[]` defaulting is
+> idiomatic per-field initialization, which DRY discipline says not to abstract).
+> The one honest, signature-preserving cleanup done in sub-step 1: removed the
+> dead `= ""` field initializers on `TomGetSettingsResult`'s eight nullable
+> `String?` fields (`organization`, `process`, `application`, `country`,
+> `language`, `clientCountry`, `clientLanguage`, `clientTimeZone`) — each is an
+> initializing formal (`this.x`) in the constructor, so the field-level `= ""`
+> never took effect and the real default was already `null` (as the existing
+> tests assert). It was dead code that misled about the default; removal changes
+> no runtime behaviour and no public signature. `TomGetSettingsMessage.
+> authorizationToken = ""` left intact (no initializing formal → its `= ""` is
+> the live default). Constructor dartdoc corrected. Example
+> (`01_client_authorization_example.dart`, 15 scenarios) and tests
+> (`settings_test.dart`, 72 cases) already covered the full public surface of
+> both DTOs — including the null-default guard that pins the removal and the
+> reflection JSON round-trip — so sub-steps 2–3 needed no additions. No
+> reflection regen (field types/names unchanged; `settings_test.dart` is in
+> `build.yaml` `generate_for` and its generated part still round-trips green).
+> Verified no consumer relied on a `""` default across samples and tom_uam (they
+> only write the fields), so no adaptation was needed. `dart analyze` clean;
+> example self-asserts under `--enable-asserts`; `testkit :test` 1690/1690
+> (serial); kernel 1.1.8 → 1.1.9. No residual carved out — nothing deferred, no
+> new RCJ filed.
+
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
    accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
@@ -238,7 +266,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 9. **Per-module pass — `resources/`.** ✅ **Sub-steps 1–4 done (RCK2, 2026-07-16).** Documentation half done under RCE2.
 10. **Per-module pass — `scope_ids/`.** *(RCE2)*
 11. **Per-module pass — `security/`.** ✅ **Sub-steps 1–4 done (RCG1, 2026-07-15).** Documentation half done under RCE2.
-12. **Per-module pass — `settings/`.** *(RCE2)*
+12. **Per-module pass — `settings/`.** ✅ **Sub-steps 1–4 done (RCK4, 2026-07-16).** Documentation half done under RCE2.
 13. **Per-module pass — `shutdown_cleanup/`.** *(RCE2)*
 14. **Barrel exports.** ✅ **Done (OT1, 2026-07-15).** `lib/tom_core_kernel.dart`
     exports all 15 modules (38 directives); analyzer clean ⇒ no unreachable public
