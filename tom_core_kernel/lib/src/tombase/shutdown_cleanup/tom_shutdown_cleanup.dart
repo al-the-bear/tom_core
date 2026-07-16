@@ -284,12 +284,11 @@ class TomShutdownCleanup {
   TomShutdownCleanup() {
     _signalHandler = (signal) =>
         performShutdown(signal: signal, fromSignal: true);
-    _signalSubscriptions.add(
-      ProcessSignal.sighup.watch().listen(_signalHandler),
-    );
-    _signalSubscriptions.add(
-      ProcessSignal.sigint.watch().listen(_signalHandler),
-    );
+    // SIGHUP/SIGINT are registered through the same watcher-subscription path
+    // as [addSignal], so there is a single place that owns how a signal is
+    // watched and how its subscription is retained for teardown (bug §53).
+    addSignal(ProcessSignal.sighup);
+    addSignal(ProcessSignal.sigint);
   }
 
   /// Triggers shutdown cleanup, running registered signal handlers, then
@@ -321,25 +320,22 @@ class TomShutdownCleanup {
   /// then disposables — isolating each callout so a failing handler never
   /// prevents the rest from running.
   void _executeCleanup(ProcessSignal signal) {
-    for (var signalHandler in _signalHandlers) {
+    _runPhase(_signalHandlers, "signalHandler", (handler) => handler(signal));
+    _runPhase(_closables, "closable", (closable) => closable.close());
+    _runPhase(_disposables, "disposable", (disposable) => disposable.dispose());
+  }
+
+  /// Runs [action] over every entry of [items], isolating each call so one
+  /// failing entry never aborts the phase. On failure a `Failed to call
+  /// $label $item` diagnostic is printed unless [silent]. This is the single
+  /// owner of the per-entry try/catch/report policy shared by all three
+  /// cleanup phases.
+  void _runPhase<T>(List<T> items, String label, void Function(T item) action) {
+    for (final item in items) {
       try {
-        signalHandler(signal);
+        action(item);
       } catch (exception) {
-        if (!silent) print("Failed to call signalHandler $signalHandler");
-      }
-    }
-    for (var closable in _closables) {
-      try {
-        closable.close();
-      } catch (exception) {
-        if (!silent) print("Failed to call closable $closable");
-      }
-    }
-    for (var disposable in _disposables) {
-      try {
-        disposable.dispose();
-      } catch (exception) {
-        if (!silent) print("Failed to call disposable $disposable");
+        if (!silent) print("Failed to call $label $item");
       }
     }
   }

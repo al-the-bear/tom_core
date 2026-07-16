@@ -249,6 +249,35 @@ Iterate through these steps in order. Each step states its **done** condition.
 > (serial); kernel 1.1.8 → 1.1.9. No residual carved out — nothing deferred, no
 > new RCJ filed.
 
+> ✅ **RCK5 done (2026-07-16) — `shutdown_cleanup/` sub-steps 1–4.** Private-only
+> DRY refactor of `tom_shutdown_cleanup.dart`, all public signatures frozen. Two
+> genuine, behaviour-preserving deduplications: (1) `_executeCleanup`'s three
+> near-identical try/catch loops (over `_signalHandlers`/`_closables`/
+> `_disposables`) collapse into a single private generic
+> `_runPhase<T>(List<T>, String label, void Function(T))` that owns the per-entry
+> isolate-and-report policy — `_executeCleanup` is now three one-line phase
+> calls, and a change to the isolation/diagnostic policy is a one-site edit (was
+> three). Exact log wording preserved. (2) The constructor's two SIGHUP/SIGINT
+> registrations duplicated `addSignal`'s exact
+> `_signalSubscriptions.add(sig.watch().listen(_signalHandler))` body; the
+> constructor now calls `addSignal(...)`, giving a single owner of signal-watch +
+> subscription-retention (bug §53). No other genuine duplication (`TomCloseAdaptor`
+> already had `_resolveCloseMethod` extracted; the DTO-style getters are
+> independent). Sub-step 2: added `example/shutdown_cleanup/
+> 02_shutdown_execution_example.dart` (wired into the runner) that *executes* the
+> API — the pre-existing `01_*` is purely descriptive and never triggers cleanup;
+> the new one drives phase order, once-only, fault isolation, `paused`
+> (signal-skip vs manual-always), `silent`, `cancelAll`/`dispose`, and
+> `TomCloseAdaptor` on a reflected custom-teardown target, all `assert`-guarded
+> under `--enable-asserts`. Sub-step 3: added one test pinning the manual-path
+> contract (`performShutdown()` ignores `paused` — previously only the signal
+> path was asserted); suite 63 → 64. Sub-step 4: new reflected example added to
+> `build.yaml` `generate_for` and its `.reflection.dart` generated via
+> build_runner (the only regen — a genuinely new entry point, not a no-op regen).
+> `dart analyze` clean; example self-asserts under `--enable-asserts`;
+> `testkit :test` green (serial); kernel 1.1.9 → 1.1.10. No residual carved out —
+> nothing deferred, no new RCJ filed.
+
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
    accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
@@ -267,7 +296,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 10. **Per-module pass — `scope_ids/`.** *(RCE2)*
 11. **Per-module pass — `security/`.** ✅ **Sub-steps 1–4 done (RCG1, 2026-07-15).** Documentation half done under RCE2.
 12. **Per-module pass — `settings/`.** ✅ **Sub-steps 1–4 done (RCK4, 2026-07-16).** Documentation half done under RCE2.
-13. **Per-module pass — `shutdown_cleanup/`.** *(RCE2)*
+13. **Per-module pass — `shutdown_cleanup/`.** ✅ **Sub-steps 1–4 done (RCK5, 2026-07-16).** Documentation half done under RCE2.
 14. **Barrel exports.** ✅ **Done (OT1, 2026-07-15).** `lib/tom_core_kernel.dart`
     exports all 15 modules (38 directives); analyzer clean ⇒ no unreachable public
     type. Verify every public symbol of every module is exported

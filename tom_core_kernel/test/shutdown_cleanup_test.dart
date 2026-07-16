@@ -831,6 +831,18 @@ void main() {
       expect(log, equals(['closable', 'disposable']));
     });
 
+    test('manual call ignores paused (only the signal path honours it)', () {
+      final cleanup = TomShutdownCleanup();
+      final closable = TestClosable();
+      cleanup.addClosable(closable);
+      cleanup.paused = true;
+
+      // The manual path (fromSignal: false) always runs regardless of paused.
+      cleanup.performShutdown();
+
+      expect(closable.closed, isTrue);
+    });
+
     group('signal-driven path (fromSignal)', () {
       test('skips cleanup entirely while paused', () {
         final cleanup = TomShutdownCleanup();

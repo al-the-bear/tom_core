@@ -1,3 +1,39 @@
+## 1.1.10
+
+### Changed
+
+- **`shutdown_cleanup/` per-module pass (RCK5).** Private-only DRY refactor of
+  `tom_shutdown_cleanup.dart` with every public signature frozen. Two genuine,
+  behaviour-preserving deduplications:
+  - `_executeCleanup` held three near-identical try/catch loops (over
+    `_signalHandlers`, `_closables`, `_disposables`) that each isolated one
+    callout and printed `Failed to call <noun> $item` when not `silent`. The
+    per-entry isolate/report policy is now owned by a single private generic
+    `_runPhase<T>(List<T> items, String label, void Function(T) action)`, and
+    `_executeCleanup` is three one-line phase calls. A change to the isolation
+    or diagnostic policy is now a one-site edit instead of three. The exact log
+    wording (`Failed to call signalHandler/closable/disposable $item`) is
+    preserved.
+  - The constructor's two SIGHUP/SIGINT watcher registrations duplicated the
+    exact `_signalSubscriptions.add(sig.watch().listen(_signalHandler))` body of
+    `addSignal`; the constructor now calls `addSignal(...)`, so there is a
+    single owner of how a signal is watched and how its subscription is retained
+    for teardown (bug §53).
+
+### Examples & Tests
+
+- Added `example/shutdown_cleanup/02_shutdown_execution_example.dart`, wired into
+  the module runner. The existing `01_*` example is descriptive and never
+  actually triggers cleanup; the new example *executes* the runtime API end to
+  end — phase order, once-only execution, fault isolation, `paused` (signal path
+  skipped / manual path always runs), `silent`, `cancelAll`/`dispose` teardown,
+  and `TomCloseAdaptor` resolving a custom-named teardown method via reflection —
+  all guarded by `assert`s (run under `--enable-asserts`). Registered as a
+  reflection entry point in `build.yaml`.
+- Added a `test/shutdown_cleanup_test.dart` case pinning the manual-path
+  contract: `performShutdown()` (the non-signal path) ignores `paused`, which
+  was previously asserted only for the signal-driven path. Suite: 64 cases.
+
 ## 1.1.9
 
 ### Changed
