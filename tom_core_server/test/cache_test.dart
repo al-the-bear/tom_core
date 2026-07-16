@@ -298,4 +298,162 @@ void main() {
       expect(await TomCache.fromNameCache<String>('c', 'k'), isNull);
     });
   });
+
+  group('Construction and properties', () {
+    test('exposes its configured name and bounds', () {
+      final cache = TomCache(
+        'users',
+        deleteEntriesAfterSeconds: 30,
+        deletionIntervalSeconds: null,
+        maximumEntries: 5,
+        clearIntervalSeconds: 120,
+      );
+      addTearDown(cache.stopTimers);
+      expect(cache.cacheName, 'users');
+      expect(cache.deleteEntriesAfterSeconds, 30);
+      expect(cache.deletionIntervalSeconds, isNull);
+      expect(cache.maximumEntries, 5);
+      expect(cache.clearIntervalSeconds, 120);
+    });
+
+    test('forType names the cache after the type', () {
+      final cache = TomCache.forType(String, deletionIntervalSeconds: null);
+      expect(cache.cacheName, 'String');
+    });
+
+    test('an unbounded cache has no maximumEntries', () {
+      expect(_cache('u').maximumEntries, isNull);
+    });
+  });
+
+  group('getEntry (direct)', () {
+    test('returns the stored entry object in an unbounded cache', () {
+      final cache = _cache('g');
+      final entry = TomCacheEntry('v', DateTime(2999));
+      cache.putEntry('k', entry);
+      expect(cache.getEntry('k'), same(entry));
+    });
+
+    test('returns null for an absent key', () {
+      expect(_cache('g').getEntry('absent'), isNull);
+    });
+
+    test('does not check expiry — an already-expired entry is still returned', () {
+      // getEntry is a raw structural read; the "is it expired?" decision belongs
+      // to fromNameCache, not here. An entry whose deletionTime is in the past
+      // must still be handed back verbatim.
+      final cache = _cache('g');
+      cache.putEntry('k', TomCacheEntry('v', DateTime(2000)));
+      final entry = cache.getEntry('k');
+      expect(entry, isNotNull);
+      expect(entry!.value, 'v');
+    });
+
+    test('promotes the read entry to most-recently-used in a bounded cache', () {
+      final cache = _cache('g', maximumEntries: 2);
+      cache.putEntry('a', TomCacheEntry(1));
+      cache.putEntry('b', TomCacheEntry(2));
+      cache.getEntry('a'); // promote 'a' over 'b'
+      cache.putEntry('c', TomCacheEntry(3)); // evicts LRU 'b', not 'a'
+      expect(cache.getEntry('b'), isNull);
+      expect(cache.getEntry('a')!.value, 1);
+      expect(cache.getEntry('c')!.value, 3);
+    });
+  });
+
+  group('putEntry (direct)', () {
+    test('stores and overwrites in an unbounded cache', () {
+      final cache = _cache('p');
+      cache.putEntry('k', TomCacheEntry(1));
+      cache.putEntry('k', TomCacheEntry(2));
+      expect(cache.getEntry('k')!.value, 2);
+    });
+
+    test('evicts the least-recently-used entry past the bound', () {
+      final cache = _cache('p', maximumEntries: 2);
+      cache.putEntry('a', TomCacheEntry(1));
+      cache.putEntry('b', TomCacheEntry(2));
+      cache.putEntry('c', TomCacheEntry(3)); // evicts 'a'
+      expect(cache.getEntry('a'), isNull);
+      expect(cache.getEntry('b')!.value, 2);
+      expect(cache.getEntry('c')!.value, 3);
+    });
+
+    test('replacing the sole entry of a bounded cache updates it in place', () {
+      // The single-entry update path clears the backing map and re-inserts, so
+      // the cache must end up holding exactly the new value and stay usable.
+      final cache = _cache('p', maximumEntries: 2);
+      cache.putEntry('k', TomCacheEntry(1));
+      cache.putEntry('k', TomCacheEntry(2));
+      expect(cache.getEntry('k')!.value, 2);
+      cache.putEntry('a', TomCacheEntry(3));
+      expect(cache.getEntry('a')!.value, 3);
+      expect(cache.getEntry('k')!.value, 2);
+    });
+  });
+
+  group('removeEntry (direct)', () {
+    test('is a no-op for an absent key', () {
+      expect(() => _cache('r').removeEntry('ghost'), returnsNormally);
+    });
+
+    test('unlinks a middle entry and keeps the bounded chain coherent', () {
+      final cache = _cache('r', maximumEntries: 3);
+      cache.putEntry('a', TomCacheEntry(1));
+      cache.putEntry('b', TomCacheEntry(2));
+      cache.putEntry('c', TomCacheEntry(3));
+      cache.removeEntry('b'); // unlink from the middle of the MRU chain
+      expect(cache.getEntry('b'), isNull);
+      // The chain is still coherent: filling past the bound evicts the true LRU.
+      cache.putEntry('d', TomCacheEntry(4));
+      cache.putEntry('e', TomCacheEntry(5)); // over bound -> evict LRU 'a'
+      expect(cache.getEntry('a'), isNull);
+      expect(cache.getEntry('c')!.value, 3);
+      expect(cache.getEntry('e')!.value, 5);
+    });
+  });
+
+  group('Timer lifecycle', () {
+    test('the default deletion interval is one hour and installs a timer', () {
+      final cache = TomCache('t');
+      addTearDown(cache.stopTimers);
+      expect(cache.deletionIntervalSeconds, 3600);
+      expect(cache.deletionTimer, isNotNull);
+      expect(cache.deletionTimer!.isActive, isTrue);
+      expect(cache.clearanceTimer, isNull); // no clear interval by default
+    });
+
+    test('no timers are installed when both intervals are null', () {
+      final cache = TomCache('t', deletionIntervalSeconds: null);
+      expect(cache.deletionTimer, isNull);
+      expect(cache.clearanceTimer, isNull);
+    });
+
+    test('a clear interval installs a clearance timer', () {
+      final cache = TomCache(
+        't',
+        deletionIntervalSeconds: null,
+        clearIntervalSeconds: 3600,
+      );
+      addTearDown(cache.stopTimers);
+      expect(cache.clearanceTimer, isNotNull);
+      expect(cache.clearanceTimer!.isActive, isTrue);
+    });
+
+    test('stopTimers cancels a running deletion timer', () {
+      final cache = TomCache('t');
+      cache.stopTimers();
+      expect(cache.deletionTimer!.isActive, isFalse);
+    });
+
+    test('createTimers is idempotent, replacing a running timer', () {
+      final cache = TomCache('t');
+      addTearDown(cache.stopTimers);
+      final first = cache.deletionTimer;
+      cache.createTimers(); // cancels `first`, installs a fresh timer
+      expect(first!.isActive, isFalse);
+      expect(cache.deletionTimer, isNot(same(first)));
+      expect(cache.deletionTimer!.isActive, isTrue);
+    });
+  });
 }

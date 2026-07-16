@@ -1,3 +1,35 @@
+## 1.1.3
+
+### Tests / Examples
+
+- **cache direct-surface scaling (RCI4, one unblocked module).** Deepened
+  `cache_test.dart` to the full connection-free public surface of the `cache`
+  module (no public API change; 460 → 477 test cases). The prior suite covered
+  the static `…NameCache`/`…TypeCache` helpers, LRU eviction, background-timer
+  sweeps, worker-isolate forwarding, and the cross-isolate command objects — but
+  the **direct `TomCache` instance surface** was only exercised transitively.
+  This pass pins it directly:
+  - **`getEntry`**: returns the stored entry object (unbounded), `null` for an
+    absent key, promotes the read entry to MRU in a bounded cache, and — the
+    distinctive contract — **does not check expiry** (an already-expired entry is
+    still returned verbatim; expiry is `fromNameCache`'s job);
+  - **`putEntry`**: unbounded store/overwrite, LRU eviction past the bound, and
+    the single-entry update path (`cacheSize == 1` clear-and-re-insert);
+  - **`removeEntry`**: no-op for an absent key, and middle-of-chain unlink that
+    leaves a bounded cache's MRU chain coherent for later eviction;
+  - **timer lifecycle**: the default one-hour `deletionIntervalSeconds` installs
+    an active `deletionTimer` (and no `clearanceTimer`), both timers stay `null`
+    when their intervals are `null`, a clear interval installs an active
+    `clearanceTimer`, `stopTimers` cancels a running timer, and `createTimers`
+    is idempotent (cancels and replaces the running timer);
+  - **construction/properties**: `cacheName`/`deleteEntriesAfterSeconds`/
+    `maximumEntries`/`clearIntervalSeconds` round-trip, `forType` names the cache
+    `type.toString()`, and an unbounded cache reports a `null` `maximumEntries`.
+
+  This is one module of the RCI4 unblocked residual; the remaining unblocked
+  modules and the two blocked buckets (reflection-bootstrap and MariaDB fixtures)
+  are filed as RCJ4 for later iteration.
+
 ## 1.1.2
 
 ### Tests / Examples
