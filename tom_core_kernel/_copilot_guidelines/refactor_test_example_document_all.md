@@ -132,6 +132,33 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `logging_test.dart` gained a `resilience` group. `dart analyze` clean; example
 > self-asserts under `--enable-asserts`; `testkit :test` 1676/1676 (serial);
 > kernel 1.1.4 → 1.1.5. Durable/persistent replay queue filed as **RCJ2**.
+>
+> ✅ **RCK1 first module done (2026-07-16) — `isolate_pooling/` sub-steps 1–4.**
+> One bounded iteration: private-only DRY refactor of `tom_worker.dart` (the two
+> identical response-completion bodies — the `_TomIsolateResponse` branch of the
+> instance `_handleResponsesFromIsolate` and the `_TomCreatorResponse` branch of
+> the static `_handleCommandsToIsolate` — collapsed into one static
+> `_completeFromResponse(completer, response)` helper: `RemoteError` →
+> `completeError`, else `complete`; the three executor-chain loops left separate
+> as their send-timing and error-logging genuinely differ; public signatures
+> frozen) plus the stale `// TODO: add regular pings` note on `TomWorkerPool`
+> replaced by an explanatory comment (liveness supervision filed as **RCJ1**).
+> Example surface scaled (new `03_creator_backchannel_example.dart` covering the
+> worker→creator back-channel — `canSendToCreator`, `executeInCreator`,
+> `sendToCreator` into a creator-side executor, a custom `TomWorkerContext` with
+> init-hook overrides, and `RemoteError` propagation — which had **zero** example
+> coverage; wired into `00_run_all_examples.dart`) and a latent example bug fixed
+> (`02_worker_pool_example.dart` cast a `Future<Object?>` to `bool` without
+> `await`, crashing under `--enable-asserts`; the confusing
+> `Future.value(pool.execute(...))` wrappers were also removed). Test surface
+> scaled (`isolate_pooling_test.dart` 53 → 58: base `TomCommand.execute` default,
+> the last untested exception key `attempt_to_start_isolate_but_sendport_is_null`,
+> in-worker `canSendToCreator`/`sendToCreator`, end-to-end `sendExecutorToIsolate`,
+> and the non-error creator-channel branch of the extracted helper). `dart analyze`
+> clean; every example self-asserts under `--enable-asserts`; `testkit :test`
+> 1681/1681 (serial); kernel 1.1.5 → 1.1.6. The remaining 7 refactorable modules
+> continue under quest todos **RCK2–RCK8**; the isolate-pool liveness supervision
+> carved out of this pass is filed as **RCJ1**.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -143,7 +170,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 2. **Per-module pass — `beanlocator/`.** ✅ **Sub-steps 1–4 done (RCF1, 2026-07-15).** Documentation half done under RCE2. Run the Per-Module Workflow below.
 3. **Per-module pass — `context/`.** *(RCE2)*
 4. **Per-module pass — `http_connection/`.** ✅ **Sub-steps 1–4 done (RCI1, 2026-07-16).** Documentation half done under RCE2.
-5. **Per-module pass — `isolate_pooling/`.** *(RCE2)*
+5. **Per-module pass — `isolate_pooling/`.** ✅ **Sub-steps 1–4 done (RCK1, 2026-07-16).** Documentation half done under RCE2.
 6. **Per-module pass — `json/`.** *(RCE2)*
 7. **Per-module pass — `little_things/`.** *(RCE2)*
 8. **Per-module pass — `logging/`.** ✅ **Sub-steps 1–4 done (RCH1, 2026-07-15).** Documentation half done under RCE2.

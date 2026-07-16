@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:test/test.dart';
@@ -119,6 +120,66 @@ class CreatorRoundTripCommand extends TomCommand {
   @override
   Future<Object?> execute() async {
     return await TomWorker.executeInCreator(CreatorComputeCommand(value));
+  }
+}
+
+/// A command that does not override [execute], to test the base default.
+class DefaultCommand extends TomCommand {}
+
+/// Reports whether the back-channel is reachable from inside the worker.
+class CanSendProbeCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => TomWorker.canSendToCreator();
+}
+
+/// Sent from a worker as a fire-and-forget notification to the creator.
+///
+/// The worker returns `'sent'` immediately; the creator-side [InboxExecutor]
+/// records the payload asynchronously.
+class PingCreatorCommand extends TomCommand {
+  final String data;
+
+  PingCreatorCommand(this.data);
+
+  @override
+  Future<Object?> execute() async {
+    TomWorker.sendToCreator({'kind': 'ping', 'data': data});
+    return 'sent';
+  }
+}
+
+/// Creator-side executor that records fire-and-forget `ping` notifications.
+class InboxExecutor extends TomExecutor {
+  final List<Object> received = [];
+
+  @override
+  Object execute(Object command) {
+    if (command is Map && command['kind'] == 'ping') {
+      received.add(command['data'] as Object);
+      return 'ok';
+    }
+    return TomExecutor.noResult;
+  }
+}
+
+/// A command that throws when run on the CREATOR side via the back-channel.
+class ThrowingCreatorCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async {
+    throw Exception('creator boom');
+  }
+}
+
+/// Runs in the worker and delegates a throwing command to the creator.
+///
+/// The creator catches the throw and returns the exception object as the
+/// response payload (not a [RemoteError]), so [TomWorker.executeInCreator]
+/// resolves *normally* with that exception as its value — the documented
+/// behaviour of the creator→worker response path.
+class DelegateThrowToCreator extends TomCommand {
+  @override
+  Future<Object?> execute() async {
+    return await TomWorker.executeInCreator(ThrowingCreatorCommand());
   }
 }
 
@@ -302,6 +363,13 @@ void main() {
           await FixedValueCommand({'key': 'value'}).execute(),
           equals({'key': 'value'}),
         );
+      });
+
+      test('base class default returns the "null" sentinel string', () async {
+        // TomCommand.execute() is not abstract; its default returns the
+        // literal string "null" so subclasses that forget to override still
+        // produce a sendable, non-null response.
+        expect(await DefaultCommand().execute(), equals('null'));
       });
     });
   });
@@ -520,6 +588,33 @@ void main() {
       });
     });
 
+    group('startRemoteIsolate', () {
+      test('throws TomWorkerException when the context has no send port',
+          () async {
+        // A context built directly (not through spawn) has no send port, so
+        // starting an isolate with it must fail with the documented key. The
+        // guard fires inside an async body, surfacing as a zone error rather
+        // than a synchronous throw, so capture it with runZonedGuarded.
+        final context = TestWorkerContext(namePrefix: 'NoPort');
+        Object? asyncError;
+
+        await runZonedGuarded(() async {
+          TomWorker.startRemoteIsolate(context);
+          await Future.delayed(const Duration(milliseconds: 10));
+        }, (error, stack) {
+          asyncError = error;
+        });
+
+        expect(asyncError, isA<TomWorkerException>());
+        expect(
+          (asyncError as TomWorkerException).key,
+          equals(
+            'isolate.state_error.attempt_to_start_isolate_but_sendport_is_null',
+          ),
+        );
+      });
+    });
+
     group('executeCommand', () {
       late TomWorker worker;
 
@@ -703,7 +798,8 @@ void main() {
     });
 
     group('sendExecutorToIsolate', () {
-      test('should send executor that can process commands', () async {
+      test('sent executor processes a non-TomCommand message end-to-end',
+          () async {
         final context = TestWorkerContext();
         final worker = await TomWorker.spawn(
           TomWorker.startRemoteIsolate,
@@ -711,13 +807,70 @@ void main() {
         );
 
         worker.sendExecutorToIsolate(TestStringExecutor());
-
-        // Give the isolate time to receive the executor
+        // Give the isolate a moment to register the executor before dispatch.
         await Future.delayed(Duration(milliseconds: 50));
 
-        // Now the executor should be registered in the isolate
-        // Note: We can't directly test this without sending a non-TomCommand
-        // The executor will handle string commands sent to the isolate
+        // A plain String is not a TomCommand, so the isolate routes it through
+        // the registered executor, which prefixes "Processed: ".
+        final result = await worker.executeCommand('payload');
+        expect(result, equals('Processed: payload'));
+
+        worker.close();
+      });
+    });
+
+    group('back-channel', () {
+      test('canSendToCreator is true inside a worker isolate', () async {
+        final context = TestWorkerContext(namePrefix: 'CanSend');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // In the main isolate the back-channel is absent...
+        expect(TomWorker.canSendToCreator(), isFalse);
+        // ...but a command running in the worker sees it present.
+        final inWorker = await worker.executeCommand(CanSendProbeCommand());
+        expect(inWorker, isTrue);
+
+        worker.close();
+      });
+
+      test('sendToCreator delivers a message to a creator-side executor',
+          () async {
+        final inbox = InboxExecutor();
+        TomWorker.executors.add(inbox);
+
+        final context = TestWorkerContext(namePrefix: 'Ping');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final ack = await worker.executeCommand(PingCreatorCommand('hi'));
+        // sendToCreator is one-way; the executor runs after the command returns.
+        expect(ack, equals('sent'));
+        await Future.delayed(Duration(milliseconds: 30));
+
+        expect(inbox.received, equals(['hi']));
+
+        worker.close();
+      });
+
+      test('executeInCreator resolves with a creator-thrown exception as value',
+          () async {
+        // When the creator-side command throws, the creator sends the exception
+        // object back as the response payload (not a RemoteError), so the
+        // worker completes normally with that exception as the value — pinning
+        // the non-error branch of the shared response-completion helper.
+        final context = TestWorkerContext(namePrefix: 'CreatorThrow');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final result = await worker.executeCommand(DelegateThrowToCreator());
+        expect(result, isA<Exception>());
 
         worker.close();
       });

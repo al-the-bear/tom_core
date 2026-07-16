@@ -153,7 +153,7 @@ Future<void> run() async {
   final primeResults = <int, bool>{};
 
   for (final num in numbersToCheck) {
-    final isPrime = pool.execute(IsPrimeCommand(num)) as bool;
+    final isPrime = await pool.execute(IsPrimeCommand(num)) as bool;
     primeResults[num] = isPrime;
   }
 
@@ -171,7 +171,7 @@ Future<void> run() async {
   final ranges = [1000, 2000, 3000, 4000];
   final stopwatch = Stopwatch()..start();
 
-  final parallelFutures = ranges.map((n) async => pool.execute(CountPrimesCommand(n)));
+  final parallelFutures = ranges.map((n) => pool.execute(CountPrimesCommand(n)));
   final parallelResults = await Future.wait(parallelFutures);
 
   final parallelTime = stopwatch.elapsedMilliseconds;
@@ -191,7 +191,7 @@ Future<void> run() async {
   final taskFutures = <Future<Object?>>[];
 
   for (int i = 0; i < taskCount; i++) {
-    taskFutures.add(Future.value(pool.execute(IdentifiedTaskCommand(i, 10000))));
+    taskFutures.add(pool.execute(IdentifiedTaskCommand(i, 10000)));
   }
 
   final taskResults = await Future.wait(taskFutures);
@@ -222,9 +222,9 @@ Future<void> run() async {
   ];
 
   final matrixFutures = [
-    Future.value(pool.execute(MatrixMultiplyCommand(matrixA, matrixB))),
-    Future.value(pool.execute(MatrixMultiplyCommand(matrixB, matrixC))),
-    Future.value(pool.execute(MatrixMultiplyCommand(matrixA, matrixC))),
+    pool.execute(MatrixMultiplyCommand(matrixA, matrixB)),
+    pool.execute(MatrixMultiplyCommand(matrixB, matrixC)),
+    pool.execute(MatrixMultiplyCommand(matrixA, matrixC)),
   ];
 
   final matrixResults = await Future.wait(matrixFutures);
@@ -243,7 +243,7 @@ Future<void> run() async {
   print('6. Handling many concurrent requests:');
 
   final manyNumbers = List.generate(20, (i) => 100 + i * 10);
-  final manyFutures = manyNumbers.map((n) async => pool.execute(IsPrimeCommand(n)));
+  final manyFutures = manyNumbers.map((n) => pool.execute(IsPrimeCommand(n)));
 
   final stopwatch2 = Stopwatch()..start();
   final manyResults = await Future.wait(manyFutures);
@@ -270,9 +270,7 @@ Future<void> run() async {
     [5, 10, 15, 20, 25, 30],
   ];
 
-  final processFutures = dataChunks.map((chunk) async {
-    return pool.execute(_SumCommand(chunk));
-  });
+  final processFutures = dataChunks.map((chunk) => pool.execute(_SumCommand(chunk)));
 
   final sums = await Future.wait(processFutures);
 

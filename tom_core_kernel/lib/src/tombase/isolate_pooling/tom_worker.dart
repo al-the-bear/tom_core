@@ -537,11 +537,7 @@ class TomWorker {
       _instanceCompleter.complete(this);
     } else if (message is _TomIsolateResponse) {
       final completer = _activeRequests.remove(message.id)!;
-      if (message.response is RemoteError) {
-        completer.completeError(message.response);
-      } else {
-        completer.complete(message.response);
-      }
+      _completeFromResponse(completer, message.response);
       // If close() was requested while requests were still in flight, the
       // response port could not be closed then; close it now that the last
       // pending request has resolved so the ReceivePort does not leak (bug §5).
@@ -611,6 +607,24 @@ class TomWorker {
     }
   }
 
+  /// Resolves [completer] from a command [response] received over a port.
+  ///
+  /// A [RemoteError] payload signals that the command threw in the other
+  /// isolate, so the awaiting future is completed with an error; any other
+  /// payload is the successful result. Shared by the two response handlers
+  /// (worker→creator and creator→worker) so both channels resolve pending
+  /// requests identically.
+  static void _completeFromResponse(
+    Completer<Object?> completer,
+    Object response,
+  ) {
+    if (response is RemoteError) {
+      completer.completeError(response);
+    } else {
+      completer.complete(response);
+    }
+  }
+
   /// Message sent when a worker isolate is ready to accept commands.
   static const readyMessage = "--- ready ---";
 
@@ -674,13 +688,9 @@ class TomWorker {
           );
         }
       } else if (message is _TomCreatorResponse) {
-        if (_activeCreatorRequests[message.id] != null) {
-          final completer = _activeCreatorRequests.remove(message.id)!;
-          if (message.response is RemoteError) {
-            completer.completeError(message.response);
-          } else {
-            completer.complete(message.response);
-          }
+        final completer = _activeCreatorRequests.remove(message.id);
+        if (completer != null) {
+          _completeFromResponse(completer, message.response);
         }
       }
     });
@@ -844,7 +854,10 @@ class TomWorker {
 // WORKER POOL
 // =============================================================================
 
-// TODO: add regular pings to verify that all Isolates are alive. Restart as required.
+// Note: this pool has no liveness supervision. A worker whose isolate dies
+// (uncaught error, `Isolate.kill`) is not detected or replaced, and a command
+// dispatched to it would never complete. Adding periodic health pings with
+// automatic restart is tracked as a follow-up enhancement (quest todo RCJ1).
 
 /// Manages a pool of worker isolates for parallel task execution.
 ///

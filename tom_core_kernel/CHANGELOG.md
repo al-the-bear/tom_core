@@ -1,3 +1,39 @@
+## 1.1.6
+
+### Changed
+
+- **`isolate_pooling/` per-module pass (RCK1).** Private-only DRY refactor of
+  `tom_worker.dart`: the two identical response-completion bodies (worker→creator
+  and creator→worker) are now a single private `_completeFromResponse(completer,
+  response)` helper that routes a `RemoteError` payload to `completeError` and any
+  other payload to `complete`. Public signatures are unchanged. The stale
+  `// TODO: add regular pings` note on `TomWorkerPool` is replaced by an
+  explanatory comment; the liveness-supervision enhancement is tracked as quest
+  todo **RCJ1**.
+
+### Examples
+
+- **New `example/isolate_pooling/03_creator_backchannel_example.dart`** covering
+  the worker→creator back-channel that had zero example coverage:
+  `TomWorker.canSendToCreator`, `executeInCreator` (request/response),
+  `sendToCreator` (fire-and-forget into a creator-side `TomExecutor`), a custom
+  `TomWorkerContext` with `initializeIsolate`/`initializeWorker` overrides, and
+  error propagation as a `RemoteError`. Wired into `00_run_all_examples.dart`.
+- **Fixed a latent bug** in `02_worker_pool_example.dart`: a missing `await` cast
+  a `Future<Object?>` to `bool` and crashed the example under `--enable-asserts`.
+  Also removed confusing `Future.value(pool.execute(...))` wrappers in favour of
+  the plain `Future`s that `pool.execute` already returns.
+
+### Tests
+
+- **Scaled `test/isolate_pooling_test.dart`** (+5 tests) to the full public API:
+  the base `TomCommand.execute` default (`"null"` sentinel), the
+  `startRemoteIsolate` null-send-port guard (the last untested documented
+  exception key), `canSendToCreator`/`sendToCreator` observed from inside a
+  worker, an end-to-end `sendExecutorToIsolate` assertion, and the
+  creator-thrown-exception-as-value branch of the shared response-completion
+  helper.
+
 ## 1.1.5
 
 ### Added
