@@ -18,7 +18,6 @@
 /// // base is now {'database': {'host': 'production.db.com', 'port': 5432}}
 /// ```
 library;
-// TODO: add usage of configuration resolution with traverseAndProcess/traverseAndCreate
 
 // =============================================================================
 // Imports
@@ -272,37 +271,21 @@ Map<String, dynamic> getPathFromTree(
   String path,
   String name,
 ) {
-  Map<String, dynamic> tree = baseTree;
-  Object? value;
-  List<String> pathParts = path.split(".");
-  for (int i = 0; i < pathParts.length; i++) {
-    String nextKey = pathParts[i];
-    value = tree[nextKey];
-    if (value is Map<String, dynamic>) {
-      tree = value;
-      if (i == pathParts.length - 1) {
-        return tree;
-      }
-    } else {
-      if (i < pathParts.length - 1) {
-        throw Exception(
-          "Path $path cannot be resolved. Ends at $nextKey at position $i",
-        );
-      }
-      if (value == null) {
-        throw Exception(
-          "Path $path cannot be resolved. Elements $nextKey at position $i not found.",
-        );
-      }
-      tomLog.warn("Path not found: $path at $nextKey position $i");
-      tree = <String, dynamic>{};
-      tree[name] = value;
-      return tree;
-    }
+  // Share the path walk (and its identical resolution/throw behaviour) with
+  // [getObjectFromTree]; the only difference is what happens at a terminal
+  // *non-map* value, which the two functions handle after the walk.
+  final Object value = getObjectFromTree(baseTree, path);
+  if (value is Map<String, dynamic>) {
+    return value;
   }
-  throw Exception(
-    "Path $path cannot be resolved. IllegalState detected. This is an anomaly.",
+  // A terminal non-map value only surfaces at the last path segment (an
+  // interior non-map throws inside [getObjectFromTree]), so the reporting
+  // context is always that final segment.
+  final List<String> pathParts = path.split(".");
+  tomLog.warn(
+    "Path not found: $path at ${pathParts.last} position ${pathParts.length - 1}",
   );
+  return <String, dynamic>{name: value};
 }
 
 /// Retrieves any object from a nested map using a dot-separated path.
@@ -524,15 +507,9 @@ Map<String, Object> makeCleanJsonMap(Map map) {
   var result = <String, Object>{};
   for (var entry in map.entries) {
     if (entry.key is String) {
-      if (entry.value is String ||
-          entry.value is int ||
-          entry.value is double ||
-          entry.value is bool) {
-        result[entry.key] = entry.value;
-      } else if (entry.value is Map) {
-        result[entry.key] = makeCleanJsonMap(entry.value);
-      } else if (entry.value is List) {
-        result[entry.key] = _cleanList(entry.value);
+      final cleaned = _cleanJsonValue(entry.value);
+      if (cleaned != null) {
+        result[entry.key] = cleaned;
       }
     }
   }
@@ -545,18 +522,31 @@ Map<String, Object> makeCleanJsonMap(Map map) {
 List _cleanList(List list) {
   var result = [];
   for (var listEntry in list) {
-    if (listEntry is String ||
-        listEntry is int ||
-        listEntry is double ||
-        listEntry is bool) {
-      result.add(listEntry);
-    } else if (listEntry is Map) {
-      result.add(makeCleanJsonMap(listEntry));
-    } else if (listEntry is List) {
-      result.add(_cleanList(listEntry));
+    final cleaned = _cleanJsonValue(listEntry);
+    if (cleaned != null) {
+      result.add(cleaned);
     }
   }
   return result;
+}
+
+/// Returns a JSON-clean copy of [value], or `null` when it is not a
+/// JSON-compatible type (in which case the caller filters it out).
+///
+/// Shared by [makeCleanJsonMap] and [_cleanList] so the type dispatch —
+/// scalars pass through, maps and lists recurse, everything else is dropped —
+/// is defined in exactly one place.
+Object? _cleanJsonValue(Object? value) {
+  if (value is String || value is int || value is double || value is bool) {
+    return value;
+  }
+  if (value is Map) {
+    return makeCleanJsonMap(value);
+  }
+  if (value is List) {
+    return _cleanList(value);
+  }
+  return null;
 }
 
 // =============================================================================

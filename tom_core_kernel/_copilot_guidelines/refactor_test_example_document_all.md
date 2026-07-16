@@ -278,6 +278,36 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `testkit :test` green (serial); kernel 1.1.9 → 1.1.10. No residual carved out —
 > nothing deferred, no new RCJ filed.
 
+> ✅ **RCK6 done (2026-07-16) — `json/` sub-steps 1–4.** Private-only DRY refactor
+> of `map_merge_and_process.dart`, all public signatures frozen. Two genuine,
+> behaviour-preserving deduplications: (1) `getPathFromTree` and
+> `getObjectFromTree` shared an identical dot-path walk with identical
+> resolution/throw messages, differing only at a terminal *non-map* value;
+> `getPathFromTree` now delegates the walk to `getObjectFromTree` and only wraps
+> the resolved value under `name` when it is not already a subtree — the
+> `tomLog.warn` and all `Exception` wording are preserved (the wrap context is
+> always the final path segment, since an interior non-map throws inside the
+> delegate). (2) `makeCleanJsonMap` and `_cleanList` repeated the same JSON-type
+> dispatch (String/int/double/bool pass through, Map/List recurse, everything
+> else dropped); that dispatch now lives in one private
+> `_cleanJsonValue(Object?)` helper both call, so the filter policy is a one-site
+> edit. Removed a stale `TODO` on the library directive. `_MergeArrays`,
+> `mergeMapsOneSided`, the `traverse*` pair (semantically distinct — value
+> processing vs. key-name creation), `_TreeModification`/`processTree`, and the
+> env-var helpers had no genuine duplication and were left as-is. Sub-step 2:
+> added `example/json/03_json_config_resolution_example.dart` (wired into the
+> runner) covering the members that had no executable example —
+> `substituteEnvVars` (with defaults), `traverseAndCreate`, `processTree`
+> (profile `@`/`...` directives) and `TomJsonSerializable` — all `assert`-guarded
+> under `--enable-asserts`; this fulfils the removed TODO's intent. Sub-step 3:
+> added a `TomJsonSerializable` test group (toJson exposure, `jsonEncode`/
+> `jsonDecode` round-trip, `makeCleanJsonMap` interop, nullable values); json
+> group 102 → 106, kernel suite 1691 → 1695. Sub-step 4: the `json/` module uses
+> no reflection and the new example implements a plain interface, so no
+> `build.yaml`/reflection change and no regen. `dart analyze` clean; examples
+> self-assert under `--enable-asserts`; `testkit :test` green (serial); kernel
+> 1.1.10 → 1.1.11. No residual carved out — nothing deferred, no new RCJ filed.
+
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
    accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
@@ -289,7 +319,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 3. **Per-module pass — `context/`.** ✅ **Sub-steps 1–4 done (RCK3, 2026-07-16).** Documentation half done under RCE2.
 4. **Per-module pass — `http_connection/`.** ✅ **Sub-steps 1–4 done (RCI1, 2026-07-16).** Documentation half done under RCE2.
 5. **Per-module pass — `isolate_pooling/`.** ✅ **Sub-steps 1–4 done (RCK1, 2026-07-16).** Documentation half done under RCE2.
-6. **Per-module pass — `json/`.** *(RCE2)*
+6. **Per-module pass — `json/`.** ✅ **Sub-steps 1–4 done (RCK6, 2026-07-16).** Documentation half done under RCE2.
 7. **Per-module pass — `little_things/`.** *(RCE2)*
 8. **Per-module pass — `logging/`.** ✅ **Sub-steps 1–4 done (RCH1, 2026-07-15).** Documentation half done under RCE2.
 9. **Per-module pass — `resources/`.** ✅ **Sub-steps 1–4 done (RCK2, 2026-07-16).** Documentation half done under RCE2.

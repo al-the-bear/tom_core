@@ -12,6 +12,7 @@ library;
 
 import '01_json_serialization_example.dart' as json_serialization;
 import '02_json_navigation_example.dart' as json_navigation;
+import '03_json_config_resolution_example.dart' as json_config_resolution;
 
 void main() {
   print(
@@ -27,6 +28,7 @@ void main() {
 
   json_serialization.run();
   json_navigation.run();
+  json_config_resolution.run();
 
   print(
     '╔═══════════════════════════════════════════════════════════════════╗',

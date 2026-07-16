@@ -1,3 +1,32 @@
+## 1.1.11
+
+### Changed
+
+- **`json/` per-module pass (RCK6).** Private-only DRY refactor of
+  `map_merge_and_process.dart` with every public signature frozen. Two genuine,
+  behaviour-preserving deduplications:
+  - `getPathFromTree` and `getObjectFromTree` shared an identical dot-path walk
+    (with identical resolution/throw messages), differing only in how they
+    handle a terminal non-map value. `getPathFromTree` now delegates the walk to
+    `getObjectFromTree` and only wraps the resolved value under `name` when it is
+    not already a subtree — the warn/throw behaviour is unchanged.
+  - `makeCleanJsonMap` and `_cleanList` repeated the same JSON-type dispatch
+    (scalars pass through, maps/lists recurse, everything else is dropped). That
+    dispatch now lives in one private `_cleanJsonValue(Object?)` helper both call.
+- Removed a stale `TODO` on the `json/` library directive; its intent — showing
+  configuration resolution via `traverseAndProcess`/`traverseAndCreate` — is now
+  covered by the new example.
+
+### Added
+
+- **`json/` example + test coverage scaled to the full public API.** New
+  `example/json/03_json_config_resolution_example.dart` demonstrates
+  `substituteEnvVars`, `traverseAndCreate`, `processTree` (profile-based
+  reference injection) and the `TomJsonSerializable` contract — the members that
+  previously had no executable example. Added a `TomJsonSerializable` test group
+  (round-trip, `makeCleanJsonMap` interop, nullable values), taking the kernel
+  suite to 1695 tests.
+
 ## 1.1.10
 
 ### Changed

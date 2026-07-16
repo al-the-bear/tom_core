@@ -1254,4 +1254,75 @@ void main() {
       });
     });
   });
+
+  // ===========================================================================
+  // json_serializable.dart tests
+  // ===========================================================================
+
+  group('TomJsonSerializable', () {
+    test('implementations expose their state via toJson', () {
+      final serializable = _ExampleSerializable('svc', 8080, true);
+      final json = serializable.toJson();
+
+      expect(json['name'], equals('svc'));
+      expect(json['port'], equals(8080));
+      expect(json['enabled'], isTrue);
+    });
+
+    test('toJson output round-trips through jsonEncode/jsonDecode', () {
+      final serializable = _ExampleSerializable('svc', 8080, true);
+
+      final encoded = jsonEncode(serializable.toJson());
+      final decoded = jsonDecode(encoded) as Map<String, dynamic>;
+
+      expect(decoded['name'], equals('svc'));
+      expect(decoded['port'], equals(8080));
+      expect(decoded['enabled'], isTrue);
+    });
+
+    test('toJson output is JSON-clean for makeCleanJsonMap', () {
+      final serializable = _ExampleSerializable('svc', 8080, true);
+
+      final clean = makeCleanJsonMap(serializable.toJson());
+
+      expect(clean.length, equals(3));
+      expect(clean['name'], equals('svc'));
+      expect(clean['port'], equals(8080));
+    });
+
+    test('supports null values in the serialized map', () {
+      final serializable = _NullableSerializable(null);
+
+      final json = serializable.toJson();
+
+      expect(json.containsKey('value'), isTrue);
+      expect(json['value'], isNull);
+    });
+  });
+}
+
+/// Test double implementing [TomJsonSerializable] with typical scalar state.
+class _ExampleSerializable implements TomJsonSerializable {
+  _ExampleSerializable(this.name, this.port, this.enabled);
+
+  final String name;
+  final int port;
+  final bool enabled;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'port': port,
+    'enabled': enabled,
+  };
+}
+
+/// Test double whose serialized map carries a nullable value.
+class _NullableSerializable implements TomJsonSerializable {
+  _NullableSerializable(this.value);
+
+  final String? value;
+
+  @override
+  Map<String, Object?> toJson() => {'value': value};
 }
