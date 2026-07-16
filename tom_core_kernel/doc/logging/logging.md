@@ -230,6 +230,30 @@ void setupRemoteLogging() {
 }
 ```
 
+#### Delivery Resilience
+
+By default `TomRemoteLogOutput` makes a single delivery attempt and, on failure,
+writes the record to its fallback output (console) so nothing is lost. A send is
+treated as failed both when the transport *throws* and when the server *returns*
+an error result. For flaky links you can opt into retry-with-backoff and an
+in-memory replay queue that drains, oldest-first, once the endpoint recovers:
+
+```dart
+// Retry each record up to 3 more times, waiting 200ms × attempt between tries.
+TomRemoteLogOutput.globalSettingMaxSendRetries = 3;
+TomRemoteLogOutput.globalSettingRetryBackoff = const Duration(milliseconds: 200);
+
+// Buffer up to 500 records that still fail; the oldest is dropped on overflow.
+TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 500;
+
+// When switching endpoints, discard records queued for the old one.
+TomRemoteLogOutput.clearReplayQueue();
+```
+
+The defaults (no retries, no backoff, no replay queue) keep behaviour
+predictable and testable without a live server. The queue is in-memory only, so
+buffered records do not survive a process restart.
+
 ### Multi-Isolate Logging
 
 ```dart

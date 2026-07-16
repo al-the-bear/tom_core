@@ -330,6 +330,65 @@ Future<void> run() async {
   print('');
 
   // ===========================================================================
+  // Example 9: TomRemoteLogOutput resilience — retry + bounded replay queue
+  // ===========================================================================
+
+  print('9. TomRemoteLogOutput resilience (retry + replay queue):');
+
+  final resilienceFallback = _CapturingOutput();
+  TomRemoteLogOutput.globalSettingFallbackOutput = resilienceFallback;
+  TomRemoteLogOutput.globalSettingMaxSendRetries = 3;
+  TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 4;
+  TomRemoteLogOutput.clearReplayQueue();
+
+  final resilientOutput = TomRemoteLogOutput();
+
+  // 9a: a flaky endpoint fails twice, then the retry recovers — no data loss,
+  // no fallback needed.
+  final flaky = _ScriptedLogEndpoint([
+    _SendOutcome.throwError,
+    _SendOutcome.throwError,
+    _SendOutcome.ok,
+  ]);
+  TomRemoteLogOutput.remoteEndpoint = flaky;
+  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
+      TomLogger.INFO, 'recovered by retry', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  final retriedSends = flaky.sendCount;
+  final retriedAccepted = flaky.accepted.map((m) => m.message).toList();
+
+  // 9b: the endpoint is fully down — the record is buffered for replay (and
+  // still surfaced locally so nothing is lost).
+  final down = _ScriptedLogEndpoint([_SendOutcome.throwError]);
+  TomRemoteLogOutput.remoteEndpoint = down;
+  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
+      TomLogger.INFO, 'buffered while down', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  final queuedAfterOutage = TomRemoteLogOutput.replayQueueLength;
+
+  // 9c: the endpoint recovers — the next record drains the buffer oldest-first
+  // before sending itself, so ordering is preserved across the outage.
+  final recovered = _ScriptedLogEndpoint([_SendOutcome.ok]);
+  TomRemoteLogOutput.remoteEndpoint = recovered;
+  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
+      TomLogger.INFO, 'flush trigger', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  final drainedAccepted = recovered.accepted.map((m) => m.message).toList();
+  final queueAfterDrain = TomRemoteLogOutput.replayQueueLength;
+
+  // Restore defaults so the example leaves no global state behind.
+  TomRemoteLogOutput.globalSettingFallbackOutput = originalRemoteFallback;
+  TomRemoteLogOutput.remoteEndpoint = null;
+  TomRemoteLogOutput.globalSettingMaxSendRetries = 0;
+  TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
+  TomRemoteLogOutput.clearReplayQueue();
+
+  print('   9a retry: $retriedSends sends, accepted=$retriedAccepted');
+  print('   9b outage: queued=$queuedAfterOutage record(s)');
+  print('   9c drain:  accepted=$drainedAccepted, queue now $queueAfterDrain');
+  print('');
+
+  // ===========================================================================
   // Assertions (run under --enable-asserts)
   // ===========================================================================
 
@@ -380,6 +439,16 @@ Future<void> run() async {
   assert(sanitizedMessage == 'line oneFORGED INFO injected');
   assert(sanitizedMessage != null && !sanitizedMessage.contains('\r'));
   assert(sanitizedMessage != null && !sanitizedMessage.contains('\n'));
+
+  // Example 9: retry recovers, outage buffers, recovery drains in order
+  assert(retriedSends == 3); // two failures + one success
+  assert(retriedAccepted.length == 1 && retriedAccepted.first == 'recovered by retry');
+  assert(queuedAfterOutage == 1); // record buffered while endpoint down
+  // The buffered record drains before the trigger, preserving order.
+  assert(drainedAccepted.length == 2);
+  assert(drainedAccepted[0] == 'buffered while down');
+  assert(drainedAccepted[1] == 'flush trigger');
+  assert(queueAfterDrain == 0); // queue fully drained
 }
 
 /// Console-typed capturing sink for slots statically typed
@@ -399,6 +468,54 @@ class _CapturingConsoleOutput extends TomConsoleLogOutput {
   ]) {
     if (logLevel.matches(loggerLevel)) {
       lastMessage = convertToString(message);
+    }
+  }
+}
+
+/// How a single scripted [_ScriptedLogEndpoint] send should behave.
+enum _SendOutcome {
+  /// Succeed with an empty result and no error.
+  ok,
+
+  /// Throw a transport exception (simulating an unreachable endpoint).
+  throwError,
+}
+
+/// Offline remote endpoint whose per-call behaviour is scripted, used to
+/// demonstrate [TomRemoteLogOutput]'s retry and replay-queue paths without a
+/// live server. The channel/specs handed to `super` are never used because
+/// [send] is fully overridden.
+class _ScriptedLogEndpoint
+    extends TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult> {
+  _ScriptedLogEndpoint(this.script)
+      : super(
+          TomServerChannel('localhost', 80),
+          TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
+        );
+
+  /// Per-call outcomes; the last entry repeats once the script is exhausted.
+  final List<_SendOutcome> script;
+
+  int sendCount = 0;
+
+  /// Records accepted by an `ok` outcome, in order — lets the example assert
+  /// the exact drain/replay ordering.
+  final List<TomRemoteLogMessage> accepted = [];
+
+  @override
+  Future<(TomRemoteLogResult, TomServerCallError?)> send(
+    TomRemoteLogMessage load, [
+    TomRemoteLogResult? responseObject,
+  ]) async {
+    final outcome =
+        script[sendCount < script.length ? sendCount : script.length - 1];
+    sendCount++;
+    switch (outcome) {
+      case _SendOutcome.throwError:
+        throw Exception('endpoint unreachable');
+      case _SendOutcome.ok:
+        accepted.add(load);
+        return (responseObject ?? TomRemoteLogResult(), null);
     }
   }
 }

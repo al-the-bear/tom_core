@@ -117,6 +117,21 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `TomAuthExpiredException` and `tomRunWithAuthRetry` groups). `dart analyze`
 > clean; every example self-asserts under `--enable-asserts`; `testkit :test`
 > 1667/1667 (serial). The remaining 8 modules continue under quest todo **RCJ1**.
+>
+> ✅ **RCI2 done (2026-07-16) — `logging/` `TomRemoteLogOutput` resilience.** Not a
+> per-module refactor Step but the behaviour enhancement carved out of RCH1's
+> signature-frozen pass (the old `// TODO: retry/queue` note). `output()` now
+> treats a *returned* `TomServerCallError` as a failure (not just a thrown one)
+> and routes it through the fallback — no record silently `print()`ed away. Added
+> opt-in static knobs `globalSettingMaxSendRetries` (bounded retry) +
+> `globalSettingRetryBackoff` (linear `backoff × attempt`) + a bounded drop-oldest
+> in-memory replay queue (`globalSettingReplayQueueMaxSize`, drains oldest-first
+> on the next send) with `replayQueueLength` / `clearReplayQueue()`. Defaults
+> (0/zero/0) preserve prior single-attempt-then-fallback behaviour. Example 04
+> gained an Example 9 (retry-recovery, outage-buffering, ordered drain);
+> `logging_test.dart` gained a `resilience` group. `dart analyze` clean; example
+> self-asserts under `--enable-asserts`; `testkit :test` 1676/1676 (serial);
+> kernel 1.1.4 → 1.1.5. Durable/persistent replay queue filed as **RCJ2**.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and

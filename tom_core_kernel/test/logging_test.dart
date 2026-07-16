@@ -1282,6 +1282,213 @@ void main() {
         expect(fallbackOutput.lastMessage, equals('reentrant'));
       });
     });
+
+    group('resilience', () {
+      late _MockLogOutput fallbackOutput;
+
+      setUp(() {
+        fallbackOutput = _MockLogOutput();
+        TomRemoteLogOutput.globalSettingFallbackOutput = fallbackOutput;
+        TomRemoteLogOutput.remoteEndpoint = null;
+        TomRemoteLogOutput.globalSettingMaxSendRetries = 0;
+        TomRemoteLogOutput.globalSettingRetryBackoff = Duration.zero;
+        TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
+        TomRemoteLogOutput.clearReplayQueue();
+      });
+
+      tearDown(() {
+        TomRemoteLogOutput.globalSettingFallbackOutput = TomConsoleLogOutput();
+        TomRemoteLogOutput.remoteEndpoint = null;
+        TomRemoteLogOutput.globalSettingMaxSendRetries = 0;
+        TomRemoteLogOutput.globalSettingRetryBackoff = Duration.zero;
+        TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
+        TomRemoteLogOutput.clearReplayQueue();
+      });
+
+      final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
+
+      Future<void> emit(TomRemoteLogOutput out, String message) {
+        out.output(
+          TomLogLevel.production,
+          TomLogLevel.info,
+          'INFO   ',
+          message,
+          'main',
+          fixedTime,
+          null,
+        );
+        // output() is async fire-and-forget; drain the microtask/timer queue so
+        // the awaited send + retry + fallback have completed before asserting.
+        return Future<void>.delayed(Duration.zero);
+      }
+
+      group('defaults', () {
+        test('replay queue is disabled by default', () {
+          expect(TomRemoteLogOutput.globalSettingReplayQueueMaxSize, equals(0));
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+        });
+
+        test('max retries and backoff default to none', () {
+          expect(TomRemoteLogOutput.globalSettingMaxSendRetries, equals(0));
+          expect(TomRemoteLogOutput.globalSettingRetryBackoff, Duration.zero);
+        });
+      });
+
+      group('returned-error routing', () {
+        test('a server-rejected record is written to the fallback, not dropped',
+            () async {
+          final endpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.returnError]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          await emit(TomRemoteLogOutput(), 'rejected record');
+
+          // One attempt, then the record is surfaced locally rather than lost.
+          expect(endpoint.sendCount, equals(1));
+          expect(fallbackOutput.outputCalled, isTrue);
+          expect(fallbackOutput.lastMessage, equals('rejected record'));
+        });
+      });
+
+      group('retry with backoff', () {
+        test('retries until a transient failure recovers', () async {
+          TomRemoteLogOutput.globalSettingMaxSendRetries = 3;
+          final endpoint = _MockLogEndpoint(script: const [
+            _SendOutcome.throwError,
+            _SendOutcome.throwError,
+            _SendOutcome.ok,
+          ]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          await emit(TomRemoteLogOutput(), 'eventually ok');
+
+          // Two failures then success = three sends; no fallback needed.
+          expect(endpoint.sendCount, equals(3));
+          expect(endpoint.accepted.map((m) => m.message),
+              equals(['eventually ok']));
+          expect(fallbackOutput.outputCalled, isFalse);
+        });
+
+        test('gives up after exhausting the retry budget and falls back',
+            () async {
+          TomRemoteLogOutput.globalSettingMaxSendRetries = 2;
+          final endpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          await emit(TomRemoteLogOutput(), 'always fails');
+
+          // First attempt + 2 retries = 3 sends, all failing.
+          expect(endpoint.sendCount, equals(3));
+          expect(fallbackOutput.outputCalled, isTrue);
+          expect(fallbackOutput.lastMessage, equals('always fails'));
+        });
+
+        test('backoff waits between retries', () async {
+          TomRemoteLogOutput.globalSettingMaxSendRetries = 2;
+          // Retry k waits backoff × k: 20ms then 40ms = 60ms minimum before the
+          // third (successful) attempt. A lower-bound assertion stays robust.
+          const backoff = Duration(milliseconds: 20);
+          TomRemoteLogOutput.globalSettingRetryBackoff = backoff;
+          final endpoint = _MockLogEndpoint(script: const [
+            _SendOutcome.throwError,
+            _SendOutcome.throwError,
+            _SendOutcome.ok,
+          ]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          final stopwatch = Stopwatch()..start();
+          TomRemoteLogOutput().output(
+            TomLogLevel.production,
+            TomLogLevel.info,
+            'INFO   ',
+            'delayed',
+            'main',
+            fixedTime,
+            null,
+          );
+          // Wait until the third attempt lands (or a generous timeout).
+          while (endpoint.sendCount < 3 && stopwatch.elapsedMilliseconds < 5000) {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
+          stopwatch.stop();
+
+          expect(endpoint.sendCount, equals(3));
+          expect(endpoint.accepted.map((m) => m.message), equals(['delayed']));
+          // Total wait spans both backoffs (20 + 40 = 60ms); assert a safe
+          // lower bound to prove the delays actually happened.
+          expect(stopwatch.elapsedMilliseconds, greaterThanOrEqualTo(55));
+        });
+      });
+
+      group('replay queue', () {
+        test('buffers a failed record and drains it on the next send',
+            () async {
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+          final endpoint = _MockLogEndpoint(script: const [
+            _SendOutcome.throwError, // first record fails -> queued
+            _SendOutcome.ok, // drain of queued record succeeds
+            _SendOutcome.ok, // then the second record itself
+          ]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'first');
+          expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+
+          await emit(out, 'second');
+
+          // The queued 'first' drains before 'second' is sent, in order.
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+          expect(endpoint.accepted.map((m) => m.message),
+              equals(['first', 'second']));
+        });
+
+        test('drops the oldest record on overflow', () async {
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 2;
+          // Every send throws so nothing drains and the queue keeps filling.
+          final endpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'r1');
+          await emit(out, 'r2');
+          await emit(out, 'r3');
+
+          // Capacity 2, so the oldest ('r1') was dropped; 'r2','r3' remain.
+          expect(TomRemoteLogOutput.replayQueueLength, equals(2));
+
+          // Recover the endpoint and flush: only the surviving two replay.
+          endpoint.accepted.clear();
+          TomRemoteLogOutput.remoteEndpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.ok]);
+          final recovered =
+              TomRemoteLogOutput.remoteEndpoint as _MockLogEndpoint;
+          await emit(out, 'r4');
+
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+          expect(recovered.accepted.map((m) => m.message),
+              equals(['r2', 'r3', 'r4']));
+        });
+
+        test('stops draining when the endpoint is still down', () async {
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+          // Records keep failing, so the queue never drains.
+          final endpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'a');
+          await emit(out, 'b');
+
+          // Both remain buffered; nothing was accepted.
+          expect(TomRemoteLogOutput.replayQueueLength, equals(2));
+          expect(endpoint.accepted, isEmpty);
+        });
+      });
+    });
   });
 
   // =========================================================================
@@ -1525,21 +1732,43 @@ class _MockConsoleLogOutput extends TomConsoleLogOutput {
   }
 }
 
-/// Mock remote endpoint that records the message and either returns a result
-/// or throws, exercising [TomRemoteLogOutput]'s send and fallback paths without
-/// any real network. The channel/specs handed to `super` are never used because
-/// [send] is fully overridden.
+/// How a single scripted [_MockLogEndpoint] send should behave.
+enum _SendOutcome {
+  /// Succeed with an empty result and no error.
+  ok,
+
+  /// Throw a transport exception.
+  throwError,
+
+  /// Return a non-null [TomServerCallError] (a server-side rejection).
+  returnError,
+}
+
+/// Mock remote endpoint that records the messages it is handed and behaves
+/// according to a script, exercising [TomRemoteLogOutput]'s send, retry and
+/// fallback paths without any real network. The channel/specs handed to
+/// `super` are never used because [send] is fully overridden.
 class _MockLogEndpoint
     extends TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult> {
-  _MockLogEndpoint({this.throwOnSend = false})
-      : super(
+  _MockLogEndpoint({bool throwOnSend = false, List<_SendOutcome>? script})
+      : script = script ??
+            (throwOnSend
+                ? const [_SendOutcome.throwError]
+                : const [_SendOutcome.ok]),
+        super(
           TomServerChannel('localhost', 80),
           TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
         );
 
-  final bool throwOnSend;
+  /// Per-call outcomes; the last entry repeats once the script is exhausted.
+  final List<_SendOutcome> script;
+
   int sendCount = 0;
   TomRemoteLogMessage? lastMessage;
+
+  /// Every message this endpoint accepted (`ok` outcomes), in order — lets a
+  /// test assert the exact drain/replay ordering.
+  final List<TomRemoteLogMessage> accepted = [];
   final Completer<void> sent = Completer<void>();
 
   @override
@@ -1547,15 +1776,25 @@ class _MockLogEndpoint
     TomRemoteLogMessage load, [
     TomRemoteLogResult? responseObject,
   ]) async {
+    final outcome =
+        script[sendCount < script.length ? sendCount : script.length - 1];
     sendCount++;
     lastMessage = load;
     if (!sent.isCompleted) {
       sent.complete();
     }
-    if (throwOnSend) {
-      throw Exception('network down');
+    switch (outcome) {
+      case _SendOutcome.throwError:
+        throw Exception('network down');
+      case _SendOutcome.returnError:
+        return (
+          responseObject ?? TomRemoteLogResult(),
+          TomServerCallError(statusCode: 500),
+        );
+      case _SendOutcome.ok:
+        accepted.add(load);
+        return (responseObject ?? TomRemoteLogResult(), null);
     }
-    return (responseObject ?? TomRemoteLogResult(), null);
   }
 }
 

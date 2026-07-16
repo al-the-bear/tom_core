@@ -321,12 +321,22 @@ delivery fails.
 | -------- | ---- | ----------- |
 | `globalSettingFallbackOutput` | `TomLogOutput` | Fallback output used when remote logging fails or is unconfigured (console by default). |
 | `remoteEndpoint` | `TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>?` | The configured remote endpoint; if `null`, all messages fall back to `globalSettingFallbackOutput`. |
+| `globalSettingMaxSendRetries` | `int` | Number of *additional* send attempts after the first fails (`0` = single attempt, the default). |
+| `globalSettingRetryBackoff` | `Duration` | Base delay between retries; the wait before retry *k* is `backoff × k` (`Duration.zero` by default = retry immediately). |
+| `globalSettingReplayQueueMaxSize` | `int` | Maximum records held in the in-memory replay queue; `0` (default) disables buffering, drop-oldest on overflow otherwise. |
+| `replayQueueLength` | `int` | *(read-only)* Number of records currently buffered for replay. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `clearReplayQueue` | `void clearReplayQueue()` | Discards every buffered record — use when reconfiguring `remoteEndpoint` so records queued for a previous endpoint are not replayed to the new one. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `output` | `void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | *(override)* Sends the message to `remoteEndpoint` inside a re-entrancy-guarded zone; on failure or missing endpoint writes to the fallback output. |
+| `output` | `void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | *(override)* Sends the message to `remoteEndpoint` inside a re-entrancy-guarded zone. A send fails on both a thrown transport error and a returned server-rejection; on failure it retries up to `globalSettingMaxSendRetries` times (with `globalSettingRetryBackoff × attempt` backoff), then writes the record to the fallback output and — if enabled — buffers it in the bounded replay queue. Each send first drains any buffered records oldest-first so records recover in order after an outage. |
 
 ### TomRemoteLogServer
 

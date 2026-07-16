@@ -1,3 +1,46 @@
+## 1.1.5
+
+### Added
+
+- **`TomRemoteLogOutput` delivery resilience (RCI2).** The remote log output now
+  never silently drops a record. A send is treated as *failed* both when the
+  transport throws **and** when the server answers with an error result
+  (`TomServerCallError.hasError`) — the previously `print()`-only returned-error
+  path now routes through the fallback like the thrown path. Four new static
+  knobs make resilience opt-in and predictable-by-default:
+  - `globalSettingMaxSendRetries` (default `0`) — additional attempts after the
+    first failure.
+  - `globalSettingRetryBackoff` (default `Duration.zero`) — linear backoff; the
+    wait before retry *k* is `backoff × k`.
+  - `globalSettingReplayQueueMaxSize` (default `0`, disabled) — bounded
+    in-memory replay queue; records that exhaust their retries are buffered and
+    re-sent oldest-first on the next successful transmission, dropping the
+    oldest on overflow.
+  - `replayQueueLength` (read-only) and `clearReplayQueue()` — diagnostics and a
+    way to discard records queued for a previous endpoint when reconfiguring.
+
+  The defaults preserve the prior single-attempt-then-fallback behaviour, so no
+  configuration is required and the path stays testable without a live server.
+
+### Examples
+
+- **Extended `example/logging/04_isolate_and_remote_logging_example.dart`** with
+  an Example 9 that drives the resilience surface offline via a scripted
+  endpoint: a flaky endpoint recovered by retry, a full outage buffering a
+  record, and a recovery that drains the buffer oldest-first before the
+  triggering record. Self-asserts under `--enable-asserts`.
+
+### Tests
+
+- **Added a `TomRemoteLogOutput` `resilience` group to `test/logging_test.dart`**
+  (kernel suite 1667 → 1676): default knobs; returned-error routed to fallback;
+  retry recovers a transient failure and gives up after the budget; backoff
+  actually waits between retries; replay queue buffers a failed record and
+  drains it in order on the next send, drops the oldest on overflow, and stops
+  draining while the endpoint is still down. The `_MockLogEndpoint` test double
+  gained a per-call outcome script (`ok` / throw / returned-error) and an
+  `accepted` log for asserting drain ordering.
+
 ## 1.1.4
 
 ### Refactor

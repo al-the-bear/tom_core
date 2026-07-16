@@ -185,10 +185,29 @@ class TomLoggingContext {
 /// If the remote endpoint is unavailable or not configured, messages
 /// are written to [globalSettingFallbackOutput] (console by default).
 ///
-/// ## Error Handling
+/// ## Error Handling and Resilience
 ///
-/// Connection errors are caught and logged locally. The original
-/// message is also written to the fallback output to prevent data loss.
+/// A send is considered *failed* both when the transport throws and when the
+/// server answers with an error result ([TomRemoteLogResult.hasError]) — in
+/// either case the record is never silently dropped. On failure the output:
+///
+/// 1. retries the send up to [globalSettingMaxSendRetries] additional times,
+///    waiting [globalSettingRetryBackoff] × attempt between tries (linear
+///    backoff; a zero backoff retries immediately);
+/// 2. if every attempt fails, writes the original record to
+///    [globalSettingFallbackOutput] (console by default) so it is not lost;
+/// 3. if a replay queue is enabled ([globalSettingReplayQueueMaxSize] > 0),
+///    enqueues the record for a later retry. The queue is bounded and drops
+///    the *oldest* record on overflow.
+///
+/// Whenever a subsequent record is sent, the output first drains the replay
+/// queue oldest-first, stopping as soon as a queued record fails again (the
+/// endpoint is still down). This lets records that piled up during an outage
+/// flush in order once the endpoint recovers.
+///
+/// The defaults (no retries, no backoff, no replay queue) keep behaviour
+/// predictable and testable without a live server: one attempt, fall back on
+/// failure. Opt into resilience by setting the `globalSetting*` knobs.
 class TomRemoteLogOutput extends TomLogOutput {
   /// Fallback output used when remote logging fails or is not configured.
   static TomLogOutput globalSettingFallbackOutput = TomConsoleLogOutput();
@@ -199,6 +218,43 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// fall back to [globalSettingFallbackOutput].
   static TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>?
   remoteEndpoint;
+
+  /// Number of *additional* send attempts after the first one fails.
+  ///
+  /// A value of `0` (the default) means a single attempt with no retry. A
+  /// value of `n` means up to `n + 1` total attempts before the record is
+  /// routed to the fallback / replay queue.
+  static int globalSettingMaxSendRetries = 0;
+
+  /// Base delay between retries; the wait before retry *k* is `backoff × k`.
+  ///
+  /// [Duration.zero] (the default) retries immediately with no delay, which
+  /// keeps tests fast and behaviour deterministic.
+  static Duration globalSettingRetryBackoff = Duration.zero;
+
+  /// Maximum number of records held in the in-memory replay queue.
+  ///
+  /// `0` (the default) disables the queue entirely. When greater than zero,
+  /// records that exhaust their retries are enqueued (dropping the oldest on
+  /// overflow) and re-sent, oldest-first, on the next successful transmission.
+  static int globalSettingReplayQueueMaxSize = 0;
+
+  /// Records awaiting replay after failing every send attempt.
+  ///
+  /// Bounded by [globalSettingReplayQueueMaxSize]; drained oldest-first on the
+  /// next successful send. Shared across instances since a single remote
+  /// endpoint is assumed.
+  static final List<TomRemoteLogMessage> _replayQueue = [];
+
+  /// The number of records currently buffered for replay (for diagnostics
+  /// and tests).
+  static int get replayQueueLength => _replayQueue.length;
+
+  /// Discards every buffered record.
+  ///
+  /// Use when reconfiguring [remoteEndpoint] so records queued for a previous
+  /// endpoint are not replayed to the new one.
+  static void clearReplayQueue() => _replayQueue.clear();
 
   @override
   void output(
@@ -226,7 +282,6 @@ class TomRemoteLogOutput extends TomLogOutput {
     await runZoned(
       zoneValues: {TomLoggingContext: TomLoggingContext(inRemoteLogging: true)},
       () async {
-        var response = TomRemoteLogResult();
         final remoteMessage = TomRemoteLogMessage.of(
           loggerLevel.levelPattern,
           logLevel.levelPattern,
@@ -236,59 +291,132 @@ class TomRemoteLogOutput extends TomLogOutput {
           timeStamp.toIso8601String(),
           origin,
         );
-        try {
-          var (result, error) = await remoteEndpoint!.send(
-            remoteMessage,
-            response,
+        // Flush anything that piled up while the endpoint was unreachable
+        // before sending the current record, preserving arrival order.
+        await _drainReplayQueue();
+        final failure = await _sendWithRetry(remoteMessage);
+        if (failure != null) {
+          _logToFallback(
+            loggerLevel,
+            logLevel,
+            level,
+            message,
+            isolateName,
+            timeStamp,
+            origin,
+            failure,
           );
-          // A *returned* (non-thrown) transport error means the endpoint
-          // answered but rejected the record; surface it locally so it is not
-          // silently dropped. Resilience beyond this (retry-with-backoff, a
-          // bounded replay queue of the last N records) is a deliberate
-          // enhancement tracked separately — see RCI residual in the tom_core
-          // quest todos — and is intentionally not attempted inline here.
-          if (error != null && error.hasError) {
-            print(
-              "Sending log message to endpoint returned $result, error: $error",
-            );
-          }
-        } catch (error) {
-          try {
-            globalSettingFallbackOutput.output(
-              TomLogLevel.warn,
-              TomLogLevel.warn,
-              "WARN  ",
-              "Exception occured when trying to send log message to server: $error",
-              TomPlatformUtils.current.getIsolateName(),
-              DateTime.now(),
-              origin,
-            );
-            try {
-              globalSettingFallbackOutput.output(
-                loggerLevel,
-                logLevel,
-                level,
-                message,
-                isolateName,
-                timeStamp,
-                origin,
-              );
-            } catch (error) {
-              globalSettingFallbackOutput.output(
-                TomLogLevel.warn,
-                TomLogLevel.warn,
-                "WARN  ",
-                "Exception occured when trying to log problematic message locally: $error",
-                TomPlatformUtils.current.getIsolateName(),
-                DateTime.now(),
-                origin,
-              );
-            }
-          } catch (e2) {
-            // ignore now
-          }
+          _enqueueForReplay(remoteMessage);
         }
       },
     );
+  }
+
+  /// Sends [remoteMessage] once, translating both a thrown transport error and
+  /// a returned server-rejection into a failure.
+  ///
+  /// Returns `null` on success, or a human-readable failure description.
+  Future<String?> _sendOnce(TomRemoteLogMessage remoteMessage) async {
+    try {
+      var (_, error) = await remoteEndpoint!.send(
+        remoteMessage,
+        TomRemoteLogResult(),
+      );
+      if (error == null || !error.hasError) return null;
+      return "server rejected record: $error";
+    } catch (error) {
+      return "transport error: $error";
+    }
+  }
+
+  /// Sends [remoteMessage] with bounded retry and linear backoff.
+  ///
+  /// Returns `null` once a send succeeds, or the last failure description if
+  /// every attempt (the first plus [globalSettingMaxSendRetries] retries)
+  /// fails.
+  Future<String?> _sendWithRetry(TomRemoteLogMessage remoteMessage) async {
+    final maxRetries =
+        globalSettingMaxSendRetries < 0 ? 0 : globalSettingMaxSendRetries;
+    String? lastFailure;
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0 && globalSettingRetryBackoff > Duration.zero) {
+        await Future.delayed(globalSettingRetryBackoff * attempt);
+      }
+      lastFailure = await _sendOnce(remoteMessage);
+      if (lastFailure == null) return null;
+    }
+    return lastFailure ?? "unknown send failure";
+  }
+
+  /// Re-sends buffered records oldest-first, stopping at the first one that
+  /// still fails (the endpoint is presumed down again).
+  Future<void> _drainReplayQueue() async {
+    while (_replayQueue.isNotEmpty) {
+      if (await _sendWithRetry(_replayQueue.first) == null) {
+        _replayQueue.removeAt(0);
+      } else {
+        break;
+      }
+    }
+  }
+
+  /// Buffers [remoteMessage] for later replay, dropping the oldest record when
+  /// the queue exceeds [globalSettingReplayQueueMaxSize]. A non-positive size
+  /// disables buffering.
+  void _enqueueForReplay(TomRemoteLogMessage remoteMessage) {
+    final maxSize = globalSettingReplayQueueMaxSize;
+    if (maxSize <= 0) return;
+    _replayQueue.add(remoteMessage);
+    while (_replayQueue.length > maxSize) {
+      _replayQueue.removeAt(0);
+    }
+  }
+
+  /// Writes the original record (and a warning describing [cause]) to the
+  /// fallback output so a failed transmission never loses data.
+  void _logToFallback(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp,
+    String? origin,
+    String cause,
+  ) {
+    try {
+      globalSettingFallbackOutput.output(
+        TomLogLevel.warn,
+        TomLogLevel.warn,
+        "WARN  ",
+        "Could not send log message to remote server ($cause)",
+        TomPlatformUtils.current.getIsolateName(),
+        DateTime.now(),
+        origin,
+      );
+      try {
+        globalSettingFallbackOutput.output(
+          loggerLevel,
+          logLevel,
+          level,
+          message,
+          isolateName,
+          timeStamp,
+          origin,
+        );
+      } catch (error) {
+        globalSettingFallbackOutput.output(
+          TomLogLevel.warn,
+          TomLogLevel.warn,
+          "WARN  ",
+          "Exception occured when trying to log problematic message locally: $error",
+          TomPlatformUtils.current.getIsolateName(),
+          DateTime.now(),
+          origin,
+        );
+      }
+    } catch (_) {
+      // The fallback output itself failed; nothing more we can safely do.
+    }
   }
 }
