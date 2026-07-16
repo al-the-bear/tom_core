@@ -1,3 +1,36 @@
+## 1.1.8
+
+### Changed
+
+- **`context/` per-module pass (RCK3).** Private-only DRY refactor of
+  `execution_context.dart` with frozen public signatures. Two genuine
+  duplications were extracted: (1) `runInContext` and `runInContextAsync` shared
+  a byte-for-byte preamble that built the new `TomExecutionContext` + merged
+  `TomZoneValues` and assembled the zone-values map — now a single file-private
+  `_buildZoneValues`, so each run method is a one-line `runZoned` call and the
+  superfluous `async` (no `await`) was dropped from `runInContextAsync`;
+  (2) all nine `TomContextProviders` getters read the current zone's
+  `TomPrincipal`, selected one field, and fell back to a default — that
+  read-select-fallback now lives once in `_fromPrincipal`, each getter reduced to
+  a one-line selector so a change to how the principal is resolved lands in one
+  place.
+
+### Examples
+
+- **New `example/context/04_async_and_zonevalues_example.dart`** covering the
+  surface examples 01–03 omit: `runInContextAsync` context propagation across an
+  `await` boundary and through nested async runs (inherit-outer, inner-wins), and
+  the full `TomZoneValues` mutation API (`addAll` chaining, `containsKey`,
+  `remove`, `clear`) plus the `existingValues` merge constructor. Wired into
+  `00_run_all_examples.dart` (now async); self-asserts under `--enable-asserts`.
+
+### Tests
+
+- Added the five missing principal-populated provider tests (`getProcess`,
+  `getCountry`, `getTimezone`, `getClientLanguage`, `getClientCountry`) so each
+  of the nine refactored one-line selectors is verified against a live principal,
+  guarding against a mis-wired field selector. Suite: 1690 passing.
+
 ## 1.1.7
 
 ### Changed

@@ -192,6 +192,35 @@ Iterate through these steps in order. Each step states its **done** condition.
 > :test` 1685/1685 (serial); kernel 1.1.6 → 1.1.7. No residual carved out —
 > nothing deferred, no new RCJ filed.
 
+> ✅ **RCK3 done (2026-07-16) — `context/` sub-steps 1–4.** One bounded
+> iteration: private-only DRY refactor of `execution_context.dart` with all
+> public signatures and dartdoc frozen. Two genuine duplications extracted:
+> (1) `runInContext` and `runInContextAsync` shared a byte-for-byte preamble
+> (build new `TomExecutionContext` merged over the zone's context, wrap
+> `zoneValues` in a `TomZoneValues` merged over the zone's, assemble the
+> `{TomExecutionContext, TomZoneValues}` map) — now the file-private
+> `_buildZoneValues`, each run method reduced to a one-line `runZoned`, and the
+> superfluous `async` (no `await`) dropped from `runInContextAsync` (return type
+> `Future<T>` preserved via `runZoned<Future<T>>`). (2) All nine
+> `TomContextProviders` getters read the zone's `TomPrincipal`, selected one
+> field, and fell back to a default — that read-select-fallback now lives once in
+> `_fromPrincipal(select, fallback)`, each getter a one-line selector so a change
+> to principal resolution lands in one place. Example surface scaled (new
+> `04_async_and_zonevalues_example.dart` covering `runInContextAsync` propagation
+> across an `await` boundary and through nested async runs, plus the full
+> `TomZoneValues` mutation API — `addAll` chaining, `containsKey`, `remove`,
+> `clear` — and the `existingValues` merge; `00_run_all_examples.dart` made async
+> to await it; no latent bug surfaced under `--enable-asserts`). Test surface
+> scaled (`context_test.dart` 61 → 66: added the five missing principal-populated
+> provider tests — `getProcess`, `getCountry`, `getTimezone`,
+> `getClientLanguage`, `getClientCountry` — so each of the nine one-line
+> selectors is verified against a live principal, guarding a mis-wired field
+> selector). No reflection regen — no new reflected types or annotations,
+> signatures frozen, `context_test.dart` not in `build.yaml` `generate_for` and
+> uses no reflection. `dart analyze` clean; every example self-asserts under
+> `--enable-asserts`; `testkit :test` 1690/1690 (serial); kernel 1.1.7 → 1.1.8.
+> No residual carved out — nothing deferred, no new RCJ filed.
+
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
    accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
@@ -200,7 +229,7 @@ Iterate through these steps in order. Each step states its **done** condition.
    Create any that are missing; customize a template `README.md`.
    *Done when all three exist and the README describes the package accurately.*
 2. **Per-module pass — `beanlocator/`.** ✅ **Sub-steps 1–4 done (RCF1, 2026-07-15).** Documentation half done under RCE2. Run the Per-Module Workflow below.
-3. **Per-module pass — `context/`.** *(RCE2)*
+3. **Per-module pass — `context/`.** ✅ **Sub-steps 1–4 done (RCK3, 2026-07-16).** Documentation half done under RCE2.
 4. **Per-module pass — `http_connection/`.** ✅ **Sub-steps 1–4 done (RCI1, 2026-07-16).** Documentation half done under RCE2.
 5. **Per-module pass — `isolate_pooling/`.** ✅ **Sub-steps 1–4 done (RCK1, 2026-07-16).** Documentation half done under RCE2.
 6. **Per-module pass — `json/`.** *(RCE2)*

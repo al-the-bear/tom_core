@@ -153,12 +153,26 @@ class TomExecutionContext {
   /// }, zoneValues: {'requestId': id});
   /// ```
   T runInContext<T>(T Function() body, {Map<Object?, Object?> zoneValues = const {}, }) {
+    return runZoned<T>(zoneValues: _buildZoneValues(zoneValues), body);
+  }
 
-    var newCtx = TomExecutionContext(contextMap, parentContext: getFromCurrentZone<TomExecutionContext>() );
-
-    TomZoneValues? newZoneValues = TomZoneValues(zoneValues, existingValues: getFromCurrentZone<TomZoneValues>());
-    
-    return runZoned<T>(zoneValues: {TomExecutionContext: newCtx, TomZoneValues: newZoneValues}, body);
+  /// Builds the zone-values map installed by [runInContext] /
+  /// [runInContextAsync].
+  ///
+  /// The typed [TomExecutionContext] is this context's entries merged over any
+  /// context already in the current zone (this context wins on collision, the
+  /// parent's map is never mutated); the [TomZoneValues] container wraps
+  /// [zoneValues] merged with any [TomZoneValues] already in the current zone.
+  Map<Object, Object> _buildZoneValues(Map<Object?, Object?> zoneValues) {
+    final newCtx = TomExecutionContext(
+      contextMap,
+      parentContext: getFromCurrentZone<TomExecutionContext>(),
+    );
+    final newZoneValues = TomZoneValues(
+      zoneValues,
+      existingValues: getFromCurrentZone<TomZoneValues>(),
+    );
+    return {TomExecutionContext: newCtx, TomZoneValues: newZoneValues};
   }
 
   /// Runs asynchronous code within this context.
@@ -184,13 +198,8 @@ class TomExecutionContext {
   ///   return await fetchData();
   /// }, zoneValues: {'requestId': id});
   /// ```
-  Future<T> runInContextAsync<T>(Future<T> Function() body, {Map<Object?, Object?> zoneValues = const {}, }) async {
-
-    var newCtx = TomExecutionContext(contextMap, parentContext: getFromCurrentZone<TomExecutionContext>() );
-
-    TomZoneValues? newZoneValues = TomZoneValues(zoneValues, existingValues: getFromCurrentZone<TomZoneValues>());
-
-    return runZoned<Future<T>>(zoneValues: {TomExecutionContext: newCtx, TomZoneValues: newZoneValues}, body);
+  Future<T> runInContextAsync<T>(Future<T> Function() body, {Map<Object?, Object?> zoneValues = const {}, }) {
+    return runZoned<Future<T>>(zoneValues: _buildZoneValues(zoneValues), body);
   }
 
 }
@@ -310,50 +319,50 @@ class TomContextEntry<T> {
 /// - **Language/Country/Timezone**: Server locale settings
 /// - **ClientLanguage/ClientCountry/ClientTimezone**: Client locale settings
 class TomContextProviders {
-  /// Returns the organization from the current principal, or "default".
-  static String getOrganization() {
-    return getFromCurrentZone<TomPrincipal>()?.organization ?? "default";
+  /// Reads a single field from the current zone's [TomPrincipal], falling back
+  /// to [fallback] when no principal is installed (or the field is null).
+  ///
+  /// Centralises the principal-from-zone read shared by every provider getter,
+  /// so a change to how the principal is resolved lands in one place.
+  static String _fromPrincipal(
+    String? Function(TomPrincipal principal) select,
+    String fallback,
+  ) {
+    final principal = getFromCurrentZone<TomPrincipal>();
+    return (principal == null ? null : select(principal)) ?? fallback;
   }
+
+  /// Returns the organization from the current principal, or "default".
+  static String getOrganization() =>
+      _fromPrincipal((p) => p.organization, "default");
 
   /// Returns the application from the current principal, or "default".
-  static String getApplication() {
-    return getFromCurrentZone<TomPrincipal>()?.application ?? "default";
-  }
+  static String getApplication() =>
+      _fromPrincipal((p) => p.application, "default");
 
   /// Returns the process from the current principal, or "default".
-  static String getProcess() {
-    return getFromCurrentZone<TomPrincipal>()?.process ?? "default";
-  }
+  static String getProcess() => _fromPrincipal((p) => p.process, "default");
 
   /// Returns the server language from the current principal, or "en".
-  static String getLanguage() {
-    return getFromCurrentZone<TomPrincipal>()?.language ?? "en";
-  }
+  static String getLanguage() => _fromPrincipal((p) => p.language, "en");
 
   /// Returns the server country from the current principal, or "XX".
-  static String getCountry() {
-    return getFromCurrentZone<TomPrincipal>()?.country ?? "XX";
-  }
+  static String getCountry() => _fromPrincipal((p) => p.country, "XX");
 
   /// Returns the server timezone from the current principal, or "utc".
-  static String getTimezone() {
-    return getFromCurrentZone<TomPrincipal>()?.timezone ?? "utc";
-  }
+  static String getTimezone() => _fromPrincipal((p) => p.timezone, "utc");
 
   /// Returns the client language from the current principal, or "en".
-  static String getClientLanguage() {
-    return getFromCurrentZone<TomPrincipal>()?.clientLanguage ?? "en";
-  }
+  static String getClientLanguage() =>
+      _fromPrincipal((p) => p.clientLanguage, "en");
 
   /// Returns the client country from the current principal, or "XX".
-  static String getClientCountry() {
-    return getFromCurrentZone<TomPrincipal>()?.clientCountry ?? "XX";
-  }
+  static String getClientCountry() =>
+      _fromPrincipal((p) => p.clientCountry, "XX");
 
   /// Returns the client timezone from the current principal, or "utc".
-  static String getClientTimezone() {
-    return getFromCurrentZone<TomPrincipal>()?.clientTimezone ?? "utc";
-  }
+  static String getClientTimezone() =>
+      _fromPrincipal((p) => p.clientTimezone, "utc");
 }
 
 // =============================================================================

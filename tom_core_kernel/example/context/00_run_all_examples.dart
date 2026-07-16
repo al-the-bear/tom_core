@@ -9,8 +9,9 @@ library;
 import '01_basic_context_example.dart' as basic_context;
 import '02_context_nesting_example.dart' as context_nesting;
 import '03_context_providers_example.dart' as context_providers;
+import '04_async_and_zonevalues_example.dart' as async_and_zonevalues;
 
-void main() {
+Future<void> main() async {
   print('╔═══════════════════════════════════════════════════════════════════╗');
   print('║               Tom Execution Context Examples                      ║');
   print('╚═══════════════════════════════════════════════════════════════════╝');
@@ -19,6 +20,7 @@ void main() {
   basic_context.run();
   context_nesting.run();
   context_providers.run();
+  await async_and_zonevalues.run();
 
   print('╔═══════════════════════════════════════════════════════════════════╗');
   print('║                     All Examples Complete!                        ║');

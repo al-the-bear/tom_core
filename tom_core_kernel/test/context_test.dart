@@ -637,6 +637,51 @@ void main() {
         expect(result, equals('test-app'));
       });
 
+      test('should return process from principal', () {
+        final result = runZoned(
+          () => TomContextProviders.getProcess(),
+          zoneValues: {TomPrincipal: principal},
+        );
+
+        expect(result, equals('test-process'));
+      });
+
+      test('should return country from principal', () {
+        final result = runZoned(
+          () => TomContextProviders.getCountry(),
+          zoneValues: {TomPrincipal: principal},
+        );
+
+        expect(result, equals('DE'));
+      });
+
+      test('should return timezone from principal', () {
+        final result = runZoned(
+          () => TomContextProviders.getTimezone(),
+          zoneValues: {TomPrincipal: principal},
+        );
+
+        expect(result, equals('Europe/Berlin'));
+      });
+
+      test('should return client language from principal', () {
+        final result = runZoned(
+          () => TomContextProviders.getClientLanguage(),
+          zoneValues: {TomPrincipal: principal},
+        );
+
+        expect(result, equals('fr'));
+      });
+
+      test('should return client country from principal', () {
+        final result = runZoned(
+          () => TomContextProviders.getClientCountry(),
+          zoneValues: {TomPrincipal: principal},
+        );
+
+        expect(result, equals('FR'));
+      });
+
       test('should return language from principal', () {
         final result = runZoned(
           () => TomContextProviders.getLanguage(),
