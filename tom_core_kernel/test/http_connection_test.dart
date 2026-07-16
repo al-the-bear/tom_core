@@ -1924,6 +1924,219 @@ void main() {
       );
     });
   });
+
+  // ==========================================================================
+  // Auth refresh/retry coordinator (auth_retry.dart)
+  // ==========================================================================
+  group('TomAuthRetryPolicy', () {
+    tearDown(TomBean.resetBeanContext);
+
+    test('default policy treats a single 401 as expiry and retries once', () {
+      expect(tomDefaultAuthRetryPolicy.expiryStatusCodes, equals({401}));
+      expect(tomDefaultAuthRetryPolicy.maxRefreshRetries, equals(1));
+      expect(tomDefaultAuthRetryPolicy.isAuthExpiry(401), isTrue);
+      expect(tomDefaultAuthRetryPolicy.isAuthExpiry(403), isFalse);
+      expect(tomDefaultAuthRetryPolicy.isAuthExpiry(200), isFalse);
+    });
+
+    test('a custom policy tunes its expiry set and retry budget', () {
+      const policy = TomAuthRetryPolicy(
+        expiryStatusCodes: {419, 440},
+        maxRefreshRetries: 3,
+      );
+      expect(policy.isAuthExpiry(419), isTrue);
+      expect(policy.isAuthExpiry(440), isTrue);
+      expect(policy.isAuthExpiry(401), isFalse);
+      expect(policy.maxRefreshRetries, equals(3));
+    });
+
+    test('active resolves the default when no bean is registered', () {
+      expect(TomAuthRetryPolicy.active, same(tomDefaultAuthRetryPolicy));
+    });
+
+    test('active resolves a registered TomAuthRetryPolicy bean', () {
+      const custom = TomAuthRetryPolicy(
+        expiryStatusCodes: {440},
+        maxRefreshRetries: 5,
+      );
+      TomBean.withType(TomAuthRetryPolicy, custom);
+      expect(TomAuthRetryPolicy.active, same(custom));
+    });
+
+    test('active falls back to default after the bean context is reset', () {
+      TomBean.withType(
+        TomAuthRetryPolicy,
+        const TomAuthRetryPolicy(expiryStatusCodes: {440}),
+      );
+      TomBean.resetBeanContext();
+      expect(TomAuthRetryPolicy.active, same(tomDefaultAuthRetryPolicy));
+    });
+  });
+
+  group('TomAuthExpiredException', () {
+    test('carries the persisting status code, key and message', () {
+      final ex = TomAuthExpiredException(
+        'auth.dead',
+        'Please sign in again.',
+        statusCode: 401,
+      );
+      expect(ex.statusCode, equals(401));
+      expect(ex.key, equals('auth.dead'));
+      expect(ex.defaultUserMessage, equals('Please sign in again.'));
+    });
+  });
+
+  group('tomRunWithAuthRetry', () {
+    tearDown(TomBean.resetBeanContext);
+
+    // A sender that returns each scripted status in turn (holding on the last).
+    Future<int> Function() scriptedSender(List<int> statuses, List<int> calls) {
+      var index = 0;
+      return () async {
+        calls.add(index);
+        final status =
+            statuses[index < statuses.length ? index : statuses.length - 1];
+        index++;
+        return status;
+      };
+    }
+
+    test('returns a non-expiry response without refreshing', () async {
+      final refresher = _ScriptedRefresher();
+      final calls = <int>[];
+      final result = await tomRunWithAuthRetry<int>(
+        send: scriptedSender([200], calls),
+        statusOf: (r) => r,
+        refresher: refresher,
+      );
+      expect(result, equals(200));
+      expect(calls.length, equals(1));
+      expect(refresher.refreshCount, equals(0));
+    });
+
+    test('recovers an expiry with one refresh and a retry', () async {
+      final refresher = _ScriptedRefresher(succeeds: true);
+      final calls = <int>[];
+      final result = await tomRunWithAuthRetry<int>(
+        send: scriptedSender([401, 200], calls),
+        statusOf: (r) => r,
+        refresher: refresher,
+      );
+      expect(result, equals(200));
+      expect(calls.length, equals(2));
+      expect(refresher.refreshCount, equals(1));
+    });
+
+    test('returns the original response when the refresher declines', () async {
+      final refresher = _ScriptedRefresher(succeeds: false);
+      final calls = <int>[];
+      final result = await tomRunWithAuthRetry<int>(
+        send: scriptedSender([401], calls),
+        statusOf: (r) => r,
+        refresher: refresher,
+      );
+      expect(result, equals(401));
+      expect(calls.length, equals(1));
+      expect(refresher.refreshCount, equals(1));
+    });
+
+    test('throws TomAuthExpiredException when expiry persists after retry',
+        () async {
+      final refresher = _ScriptedRefresher(succeeds: true);
+      final calls = <int>[];
+      await expectLater(
+        tomRunWithAuthRetry<int>(
+          send: scriptedSender([401, 401], calls),
+          statusOf: (r) => r,
+          refresher: refresher,
+          errorKeyOf: (_) => 'auth.token_dead',
+        ),
+        throwsA(
+          isA<TomAuthExpiredException>()
+              .having((e) => e.statusCode, 'statusCode', 401)
+              .having((e) => e.key, 'key', 'auth.token_dead'),
+        ),
+      );
+      expect(refresher.refreshCount, equals(1));
+    });
+
+    test('uses the default error key when errorKeyOf is omitted', () async {
+      final refresher = _ScriptedRefresher(succeeds: true);
+      await expectLater(
+        tomRunWithAuthRetry<int>(
+          send: scriptedSender([401, 401], <int>[]),
+          statusOf: (r) => r,
+          refresher: refresher,
+        ),
+        throwsA(
+          isA<TomAuthExpiredException>()
+              .having((e) => e.key, 'key', 'auth.session_expired'),
+        ),
+      );
+    });
+
+    test('passes a non-expiry error status through without refreshing',
+        () async {
+      final refresher = _ScriptedRefresher();
+      final calls = <int>[];
+      final result = await tomRunWithAuthRetry<int>(
+        send: scriptedSender([403], calls),
+        statusOf: (r) => r,
+        refresher: refresher,
+      );
+      expect(result, equals(403));
+      expect(refresher.refreshCount, equals(0));
+    });
+
+    test('propagates an error thrown by the refresher', () async {
+      final refresher = _ScriptedRefresher(throwsError: true);
+      await expectLater(
+        tomRunWithAuthRetry<int>(
+          send: scriptedSender([401, 200], <int>[]),
+          statusOf: (r) => r,
+          refresher: refresher,
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(refresher.refreshCount, equals(1));
+    });
+
+    test('honours an explicit policy over the default budget', () async {
+      const policy = TomAuthRetryPolicy(
+        expiryStatusCodes: {419},
+        maxRefreshRetries: 2,
+      );
+      final refresher = _ScriptedRefresher(succeeds: true);
+      final calls = <int>[];
+      final result = await tomRunWithAuthRetry<int>(
+        send: scriptedSender([419, 419, 200], calls),
+        statusOf: (r) => r,
+        refresher: refresher,
+        policy: policy,
+      );
+      expect(result, equals(200));
+      expect(calls.length, equals(3));
+      expect(refresher.refreshCount, equals(2));
+    });
+
+    test('resolves the active policy bean when no policy is passed', () async {
+      TomBean.withType(
+        TomAuthRetryPolicy,
+        const TomAuthRetryPolicy(expiryStatusCodes: {419}),
+      );
+      final refresher = _ScriptedRefresher(succeeds: true);
+      final calls = <int>[];
+      // 401 is NOT an expiry under the active {419} policy, so it passes
+      // through untouched and no refresh happens.
+      final result = await tomRunWithAuthRetry<int>(
+        send: scriptedSender([401], calls),
+        statusOf: (r) => r,
+        refresher: refresher,
+      );
+      expect(result, equals(401));
+      expect(refresher.refreshCount, equals(0));
+    });
+  });
 }
 
 // ============================================================================
@@ -1981,4 +2194,28 @@ StreamedResponse _streamed(
     isRedirect: isRedirect,
     request: request,
   );
+}
+
+/// A [TomAuthRefresher] scripted for the auth-retry tests: it counts calls and
+/// either succeeds (a usable token), declines (no session), or throws.
+class _ScriptedRefresher implements TomAuthRefresher {
+  _ScriptedRefresher({this.succeeds = true, this.throwsError = false});
+
+  /// Whether a refresh yields a usable new token (worth retrying).
+  final bool succeeds;
+
+  /// Whether the refresh call itself fails so the error must propagate.
+  final bool throwsError;
+
+  /// How many times [refresh] was invoked.
+  int refreshCount = 0;
+
+  @override
+  Future<bool> refresh() async {
+    refreshCount++;
+    if (throwsError) {
+      throw StateError('refresh endpoint unreachable');
+    }
+    return succeeds;
+  }
 }

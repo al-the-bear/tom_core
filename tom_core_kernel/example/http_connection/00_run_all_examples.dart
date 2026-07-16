@@ -11,8 +11,9 @@ library;
 import '01_http_client_example.dart' as http_client;
 import '02_connection_config_example.dart' as connection_config;
 import '03_retry_policies_example.dart' as retry_policies;
+import '04_auth_retry_example.dart' as auth_retry;
 
-void main() {
+Future<void> main() async {
   print('╔═══════════════════════════════════════════════════════════════════╗');
   print('║              TOM HTTP CONNECTION EXAMPLES                         ║');
   print('╚═══════════════════════════════════════════════════════════════════╝\n');
@@ -20,6 +21,7 @@ void main() {
   http_client.run();
   connection_config.run();
   retry_policies.run();
+  await auth_retry.run();
 
   print('╔═══════════════════════════════════════════════════════════════════╗');
   print('║              ALL EXAMPLES COMPLETED                               ║');

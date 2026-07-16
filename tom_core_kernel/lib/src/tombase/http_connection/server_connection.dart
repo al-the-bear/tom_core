@@ -468,6 +468,30 @@ class TomServerCall {
     return this;
   }
 
+  /// Awaits the in-flight response, throwing [TomServerConnectionException] with
+  /// the caller-supplied [key]/[message] when no request has been sent yet.
+  ///
+  /// Centralises the "you must send before you can read this" guard shared by
+  /// every response accessor so each one states only its own error wording.
+  Future<StreamedResponse> _requireSentResponse(
+    String key,
+    String message,
+  ) async {
+    if (response == null) {
+      throw TomServerConnectionException(key, message);
+    }
+    return await response!;
+  }
+
+  /// Guards against reading the response more than once, throwing
+  /// [TomServerConnectionException] with the caller-supplied [key] when the body
+  /// has already been consumed.
+  void _ensureNotYetRead(String key) {
+    if (_read) {
+      throw TomServerConnectionException(key, "You can only read the call once.");
+    }
+  }
+
   /// Reads the response body as bytes.
   ///
   /// Can only be called once after [send].
@@ -475,12 +499,7 @@ class TomServerCall {
   /// Throws [TomServerConnectionException] if called before send or more than once.
   /// Throws [TomRequestAbortedException] if the request was aborted.
   Future<Uint8List> read() async {
-    if (_read == true) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_only_read_once",
-        "You can only read the call once.",
-      );
-    }
+    _ensureNotYetRead("server.send.illegal_state_only_read_once");
     if (response == null) {
       throw TomServerConnectionException(
         "server.send.illegal_state_read_must_be_after_send",
@@ -511,12 +530,7 @@ class TomServerCall {
   ///
   /// Can only be called once after [send].
   Future<String> readAsString(Encoding ec) async {
-    if (_read == true) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_read_only_once",
-        "You can only read the call once.",
-      );
-    }
+    _ensureNotYetRead("server.send.illegal_state_read_only_once");
     return ec.decoder.convert(await read());
   }
 
@@ -524,81 +538,66 @@ class TomServerCall {
   ///
   /// Throws [TomServerConnectionException] if called before send.
   Future<Map<String, String>> getResponseHeaders() async {
-    if (response == null) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_read_headers_only_after_sending",
-        "You can only read out response headers after you send/read ",
-      );
-    }
-    return (await response!).headers;
+    final sent = await _requireSentResponse(
+      "server.send.illegal_state_read_headers_only_after_sending",
+      "You can only read out response headers after you send/read ",
+    );
+    return sent.headers;
   }
 
   /// Gets the HTTP status code after sending.
   ///
   /// Throws [TomServerConnectionException] if called before send.
   Future<int> getResponseStatusCode() async {
-    if (response == null) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_read_status_code_only_after_sending",
-        "You can only read out response status code after you send/read ",
-      );
-    }
-    return (await response!).statusCode;
+    final sent = await _requireSentResponse(
+      "server.send.illegal_state_read_status_code_only_after_sending",
+      "You can only read out response status code after you send/read ",
+    );
+    return sent.statusCode;
   }
 
   /// Gets the response content length after sending.
   ///
   /// Throws [TomServerConnectionException] if called before send.
   Future<int?> getResponseContentLength() async {
-    if (response == null) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_read_content_length_only_after_sending",
-        "You can only read out response content length after you send/read ",
-      );
-    }
-
-    return (await response!).contentLength;
+    final sent = await _requireSentResponse(
+      "server.send.illegal_state_read_content_length_only_after_sending",
+      "You can only read out response content length after you send/read ",
+    );
+    return sent.contentLength;
   }
 
   /// Checks if the response is a redirect after sending.
   ///
   /// Throws [TomServerConnectionException] if called before send.
   Future<bool> getResponseIsRedirect() async {
-    if (response == null) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_check_for_redirect_only_after_sending",
-        "You can only read out response redirect info after you send/read ",
-      );
-    }
-
-    return (await response!).isRedirect;
+    final sent = await _requireSentResponse(
+      "server.send.illegal_state_check_for_redirect_only_after_sending",
+      "You can only read out response redirect info after you send/read ",
+    );
+    return sent.isRedirect;
   }
 
   /// Gets the reason phrase after sending (e.g., "OK", "Not Found").
   ///
   /// Throws [TomServerConnectionException] if called before send.
   Future<String?> getResponseReasonPhrase() async {
-    if (response == null) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_read_reason_phrase_only_after_sending",
-        "You can only read out reason phrase after you send/read ",
-      );
-    }
-
-    return (await response!).reasonPhrase;
+    final sent = await _requireSentResponse(
+      "server.send.illegal_state_read_reason_phrase_only_after_sending",
+      "You can only read out reason phrase after you send/read ",
+    );
+    return sent.reasonPhrase;
   }
 
   /// Gets the original request from the response after sending.
   ///
   /// Throws [TomServerConnectionException] if called before send.
   Future<BaseRequest?> getResponseRequest() async {
-    if (response == null) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_read_response_request_only_after_sending",
-        "You can only read out response request re after you send/read ",
-      );
-    }
-    return (await response!).request;
+    final sent = await _requireSentResponse(
+      "server.send.illegal_state_read_response_request_only_after_sending",
+      "You can only read out response request re after you send/read ",
+    );
+    return sent.request;
   }
 
   /// Aborts the pending request.

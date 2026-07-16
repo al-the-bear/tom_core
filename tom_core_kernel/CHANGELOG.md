@@ -1,3 +1,39 @@
+## 1.1.4
+
+### Refactor
+
+- **`http_connection/` per-module pass (RCI1).** Internal DRY refactor with
+  frozen public signatures. The six `TomServerCall` response accessors
+  (`getResponseHeaders`, `getResponseStatusCode`, `getResponseContentLength`,
+  `getResponseIsRedirect`, `getResponseReasonPhrase`, `getResponseRequest`) each
+  repeated the same "throw if nothing was sent yet, then await the response"
+  guard with only the error key/message differing; extracted that into a private
+  `_requireSentResponse(key, message)` helper so every accessor states only its
+  own wording. The duplicated read-once guard in `read()`/`readAsString()` moved
+  into a private `_ensureNotYetRead(key)` helper. `read()` keeps its original
+  `_read = true`-before-await ordering to preserve concurrent-read semantics.
+
+### Examples
+
+- **Added `example/http_connection/04_auth_retry_example.dart`** exercising the
+  real framework auth-retry coordinator — `tomRunWithAuthRetry`,
+  `TomAuthRefresher`, `TomAuthRetryPolicy` (default, custom, and bean-resolved
+  `active`), and `TomAuthExpiredException` — across the happy path, expiry
+  recovery, declined refresh, persistent-expiry throw, non-expiry passthrough,
+  and a custom multi-retry policy. Wired into `00_run_all_examples.dart` (now
+  `async`). This closes the gap left by `03_retry_policies_example.dart`, which
+  only demonstrated a hand-rolled pattern, not the kernel API.
+
+### Tests
+
+- **Added auth-retry coverage to `test/http_connection_test.dart`** (previously
+  zero tests for `auth_retry.dart`): `TomAuthRetryPolicy` (defaults, custom
+  tuning, `active` bean resolution and reset fallback), `TomAuthExpiredException`
+  (status/key/message), and `tomRunWithAuthRetry` (no-refresh passthrough,
+  one-refresh recovery, declined refresh, persistent-expiry throw with and
+  without `errorKeyOf`, non-expiry passthrough, refresher error propagation,
+  explicit-policy budget, active-bean policy resolution).
+
 ## 1.1.3
 
 ### Refactor

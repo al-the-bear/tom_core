@@ -99,6 +99,24 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `TomLoggingWorkerContext.initializeIsolate` gap; 1650 → 1652). `dart analyze`
 > clean; every example self-asserts under `--enable-asserts`; `testkit :test`
 > 1652/1652 (serial). The remaining 9 modules continue under quest todo **RCI1**.
+>
+> ✅ **RCI1 first module done (2026-07-16) — `http_connection/` sub-steps 1–4.**
+> One bounded iteration: private-only DRY refactor of `server_connection.dart`
+> (the six `TomServerCall.getResponse*` accessors each repeated the same
+> `response == null` guard → shared private `_requireSentResponse(key, message)`
+> helper; the read-once guard in `read()`/`readAsString()` → private
+> `_ensureNotYetRead(key)` helper; `read()` keeps its original
+> `_read = true`-before-await ordering so concurrent-read semantics are
+> unchanged; public signatures frozen). Example surface scaled (new
+> `04_auth_retry_example.dart` covering the real kernel auth-retry coordinator —
+> `tomRunWithAuthRetry`, `TomAuthRefresher`, `TomAuthRetryPolicy` incl. the
+> bean-resolved `active`, and `TomAuthExpiredException` — which had **zero**
+> example coverage; the pre-existing `03_retry_policies_example.dart` only showed
+> a hand-rolled pattern; wired into `00_run_all_examples.dart`, now async). Test
+> surface scaled (`auth_retry.dart` had **zero** tests; added `TomAuthRetryPolicy`,
+> `TomAuthExpiredException` and `tomRunWithAuthRetry` groups). `dart analyze`
+> clean; every example self-asserts under `--enable-asserts`; `testkit :test`
+> 1667/1667 (serial). The remaining 8 modules continue under quest todo **RCJ1**.
 
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -109,7 +127,7 @@ Iterate through these steps in order. Each step states its **done** condition.
    *Done when all three exist and the README describes the package accurately.*
 2. **Per-module pass — `beanlocator/`.** ✅ **Sub-steps 1–4 done (RCF1, 2026-07-15).** Documentation half done under RCE2. Run the Per-Module Workflow below.
 3. **Per-module pass — `context/`.** *(RCE2)*
-4. **Per-module pass — `http_connection/`.** *(RCE2)*
+4. **Per-module pass — `http_connection/`.** ✅ **Sub-steps 1–4 done (RCI1, 2026-07-16).** Documentation half done under RCE2.
 5. **Per-module pass — `isolate_pooling/`.** *(RCE2)*
 6. **Per-module pass — `json/`.** *(RCE2)*
 7. **Per-module pass — `little_things/`.** *(RCE2)*
