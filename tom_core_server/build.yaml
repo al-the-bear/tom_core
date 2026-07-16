@@ -1,0 +1,14 @@
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          # The test reflection root: the generator follows its import graph to
+          # capture the fixture service interface + implementation, the config
+          # object, and (transitively, via the tom_core_server barrel) the
+          # reflected server surface the endpoint pipeline mirrors over. Emits
+          # test/fixtures/reflection_fixture.reflection.dart, whose
+          # initializeReflection() the test suite calls in setUpAll.
+          - test/fixtures/reflection_fixture.dart
+        options:
+          formatted: true
