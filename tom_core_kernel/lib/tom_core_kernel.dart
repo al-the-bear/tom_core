@@ -23,6 +23,7 @@ export 'src/tombase/little_things/exception_base.dart';
 export 'src/tombase/little_things/formatting.dart';
 export 'src/tombase/logging/logging_isolate.dart';
 export 'src/tombase/logging/remote_logoutput.dart';
+export 'src/tombase/logging/file_log_replay_store.dart';
 export 'src/tombase/logging/remote_logserver.dart';
 export 'src/tombase/resources/tom_resource_provider.dart';
 export 'src/tombase/scope_ids/scope_ids.dart';

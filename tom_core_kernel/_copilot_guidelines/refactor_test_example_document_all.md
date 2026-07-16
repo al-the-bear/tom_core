@@ -367,6 +367,33 @@ Iterate through these steps in order. Each step states its **done** condition.
 > green (serial); kernel 1.1.12 → 1.1.13. No residual carved out — nothing
 > deferred, no new RCJ filed.
 
+> ✅ **RCK9 done (2026-07-16) — durable replay store for `TomRemoteLogOutput`.**
+> A former RCJ residual (feature todo, not a numbered per-module pass), hardening
+> the one edge RCI2's in-memory replay queue cannot cover: a process restart
+> *during* an endpoint outage. Made the replay-queue storage pluggable behind a
+> minimal `TomLogReplayStore` interface (`append` / `snapshot` / `oldest` /
+> `removeOldest` / `trim` / `clear` / `length`), with `TomInMemoryLogReplayStore`
+> as the zero-config default (byte-identical runtime behaviour to the old inline
+> `_replayQueue` list) and a new file-backed `TomFileLogReplayStore` in a
+> separate `file_log_replay_store.dart` (imports `dart:io`, consistent with the
+> barrel-exported `tom_shutdown_cleanup` precedent). `TomRemoteLogOutput` now
+> delegates enqueue/drain through `globalSettingReplayStore`; the
+> `globalSettingReplayQueueMaxSize` gate/bound is unchanged. **Decision: record
+> serialization (`_encodeReplayRecord`/`_decodeReplayRecord`) lives as private
+> top-level functions in the file-store library, NOT on `TomRemoteLogMessage`** —
+> that type is `@tomReflector` + tom_core_d4rt-bridged, so putting JSON helpers
+> on it would force a reflection/bridge regen; the 8 fields are all JSON-native,
+> so an external encoder keeps the reflected/bridged surface untouched (no regen).
+> **Decision: file-store tests use `Directory.systemTemp.createTempSync(...)`
+> with a guaranteed `tearDown` delete** (idiomatic ephemeral test fixtures; the
+> ztmp rule targets durable agent scratch, not cleaned-up test tempdirs). Added
+> a `durable replay store` test group (store contract, persistence-across-restart,
+> bounded-trim-across-restart, end-to-end restart-during-outage recovery) and
+> Example 10 in `04_isolate_and_remote_logging_example.dart` (assert-guarded).
+> `dart analyze` clean; example self-asserts under `--enable-asserts`; `testkit
+> :test` green (serial), kernel suite 1701 → 1706; kernel 1.1.13 → 1.1.14. No
+> residual carved out — nothing deferred, no new RCJ filed.
+
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
    accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`

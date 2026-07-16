@@ -158,6 +158,87 @@ class TomLoggingContext {
 }
 
 // =============================================================================
+// Replay Store
+// =============================================================================
+
+/// Pluggable backend for [TomRemoteLogOutput]'s replay queue.
+///
+/// The replay queue buffers records that failed every send attempt so they can
+/// be re-sent, oldest-first, once the endpoint recovers. This interface lets
+/// the *storage* of that queue be swapped out: the default keeps records in
+/// memory (see [TomInMemoryLogReplayStore]), while a durable implementation can
+/// persist them so buffered records survive a process restart during an outage.
+///
+/// Implementations own ordering: records must be returned in the same order
+/// they were [append]ed (FIFO). [oldest] / [removeOldest] drive the drain loop;
+/// [trim] enforces the bound; [clear] resets the queue.
+abstract interface class TomLogReplayStore {
+  /// The number of records currently buffered.
+  int get length;
+
+  /// Appends [message] to the tail of the queue.
+  void append(TomRemoteLogMessage message);
+
+  /// Returns a copy of all buffered records in arrival (FIFO) order.
+  List<TomRemoteLogMessage> snapshot();
+
+  /// The oldest buffered record, or `null` when the queue is empty.
+  TomRemoteLogMessage? get oldest;
+
+  /// Removes the oldest buffered record. A no-op when the queue is empty.
+  void removeOldest();
+
+  /// Drops the oldest records until at most [maxSize] remain.
+  ///
+  /// A non-positive [maxSize] clears the queue.
+  void trim(int maxSize);
+
+  /// Discards every buffered record.
+  void clear();
+}
+
+/// In-memory [TomLogReplayStore] — the zero-config default.
+///
+/// Buffered records live in a plain list and are lost if the process exits
+/// while the queue is non-empty. This matches the historical behaviour of the
+/// replay queue; use a durable store (e.g. a file-backed one) to harden the
+/// restart-during-outage edge.
+class TomInMemoryLogReplayStore implements TomLogReplayStore {
+  final List<TomRemoteLogMessage> _records = [];
+
+  @override
+  int get length => _records.length;
+
+  @override
+  void append(TomRemoteLogMessage message) => _records.add(message);
+
+  @override
+  List<TomRemoteLogMessage> snapshot() => List.of(_records);
+
+  @override
+  TomRemoteLogMessage? get oldest => _records.isEmpty ? null : _records.first;
+
+  @override
+  void removeOldest() {
+    if (_records.isNotEmpty) _records.removeAt(0);
+  }
+
+  @override
+  void trim(int maxSize) {
+    if (maxSize <= 0) {
+      _records.clear();
+      return;
+    }
+    while (_records.length > maxSize) {
+      _records.removeAt(0);
+    }
+  }
+
+  @override
+  void clear() => _records.clear();
+}
+
+// =============================================================================
 // Remote Log Output
 // =============================================================================
 
@@ -239,22 +320,28 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// overflow) and re-sent, oldest-first, on the next successful transmission.
   static int globalSettingReplayQueueMaxSize = 0;
 
-  /// Records awaiting replay after failing every send attempt.
+  /// Backend that stores records awaiting replay after failing every send
+  /// attempt.
   ///
-  /// Bounded by [globalSettingReplayQueueMaxSize]; drained oldest-first on the
-  /// next successful send. Shared across instances since a single remote
-  /// endpoint is assumed.
-  static final List<TomRemoteLogMessage> _replayQueue = [];
+  /// Defaults to an in-memory store ([TomInMemoryLogReplayStore]), so the
+  /// replay queue is zero-config and stays entirely in process. Assign a
+  /// durable implementation (e.g. a file-backed store) to make buffered
+  /// records survive a restart while the endpoint is down. Bounded by
+  /// [globalSettingReplayQueueMaxSize]; drained oldest-first on the next
+  /// successful send. Shared across instances since a single remote endpoint
+  /// is assumed.
+  static TomLogReplayStore globalSettingReplayStore =
+      TomInMemoryLogReplayStore();
 
   /// The number of records currently buffered for replay (for diagnostics
   /// and tests).
-  static int get replayQueueLength => _replayQueue.length;
+  static int get replayQueueLength => globalSettingReplayStore.length;
 
   /// Discards every buffered record.
   ///
   /// Use when reconfiguring [remoteEndpoint] so records queued for a previous
   /// endpoint are not replayed to the new one.
-  static void clearReplayQueue() => _replayQueue.clear();
+  static void clearReplayQueue() => globalSettingReplayStore.clear();
 
   @override
   void output(
@@ -351,9 +438,10 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// Re-sends buffered records oldest-first, stopping at the first one that
   /// still fails (the endpoint is presumed down again).
   Future<void> _drainReplayQueue() async {
-    while (_replayQueue.isNotEmpty) {
-      if (await _sendWithRetry(_replayQueue.first) == null) {
-        _replayQueue.removeAt(0);
+    final store = globalSettingReplayStore;
+    for (var next = store.oldest; next != null; next = store.oldest) {
+      if (await _sendWithRetry(next) == null) {
+        store.removeOldest();
       } else {
         break;
       }
@@ -366,10 +454,8 @@ class TomRemoteLogOutput extends TomLogOutput {
   void _enqueueForReplay(TomRemoteLogMessage remoteMessage) {
     final maxSize = globalSettingReplayQueueMaxSize;
     if (maxSize <= 0) return;
-    _replayQueue.add(remoteMessage);
-    while (_replayQueue.length > maxSize) {
-      _replayQueue.removeAt(0);
-    }
+    globalSettingReplayStore.append(remoteMessage);
+    globalSettingReplayStore.trim(maxSize);
   }
 
   /// Writes the original record (and a warning describing [cause]) to the

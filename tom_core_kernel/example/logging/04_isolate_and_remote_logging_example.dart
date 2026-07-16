@@ -16,6 +16,9 @@
 ///   remote-logging wire payloads and re-entrancy context.
 /// - [TomRemoteLogOutput] / [TomRemoteLogServer] — the client that ships logs
 ///   to a server and the server that receives and replays them.
+/// - [TomLogReplayStore] / [TomInMemoryLogReplayStore] /
+///   [TomFileLogReplayStore] — the pluggable replay-queue backend (in-memory by
+///   default, or file-backed to survive a restart during an outage).
 ///
 /// Every sink here is exercised connection-free: worker pools are created at
 /// size zero (which spawn no isolates) and the remote path is driven with its
@@ -27,6 +30,8 @@
 /// dart run --enable-asserts example/logging/04_isolate_and_remote_logging_example.dart
 /// ```
 library;
+
+import 'dart:io';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -389,6 +394,68 @@ Future<void> run() async {
   print('');
 
   // ===========================================================================
+  // Example 10: Durable replay store — buffered records survive a restart
+  // ===========================================================================
+
+  print('10. Durable replay store (records survive a process restart):');
+
+  // The replay queue's storage is pluggable. The default keeps records in
+  // memory (lost if the process exits mid-outage); a file-backed store mirrors
+  // them to disk so a fresh process resumes with the buffered records.
+  final storeDir =
+      Directory.systemTemp.createTempSync('tom_core_kernel_replay_');
+  final storePath = '${storeDir.path}/replay_queue.json';
+
+  final durableFallback = _CapturingOutput();
+  TomRemoteLogOutput.globalSettingFallbackOutput = durableFallback;
+  TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 4;
+
+  // 10a: first process — endpoint is down, so records buffer to disk.
+  TomRemoteLogOutput.globalSettingReplayStore =
+      TomFileLogReplayStore(storePath);
+  TomRemoteLogOutput.remoteEndpoint =
+      _ScriptedLogEndpoint([_SendOutcome.throwError]);
+  final firstProcess = TomRemoteLogOutput();
+  firstProcess.output(TomLogLevel.production, TomLogLevel.info, TomLogger.INFO,
+      'queued before restart A', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  firstProcess.output(TomLogLevel.production, TomLogLevel.info, TomLogger.INFO,
+      'queued before restart B', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  final bufferedBeforeRestart = TomRemoteLogOutput.replayQueueLength;
+
+  // 10b: simulate a restart — a brand-new store instance at the same path
+  // reloads what the "previous process" buffered.
+  TomRemoteLogOutput.globalSettingReplayStore =
+      TomFileLogReplayStore(storePath);
+  final reloadedAfterRestart = TomRemoteLogOutput.replayQueueLength;
+
+  // 10c: the endpoint recovers — the reloaded records drain oldest-first.
+  final durableRecovered = _ScriptedLogEndpoint([_SendOutcome.ok]);
+  TomRemoteLogOutput.remoteEndpoint = durableRecovered;
+  final secondProcess = TomRemoteLogOutput();
+  secondProcess.output(TomLogLevel.production, TomLogLevel.info, TomLogger.INFO,
+      'after restart C', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  final durableDrained =
+      durableRecovered.accepted.map((m) => m.message).toList();
+  final durableQueueAfter = TomRemoteLogOutput.replayQueueLength;
+
+  // Restore defaults (back to the zero-config in-memory store) and clean up.
+  TomRemoteLogOutput.globalSettingFallbackOutput = originalRemoteFallback;
+  TomRemoteLogOutput.remoteEndpoint = null;
+  TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
+  TomRemoteLogOutput.globalSettingReplayStore = TomInMemoryLogReplayStore();
+  TomRemoteLogOutput.clearReplayQueue();
+  storeDir.deleteSync(recursive: true);
+
+  print('   10a before restart: buffered=$bufferedBeforeRestart to disk');
+  print('   10b after restart:  reloaded=$reloadedAfterRestart from disk');
+  print('   10c drain:          accepted=$durableDrained, '
+      'queue now $durableQueueAfter');
+  print('');
+
+  // ===========================================================================
   // Assertions (run under --enable-asserts)
   // ===========================================================================
 
@@ -449,6 +516,15 @@ Future<void> run() async {
   assert(drainedAccepted[0] == 'buffered while down');
   assert(drainedAccepted[1] == 'flush trigger');
   assert(queueAfterDrain == 0); // queue fully drained
+
+  // Example 10: durable store persists the queue across a simulated restart
+  assert(bufferedBeforeRestart == 2); // both records buffered to disk
+  assert(reloadedAfterRestart == 2); // reloaded by the fresh store instance
+  assert(durableDrained.length == 3); // two reloaded + the trigger record
+  assert(durableDrained[0] == 'queued before restart A');
+  assert(durableDrained[1] == 'queued before restart B');
+  assert(durableDrained[2] == 'after restart C');
+  assert(durableQueueAfter == 0); // queue fully drained after recovery
 }
 
 /// Console-typed capturing sink for slots statically typed

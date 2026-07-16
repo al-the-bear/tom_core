@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:test/test.dart';
 
@@ -1293,6 +1294,7 @@ void main() {
         TomRemoteLogOutput.globalSettingMaxSendRetries = 0;
         TomRemoteLogOutput.globalSettingRetryBackoff = Duration.zero;
         TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
+        TomRemoteLogOutput.globalSettingReplayStore = TomInMemoryLogReplayStore();
         TomRemoteLogOutput.clearReplayQueue();
       });
 
@@ -1302,6 +1304,7 @@ void main() {
         TomRemoteLogOutput.globalSettingMaxSendRetries = 0;
         TomRemoteLogOutput.globalSettingRetryBackoff = Duration.zero;
         TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 0;
+        TomRemoteLogOutput.globalSettingReplayStore = TomInMemoryLogReplayStore();
         TomRemoteLogOutput.clearReplayQueue();
       });
 
@@ -1486,6 +1489,135 @@ void main() {
           // Both remain buffered; nothing was accepted.
           expect(TomRemoteLogOutput.replayQueueLength, equals(2));
           expect(endpoint.accepted, isEmpty);
+        });
+      });
+
+      group('durable replay store', () {
+        late Directory tempDir;
+
+        // A message factory that stamps the payload into every field we
+        // serialize, so a round-trip through disk is fully verifiable.
+        TomRemoteLogMessage record(String message) => TomRemoteLogMessage.of(
+              TomLogLevel.production.levelPattern,
+              TomLogLevel.info.levelPattern,
+              'INFO   ',
+              message,
+              'main',
+              '2026-01-02T10:00:00.000',
+              'origin.$message',
+            );
+
+        setUp(() {
+          tempDir = Directory.systemTemp.createTempSync('tom_log_replay_');
+        });
+
+        tearDown(() {
+          if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+        });
+
+        test('file store supports the full store contract', () {
+          final store =
+              TomFileLogReplayStore('${tempDir.path}/queue.json');
+
+          expect(store.length, equals(0));
+          expect(store.oldest, isNull);
+
+          store.append(record('a'));
+          store.append(record('b'));
+          store.append(record('c'));
+
+          expect(store.length, equals(3));
+          expect(store.snapshot().map((m) => m.message),
+              equals(['a', 'b', 'c']));
+          expect(store.oldest?.message, equals('a'));
+
+          store.removeOldest();
+          expect(store.snapshot().map((m) => m.message), equals(['b', 'c']));
+
+          store.trim(1);
+          expect(store.snapshot().map((m) => m.message), equals(['c']));
+
+          store.clear();
+          expect(store.length, equals(0));
+          expect(store.oldest, isNull);
+        });
+
+        test('a non-positive trim clears the file store', () {
+          final store = TomFileLogReplayStore('${tempDir.path}/queue.json');
+          store.append(record('a'));
+          store.append(record('b'));
+
+          store.trim(0);
+
+          expect(store.length, equals(0));
+        });
+
+        test('records survive a simulated restart', () {
+          final path = '${tempDir.path}/queue.json';
+
+          // First process: buffer three records, then "exit".
+          final first = TomFileLogReplayStore(path);
+          first.append(record('a'));
+          first.append(record('b'));
+          first.append(record('c'));
+
+          // Second process: a fresh store at the same path resumes the queue.
+          final second = TomFileLogReplayStore(path);
+          expect(second.length, equals(3));
+          final reloaded = second.snapshot();
+          expect(reloaded.map((m) => m.message), equals(['a', 'b', 'c']));
+          // Every serialized field round-tripped, not just the message.
+          expect(reloaded.first.level, equals('INFO   '));
+          expect(reloaded.first.isolateName, equals('main'));
+          expect(reloaded.first.origin, equals('origin.a'));
+          expect(reloaded.first.loggerLevel,
+              equals(TomLogLevel.production.levelPattern));
+        });
+
+        test('a bounded trim persists across a restart', () {
+          final path = '${tempDir.path}/queue.json';
+
+          final first = TomFileLogReplayStore(path);
+          first.append(record('r1'));
+          first.append(record('r2'));
+          first.append(record('r3'));
+          first.trim(2);
+
+          final second = TomFileLogReplayStore(path);
+          expect(second.snapshot().map((m) => m.message), equals(['r2', 'r3']));
+        });
+
+        test('buffered records replay after a restart once the endpoint '
+            'recovers', () async {
+          final path = '${tempDir.path}/queue.json';
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+
+          // First process: endpoint is down, so records queue to disk.
+          TomRemoteLogOutput.globalSettingReplayStore =
+              TomFileLogReplayStore(path);
+          TomRemoteLogOutput.remoteEndpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          final firstOut = TomRemoteLogOutput();
+          await emit(firstOut, 'a');
+          await emit(firstOut, 'b');
+          expect(TomRemoteLogOutput.replayQueueLength, equals(2));
+
+          // Simulate a restart: a brand-new store instance at the same path
+          // reloads the records the previous process buffered.
+          TomRemoteLogOutput.globalSettingReplayStore =
+              TomFileLogReplayStore(path);
+          expect(TomRemoteLogOutput.replayQueueLength, equals(2));
+
+          // The endpoint recovers; the next emit drains the buffered records
+          // oldest-first ahead of the new one.
+          final recovered = _MockLogEndpoint(script: const [_SendOutcome.ok]);
+          TomRemoteLogOutput.remoteEndpoint = recovered;
+          final secondOut = TomRemoteLogOutput();
+          await emit(secondOut, 'c');
+
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+          expect(recovered.accepted.map((m) => m.message),
+              equals(['a', 'b', 'c']));
         });
       });
     });

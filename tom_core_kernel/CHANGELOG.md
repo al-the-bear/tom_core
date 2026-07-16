@@ -1,3 +1,35 @@
+## 1.1.14
+
+### Added
+
+- **Pluggable durable replay store for `TomRemoteLogOutput` (RCK9).** The
+  replay queue's storage is now behind a `TomLogReplayStore` interface
+  (`append` / `snapshot` / `oldest` / `removeOldest` / `trim` / `clear`). The
+  default stays zero-config and entirely in process
+  (`TomInMemoryLogReplayStore`, unchanged behaviour); a new file-backed
+  `TomFileLogReplayStore` mirrors the queue to a JSON file on every mutation and
+  reloads it on construction, so records buffered during an outage survive a
+  process restart — the one edge the in-memory store cannot cover. Opt in by
+  assigning `TomRemoteLogOutput.globalSettingReplayStore`; the existing
+  `globalSettingReplayQueueMaxSize` gate/bound is unchanged. Record
+  serialization lives in the file-store library (private
+  `_encodeReplayRecord`/`_decodeReplayRecord`) so `TomRemoteLogMessage`'s
+  reflected/bridged surface is untouched (no regen).
+- Tests for the durable store: the full store contract on the file backend,
+  persistence across a simulated restart (fresh instance at the same path
+  reloads the queue), bounded trim persisting across a restart, and an
+  end-to-end restart-during-outage recovery through `TomRemoteLogOutput`.
+- Example 10 in `example/logging/04_isolate_and_remote_logging_example.dart`
+  demonstrating the file-backed store surviving a simulated restart, assert-
+  guarded under `--enable-asserts`.
+
+### Changed
+
+- `TomRemoteLogOutput`'s internal `_replayQueue` list is replaced by delegation
+  through `globalSettingReplayStore`; `replayQueueLength` / `clearReplayQueue`
+  and the enqueue/drain paths now route through the store. Default runtime
+  behaviour is identical (in-memory, drop-oldest, oldest-first drain).
+
 ## 1.1.13
 
 ### Changed
