@@ -1,6 +1,17 @@
 import 'dart:async';
 import 'package:tom_core_kernel/src/tombase/little_things/little_things.dart';
 
+/// Shared scope-installation policy for [TomScope.runInScope] and
+/// [TomScopeMixin.runInScope].
+///
+/// If [scope] is already the current zone scope (identical reference), [body]
+/// runs directly without creating a new zone — this prevents duplicate scope
+/// nesting. Otherwise [body] runs in a child zone carrying [scope].
+T _runScoped<T>(TomScope scope, T Function() body) {
+  if (identical(scope, TomScope.current)) return body();
+  return runZoned(body, zoneValues: {TomScope: scope});
+}
+
 /// A hierarchical, zone-propagated identifier used to namespace resource
 /// lookups (e.g. `app.checkout.orderForm`).
 ///
@@ -31,10 +42,7 @@ abstract class TomScope {
   /// If this scope is already the current zone scope (identical reference),
   /// [body] is executed directly without creating a new zone.
   /// This prevents duplicate scope nesting.
-  T runInScope<T>(T Function() body) {
-    if (identical(this, current)) return body();
-    return runZoned(body, zoneValues: {TomScope: this});
-  }
+  T runInScope<T>(T Function() body) => _runScoped(this, body);
 
   /// Builds the scope path for any TomScope instance.
   /// Returns a dot-separated string (e.g., "app.checkout.orderForm").
@@ -95,10 +103,7 @@ mixin TomScopeMixin on Object implements TomScope {
   String getScopePath() => TomScope.buildScopePath(this);
 
   @override
-  T runInScope<T>(T Function() body) {
-    if (identical(this, TomScope.current)) return body();
-    return runZoned(body, zoneValues: {TomScope: this});
-  }
+  T runInScope<T>(T Function() body) => _runScoped(this, body);
 }
 
 /// Captures a [TomScope] at construction time and wraps callback functions

@@ -158,6 +158,46 @@ void main() {
   });
 
   // ===========================================================================
+  // TomScopeMixin — reusable scope identity mixed into an arbitrary class
+  // ===========================================================================
+  group('TomScopeMixin', () {
+    test('a custom class using the mixin is a fully-formed TomScope', () {
+      final app = _MixinScope(scopeId: 'app');
+      final checkout = _MixinScope(scopeId: 'checkout', parentScope: app);
+      expect(checkout, isA<TomScope>());
+      expect(checkout.id, equals('checkout'));
+      expect(checkout.parent, same(app));
+      expect(checkout.getScopePath(), equals('app.checkout'));
+    });
+
+    test('runInScope installs and restores a custom mixin scope', () {
+      final section = _MixinScope(scopeId: 'section');
+      section.runInScope(() {
+        expect(TomScope.current, same(section));
+      });
+      expect(TomScope.current, same(TomScope.defaultScope));
+    });
+
+    test('the custom mixin scope integrates with InScopeBuilder', () {
+      final section = _MixinScope(scopeId: 'section');
+      final wrapped = InScopeBuilder(scope: section)
+          .wrap0<String>(() => TomScope.current.getScopePath());
+      expect(wrapped(), equals('section'));
+    });
+
+    // Write-once setters: an alternative to initScope for assigning identity.
+    test('write-once id / parent setters assign the scope identity', () {
+      final root = _MixinScope(scopeId: 'root');
+      final lazy = _LazyMixinScope()
+        ..id = 'lazy'
+        ..parent = root;
+      expect(lazy.id, equals('lazy'));
+      expect(lazy.parent, same(root));
+      expect(lazy.getScopePath(), equals('root.lazy'));
+    });
+  });
+
+  // ===========================================================================
   // InScopeBuilder — wraps callbacks so they run in a captured scope
   // ===========================================================================
   group('InScopeBuilder', () {
@@ -254,3 +294,15 @@ void main() {
     });
   });
 }
+
+/// A custom domain class that becomes a [TomScope] purely through the mixin,
+/// initialising its identity via [TomScopeMixin.initScope].
+class _MixinScope with TomScopeMixin {
+  _MixinScope({required String scopeId, TomScope? parentScope}) {
+    initScope(scopeId: scopeId, parentScope: parentScope);
+  }
+}
+
+/// A mixin scope whose identity is assigned through the write-once setters
+/// instead of [TomScopeMixin.initScope].
+class _LazyMixinScope with TomScopeMixin {}

@@ -1,3 +1,30 @@
+## 1.1.13
+
+### Changed
+
+- **`scope_ids/` per-module pass (RCK8).** Private-only DRY refactor with every
+  public signature frozen. `TomScope.runInScope` and `TomScopeMixin.runInScope`
+  had byte-identical bodies (the `identical(this, current)` no-op-zone check plus
+  the `runZoned` install); the shared install policy now lives in one private
+  top-level `_runScoped<T>(TomScope, body)` helper both delegate to, so a change
+  to the scope-installation policy is a one-site edit. The per-arity
+  `InScopeBuilder.wrapN`/`wrapNn` methods and the two trivial `getScopePath()`
+  delegations (already routed through the shared `buildScopePath`) have no
+  collapsible duplication and were left as-is.
+
+### Added
+
+- Example `example/scope_ids/03_scope_mixin_example.dart` (wired into the runner)
+  covering the previously undemonstrated public surface: a custom class using
+  `TomScopeMixin` directly (the real-world consumer pattern, as in the Flutter
+  element providers), the custom instance participating fully as a scope
+  (`current`, path, `runInScope`, `InScopeBuilder`), and the write-once
+  `set id` / `set parent` setters — all assert-guarded under `--enable-asserts`.
+- Tests for direct `TomScopeMixin` usage (custom mixin class + `initScope`,
+  `runInScope`, `InScopeBuilder` integration) and the write-once identity
+  setters. The `set id`/`set parent` setters are kept (not removed): they are
+  registered by the tom_core_d4rt bridges for `TomScopeBase`.
+
 ## 1.1.12
 
 ### Changed

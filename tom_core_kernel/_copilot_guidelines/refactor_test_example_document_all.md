@@ -338,6 +338,35 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `testkit :test` green (serial); kernel 1.1.11 → 1.1.12. No residual carved out
 > — nothing deferred, no new RCJ filed.
 
+> ✅ **RCK8 done (2026-07-16) — `scope_ids/` sub-steps 1–4.** Last of the eight
+> RCJ1 modules. Sub-step 1 (DRY, private-only, signatures frozen): `TomScope.
+> runInScope` and `TomScopeMixin.runInScope` had byte-identical bodies (the
+> `identical(this, current)` no-op-zone check + `runZoned` install), forced apart
+> only because the mixin `implements TomScope` rather than extending it; the
+> shared install policy is now one private top-level `_runScoped<T>(TomScope,
+> body)` helper both delegate to. The per-arity `InScopeBuilder.wrapN`/`wrapNn`
+> methods cannot be collapsed (Dart has no variadic generics) and the two
+> `getScopePath()` delegations already route through the shared `buildScopePath`,
+> so no other genuine duplication. Sub-step 2: added `example/scope_ids/
+> 03_scope_mixin_example.dart` (wired into the runner) covering the previously
+> undemonstrated surface — a custom class using `TomScopeMixin` *directly* (the
+> real consumer pattern, e.g. tom_flutter_ui's `TomScreenElementsProviderBase`),
+> the instance participating fully as a scope (`current`, path, `runInScope`,
+> `InScopeBuilder`), and the write-once `set id`/`set parent` setters — all
+> `assert`-guarded under `--enable-asserts`. Sub-step 3: added a `TomScopeMixin`
+> test group (custom mixin class + `initScope`, `runInScope`, `InScopeBuilder`
+> integration, and the write-once setters); kernel suite 1697 → 1701.
+> **Decision: the `set id`/`set parent` setters are KEPT, not removed** — although
+> no Dart consumer uses them (all use `initScope`), they are registered by the
+> tom_core_d4rt bridges for `TomScopeBase` (bridge setters at
+> `tom_core_kernel_bridges.b.dart`), so removal would cascade into a bridge regen,
+> disproportionate for a light pass (same reasoning as RCK7's `newField`).
+> Sub-step 4: `scope_ids` is not in `build.yaml` and the new example implements no
+> reflected types, so no `build.yaml`/reflection change and no regen. `dart
+> analyze` clean; examples self-assert under `--enable-asserts`; `testkit :test`
+> green (serial); kernel 1.1.12 → 1.1.13. No residual carved out — nothing
+> deferred, no new RCJ filed.
+
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
    accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
@@ -353,7 +382,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 7. **Per-module pass — `little_things/`.** ✅ **Sub-steps 1–4 done (RCK7, 2026-07-16).** Documentation half done under RCE2.
 8. **Per-module pass — `logging/`.** ✅ **Sub-steps 1–4 done (RCH1, 2026-07-15).** Documentation half done under RCE2.
 9. **Per-module pass — `resources/`.** ✅ **Sub-steps 1–4 done (RCK2, 2026-07-16).** Documentation half done under RCE2.
-10. **Per-module pass — `scope_ids/`.** *(RCE2)*
+10. **Per-module pass — `scope_ids/`.** ✅ **Sub-steps 1–4 done (RCK8, 2026-07-16).** Documentation half done under RCE2.
 11. **Per-module pass — `security/`.** ✅ **Sub-steps 1–4 done (RCG1, 2026-07-15).** Documentation half done under RCE2.
 12. **Per-module pass — `settings/`.** ✅ **Sub-steps 1–4 done (RCK4, 2026-07-16).** Documentation half done under RCE2.
 13. **Per-module pass — `shutdown_cleanup/`.** ✅ **Sub-steps 1–4 done (RCK5, 2026-07-16).** Documentation half done under RCE2.
