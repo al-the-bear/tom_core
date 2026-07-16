@@ -2,6 +2,11 @@
 # Run with: d4rt test_d4rt_tom_doc_specs.d4rt -test
 # Tests tom_doc_specs bridged classes (schema model, validation, enums).
 # NOTE: Uses single-line syntax for D4rt parser compatibility.
+# Covers all 31 registered bridges. The only members not exercised are the
+# IO/scan surfaces: SchemaResolver.resolve*/resolveByDocumentFilename*,
+# SchemaDiscovery.listSchemas* (disk scans), SchemaLoader/DocSpecs read from
+# disk, and AiValidator (abstract LLM-injection interface) — pinned by
+# reachability. Everything connection-free is asserted directly.
 
 
 # =============================================================================
@@ -147,14 +152,68 @@ verifyNotNull(SchemaFilenameParser.parse('quest-overview-1.0.docspecs-schema.yam
 verifyEquals(SchemaFilenameParser.parse('not-a-schema.txt'), null, 'SchemaFilenameParser returns null for a non-schema filename');
 
 # =============================================================================
+# Test: SchemaExpander — pure [[...]] generator/placeholder expansion (5 tests)
+# The expander walks a parsed schema map and rewrites [[selector;sep]] and
+# [[key.field]] patterns from the non-reserved top-level keys. No IO.
+# =============================================================================
+
+var expPlaceholder = SchemaExpander({'meta': {'title': 'Hello'}});
+verifyEquals(expPlaceholder.expand({'k': '[[meta.title]]'})['k'], 'Hello', 'SchemaExpander placeholder resolves a nested field');
+
+var expGen = SchemaExpander({'items': ['a', 'b', 'c']});
+verifyEquals(expGen.expand({'k': '[[items;-]]'})['k'], 'a-b-c', 'SchemaExpander generator joins a list with its separator');
+verifyEquals(expGen.expand({'k': '[[items.length]]'})['k'], '3', 'SchemaExpander resolves .length');
+
+var expUpper = SchemaExpander({'items': ['a', 'b']});
+verifyEquals(expUpper.expand({'k': '[[items|uppercase;-]]'})['k'], 'A-B', 'SchemaExpander applies the uppercase transform');
+
+var expEmpty = SchemaExpander({});
+verifyEquals(expEmpty.expand({'k': '[[nope.x]]'})['k'], '[[nope.x]]', 'SchemaExpander leaves an unresolvable pattern literal');
+verifyEquals(expEmpty.expand({'k': 'plain'})['k'], 'plain', 'SchemaExpander passes a pattern-free string through unchanged');
+
+# =============================================================================
+# Test: PromptExpander — pure ${...} placeholder expansion (6 tests)
+# Rewrites ${id}/${text}/${type}/${index}/${lineNumber} etc. from the section
+# and document. No IO. ($ is escaped as \$ so d4rt does not interpolate it.)
+# =============================================================================
+
+var peSection = SpecSection(index: 2, lineNumber: 7, rawHeadline: '# Req', name: 'Req', id: 'req', text: 'the body', type: 'requirement');
+var peDoc = SpecDoc(index: 0, lineNumber: 1, rawHeadline: '# Doc', name: 'Doc', id: 'doc', text: 'body', filenameWithPath: 'a/b.md', loadTimestamp: '2026-01-01', filename: 'b.md', fullPath: '/ws/a/b.md', workspacePath: 'a/b.md', project: 'proj', projectPath: 'a', workspaceRoot: '/ws', projectRoot: '/ws/a', hierarchyDepth: 2, schemaId: 'quest-overview');
+var promptExpander = PromptExpander();
+verifyEquals(promptExpander.expand('\${id}', section: peSection, document: peDoc), 'req', 'PromptExpander resolves the id placeholder');
+verifyEquals(promptExpander.expand('\${type}', section: peSection, document: peDoc), 'requirement', 'PromptExpander resolves the type placeholder');
+verifyEquals(promptExpander.expand('\${text}', section: peSection, document: peDoc), 'the body', 'PromptExpander resolves the text placeholder');
+verifyEquals(promptExpander.expand('\${index}=\${lineNumber}', section: peSection, document: peDoc), '2=7', 'PromptExpander resolves the index and lineNumber placeholders');
+verifyEquals(promptExpander.expand('\${unknownKey}', section: peSection, document: peDoc), '\${unknownKey}', 'PromptExpander leaves an unknown placeholder literal');
+verifyEquals(promptExpander.expand('no placeholders here', section: peSection, document: peDoc), 'no placeholders here', 'PromptExpander passes a placeholder-free prompt through');
+
+# =============================================================================
+# Test: SchemaResolver — constructor + pure static parsers/getter (6 tests)
+# The resolve*/resolveByDocumentFilename* statics read schemas from disk and are
+# integration-only; the constructor, schemaExtensions getter, extractDocumentType
+# and isDocSpecDocument are pure and pinned here.
+# =============================================================================
+
+verifyNotNull(SchemaResolver(), 'SchemaResolver default constructor');
+verifyEquals(SchemaResolver.schemaExtensions.length, 2, 'SchemaResolver.schemaExtensions lists both extensions');
+verifyEquals(SchemaResolver.extractDocumentType('quest.overview.ds.md'), 'overview', 'SchemaResolver.extractDocumentType reads the <type> segment');
+verifyEquals(SchemaResolver.extractDocumentType('plain.md'), null, 'SchemaResolver.extractDocumentType returns null for a non-ds.md name');
+verifyEquals(SchemaResolver.isDocSpecDocument('quest.overview.ds.md'), true, 'SchemaResolver.isDocSpecDocument true for a ds.md name');
+verifyEquals(SchemaResolver.isDocSpecDocument('plain.md'), false, 'SchemaResolver.isDocSpecDocument false for a plain name');
+
+# =============================================================================
 # Test: IO/scan entry points exist (integration-only)
-# DocSpecs/SchemaLoader/DocSpecsSkeletonGenerator scan or read from disk; only
-# their reachability is pinned here.
+# DocSpecs/SchemaLoader/DocSpecsSkeletonGenerator scan or read from disk;
+# SchemaDiscovery's listSchemas* statics scan folders; AiValidator is an abstract
+# LLM-injection interface. Only their reachability / connection-free constructor
+# is pinned here.
 # =============================================================================
 
 verifyNotNull(DocSpecs, 'DocSpecs class exists');
 verifyNotNull(SchemaLoader, 'SchemaLoader class exists');
 verifyNotNull(DocSpecsSkeletonGenerator, 'DocSpecsSkeletonGenerator class exists');
+verifyNotNull(SchemaDiscovery(), 'SchemaDiscovery default constructor (listSchemas* are IO)');
+verifyNotNull(AiValidator, 'AiValidator abstract interface exists');
 
 # =============================================================================
 # Summary

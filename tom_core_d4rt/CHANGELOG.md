@@ -1,3 +1,27 @@
+## 1.0.5
+
+### Tests
+
+- **Drove the `tom_doc_specs` replay to exhaustive connection-free per-bridge
+  coverage (RCI5).** `test/replay/test_d4rt_tom_doc_specs.d4rt` now references
+  every *connection-free* class the `tom_doc_specs_bridges.b.dart` container
+  registers — a registered name→reference cross-check (excluding comment lines)
+  confirms zero gaps across all 31 bridges; the only members not exercised are
+  the IO/scan surfaces that require a live filesystem (`SchemaResolver.resolve*`,
+  `SchemaDiscovery.listSchemas*`, and the top-level document-scanning helpers).
+  The five previously-uncovered classes are now covered: `SchemaExpander` (pure
+  `expand` — nested-field placeholders, list generators with separators,
+  `.length`, the `uppercase` transform, literal pass-through of unresolvable
+  patterns); `PromptExpander` (pure `expand` — `${id}`/`${type}`/`${text}`/
+  `${index}`/`${lineNumber}` placeholders, unknown-key literal pass-through);
+  `SchemaResolver` (default constructor, the `schemaExtensions` getter, and the
+  pure statics `extractDocumentType`/`isDocSpecDocument`); `SchemaDiscovery`
+  (default constructor — its `listSchemas*` methods are IO); and `AiValidator`
+  (abstract-interface reachability). Empirically confirmed during this pass: the
+  `${...}` placeholder syntax must be escaped as `\${...}` in `.d4rt` files
+  (d4rt would otherwise interpolate it) — in **both** the argument and the
+  description strings.
+
 ## 1.0.4
 
 ### Tests
