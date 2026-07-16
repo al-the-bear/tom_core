@@ -51,6 +51,43 @@ void main() {
       TomServerConfigResourceProvider.setServerConfigProvider(p);
       expect(TomServerConfigResourceProvider.getServerConfig(), same(p));
     });
+
+    test('.load builds resources by invoking the supplied loader', () {
+      var invocations = 0;
+      final p = TomServerConfigResourceProvider.load(() {
+        invocations++;
+        return {'from': 'loader'};
+      });
+      expect(invocations, 1); // the loader runs eagerly in the constructor
+      expect(p.get('from'), 'loader');
+    });
+
+    test('the default constructor populates resources from the static loader',
+        () {
+      // The static loader feeds any provider created with the default
+      // constructor (including the lazy one made by getServerConfig). Null it
+      // again so it cannot leak into other tests' providers.
+      addTearDown(() => TomServerConfigResourceProvider.loader = null);
+      TomServerConfigResourceProvider.loader = () => {'seeded': 'yes'};
+      final p = TomServerConfigResourceProvider();
+      expect(p.get('seeded'), 'yes');
+    });
+
+    test('the default constructor yields empty resources when no loader is set',
+        () {
+      TomServerConfigResourceProvider.loader = null;
+      final p = TomServerConfigResourceProvider();
+      expect(p.resources, isEmpty);
+    });
+
+    test('get returns the whole subtree map for a branch key', () {
+      final p = TomServerConfigResourceProvider.from({
+        'server': {'port': 8080, 'host': 'localhost'},
+      });
+      final subtree = p.get('server') as Map;
+      expect(subtree['port'], 8080);
+      expect(subtree['host'], 'localhost');
+    });
   });
 
   group('TomConfig resolution', () {

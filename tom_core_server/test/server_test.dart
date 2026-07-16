@@ -161,6 +161,86 @@ void main() {
       expect(sawPrincipalKey, isTrue);
       expect(zonePrincipal, isNull);
     });
+
+    test('merges the optional context into the request seen by the handler',
+        () async {
+      Object? seen;
+      final handler =
+          tomDefaultAuthenticationMiddleware('auth', {'k': 'v'})((req) {
+        seen = req.context['k'];
+        return Response.ok('ok');
+      });
+      await handler(_get());
+      expect(seen, 'v');
+    });
+
+    test('publishes the original request into the request zone', () async {
+      final request = _get();
+      Request? zoneRequest;
+      // With no context override the inner handler receives the same request,
+      // and the zone publishes that identical instance.
+      final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+        zoneRequest = getFromCurrentZone<Request>();
+        return Response.ok('ok');
+      });
+      await handler(request);
+      expect(identical(zoneRequest, request), isTrue);
+    });
+
+    test('publishes the parsed bearer token into the request zone', () async {
+      final jwt = TomServerJwtToken({'userId': 'u'},
+              expiresIn: const Duration(hours: 2))
+          .getJWT('tom');
+      TomClientJwtToken? zoneToken;
+      final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+        zoneToken = getFromCurrentZone<TomClientJwtToken>();
+        return Response.ok('ok');
+      });
+      await handler(_get({'authorization': 'Bearer $jwt'}));
+      expect(zoneToken, isNotNull);
+    });
+  });
+
+  // The TomServer constructor is the socket-free half of the class: it wires the
+  // error, authentication-error, and logging handlers from the configuration,
+  // falling back to the defaults. A no-op configuration subclass lets us build a
+  // server without codegen reflection and inspect the wiring directly.
+  group('TomServer constructor wiring', () {
+    setUp(() {
+      TomServerConfigResourceProvider.setServerConfigProvider(
+        TomServerConfigResourceProvider.from({}),
+      );
+    });
+
+    test('honours a configuration-supplied errorHandler', () {
+      Response? custom(Request r, Object e, StackTrace s) => null;
+      final config = _NoopConfig()..errorHandler = custom;
+      final server = TomServer(config);
+      expect(identical(server.errorHandler, custom), isTrue);
+    });
+
+    test('honours a configuration-supplied authenticationErrorHandler', () {
+      Response? custom(Request r, Object e, StackTrace s) => null;
+      final config = _NoopConfig()..authenticationErrorHandler = custom;
+      final server = TomServer(config);
+      expect(identical(server.authenticationErrorHandler, custom), isTrue);
+    });
+
+    test('authenticationErrorHandler falls back to errorHandler when neither is'
+        ' configured', () {
+      final server = TomServer(_NoopConfig());
+      // Neither handler configured -> the auth-error handler is the very same
+      // closure as the (default) main error handler.
+      expect(identical(server.authenticationErrorHandler, server.errorHandler),
+          isTrue);
+    });
+
+    test('honours a configuration-supplied loggingMiddleware', () {
+      final custom = tomLoggingMiddleware();
+      final config = _NoopConfig()..loggingMiddleware = custom;
+      final server = TomServer(config);
+      expect(identical(server.loggingMiddleware, custom), isTrue);
+    });
   });
 
   // Pins the default error-mapping contract documented on TomServer.errorHandler

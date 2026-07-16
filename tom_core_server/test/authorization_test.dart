@@ -91,6 +91,34 @@ void main() {
     });
   });
 
+  // Worker-isolate forwarding decision (mirrors cache_test's forwarding group).
+  // Off the main isolate, getPrincipal/storePrincipal forward to the creator
+  // isolate via TomWorker.executeInCreator. In this single-isolate test process
+  // there is no back channel, so the forwarding attempt throws
+  // TomWorkerException — proof the off-isolate branch was taken rather than the
+  // local map being touched.
+  group('TomAuthorizationCache (worker isolate forwarding)', () {
+    setUp(() => TomWorker.isMainIsolate = false);
+    tearDown(() => TomWorker.isMainIsolate = true);
+
+    test('getPrincipal forwards the lookup to the creator isolate', () {
+      expect(
+        () => TomAuthorizationCache.getPrincipal(_token('alice')),
+        throwsA(isA<TomWorkerException>()),
+      );
+    });
+
+    test('storePrincipal forwards the write to the creator isolate', () {
+      expect(
+        () => TomAuthorizationCache.storePrincipal(
+          _token('alice'),
+          _principal('alice'),
+        ),
+        throwsA(isA<TomWorkerException>()),
+      );
+    });
+  });
+
   group('TomAuthorizationCacheExecutor', () {
     final executor = TomAuthorizationCacheExecutor();
 
