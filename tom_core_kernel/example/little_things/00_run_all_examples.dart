@@ -12,8 +12,9 @@ library;
 
 import '01_utility_functions_example.dart' as utility_functions;
 import '02_zone_helpers_example.dart' as zone_helpers;
+import '03_formatting_and_exceptions_example.dart' as formatting_and_exceptions;
 
-void main() {
+Future<void> main() async {
   print(
     '╔═══════════════════════════════════════════════════════════════════╗',
   );
@@ -27,6 +28,7 @@ void main() {
 
   utility_functions.run();
   zone_helpers.run();
+  await formatting_and_exceptions.run();
 
   print(
     '╔═══════════════════════════════════════════════════════════════════╗',

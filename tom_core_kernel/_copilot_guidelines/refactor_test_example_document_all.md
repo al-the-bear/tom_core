@@ -308,6 +308,36 @@ Iterate through these steps in order. Each step states its **done** condition.
 > self-assert under `--enable-asserts`; `testkit :test` green (serial); kernel
 > 1.1.10 → 1.1.11. No residual carved out — nothing deferred, no new RCJ filed.
 
+> ✅ **RCK7 done (2026-07-16) — `little_things/` sub-steps 1–4.** Light pass, as
+> predicted. Sub-step 1: the module was already DRY — the stack-trace frame
+> processing shared by `tomGetStackTrace`/`AsList`/`AsTuple`/`tomPrintStackTrace`
+> had already been extracted into private `_processStackFrames` — so there was no
+> further genuine duplication to remove. `formatting.dart`
+> (`convertMinutesToUtcOffset`) and `exception_base.dart` (`TomException`) are
+> single-unit files with no duplication. The only sub-step-1 action was removing
+> two stale investigation `TODO` comments above the stack-trace utilities (vague
+> design musings; the folding is deliberate and tested). All public signatures
+> frozen. Sub-step 2: added `example/little_things/
+> 03_formatting_and_exceptions_example.dart` (async; wired into the now-async
+> runner) covering the previously undemonstrated public surface —
+> `convertMinutesToUtcOffset`, a *truly-awaited* `runChecked` success+error (the
+> pre-existing `02_*` only checked `is Future`), `tomPrintStackTrace`,
+> `TomException.printStackTrace()`, `autoLog` (observed via a recording
+> `TomLogOutput`), `serverCallError`, and `logRepresentation` — all
+> `assert`-guarded under `--enable-asserts`. Sub-step 3: added a `newField`
+> test group (default-null + set/get), closing the last untested public member;
+> kernel suite 1695 → 1697. **Decision: `newField` is KEPT, not removed** — grep
+> shows it is referenced by generated reflection (`uam_generated.r.dart`) and the
+> tom_core_server D4rt bridges (`LoginException.newField`), so it is live
+> reflected/bridged surface, not dead code; removing it would cascade
+> disproportionately for a light pass. Sub-step 4: the `little_things` examples
+> use no reflection and the new example implements no reflected types, so no
+> `build.yaml`/reflection change and no regen (the legacy
+> `little_things_test.reflection.dart` is unused by the test and left untouched).
+> `dart analyze` clean; examples self-assert under `--enable-asserts`;
+> `testkit :test` green (serial); kernel 1.1.11 → 1.1.12. No residual carved out
+> — nothing deferred, no new RCJ filed.
+
 1. **Meta files.** ✅ **Done (OT1, 2026-07-15).** `README.md` (customized, 252
    lines), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
    accurate. Ensure `README.md` (summary + overview), `CHANGELOG.md`
@@ -320,7 +350,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 4. **Per-module pass — `http_connection/`.** ✅ **Sub-steps 1–4 done (RCI1, 2026-07-16).** Documentation half done under RCE2.
 5. **Per-module pass — `isolate_pooling/`.** ✅ **Sub-steps 1–4 done (RCK1, 2026-07-16).** Documentation half done under RCE2.
 6. **Per-module pass — `json/`.** ✅ **Sub-steps 1–4 done (RCK6, 2026-07-16).** Documentation half done under RCE2.
-7. **Per-module pass — `little_things/`.** *(RCE2)*
+7. **Per-module pass — `little_things/`.** ✅ **Sub-steps 1–4 done (RCK7, 2026-07-16).** Documentation half done under RCE2.
 8. **Per-module pass — `logging/`.** ✅ **Sub-steps 1–4 done (RCH1, 2026-07-15).** Documentation half done under RCE2.
 9. **Per-module pass — `resources/`.** ✅ **Sub-steps 1–4 done (RCK2, 2026-07-16).** Documentation half done under RCE2.
 10. **Per-module pass — `scope_ids/`.** *(RCE2)*

@@ -1,3 +1,30 @@
+## 1.1.12
+
+### Changed
+
+- **`little_things/` per-module pass (RCK7).** Private-only pass with every
+  public signature frozen. The module was already DRY — the stack-trace frame
+  processing shared by `tomGetStackTrace`/`tomGetStackTraceAsList`/
+  `tomGetStackTraceAsTuple`/`tomPrintStackTrace` had already been extracted into
+  the private `_processStackFrames` helper — so there was no further genuine
+  duplication to remove.
+- Removed two stale investigation `TODO` comments above the stack-trace
+  utilities (design musings about `StackTrace.current` usage and the frame
+  folding). The folding is deliberate and covered by tests; the comments were
+  noise.
+
+### Added
+
+- Example `example/little_things/03_formatting_and_exceptions_example.dart`
+  covering the previously undemonstrated public surface: UTC offset formatting
+  (`convertMinutesToUtcOffset`), a truly-awaited `runChecked` (success and error
+  paths), `tomPrintStackTrace`, `TomException.printStackTrace()`, auto-logging
+  (`autoLog`), `serverCallError`, and `logRepresentation`. The runner
+  (`00_run_all_examples.dart`) is now async and awaits it.
+- Tests for `TomException.newField` (default-null and set/get), closing the last
+  untested public member. `newField` is kept (not removed): it is referenced by
+  generated reflection and the tom_core_server D4rt bridges (`LoginException`).
+
 ## 1.1.11
 
 ### Changed

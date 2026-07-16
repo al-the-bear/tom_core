@@ -155,9 +155,6 @@ T runCheckedSync<T>(
 // STACK TRACE UTILITIES
 // =============================================================================
 
-// TODO: check if StackTrace.current is used in Logging
-// TODO: check if this folding logic here is really what makes sense in general
-
 /// Prints a formatted stack trace to the error log.
 ///
 /// Formats and logs the stack trace with optional message prefix.
