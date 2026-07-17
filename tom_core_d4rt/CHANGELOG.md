@@ -1,3 +1,25 @@
+## 1.0.14
+
+### Tests
+
+- **Covered the `TomQueryBuilder` mixin builder methods through a native holder
+  (RCJ10).** RCK20 pinned `TomEndpointRouting.shelfRoutePath` and covered the
+  query-DSL operator nodes directly, but the `TomQueryBuilder` *mixin* API (the
+  `eq`/`and`/`text`/`like`/… builders) was left uncovered — a mixin's methods can
+  only be dispatched on a native holder that IS-A `TomQueryBuilder`, and the
+  bridge adapters validate the target as native. The only concrete holders
+  (`TomQuerySentenceCompiler`, the repositories) reflect over their entity types
+  at construction. `test_d4rt_tom_core_server.d4rt` now constructs
+  `TomQuerySentenceCompiler([])` — an **empty** type list short-circuits that
+  reflective analyser loop (it never runs), yielding a real, connection-free
+  `TomQueryBuilder`. The replay drives every value/literal, comparison, pattern,
+  null, membership/range, grouping and boolean-composition builder through it and
+  renders the resulting operator tree through `TomStandardSqlDialect`
+  (`generate`/`analyze`). No bridged behaviour changed. The reflection-bound
+  endpoint surface (`scanClasses`/`initializeRouter`) and the reflected-column
+  builders (`textF`/`intF`/…, `compileQuerySentence`) remain uncovered — the d4rt
+  tool performs no reflection bootstrap; filed as RCL9.
+
 ## 1.0.13
 
 ### Tests

@@ -295,12 +295,97 @@ verifyEquals(freshDs.databaseName, 'demo', 'databaseName setter round-trips');
 # shelfRoutePath is pure — it rewrites Tom's `{name}` path variables to
 # shelf_router's `<name>` syntax (a route left with `{name}` silently 404s).
 # The reflection/server-bound surface (scanClasses/initializeRouter over a live
-# annotated pipeline) needs a server and is filed as an RCJ follow-up.
+# annotated pipeline) reflects over @tomService/@TomComponent classes, which the
+# d4rt tool cannot bootstrap (no reflection init) — filed as RCL9.
 # =============================================================================
 
 verifyEquals(TomEndpointRouting.shelfRoutePath('/items/{id}/field-states'), '/items/<id>/field-states', 'shelfRoutePath rewrites a single path variable');
 verifyEquals(TomEndpointRouting.shelfRoutePath('/projects/{pid}/tasks/{tid}'), '/projects/<pid>/tasks/<tid>', 'shelfRoutePath rewrites multiple path variables');
 verifyEquals(TomEndpointRouting.shelfRoutePath('/health'), '/health', 'shelfRoutePath leaves a variable-free route unchanged');
+
+# =============================================================================
+# Test: TomQueryBuilder mixin builder methods (connection-free) (RCJ10)
+# TomQueryBuilder is a MIXIN, so its builder methods can only be dispatched on a
+# native holder that IS-A TomQueryBuilder (the bridge adapters validate the
+# target as native). The only concrete holders — TomQuerySentenceCompiler and
+# the repositories — reflect over their entity types at construction. Passing an
+# EMPTY type list short-circuits that reflection (the analyser loop never runs),
+# yielding a real TomQueryBuilder we can drive without a datasource. The builder
+# methods construct the same operator nodes covered directly above; here we prove
+# they are reachable *through the mixin API* and that the resulting tree renders
+# through the standard SQL dialect. (Column-ref builders textF/intF/… and
+# getColumnInformation/compileQuerySentence need reflected persistence info and
+# stay uncovered — filed as RCL9.)
+# =============================================================================
+
+var qb = TomQuerySentenceCompiler([]);
+verifyNotNull(qb, 'TomQuerySentenceCompiler constructed with an empty type list (no reflection)');
+
+# Value/literal builders wrap raw values into operator nodes
+var qbName = qb.text('ada');
+verifyContains(qbName.analyze(0), 'StringLiteral', 'text() builds a StringLiteral operator');
+verifyContains(qbName.generate(dialect), 'ada', 'text() operator renders its value through the dialect');
+var qbAge = qb.intOp(42);
+verifyContains(qbAge.analyze(0), 'IntegerLiteral', 'intOp() builds an IntegerLiteral operator');
+var qbPrice = qb.doubleOp(3.14);
+verifyContains(qbPrice.analyze(0), 'DoubleLiteral', 'doubleOp() builds a DoubleLiteral operator');
+var qbFlag = qb.boolOp(true);
+verifyContains(qbFlag.analyze(0), 'BoolLiteral', 'boolOp() builds a BoolLiteral operator');
+var qbParam = qb.p('pName');
+verifyNotNull(qbParam, 'p() builds a Parameter operator');
+
+# Comparison builders combine operands into predicate nodes
+var qbEq = qb.eq(qb.text('name'), qb.text('ada'));
+verifyContains(qbEq.analyze(0), 'Eq', 'eq() builds an Eq predicate');
+verifyNotNull(qbEq.generate(dialect), 'eq() predicate renders through the dialect');
+var qbNeq = qb.neq(qb.text('name'), qb.text('bob'));
+verifyContains(qbNeq.analyze(0), 'Neq', 'neq() builds a Neq predicate');
+var qbLt = qb.lt(qb.intOp(1), qb.intOp(2));
+verifyContains(qbLt.analyze(0), 'Lt', 'lt() builds a Lt predicate');
+var qbLte = qb.lte(qb.intOp(1), qb.intOp(2));
+verifyContains(qbLte.analyze(0), 'Lte', 'lte() builds a Lte predicate');
+var qbGt = qb.gt(qb.intOp(5), qb.intOp(3));
+verifyContains(qbGt.analyze(0), 'Gt', 'gt() builds a Gt predicate');
+var qbGte = qb.gte(qb.intOp(5), qb.intOp(3));
+verifyContains(qbGte.analyze(0), 'Gte', 'gte() builds a Gte predicate');
+
+# Pattern builders
+var qbLike = qb.like(qb.text('name'), qb.text('%ada%'));
+verifyContains(qbLike.analyze(0), 'Like', 'like() builds a Like predicate');
+verifyNotNull(qbLike.generate(dialect), 'like() predicate renders through the dialect');
+var qbNotLike = qb.notLike(qb.text('name'), qb.text('%x%'));
+verifyContains(qbNotLike.analyze(0), 'NotLike', 'notLike() builds a NotLike predicate');
+var qbRegexp = qb.regexp(qb.text('name'), qb.text('^a.*'));
+verifyContains(qbRegexp.analyze(0), 'Regexp', 'regexp() builds a Regexp predicate');
+
+# Null predicates
+var qbIsNull = qb.isNull(qb.text('name'));
+verifyContains(qbIsNull.analyze(0), 'IsNull', 'isNull() builds an IsNull predicate');
+verifyNotNull(qbIsNull.generate(dialect), 'isNull() predicate renders through the dialect');
+var qbIsNotNull = qb.isNotNull(qb.text('name'));
+verifyContains(qbIsNotNull.analyze(0), 'IsNotNull', 'isNotNull() builds an IsNotNull predicate');
+
+# Membership / range builders take operand lists
+var qbIn = qb.isIn(qb.intOp(1), [qb.intOp(1), qb.intOp(2)]);
+verifyContains(qbIn.analyze(0), 'In', 'isIn() builds an In predicate');
+var qbBetween = qb.between(qb.intOp(5), [qb.intOp(1), qb.intOp(10)]);
+verifyContains(qbBetween.analyze(0), 'Between', 'between() builds a Between predicate');
+
+# Grouping + boolean composition
+var qbGroup = qb.group(qbEq);
+verifyNotNull(qbGroup, 'group() wraps a predicate');
+var qbNot = qb.not(qbEq);
+verifyContains(qbNot.analyze(0), 'Not', 'not() builds a Not predicate');
+var qbAnd = qb.and([qbEq, qbLt]);
+verifyContains(qbAnd.analyze(0), 'And', 'and() builds an And predicate');
+verifyNotNull(qbAnd.generate(dialect), 'and() predicate renders through the dialect');
+var qbOr = qb.or([qbGt, qbLike]);
+verifyContains(qbOr.analyze(0), 'Or', 'or() builds an Or predicate');
+
+# A composite tree assembled purely through the builder API renders end-to-end
+var qbComposite = qb.and([qbEq, qb.not(qbIsNull)]);
+verifyContains(qbComposite.analyze(0), 'And', 'composite builder tree root is an And');
+verifyNotNull(qbComposite.generate(dialect), 'a composite builder tree renders through the dialect');
 
 # =============================================================================
 # Summary
