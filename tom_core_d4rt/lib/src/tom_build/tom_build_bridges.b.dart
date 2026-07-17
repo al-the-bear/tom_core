@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 17 files
-// Generated: 2026-06-17T18:46:45.602999
+// Generated: 2026-07-18T00:04:21.966327
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -30,6 +30,10 @@ import 'package:yaml/src/yaml_node.dart' as $yaml_1;
 /// Bridge class for tom_build module.
 class TomBuildBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createAnalyzerOptionsBridge(),
@@ -91,6 +95,139 @@ class TomBuildBridge {
       _createWorkspaceParserBridge(),
       _createTomContextBridge(),
     ];
+  }
+
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'AnalyzerOptions': _createAnalyzerOptionsBridge,
+      'WorkspaceAnalyzer': _createWorkspaceAnalyzerBridge,
+      'ProjectInfo': _createProjectInfoBridge,
+      'PartInfo': _createPartInfoBridge,
+      'ModuleInfo': _createModuleInfoBridge,
+      'ReflectionGeneratorRunner': _createReflectionGeneratorRunnerBridge,
+      'ReflectionGeneratorRunnerOptions': _createReflectionGeneratorRunnerOptionsBridge,
+      'ReflectionGeneratorRunnerResult': _createReflectionGeneratorRunnerResultBridge,
+      'TomEnv': _createTomEnvBridge,
+      'TomEnvironmentException': _createTomEnvironmentExceptionBridge,
+      'TomFs': _createTomFsBridge,
+      'TomGlob': _createTomGlobBridge,
+      'TomMaps': _createTomMapsBridge,
+      'TomPth': _createTomPthBridge,
+      'TomShell': _createTomShellBridge,
+      'TomShellException': _createTomShellExceptionBridge,
+      'TomText': _createTomTextBridge,
+      'WorkspaceInfo': _createWorkspaceInfoBridge,
+      'MetadataModes': _createMetadataModesBridge,
+      'MetadataMode': _createMetadataModeBridge,
+      'WorkspaceGroup': _createWorkspaceGroupBridge,
+      'WorkspaceProject': _createWorkspaceProjectBridge,
+      'PlatformInfo': _createPlatformInfoBridge,
+      'ToolContext': _createToolContextBridge,
+      'ToolContextException': _createToolContextExceptionBridge,
+      'ModeValidationResult': _createModeValidationResultBridge,
+      'TomWs': _createTomWsBridge,
+      'ScriptYaml': _createScriptYamlBridge,
+      'TomZoned': _createTomZonedBridge,
+      'TomWorkspace': _createTomWorkspaceBridge,
+      'TomMaster': _createTomMasterBridge,
+      'TomProject': _createTomProjectBridge,
+      'WorkspaceModes': _createWorkspaceModesBridge,
+      'SupportedMode': _createSupportedModeBridge,
+      'ModeTypeConfig': _createModeTypeConfigBridge,
+      'ModeEntry': _createModeEntryBridge,
+      'ActionModeConfiguration': _createActionModeConfigurationBridge,
+      'ActionModeEntry': _createActionModeEntryBridge,
+      'ModeDefinitions': _createModeDefinitionsBridge,
+      'ModeDef': _createModeDefBridge,
+      'ActionDef': _createActionDefBridge,
+      'ActionConfig': _createActionConfigBridge,
+      'GroupDef': _createGroupDefBridge,
+      'ProjectTypeDef': _createProjectTypeDefBridge,
+      'Features': _createFeaturesBridge,
+      'CrossCompilation': _createCrossCompilationBridge,
+      'BuildOnTarget': _createBuildOnTargetBridge,
+      'Pipeline': _createPipelineBridge,
+      'PipelineProject': _createPipelineProjectBridge,
+      'PipelineAction': _createPipelineActionBridge,
+      'ProjectEntry': _createProjectEntryBridge,
+      'VersionSettings': _createVersionSettingsBridge,
+      'PackageModule': _createPackageModuleBridge,
+      'Part': _createPartBridge,
+      'Module': _createModuleBridge,
+      'ExecutableDef': _createExecutableDefBridge,
+      'WorkspaceParser': _createWorkspaceParserBridge,
+      'TomContext': _createTomContextBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'AnalyzerOptions': $tom_build_1.AnalyzerOptions,
+      'WorkspaceAnalyzer': $tom_build_1.WorkspaceAnalyzer,
+      'ProjectInfo': $tom_build_1.ProjectInfo,
+      'PartInfo': $tom_build_1.PartInfo,
+      'ModuleInfo': $tom_build_1.ModuleInfo,
+      'ReflectionGeneratorRunner': $tom_build_2.ReflectionGeneratorRunner,
+      'ReflectionGeneratorRunnerOptions': $tom_build_2.ReflectionGeneratorRunnerOptions,
+      'ReflectionGeneratorRunnerResult': $tom_build_2.ReflectionGeneratorRunnerResult,
+      'TomEnv': $tom_build_3.TomEnv,
+      'TomEnvironmentException': $tom_build_3.TomEnvironmentException,
+      'TomFs': $tom_build_4.TomFs,
+      'TomGlob': $tom_build_5.TomGlob,
+      'TomMaps': $tom_build_6.TomMaps,
+      'TomPth': $tom_build_7.TomPth,
+      'TomShell': $tom_build_8.TomShell,
+      'TomShellException': $tom_build_8.TomShellException,
+      'TomText': $tom_build_9.TomText,
+      'WorkspaceInfo': $tom_build_17.WorkspaceInfo,
+      'MetadataModes': $tom_build_17.MetadataModes,
+      'MetadataMode': $tom_build_17.MetadataMode,
+      'WorkspaceGroup': $tom_build_17.WorkspaceGroup,
+      'WorkspaceProject': $tom_build_17.WorkspaceProject,
+      'PlatformInfo': $tom_build_16.PlatformInfo,
+      'ToolContext': $tom_build_16.ToolContext,
+      'ToolContextException': $tom_build_16.ToolContextException,
+      'ModeValidationResult': $tom_build_16.ModeValidationResult,
+      'TomWs': $tom_build_10.TomWs,
+      'ScriptYaml': $tom_build_11.ScriptYaml,
+      'TomZoned': $tom_build_12.TomZoned,
+      'TomWorkspace': $tom_build_13.TomWorkspace,
+      'TomMaster': $tom_build_13.TomMaster,
+      'TomProject': $tom_build_13.TomProject,
+      'WorkspaceModes': $tom_build_13.WorkspaceModes,
+      'SupportedMode': $tom_build_13.SupportedMode,
+      'ModeTypeConfig': $tom_build_13.ModeTypeConfig,
+      'ModeEntry': $tom_build_13.ModeEntry,
+      'ActionModeConfiguration': $tom_build_13.ActionModeConfiguration,
+      'ActionModeEntry': $tom_build_13.ActionModeEntry,
+      'ModeDefinitions': $tom_build_13.ModeDefinitions,
+      'ModeDef': $tom_build_13.ModeDef,
+      'ActionDef': $tom_build_13.ActionDef,
+      'ActionConfig': $tom_build_13.ActionConfig,
+      'GroupDef': $tom_build_13.GroupDef,
+      'ProjectTypeDef': $tom_build_13.ProjectTypeDef,
+      'Features': $tom_build_13.Features,
+      'CrossCompilation': $tom_build_13.CrossCompilation,
+      'BuildOnTarget': $tom_build_13.BuildOnTarget,
+      'Pipeline': $tom_build_13.Pipeline,
+      'PipelineProject': $tom_build_13.PipelineProject,
+      'PipelineAction': $tom_build_13.PipelineAction,
+      'ProjectEntry': $tom_build_13.ProjectEntry,
+      'VersionSettings': $tom_build_13.VersionSettings,
+      'PackageModule': $tom_build_13.PackageModule,
+      'Part': $tom_build_13.Part,
+      'Module': $tom_build_13.Module,
+      'ExecutableDef': $tom_build_13.ExecutableDef,
+      'WorkspaceParser': $tom_build_14.WorkspaceParser,
+      'TomContext': $tom_build_15.TomContext,
+    };
   }
 
   /// Returns a map of class names to their canonical source URIs.
@@ -251,26 +388,6 @@ class TomBuildBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/analyzer/workspace_analyzer.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/reflection_generator/reflection_generator.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/env.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/fs.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/glob.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/maps.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/path.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/shell.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/text.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/workspace.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/yaml.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/zone.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tom/file_object_model/file_object_model.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tom/file_object_model/workspace_parser.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tom/tom_context.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tools/tool_context.dart', show: null, hide: null),
-      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tools/workspace_info.dart', show: null, hide: null),
-      (source: 'package:tom_build/src/tools/tool_context.dart', target: 'package:tom_build/src/tools/workspace_info.dart', show: null, hide: null),
-      (source: 'package:tom_build/src/scripting/workspace.dart', target: 'package:tom_build/src/tools/tool_context.dart', show: {'PlatformInfo', 'OperatingSystem', 'CpuArchitecture'}, hide: null),
-      (source: 'package:tom_build/src/scripting/workspace.dart', target: 'package:tom_build/src/tools/workspace_info.dart', show: {'WorkspaceInfo', 'WorkspaceGroup', 'WorkspaceProject', 'MetadataModes', 'MetadataMode'}, hide: null),
     ];
   }
 
@@ -279,11 +396,20 @@ class TomBuildBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so
@@ -307,11 +433,6 @@ class TomBuildBridge {
     final funcSigs = globalFunctionSignatures();
     for (final entry in funcs.entries) {
       interpreter.registertopLevelFunction(entry.key, entry.value, importPath, sourceUri: funcSources[entry.key], signature: funcSigs[entry.key]);
-    }
-
-    // GEN-107: Register library re-exports
-    for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
     }
   }
 

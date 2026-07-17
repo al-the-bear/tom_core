@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 4 files
-// Generated: 2026-06-17T18:46:44.390704
+// Generated: 2026-07-18T00:04:18.851562
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -16,6 +16,10 @@ import 'package:tom_basics/src/runtime/platform_neutral.dart' as $tom_basics_4;
 /// Bridge class for tom_basics module.
 class TomBasicsBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createTomBaseExceptionBridge(),
@@ -30,6 +34,45 @@ class TomBasicsBridge {
       _createTomPlatformBridge(),
       _createTomRuntimeBridge(),
     ];
+  }
+
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'TomBaseException': _createTomBaseExceptionBridge,
+      'TomLogLevel': _createTomLogLevelBridge,
+      'TomLogger': _createTomLoggerBridge,
+      'TomLoggable': _createTomLoggableBridge,
+      'TomLogOutput': _createTomLogOutputBridge,
+      'TomConsoleLogOutput': _createTomConsoleLogOutputBridge,
+      'TomPlatformUtils': _createTomPlatformUtilsBridge,
+      'TomFallbackPlatformUtils': _createTomFallbackPlatformUtilsBridge,
+      'TomEnvironment': _createTomEnvironmentBridge,
+      'TomPlatform': _createTomPlatformBridge,
+      'TomRuntime': _createTomRuntimeBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'TomBaseException': $tom_basics_1.TomBaseException,
+      'TomLogLevel': $tom_basics_2.TomLogLevel,
+      'TomLogger': $tom_basics_2.TomLogger,
+      'TomLoggable': $tom_basics_2.TomLoggable,
+      'TomLogOutput': $tom_basics_2.TomLogOutput,
+      'TomConsoleLogOutput': $tom_basics_2.TomConsoleLogOutput,
+      'TomPlatformUtils': $tom_basics_4.TomPlatformUtils,
+      'TomFallbackPlatformUtils': $tom_basics_4.TomFallbackPlatformUtils,
+      'TomEnvironment': $tom_basics_3.TomEnvironment,
+      'TomPlatform': $tom_basics_3.TomPlatform,
+      'TomRuntime': $tom_basics_3.TomRuntime,
+    };
   }
 
   /// Returns a map of class names to their canonical source URIs.
@@ -132,11 +175,20 @@ class TomBasicsBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so

@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
-// Sources: 46 files
-// Generated: 2026-07-14T12:52:58.203161
+// Sources: 47 files
+// Generated: 2026-07-18T00:04:21.313745
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -46,24 +46,25 @@ import 'package:tom_core_kernel/src/tombase/json/pretty_json.dart' as $tom_core_
 import 'package:tom_core_kernel/src/tombase/little_things/exception_base.dart' as $tom_core_kernel_14;
 import 'package:tom_core_kernel/src/tombase/little_things/formatting.dart' as $tom_core_kernel_15;
 import 'package:tom_core_kernel/src/tombase/little_things/little_things.dart' as $tom_core_kernel_16;
-import 'package:tom_core_kernel/src/tombase/logging/logging_isolate.dart' as $tom_core_kernel_17;
-import 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart' as $tom_core_kernel_18;
-import 'package:tom_core_kernel/src/tombase/logging/remote_logserver.dart' as $tom_core_kernel_19;
-import 'package:tom_core_kernel/src/tombase/observable/tom_observable.dart' as $tom_core_kernel_20;
-import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart' as $tom_core_kernel_21;
-import 'package:tom_core_kernel/src/tombase/reflection/reflection.dart' as $tom_core_kernel_22;
-import 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart' as $tom_core_kernel_23;
-import 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart' as $tom_core_kernel_24;
-import 'package:tom_core_kernel/src/tombase/security/access_controls.dart' as $tom_core_kernel_25;
-import 'package:tom_core_kernel/src/tombase/security/authentication_authorization.dart' as $tom_core_kernel_26;
-import 'package:tom_core_kernel/src/tombase/security/bearer_authentication.dart' as $tom_core_kernel_27;
-import 'package:tom_core_kernel/src/tombase/security/resource_role_authorization.dart' as $tom_core_kernel_28;
-import 'package:tom_core_kernel/src/tombase/security/tom_authorization.dart' as $tom_core_kernel_29;
-import 'package:tom_core_kernel/src/tombase/security/user_principal_aci.dart' as $tom_core_kernel_30;
-import 'package:tom_core_kernel/src/tombase/settings/settings_client_authorization.dart' as $tom_core_kernel_31;
-import 'package:tom_core_kernel/src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart' as $tom_core_kernel_32;
-import 'package:tom_core_kernel/src/tombase/timezoned/date_timestamp.dart' as $tom_core_kernel_33;
-import 'package:tom_core_kernel/src/tombase/timezoned/timezones.dart' as $tom_core_kernel_34;
+import 'package:tom_core_kernel/src/tombase/logging/file_log_replay_store.dart' as $tom_core_kernel_17;
+import 'package:tom_core_kernel/src/tombase/logging/logging_isolate.dart' as $tom_core_kernel_18;
+import 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart' as $tom_core_kernel_19;
+import 'package:tom_core_kernel/src/tombase/logging/remote_logserver.dart' as $tom_core_kernel_20;
+import 'package:tom_core_kernel/src/tombase/observable/tom_observable.dart' as $tom_core_kernel_21;
+import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart' as $tom_core_kernel_22;
+import 'package:tom_core_kernel/src/tombase/reflection/reflection.dart' as $tom_core_kernel_23;
+import 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart' as $tom_core_kernel_24;
+import 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart' as $tom_core_kernel_25;
+import 'package:tom_core_kernel/src/tombase/security/access_controls.dart' as $tom_core_kernel_26;
+import 'package:tom_core_kernel/src/tombase/security/authentication_authorization.dart' as $tom_core_kernel_27;
+import 'package:tom_core_kernel/src/tombase/security/bearer_authentication.dart' as $tom_core_kernel_28;
+import 'package:tom_core_kernel/src/tombase/security/resource_role_authorization.dart' as $tom_core_kernel_29;
+import 'package:tom_core_kernel/src/tombase/security/tom_authorization.dart' as $tom_core_kernel_30;
+import 'package:tom_core_kernel/src/tombase/security/user_principal_aci.dart' as $tom_core_kernel_31;
+import 'package:tom_core_kernel/src/tombase/settings/settings_client_authorization.dart' as $tom_core_kernel_32;
+import 'package:tom_core_kernel/src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart' as $tom_core_kernel_33;
+import 'package:tom_core_kernel/src/tombase/timezoned/date_timestamp.dart' as $tom_core_kernel_34;
+import 'package:tom_core_kernel/src/tombase/timezoned/timezones.dart' as $tom_core_kernel_35;
 import 'package:tom_crypto/src/jwt_token.dart' as $tom_crypto_1;
 import 'package:tom_crypto/src/password_hashing.dart' as $tom_crypto_2;
 import 'package:tom_crypto/src/rsa_encryption.dart' as $tom_crypto_3;
@@ -77,6 +78,10 @@ import 'package:tom_reflection/tom_reflection.dart' as $aux_tom_reflection;
 /// Bridge class for tom_core_kernel module.
 class TomCoreKernelBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createTomBaseExceptionBridge(),
@@ -132,6 +137,7 @@ class TomCoreKernelBridge {
       _createStaticFileMimetypeMappingBridge(),
       _createTomHeaderBridge(),
       _createTomWorkerExceptionBridge(),
+      _createTomWorkerDiedExceptionBridge(),
       _createTomExecutorBridge(),
       _createTomCommandBridge(),
       _createTomWorkerContextBridge(),
@@ -148,7 +154,10 @@ class TomCoreKernelBridge {
       _createTomRemoteLogMessageBridge(),
       _createTomRemoteLogResultBridge(),
       _createTomLoggingContextBridge(),
+      _createTomLogReplayStoreBridge(),
+      _createTomInMemoryLogReplayStoreBridge(),
       _createTomRemoteLogOutputBridge(),
+      _createTomFileLogReplayStoreBridge(),
       _createTomRemoteLogServerBridge(),
       _createTomTextResourceProviderBridge(),
       _createTomConfigResourceProviderBridge(),
@@ -269,6 +278,405 @@ class TomCoreKernelBridge {
     ];
   }
 
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'TomBaseException': _createTomBaseExceptionBridge,
+      'TomLogLevel': _createTomLogLevelBridge,
+      'TomLogger': _createTomLoggerBridge,
+      'TomLoggable': _createTomLoggableBridge,
+      'TomLogOutput': _createTomLogOutputBridge,
+      'TomConsoleLogOutput': _createTomConsoleLogOutputBridge,
+      'TomPlatformUtils': _createTomPlatformUtilsBridge,
+      'TomFallbackPlatformUtils': _createTomFallbackPlatformUtilsBridge,
+      'TomEnvironment': _createTomEnvironmentBridge,
+      'TomPlatform': _createTomPlatformBridge,
+      'TomRuntime': _createTomRuntimeBridge,
+      'TomJwtTokenException': _createTomJwtTokenExceptionBridge,
+      'TomJwtConfiguration': _createTomJwtConfigurationBridge,
+      'TomServerJwtToken': _createTomServerJwtTokenBridge,
+      'TomClientJwtToken': _createTomClientJwtTokenBridge,
+      'TomPasswordHasher': _createTomPasswordHasherBridge,
+      'RsaKeyHelper': _createRsaKeyHelperBridge,
+      'TomBeanLocatorException': _createTomBeanLocatorExceptionBridge,
+      'TomComponent': _createTomComponentBridge,
+      'TomNullInterface': _createTomNullInterfaceBridge,
+      'TomNoInterface': _createTomNoInterfaceBridge,
+      'TomBean': _createTomBeanBridge,
+      'TomExecutionContext': _createTomExecutionContextBridge,
+      'TomZoneValues': _createTomZoneValuesBridge,
+      'TomContextEntry': _createTomContextEntryBridge,
+      'TomContextProviders': _createTomContextProvidersBridge,
+      'TomServerConnectionException': _createTomServerConnectionExceptionBridge,
+      'TomRequestAbortedException': _createTomRequestAbortedExceptionBridge,
+      'TomServerCallSpecs': _createTomServerCallSpecsBridge,
+      'TomServerCallLoad': _createTomServerCallLoadBridge,
+      'TomServerCallError': _createTomServerCallErrorBridge,
+      'TomServerCall': _createTomServerCallBridge,
+      'TomServerChannel': _createTomServerChannelBridge,
+      'TomHttpClientFactory': _createTomHttpClientFactoryBridge,
+      'TomHttpClientAbstractFactory': _createTomHttpClientAbstractFactoryBridge,
+      'TomDefaultHttpClientFactory': _createTomDefaultHttpClientFactoryBridge,
+      'TomServerEndpoint': _createTomServerEndpointBridge,
+      'TomAuthRefresher': _createTomAuthRefresherBridge,
+      'TomAuthRetryPolicy': _createTomAuthRetryPolicyBridge,
+      'TomAuthExpiredException': _createTomAuthExpiredExceptionBridge,
+      'TomEndpointException': _createTomEndpointExceptionBridge,
+      'TomContentDisposition': _createTomContentDispositionBridge,
+      'TomRemoteApis': _createTomRemoteApisBridge,
+      'TomApi': _createTomApiBridge,
+      'TomApiEndpoint': _createTomApiEndpointBridge,
+      'TomClientRemoteContextException': _createTomClientRemoteContextExceptionBridge,
+      'TomClientRemoteContext': _createTomClientRemoteContextBridge,
+      'TomHttpMethod': _createTomHttpMethodBridge,
+      'TomMimeTypeException': _createTomMimeTypeExceptionBridge,
+      'TomMimeType': _createTomMimeTypeBridge,
+      'StaticFileMimetypeMapping': _createStaticFileMimetypeMappingBridge,
+      'TomHeader': _createTomHeaderBridge,
+      'TomWorkerException': _createTomWorkerExceptionBridge,
+      'TomWorkerDiedException': _createTomWorkerDiedExceptionBridge,
+      'TomExecutor': _createTomExecutorBridge,
+      'TomCommand': _createTomCommandBridge,
+      'TomWorkerContext': _createTomWorkerContextBridge,
+      'TomWorker': _createTomWorkerBridge,
+      'TomWorkerPool': _createTomWorkerPoolBridge,
+      'TomJsonSerializable': _createTomJsonSerializableBridge,
+      'TomException': _createTomExceptionBridge,
+      'TomLoggingExecutor': _createTomLoggingExecutorBridge,
+      'TomInterIsolateLogMessage': _createTomInterIsolateLogMessageBridge,
+      'TomIsolateLogOutput': _createTomIsolateLogOutputBridge,
+      'TomCreatorLogOutput': _createTomCreatorLogOutputBridge,
+      'TomLoggingWorkerContext': _createTomLoggingWorkerContextBridge,
+      'TomIsolateLogging': _createTomIsolateLoggingBridge,
+      'TomRemoteLogMessage': _createTomRemoteLogMessageBridge,
+      'TomRemoteLogResult': _createTomRemoteLogResultBridge,
+      'TomLoggingContext': _createTomLoggingContextBridge,
+      'TomLogReplayStore': _createTomLogReplayStoreBridge,
+      'TomInMemoryLogReplayStore': _createTomInMemoryLogReplayStoreBridge,
+      'TomRemoteLogOutput': _createTomRemoteLogOutputBridge,
+      'TomFileLogReplayStore': _createTomFileLogReplayStoreBridge,
+      'TomRemoteLogServer': _createTomRemoteLogServerBridge,
+      'TomTextResourceProvider': _createTomTextResourceProviderBridge,
+      'TomConfigResourceProvider': _createTomConfigResourceProviderBridge,
+      'TomScope': _createTomScopeBridge,
+      'TomScopeBase': _createTomScopeBaseBridge,
+      'InScopeBuilder': _createInScopeBuilderBridge,
+      'TomScopeMixin': _createTomScopeMixinBridge,
+      'TomResourceKeyProtection': _createTomResourceKeyProtectionBridge,
+      'TomAccessControl': _createTomAccessControlBridge,
+      'TomGradedAccess': _createTomGradedAccessBridge,
+      'TomNoAccess': _createTomNoAccessBridge,
+      'TomPublicAccess': _createTomPublicAccessBridge,
+      'TomAuthenticatedAccess': _createTomAuthenticatedAccessBridge,
+      'TomGuestAccess': _createTomGuestAccessBridge,
+      'TomCustomAccess': _createTomCustomAccessBridge,
+      'TomEntitlementAccess': _createTomEntitlementAccessBridge,
+      'TomRoleAccess': _createTomRoleAccessBridge,
+      'TomGroupAccess': _createTomGroupAccessBridge,
+      'TomResourceKeyAccess': _createTomResourceKeyAccessBridge,
+      'TomAuthenticationMessage': _createTomAuthenticationMessageBridge,
+      'TomAuthenticationResult': _createTomAuthenticationResultBridge,
+      'TomBearerAuthentication': _createTomBearerAuthenticationBridge,
+      'TomResourceRoleRegistry': _createTomResourceRoleRegistryBridge,
+      'TomResourceRoleAdapter': _createTomResourceRoleAdapterBridge,
+      'TomAuthorizable': _createTomAuthorizableBridge,
+      'TomAuthorizationGroup': _createTomAuthorizationGroupBridge,
+      'TomAuthorizationAdapter': _createTomAuthorizationAdapterBridge,
+      'TomAuthorization': _createTomAuthorizationBridge,
+      'TomAuthorizer': _createTomAuthorizerBridge,
+      'TomUIStateController': _createTomUIStateControllerBridge,
+      'TomAccessControlInformation': _createTomAccessControlInformationBridge,
+      'TomClientLimitsInformation': _createTomClientLimitsInformationBridge,
+      'TomAccessControlDefinition': _createTomAccessControlDefinitionBridge,
+      'TomGroup': _createTomGroupBridge,
+      'TomRole': _createTomRoleBridge,
+      'TomEntitlement': _createTomEntitlementBridge,
+      'TomUser': _createTomUserBridge,
+      'TomPrincipal': _createTomPrincipalBridge,
+      'TomGetSettingsMessage': _createTomGetSettingsMessageBridge,
+      'TomGetSettingsResult': _createTomGetSettingsResultBridge,
+      'TomDisposable': _createTomDisposableBridge,
+      'TomClosable': _createTomClosableBridge,
+      'TomCloseAdaptor': _createTomCloseAdaptorBridge,
+      'TomShutdownCleanup': _createTomShutdownCleanupBridge,
+      'TomObservable': _createTomObservableBridge,
+      'TomObserver': _createTomObserverBridge,
+      'TomFunctionObserver': _createTomFunctionObserverBridge,
+      'TomReflectorException': _createTomReflectorExceptionBridge,
+      'TomReflector': _createTomReflectorBridge,
+      'TomReflectionInfo': _createTomReflectionInfoBridge,
+      'TomObservableException': _createTomObservableExceptionBridge,
+      'TomObject': _createTomObjectBridge,
+      'TomString': _createTomStringBridge,
+      'TomInt': _createTomIntBridge,
+      'TomDouble': _createTomDoubleBridge,
+      'TomBool': _createTomBoolBridge,
+      'TomDateTime': _createTomDateTimeBridge,
+      'TomOTimezoned': _createTomOTimezonedBridge,
+      'TomOZonedTime': _createTomOZonedTimeBridge,
+      'TomOZonedDate': _createTomOZonedDateBridge,
+      'TomOZonedDateTime': _createTomOZonedDateTimeBridge,
+      'TomNString': _createTomNStringBridge,
+      'TomNInt': _createTomNIntBridge,
+      'TomNDouble': _createTomNDoubleBridge,
+      'TomNBool': _createTomNBoolBridge,
+      'TomNDateTime': _createTomNDateTimeBridge,
+      'TomNOTimezoned': _createTomNOTimezonedBridge,
+      'TomNOZonedTime': _createTomNOZonedTimeBridge,
+      'TomNOZonedDate': _createTomNOZonedDateBridge,
+      'TomNOZonedDateTime': _createTomNOZonedDateTimeBridge,
+      'TomDateRange': _createTomDateRangeBridge,
+      'TomTimeRange': _createTomTimeRangeBridge,
+      'TomDateTimeRange': _createTomDateTimeRangeBridge,
+      'TomClass': _createTomClassBridge,
+      'TomListLifecycleListener': _createTomListLifecycleListenerBridge,
+      'TomList': _createTomListBridge,
+      'TomMap': _createTomMapBridge,
+      'TomTimezoned': _createTomTimezonedBridge,
+      'TomZonedDate': _createTomZonedDateBridge,
+      'TomZonedTime': _createTomZonedTimeBridge,
+      'TomZonedDateTime': _createTomZonedDateTimeBridge,
+      'TomTimezoneException': _createTomTimezoneExceptionBridge,
+      'TomTimezone': _createTomTimezoneBridge,
+      'Mirror': _createMirrorBridge,
+      'DeclarationMirror': _createDeclarationMirrorBridge,
+      'ObjectMirror': _createObjectMirrorBridge,
+      'InstanceMirror': _createInstanceMirrorBridge,
+      'ClosureMirror': _createClosureMirrorBridge,
+      'LibraryMirror': _createLibraryMirrorBridge,
+      'LibraryDependencyMirror': _createLibraryDependencyMirrorBridge,
+      'CombinatorMirror': _createCombinatorMirrorBridge,
+      'TypeMirror': _createTypeMirrorBridge,
+      'ClassMirror': _createClassMirrorBridge,
+      'FunctionTypeMirror': _createFunctionTypeMirrorBridge,
+      'TypeVariableMirror': _createTypeVariableMirrorBridge,
+      'TypedefMirror': _createTypedefMirrorBridge,
+      'MethodMirror': _createMethodMirrorBridge,
+      'VariableMirror': _createVariableMirrorBridge,
+      'ParameterMirror': _createParameterMirrorBridge,
+      'SourceLocation': _createSourceLocationBridge,
+      'Comment': _createCommentBridge,
+      'TypeValue': _createTypeValueBridge,
+      'ReflectorData': _createReflectorDataBridge,
+      'NonGenericClassMirrorImpl': _createNonGenericClassMirrorImplBridge,
+      'GenericClassMirrorImpl': _createGenericClassMirrorImplBridge,
+      'LibraryMirrorImpl': _createLibraryMirrorImplBridge,
+      'MethodMirrorImpl': _createMethodMirrorImplBridge,
+      'ImplicitSetterMirrorImpl': _createImplicitSetterMirrorImplBridge,
+      'VariableMirrorImpl': _createVariableMirrorImplBridge,
+      'ParameterMirrorImpl': _createParameterMirrorImplBridge,
+      'ReflectionImpl': _createReflectionImplBridge,
+      'RSAPublicKey': _createRSAPublicKeyBridge,
+      'RSAPrivateKey': _createRSAPrivateKeyBridge,
+      'AsymmetricKeyPair': _createAsymmetricKeyPairBridge,
+      'PublicKey': _createPublicKeyBridge,
+      'PrivateKey': _createPrivateKeyBridge,
+      'SecureRandom': _createSecureRandomBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'TomBaseException': $tom_basics_1.TomBaseException,
+      'TomLogLevel': $tom_basics_2.TomLogLevel,
+      'TomLogger': $tom_basics_2.TomLogger,
+      'TomLoggable': $tom_basics_2.TomLoggable,
+      'TomLogOutput': $tom_basics_2.TomLogOutput,
+      'TomConsoleLogOutput': $tom_basics_2.TomConsoleLogOutput,
+      'TomPlatformUtils': $tom_basics_4.TomPlatformUtils,
+      'TomFallbackPlatformUtils': $tom_basics_4.TomFallbackPlatformUtils,
+      'TomEnvironment': $tom_basics_3.TomEnvironment,
+      'TomPlatform': $tom_basics_3.TomPlatform,
+      'TomRuntime': $tom_basics_3.TomRuntime,
+      'TomJwtTokenException': $tom_crypto_1.TomJwtTokenException,
+      'TomJwtConfiguration': $tom_crypto_1.TomJwtConfiguration,
+      'TomServerJwtToken': $tom_crypto_1.TomServerJwtToken,
+      'TomClientJwtToken': $tom_crypto_1.TomClientJwtToken,
+      'TomPasswordHasher': $tom_crypto_2.TomPasswordHasher,
+      'RsaKeyHelper': $tom_crypto_4.RsaKeyHelper,
+      'TomBeanLocatorException': $tom_core_kernel_1.TomBeanLocatorException,
+      'TomComponent': $tom_core_kernel_1.TomComponent,
+      'TomNullInterface': $tom_core_kernel_1.TomNullInterface,
+      'TomNoInterface': $tom_core_kernel_1.TomNoInterface,
+      'TomBean': $tom_core_kernel_1.TomBean,
+      'TomExecutionContext': $tom_core_kernel_2.TomExecutionContext,
+      'TomZoneValues': $tom_core_kernel_2.TomZoneValues,
+      'TomContextEntry': $tom_core_kernel_2.TomContextEntry,
+      'TomContextProviders': $tom_core_kernel_2.TomContextProviders,
+      'TomServerConnectionException': $tom_core_kernel_9.TomServerConnectionException,
+      'TomRequestAbortedException': $tom_core_kernel_9.TomRequestAbortedException,
+      'TomServerCallSpecs': $tom_core_kernel_9.TomServerCallSpecs,
+      'TomServerCallLoad': $tom_core_kernel_9.TomServerCallLoad,
+      'TomServerCallError': $tom_core_kernel_9.TomServerCallError,
+      'TomServerCall': $tom_core_kernel_9.TomServerCall,
+      'TomServerChannel': $tom_core_kernel_9.TomServerChannel,
+      'TomHttpClientFactory': $tom_core_kernel_9.TomHttpClientFactory,
+      'TomHttpClientAbstractFactory': $tom_core_kernel_9.TomHttpClientAbstractFactory,
+      'TomDefaultHttpClientFactory': $tom_core_kernel_9.TomDefaultHttpClientFactory,
+      'TomServerEndpoint': $tom_core_kernel_9.TomServerEndpoint,
+      'TomAuthRefresher': $tom_core_kernel_3.TomAuthRefresher,
+      'TomAuthRetryPolicy': $tom_core_kernel_3.TomAuthRetryPolicy,
+      'TomAuthExpiredException': $tom_core_kernel_3.TomAuthExpiredException,
+      'TomEndpointException': $tom_core_kernel_4.TomEndpointException,
+      'TomContentDisposition': $tom_core_kernel_4.TomContentDisposition,
+      'TomRemoteApis': $tom_core_kernel_4.TomRemoteApis,
+      'TomApi': $tom_core_kernel_4.TomApi,
+      'TomApiEndpoint': $tom_core_kernel_4.TomApiEndpoint,
+      'TomClientRemoteContextException': $tom_core_kernel_8.TomClientRemoteContextException,
+      'TomClientRemoteContext': $tom_core_kernel_8.TomClientRemoteContext,
+      'TomHttpMethod': $tom_core_kernel_6.TomHttpMethod,
+      'TomMimeTypeException': $tom_core_kernel_7.TomMimeTypeException,
+      'TomMimeType': $tom_core_kernel_7.TomMimeType,
+      'StaticFileMimetypeMapping': $tom_core_kernel_7.StaticFileMimetypeMapping,
+      'TomHeader': $tom_core_kernel_5.TomHeader,
+      'TomWorkerException': $tom_core_kernel_10.TomWorkerException,
+      'TomWorkerDiedException': $tom_core_kernel_10.TomWorkerDiedException,
+      'TomExecutor': $tom_core_kernel_10.TomExecutor,
+      'TomCommand': $tom_core_kernel_10.TomCommand,
+      'TomWorkerContext': $tom_core_kernel_10.TomWorkerContext,
+      'TomWorker': $tom_core_kernel_10.TomWorker,
+      'TomWorkerPool': $tom_core_kernel_10.TomWorkerPool,
+      'TomJsonSerializable': $tom_core_kernel_11.TomJsonSerializable,
+      'TomException': $tom_core_kernel_14.TomException,
+      'TomLoggingExecutor': $tom_core_kernel_18.TomLoggingExecutor,
+      'TomInterIsolateLogMessage': $tom_core_kernel_18.TomInterIsolateLogMessage,
+      'TomIsolateLogOutput': $tom_core_kernel_18.TomIsolateLogOutput,
+      'TomCreatorLogOutput': $tom_core_kernel_18.TomCreatorLogOutput,
+      'TomLoggingWorkerContext': $tom_core_kernel_18.TomLoggingWorkerContext,
+      'TomIsolateLogging': $tom_core_kernel_18.TomIsolateLogging,
+      'TomRemoteLogMessage': $tom_core_kernel_19.TomRemoteLogMessage,
+      'TomRemoteLogResult': $tom_core_kernel_19.TomRemoteLogResult,
+      'TomLoggingContext': $tom_core_kernel_19.TomLoggingContext,
+      'TomLogReplayStore': $tom_core_kernel_19.TomLogReplayStore,
+      'TomInMemoryLogReplayStore': $tom_core_kernel_19.TomInMemoryLogReplayStore,
+      'TomRemoteLogOutput': $tom_core_kernel_19.TomRemoteLogOutput,
+      'TomFileLogReplayStore': $tom_core_kernel_17.TomFileLogReplayStore,
+      'TomRemoteLogServer': $tom_core_kernel_20.TomRemoteLogServer,
+      'TomTextResourceProvider': $tom_core_kernel_24.TomTextResourceProvider,
+      'TomConfigResourceProvider': $tom_core_kernel_24.TomConfigResourceProvider,
+      'TomScope': $tom_core_kernel_25.TomScope,
+      'TomScopeBase': $tom_core_kernel_25.TomScopeBase,
+      'InScopeBuilder': $tom_core_kernel_25.InScopeBuilder,
+      'TomScopeMixin': $tom_core_kernel_25.TomScopeMixin,
+      'TomResourceKeyProtection': $tom_core_kernel_26.TomResourceKeyProtection,
+      'TomAccessControl': $tom_core_kernel_26.TomAccessControl,
+      'TomGradedAccess': $tom_core_kernel_26.TomGradedAccess,
+      'TomNoAccess': $tom_core_kernel_26.TomNoAccess,
+      'TomPublicAccess': $tom_core_kernel_26.TomPublicAccess,
+      'TomAuthenticatedAccess': $tom_core_kernel_26.TomAuthenticatedAccess,
+      'TomGuestAccess': $tom_core_kernel_26.TomGuestAccess,
+      'TomCustomAccess': $tom_core_kernel_26.TomCustomAccess,
+      'TomEntitlementAccess': $tom_core_kernel_26.TomEntitlementAccess,
+      'TomRoleAccess': $tom_core_kernel_26.TomRoleAccess,
+      'TomGroupAccess': $tom_core_kernel_26.TomGroupAccess,
+      'TomResourceKeyAccess': $tom_core_kernel_26.TomResourceKeyAccess,
+      'TomAuthenticationMessage': $tom_core_kernel_27.TomAuthenticationMessage,
+      'TomAuthenticationResult': $tom_core_kernel_27.TomAuthenticationResult,
+      'TomBearerAuthentication': $tom_core_kernel_28.TomBearerAuthentication,
+      'TomResourceRoleRegistry': $tom_core_kernel_29.TomResourceRoleRegistry,
+      'TomResourceRoleAdapter': $tom_core_kernel_29.TomResourceRoleAdapter,
+      'TomAuthorizable': $tom_core_kernel_30.TomAuthorizable,
+      'TomAuthorizationGroup': $tom_core_kernel_30.TomAuthorizationGroup,
+      'TomAuthorizationAdapter': $tom_core_kernel_30.TomAuthorizationAdapter,
+      'TomAuthorization': $tom_core_kernel_30.TomAuthorization,
+      'TomAuthorizer': $tom_core_kernel_30.TomAuthorizer,
+      'TomUIStateController': $tom_core_kernel_30.TomUIStateController,
+      'TomAccessControlInformation': $tom_core_kernel_31.TomAccessControlInformation,
+      'TomClientLimitsInformation': $tom_core_kernel_31.TomClientLimitsInformation,
+      'TomAccessControlDefinition': $tom_core_kernel_31.TomAccessControlDefinition,
+      'TomGroup': $tom_core_kernel_31.TomGroup,
+      'TomRole': $tom_core_kernel_31.TomRole,
+      'TomEntitlement': $tom_core_kernel_31.TomEntitlement,
+      'TomUser': $tom_core_kernel_31.TomUser,
+      'TomPrincipal': $tom_core_kernel_31.TomPrincipal,
+      'TomGetSettingsMessage': $tom_core_kernel_32.TomGetSettingsMessage,
+      'TomGetSettingsResult': $tom_core_kernel_32.TomGetSettingsResult,
+      'TomDisposable': $tom_core_kernel_33.TomDisposable,
+      'TomClosable': $tom_core_kernel_33.TomClosable,
+      'TomCloseAdaptor': $tom_core_kernel_33.TomCloseAdaptor,
+      'TomShutdownCleanup': $tom_core_kernel_33.TomShutdownCleanup,
+      'TomObservable': $tom_core_kernel_21.TomObservable,
+      'TomObserver': $tom_core_kernel_21.TomObserver,
+      'TomFunctionObserver': $tom_core_kernel_21.TomFunctionObserver,
+      'TomReflectorException': $tom_core_kernel_23.TomReflectorException,
+      'TomReflector': $tom_core_kernel_23.TomReflector,
+      'TomReflectionInfo': $tom_core_kernel_23.TomReflectionInfo,
+      'TomObservableException': $tom_core_kernel_22.TomObservableException,
+      'TomObject': $tom_core_kernel_22.TomObject,
+      'TomString': $tom_core_kernel_22.TomString,
+      'TomInt': $tom_core_kernel_22.TomInt,
+      'TomDouble': $tom_core_kernel_22.TomDouble,
+      'TomBool': $tom_core_kernel_22.TomBool,
+      'TomDateTime': $tom_core_kernel_22.TomDateTime,
+      'TomOTimezoned': $tom_core_kernel_22.TomOTimezoned,
+      'TomOZonedTime': $tom_core_kernel_22.TomOZonedTime,
+      'TomOZonedDate': $tom_core_kernel_22.TomOZonedDate,
+      'TomOZonedDateTime': $tom_core_kernel_22.TomOZonedDateTime,
+      'TomNString': $tom_core_kernel_22.TomNString,
+      'TomNInt': $tom_core_kernel_22.TomNInt,
+      'TomNDouble': $tom_core_kernel_22.TomNDouble,
+      'TomNBool': $tom_core_kernel_22.TomNBool,
+      'TomNDateTime': $tom_core_kernel_22.TomNDateTime,
+      'TomNOTimezoned': $tom_core_kernel_22.TomNOTimezoned,
+      'TomNOZonedTime': $tom_core_kernel_22.TomNOZonedTime,
+      'TomNOZonedDate': $tom_core_kernel_22.TomNOZonedDate,
+      'TomNOZonedDateTime': $tom_core_kernel_22.TomNOZonedDateTime,
+      'TomDateRange': $tom_core_kernel_22.TomDateRange,
+      'TomTimeRange': $tom_core_kernel_22.TomTimeRange,
+      'TomDateTimeRange': $tom_core_kernel_22.TomDateTimeRange,
+      'TomClass': $tom_core_kernel_22.TomClass,
+      'TomListLifecycleListener': $tom_core_kernel_22.TomListLifecycleListener,
+      'TomList': $tom_core_kernel_22.TomList,
+      'TomMap': $tom_core_kernel_22.TomMap,
+      'TomTimezoned': $tom_core_kernel_34.TomTimezoned,
+      'TomZonedDate': $tom_core_kernel_34.TomZonedDate,
+      'TomZonedTime': $tom_core_kernel_34.TomZonedTime,
+      'TomZonedDateTime': $tom_core_kernel_34.TomZonedDateTime,
+      'TomTimezoneException': $tom_core_kernel_35.TomTimezoneException,
+      'TomTimezone': $tom_core_kernel_35.TomTimezone,
+      'Mirror': $tom_reflection_2.Mirror,
+      'DeclarationMirror': $tom_reflection_2.DeclarationMirror,
+      'ObjectMirror': $tom_reflection_2.ObjectMirror,
+      'InstanceMirror': $tom_reflection_2.InstanceMirror,
+      'ClosureMirror': $tom_reflection_2.ClosureMirror,
+      'LibraryMirror': $tom_reflection_2.LibraryMirror,
+      'LibraryDependencyMirror': $tom_reflection_2.LibraryDependencyMirror,
+      'CombinatorMirror': $tom_reflection_2.CombinatorMirror,
+      'TypeMirror': $tom_reflection_2.TypeMirror,
+      'ClassMirror': $tom_reflection_2.ClassMirror,
+      'FunctionTypeMirror': $tom_reflection_2.FunctionTypeMirror,
+      'TypeVariableMirror': $tom_reflection_2.TypeVariableMirror,
+      'TypedefMirror': $tom_reflection_2.TypedefMirror,
+      'MethodMirror': $tom_reflection_2.MethodMirror,
+      'VariableMirror': $tom_reflection_2.VariableMirror,
+      'ParameterMirror': $tom_reflection_2.ParameterMirror,
+      'SourceLocation': $tom_reflection_2.SourceLocation,
+      'Comment': $tom_reflection_2.Comment,
+      'TypeValue': $tom_reflection_2.TypeValue,
+      'ReflectorData': $tom_reflection_3.ReflectorData,
+      'NonGenericClassMirrorImpl': $tom_reflection_3.NonGenericClassMirrorImpl,
+      'GenericClassMirrorImpl': $tom_reflection_3.GenericClassMirrorImpl,
+      'LibraryMirrorImpl': $tom_reflection_3.LibraryMirrorImpl,
+      'MethodMirrorImpl': $tom_reflection_3.MethodMirrorImpl,
+      'ImplicitSetterMirrorImpl': $tom_reflection_3.ImplicitSetterMirrorImpl,
+      'VariableMirrorImpl': $tom_reflection_3.VariableMirrorImpl,
+      'ParameterMirrorImpl': $tom_reflection_3.ParameterMirrorImpl,
+      'ReflectionImpl': $tom_reflection_3.ReflectionImpl,
+      'RSAPublicKey': $pointycastle_2.RSAPublicKey,
+      'RSAPrivateKey': $pointycastle_2.RSAPrivateKey,
+      'AsymmetricKeyPair': $pointycastle_1.AsymmetricKeyPair,
+      'PublicKey': $pointycastle_1.PublicKey,
+      'PrivateKey': $pointycastle_1.PrivateKey,
+      'SecureRandom': $pointycastle_1.SecureRandom,
+    };
+  }
+
   /// Returns a map of class names to their canonical source URIs.
   ///
   /// Used for deduplication when the same class is exported through
@@ -328,6 +736,7 @@ class TomCoreKernelBridge {
       'StaticFileMimetypeMapping': 'package:tom_core_kernel/src/tombase/http_connection/mimetypes.dart',
       'TomHeader': 'package:tom_core_kernel/src/tombase/http_connection/headers.dart',
       'TomWorkerException': 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart',
+      'TomWorkerDiedException': 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart',
       'TomExecutor': 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart',
       'TomCommand': 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart',
       'TomWorkerContext': 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart',
@@ -344,7 +753,10 @@ class TomCoreKernelBridge {
       'TomRemoteLogMessage': 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart',
       'TomRemoteLogResult': 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart',
       'TomLoggingContext': 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart',
+      'TomLogReplayStore': 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart',
+      'TomInMemoryLogReplayStore': 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart',
       'TomRemoteLogOutput': 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart',
+      'TomFileLogReplayStore': 'package:tom_core_kernel/src/tombase/logging/file_log_replay_store.dart',
       'TomRemoteLogServer': 'package:tom_core_kernel/src/tombase/logging/remote_logserver.dart',
       'TomTextResourceProvider': 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart',
       'TomConfigResourceProvider': 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart',
@@ -488,12 +900,15 @@ class TomCoreKernelBridge {
       'TomClientRemoteContextException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomMimeTypeException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomWorkerException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
+      'TomWorkerDiedException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomException': ['TomBaseException', 'Exception', 'TomLoggable'],
       'TomLoggingExecutor': ['TomExecutor'],
       'TomIsolateLogOutput': ['TomLogOutput'],
       'TomCreatorLogOutput': ['TomLogOutput'],
       'TomLoggingWorkerContext': ['TomWorkerContext'],
+      'TomInMemoryLogReplayStore': ['TomLogReplayStore'],
       'TomRemoteLogOutput': ['TomLogOutput'],
+      'TomFileLogReplayStore': ['TomLogReplayStore'],
       'TomScopeBase': ['TomScopeMixin', 'TomScope'],
       'TomScopeMixin': ['TomScope'],
       'TomGradedAccess': ['TomAccessControl'],
@@ -603,32 +1018,32 @@ class TomCoreKernelBridge {
   /// Returns all bridged enum definitions.
   static List<BridgedEnumDefinition> bridgedEnums() {
     return [
-      BridgedEnumDefinition<$tom_core_kernel_29.TomAuthState>(
+      BridgedEnumDefinition<$tom_core_kernel_30.TomAuthState>(
         name: 'TomAuthState',
-        values: $tom_core_kernel_29.TomAuthState.values,
+        values: $tom_core_kernel_30.TomAuthState.values,
         getters: {
-          'isVisible': (visitor, target) => (target as $tom_core_kernel_29.TomAuthState).isVisible,
-          'isInteractive': (visitor, target) => (target as $tom_core_kernel_29.TomAuthState).isInteractive,
-          'showsContent': (visitor, target) => (target as $tom_core_kernel_29.TomAuthState).showsContent,
+          'isVisible': (visitor, target) => (target as $tom_core_kernel_30.TomAuthState).isVisible,
+          'isInteractive': (visitor, target) => (target as $tom_core_kernel_30.TomAuthState).isInteractive,
+          'showsContent': (visitor, target) => (target as $tom_core_kernel_30.TomAuthState).showsContent,
         },
         methods: {
           'narrow': (visitor, target, positional, named, typeArgs) {
-            final t = target as $tom_core_kernel_29.TomAuthState;
+            final t = target as $tom_core_kernel_30.TomAuthState;
             return Function.apply(t.narrow, positional, named.map((k, v) => MapEntry(Symbol(k), v)));
           },
           'widen': (visitor, target, positional, named, typeArgs) {
-            final t = target as $tom_core_kernel_29.TomAuthState;
+            final t = target as $tom_core_kernel_30.TomAuthState;
             return Function.apply(t.widen, positional, named.map((k, v) => MapEntry(Symbol(k), v)));
           },
         },
       ),
-      BridgedEnumDefinition<$tom_core_kernel_29.AuthGroupMode>(
+      BridgedEnumDefinition<$tom_core_kernel_30.AuthGroupMode>(
         name: 'AuthGroupMode',
-        values: $tom_core_kernel_29.AuthGroupMode.values,
+        values: $tom_core_kernel_30.AuthGroupMode.values,
       ),
-      BridgedEnumDefinition<$tom_core_kernel_29.TomAuthorizerStrategy>(
+      BridgedEnumDefinition<$tom_core_kernel_30.TomAuthorizerStrategy>(
         name: 'TomAuthorizerStrategy',
-        values: $tom_core_kernel_29.TomAuthorizerStrategy.values,
+        values: $tom_core_kernel_30.TomAuthorizerStrategy.values,
       ),
     ];
   }
@@ -682,11 +1097,20 @@ class TomCoreKernelBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so
@@ -813,22 +1237,22 @@ class TomCoreKernelBridge {
       errors.add('Failed to register variable "indentEncoder": $e');
     }
     try {
-      interpreter.registerGlobalVariable('tomShutdownCleanup', $tom_core_kernel_32.tomShutdownCleanup, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart');
+      interpreter.registerGlobalVariable('tomShutdownCleanup', $tom_core_kernel_33.tomShutdownCleanup, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart');
     } catch (e) {
       errors.add('Failed to register variable "tomShutdownCleanup": $e');
     }
     try {
-      interpreter.registerGlobalVariable('tomReflector', $tom_core_kernel_22.tomReflector, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart');
+      interpreter.registerGlobalVariable('tomReflector', $tom_core_kernel_23.tomReflector, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart');
     } catch (e) {
       errors.add('Failed to register variable "tomReflector": $e');
     }
     try {
-      interpreter.registerGlobalVariable('tomReflectionInfo', $tom_core_kernel_22.tomReflectionInfo, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart');
+      interpreter.registerGlobalVariable('tomReflectionInfo', $tom_core_kernel_23.tomReflectionInfo, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart');
     } catch (e) {
       errors.add('Failed to register variable "tomReflectionInfo": $e');
     }
     try {
-      interpreter.registerGlobalVariable('tomNull', $tom_core_kernel_21.tomNull, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart');
+      interpreter.registerGlobalVariable('tomNull', $tom_core_kernel_22.tomNull, importPath, sourceUri: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart');
     } catch (e) {
       errors.add('Failed to register variable "tomNull": $e');
     }
@@ -1047,12 +1471,12 @@ class TomCoreKernelBridge {
         final data = D4.getRequiredArg<dynamic>(positional, 0, 'data', 'tomProtect');
         final fallback = D4.getRequiredArg<dynamic>(positional, 1, 'fallback', 'tomProtect');
         final resourceKey = D4.getRequiredArg<String>(positional, 2, 'resourceKey', 'tomProtect');
-        return $tom_core_kernel_25.tomProtect<dynamic>(data, fallback, resourceKey);
+        return $tom_core_kernel_26.tomProtect<dynamic>(data, fallback, resourceKey);
       },
       'tomProtected': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'tomProtected');
         final resourceKey = D4.getRequiredArg<String>(positional, 0, 'resourceKey', 'tomProtected');
-        return $tom_core_kernel_25.tomProtected(resourceKey);
+        return $tom_core_kernel_26.tomProtected(resourceKey);
       },
     };
   }
@@ -1159,6 +1583,7 @@ class TomCoreKernelBridge {
       'package:tom_core_kernel/src/tombase/little_things/exception_base.dart',
       'package:tom_core_kernel/src/tombase/little_things/formatting.dart',
       'package:tom_core_kernel/src/tombase/little_things/little_things.dart',
+      'package:tom_core_kernel/src/tombase/logging/file_log_replay_store.dart',
       'package:tom_core_kernel/src/tombase/logging/logging_isolate.dart',
       'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart',
       'package:tom_core_kernel/src/tombase/logging/remote_logserver.dart',
@@ -4854,7 +5279,7 @@ BridgedClass _createTomApiEndpointBridge() {
         final urlParameterMapping = named.containsKey('urlParameterMapping') && named['urlParameterMapping'] != null
             ? D4.coerceMap<String, String>(named['urlParameterMapping'], 'urlParameterMapping')
             : const <String, String>{};
-        final access = D4.getOptionalNamedArg<$tom_core_kernel_25.TomAccessControl?>(named, 'access');
+        final access = D4.getOptionalNamedArg<$tom_core_kernel_26.TomAccessControl?>(named, 'access');
         return $tom_core_kernel_4.TomApiEndpoint(id: id, uri: uri, description: description, methods: methods, method: method, consumes: consumes, produces: produces, contentDisposition: contentDisposition, formFields: formFields, responseHeaders: responseHeaders, requestHeaders: requestHeaders, requestTypes: requestTypes, followRedirects: followRedirects, persistentConnection: persistentConnection, includeBearerAuthentication: includeBearerAuthentication, maxRedirects: maxRedirects, requestEncoding: requestEncoding, responseEncoding: responseEncoding, statusCodeResponseTypes: statusCodeResponseTypes, urlParameterMapping: urlParameterMapping, access: access);
       },
     },
@@ -5584,6 +6009,120 @@ BridgedClass _createTomWorkerExceptionBridge() {
 }
 
 // =============================================================================
+// TomWorkerDiedException Bridge
+// =============================================================================
+
+BridgedClass _createTomWorkerDiedExceptionBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_10.TomWorkerDiedException,
+    name: 'TomWorkerDiedException',
+    isAssignable: (v) => v is $tom_core_kernel_10.TomWorkerDiedException,
+    hierarchyDepth: 4,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomWorkerDiedException');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomWorkerDiedException');
+        final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomWorkerDiedException');
+        final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
+        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
+        final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
+        final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
+        final serverCallError = D4.getOptionalNamedArg<$tom_core_kernel_9.TomServerCallError?>(named, 'serverCallError');
+        return $tom_core_kernel_10.TomWorkerDiedException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, uuid: uuid, serverCallError: serverCallError);
+      },
+    },
+    getters: {
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').logRepresentation,
+    },
+    setters: {
+      'uuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+      'requestUuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+      'timeStamp': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+      'key': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').key = D4.extractBridgedArg<String>(value, 'key'),
+      'defaultUserMessage': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+      'stack': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+      'rootException': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+      'stackTrace': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+      'autoLog': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+      'serverCallError': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerCallError>(value, 'serverCallError'),
+      'newField': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+    },
+    methods: {
+      'toString': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException');
+        return t.toString();
+      },
+      'printStackTrace': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_10.TomWorkerDiedException>(target, 'TomWorkerDiedException');
+        final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
+        t.printStackTrace(depth);
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomWorkerDiedException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+    },
+    methodSignatures: {
+      'toString': 'String toString()',
+      'printStackTrace': 'void printStackTrace([int depth = -1])',
+    },
+    getterSignatures: {
+      'uuid': 'String get uuid',
+      'requestUuid': 'String? get requestUuid',
+      'timeStamp': 'DateTime get timeStamp',
+      'key': 'String get key',
+      'defaultUserMessage': 'String get defaultUserMessage',
+      'parameters': 'Map<String, Object?>? get parameters',
+      'stack': 'Object? get stack',
+      'rootException': 'Object? get rootException',
+      'stackTrace': 'String get stackTrace',
+      'autoLog': 'bool get autoLog',
+      'serverCallError': 'TomServerCallError? get serverCallError',
+      'newField': 'String? get newField',
+      'logRepresentation': 'String get logRepresentation',
+    },
+    setterSignatures: {
+      'uuid': 'set uuid(String value)',
+      'requestUuid': 'set requestUuid(String? value)',
+      'timeStamp': 'set timeStamp(DateTime value)',
+      'key': 'set key(String value)',
+      'defaultUserMessage': 'set defaultUserMessage(String value)',
+      'parameters': 'set parameters(Map<String, Object?>? value)',
+      'stack': 'set stack(Object? value)',
+      'rootException': 'set rootException(Object? value)',
+      'stackTrace': 'set stackTrace(String value)',
+      'autoLog': 'set autoLog(bool value)',
+      'serverCallError': 'set serverCallError(TomServerCallError? value)',
+      'newField': 'set newField(String? value)',
+    },
+  );
+}
+
+// =============================================================================
 // TomExecutor Bridge
 // =============================================================================
 
@@ -5742,6 +6281,27 @@ BridgedClass _createTomWorkerBridge() {
         final command = D4.getRequiredArg<Object>(positional, 0, 'command', 'executeCommand');
         return t.executeCommand(command);
       },
+      'superviseExit': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_10.TomWorker>(target, 'TomWorker');
+        D4.requireMinArgs(positional, 1, 'superviseExit');
+        if (positional.isEmpty) {
+          throw ArgumentError('superviseExit: Missing required argument "onDeath" at position 0');
+        }
+        final onDeathRaw = positional[0];
+        t.superviseExit(() { D4.callInterpreterCallback(visitor!, onDeathRaw, []); });
+        return null;
+      },
+      'ping': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_10.TomWorker>(target, 'TomWorker');
+        D4.requireMinArgs(positional, 1, 'ping');
+        final timeout = D4.getRequiredArg<Duration>(positional, 0, 'timeout', 'ping');
+        return t.ping(timeout);
+      },
+      'killUnresponsive': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_10.TomWorker>(target, 'TomWorker');
+        t.killUnresponsive();
+        return null;
+      },
       'sendExecutorToIsolate': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_10.TomWorker>(target, 'TomWorker');
         D4.requireMinArgs(positional, 1, 'sendExecutorToIsolate');
@@ -5802,6 +6362,9 @@ BridgedClass _createTomWorkerBridge() {
     methodSignatures: {
       'isBusy': 'bool isBusy()',
       'executeCommand': 'Future<Object?> executeCommand(Object command)',
+      'superviseExit': 'void superviseExit(void Function() onDeath)',
+      'ping': 'Future<bool> ping(Duration timeout)',
+      'killUnresponsive': 'void killUnresponsive()',
       'sendExecutorToIsolate': 'void sendExecutorToIsolate(TomExecutor te)',
       'close': 'void close()',
     },
@@ -5845,6 +6408,10 @@ BridgedClass _createTomWorkerPoolBridge() {
     isAssignable: (v) => v is $tom_core_kernel_10.TomWorkerPool,
     constructors: {
     },
+    getters: {
+      'isSupervised': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerPool>(target, 'TomWorkerPool').isSupervised,
+      'workerCount': (visitor, target) => D4.validateTarget<$tom_core_kernel_10.TomWorkerPool>(target, 'TomWorkerPool').workerCount,
+    },
     methods: {
       'execute': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_10.TomWorkerPool>(target, 'TomWorkerPool');
@@ -5863,15 +6430,21 @@ BridgedClass _createTomWorkerPoolBridge() {
         D4.requireMinArgs(positional, 2, 'withSize');
         final size = D4.getRequiredArg<int>(positional, 0, 'size', 'withSize');
         final context = D4.getRequiredArg<$tom_core_kernel_10.TomWorkerContext>(positional, 1, 'context', 'withSize');
-        return $tom_core_kernel_10.TomWorkerPool.withSize(size, context);
+        final healthCheckInterval = D4.getOptionalNamedArg<Duration?>(named, 'healthCheckInterval');
+        final healthCheckTimeout = D4.getNamedArgWithDefault<Duration>(named, 'healthCheckTimeout', const Duration(seconds: 5));
+        return $tom_core_kernel_10.TomWorkerPool.withSize(size, context, healthCheckInterval: healthCheckInterval, healthCheckTimeout: healthCheckTimeout);
       },
     },
     methodSignatures: {
       'execute': 'Future<Object?> execute(Object command)',
       'close': 'void close()',
     },
+    getterSignatures: {
+      'isSupervised': 'bool get isSupervised',
+      'workerCount': 'int get workerCount',
+    },
     staticMethodSignatures: {
-      'withSize': 'Future<TomWorkerPool> withSize(int size, TomWorkerContext context)',
+      'withSize': 'Future<TomWorkerPool> withSize(int size, TomWorkerContext context, {Duration? healthCheckInterval, Duration healthCheckTimeout = const Duration(seconds: 5)})',
     },
   );
 }
@@ -6021,18 +6594,18 @@ BridgedClass _createTomExceptionBridge() {
 
 BridgedClass _createTomLoggingExecutorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_17.TomLoggingExecutor,
+    nativeType: $tom_core_kernel_18.TomLoggingExecutor,
     name: 'TomLoggingExecutor',
-    isAssignable: (v) => v is $tom_core_kernel_17.TomLoggingExecutor,
+    isAssignable: (v) => v is $tom_core_kernel_18.TomLoggingExecutor,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_17.TomLoggingExecutor();
+        return $tom_core_kernel_18.TomLoggingExecutor();
       },
     },
     methods: {
       'execute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomLoggingExecutor>(target, 'TomLoggingExecutor');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomLoggingExecutor>(target, 'TomLoggingExecutor');
         D4.requireMinArgs(positional, 1, 'execute');
         final command = D4.getRequiredArg<Object>(positional, 0, 'command', 'execute');
         return t.execute(command);
@@ -6053,9 +6626,9 @@ BridgedClass _createTomLoggingExecutorBridge() {
 
 BridgedClass _createTomInterIsolateLogMessageBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_17.TomInterIsolateLogMessage,
+    nativeType: $tom_core_kernel_18.TomInterIsolateLogMessage,
     name: 'TomInterIsolateLogMessage',
-    isAssignable: (v) => v is $tom_core_kernel_17.TomInterIsolateLogMessage,
+    isAssignable: (v) => v is $tom_core_kernel_18.TomInterIsolateLogMessage,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 7, 'TomInterIsolateLogMessage');
@@ -6066,37 +6639,37 @@ BridgedClass _createTomInterIsolateLogMessageBridge() {
         final isolateName = D4.getRequiredArg<String>(positional, 4, 'isolateName', 'TomInterIsolateLogMessage');
         final timeStamp = D4.getRequiredArg<DateTime>(positional, 5, 'timeStamp', 'TomInterIsolateLogMessage');
         final origin = D4.getRequiredArg<String?>(positional, 6, 'origin', 'TomInterIsolateLogMessage');
-        return $tom_core_kernel_17.TomInterIsolateLogMessage(loggerLevel, logLevel, level, message, isolateName, timeStamp, origin);
+        return $tom_core_kernel_18.TomInterIsolateLogMessage(loggerLevel, logLevel, level, message, isolateName, timeStamp, origin);
       },
     },
     getters: {
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').timeStamp,
-      'loggerLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').loggerLevel,
-      'logLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').logLevel,
-      'level': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').level,
-      'message': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').message,
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').isolateName,
-      'origin': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').origin,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').timeStamp,
+      'loggerLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').loggerLevel,
+      'logLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').logLevel,
+      'level': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').level,
+      'message': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').message,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').isolateName,
+      'origin': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').origin,
     },
     setters: {
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'loggerLevel': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').loggerLevel = D4.extractBridgedArg<$tom_basics_2.TomLogLevel>(value, 'loggerLevel'),
+        D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').loggerLevel = D4.extractBridgedArg<$tom_basics_2.TomLogLevel>(value, 'loggerLevel'),
       'logLevel': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').logLevel = D4.extractBridgedArg<$tom_basics_2.TomLogLevel>(value, 'logLevel'),
+        D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').logLevel = D4.extractBridgedArg<$tom_basics_2.TomLogLevel>(value, 'logLevel'),
       'level': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').level = D4.extractBridgedArg<String>(value, 'level'),
+        D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').level = D4.extractBridgedArg<String>(value, 'level'),
       'message': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').message = D4.extractBridgedArg<String>(value, 'message'),
+        D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').message = D4.extractBridgedArg<String>(value, 'message'),
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'origin': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').origin = D4.extractBridgedArgOrNull<String>(value, 'origin'),
+        D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage').origin = D4.extractBridgedArgOrNull<String>(value, 'origin'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomInterIsolateLogMessage>(target, 'TomInterIsolateLogMessage');
         return t.toString();
       },
     },
@@ -6133,27 +6706,27 @@ BridgedClass _createTomInterIsolateLogMessageBridge() {
 
 BridgedClass _createTomIsolateLogOutputBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_17.TomIsolateLogOutput,
+    nativeType: $tom_core_kernel_18.TomIsolateLogOutput,
     name: 'TomIsolateLogOutput',
-    isAssignable: (v) => v is $tom_core_kernel_17.TomIsolateLogOutput,
+    isAssignable: (v) => v is $tom_core_kernel_18.TomIsolateLogOutput,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomIsolateLogOutput');
         final workerPool = D4.getRequiredArg<$tom_core_kernel_10.TomWorkerPool>(positional, 0, 'workerPool', 'TomIsolateLogOutput');
-        return $tom_core_kernel_17.TomIsolateLogOutput(workerPool);
+        return $tom_core_kernel_18.TomIsolateLogOutput(workerPool);
       },
     },
     getters: {
-      'workerPool': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomIsolateLogOutput>(target, 'TomIsolateLogOutput').workerPool,
+      'workerPool': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomIsolateLogOutput>(target, 'TomIsolateLogOutput').workerPool,
     },
     setters: {
       'workerPool': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomIsolateLogOutput>(target, 'TomIsolateLogOutput').workerPool = D4.extractBridgedArg<$tom_core_kernel_10.TomWorkerPool>(value, 'workerPool'),
+        D4.validateTarget<$tom_core_kernel_18.TomIsolateLogOutput>(target, 'TomIsolateLogOutput').workerPool = D4.extractBridgedArg<$tom_core_kernel_10.TomWorkerPool>(value, 'workerPool'),
     },
     methods: {
       'output': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomIsolateLogOutput>(target, 'TomIsolateLogOutput');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomIsolateLogOutput>(target, 'TomIsolateLogOutput');
         D4.requireMinArgs(positional, 6, 'output');
         final loggerLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'loggerLevel', 'output');
         final logLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 1, 'logLevel', 'output');
@@ -6166,7 +6739,7 @@ BridgedClass _createTomIsolateLogOutputBridge() {
         return null;
       },
       'convertToString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomIsolateLogOutput>(target, 'TomIsolateLogOutput');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomIsolateLogOutput>(target, 'TomIsolateLogOutput');
         D4.requireMinArgs(positional, 1, 'convertToString');
         final message = D4.getRequiredArg<Object>(positional, 0, 'message', 'convertToString');
         return t.convertToString(message);
@@ -6194,18 +6767,18 @@ BridgedClass _createTomIsolateLogOutputBridge() {
 
 BridgedClass _createTomCreatorLogOutputBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_17.TomCreatorLogOutput,
+    nativeType: $tom_core_kernel_18.TomCreatorLogOutput,
     name: 'TomCreatorLogOutput',
-    isAssignable: (v) => v is $tom_core_kernel_17.TomCreatorLogOutput,
+    isAssignable: (v) => v is $tom_core_kernel_18.TomCreatorLogOutput,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_17.TomCreatorLogOutput();
+        return $tom_core_kernel_18.TomCreatorLogOutput();
       },
     },
     methods: {
       'output': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomCreatorLogOutput>(target, 'TomCreatorLogOutput');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomCreatorLogOutput>(target, 'TomCreatorLogOutput');
         D4.requireMinArgs(positional, 6, 'output');
         final loggerLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'loggerLevel', 'output');
         final logLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 1, 'logLevel', 'output');
@@ -6218,18 +6791,18 @@ BridgedClass _createTomCreatorLogOutputBridge() {
         return null;
       },
       'convertToString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomCreatorLogOutput>(target, 'TomCreatorLogOutput');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomCreatorLogOutput>(target, 'TomCreatorLogOutput');
         D4.requireMinArgs(positional, 1, 'convertToString');
         final message = D4.getRequiredArg<Object>(positional, 0, 'message', 'convertToString');
         return t.convertToString(message);
       },
     },
     staticGetters: {
-      'fallbackOutput': (visitor) => $tom_core_kernel_17.TomCreatorLogOutput.fallbackOutput,
+      'fallbackOutput': (visitor) => $tom_core_kernel_18.TomCreatorLogOutput.fallbackOutput,
     },
     staticSetters: {
       'fallbackOutput': (visitor, value) => 
-        $tom_core_kernel_17.TomCreatorLogOutput.fallbackOutput = D4.extractBridgedArg<$tom_basics_2.TomConsoleLogOutput>(value, 'fallbackOutput'),
+        $tom_core_kernel_18.TomCreatorLogOutput.fallbackOutput = D4.extractBridgedArg<$tom_basics_2.TomConsoleLogOutput>(value, 'fallbackOutput'),
     },
     constructorSignatures: {
       '': 'TomCreatorLogOutput()',
@@ -6253,9 +6826,9 @@ BridgedClass _createTomCreatorLogOutputBridge() {
 
 BridgedClass _createTomLoggingWorkerContextBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_17.TomLoggingWorkerContext,
+    nativeType: $tom_core_kernel_18.TomLoggingWorkerContext,
     name: 'TomLoggingWorkerContext',
-    isAssignable: (v) => v is $tom_core_kernel_17.TomLoggingWorkerContext,
+    isAssignable: (v) => v is $tom_core_kernel_18.TomLoggingWorkerContext,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -6267,32 +6840,32 @@ BridgedClass _createTomLoggingWorkerContextBridge() {
         }
         final args = D4.coerceList<String>(positional[2], 'args');
         final namePrefix = D4.getRequiredArg<String>(positional, 3, 'namePrefix', 'TomLoggingWorkerContext');
-        return $tom_core_kernel_17.TomLoggingWorkerContext(tomEnvironment, tomPlatform, args, namePrefix);
+        return $tom_core_kernel_18.TomLoggingWorkerContext(tomEnvironment, tomPlatform, args, namePrefix);
       },
     },
     getters: {
-      'tomEnvironment': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomEnvironment,
-      'tomPlatform': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomPlatform,
-      'args': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').args,
-      'namePrefix': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').namePrefix,
+      'tomEnvironment': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomEnvironment,
+      'tomPlatform': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomPlatform,
+      'args': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').args,
+      'namePrefix': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').namePrefix,
     },
     setters: {
       'tomEnvironment': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomEnvironment = D4.extractBridgedArg<$tom_basics_3.TomEnvironment>(value, 'tomEnvironment'),
+        D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomEnvironment = D4.extractBridgedArg<$tom_basics_3.TomEnvironment>(value, 'tomEnvironment'),
       'tomPlatform': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomPlatform = D4.extractBridgedArg<$tom_basics_3.TomPlatform>(value, 'tomPlatform'),
+        D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomPlatform = D4.extractBridgedArg<$tom_basics_3.TomPlatform>(value, 'tomPlatform'),
       'args': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').args = D4.coerceList<String>(value, 'args'),
+        D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').args = D4.coerceList<String>(value, 'args'),
       'namePrefix': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').namePrefix = D4.extractBridgedArg<String>(value, 'namePrefix'),
+        D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').namePrefix = D4.extractBridgedArg<String>(value, 'namePrefix'),
     },
     methods: {
       'initializeIsolate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext');
         return t.initializeIsolate();
       },
       'initializeWorker': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_17.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext');
+        final t = D4.validateTarget<$tom_core_kernel_18.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext');
         D4.requireMinArgs(positional, 1, 'initializeWorker');
         final worker = D4.getRequiredArg<$tom_core_kernel_10.TomWorker>(positional, 0, 'worker', 'initializeWorker');
         return t.initializeWorker(worker);
@@ -6326,12 +6899,12 @@ BridgedClass _createTomLoggingWorkerContextBridge() {
 
 BridgedClass _createTomIsolateLoggingBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_17.TomIsolateLogging,
+    nativeType: $tom_core_kernel_18.TomIsolateLogging,
     name: 'TomIsolateLogging',
-    isAssignable: (v) => v is $tom_core_kernel_17.TomIsolateLogging,
+    isAssignable: (v) => v is $tom_core_kernel_18.TomIsolateLogging,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_17.TomIsolateLogging();
+        return $tom_core_kernel_18.TomIsolateLogging();
       },
     },
     staticMethods: {
@@ -6342,11 +6915,11 @@ BridgedClass _createTomIsolateLoggingBridge() {
         }
         final args = D4.coerceList<String>(positional[0], 'args');
         final poolSize = D4.getNamedArgWithDefault<int>(named, 'poolSize', 1);
-        final workerContext = D4.getOptionalNamedArg<$tom_core_kernel_17.TomLoggingWorkerContext?>(named, 'workerContext');
-        return $tom_core_kernel_17.TomIsolateLogging.startIsolatedLogging(args, poolSize: poolSize, workerContext: workerContext);
+        final workerContext = D4.getOptionalNamedArg<$tom_core_kernel_18.TomLoggingWorkerContext?>(named, 'workerContext');
+        return $tom_core_kernel_18.TomIsolateLogging.startIsolatedLogging(args, poolSize: poolSize, workerContext: workerContext);
       },
       'startLoggingToCreator': (visitor, positional, named, typeArgs) {
-        return $tom_core_kernel_17.TomIsolateLogging.startLoggingToCreator();
+        return $tom_core_kernel_18.TomIsolateLogging.startLoggingToCreator();
       },
     },
     constructorSignatures: {
@@ -6365,12 +6938,12 @@ BridgedClass _createTomIsolateLoggingBridge() {
 
 BridgedClass _createTomRemoteLogMessageBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_18.TomRemoteLogMessage,
+    nativeType: $tom_core_kernel_19.TomRemoteLogMessage,
     name: 'TomRemoteLogMessage',
-    isAssignable: (v) => v is $tom_core_kernel_18.TomRemoteLogMessage,
+    isAssignable: (v) => v is $tom_core_kernel_19.TomRemoteLogMessage,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_18.TomRemoteLogMessage();
+        return $tom_core_kernel_19.TomRemoteLogMessage();
       },
       'of': (visitor, positional, named) {
         D4.requireMinArgs(positional, 7, 'TomRemoteLogMessage');
@@ -6381,49 +6954,49 @@ BridgedClass _createTomRemoteLogMessageBridge() {
         final isolateName = D4.getRequiredArg<String>(positional, 4, 'isolateName', 'TomRemoteLogMessage');
         final timeStamp = D4.getRequiredArg<String>(positional, 5, 'timeStamp', 'TomRemoteLogMessage');
         final origin = D4.getRequiredArg<String?>(positional, 6, 'origin', 'TomRemoteLogMessage');
-        return $tom_core_kernel_18.TomRemoteLogMessage.of(loggerLevel, logLevel, level, message, isolateName, timeStamp, origin);
+        return $tom_core_kernel_19.TomRemoteLogMessage.of(loggerLevel, logLevel, level, message, isolateName, timeStamp, origin);
       },
     },
     getters: {
-      'sender': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').sender,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').timeStamp,
-      'loggerLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').loggerLevel,
-      'logLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').logLevel,
-      'level': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').level,
-      'message': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').message,
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').isolateName,
-      'origin': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').origin,
+      'sender': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').sender,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').timeStamp,
+      'loggerLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').loggerLevel,
+      'logLevel': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').logLevel,
+      'level': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').level,
+      'message': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').message,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').isolateName,
+      'origin': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').origin,
     },
     setters: {
       'sender': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').sender = D4.extractBridgedArg<String>(value, 'sender'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').sender = D4.extractBridgedArg<String>(value, 'sender'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').timeStamp = D4.extractBridgedArg<String>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').timeStamp = D4.extractBridgedArg<String>(value, 'timeStamp'),
       'loggerLevel': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').loggerLevel = D4.extractBridgedArg<int>(value, 'loggerLevel'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').loggerLevel = D4.extractBridgedArg<int>(value, 'loggerLevel'),
       'logLevel': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').logLevel = D4.extractBridgedArg<int>(value, 'logLevel'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').logLevel = D4.extractBridgedArg<int>(value, 'logLevel'),
       'level': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').level = D4.extractBridgedArg<String>(value, 'level'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').level = D4.extractBridgedArg<String>(value, 'level'),
       'message': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').message = D4.extractBridgedArg<String>(value, 'message'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').message = D4.extractBridgedArg<String>(value, 'message'),
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'origin': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').origin = D4.extractBridgedArgOrNull<String>(value, 'origin'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage').origin = D4.extractBridgedArgOrNull<String>(value, 'origin'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_18.TomRemoteLogMessage>(target, 'TomRemoteLogMessage');
+        final t = D4.validateTarget<$tom_core_kernel_19.TomRemoteLogMessage>(target, 'TomRemoteLogMessage');
         return t.toString();
       },
     },
     staticGetters: {
-      'globalSettingSenderId': (visitor) => $tom_core_kernel_18.TomRemoteLogMessage.globalSettingSenderId,
+      'globalSettingSenderId': (visitor) => $tom_core_kernel_19.TomRemoteLogMessage.globalSettingSenderId,
     },
     staticSetters: {
       'globalSettingSenderId': (visitor, value) => 
-        $tom_core_kernel_18.TomRemoteLogMessage.globalSettingSenderId = D4.extractBridgedArg<String>(value, 'globalSettingSenderId'),
+        $tom_core_kernel_19.TomRemoteLogMessage.globalSettingSenderId = D4.extractBridgedArg<String>(value, 'globalSettingSenderId'),
     },
     constructorSignatures: {
       '': 'TomRemoteLogMessage()',
@@ -6467,32 +7040,32 @@ BridgedClass _createTomRemoteLogMessageBridge() {
 
 BridgedClass _createTomRemoteLogResultBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_18.TomRemoteLogResult,
+    nativeType: $tom_core_kernel_19.TomRemoteLogResult,
     name: 'TomRemoteLogResult',
-    isAssignable: (v) => v is $tom_core_kernel_18.TomRemoteLogResult,
+    isAssignable: (v) => v is $tom_core_kernel_19.TomRemoteLogResult,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_18.TomRemoteLogResult();
+        return $tom_core_kernel_19.TomRemoteLogResult();
       },
       'withError': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomRemoteLogResult');
         final errorMessage = D4.getRequiredArg<String>(positional, 0, 'errorMessage', 'TomRemoteLogResult');
-        return $tom_core_kernel_18.TomRemoteLogResult.withError(errorMessage);
+        return $tom_core_kernel_19.TomRemoteLogResult.withError(errorMessage);
       },
     },
     getters: {
-      'hasError': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogResult>(target, 'TomRemoteLogResult').hasError,
-      'errorMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomRemoteLogResult>(target, 'TomRemoteLogResult').errorMessage,
+      'hasError': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogResult>(target, 'TomRemoteLogResult').hasError,
+      'errorMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomRemoteLogResult>(target, 'TomRemoteLogResult').errorMessage,
     },
     setters: {
       'hasError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogResult>(target, 'TomRemoteLogResult').hasError = D4.extractBridgedArg<bool>(value, 'hasError'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogResult>(target, 'TomRemoteLogResult').hasError = D4.extractBridgedArg<bool>(value, 'hasError'),
       'errorMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomRemoteLogResult>(target, 'TomRemoteLogResult').errorMessage = D4.extractBridgedArg<String>(value, 'errorMessage'),
+        D4.validateTarget<$tom_core_kernel_19.TomRemoteLogResult>(target, 'TomRemoteLogResult').errorMessage = D4.extractBridgedArg<String>(value, 'errorMessage'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_18.TomRemoteLogResult>(target, 'TomRemoteLogResult');
+        final t = D4.validateTarget<$tom_core_kernel_19.TomRemoteLogResult>(target, 'TomRemoteLogResult');
         return t.toString();
       },
     },
@@ -6520,21 +7093,21 @@ BridgedClass _createTomRemoteLogResultBridge() {
 
 BridgedClass _createTomLoggingContextBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_18.TomLoggingContext,
+    nativeType: $tom_core_kernel_19.TomLoggingContext,
     name: 'TomLoggingContext',
-    isAssignable: (v) => v is $tom_core_kernel_18.TomLoggingContext,
+    isAssignable: (v) => v is $tom_core_kernel_19.TomLoggingContext,
     constructors: {
       '': (visitor, positional, named) {
         final inRemoteLogging = D4.getNamedArgWithDefault<bool>(named, 'inRemoteLogging', false);
-        return $tom_core_kernel_18.TomLoggingContext(inRemoteLogging: inRemoteLogging);
+        return $tom_core_kernel_19.TomLoggingContext(inRemoteLogging: inRemoteLogging);
       },
     },
     getters: {
-      'inRemoteLogging': (visitor, target) => D4.validateTarget<$tom_core_kernel_18.TomLoggingContext>(target, 'TomLoggingContext').inRemoteLogging,
+      'inRemoteLogging': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomLoggingContext>(target, 'TomLoggingContext').inRemoteLogging,
     },
     setters: {
       'inRemoteLogging': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_18.TomLoggingContext>(target, 'TomLoggingContext').inRemoteLogging = D4.extractBridgedArg<bool>(value, 'inRemoteLogging'),
+        D4.validateTarget<$tom_core_kernel_19.TomLoggingContext>(target, 'TomLoggingContext').inRemoteLogging = D4.extractBridgedArg<bool>(value, 'inRemoteLogging'),
     },
     constructorSignatures: {
       '': 'TomLoggingContext({bool inRemoteLogging = false})',
@@ -6549,23 +7122,149 @@ BridgedClass _createTomLoggingContextBridge() {
 }
 
 // =============================================================================
+// TomLogReplayStore Bridge
+// =============================================================================
+
+BridgedClass _createTomLogReplayStoreBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_19.TomLogReplayStore,
+    name: 'TomLogReplayStore',
+    isAssignable: (v) => v is $tom_core_kernel_19.TomLogReplayStore,
+    isAbstract: true,
+    constructors: {
+    },
+    getters: {
+      'length': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomLogReplayStore>(target, 'TomLogReplayStore').length,
+      'oldest': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomLogReplayStore>(target, 'TomLogReplayStore').oldest,
+    },
+    methods: {
+      'append': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomLogReplayStore>(target, 'TomLogReplayStore');
+        D4.requireMinArgs(positional, 1, 'append');
+        final message = D4.getRequiredArg<$tom_core_kernel_19.TomRemoteLogMessage>(positional, 0, 'message', 'append');
+        t.append(message);
+        return null;
+      },
+      'snapshot': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomLogReplayStore>(target, 'TomLogReplayStore');
+        return t.snapshot();
+      },
+      'removeOldest': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomLogReplayStore>(target, 'TomLogReplayStore');
+        t.removeOldest();
+        return null;
+      },
+      'trim': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomLogReplayStore>(target, 'TomLogReplayStore');
+        D4.requireMinArgs(positional, 1, 'trim');
+        final maxSize = D4.getRequiredArg<int>(positional, 0, 'maxSize', 'trim');
+        t.trim(maxSize);
+        return null;
+      },
+      'clear': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomLogReplayStore>(target, 'TomLogReplayStore');
+        t.clear();
+        return null;
+      },
+    },
+    methodSignatures: {
+      'append': 'void append(TomRemoteLogMessage message)',
+      'snapshot': 'List<TomRemoteLogMessage> snapshot()',
+      'removeOldest': 'void removeOldest()',
+      'trim': 'void trim(int maxSize)',
+      'clear': 'void clear()',
+    },
+    getterSignatures: {
+      'length': 'int get length',
+      'oldest': 'TomRemoteLogMessage? get oldest',
+    },
+  );
+}
+
+// =============================================================================
+// TomInMemoryLogReplayStore Bridge
+// =============================================================================
+
+BridgedClass _createTomInMemoryLogReplayStoreBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_19.TomInMemoryLogReplayStore,
+    name: 'TomInMemoryLogReplayStore',
+    isAssignable: (v) => v is $tom_core_kernel_19.TomInMemoryLogReplayStore,
+    hierarchyDepth: 1,
+    constructors: {
+      '': (visitor, positional, named) {
+        return $tom_core_kernel_19.TomInMemoryLogReplayStore();
+      },
+    },
+    getters: {
+      'length': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomInMemoryLogReplayStore>(target, 'TomInMemoryLogReplayStore').length,
+      'oldest': (visitor, target) => D4.validateTarget<$tom_core_kernel_19.TomInMemoryLogReplayStore>(target, 'TomInMemoryLogReplayStore').oldest,
+    },
+    methods: {
+      'append': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomInMemoryLogReplayStore>(target, 'TomInMemoryLogReplayStore');
+        D4.requireMinArgs(positional, 1, 'append');
+        final message = D4.getRequiredArg<$tom_core_kernel_19.TomRemoteLogMessage>(positional, 0, 'message', 'append');
+        t.append(message);
+        return null;
+      },
+      'snapshot': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomInMemoryLogReplayStore>(target, 'TomInMemoryLogReplayStore');
+        return t.snapshot();
+      },
+      'removeOldest': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomInMemoryLogReplayStore>(target, 'TomInMemoryLogReplayStore');
+        t.removeOldest();
+        return null;
+      },
+      'trim': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomInMemoryLogReplayStore>(target, 'TomInMemoryLogReplayStore');
+        D4.requireMinArgs(positional, 1, 'trim');
+        final maxSize = D4.getRequiredArg<int>(positional, 0, 'maxSize', 'trim');
+        t.trim(maxSize);
+        return null;
+      },
+      'clear': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_19.TomInMemoryLogReplayStore>(target, 'TomInMemoryLogReplayStore');
+        t.clear();
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomInMemoryLogReplayStore()',
+    },
+    methodSignatures: {
+      'append': 'void append(TomRemoteLogMessage message)',
+      'snapshot': 'List<TomRemoteLogMessage> snapshot()',
+      'removeOldest': 'void removeOldest()',
+      'trim': 'void trim(int maxSize)',
+      'clear': 'void clear()',
+    },
+    getterSignatures: {
+      'length': 'int get length',
+      'oldest': 'TomRemoteLogMessage? get oldest',
+    },
+  );
+}
+
+// =============================================================================
 // TomRemoteLogOutput Bridge
 // =============================================================================
 
 BridgedClass _createTomRemoteLogOutputBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_18.TomRemoteLogOutput,
+    nativeType: $tom_core_kernel_19.TomRemoteLogOutput,
     name: 'TomRemoteLogOutput',
-    isAssignable: (v) => v is $tom_core_kernel_18.TomRemoteLogOutput,
+    isAssignable: (v) => v is $tom_core_kernel_19.TomRemoteLogOutput,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_18.TomRemoteLogOutput();
+        return $tom_core_kernel_19.TomRemoteLogOutput();
       },
     },
     methods: {
       'output': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_18.TomRemoteLogOutput>(target, 'TomRemoteLogOutput');
+        final t = D4.validateTarget<$tom_core_kernel_19.TomRemoteLogOutput>(target, 'TomRemoteLogOutput');
         D4.requireMinArgs(positional, 6, 'output');
         final loggerLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'loggerLevel', 'output');
         final logLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 1, 'logLevel', 'output');
@@ -6578,21 +7277,39 @@ BridgedClass _createTomRemoteLogOutputBridge() {
         return null;
       },
       'convertToString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_18.TomRemoteLogOutput>(target, 'TomRemoteLogOutput');
+        final t = D4.validateTarget<$tom_core_kernel_19.TomRemoteLogOutput>(target, 'TomRemoteLogOutput');
         D4.requireMinArgs(positional, 1, 'convertToString');
         final message = D4.getRequiredArg<Object>(positional, 0, 'message', 'convertToString');
         return t.convertToString(message);
       },
     },
     staticGetters: {
-      'globalSettingFallbackOutput': (visitor) => $tom_core_kernel_18.TomRemoteLogOutput.globalSettingFallbackOutput,
-      'remoteEndpoint': (visitor) => $tom_core_kernel_18.TomRemoteLogOutput.remoteEndpoint,
+      'globalSettingFallbackOutput': (visitor) => $tom_core_kernel_19.TomRemoteLogOutput.globalSettingFallbackOutput,
+      'remoteEndpoint': (visitor) => $tom_core_kernel_19.TomRemoteLogOutput.remoteEndpoint,
+      'globalSettingMaxSendRetries': (visitor) => $tom_core_kernel_19.TomRemoteLogOutput.globalSettingMaxSendRetries,
+      'globalSettingRetryBackoff': (visitor) => $tom_core_kernel_19.TomRemoteLogOutput.globalSettingRetryBackoff,
+      'globalSettingReplayQueueMaxSize': (visitor) => $tom_core_kernel_19.TomRemoteLogOutput.globalSettingReplayQueueMaxSize,
+      'globalSettingReplayStore': (visitor) => $tom_core_kernel_19.TomRemoteLogOutput.globalSettingReplayStore,
+      'replayQueueLength': (visitor) => $tom_core_kernel_19.TomRemoteLogOutput.replayQueueLength,
+    },
+    staticMethods: {
+      'clearReplayQueue': (visitor, positional, named, typeArgs) {
+        return $tom_core_kernel_19.TomRemoteLogOutput.clearReplayQueue();
+      },
     },
     staticSetters: {
       'globalSettingFallbackOutput': (visitor, value) => 
-        $tom_core_kernel_18.TomRemoteLogOutput.globalSettingFallbackOutput = D4.extractBridgedArg<$tom_basics_2.TomLogOutput>(value, 'globalSettingFallbackOutput'),
+        $tom_core_kernel_19.TomRemoteLogOutput.globalSettingFallbackOutput = D4.extractBridgedArg<$tom_basics_2.TomLogOutput>(value, 'globalSettingFallbackOutput'),
       'remoteEndpoint': (visitor, value) => 
-        $tom_core_kernel_18.TomRemoteLogOutput.remoteEndpoint = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerEndpoint<$tom_core_kernel_18.TomRemoteLogMessage, $tom_core_kernel_18.TomRemoteLogResult>>(value, 'remoteEndpoint'),
+        $tom_core_kernel_19.TomRemoteLogOutput.remoteEndpoint = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerEndpoint<$tom_core_kernel_19.TomRemoteLogMessage, $tom_core_kernel_19.TomRemoteLogResult>>(value, 'remoteEndpoint'),
+      'globalSettingMaxSendRetries': (visitor, value) => 
+        $tom_core_kernel_19.TomRemoteLogOutput.globalSettingMaxSendRetries = D4.extractBridgedArg<int>(value, 'globalSettingMaxSendRetries'),
+      'globalSettingRetryBackoff': (visitor, value) => 
+        $tom_core_kernel_19.TomRemoteLogOutput.globalSettingRetryBackoff = D4.extractBridgedArg<Duration>(value, 'globalSettingRetryBackoff'),
+      'globalSettingReplayQueueMaxSize': (visitor, value) => 
+        $tom_core_kernel_19.TomRemoteLogOutput.globalSettingReplayQueueMaxSize = D4.extractBridgedArg<int>(value, 'globalSettingReplayQueueMaxSize'),
+      'globalSettingReplayStore': (visitor, value) => 
+        $tom_core_kernel_19.TomRemoteLogOutput.globalSettingReplayStore = D4.extractBridgedArg<$tom_core_kernel_19.TomLogReplayStore>(value, 'globalSettingReplayStore'),
     },
     constructorSignatures: {
       '': 'TomRemoteLogOutput()',
@@ -6601,13 +7318,95 @@ BridgedClass _createTomRemoteLogOutputBridge() {
       'output': 'void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])',
       'convertToString': 'String convertToString(Object message)',
     },
+    staticMethodSignatures: {
+      'clearReplayQueue': 'void clearReplayQueue()',
+    },
     staticGetterSignatures: {
       'globalSettingFallbackOutput': 'TomLogOutput get globalSettingFallbackOutput',
       'remoteEndpoint': 'TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>? get remoteEndpoint',
+      'globalSettingMaxSendRetries': 'int get globalSettingMaxSendRetries',
+      'globalSettingRetryBackoff': 'Duration get globalSettingRetryBackoff',
+      'globalSettingReplayQueueMaxSize': 'int get globalSettingReplayQueueMaxSize',
+      'globalSettingReplayStore': 'TomLogReplayStore get globalSettingReplayStore',
+      'replayQueueLength': 'int get replayQueueLength',
     },
     staticSetterSignatures: {
       'globalSettingFallbackOutput': 'set globalSettingFallbackOutput(dynamic value)',
       'remoteEndpoint': 'set remoteEndpoint(dynamic value)',
+      'globalSettingMaxSendRetries': 'set globalSettingMaxSendRetries(dynamic value)',
+      'globalSettingRetryBackoff': 'set globalSettingRetryBackoff(dynamic value)',
+      'globalSettingReplayQueueMaxSize': 'set globalSettingReplayQueueMaxSize(dynamic value)',
+      'globalSettingReplayStore': 'set globalSettingReplayStore(dynamic value)',
+    },
+  );
+}
+
+// =============================================================================
+// TomFileLogReplayStore Bridge
+// =============================================================================
+
+BridgedClass _createTomFileLogReplayStoreBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_17.TomFileLogReplayStore,
+    name: 'TomFileLogReplayStore',
+    isAssignable: (v) => v is $tom_core_kernel_17.TomFileLogReplayStore,
+    hierarchyDepth: 1,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 1, 'TomFileLogReplayStore');
+        final path = D4.getRequiredArg<String>(positional, 0, 'path', 'TomFileLogReplayStore');
+        return $tom_core_kernel_17.TomFileLogReplayStore(path);
+      },
+    },
+    getters: {
+      'file': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore').file,
+      'length': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore').length,
+      'oldest': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore').oldest,
+    },
+    methods: {
+      'append': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore');
+        D4.requireMinArgs(positional, 1, 'append');
+        final message = D4.getRequiredArg<$tom_core_kernel_19.TomRemoteLogMessage>(positional, 0, 'message', 'append');
+        t.append(message);
+        return null;
+      },
+      'snapshot': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore');
+        return t.snapshot();
+      },
+      'removeOldest': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore');
+        t.removeOldest();
+        return null;
+      },
+      'trim': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore');
+        D4.requireMinArgs(positional, 1, 'trim');
+        final maxSize = D4.getRequiredArg<int>(positional, 0, 'maxSize', 'trim');
+        t.trim(maxSize);
+        return null;
+      },
+      'clear': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_17.TomFileLogReplayStore>(target, 'TomFileLogReplayStore');
+        t.clear();
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomFileLogReplayStore(String path)',
+    },
+    methodSignatures: {
+      'append': 'void append(TomRemoteLogMessage message)',
+      'snapshot': 'List<TomRemoteLogMessage> snapshot()',
+      'removeOldest': 'void removeOldest()',
+      'trim': 'void trim(int maxSize)',
+      'clear': 'void clear()',
+    },
+    getterSignatures: {
+      'file': 'File get file',
+      'length': 'int get length',
+      'oldest': 'TomRemoteLogMessage? get oldest',
     },
   );
 }
@@ -6618,28 +7417,28 @@ BridgedClass _createTomRemoteLogOutputBridge() {
 
 BridgedClass _createTomRemoteLogServerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_19.TomRemoteLogServer,
+    nativeType: $tom_core_kernel_20.TomRemoteLogServer,
     name: 'TomRemoteLogServer',
-    isAssignable: (v) => v is $tom_core_kernel_19.TomRemoteLogServer,
+    isAssignable: (v) => v is $tom_core_kernel_20.TomRemoteLogServer,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_19.TomRemoteLogServer();
+        return $tom_core_kernel_20.TomRemoteLogServer();
       },
     },
     methods: {
       'receive': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_19.TomRemoteLogServer>(target, 'TomRemoteLogServer');
+        final t = D4.validateTarget<$tom_core_kernel_20.TomRemoteLogServer>(target, 'TomRemoteLogServer');
         D4.requireMinArgs(positional, 1, 'receive');
-        final m = D4.getRequiredArg<$tom_core_kernel_18.TomRemoteLogMessage>(positional, 0, 'm', 'receive');
+        final m = D4.getRequiredArg<$tom_core_kernel_19.TomRemoteLogMessage>(positional, 0, 'm', 'receive');
         return t.receive(m);
       },
     },
     staticGetters: {
-      'localOutput': (visitor) => $tom_core_kernel_19.TomRemoteLogServer.localOutput,
+      'localOutput': (visitor) => $tom_core_kernel_20.TomRemoteLogServer.localOutput,
     },
     staticSetters: {
       'localOutput': (visitor, value) => 
-        $tom_core_kernel_19.TomRemoteLogServer.localOutput = D4.extractBridgedArg<$tom_basics_2.TomLogOutput>(value, 'localOutput'),
+        $tom_core_kernel_20.TomRemoteLogServer.localOutput = D4.extractBridgedArg<$tom_basics_2.TomLogOutput>(value, 'localOutput'),
     },
     constructorSignatures: {
       '': 'TomRemoteLogServer()',
@@ -6662,12 +7461,12 @@ BridgedClass _createTomRemoteLogServerBridge() {
 
 BridgedClass _createTomTextResourceProviderBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_23.TomTextResourceProvider,
+    nativeType: $tom_core_kernel_24.TomTextResourceProvider,
     name: 'TomTextResourceProvider',
-    isAssignable: (v) => v is $tom_core_kernel_23.TomTextResourceProvider,
+    isAssignable: (v) => v is $tom_core_kernel_24.TomTextResourceProvider,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_23.TomTextResourceProvider();
+        return $tom_core_kernel_24.TomTextResourceProvider();
       },
       'load': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomTextResourceProvider');
@@ -6675,7 +7474,7 @@ BridgedClass _createTomTextResourceProviderBridge() {
           throw ArgumentError('TomTextResourceProvider: Missing required argument "loader" at position 0');
         }
         final loaderRaw = positional[0];
-        return $tom_core_kernel_23.TomTextResourceProvider.load((() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function());
+        return $tom_core_kernel_24.TomTextResourceProvider.load((() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function());
       },
       'from': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomTextResourceProvider');
@@ -6683,69 +7482,69 @@ BridgedClass _createTomTextResourceProviderBridge() {
           throw ArgumentError('TomTextResourceProvider: Missing required argument "resources" at position 0');
         }
         final resources = D4.coerceMap<String, dynamic>(positional[0], 'resources');
-        return $tom_core_kernel_23.TomTextResourceProvider.from(resources);
+        return $tom_core_kernel_24.TomTextResourceProvider.from(resources);
       },
     },
     getters: {
-      'resources': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomTextResourceProvider>(target, 'TomTextResourceProvider').resources,
+      'resources': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomTextResourceProvider>(target, 'TomTextResourceProvider').resources,
     },
     setters: {
     },
     methods: {
       'exists': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomTextResourceProvider>(target, 'TomTextResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomTextResourceProvider>(target, 'TomTextResourceProvider');
         D4.requireMinArgs(positional, 1, 'exists');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'exists');
         return t.exists(s);
       },
       'existsObject': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomTextResourceProvider>(target, 'TomTextResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomTextResourceProvider>(target, 'TomTextResourceProvider');
         D4.requireMinArgs(positional, 1, 'existsObject');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'existsObject');
         return t.existsObject(s);
       },
       'getObject': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomTextResourceProvider>(target, 'TomTextResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomTextResourceProvider>(target, 'TomTextResourceProvider');
         D4.requireMinArgs(positional, 1, 'getObject');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'getObject');
         return t.getObject(s);
       },
       'getObjectOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomTextResourceProvider>(target, 'TomTextResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomTextResourceProvider>(target, 'TomTextResourceProvider');
         D4.requireMinArgs(positional, 1, 'getObjectOrNull');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'getObjectOrNull');
         return t.getObjectOrNull(s);
       },
       'getText': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomTextResourceProvider>(target, 'TomTextResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomTextResourceProvider>(target, 'TomTextResourceProvider');
         D4.requireMinArgs(positional, 1, 'getText');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'getText');
         return t.getText(s);
       },
       'getTextOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomTextResourceProvider>(target, 'TomTextResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomTextResourceProvider>(target, 'TomTextResourceProvider');
         D4.requireMinArgs(positional, 1, 'getTextOrNull');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'getTextOrNull');
         return t.getTextOrNull(s);
       },
     },
     staticGetters: {
-      'loader': (visitor) => $tom_core_kernel_23.TomTextResourceProvider.loader,
+      'loader': (visitor) => $tom_core_kernel_24.TomTextResourceProvider.loader,
     },
     staticMethods: {
       'setAppResourceProvider': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setAppResourceProvider');
-        final provider = D4.getRequiredArg<$tom_core_kernel_23.TomTextResourceProvider>(positional, 0, 'provider', 'setAppResourceProvider');
-        return $tom_core_kernel_23.TomTextResourceProvider.setAppResourceProvider(provider);
+        final provider = D4.getRequiredArg<$tom_core_kernel_24.TomTextResourceProvider>(positional, 0, 'provider', 'setAppResourceProvider');
+        return $tom_core_kernel_24.TomTextResourceProvider.setAppResourceProvider(provider);
       },
       'getAppResources': (visitor, positional, named, typeArgs) {
-        return $tom_core_kernel_23.TomTextResourceProvider.getAppResources();
+        return $tom_core_kernel_24.TomTextResourceProvider.getAppResources();
       },
     },
     staticSetters: {
       'loader': (visitor, value) {
         final loaderRaw = D4.extractBridgedArgOrNull<dynamic>(value, 'loader');
-        $tom_core_kernel_23.TomTextResourceProvider.loader = loaderRaw == null ? null : (() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function();
+        $tom_core_kernel_24.TomTextResourceProvider.loader = loaderRaw == null ? null : (() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function();
       },
     },
     constructorSignatures: {
@@ -6786,12 +7585,12 @@ BridgedClass _createTomTextResourceProviderBridge() {
 
 BridgedClass _createTomConfigResourceProviderBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_23.TomConfigResourceProvider,
+    nativeType: $tom_core_kernel_24.TomConfigResourceProvider,
     name: 'TomConfigResourceProvider',
-    isAssignable: (v) => v is $tom_core_kernel_23.TomConfigResourceProvider,
+    isAssignable: (v) => v is $tom_core_kernel_24.TomConfigResourceProvider,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_23.TomConfigResourceProvider();
+        return $tom_core_kernel_24.TomConfigResourceProvider();
       },
       'load': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomConfigResourceProvider');
@@ -6799,7 +7598,7 @@ BridgedClass _createTomConfigResourceProviderBridge() {
           throw ArgumentError('TomConfigResourceProvider: Missing required argument "loader" at position 0');
         }
         final loaderRaw = positional[0];
-        return $tom_core_kernel_23.TomConfigResourceProvider.load((() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function());
+        return $tom_core_kernel_24.TomConfigResourceProvider.load((() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function());
       },
       'from': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomConfigResourceProvider');
@@ -6807,45 +7606,45 @@ BridgedClass _createTomConfigResourceProviderBridge() {
           throw ArgumentError('TomConfigResourceProvider: Missing required argument "resources" at position 0');
         }
         final resources = D4.coerceMap<String, dynamic>(positional[0], 'resources');
-        return $tom_core_kernel_23.TomConfigResourceProvider.from(resources);
+        return $tom_core_kernel_24.TomConfigResourceProvider.from(resources);
       },
     },
     getters: {
-      'resources': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomConfigResourceProvider>(target, 'TomConfigResourceProvider').resources,
+      'resources': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomConfigResourceProvider>(target, 'TomConfigResourceProvider').resources,
     },
     setters: {
     },
     methods: {
       'exists': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomConfigResourceProvider>(target, 'TomConfigResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomConfigResourceProvider>(target, 'TomConfigResourceProvider');
         D4.requireMinArgs(positional, 1, 'exists');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'exists');
         return t.exists(s);
       },
       'getText': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_23.TomConfigResourceProvider>(target, 'TomConfigResourceProvider');
+        final t = D4.validateTarget<$tom_core_kernel_24.TomConfigResourceProvider>(target, 'TomConfigResourceProvider');
         D4.requireMinArgs(positional, 1, 'getText');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'getText');
         return t.getText(s);
       },
     },
     staticGetters: {
-      'loader': (visitor) => $tom_core_kernel_23.TomConfigResourceProvider.loader,
+      'loader': (visitor) => $tom_core_kernel_24.TomConfigResourceProvider.loader,
     },
     staticMethods: {
       'setAppConfigProvider': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setAppConfigProvider');
-        final provider = D4.getRequiredArg<$tom_core_kernel_23.TomConfigResourceProvider>(positional, 0, 'provider', 'setAppConfigProvider');
-        return $tom_core_kernel_23.TomConfigResourceProvider.setAppConfigProvider(provider);
+        final provider = D4.getRequiredArg<$tom_core_kernel_24.TomConfigResourceProvider>(positional, 0, 'provider', 'setAppConfigProvider');
+        return $tom_core_kernel_24.TomConfigResourceProvider.setAppConfigProvider(provider);
       },
       'getAppConfig': (visitor, positional, named, typeArgs) {
-        return $tom_core_kernel_23.TomConfigResourceProvider.getAppConfig();
+        return $tom_core_kernel_24.TomConfigResourceProvider.getAppConfig();
       },
     },
     staticSetters: {
       'loader': (visitor, value) {
         final loaderRaw = D4.extractBridgedArgOrNull<dynamic>(value, 'loader');
-        $tom_core_kernel_23.TomConfigResourceProvider.loader = loaderRaw == null ? null : (() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function();
+        $tom_core_kernel_24.TomConfigResourceProvider.loader = loaderRaw == null ? null : (() { return D4.extractBridgedArg<Map<String, dynamic>>(D4.callInterpreterCallback(visitor!, loaderRaw, []), 'callback', visitor) as Map<String, dynamic>; }) as Map<String, dynamic> Function();
       },
     },
     constructorSignatures: {
@@ -6882,19 +7681,19 @@ BridgedClass _createTomConfigResourceProviderBridge() {
 
 BridgedClass _createTomScopeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_24.TomScope,
+    nativeType: $tom_core_kernel_25.TomScope,
     name: 'TomScope',
-    isAssignable: (v) => v is $tom_core_kernel_24.TomScope,
+    isAssignable: (v) => v is $tom_core_kernel_25.TomScope,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomScope>(target, 'TomScope').id,
-      'parent': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomScope>(target, 'TomScope').parent,
+      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomScope>(target, 'TomScope').id,
+      'parent': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomScope>(target, 'TomScope').parent,
     },
     methods: {
       'runInScope': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScope>(target, 'TomScope');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScope>(target, 'TomScope');
         D4.requireMinArgs(positional, 1, 'runInScope');
         if (positional.isEmpty) {
           throw ArgumentError('runInScope: Missing required argument "body" at position 0');
@@ -6903,13 +7702,13 @@ BridgedClass _createTomScopeBridge() {
         return t.runInScope<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'getScopePath': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScope>(target, 'TomScope');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScope>(target, 'TomScope');
         return t.getScopePath();
       },
     },
     staticGetters: {
-      'defaultScope': (visitor) => $tom_core_kernel_24.TomScope.defaultScope,
-      'current': (visitor) => $tom_core_kernel_24.TomScope.current,
+      'defaultScope': (visitor) => $tom_core_kernel_25.TomScope.defaultScope,
+      'current': (visitor) => $tom_core_kernel_25.TomScope.current,
     },
     staticMethods: {
       'withScope': (visitor, positional, named, typeArgs) {
@@ -6920,17 +7719,17 @@ BridgedClass _createTomScopeBridge() {
         }
         final bodyRaw = positional[1];
         final body = () { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); };
-        return $tom_core_kernel_24.TomScope.withScope(scope, body);
+        return $tom_core_kernel_25.TomScope.withScope(scope, body);
       },
       'buildScopePath': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'buildScopePath');
-        final scope = D4.getRequiredArg<$tom_core_kernel_24.TomScope>(positional, 0, 'scope', 'buildScopePath');
-        return $tom_core_kernel_24.TomScope.buildScopePath(scope);
+        final scope = D4.getRequiredArg<$tom_core_kernel_25.TomScope>(positional, 0, 'scope', 'buildScopePath');
+        return $tom_core_kernel_25.TomScope.buildScopePath(scope);
       },
     },
     staticSetters: {
       'defaultScope': (visitor, value) => 
-        $tom_core_kernel_24.TomScope.defaultScope = D4.extractBridgedArg<$tom_core_kernel_24.TomScope>(value, 'defaultScope'),
+        $tom_core_kernel_25.TomScope.defaultScope = D4.extractBridgedArg<$tom_core_kernel_25.TomScope>(value, 'defaultScope'),
     },
     methodSignatures: {
       'runInScope': 'T runInScope(T Function() body)',
@@ -6960,41 +7759,41 @@ BridgedClass _createTomScopeBridge() {
 
 BridgedClass _createTomScopeBaseBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_24.TomScopeBase,
+    nativeType: $tom_core_kernel_25.TomScopeBase,
     name: 'TomScopeBase',
-    isAssignable: (v) => v is $tom_core_kernel_24.TomScopeBase,
+    isAssignable: (v) => v is $tom_core_kernel_25.TomScopeBase,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         final scopeId = D4.getRequiredNamedArg<String>(named, 'scopeId', 'TomScopeBase');
-        final parentScope = D4.getOptionalNamedArg<$tom_core_kernel_24.TomScope?>(named, 'parentScope');
-        return $tom_core_kernel_24.TomScopeBase(scopeId: scopeId, parentScope: parentScope);
+        final parentScope = D4.getOptionalNamedArg<$tom_core_kernel_25.TomScope?>(named, 'parentScope');
+        return $tom_core_kernel_25.TomScopeBase(scopeId: scopeId, parentScope: parentScope);
       },
     },
     getters: {
-      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomScopeBase>(target, 'TomScopeBase').id,
-      'parent': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomScopeBase>(target, 'TomScopeBase').parent,
+      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomScopeBase>(target, 'TomScopeBase').id,
+      'parent': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomScopeBase>(target, 'TomScopeBase').parent,
     },
     setters: {
       'id': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_24.TomScopeBase>(target, 'TomScopeBase').id = D4.extractBridgedArg<String>(value, 'id'),
+        D4.validateTarget<$tom_core_kernel_25.TomScopeBase>(target, 'TomScopeBase').id = D4.extractBridgedArg<String>(value, 'id'),
       'parent': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_24.TomScopeBase>(target, 'TomScopeBase').parent = D4.extractBridgedArgOrNull<$tom_core_kernel_24.TomScope>(value, 'parent'),
+        D4.validateTarget<$tom_core_kernel_25.TomScopeBase>(target, 'TomScopeBase').parent = D4.extractBridgedArgOrNull<$tom_core_kernel_25.TomScope>(value, 'parent'),
     },
     methods: {
       'initScope': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScopeBase>(target, 'TomScopeBase');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScopeBase>(target, 'TomScopeBase');
         final scopeId = D4.getRequiredNamedArg<String>(named, 'scopeId', 'initScope');
-        final parentScope = D4.getOptionalNamedArg<$tom_core_kernel_24.TomScope?>(named, 'parentScope');
+        final parentScope = D4.getOptionalNamedArg<$tom_core_kernel_25.TomScope?>(named, 'parentScope');
         t.initScope(scopeId: scopeId, parentScope: parentScope);
         return null;
       },
       'getScopePath': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScopeBase>(target, 'TomScopeBase');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScopeBase>(target, 'TomScopeBase');
         return t.getScopePath();
       },
       'runInScope': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScopeBase>(target, 'TomScopeBase');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScopeBase>(target, 'TomScopeBase');
         D4.requireMinArgs(positional, 1, 'runInScope');
         if (positional.isEmpty) {
           throw ArgumentError('runInScope: Missing required argument "body" at position 0');
@@ -7028,18 +7827,18 @@ BridgedClass _createTomScopeBaseBridge() {
 
 BridgedClass _createInScopeBuilderBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_24.InScopeBuilder,
+    nativeType: $tom_core_kernel_25.InScopeBuilder,
     name: 'InScopeBuilder',
-    isAssignable: (v) => v is $tom_core_kernel_24.InScopeBuilder,
+    isAssignable: (v) => v is $tom_core_kernel_25.InScopeBuilder,
     constructors: {
       '': (visitor, positional, named) {
-        final scope = D4.getOptionalNamedArg<$tom_core_kernel_24.TomScope?>(named, 'scope');
-        return $tom_core_kernel_24.InScopeBuilder(scope: scope);
+        final scope = D4.getOptionalNamedArg<$tom_core_kernel_25.TomScope?>(named, 'scope');
+        return $tom_core_kernel_25.InScopeBuilder(scope: scope);
       },
     },
     methods: {
       'wrap0': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap0');
         if (positional.isEmpty) {
           throw ArgumentError('wrap0: Missing required argument "fn" at position 0');
@@ -7048,7 +7847,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap0<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [])); });
       },
       'wrap1': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap1');
         if (positional.isEmpty) {
           throw ArgumentError('wrap1: Missing required argument "fn" at position 0');
@@ -7057,7 +7856,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap1<Object?, Object?>((dynamic p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0])); });
       },
       'wrap2': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap2');
         if (positional.isEmpty) {
           throw ArgumentError('wrap2: Missing required argument "fn" at position 0');
@@ -7066,7 +7865,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap2<Object?, Object?, Object?>((dynamic p0, dynamic p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1])); });
       },
       'wrap3': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap3');
         if (positional.isEmpty) {
           throw ArgumentError('wrap3: Missing required argument "fn" at position 0');
@@ -7075,7 +7874,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap3<Object?, Object?, Object?, Object?>((dynamic p0, dynamic p1, dynamic p2) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2])); });
       },
       'wrap4': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap4');
         if (positional.isEmpty) {
           throw ArgumentError('wrap4: Missing required argument "fn" at position 0');
@@ -7084,7 +7883,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap4<Object?, Object?, Object?, Object?, Object?>((dynamic p0, dynamic p1, dynamic p2, dynamic p3) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3])); });
       },
       'wrap5': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap5');
         if (positional.isEmpty) {
           throw ArgumentError('wrap5: Missing required argument "fn" at position 0');
@@ -7093,7 +7892,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap5<Object?, Object?, Object?, Object?, Object?, Object?>((dynamic p0, dynamic p1, dynamic p2, dynamic p3, dynamic p4) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3, p4])); });
       },
       'wrap0n': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap0n');
         if (positional.isEmpty) {
           throw ArgumentError('wrap0n: Missing required argument "fn" at position 0');
@@ -7102,7 +7901,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap0n<Object?>(fnRaw == null ? null : () { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [])); });
       },
       'wrap1n': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap1n');
         if (positional.isEmpty) {
           throw ArgumentError('wrap1n: Missing required argument "fn" at position 0');
@@ -7111,7 +7910,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap1n<Object?, Object?>(fnRaw == null ? null : (dynamic p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0])); });
       },
       'wrap2n': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap2n');
         if (positional.isEmpty) {
           throw ArgumentError('wrap2n: Missing required argument "fn" at position 0');
@@ -7120,7 +7919,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap2n<Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1])); });
       },
       'wrap3n': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap3n');
         if (positional.isEmpty) {
           throw ArgumentError('wrap3n: Missing required argument "fn" at position 0');
@@ -7129,7 +7928,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap3n<Object?, Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2])); });
       },
       'wrap4n': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap4n');
         if (positional.isEmpty) {
           throw ArgumentError('wrap4n: Missing required argument "fn" at position 0');
@@ -7138,7 +7937,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap4n<Object?, Object?, Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2, dynamic p3) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3])); });
       },
       'wrap5n': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrap5n');
         if (positional.isEmpty) {
           throw ArgumentError('wrap5n: Missing required argument "fn" at position 0');
@@ -7147,7 +7946,7 @@ BridgedClass _createInScopeBuilderBridge() {
         return t.wrap5n<Object?, Object?, Object?, Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2, dynamic p3, dynamic p4) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3, p4])); });
       },
       'wrapCounter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.InScopeBuilder>(target, 'InScopeBuilder');
+        final t = D4.validateTarget<$tom_core_kernel_25.InScopeBuilder>(target, 'InScopeBuilder');
         D4.requireMinArgs(positional, 1, 'wrapCounter');
         if (positional.isEmpty) {
           throw ArgumentError('wrapCounter: Missing required argument "fn" at position 0');
@@ -7183,38 +7982,38 @@ BridgedClass _createInScopeBuilderBridge() {
 
 BridgedClass _createTomScopeMixinBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_24.TomScopeMixin,
+    nativeType: $tom_core_kernel_25.TomScopeMixin,
     name: 'TomScopeMixin',
-    isAssignable: (v) => v is $tom_core_kernel_24.TomScopeMixin,
+    isAssignable: (v) => v is $tom_core_kernel_25.TomScopeMixin,
     hierarchyDepth: 1,
     canBeUsedAsMixin: true,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomScopeMixin>(target, 'TomScopeMixin').id,
-      'parent': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomScopeMixin>(target, 'TomScopeMixin').parent,
+      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomScopeMixin>(target, 'TomScopeMixin').id,
+      'parent': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomScopeMixin>(target, 'TomScopeMixin').parent,
     },
     setters: {
       'id': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_24.TomScopeMixin>(target, 'TomScopeMixin').id = D4.extractBridgedArg<String>(value, 'id'),
+        D4.validateTarget<$tom_core_kernel_25.TomScopeMixin>(target, 'TomScopeMixin').id = D4.extractBridgedArg<String>(value, 'id'),
       'parent': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_24.TomScopeMixin>(target, 'TomScopeMixin').parent = D4.extractBridgedArgOrNull<$tom_core_kernel_24.TomScope>(value, 'parent'),
+        D4.validateTarget<$tom_core_kernel_25.TomScopeMixin>(target, 'TomScopeMixin').parent = D4.extractBridgedArgOrNull<$tom_core_kernel_25.TomScope>(value, 'parent'),
     },
     methods: {
       'initScope': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScopeMixin>(target, 'TomScopeMixin');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScopeMixin>(target, 'TomScopeMixin');
         final scopeId = D4.getRequiredNamedArg<String>(named, 'scopeId', 'initScope');
-        final parentScope = D4.getOptionalNamedArg<$tom_core_kernel_24.TomScope?>(named, 'parentScope');
+        final parentScope = D4.getOptionalNamedArg<$tom_core_kernel_25.TomScope?>(named, 'parentScope');
         t.initScope(scopeId: scopeId, parentScope: parentScope);
         return null;
       },
       'getScopePath': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScopeMixin>(target, 'TomScopeMixin');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScopeMixin>(target, 'TomScopeMixin');
         return t.getScopePath();
       },
       'runInScope': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_24.TomScopeMixin>(target, 'TomScopeMixin');
+        final t = D4.validateTarget<$tom_core_kernel_25.TomScopeMixin>(target, 'TomScopeMixin');
         D4.requireMinArgs(positional, 1, 'runInScope');
         if (positional.isEmpty) {
           throw ArgumentError('runInScope: Missing required argument "body" at position 0');
@@ -7245,22 +8044,22 @@ BridgedClass _createTomScopeMixinBridge() {
 
 BridgedClass _createTomResourceKeyProtectionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomResourceKeyProtection,
+    nativeType: $tom_core_kernel_26.TomResourceKeyProtection,
     name: 'TomResourceKeyProtection',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomResourceKeyProtection,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomResourceKeyProtection,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_25.TomResourceKeyProtection();
+        return $tom_core_kernel_26.TomResourceKeyProtection();
       },
     },
     staticGetters: {
-      'globalSettingProtectionDefault': (visitor) => $tom_core_kernel_25.TomResourceKeyProtection.globalSettingProtectionDefault,
-      'globalSettingUseAutomaticEndpointProtection': (visitor) => $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection,
-      'globalSettingUseAutomaticJsonProtection': (visitor) => $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection,
-      'globalSettingUseAutomaticDatabaseProtection': (visitor) => $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
-      'globalSettingUseAutomaticFormFieldProtection': (visitor) => $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticFormFieldProtection,
-      'globalSettingUseAutomaticActionProtection': (visitor) => $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticActionProtection,
-      'globalSettingUseAutomaticActionProtectionForDisabling': (visitor) => $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticActionProtectionForDisabling,
+      'globalSettingProtectionDefault': (visitor) => $tom_core_kernel_26.TomResourceKeyProtection.globalSettingProtectionDefault,
+      'globalSettingUseAutomaticEndpointProtection': (visitor) => $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection,
+      'globalSettingUseAutomaticJsonProtection': (visitor) => $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection,
+      'globalSettingUseAutomaticDatabaseProtection': (visitor) => $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
+      'globalSettingUseAutomaticFormFieldProtection': (visitor) => $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticFormFieldProtection,
+      'globalSettingUseAutomaticActionProtection': (visitor) => $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticActionProtection,
+      'globalSettingUseAutomaticActionProtectionForDisabling': (visitor) => $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticActionProtectionForDisabling,
     },
     staticMethods: {
       'protect': (visitor, positional, named, typeArgs) {
@@ -7268,29 +8067,29 @@ BridgedClass _createTomResourceKeyProtectionBridge() {
         final data = D4.getRequiredArg<dynamic>(positional, 0, 'data', 'protect');
         final fallback = D4.getRequiredArg<dynamic>(positional, 1, 'fallback', 'protect');
         final resourceKey = D4.getRequiredArg<String>(positional, 2, 'resourceKey', 'protect');
-        return $tom_core_kernel_25.TomResourceKeyProtection.protect(data, fallback, resourceKey);
+        return $tom_core_kernel_26.TomResourceKeyProtection.protect(data, fallback, resourceKey);
       },
       'isProtected': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isProtected');
         final resourceKey = D4.getRequiredArg<String>(positional, 0, 'resourceKey', 'isProtected');
-        return $tom_core_kernel_25.TomResourceKeyProtection.isProtected(resourceKey);
+        return $tom_core_kernel_26.TomResourceKeyProtection.isProtected(resourceKey);
       },
     },
     staticSetters: {
       'globalSettingProtectionDefault': (visitor, value) => 
-        $tom_core_kernel_25.TomResourceKeyProtection.globalSettingProtectionDefault = D4.extractBridgedArg<bool>(value, 'globalSettingProtectionDefault'),
+        $tom_core_kernel_26.TomResourceKeyProtection.globalSettingProtectionDefault = D4.extractBridgedArg<bool>(value, 'globalSettingProtectionDefault'),
       'globalSettingUseAutomaticEndpointProtection': (visitor, value) => 
-        $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticEndpointProtection'),
+        $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticEndpointProtection'),
       'globalSettingUseAutomaticJsonProtection': (visitor, value) => 
-        $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticJsonProtection'),
+        $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticJsonProtection'),
       'globalSettingUseAutomaticDatabaseProtection': (visitor, value) => 
-        $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticDatabaseProtection'),
+        $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticDatabaseProtection'),
       'globalSettingUseAutomaticFormFieldProtection': (visitor, value) => 
-        $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticFormFieldProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticFormFieldProtection'),
+        $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticFormFieldProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticFormFieldProtection'),
       'globalSettingUseAutomaticActionProtection': (visitor, value) => 
-        $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticActionProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticActionProtection'),
+        $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticActionProtection = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticActionProtection'),
       'globalSettingUseAutomaticActionProtectionForDisabling': (visitor, value) => 
-        $tom_core_kernel_25.TomResourceKeyProtection.globalSettingUseAutomaticActionProtectionForDisabling = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticActionProtectionForDisabling'),
+        $tom_core_kernel_26.TomResourceKeyProtection.globalSettingUseAutomaticActionProtectionForDisabling = D4.extractBridgedArg<bool>(value, 'globalSettingUseAutomaticActionProtectionForDisabling'),
     },
     constructorSignatures: {
       '': 'TomResourceKeyProtection()',
@@ -7326,23 +8125,23 @@ BridgedClass _createTomResourceKeyProtectionBridge() {
 
 BridgedClass _createTomAccessControlBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomAccessControl,
+    nativeType: $tom_core_kernel_26.TomAccessControl,
     name: 'TomAccessControl',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomAccessControl,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomAccessControl,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomAccessControl>(target, 'TomAccessControl');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomAccessControl>(target, 'TomAccessControl');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomAccessControl>(target, 'TomAccessControl');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomAccessControl>(target, 'TomAccessControl');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7359,34 +8158,34 @@ BridgedClass _createTomAccessControlBridge() {
 
 BridgedClass _createTomGradedAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomGradedAccess,
+    nativeType: $tom_core_kernel_26.TomGradedAccess,
     name: 'TomGradedAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomGradedAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomGradedAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        final full = D4.getRequiredNamedArg<$tom_core_kernel_25.TomAccessControl>(named, 'full', 'TomGradedAccess');
-        final read = D4.getOptionalNamedArg<$tom_core_kernel_25.TomAccessControl?>(named, 'read');
-        final disabled = D4.getOptionalNamedArg<$tom_core_kernel_25.TomAccessControl?>(named, 'disabled');
-        return $tom_core_kernel_25.TomGradedAccess(full: full, read: read, disabled: disabled);
+        final full = D4.getRequiredNamedArg<$tom_core_kernel_26.TomAccessControl>(named, 'full', 'TomGradedAccess');
+        final read = D4.getOptionalNamedArg<$tom_core_kernel_26.TomAccessControl?>(named, 'read');
+        final disabled = D4.getOptionalNamedArg<$tom_core_kernel_26.TomAccessControl?>(named, 'disabled');
+        return $tom_core_kernel_26.TomGradedAccess(full: full, read: read, disabled: disabled);
       },
     },
     getters: {
-      'full': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomGradedAccess>(target, 'TomGradedAccess').full,
-      'read': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomGradedAccess>(target, 'TomGradedAccess').read,
-      'disabled': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomGradedAccess>(target, 'TomGradedAccess').disabled,
+      'full': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomGradedAccess>(target, 'TomGradedAccess').full,
+      'read': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomGradedAccess>(target, 'TomGradedAccess').read,
+      'disabled': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomGradedAccess>(target, 'TomGradedAccess').disabled,
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomGradedAccess>(target, 'TomGradedAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomGradedAccess>(target, 'TomGradedAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomGradedAccess>(target, 'TomGradedAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomGradedAccess>(target, 'TomGradedAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7411,26 +8210,26 @@ BridgedClass _createTomGradedAccessBridge() {
 
 BridgedClass _createTomNoAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomNoAccess,
+    nativeType: $tom_core_kernel_26.TomNoAccess,
     name: 'TomNoAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomNoAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomNoAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_25.TomNoAccess();
+        return $tom_core_kernel_26.TomNoAccess();
       },
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomNoAccess>(target, 'TomNoAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomNoAccess>(target, 'TomNoAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomNoAccess>(target, 'TomNoAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomNoAccess>(target, 'TomNoAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7450,26 +8249,26 @@ BridgedClass _createTomNoAccessBridge() {
 
 BridgedClass _createTomPublicAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomPublicAccess,
+    nativeType: $tom_core_kernel_26.TomPublicAccess,
     name: 'TomPublicAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomPublicAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomPublicAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_25.TomPublicAccess();
+        return $tom_core_kernel_26.TomPublicAccess();
       },
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomPublicAccess>(target, 'TomPublicAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomPublicAccess>(target, 'TomPublicAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomPublicAccess>(target, 'TomPublicAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomPublicAccess>(target, 'TomPublicAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7489,26 +8288,26 @@ BridgedClass _createTomPublicAccessBridge() {
 
 BridgedClass _createTomAuthenticatedAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomAuthenticatedAccess,
+    nativeType: $tom_core_kernel_26.TomAuthenticatedAccess,
     name: 'TomAuthenticatedAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomAuthenticatedAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomAuthenticatedAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_25.TomAuthenticatedAccess();
+        return $tom_core_kernel_26.TomAuthenticatedAccess();
       },
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomAuthenticatedAccess>(target, 'TomAuthenticatedAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomAuthenticatedAccess>(target, 'TomAuthenticatedAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomAuthenticatedAccess>(target, 'TomAuthenticatedAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomAuthenticatedAccess>(target, 'TomAuthenticatedAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7528,26 +8327,26 @@ BridgedClass _createTomAuthenticatedAccessBridge() {
 
 BridgedClass _createTomGuestAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomGuestAccess,
+    nativeType: $tom_core_kernel_26.TomGuestAccess,
     name: 'TomGuestAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomGuestAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomGuestAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_25.TomGuestAccess();
+        return $tom_core_kernel_26.TomGuestAccess();
       },
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomGuestAccess>(target, 'TomGuestAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomGuestAccess>(target, 'TomGuestAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomGuestAccess>(target, 'TomGuestAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomGuestAccess>(target, 'TomGuestAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7567,36 +8366,36 @@ BridgedClass _createTomGuestAccessBridge() {
 
 BridgedClass _createTomCustomAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomCustomAccess,
+    nativeType: $tom_core_kernel_26.TomCustomAccess,
     name: 'TomCustomAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomCustomAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomCustomAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final handler = D4.getRequiredNamedArg<String>(named, 'handler', 'TomCustomAccess');
         final resourceId = D4.getRequiredNamedArg<String>(named, 'resourceId', 'TomCustomAccess');
-        return $tom_core_kernel_25.TomCustomAccess(handler: handler, resourceId: resourceId);
+        return $tom_core_kernel_26.TomCustomAccess(handler: handler, resourceId: resourceId);
       },
     },
     getters: {
-      'handler': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomCustomAccess>(target, 'TomCustomAccess').handler,
-      'resourceId': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomCustomAccess>(target, 'TomCustomAccess').resourceId,
+      'handler': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomCustomAccess>(target, 'TomCustomAccess').handler,
+      'resourceId': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomCustomAccess>(target, 'TomCustomAccess').resourceId,
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomCustomAccess>(target, 'TomCustomAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomCustomAccess>(target, 'TomCustomAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomCustomAccess>(target, 'TomCustomAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomCustomAccess>(target, 'TomCustomAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
       'verifyHandler': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomCustomAccess>(target, 'TomCustomAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomCustomAccess>(target, 'TomCustomAccess');
         return t.verifyHandler();
       },
     },
@@ -7608,18 +8407,18 @@ BridgedClass _createTomCustomAccessBridge() {
           throw ArgumentError('registerHandler: Missing required argument "handler" at position 1');
         }
         final handlerRaw = positional[1];
-        final handler = (($tom_core_kernel_30.TomPrincipal? p0, String p1) { return D4.callInterpreterCallback(visitor!, handlerRaw, [p0, p1]) as bool; }) as bool Function($tom_core_kernel_30.TomPrincipal?, String);
-        return $tom_core_kernel_25.TomCustomAccess.registerHandler(name, handler);
+        final handler = (($tom_core_kernel_31.TomPrincipal? p0, String p1) { return D4.callInterpreterCallback(visitor!, handlerRaw, [p0, p1]) as bool; }) as bool Function($tom_core_kernel_31.TomPrincipal?, String);
+        return $tom_core_kernel_26.TomCustomAccess.registerHandler(name, handler);
       },
       'getHandler': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'getHandler');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getHandler');
-        return $tom_core_kernel_25.TomCustomAccess.getHandler(name);
+        return $tom_core_kernel_26.TomCustomAccess.getHandler(name);
       },
       'handlerExists': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'handlerExists');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'handlerExists');
-        return $tom_core_kernel_25.TomCustomAccess.handlerExists(name);
+        return $tom_core_kernel_26.TomCustomAccess.handlerExists(name);
       },
     },
     constructorSignatures: {
@@ -7648,9 +8447,9 @@ BridgedClass _createTomCustomAccessBridge() {
 
 BridgedClass _createTomEntitlementAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomEntitlementAccess,
+    nativeType: $tom_core_kernel_26.TomEntitlementAccess,
     name: 'TomEntitlementAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomEntitlementAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomEntitlementAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -7659,23 +8458,23 @@ BridgedClass _createTomEntitlementAccessBridge() {
           throw ArgumentError('TomEntitlementAccess: Missing required argument "patterns" at position 0');
         }
         final patterns = D4.coerceList<String>(positional[0], 'patterns');
-        return $tom_core_kernel_25.TomEntitlementAccess(patterns);
+        return $tom_core_kernel_26.TomEntitlementAccess(patterns);
       },
     },
     getters: {
-      'patterns': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomEntitlementAccess>(target, 'TomEntitlementAccess').patterns,
+      'patterns': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomEntitlementAccess>(target, 'TomEntitlementAccess').patterns,
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomEntitlementAccess>(target, 'TomEntitlementAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomEntitlementAccess>(target, 'TomEntitlementAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomEntitlementAccess>(target, 'TomEntitlementAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomEntitlementAccess>(target, 'TomEntitlementAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7698,9 +8497,9 @@ BridgedClass _createTomEntitlementAccessBridge() {
 
 BridgedClass _createTomRoleAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomRoleAccess,
+    nativeType: $tom_core_kernel_26.TomRoleAccess,
     name: 'TomRoleAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomRoleAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomRoleAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -7709,23 +8508,23 @@ BridgedClass _createTomRoleAccessBridge() {
           throw ArgumentError('TomRoleAccess: Missing required argument "roles" at position 0');
         }
         final roles = D4.coerceList<String>(positional[0], 'roles');
-        return $tom_core_kernel_25.TomRoleAccess(roles);
+        return $tom_core_kernel_26.TomRoleAccess(roles);
       },
     },
     getters: {
-      'roles': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomRoleAccess>(target, 'TomRoleAccess').roles,
+      'roles': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomRoleAccess>(target, 'TomRoleAccess').roles,
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomRoleAccess>(target, 'TomRoleAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomRoleAccess>(target, 'TomRoleAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomRoleAccess>(target, 'TomRoleAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomRoleAccess>(target, 'TomRoleAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7748,9 +8547,9 @@ BridgedClass _createTomRoleAccessBridge() {
 
 BridgedClass _createTomGroupAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomGroupAccess,
+    nativeType: $tom_core_kernel_26.TomGroupAccess,
     name: 'TomGroupAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomGroupAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomGroupAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -7759,23 +8558,23 @@ BridgedClass _createTomGroupAccessBridge() {
           throw ArgumentError('TomGroupAccess: Missing required argument "groups" at position 0');
         }
         final groups = D4.coerceList<String>(positional[0], 'groups');
-        return $tom_core_kernel_25.TomGroupAccess(groups);
+        return $tom_core_kernel_26.TomGroupAccess(groups);
       },
     },
     getters: {
-      'groups': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomGroupAccess>(target, 'TomGroupAccess').groups,
+      'groups': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomGroupAccess>(target, 'TomGroupAccess').groups,
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomGroupAccess>(target, 'TomGroupAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomGroupAccess>(target, 'TomGroupAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomGroupAccess>(target, 'TomGroupAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomGroupAccess>(target, 'TomGroupAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7798,31 +8597,31 @@ BridgedClass _createTomGroupAccessBridge() {
 
 BridgedClass _createTomResourceKeyAccessBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_25.TomResourceKeyAccess,
+    nativeType: $tom_core_kernel_26.TomResourceKeyAccess,
     name: 'TomResourceKeyAccess',
-    isAssignable: (v) => v is $tom_core_kernel_25.TomResourceKeyAccess,
+    isAssignable: (v) => v is $tom_core_kernel_26.TomResourceKeyAccess,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomResourceKeyAccess');
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomResourceKeyAccess');
-        return $tom_core_kernel_25.TomResourceKeyAccess(key);
+        return $tom_core_kernel_26.TomResourceKeyAccess(key);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_25.TomResourceKeyAccess>(target, 'TomResourceKeyAccess').key,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomResourceKeyAccess>(target, 'TomResourceKeyAccess').key,
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomResourceKeyAccess>(target, 'TomResourceKeyAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomResourceKeyAccess>(target, 'TomResourceKeyAccess');
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
       'resolveAuthState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_25.TomResourceKeyAccess>(target, 'TomResourceKeyAccess');
+        final t = D4.validateTarget<$tom_core_kernel_26.TomResourceKeyAccess>(target, 'TomResourceKeyAccess');
         D4.requireMinArgs(positional, 1, 'resolveAuthState');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
         return t.resolveAuthState(principal);
       },
     },
@@ -7845,44 +8644,44 @@ BridgedClass _createTomResourceKeyAccessBridge() {
 
 BridgedClass _createTomAuthenticationMessageBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_26.TomAuthenticationMessage,
+    nativeType: $tom_core_kernel_27.TomAuthenticationMessage,
     name: 'TomAuthenticationMessage',
-    isAssignable: (v) => v is $tom_core_kernel_26.TomAuthenticationMessage,
+    isAssignable: (v) => v is $tom_core_kernel_27.TomAuthenticationMessage,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_26.TomAuthenticationMessage();
+        return $tom_core_kernel_27.TomAuthenticationMessage();
       },
     },
     getters: {
-      'client': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').client,
-      'userName': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').userName,
-      'password': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').password,
-      'application': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').application,
-      'process': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').process,
-      'organization': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').organization,
-      'clientLanguage': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientLanguage,
-      'clientCountry': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientCountry,
-      'clientTimezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientTimezone,
+      'client': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').client,
+      'userName': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').userName,
+      'password': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').password,
+      'application': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').application,
+      'process': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').process,
+      'organization': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').organization,
+      'clientLanguage': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientLanguage,
+      'clientCountry': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientCountry,
+      'clientTimezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientTimezone,
     },
     setters: {
       'client': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').client = D4.extractBridgedArg<String>(value, 'client'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').client = D4.extractBridgedArg<String>(value, 'client'),
       'userName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').userName = D4.extractBridgedArg<String>(value, 'userName'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').userName = D4.extractBridgedArg<String>(value, 'userName'),
       'password': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').password = D4.extractBridgedArg<String>(value, 'password'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').password = D4.extractBridgedArg<String>(value, 'password'),
       'application': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').application = D4.extractBridgedArg<String>(value, 'application'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').application = D4.extractBridgedArg<String>(value, 'application'),
       'process': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').process = D4.extractBridgedArg<String>(value, 'process'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').process = D4.extractBridgedArg<String>(value, 'process'),
       'organization': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').organization = D4.extractBridgedArg<String>(value, 'organization'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').organization = D4.extractBridgedArg<String>(value, 'organization'),
       'clientLanguage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientLanguage = D4.extractBridgedArg<String>(value, 'clientLanguage'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientLanguage = D4.extractBridgedArg<String>(value, 'clientLanguage'),
       'clientCountry': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientCountry = D4.extractBridgedArg<String>(value, 'clientCountry'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientCountry = D4.extractBridgedArg<String>(value, 'clientCountry'),
       'clientTimezone': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientTimezone = D4.extractBridgedArg<String>(value, 'clientTimezone'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationMessage>(target, 'TomAuthenticationMessage').clientTimezone = D4.extractBridgedArg<String>(value, 'clientTimezone'),
     },
     constructorSignatures: {
       '': 'TomAuthenticationMessage()',
@@ -7918,33 +8717,33 @@ BridgedClass _createTomAuthenticationMessageBridge() {
 
 BridgedClass _createTomAuthenticationResultBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_26.TomAuthenticationResult,
+    nativeType: $tom_core_kernel_27.TomAuthenticationResult,
     name: 'TomAuthenticationResult',
-    isAssignable: (v) => v is $tom_core_kernel_26.TomAuthenticationResult,
+    isAssignable: (v) => v is $tom_core_kernel_27.TomAuthenticationResult,
     constructors: {
       '': (visitor, positional, named) {
         final error = D4.getOptionalArgWithDefault<String>(positional, 0, 'error', "");
-        return $tom_core_kernel_26.TomAuthenticationResult(error);
+        return $tom_core_kernel_27.TomAuthenticationResult(error);
       },
     },
     getters: {
-      'error': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').error,
-      'authenticationToken': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').authenticationToken,
-      'authorizationToken': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').authorizationToken,
-      'requires2FA': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').requires2FA,
-      'twoFactorType': (visitor, target) => D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').twoFactorType,
+      'error': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').error,
+      'authenticationToken': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').authenticationToken,
+      'authorizationToken': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').authorizationToken,
+      'requires2FA': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').requires2FA,
+      'twoFactorType': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').twoFactorType,
     },
     setters: {
       'error': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').error = D4.extractBridgedArg<String>(value, 'error'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').error = D4.extractBridgedArg<String>(value, 'error'),
       'authenticationToken': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').authenticationToken = D4.extractBridgedArg<String>(value, 'authenticationToken'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').authenticationToken = D4.extractBridgedArg<String>(value, 'authenticationToken'),
       'authorizationToken': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').authorizationToken = D4.extractBridgedArg<String>(value, 'authorizationToken'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').authorizationToken = D4.extractBridgedArg<String>(value, 'authorizationToken'),
       'requires2FA': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').requires2FA = D4.extractBridgedArg<bool>(value, 'requires2FA'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').requires2FA = D4.extractBridgedArg<bool>(value, 'requires2FA'),
       'twoFactorType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_26.TomAuthenticationResult>(target, 'TomAuthenticationResult').twoFactorType = D4.extractBridgedArg<String>(value, 'twoFactorType'),
+        D4.validateTarget<$tom_core_kernel_27.TomAuthenticationResult>(target, 'TomAuthenticationResult').twoFactorType = D4.extractBridgedArg<String>(value, 'twoFactorType'),
     },
     constructorSignatures: {
       '': 'TomAuthenticationResult([String error = ""])',
@@ -7972,20 +8771,20 @@ BridgedClass _createTomAuthenticationResultBridge() {
 
 BridgedClass _createTomBearerAuthenticationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_27.TomBearerAuthentication,
+    nativeType: $tom_core_kernel_28.TomBearerAuthentication,
     name: 'TomBearerAuthentication',
-    isAssignable: (v) => v is $tom_core_kernel_27.TomBearerAuthentication,
+    isAssignable: (v) => v is $tom_core_kernel_28.TomBearerAuthentication,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_27.TomBearerAuthentication();
+        return $tom_core_kernel_28.TomBearerAuthentication();
       },
     },
     staticGetters: {
-      'bearerAuthentication': (visitor) => $tom_core_kernel_27.TomBearerAuthentication.bearerAuthentication,
-      'token': (visitor) => $tom_core_kernel_27.TomBearerAuthentication.token,
-      'authorizationToken': (visitor) => $tom_core_kernel_27.TomBearerAuthentication.authorizationToken,
-      'clientJwtToken': (visitor) => $tom_core_kernel_27.TomBearerAuthentication.clientJwtToken,
-      'clientAuthorizationJwtToken': (visitor) => $tom_core_kernel_27.TomBearerAuthentication.clientAuthorizationJwtToken,
+      'bearerAuthentication': (visitor) => $tom_core_kernel_28.TomBearerAuthentication.bearerAuthentication,
+      'token': (visitor) => $tom_core_kernel_28.TomBearerAuthentication.token,
+      'authorizationToken': (visitor) => $tom_core_kernel_28.TomBearerAuthentication.authorizationToken,
+      'clientJwtToken': (visitor) => $tom_core_kernel_28.TomBearerAuthentication.clientJwtToken,
+      'clientAuthorizationJwtToken': (visitor) => $tom_core_kernel_28.TomBearerAuthentication.clientAuthorizationJwtToken,
     },
     staticMethods: {
       'setTokens': (visitor, positional, named, typeArgs) {
@@ -7993,16 +8792,16 @@ BridgedClass _createTomBearerAuthenticationBridge() {
         final authenticationToken = D4.getRequiredArg<String>(positional, 0, 'authenticationToken', 'setTokens');
         final authorizationToken = D4.getRequiredArg<String>(positional, 1, 'authorizationToken', 'setTokens');
         final decrypt = D4.getOptionalArgWithDefault<bool>(positional, 2, 'decrypt', true);
-        return $tom_core_kernel_27.TomBearerAuthentication.setTokens(authenticationToken, authorizationToken, decrypt);
+        return $tom_core_kernel_28.TomBearerAuthentication.setTokens(authenticationToken, authorizationToken, decrypt);
       },
       'convertTokenPayloadToPrincipal': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'convertTokenPayloadToPrincipal');
         final authenticationToken = D4.getRequiredArg<$tom_crypto_1.TomClientJwtToken>(positional, 0, 'authenticationToken', 'convertTokenPayloadToPrincipal');
         final authorizationToken = D4.getOptionalArg<$tom_crypto_1.TomClientJwtToken?>(positional, 1, 'authorizationToken');
-        return $tom_core_kernel_27.TomBearerAuthentication.convertTokenPayloadToPrincipal(authenticationToken, authorizationToken);
+        return $tom_core_kernel_28.TomBearerAuthentication.convertTokenPayloadToPrincipal(authenticationToken, authorizationToken);
       },
       'getPrincipal': (visitor, positional, named, typeArgs) {
-        return $tom_core_kernel_27.TomBearerAuthentication.getPrincipal();
+        return $tom_core_kernel_28.TomBearerAuthentication.getPrincipal();
       },
       'updatePrincipal': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 4, 'updatePrincipal');
@@ -8025,20 +8824,20 @@ BridgedClass _createTomBearerAuthenticationBridge() {
         final resourceRoles = named.containsKey('resourceRoles') && named['resourceRoles'] != null
             ? D4.coerceMap<String, String>(named['resourceRoles'], 'resourceRoles')
             : const <String, String>{};
-        return $tom_core_kernel_27.TomBearerAuthentication.updatePrincipal(groups, roles, entitlements, resourceKeys, resourceRoles: resourceRoles);
+        return $tom_core_kernel_28.TomBearerAuthentication.updatePrincipal(groups, roles, entitlements, resourceKeys, resourceRoles: resourceRoles);
       },
       'convertPrincipalToTokenPayload': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 4, 'convertPrincipalToTokenPayload');
-        final principal = D4.getRequiredArg<$tom_core_kernel_30.TomPrincipal>(positional, 0, 'principal', 'convertPrincipalToTokenPayload');
-        final definition = D4.getRequiredArg<$tom_core_kernel_30.TomAccessControlDefinition?>(positional, 1, 'definition', 'convertPrincipalToTokenPayload');
+        final principal = D4.getRequiredArg<$tom_core_kernel_31.TomPrincipal>(positional, 0, 'principal', 'convertPrincipalToTokenPayload');
+        final definition = D4.getRequiredArg<$tom_core_kernel_31.TomAccessControlDefinition?>(positional, 1, 'definition', 'convertPrincipalToTokenPayload');
         final clientCountry = D4.getRequiredArg<String?>(positional, 2, 'clientCountry', 'convertPrincipalToTokenPayload');
         final clientLanguage = D4.getRequiredArg<String?>(positional, 3, 'clientLanguage', 'convertPrincipalToTokenPayload');
-        return $tom_core_kernel_27.TomBearerAuthentication.convertPrincipalToTokenPayload(principal, definition, clientCountry, clientLanguage);
+        return $tom_core_kernel_28.TomBearerAuthentication.convertPrincipalToTokenPayload(principal, definition, clientCountry, clientLanguage);
       },
     },
     staticSetters: {
       'bearerAuthentication': (visitor, value) => 
-        $tom_core_kernel_27.TomBearerAuthentication.bearerAuthentication = D4.extractBridgedArg<$tom_core_kernel_27.TomBearerAuthentication>(value, 'bearerAuthentication'),
+        $tom_core_kernel_28.TomBearerAuthentication.bearerAuthentication = D4.extractBridgedArg<$tom_core_kernel_28.TomBearerAuthentication>(value, 'bearerAuthentication'),
     },
     constructorSignatures: {
       '': 'TomBearerAuthentication()',
@@ -8069,36 +8868,36 @@ BridgedClass _createTomBearerAuthenticationBridge() {
 
 BridgedClass _createTomResourceRoleRegistryBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_28.TomResourceRoleRegistry,
+    nativeType: $tom_core_kernel_29.TomResourceRoleRegistry,
     name: 'TomResourceRoleRegistry',
-    isAssignable: (v) => v is $tom_core_kernel_28.TomResourceRoleRegistry,
+    isAssignable: (v) => v is $tom_core_kernel_29.TomResourceRoleRegistry,
     constructors: {
     },
     staticGetters: {
-      'mapping': (visitor) => $tom_core_kernel_28.TomResourceRoleRegistry.mapping,
+      'mapping': (visitor) => $tom_core_kernel_29.TomResourceRoleRegistry.mapping,
     },
     staticMethods: {
       'register': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'register');
         final role = D4.getRequiredArg<String>(positional, 0, 'role', 'register');
-        final state = D4.getRequiredArg<$tom_core_kernel_29.TomAuthState>(positional, 1, 'state', 'register');
-        return $tom_core_kernel_28.TomResourceRoleRegistry.register(role, state);
+        final state = D4.getRequiredArg<$tom_core_kernel_30.TomAuthState>(positional, 1, 'state', 'register');
+        return $tom_core_kernel_29.TomResourceRoleRegistry.register(role, state);
       },
       'registerAll': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'registerAll');
         if (positional.isEmpty) {
           throw ArgumentError('registerAll: Missing required argument "mapping" at position 0');
         }
-        final mapping = D4.coerceMap<String, $tom_core_kernel_29.TomAuthState>(positional[0], 'mapping');
-        return $tom_core_kernel_28.TomResourceRoleRegistry.registerAll(mapping);
+        final mapping = D4.coerceMap<String, $tom_core_kernel_30.TomAuthState>(positional[0], 'mapping');
+        return $tom_core_kernel_29.TomResourceRoleRegistry.registerAll(mapping);
       },
       'stateFor': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'stateFor');
         final role = D4.getRequiredArg<String>(positional, 0, 'role', 'stateFor');
-        return $tom_core_kernel_28.TomResourceRoleRegistry.stateFor(role);
+        return $tom_core_kernel_29.TomResourceRoleRegistry.stateFor(role);
       },
       'reset': (visitor, positional, named, typeArgs) {
-        return $tom_core_kernel_28.TomResourceRoleRegistry.reset();
+        return $tom_core_kernel_29.TomResourceRoleRegistry.reset();
       },
     },
     staticMethodSignatures: {
@@ -8119,9 +8918,9 @@ BridgedClass _createTomResourceRoleRegistryBridge() {
 
 BridgedClass _createTomResourceRoleAdapterBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_28.TomResourceRoleAdapter,
+    nativeType: $tom_core_kernel_29.TomResourceRoleAdapter,
     name: 'TomResourceRoleAdapter',
-    isAssignable: (v) => v is $tom_core_kernel_28.TomResourceRoleAdapter,
+    isAssignable: (v) => v is $tom_core_kernel_29.TomResourceRoleAdapter,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -8130,21 +8929,21 @@ BridgedClass _createTomResourceRoleAdapterBridge() {
           throw ArgumentError('TomResourceRoleAdapter: Missing required argument "resourceRoles" at position 0');
         }
         final resourceRoles = D4.coerceMap<String, String>(positional[0], 'resourceRoles');
-        return $tom_core_kernel_28.TomResourceRoleAdapter(resourceRoles);
+        return $tom_core_kernel_29.TomResourceRoleAdapter(resourceRoles);
       },
     },
     getters: {
-      'resourceRoles': (visitor, target) => D4.validateTarget<$tom_core_kernel_28.TomResourceRoleAdapter>(target, 'TomResourceRoleAdapter').resourceRoles,
+      'resourceRoles': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomResourceRoleAdapter>(target, 'TomResourceRoleAdapter').resourceRoles,
     },
     methods: {
       'resolveAuth': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_28.TomResourceRoleAdapter>(target, 'TomResourceRoleAdapter');
+        final t = D4.validateTarget<$tom_core_kernel_29.TomResourceRoleAdapter>(target, 'TomResourceRoleAdapter');
         D4.requireMinArgs(positional, 1, 'resolveAuth');
         final resourceKeyPath = D4.getRequiredArg<String>(positional, 0, 'resourceKeyPath', 'resolveAuth');
         return t.resolveAuth(resourceKeyPath);
       },
       'stateOf': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_28.TomResourceRoleAdapter>(target, 'TomResourceRoleAdapter');
+        final t = D4.validateTarget<$tom_core_kernel_29.TomResourceRoleAdapter>(target, 'TomResourceRoleAdapter');
         D4.requireMinArgs(positional, 1, 'stateOf');
         final resourceKey = D4.getRequiredArg<String>(positional, 0, 'resourceKey', 'stateOf');
         return t.stateOf(resourceKey);
@@ -8169,16 +8968,16 @@ BridgedClass _createTomResourceRoleAdapterBridge() {
 
 BridgedClass _createTomAuthorizableBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_29.TomAuthorizable,
+    nativeType: $tom_core_kernel_30.TomAuthorizable,
     name: 'TomAuthorizable',
-    isAssignable: (v) => v is $tom_core_kernel_29.TomAuthorizable,
+    isAssignable: (v) => v is $tom_core_kernel_30.TomAuthorizable,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'tomId': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizable>(target, 'TomAuthorizable').tomId,
-      'tomGroup': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizable>(target, 'TomAuthorizable').tomGroup,
-      'effectiveAuthState': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizable>(target, 'TomAuthorizable').effectiveAuthState,
+      'tomId': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizable>(target, 'TomAuthorizable').tomId,
+      'tomGroup': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizable>(target, 'TomAuthorizable').tomGroup,
+      'effectiveAuthState': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizable>(target, 'TomAuthorizable').effectiveAuthState,
     },
     getterSignatures: {
       'tomId': 'String? get tomId',
@@ -8194,61 +8993,61 @@ BridgedClass _createTomAuthorizableBridge() {
 
 BridgedClass _createTomAuthorizationGroupBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_29.TomAuthorizationGroup,
+    nativeType: $tom_core_kernel_30.TomAuthorizationGroup,
     name: 'TomAuthorizationGroup',
-    isAssignable: (v) => v is $tom_core_kernel_29.TomAuthorizationGroup,
+    isAssignable: (v) => v is $tom_core_kernel_30.TomAuthorizationGroup,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomAuthorizationGroup');
         final groupId = D4.getRequiredArg<String>(positional, 0, 'groupId', 'TomAuthorizationGroup');
-        final mode = D4.getNamedArgWithDefault<$tom_core_kernel_29.AuthGroupMode>(named, 'mode', $tom_core_kernel_29.AuthGroupMode.controlsWidest);
-        return $tom_core_kernel_29.TomAuthorizationGroup(groupId, mode: mode);
+        final mode = D4.getNamedArgWithDefault<$tom_core_kernel_30.AuthGroupMode>(named, 'mode', $tom_core_kernel_30.AuthGroupMode.controlsWidest);
+        return $tom_core_kernel_30.TomAuthorizationGroup(groupId, mode: mode);
       },
     },
     getters: {
-      'groupId': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').groupId,
-      'mode': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').mode,
-      'members': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').members,
-      'memberCount': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').memberCount,
-      'isEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').isEmpty,
-      'isNotEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').isNotEmpty,
-      'authState': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').authState,
-      'isUniform': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').isUniform,
-      'mostRestrictive': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').mostRestrictive,
+      'groupId': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').groupId,
+      'mode': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').mode,
+      'members': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').members,
+      'memberCount': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').memberCount,
+      'isEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').isEmpty,
+      'isNotEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').isNotEmpty,
+      'authState': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').authState,
+      'isUniform': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').isUniform,
+      'mostRestrictive': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup').mostRestrictive,
     },
     methods: {
       'register': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
         D4.requireMinArgs(positional, 1, 'register');
-        final element = D4.getRequiredArg<$tom_core_kernel_29.TomAuthorizable>(positional, 0, 'element', 'register');
+        final element = D4.getRequiredArg<$tom_core_kernel_30.TomAuthorizable>(positional, 0, 'element', 'register');
         t.register(element);
         return null;
       },
       'unregister': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
         D4.requireMinArgs(positional, 1, 'unregister');
-        final element = D4.getRequiredArg<$tom_core_kernel_29.TomAuthorizable>(positional, 0, 'element', 'unregister');
+        final element = D4.getRequiredArg<$tom_core_kernel_30.TomAuthorizable>(positional, 0, 'element', 'unregister');
         t.unregister(element);
         return null;
       },
       'resolveGroupPath': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
         return t.resolveGroupPath();
       },
       'applyMode': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
         D4.requireMinArgs(positional, 1, 'applyMode');
-        final memberState = D4.getRequiredArg<$tom_core_kernel_29.TomAuthState>(positional, 0, 'memberState', 'applyMode');
+        final memberState = D4.getRequiredArg<$tom_core_kernel_30.TomAuthState>(positional, 0, 'memberState', 'applyMode');
         return t.applyMode(memberState);
       },
       'findMember': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
         D4.requireMinArgs(positional, 1, 'findMember');
         final tomId = D4.getRequiredArg<String>(positional, 0, 'tomId', 'findMember');
         return t.findMember(tomId);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizationGroup>(target, 'TomAuthorizationGroup');
         return t.toString();
       },
     },
@@ -8283,15 +9082,15 @@ BridgedClass _createTomAuthorizationGroupBridge() {
 
 BridgedClass _createTomAuthorizationAdapterBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_29.TomAuthorizationAdapter,
+    nativeType: $tom_core_kernel_30.TomAuthorizationAdapter,
     name: 'TomAuthorizationAdapter',
-    isAssignable: (v) => v is $tom_core_kernel_29.TomAuthorizationAdapter,
+    isAssignable: (v) => v is $tom_core_kernel_30.TomAuthorizationAdapter,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'resolveAuth': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizationAdapter>(target, 'TomAuthorizationAdapter');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizationAdapter>(target, 'TomAuthorizationAdapter');
         D4.requireMinArgs(positional, 1, 'resolveAuth');
         final resourceKeyPath = D4.getRequiredArg<String>(positional, 0, 'resourceKeyPath', 'resolveAuth');
         return t.resolveAuth(resourceKeyPath);
@@ -8309,24 +9108,24 @@ BridgedClass _createTomAuthorizationAdapterBridge() {
 
 BridgedClass _createTomAuthorizationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_29.TomAuthorization,
+    nativeType: $tom_core_kernel_30.TomAuthorization,
     name: 'TomAuthorization',
-    isAssignable: (v) => v is $tom_core_kernel_29.TomAuthorization,
+    isAssignable: (v) => v is $tom_core_kernel_30.TomAuthorization,
     constructors: {
     },
     staticMethods: {
       'resolveAuth': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'resolveAuth');
         final resourceKeyPath = D4.getRequiredArg<String>(positional, 0, 'resourceKeyPath', 'resolveAuth');
-        return $tom_core_kernel_29.TomAuthorization.resolveAuth(resourceKeyPath);
+        return $tom_core_kernel_30.TomAuthorization.resolveAuth(resourceKeyPath);
       },
       'reset': (visitor, positional, named, typeArgs) {
-        return $tom_core_kernel_29.TomAuthorization.reset();
+        return $tom_core_kernel_30.TomAuthorization.reset();
       },
     },
     staticSetters: {
       'adapter': (visitor, value) => 
-        $tom_core_kernel_29.TomAuthorization.adapter = D4.extractBridgedArg<$tom_core_kernel_29.TomAuthorizationAdapter>(value, 'adapter'),
+        $tom_core_kernel_30.TomAuthorization.adapter = D4.extractBridgedArg<$tom_core_kernel_30.TomAuthorizationAdapter>(value, 'adapter'),
     },
     staticMethodSignatures: {
       'resolveAuth': 'TomAuthState resolveAuth(String resourceKeyPath)',
@@ -8344,40 +9143,40 @@ BridgedClass _createTomAuthorizationBridge() {
 
 BridgedClass _createTomAuthorizerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_29.TomAuthorizer,
+    nativeType: $tom_core_kernel_30.TomAuthorizer,
     name: 'TomAuthorizer',
-    isAssignable: (v) => v is $tom_core_kernel_29.TomAuthorizer,
+    isAssignable: (v) => v is $tom_core_kernel_30.TomAuthorizer,
     constructors: {
       '': (visitor, positional, named) {
-        final strategy = D4.getNamedArgWithDefault<$tom_core_kernel_29.TomAuthorizerStrategy>(named, 'strategy', $tom_core_kernel_29.TomAuthorizerStrategy.authorizerNarrowsOnly);
+        final strategy = D4.getNamedArgWithDefault<$tom_core_kernel_30.TomAuthorizerStrategy>(named, 'strategy', $tom_core_kernel_30.TomAuthorizerStrategy.authorizerNarrowsOnly);
         if (!named.containsKey('resolve') || named['resolve'] == null) {
           throw ArgumentError('TomAuthorizer: Missing required named argument "resolve"');
         }
         final resolveRaw = named['resolve'];
-        return $tom_core_kernel_29.TomAuthorizer(strategy: strategy, resolve: (($tom_core_kernel_29.TomAuthState p0) { return D4.extractBridgedArg<$tom_core_kernel_29.TomAuthState>(D4.callInterpreterCallback(visitor!, resolveRaw, [p0]), 'callback', visitor) as $tom_core_kernel_29.TomAuthState; }) as $tom_core_kernel_29.TomAuthState Function($tom_core_kernel_29.TomAuthState));
+        return $tom_core_kernel_30.TomAuthorizer(strategy: strategy, resolve: (($tom_core_kernel_30.TomAuthState p0) { return D4.extractBridgedArg<$tom_core_kernel_30.TomAuthState>(D4.callInterpreterCallback(visitor!, resolveRaw, [p0]), 'callback', visitor) as $tom_core_kernel_30.TomAuthState; }) as $tom_core_kernel_30.TomAuthState Function($tom_core_kernel_30.TomAuthState));
       },
       'fixed': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomAuthorizer');
-        final state = D4.getRequiredArg<$tom_core_kernel_29.TomAuthState>(positional, 0, 'state', 'TomAuthorizer');
-        return $tom_core_kernel_29.TomAuthorizer.fixed(state);
+        final state = D4.getRequiredArg<$tom_core_kernel_30.TomAuthState>(positional, 0, 'state', 'TomAuthorizer');
+        return $tom_core_kernel_30.TomAuthorizer.fixed(state);
       },
       'fromAction': (visitor, positional, named) {
         if (!named.containsKey('actionAuth') || named['actionAuth'] == null) {
           throw ArgumentError('TomAuthorizer: Missing required named argument "actionAuth"');
         }
         final actionAuthRaw = named['actionAuth'];
-        return $tom_core_kernel_29.TomAuthorizer.fromAction(actionAuth: (() { return D4.extractBridgedArg<$tom_core_kernel_29.TomAuthState>(D4.callInterpreterCallback(visitor!, actionAuthRaw, []), 'callback', visitor) as $tom_core_kernel_29.TomAuthState; }) as $tom_core_kernel_29.TomAuthState Function());
+        return $tom_core_kernel_30.TomAuthorizer.fromAction(actionAuth: (() { return D4.extractBridgedArg<$tom_core_kernel_30.TomAuthState>(D4.callInterpreterCallback(visitor!, actionAuthRaw, []), 'callback', visitor) as $tom_core_kernel_30.TomAuthState; }) as $tom_core_kernel_30.TomAuthState Function());
       },
     },
     getters: {
-      'strategy': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizer>(target, 'TomAuthorizer').strategy,
-      'resolve': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomAuthorizer>(target, 'TomAuthorizer').resolve,
+      'strategy': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizer>(target, 'TomAuthorizer').strategy,
+      'resolve': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAuthorizer>(target, 'TomAuthorizer').resolve,
     },
     methods: {
       'effectiveAuth': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomAuthorizer>(target, 'TomAuthorizer');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomAuthorizer>(target, 'TomAuthorizer');
         D4.requireMinArgs(positional, 1, 'effectiveAuth');
-        final resourceAuth = D4.getRequiredArg<$tom_core_kernel_29.TomAuthState>(positional, 0, 'resourceAuth', 'effectiveAuth');
+        final resourceAuth = D4.getRequiredArg<$tom_core_kernel_30.TomAuthState>(positional, 0, 'resourceAuth', 'effectiveAuth');
         return t.effectiveAuth(resourceAuth);
       },
     },
@@ -8402,26 +9201,26 @@ BridgedClass _createTomAuthorizerBridge() {
 
 BridgedClass _createTomUIStateControllerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_29.TomUIStateController,
+    nativeType: $tom_core_kernel_30.TomUIStateController,
     name: 'TomUIStateController',
-    isAssignable: (v) => v is $tom_core_kernel_29.TomUIStateController,
+    isAssignable: (v) => v is $tom_core_kernel_30.TomUIStateController,
     constructors: {
       '': (visitor, positional, named) {
         if (!named.containsKey('resolve') || named['resolve'] == null) {
           throw ArgumentError('TomUIStateController: Missing required named argument "resolve"');
         }
         final resolveRaw = named['resolve'];
-        return $tom_core_kernel_29.TomUIStateController(resolve: (($tom_core_kernel_29.TomAuthState p0, Object? p1) { return D4.extractBridgedArg<$tom_core_kernel_29.TomAuthState>(D4.callInterpreterCallback(visitor!, resolveRaw, [p0, p1]), 'callback', visitor) as $tom_core_kernel_29.TomAuthState; }) as $tom_core_kernel_29.TomAuthState Function($tom_core_kernel_29.TomAuthState, Object?));
+        return $tom_core_kernel_30.TomUIStateController(resolve: (($tom_core_kernel_30.TomAuthState p0, Object? p1) { return D4.extractBridgedArg<$tom_core_kernel_30.TomAuthState>(D4.callInterpreterCallback(visitor!, resolveRaw, [p0, p1]), 'callback', visitor) as $tom_core_kernel_30.TomAuthState; }) as $tom_core_kernel_30.TomAuthState Function($tom_core_kernel_30.TomAuthState, Object?));
       },
     },
     getters: {
-      'resolve': (visitor, target) => D4.validateTarget<$tom_core_kernel_29.TomUIStateController>(target, 'TomUIStateController').resolve,
+      'resolve': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUIStateController>(target, 'TomUIStateController').resolve,
     },
     methods: {
       'apply': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_29.TomUIStateController>(target, 'TomUIStateController');
+        final t = D4.validateTarget<$tom_core_kernel_30.TomUIStateController>(target, 'TomUIStateController');
         D4.requireMinArgs(positional, 1, 'apply');
-        final currentAuth = D4.getRequiredArg<$tom_core_kernel_29.TomAuthState>(positional, 0, 'currentAuth', 'apply');
+        final currentAuth = D4.getRequiredArg<$tom_core_kernel_30.TomAuthState>(positional, 0, 'currentAuth', 'apply');
         final data = D4.getOptionalNamedArg<Object?>(named, 'data');
         return t.apply(currentAuth, data: data);
       },
@@ -8444,9 +9243,9 @@ BridgedClass _createTomUIStateControllerBridge() {
 
 BridgedClass _createTomAccessControlInformationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomAccessControlInformation,
+    nativeType: $tom_core_kernel_31.TomAccessControlInformation,
     name: 'TomAccessControlInformation',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomAccessControlInformation,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomAccessControlInformation,
     constructors: {
       '': (visitor, positional, named) {
         final roles = named.containsKey('roles') && named['roles'] != null
@@ -8464,19 +9263,19 @@ BridgedClass _createTomAccessControlInformationBridge() {
         final resourceRoles = named.containsKey('resourceRoles') && named['resourceRoles'] != null
             ? D4.coerceMap<String, String>(named['resourceRoles'], 'resourceRoles')
             : const <String, String>{};
-        return $tom_core_kernel_30.TomAccessControlInformation(roles: roles, entitlements: entitlements, resourceKeys: resourceKeys, groups: groups, resourceRoles: resourceRoles);
+        return $tom_core_kernel_31.TomAccessControlInformation(roles: roles, entitlements: entitlements, resourceKeys: resourceKeys, groups: groups, resourceRoles: resourceRoles);
       },
     },
     getters: {
-      'roles': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAccessControlInformation>(target, 'TomAccessControlInformation').roles,
-      'groups': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAccessControlInformation>(target, 'TomAccessControlInformation').groups,
-      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAccessControlInformation>(target, 'TomAccessControlInformation').entitlements,
-      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAccessControlInformation>(target, 'TomAccessControlInformation').resourceKeys,
-      'resourceRoles': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomAccessControlInformation>(target, 'TomAccessControlInformation').resourceRoles,
+      'roles': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomAccessControlInformation>(target, 'TomAccessControlInformation').roles,
+      'groups': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomAccessControlInformation>(target, 'TomAccessControlInformation').groups,
+      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomAccessControlInformation>(target, 'TomAccessControlInformation').entitlements,
+      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomAccessControlInformation>(target, 'TomAccessControlInformation').resourceKeys,
+      'resourceRoles': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomAccessControlInformation>(target, 'TomAccessControlInformation').resourceRoles,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomAccessControlInformation>(target, 'TomAccessControlInformation');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomAccessControlInformation>(target, 'TomAccessControlInformation');
         return t.toString();
       },
     },
@@ -8502,9 +9301,9 @@ BridgedClass _createTomAccessControlInformationBridge() {
 
 BridgedClass _createTomClientLimitsInformationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomClientLimitsInformation,
+    nativeType: $tom_core_kernel_31.TomClientLimitsInformation,
     name: 'TomClientLimitsInformation',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomClientLimitsInformation,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomClientLimitsInformation,
     constructors: {
       '': (visitor, positional, named) {
         final enabledModules = named.containsKey('enabledModules') && named['enabledModules'] != null
@@ -8513,20 +9312,20 @@ BridgedClass _createTomClientLimitsInformationBridge() {
         final quotas = named.containsKey('quotas') && named['quotas'] != null
             ? D4.coerceMap<String, int>(named['quotas'], 'quotas')
             : const <String, int>{};
-        return $tom_core_kernel_30.TomClientLimitsInformation(enabledModules: enabledModules, quotas: quotas);
+        return $tom_core_kernel_31.TomClientLimitsInformation(enabledModules: enabledModules, quotas: quotas);
       },
     },
     getters: {
-      'enabledModules': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').enabledModules,
-      'quotas': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').quotas,
+      'enabledModules': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').enabledModules,
+      'quotas': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').quotas,
     },
     setters: {
       'enabledModules': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').enabledModules = D4.coerceList<String>(value, 'enabledModules'),
+        D4.validateTarget<$tom_core_kernel_31.TomClientLimitsInformation>(target, 'TomClientLimitsInformation').enabledModules = D4.coerceList<String>(value, 'enabledModules'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomClientLimitsInformation>(target, 'TomClientLimitsInformation');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomClientLimitsInformation>(target, 'TomClientLimitsInformation');
         return t.toString();
       },
     },
@@ -8553,26 +9352,26 @@ BridgedClass _createTomClientLimitsInformationBridge() {
 
 BridgedClass _createTomAccessControlDefinitionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomAccessControlDefinition,
+    nativeType: $tom_core_kernel_31.TomAccessControlDefinition,
     name: 'TomAccessControlDefinition',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomAccessControlDefinition,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomAccessControlDefinition,
     constructors: {
       '': (visitor, positional, named) {
-        final roles = D4.coerceListOrNull<$tom_core_kernel_30.TomRole>(named['roles'], 'roles');
-        final groups = D4.coerceListOrNull<$tom_core_kernel_30.TomGroup>(named['groups'], 'groups');
-        final entitlements = D4.coerceListOrNull<$tom_core_kernel_30.TomEntitlement>(named['entitlements'], 'entitlements');
-        return $tom_core_kernel_30.TomAccessControlDefinition(roles: roles, groups: groups, entitlements: entitlements);
+        final roles = D4.coerceListOrNull<$tom_core_kernel_31.TomRole>(named['roles'], 'roles');
+        final groups = D4.coerceListOrNull<$tom_core_kernel_31.TomGroup>(named['groups'], 'groups');
+        final entitlements = D4.coerceListOrNull<$tom_core_kernel_31.TomEntitlement>(named['entitlements'], 'entitlements');
+        return $tom_core_kernel_31.TomAccessControlDefinition(roles: roles, groups: groups, entitlements: entitlements);
       },
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomAccessControlDefinition>(target, 'TomAccessControlDefinition');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomAccessControlDefinition>(target, 'TomAccessControlDefinition');
         return t.toString();
       },
       'completeFromDefinition': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomAccessControlDefinition>(target, 'TomAccessControlDefinition');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomAccessControlDefinition>(target, 'TomAccessControlDefinition');
         D4.requireMinArgs(positional, 1, 'completeFromDefinition');
-        final userProvided = D4.getRequiredArg<$tom_core_kernel_30.TomAccessControlInformation>(positional, 0, 'userProvided', 'completeFromDefinition');
+        final userProvided = D4.getRequiredArg<$tom_core_kernel_31.TomAccessControlInformation>(positional, 0, 'userProvided', 'completeFromDefinition');
         return t.completeFromDefinition(userProvided);
       },
     },
@@ -8592,9 +9391,9 @@ BridgedClass _createTomAccessControlDefinitionBridge() {
 
 BridgedClass _createTomGroupBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomGroup,
+    nativeType: $tom_core_kernel_31.TomGroup,
     name: 'TomGroup',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomGroup,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomGroup,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'TomGroup');
@@ -8602,19 +9401,19 @@ BridgedClass _createTomGroupBridge() {
         final groupMemberShips = D4.coerceListOrNull<String>(named['groupMemberShips'], 'groupMemberShips');
         final entitlements = D4.coerceListOrNull<String>(named['entitlements'], 'entitlements');
         final resourceKeys = D4.coerceListOrNull<String>(named['resourceKeys'], 'resourceKeys');
-        return $tom_core_kernel_30.TomGroup(name: name, rolesIncluded: rolesIncluded, groupMemberShips: groupMemberShips, entitlements: entitlements, resourceKeys: resourceKeys);
+        return $tom_core_kernel_31.TomGroup(name: name, rolesIncluded: rolesIncluded, groupMemberShips: groupMemberShips, entitlements: entitlements, resourceKeys: resourceKeys);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomGroup>(target, 'TomGroup').name,
-      'rolesIncluded': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomGroup>(target, 'TomGroup').rolesIncluded,
-      'groupMemberShips': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomGroup>(target, 'TomGroup').groupMemberShips,
-      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomGroup>(target, 'TomGroup').entitlements,
-      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomGroup>(target, 'TomGroup').resourceKeys,
+      'name': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGroup>(target, 'TomGroup').name,
+      'rolesIncluded': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGroup>(target, 'TomGroup').rolesIncluded,
+      'groupMemberShips': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGroup>(target, 'TomGroup').groupMemberShips,
+      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGroup>(target, 'TomGroup').entitlements,
+      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGroup>(target, 'TomGroup').resourceKeys,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomGroup>(target, 'TomGroup');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomGroup>(target, 'TomGroup');
         return t.toString();
       },
     },
@@ -8640,9 +9439,9 @@ BridgedClass _createTomGroupBridge() {
 
 BridgedClass _createTomRoleBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomRole,
+    nativeType: $tom_core_kernel_31.TomRole,
     name: 'TomRole',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomRole,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomRole,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'TomRole');
@@ -8650,19 +9449,19 @@ BridgedClass _createTomRoleBridge() {
         final groupMemberShips = D4.coerceListOrNull<String>(named['groupMemberShips'], 'groupMemberShips');
         final entitlements = D4.coerceListOrNull<String>(named['entitlements'], 'entitlements');
         final resourceKeys = D4.coerceListOrNull<String>(named['resourceKeys'], 'resourceKeys');
-        return $tom_core_kernel_30.TomRole(name: name, rolesIncluded: rolesIncluded, groupMemberShips: groupMemberShips, entitlements: entitlements, resourceKeys: resourceKeys);
+        return $tom_core_kernel_31.TomRole(name: name, rolesIncluded: rolesIncluded, groupMemberShips: groupMemberShips, entitlements: entitlements, resourceKeys: resourceKeys);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomRole>(target, 'TomRole').name,
-      'rolesIncluded': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomRole>(target, 'TomRole').rolesIncluded,
-      'groupMemberShips': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomRole>(target, 'TomRole').groupMemberShips,
-      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomRole>(target, 'TomRole').entitlements,
-      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomRole>(target, 'TomRole').resourceKeys,
+      'name': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomRole>(target, 'TomRole').name,
+      'rolesIncluded': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomRole>(target, 'TomRole').rolesIncluded,
+      'groupMemberShips': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomRole>(target, 'TomRole').groupMemberShips,
+      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomRole>(target, 'TomRole').entitlements,
+      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomRole>(target, 'TomRole').resourceKeys,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomRole>(target, 'TomRole');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomRole>(target, 'TomRole');
         return t.toString();
       },
     },
@@ -8688,25 +9487,25 @@ BridgedClass _createTomRoleBridge() {
 
 BridgedClass _createTomEntitlementBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomEntitlement,
+    nativeType: $tom_core_kernel_31.TomEntitlement,
     name: 'TomEntitlement',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomEntitlement,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomEntitlement,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'TomEntitlement');
         final entitlements = D4.coerceListOrNull<String>(named['entitlements'], 'entitlements');
         final resourceKeys = D4.coerceListOrNull<String>(named['resourceKeys'], 'resourceKeys');
-        return $tom_core_kernel_30.TomEntitlement(name: name, entitlements: entitlements, resourceKeys: resourceKeys);
+        return $tom_core_kernel_31.TomEntitlement(name: name, entitlements: entitlements, resourceKeys: resourceKeys);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomEntitlement>(target, 'TomEntitlement').name,
-      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomEntitlement>(target, 'TomEntitlement').entitlements,
-      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomEntitlement>(target, 'TomEntitlement').resourceKeys,
+      'name': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomEntitlement>(target, 'TomEntitlement').name,
+      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomEntitlement>(target, 'TomEntitlement').entitlements,
+      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomEntitlement>(target, 'TomEntitlement').resourceKeys,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomEntitlement>(target, 'TomEntitlement');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomEntitlement>(target, 'TomEntitlement');
         return t.toString();
       },
     },
@@ -8730,9 +9529,9 @@ BridgedClass _createTomEntitlementBridge() {
 
 BridgedClass _createTomUserBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomUser,
+    nativeType: $tom_core_kernel_31.TomUser,
     name: 'TomUser',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomUser,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomUser,
     constructors: {
       '': (visitor, positional, named) {
         final id = D4.getNamedArgWithDefault<int>(named, 'id', -1);
@@ -8749,39 +9548,39 @@ BridgedClass _createTomUserBridge() {
         final timeZone = D4.getOptionalNamedArg<String?>(named, 'timeZone');
         final attributes = D4.coerceMapOrNull<String, Object?>(named['attributes'], 'attributes');
         if (!named.containsKey('username')) {
-          return $tom_core_kernel_30.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timeZone: timeZone, attributes: attributes);
+          return $tom_core_kernel_31.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timeZone: timeZone, attributes: attributes);
         }
         if (named.containsKey('username')) {
           final username = D4.getRequiredNamedArg<String>(named, 'username', 'TomUser');
-          return $tom_core_kernel_30.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timeZone: timeZone, attributes: attributes, username: username);
+          return $tom_core_kernel_31.TomUser(id: id, firstname: firstname, lastname: lastname, email: email, phone: phone, mobile: mobile, addressLine1: addressLine1, addressLine2: addressLine2, city: city, postcode: postcode, stateRegion: stateRegion, timeZone: timeZone, attributes: attributes, username: username);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
     },
     getters: {
-      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').id,
-      'username': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').username,
-      'firstname': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').firstname,
-      'lastname': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').lastname,
-      'email': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').email,
-      'phone': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').phone,
-      'mobile': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').mobile,
-      'addressLine1': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').addressLine1,
-      'addressLine2': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').addressLine2,
-      'city': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').city,
-      'postcode': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').postcode,
-      'stateRegion': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').stateRegion,
-      'timeZone': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').timeZone,
-      'attributes': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser').attributes,
+      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').id,
+      'username': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').username,
+      'firstname': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').firstname,
+      'lastname': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').lastname,
+      'email': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').email,
+      'phone': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').phone,
+      'mobile': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').mobile,
+      'addressLine1': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').addressLine1,
+      'addressLine2': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').addressLine2,
+      'city': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').city,
+      'postcode': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').postcode,
+      'stateRegion': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').stateRegion,
+      'timeZone': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').timeZone,
+      'attributes': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser').attributes,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomUser>(target, 'TomUser');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomUser>(target, 'TomUser');
         return t.toString();
       },
     },
     staticGetters: {
-      'guestUsername': (visitor) => $tom_core_kernel_30.TomUser.guestUsername,
+      'guestUsername': (visitor) => $tom_core_kernel_31.TomUser.guestUsername,
     },
     constructorSignatures: {
       '': 'TomUser({int id = -1, String username = guestUsername, String? firstname, String? lastname, String? email, String? phone, String? mobile, String? addressLine1, String? addressLine2, String? city, String? postcode, String? stateRegion, String? timeZone, Map<String, Object?>? attributes})',
@@ -8817,14 +9616,14 @@ BridgedClass _createTomUserBridge() {
 
 BridgedClass _createTomPrincipalBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_30.TomPrincipal,
+    nativeType: $tom_core_kernel_31.TomPrincipal,
     name: 'TomPrincipal',
-    isAssignable: (v) => v is $tom_core_kernel_30.TomPrincipal,
+    isAssignable: (v) => v is $tom_core_kernel_31.TomPrincipal,
     constructors: {
       '': (visitor, positional, named) {
-        final cli = D4.getOptionalNamedArg<$tom_core_kernel_30.TomClientLimitsInformation?>(named, 'cli');
-        final aci = D4.getOptionalNamedArg<$tom_core_kernel_30.TomAccessControlInformation?>(named, 'aci');
-        final user = D4.getOptionalNamedArg<$tom_core_kernel_30.TomUser?>(named, 'user');
+        final cli = D4.getOptionalNamedArg<$tom_core_kernel_31.TomClientLimitsInformation?>(named, 'cli');
+        final aci = D4.getOptionalNamedArg<$tom_core_kernel_31.TomAccessControlInformation?>(named, 'aci');
+        final user = D4.getOptionalNamedArg<$tom_core_kernel_31.TomUser?>(named, 'user');
         final authenticated = D4.getNamedArgWithDefault<bool>(named, 'authenticated', false);
         final requires2FA = D4.getNamedArgWithDefault<bool>(named, 'requires2FA', false);
         final twoFactorType = D4.getOptionalNamedArg<String?>(named, 'twoFactorType');
@@ -8844,66 +9643,66 @@ BridgedClass _createTomPrincipalBridge() {
         final applicationId = D4.getNamedArgWithDefault<int>(named, 'applicationId', -1);
         final processId = D4.getNamedArgWithDefault<int>(named, 'processId', -1);
         final clientId = D4.getNamedArgWithDefault<int>(named, 'clientId', -1);
-        return $tom_core_kernel_30.TomPrincipal(cli: cli, aci: aci, user: user, authenticated: authenticated, requires2FA: requires2FA, twoFactorType: twoFactorType, context: context, organization: organization, application: application, process: process, language: language, country: country, clientCountry: clientCountry, clientLanguage: clientLanguage, timezone: timezone, clientTimezone: clientTimezone, organizationId: organizationId, applicationId: applicationId, processId: processId, clientId: clientId);
+        return $tom_core_kernel_31.TomPrincipal(cli: cli, aci: aci, user: user, authenticated: authenticated, requires2FA: requires2FA, twoFactorType: twoFactorType, context: context, organization: organization, application: application, process: process, language: language, country: country, clientCountry: clientCountry, clientLanguage: clientLanguage, timezone: timezone, clientTimezone: clientTimezone, organizationId: organizationId, applicationId: applicationId, processId: processId, clientId: clientId);
       },
     },
     getters: {
-      'organization': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').organization,
-      'application': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').application,
-      'process': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').process,
-      'organizationId': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').organizationId,
-      'applicationId': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').applicationId,
-      'processId': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').processId,
-      'clientId': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientId,
-      'language': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').language,
-      'country': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').country,
-      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').timezone,
-      'clientLanguage': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientLanguage,
-      'clientCountry': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientCountry,
-      'clientTimezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientTimezone,
-      'aci': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').aci,
-      'authenticated': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').authenticated,
-      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').id,
-      'username': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').username,
-      'user': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').user,
-      'currentContext': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').currentContext,
-      'requires2FA': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').requires2FA,
-      'twoFactorType': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').twoFactorType,
-      'cli': (visitor, target) => D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').cli,
+      'organization': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').organization,
+      'application': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').application,
+      'process': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').process,
+      'organizationId': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').organizationId,
+      'applicationId': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').applicationId,
+      'processId': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').processId,
+      'clientId': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientId,
+      'language': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').language,
+      'country': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').country,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').timezone,
+      'clientLanguage': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientLanguage,
+      'clientCountry': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientCountry,
+      'clientTimezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientTimezone,
+      'aci': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').aci,
+      'authenticated': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').authenticated,
+      'id': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').id,
+      'username': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').username,
+      'user': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').user,
+      'currentContext': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').currentContext,
+      'requires2FA': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').requires2FA,
+      'twoFactorType': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').twoFactorType,
+      'cli': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').cli,
     },
     setters: {
       'organization': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').organization = D4.extractBridgedArgOrNull<String>(value, 'organization'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').organization = D4.extractBridgedArgOrNull<String>(value, 'organization'),
       'application': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').application = D4.extractBridgedArgOrNull<String>(value, 'application'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').application = D4.extractBridgedArgOrNull<String>(value, 'application'),
       'process': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').process = D4.extractBridgedArgOrNull<String>(value, 'process'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').process = D4.extractBridgedArgOrNull<String>(value, 'process'),
       'organizationId': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').organizationId = D4.extractBridgedArg<int>(value, 'organizationId'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').organizationId = D4.extractBridgedArg<int>(value, 'organizationId'),
       'applicationId': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').applicationId = D4.extractBridgedArg<int>(value, 'applicationId'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').applicationId = D4.extractBridgedArg<int>(value, 'applicationId'),
       'processId': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').processId = D4.extractBridgedArg<int>(value, 'processId'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').processId = D4.extractBridgedArg<int>(value, 'processId'),
       'clientId': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientId = D4.extractBridgedArg<int>(value, 'clientId'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientId = D4.extractBridgedArg<int>(value, 'clientId'),
       'language': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').language = D4.extractBridgedArgOrNull<String>(value, 'language'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').language = D4.extractBridgedArgOrNull<String>(value, 'language'),
       'country': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').country = D4.extractBridgedArgOrNull<String>(value, 'country'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').country = D4.extractBridgedArgOrNull<String>(value, 'country'),
       'timezone': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').timezone = D4.extractBridgedArgOrNull<String>(value, 'timezone'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').timezone = D4.extractBridgedArgOrNull<String>(value, 'timezone'),
       'clientLanguage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientLanguage = D4.extractBridgedArgOrNull<String>(value, 'clientLanguage'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientLanguage = D4.extractBridgedArgOrNull<String>(value, 'clientLanguage'),
       'clientCountry': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientCountry = D4.extractBridgedArgOrNull<String>(value, 'clientCountry'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientCountry = D4.extractBridgedArgOrNull<String>(value, 'clientCountry'),
       'clientTimezone': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').clientTimezone = D4.extractBridgedArgOrNull<String>(value, 'clientTimezone'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').clientTimezone = D4.extractBridgedArgOrNull<String>(value, 'clientTimezone'),
       'aci': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal').aci = D4.extractBridgedArg<$tom_core_kernel_30.TomAccessControlInformation>(value, 'aci'),
+        D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal').aci = D4.extractBridgedArg<$tom_core_kernel_31.TomAccessControlInformation>(value, 'aci'),
     },
     methods: {
       'addToContext': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal');
         D4.requireMinArgs(positional, 1, 'addToContext');
         if (positional.isEmpty) {
           throw ArgumentError('addToContext: Missing required argument "attributes" at position 0');
@@ -8913,7 +9712,7 @@ BridgedClass _createTomPrincipalBridge() {
         return null;
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_30.TomPrincipal>(target, 'TomPrincipal');
+        final t = D4.validateTarget<$tom_core_kernel_31.TomPrincipal>(target, 'TomPrincipal');
         return t.toString();
       },
     },
@@ -8973,20 +9772,20 @@ BridgedClass _createTomPrincipalBridge() {
 
 BridgedClass _createTomGetSettingsMessageBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_31.TomGetSettingsMessage,
+    nativeType: $tom_core_kernel_32.TomGetSettingsMessage,
     name: 'TomGetSettingsMessage',
-    isAssignable: (v) => v is $tom_core_kernel_31.TomGetSettingsMessage,
+    isAssignable: (v) => v is $tom_core_kernel_32.TomGetSettingsMessage,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_31.TomGetSettingsMessage();
+        return $tom_core_kernel_32.TomGetSettingsMessage();
       },
     },
     getters: {
-      'authorizationToken': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsMessage>(target, 'TomGetSettingsMessage').authorizationToken,
+      'authorizationToken': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsMessage>(target, 'TomGetSettingsMessage').authorizationToken,
     },
     setters: {
       'authorizationToken': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsMessage>(target, 'TomGetSettingsMessage').authorizationToken = D4.extractBridgedArgOrNull<String>(value, 'authorizationToken'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsMessage>(target, 'TomGetSettingsMessage').authorizationToken = D4.extractBridgedArgOrNull<String>(value, 'authorizationToken'),
     },
     constructorSignatures: {
       '': 'TomGetSettingsMessage()',
@@ -9006,9 +9805,9 @@ BridgedClass _createTomGetSettingsMessageBridge() {
 
 BridgedClass _createTomGetSettingsResultBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_31.TomGetSettingsResult,
+    nativeType: $tom_core_kernel_32.TomGetSettingsResult,
     name: 'TomGetSettingsResult',
-    isAssignable: (v) => v is $tom_core_kernel_31.TomGetSettingsResult,
+    isAssignable: (v) => v is $tom_core_kernel_32.TomGetSettingsResult,
     constructors: {
       '': (visitor, positional, named) {
         final texts = D4.coerceMapOrNull<String, Object?>(named['texts'], 'texts');
@@ -9025,50 +9824,50 @@ BridgedClass _createTomGetSettingsResultBridge() {
         final clientLanguage = D4.getOptionalNamedArg<String?>(named, 'clientLanguage');
         final clientCountry = D4.getOptionalNamedArg<String?>(named, 'clientCountry');
         final clientTimeZone = D4.getOptionalNamedArg<String?>(named, 'clientTimeZone');
-        return $tom_core_kernel_31.TomGetSettingsResult(texts: texts, config: config, groups: groups, roles: roles, entitlements: entitlements, resourceKeys: resourceKeys, organization: organization, process: process, application: application, country: country, language: language, clientLanguage: clientLanguage, clientCountry: clientCountry, clientTimeZone: clientTimeZone);
+        return $tom_core_kernel_32.TomGetSettingsResult(texts: texts, config: config, groups: groups, roles: roles, entitlements: entitlements, resourceKeys: resourceKeys, organization: organization, process: process, application: application, country: country, language: language, clientLanguage: clientLanguage, clientCountry: clientCountry, clientTimeZone: clientTimeZone);
       },
     },
     getters: {
-      'texts': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').texts,
-      'config': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').config,
-      'groups': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').groups,
-      'roles': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').roles,
-      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').entitlements,
-      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').resourceKeys,
-      'organization': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').organization,
-      'process': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').process,
-      'application': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').application,
-      'country': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').country,
-      'language': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').language,
-      'clientCountry': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientCountry,
-      'clientLanguage': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientLanguage,
-      'clientTimeZone': (visitor, target) => D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimeZone,
+      'texts': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').texts,
+      'config': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').config,
+      'groups': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').groups,
+      'roles': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').roles,
+      'entitlements': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').entitlements,
+      'resourceKeys': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').resourceKeys,
+      'organization': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').organization,
+      'process': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').process,
+      'application': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').application,
+      'country': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').country,
+      'language': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').language,
+      'clientCountry': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientCountry,
+      'clientLanguage': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientLanguage,
+      'clientTimeZone': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimeZone,
     },
     setters: {
       'groups': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').groups = D4.coerceList<String>(value, 'groups'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').groups = D4.coerceList<String>(value, 'groups'),
       'roles': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').roles = D4.coerceList<String>(value, 'roles'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').roles = D4.coerceList<String>(value, 'roles'),
       'entitlements': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').entitlements = D4.coerceList<String>(value, 'entitlements'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').entitlements = D4.coerceList<String>(value, 'entitlements'),
       'resourceKeys': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').resourceKeys = D4.coerceList<String>(value, 'resourceKeys'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').resourceKeys = D4.coerceList<String>(value, 'resourceKeys'),
       'organization': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').organization = D4.extractBridgedArgOrNull<String>(value, 'organization'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').organization = D4.extractBridgedArgOrNull<String>(value, 'organization'),
       'process': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').process = D4.extractBridgedArgOrNull<String>(value, 'process'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').process = D4.extractBridgedArgOrNull<String>(value, 'process'),
       'application': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').application = D4.extractBridgedArgOrNull<String>(value, 'application'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').application = D4.extractBridgedArgOrNull<String>(value, 'application'),
       'country': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').country = D4.extractBridgedArgOrNull<String>(value, 'country'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').country = D4.extractBridgedArgOrNull<String>(value, 'country'),
       'language': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').language = D4.extractBridgedArgOrNull<String>(value, 'language'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').language = D4.extractBridgedArgOrNull<String>(value, 'language'),
       'clientCountry': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientCountry = D4.extractBridgedArgOrNull<String>(value, 'clientCountry'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientCountry = D4.extractBridgedArgOrNull<String>(value, 'clientCountry'),
       'clientLanguage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientLanguage = D4.extractBridgedArgOrNull<String>(value, 'clientLanguage'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientLanguage = D4.extractBridgedArgOrNull<String>(value, 'clientLanguage'),
       'clientTimeZone': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_31.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimeZone = D4.extractBridgedArgOrNull<String>(value, 'clientTimeZone'),
+        D4.validateTarget<$tom_core_kernel_32.TomGetSettingsResult>(target, 'TomGetSettingsResult').clientTimeZone = D4.extractBridgedArgOrNull<String>(value, 'clientTimeZone'),
     },
     constructorSignatures: {
       '': 'TomGetSettingsResult({Map<String, Object?>? texts, Map<String, Object?>? config, List<String>? groups, List<String>? roles, List<String>? entitlements, List<String>? resourceKeys, String? organization, String? process, String? application, String? country, String? language, String? clientLanguage, String? clientCountry, String? clientTimeZone})',
@@ -9114,15 +9913,15 @@ BridgedClass _createTomGetSettingsResultBridge() {
 
 BridgedClass _createTomDisposableBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_32.TomDisposable,
+    nativeType: $tom_core_kernel_33.TomDisposable,
     name: 'TomDisposable',
-    isAssignable: (v) => v is $tom_core_kernel_32.TomDisposable,
+    isAssignable: (v) => v is $tom_core_kernel_33.TomDisposable,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'dispose': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomDisposable>(target, 'TomDisposable');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomDisposable>(target, 'TomDisposable');
         (t as dynamic).dispose();
         return null;
       },
@@ -9139,15 +9938,15 @@ BridgedClass _createTomDisposableBridge() {
 
 BridgedClass _createTomClosableBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_32.TomClosable,
+    nativeType: $tom_core_kernel_33.TomClosable,
     name: 'TomClosable',
-    isAssignable: (v) => v is $tom_core_kernel_32.TomClosable,
+    isAssignable: (v) => v is $tom_core_kernel_33.TomClosable,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'close': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomClosable>(target, 'TomClosable');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomClosable>(target, 'TomClosable');
         t.close();
         return null;
       },
@@ -9164,28 +9963,28 @@ BridgedClass _createTomClosableBridge() {
 
 BridgedClass _createTomCloseAdaptorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_32.TomCloseAdaptor,
+    nativeType: $tom_core_kernel_33.TomCloseAdaptor,
     name: 'TomCloseAdaptor',
-    isAssignable: (v) => v is $tom_core_kernel_32.TomCloseAdaptor,
+    isAssignable: (v) => v is $tom_core_kernel_33.TomCloseAdaptor,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomCloseAdaptor');
         final closableObject = D4.getRequiredArg<Object>(positional, 0, 'closableObject', 'TomCloseAdaptor');
         final methodName = D4.getOptionalArg<String?>(positional, 1, 'methodName');
-        return $tom_core_kernel_32.TomCloseAdaptor(closableObject, methodName);
+        return $tom_core_kernel_33.TomCloseAdaptor(closableObject, methodName);
       },
     },
     getters: {
-      'closableObject': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomCloseAdaptor>(target, 'TomCloseAdaptor').closableObject,
+      'closableObject': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomCloseAdaptor>(target, 'TomCloseAdaptor').closableObject,
     },
     setters: {
       'closableObject': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_32.TomCloseAdaptor>(target, 'TomCloseAdaptor').closableObject = D4.extractBridgedArg<Object>(value, 'closableObject'),
+        D4.validateTarget<$tom_core_kernel_33.TomCloseAdaptor>(target, 'TomCloseAdaptor').closableObject = D4.extractBridgedArg<Object>(value, 'closableObject'),
     },
     methods: {
       'close': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomCloseAdaptor>(target, 'TomCloseAdaptor');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomCloseAdaptor>(target, 'TomCloseAdaptor');
         t.close();
         return null;
       },
@@ -9211,34 +10010,34 @@ BridgedClass _createTomCloseAdaptorBridge() {
 
 BridgedClass _createTomShutdownCleanupBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_32.TomShutdownCleanup,
+    nativeType: $tom_core_kernel_33.TomShutdownCleanup,
     name: 'TomShutdownCleanup',
-    isAssignable: (v) => v is $tom_core_kernel_32.TomShutdownCleanup,
+    isAssignable: (v) => v is $tom_core_kernel_33.TomShutdownCleanup,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_32.TomShutdownCleanup();
+        return $tom_core_kernel_33.TomShutdownCleanup();
       },
     },
     getters: {
-      'paused': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup').paused,
-      'silent': (visitor, target) => D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup').silent,
+      'paused': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup').paused,
+      'silent': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup').silent,
     },
     setters: {
       'paused': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup').paused = D4.extractBridgedArg<bool>(value, 'paused'),
+        D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup').paused = D4.extractBridgedArg<bool>(value, 'paused'),
       'silent': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup').silent = D4.extractBridgedArg<bool>(value, 'silent'),
+        D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup').silent = D4.extractBridgedArg<bool>(value, 'silent'),
     },
     methods: {
       'performShutdown': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         final signal = D4.getNamedArgWithDefault<ProcessSignal>(named, 'signal', ProcessSignal.sigint);
         final fromSignal = D4.getNamedArgWithDefault<bool>(named, 'fromSignal', false);
         t.performShutdown(signal: signal, fromSignal: fromSignal);
         return null;
       },
       'addSignalHandler': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         D4.requireMinArgs(positional, 1, 'addSignalHandler');
         if (positional.isEmpty) {
           throw ArgumentError('addSignalHandler: Missing required argument "handler" at position 0');
@@ -9248,36 +10047,36 @@ BridgedClass _createTomShutdownCleanupBridge() {
         return null;
       },
       'addClosable': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         D4.requireMinArgs(positional, 1, 'addClosable');
-        final closable = D4.getRequiredArg<$tom_core_kernel_32.TomClosable>(positional, 0, 'closable', 'addClosable');
+        final closable = D4.getRequiredArg<$tom_core_kernel_33.TomClosable>(positional, 0, 'closable', 'addClosable');
         t.addClosable(closable);
         return null;
       },
       'addDisposable': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         D4.requireMinArgs(positional, 1, 'addDisposable');
-        final disposable = D4.getRequiredArg<$tom_core_kernel_32.TomDisposable>(positional, 0, 'disposable', 'addDisposable');
+        final disposable = D4.getRequiredArg<$tom_core_kernel_33.TomDisposable>(positional, 0, 'disposable', 'addDisposable');
         t.addDisposable(disposable);
         return null;
       },
       'addSignal': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         D4.requireMinArgs(positional, 1, 'addSignal');
         final processSignal = D4.getRequiredArg<ProcessSignal>(positional, 0, 'processSignal', 'addSignal');
         t.addSignal(processSignal);
         return null;
       },
       'cancelAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         return t.cancelAll();
       },
       'dispose': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         return (t as dynamic).dispose();
       },
       'start': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_32.TomShutdownCleanup>(target, 'TomShutdownCleanup');
+        final t = D4.validateTarget<$tom_core_kernel_33.TomShutdownCleanup>(target, 'TomShutdownCleanup');
         t.start();
         return null;
       },
@@ -9312,51 +10111,51 @@ BridgedClass _createTomShutdownCleanupBridge() {
 
 BridgedClass _createTomObservableBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_20.TomObservable,
+    nativeType: $tom_core_kernel_21.TomObservable,
     name: 'TomObservable',
-    isAssignable: (v) => v is $tom_core_kernel_20.TomObservable,
+    isAssignable: (v) => v is $tom_core_kernel_21.TomObservable,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_20.TomObservable();
+        return $tom_core_kernel_21.TomObservable();
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_20.TomObservable>(target, 'TomObservable').isMuted,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservable>(target, 'TomObservable').isMuted,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomObservable>(target, 'TomObservable');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomObservable>(target, 'TomObservable');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomObservable>(target, 'TomObservable');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomObservable>(target, 'TomObservable');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomObservable>(target, 'TomObservable');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomObservable>(target, 'TomObservable');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomObservable>(target, 'TomObservable');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomObservable>(target, 'TomObservable');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomObservable>(target, 'TomObservable');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomObservable>(target, 'TomObservable');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomObservable>(target, 'TomObservable');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomObservable>(target, 'TomObservable');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
     },
@@ -9382,17 +10181,17 @@ BridgedClass _createTomObservableBridge() {
 
 BridgedClass _createTomObserverBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_20.TomObserver,
+    nativeType: $tom_core_kernel_21.TomObserver,
     name: 'TomObserver',
-    isAssignable: (v) => v is $tom_core_kernel_20.TomObserver,
+    isAssignable: (v) => v is $tom_core_kernel_21.TomObserver,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomObserver>(target, 'TomObserver');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomObserver>(target, 'TomObserver');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
@@ -9409,9 +10208,9 @@ BridgedClass _createTomObserverBridge() {
 
 BridgedClass _createTomFunctionObserverBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_20.TomFunctionObserver,
+    nativeType: $tom_core_kernel_21.TomFunctionObserver,
     name: 'TomFunctionObserver',
-    isAssignable: (v) => v is $tom_core_kernel_20.TomFunctionObserver,
+    isAssignable: (v) => v is $tom_core_kernel_21.TomFunctionObserver,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9420,14 +10219,14 @@ BridgedClass _createTomFunctionObserverBridge() {
           throw ArgumentError('TomFunctionObserver: Missing required argument "_callback" at position 0');
         }
         final callbackRaw = positional[0];
-        return $tom_core_kernel_20.TomFunctionObserver(($tom_core_kernel_20.TomObservable p0) { D4.callInterpreterCallback(visitor!, callbackRaw, [p0]); });
+        return $tom_core_kernel_21.TomFunctionObserver(($tom_core_kernel_21.TomObservable p0) { D4.callInterpreterCallback(visitor!, callbackRaw, [p0]); });
       },
     },
     methods: {
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_20.TomFunctionObserver>(target, 'TomFunctionObserver');
+        final t = D4.validateTarget<$tom_core_kernel_21.TomFunctionObserver>(target, 'TomFunctionObserver');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
@@ -9447,9 +10246,9 @@ BridgedClass _createTomFunctionObserverBridge() {
 
 BridgedClass _createTomReflectorExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_22.TomReflectorException,
+    nativeType: $tom_core_kernel_23.TomReflectorException,
     name: 'TomReflectorException',
-    isAssignable: (v) => v is $tom_core_kernel_22.TomReflectorException,
+    isAssignable: (v) => v is $tom_core_kernel_23.TomReflectorException,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
@@ -9460,55 +10259,55 @@ BridgedClass _createTomReflectorExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_kernel_22.TomReflectorException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_kernel_23.TomReflectorException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').stackTrace,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').logRepresentation,
     },
     setters: {
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectorException>(target, 'TomReflectorException');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectorException>(target, 'TomReflectorException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -9559,47 +10358,47 @@ BridgedClass _createTomReflectorExceptionBridge() {
 
 BridgedClass _createTomReflectorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_22.TomReflector,
+    nativeType: $tom_core_kernel_23.TomReflector,
     name: 'TomReflector',
-    isAssignable: (v) => v is $tom_core_kernel_22.TomReflector,
+    isAssignable: (v) => v is $tom_core_kernel_23.TomReflector,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_22.TomReflector();
+        return $tom_core_kernel_23.TomReflector();
       },
     },
     getters: {
-      'libraries': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector').libraries,
-      'annotatedClasses': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector').annotatedClasses,
-      'capabilities': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector').capabilities,
+      'libraries': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector').libraries,
+      'annotatedClasses': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector').annotatedClasses,
+      'capabilities': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector').capabilities,
     },
     methods: {
       'canReflect': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector');
         D4.requireMinArgs(positional, 1, 'canReflect');
         final reflectee = D4.getRequiredArg<Object>(positional, 0, 'reflectee', 'canReflect');
         return t.canReflect(reflectee);
       },
       'reflect': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector');
         D4.requireMinArgs(positional, 1, 'reflect');
         final reflectee = D4.getRequiredArg<Object>(positional, 0, 'reflectee', 'reflect');
         return t.reflect(reflectee);
       },
       'canReflectType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector');
         D4.requireMinArgs(positional, 1, 'canReflectType');
         final type = D4.getRequiredArg<Type>(positional, 0, 'type', 'canReflectType');
         return t.canReflectType(type);
       },
       'reflectType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector');
         D4.requireMinArgs(positional, 1, 'reflectType');
         final type = D4.getRequiredArg<Type>(positional, 0, 'type', 'reflectType');
         return t.reflectType(type);
       },
       'findLibrary': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflector>(target, 'TomReflector');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflector>(target, 'TomReflector');
         D4.requireMinArgs(positional, 1, 'findLibrary');
         final libraryName = D4.getRequiredArg<String>(positional, 0, 'libraryName', 'findLibrary');
         return t.findLibrary(libraryName);
@@ -9629,62 +10428,62 @@ BridgedClass _createTomReflectorBridge() {
 
 BridgedClass _createTomReflectionInfoBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_22.TomReflectionInfo,
+    nativeType: $tom_core_kernel_23.TomReflectionInfo,
     name: 'TomReflectionInfo',
-    isAssignable: (v) => v is $tom_core_kernel_22.TomReflectionInfo,
+    isAssignable: (v) => v is $tom_core_kernel_23.TomReflectionInfo,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomReflectionInfo');
-        final reflector = D4.getRequiredArg<$tom_core_kernel_22.TomReflector>(positional, 0, 'reflector', 'TomReflectionInfo');
-        return $tom_core_kernel_22.TomReflectionInfo(reflector);
+        final reflector = D4.getRequiredArg<$tom_core_kernel_23.TomReflector>(positional, 0, 'reflector', 'TomReflectionInfo');
+        return $tom_core_kernel_23.TomReflectionInfo(reflector);
       },
     },
     getters: {
-      'reflector': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo').reflector,
+      'reflector': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo').reflector,
     },
     methods: {
       'mapValueElementType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 1, 'mapValueElementType');
         final collection = D4.getRequiredArg<Object>(positional, 0, 'collection', 'mapValueElementType');
         return t.mapValueElementType(collection);
       },
       'singleElementType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 1, 'singleElementType');
         final collection = D4.getRequiredArg<Object>(positional, 0, 'collection', 'singleElementType');
         return t.singleElementType(collection);
       },
       'reportReflectObject': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 1, 'reportReflectObject');
         final o = D4.getRequiredArg<Object>(positional, 0, 'o', 'reportReflectObject');
         t.reportReflectObject(o);
         return null;
       },
       'reportReflect': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 1, 'reportReflect');
         final cm = D4.getRequiredArg<$tom_reflection_2.ClassMirror>(positional, 0, 'cm', 'reportReflect');
         t.reportReflect(cm);
         return null;
       },
       'convertFromJsonString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 2, 'convertFromJsonString');
         final o = D4.getRequiredArg<Object>(positional, 0, 'o', 'convertFromJsonString');
         final s = D4.getRequiredArg<String>(positional, 1, 's', 'convertFromJsonString');
         return t.convertFromJsonString(o, s);
       },
       'createInstanceFromJsonString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 2, 'createInstanceFromJsonString');
         final objectMirror = D4.getRequiredArg<$tom_reflection_2.ClassMirror>(positional, 0, 'objectMirror', 'createInstanceFromJsonString');
         final s = D4.getRequiredArg<String>(positional, 1, 's', 'createInstanceFromJsonString');
         return t.createInstanceFromJsonString(objectMirror, s);
       },
       'createInstanceFromJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 2, 'createInstanceFromJson');
         final objectMirror = D4.getRequiredArg<$tom_reflection_2.ClassMirror>(positional, 0, 'objectMirror', 'createInstanceFromJson');
         if (positional.length <= 1) {
@@ -9694,12 +10493,12 @@ BridgedClass _createTomReflectionInfoBridge() {
         return t.createInstanceFromJson(objectMirror, jsonData);
       },
       'createInstance': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         final type = D4.getOptionalArg<Type?>(positional, 0, 'type');
         return t.createInstance(type);
       },
       'setValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 2, 'setValues');
         final o = D4.getRequiredArg<Object>(positional, 0, 'o', 'setValues');
         if (positional.length <= 1) {
@@ -9709,30 +10508,30 @@ BridgedClass _createTomReflectionInfoBridge() {
         return t.setValues(o, values);
       },
       'convertToJsonString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 1, 'convertToJsonString');
         final o = D4.getRequiredArg<Object>(positional, 0, 'o', 'convertToJsonString');
         return t.convertToJsonString(o);
       },
       'getValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_22.TomReflectionInfo>(target, 'TomReflectionInfo');
+        final t = D4.validateTarget<$tom_core_kernel_23.TomReflectionInfo>(target, 'TomReflectionInfo');
         D4.requireMinArgs(positional, 1, 'getValues');
         final o = D4.getRequiredArg<Object>(positional, 0, 'o', 'getValues');
         return t.getValues(o);
       },
     },
     staticGetters: {
-      'debugSwitchLogReflectionDetailsMembers': (visitor) => $tom_core_kernel_22.TomReflectionInfo.debugSwitchLogReflectionDetailsMembers,
-      'debugSwitchLogReflectionDetailsValues': (visitor) => $tom_core_kernel_22.TomReflectionInfo.debugSwitchLogReflectionDetailsValues,
-      'debugSwitchLogReflectionDetailsTypes': (visitor) => $tom_core_kernel_22.TomReflectionInfo.debugSwitchLogReflectionDetailsTypes,
+      'debugSwitchLogReflectionDetailsMembers': (visitor) => $tom_core_kernel_23.TomReflectionInfo.debugSwitchLogReflectionDetailsMembers,
+      'debugSwitchLogReflectionDetailsValues': (visitor) => $tom_core_kernel_23.TomReflectionInfo.debugSwitchLogReflectionDetailsValues,
+      'debugSwitchLogReflectionDetailsTypes': (visitor) => $tom_core_kernel_23.TomReflectionInfo.debugSwitchLogReflectionDetailsTypes,
     },
     staticSetters: {
       'debugSwitchLogReflectionDetailsMembers': (visitor, value) => 
-        $tom_core_kernel_22.TomReflectionInfo.debugSwitchLogReflectionDetailsMembers = D4.extractBridgedArg<bool>(value, 'debugSwitchLogReflectionDetailsMembers'),
+        $tom_core_kernel_23.TomReflectionInfo.debugSwitchLogReflectionDetailsMembers = D4.extractBridgedArg<bool>(value, 'debugSwitchLogReflectionDetailsMembers'),
       'debugSwitchLogReflectionDetailsValues': (visitor, value) => 
-        $tom_core_kernel_22.TomReflectionInfo.debugSwitchLogReflectionDetailsValues = D4.extractBridgedArg<bool>(value, 'debugSwitchLogReflectionDetailsValues'),
+        $tom_core_kernel_23.TomReflectionInfo.debugSwitchLogReflectionDetailsValues = D4.extractBridgedArg<bool>(value, 'debugSwitchLogReflectionDetailsValues'),
       'debugSwitchLogReflectionDetailsTypes': (visitor, value) => 
-        $tom_core_kernel_22.TomReflectionInfo.debugSwitchLogReflectionDetailsTypes = D4.extractBridgedArg<bool>(value, 'debugSwitchLogReflectionDetailsTypes'),
+        $tom_core_kernel_23.TomReflectionInfo.debugSwitchLogReflectionDetailsTypes = D4.extractBridgedArg<bool>(value, 'debugSwitchLogReflectionDetailsTypes'),
     },
     constructorSignatures: {
       '': 'TomReflectionInfo(TomReflector reflector)',
@@ -9772,9 +10571,9 @@ BridgedClass _createTomReflectionInfoBridge() {
 
 BridgedClass _createTomObservableExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomObservableException,
+    nativeType: $tom_core_kernel_22.TomObservableException,
     name: 'TomObservableException',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomObservableException,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomObservableException,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
@@ -9787,55 +10586,55 @@ BridgedClass _createTomObservableExceptionBridge() {
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
         final serverCallError = D4.getOptionalNamedArg<$tom_core_kernel_9.TomServerCallError?>(named, 'serverCallError');
-        return $tom_core_kernel_21.TomObservableException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, uuid: uuid, serverCallError: serverCallError);
+        return $tom_core_kernel_22.TomObservableException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, uuid: uuid, serverCallError: serverCallError);
       },
     },
     getters: {
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').stackTrace,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').logRepresentation,
     },
     setters: {
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObservableException>(target, 'TomObservableException');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObservableException>(target, 'TomObservableException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -9886,9 +10685,9 @@ BridgedClass _createTomObservableExceptionBridge() {
 
 BridgedClass _createTomObjectBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomObject,
+    nativeType: $tom_core_kernel_22.TomObject,
     name: 'TomObject',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomObject,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomObject,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9896,277 +10695,281 @@ BridgedClass _createTomObjectBridge() {
         final initialValue = D4.getRequiredArg<dynamic>(positional, 0, 'initialValue', 'TomObject');
         // GEN-075: Preserve generic type parameter from runtime value
         switch (initialValue) {
-          case double _: return $tom_core_kernel_21.TomObject<double>(initialValue);
-          case int _: return $tom_core_kernel_21.TomObject<int>(initialValue);
-          case String _: return $tom_core_kernel_21.TomObject<String>(initialValue);
-          case bool _: return $tom_core_kernel_21.TomObject<bool>(initialValue);
-          case $tom_reflection_3.GenericClassMirrorImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.GenericClassMirrorImpl>(initialValue);
-          case $tom_reflection_3.NonGenericClassMirrorImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.NonGenericClassMirrorImpl>(initialValue);
-          case $tom_reflection_3.ParameterMirrorImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.ParameterMirrorImpl>(initialValue);
-          case $tom_reflection_2.FunctionTypeMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.FunctionTypeMirror>(initialValue);
-          case $tom_reflection_3.ImplicitSetterMirrorImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.ImplicitSetterMirrorImpl>(initialValue);
-          case $tom_reflection_3.LibraryMirrorImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.LibraryMirrorImpl>(initialValue);
-          case $tom_reflection_3.VariableMirrorImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.VariableMirrorImpl>(initialValue);
-          case $tom_reflection_2.ClassMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.ClassMirror>(initialValue);
-          case $tom_reflection_3.MethodMirrorImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.MethodMirrorImpl>(initialValue);
-          case $tom_core_kernel_3.TomAuthExpiredException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_3.TomAuthExpiredException>(initialValue);
-          case $tom_core_kernel_1.TomBeanLocatorException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_1.TomBeanLocatorException>(initialValue);
-          case $tom_core_kernel_8.TomClientRemoteContextException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_8.TomClientRemoteContextException>(initialValue);
-          case $tom_core_kernel_21.TomDateRange _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomDateRange>(initialValue);
-          case $tom_core_kernel_21.TomDateTimeRange _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomDateTimeRange>(initialValue);
-          case $tom_core_kernel_4.TomEndpointException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_4.TomEndpointException>(initialValue);
-          case $tom_core_kernel_21.TomList _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomList>(initialValue);
-          case $tom_core_kernel_7.TomMimeTypeException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_7.TomMimeTypeException>(initialValue);
-          case $tom_core_kernel_21.TomNOZonedDate _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNOZonedDate>(initialValue);
-          case $tom_core_kernel_21.TomNOZonedDateTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNOZonedDateTime>(initialValue);
-          case $tom_core_kernel_21.TomNOZonedTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNOZonedTime>(initialValue);
-          case $tom_core_kernel_21.TomObservableException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomObservableException>(initialValue);
-          case $tom_core_kernel_22.TomReflector _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_22.TomReflector>(initialValue);
-          case $tom_core_kernel_22.TomReflectorException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_22.TomReflectorException>(initialValue);
-          case $tom_core_kernel_9.TomRequestAbortedException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomRequestAbortedException>(initialValue);
-          case $tom_core_kernel_9.TomServerConnectionException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomServerConnectionException>(initialValue);
-          case $tom_core_kernel_21.TomTimeRange _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomTimeRange>(initialValue);
-          case $tom_core_kernel_34.TomTimezoneException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_34.TomTimezoneException>(initialValue);
-          case $tom_core_kernel_10.TomWorkerException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_10.TomWorkerException>(initialValue);
-          case $tom_reflection_2.ClosureMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.ClosureMirror>(initialValue);
-          case $tom_reflection_2.LibraryMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.LibraryMirror>(initialValue);
-          case $tom_reflection_2.ParameterMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.ParameterMirror>(initialValue);
-          case $pointycastle_2.RSAPrivateKey _: return $tom_core_kernel_21.TomObject<$pointycastle_2.RSAPrivateKey>(initialValue);
-          case $pointycastle_2.RSAPublicKey _: return $tom_core_kernel_21.TomObject<$pointycastle_2.RSAPublicKey>(initialValue);
-          case $tom_core_kernel_21.TomClass _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomClass>(initialValue);
-          case $tom_core_kernel_14.TomException _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_14.TomException>(initialValue);
-          case $tom_core_kernel_21.TomMap _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomMap>(initialValue);
-          case $tom_core_kernel_21.TomNOTimezoned _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNOTimezoned>(initialValue);
-          case $tom_core_kernel_21.TomOZonedDate _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomOZonedDate>(initialValue);
-          case $tom_core_kernel_21.TomOZonedDateTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomOZonedDateTime>(initialValue);
-          case $tom_core_kernel_21.TomOZonedTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomOZonedTime>(initialValue);
-          case $tom_core_kernel_33.TomZonedDate _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_33.TomZonedDate>(initialValue);
-          case $tom_core_kernel_33.TomZonedDateTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_33.TomZonedDateTime>(initialValue);
-          case $tom_core_kernel_33.TomZonedTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_33.TomZonedTime>(initialValue);
-          case $tom_reflection_2.TypeVariableMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.TypeVariableMirror>(initialValue);
-          case $tom_reflection_2.TypedefMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.TypedefMirror>(initialValue);
-          case $tom_reflection_2.InstanceMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.InstanceMirror>(initialValue);
-          case $tom_reflection_2.MethodMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.MethodMirror>(initialValue);
-          case $tom_reflection_3.ReflectionImpl _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.ReflectionImpl>(initialValue);
-          case $tom_core_kernel_21.TomBool _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomBool>(initialValue);
-          case $tom_core_kernel_21.TomDateTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomDateTime>(initialValue);
-          case $tom_core_kernel_9.TomDefaultHttpClientFactory _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomDefaultHttpClientFactory>(initialValue);
-          case $tom_core_kernel_21.TomDouble _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomDouble>(initialValue);
-          case $tom_core_kernel_21.TomInt _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomInt>(initialValue);
-          case $tom_crypto_1.TomJwtTokenException _: return $tom_core_kernel_21.TomObject<$tom_crypto_1.TomJwtTokenException>(initialValue);
-          case $tom_core_kernel_21.TomNBool _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNBool>(initialValue);
-          case $tom_core_kernel_21.TomNDateTime _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNDateTime>(initialValue);
-          case $tom_core_kernel_21.TomNDouble _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNDouble>(initialValue);
-          case $tom_core_kernel_21.TomNInt _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNInt>(initialValue);
-          case $tom_core_kernel_21.TomNString _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomNString>(initialValue);
-          case $tom_core_kernel_21.TomOTimezoned _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomOTimezoned>(initialValue);
-          case $tom_core_kernel_24.TomScopeBase _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_24.TomScopeBase>(initialValue);
-          case $tom_core_kernel_21.TomString _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomString>(initialValue);
-          case $tom_core_kernel_33.TomTimezoned _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_33.TomTimezoned>(initialValue);
-          case $tom_reflection_2.TypeMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.TypeMirror>(initialValue);
-          case $tom_reflection_2.VariableMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.VariableMirror>(initialValue);
-          case $tom_reflection_2.CombinatorMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.CombinatorMirror>(initialValue);
-          case $tom_reflection_2.DeclarationMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.DeclarationMirror>(initialValue);
-          case $tom_reflection_2.LibraryDependencyMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.LibraryDependencyMirror>(initialValue);
-          case $tom_reflection_2.ObjectMirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.ObjectMirror>(initialValue);
-          case $pointycastle_1.PrivateKey _: return $tom_core_kernel_21.TomObject<$pointycastle_1.PrivateKey>(initialValue);
-          case $pointycastle_1.PublicKey _: return $tom_core_kernel_21.TomObject<$pointycastle_1.PublicKey>(initialValue);
-          case $pointycastle_1.SecureRandom _: return $tom_core_kernel_21.TomObject<$pointycastle_1.SecureRandom>(initialValue);
-          case $tom_core_kernel_25.TomAuthenticatedAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomAuthenticatedAccess>(initialValue);
-          case $tom_basics_1.TomBaseException _: return $tom_core_kernel_21.TomObject<$tom_basics_1.TomBaseException>(initialValue);
-          case $tom_core_kernel_32.TomCloseAdaptor _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_32.TomCloseAdaptor>(initialValue);
-          case $tom_basics_2.TomConsoleLogOutput _: return $tom_core_kernel_21.TomObject<$tom_basics_2.TomConsoleLogOutput>(initialValue);
-          case $tom_core_kernel_17.TomCreatorLogOutput _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_17.TomCreatorLogOutput>(initialValue);
-          case $tom_core_kernel_25.TomCustomAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomCustomAccess>(initialValue);
-          case $tom_core_kernel_25.TomEntitlementAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomEntitlementAccess>(initialValue);
-          case $tom_basics_4.TomFallbackPlatformUtils _: return $tom_core_kernel_21.TomObject<$tom_basics_4.TomFallbackPlatformUtils>(initialValue);
-          case $tom_core_kernel_20.TomFunctionObserver _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_20.TomFunctionObserver>(initialValue);
-          case $tom_core_kernel_25.TomGradedAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomGradedAccess>(initialValue);
-          case $tom_core_kernel_25.TomGroupAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomGroupAccess>(initialValue);
-          case $tom_core_kernel_25.TomGuestAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomGuestAccess>(initialValue);
-          case $tom_core_kernel_9.TomHttpClientFactory _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomHttpClientFactory>(initialValue);
-          case $tom_core_kernel_17.TomIsolateLogOutput _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_17.TomIsolateLogOutput>(initialValue);
-          case $tom_core_kernel_17.TomLoggingExecutor _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_17.TomLoggingExecutor>(initialValue);
-          case $tom_core_kernel_17.TomLoggingWorkerContext _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_17.TomLoggingWorkerContext>(initialValue);
-          case $tom_core_kernel_25.TomNoAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomNoAccess>(initialValue);
-          case $tom_core_kernel_25.TomPublicAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomPublicAccess>(initialValue);
-          case $tom_core_kernel_18.TomRemoteLogOutput _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_18.TomRemoteLogOutput>(initialValue);
-          case $tom_core_kernel_25.TomResourceKeyAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomResourceKeyAccess>(initialValue);
-          case $tom_core_kernel_28.TomResourceRoleAdapter _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_28.TomResourceRoleAdapter>(initialValue);
-          case $tom_core_kernel_25.TomRoleAccess _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomRoleAccess>(initialValue);
-          case $tom_core_kernel_24.TomScopeMixin _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_24.TomScopeMixin>(initialValue);
-          case $pointycastle_1.AsymmetricKeyPair _: return $tom_core_kernel_21.TomObject<$pointycastle_1.AsymmetricKeyPair>(initialValue);
-          case $tom_reflection_2.Comment _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.Comment>(initialValue);
-          case $tom_core_kernel_24.InScopeBuilder _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_24.InScopeBuilder>(initialValue);
-          case $tom_reflection_2.Mirror _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.Mirror>(initialValue);
-          case $tom_reflection_3.ReflectorData _: return $tom_core_kernel_21.TomObject<$tom_reflection_3.ReflectorData>(initialValue);
-          case $tom_crypto_4.RsaKeyHelper _: return $tom_core_kernel_21.TomObject<$tom_crypto_4.RsaKeyHelper>(initialValue);
-          case $tom_reflection_2.SourceLocation _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.SourceLocation>(initialValue);
-          case $tom_core_kernel_7.StaticFileMimetypeMapping _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_7.StaticFileMimetypeMapping>(initialValue);
-          case $tom_core_kernel_25.TomAccessControl _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomAccessControl>(initialValue);
-          case $tom_core_kernel_30.TomAccessControlDefinition _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomAccessControlDefinition>(initialValue);
-          case $tom_core_kernel_30.TomAccessControlInformation _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomAccessControlInformation>(initialValue);
-          case $tom_core_kernel_4.TomApi _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_4.TomApi>(initialValue);
-          case $tom_core_kernel_4.TomApiEndpoint _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_4.TomApiEndpoint>(initialValue);
-          case $tom_core_kernel_3.TomAuthRefresher _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_3.TomAuthRefresher>(initialValue);
-          case $tom_core_kernel_3.TomAuthRetryPolicy _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_3.TomAuthRetryPolicy>(initialValue);
-          case $tom_core_kernel_26.TomAuthenticationMessage _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_26.TomAuthenticationMessage>(initialValue);
-          case $tom_core_kernel_26.TomAuthenticationResult _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_26.TomAuthenticationResult>(initialValue);
-          case $tom_core_kernel_29.TomAuthorizable _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_29.TomAuthorizable>(initialValue);
-          case $tom_core_kernel_29.TomAuthorization _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_29.TomAuthorization>(initialValue);
-          case $tom_core_kernel_29.TomAuthorizationAdapter _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_29.TomAuthorizationAdapter>(initialValue);
-          case $tom_core_kernel_29.TomAuthorizationGroup _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_29.TomAuthorizationGroup>(initialValue);
-          case $tom_core_kernel_29.TomAuthorizer _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_29.TomAuthorizer>(initialValue);
-          case $tom_core_kernel_1.TomBean _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_1.TomBean>(initialValue);
-          case $tom_core_kernel_27.TomBearerAuthentication _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_27.TomBearerAuthentication>(initialValue);
-          case $tom_crypto_1.TomClientJwtToken _: return $tom_core_kernel_21.TomObject<$tom_crypto_1.TomClientJwtToken>(initialValue);
-          case $tom_core_kernel_30.TomClientLimitsInformation _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomClientLimitsInformation>(initialValue);
-          case $tom_core_kernel_8.TomClientRemoteContext _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_8.TomClientRemoteContext>(initialValue);
-          case $tom_core_kernel_32.TomClosable _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_32.TomClosable>(initialValue);
-          case $tom_core_kernel_10.TomCommand _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_10.TomCommand>(initialValue);
-          case $tom_core_kernel_1.TomComponent _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_1.TomComponent>(initialValue);
-          case $tom_core_kernel_23.TomConfigResourceProvider _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_23.TomConfigResourceProvider>(initialValue);
-          case $tom_core_kernel_4.TomContentDisposition _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_4.TomContentDisposition>(initialValue);
-          case $tom_core_kernel_2.TomContextEntry _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_2.TomContextEntry>(initialValue);
-          case $tom_core_kernel_2.TomContextProviders _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_2.TomContextProviders>(initialValue);
-          case $tom_core_kernel_32.TomDisposable _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_32.TomDisposable>(initialValue);
-          case $tom_core_kernel_30.TomEntitlement _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomEntitlement>(initialValue);
-          case $tom_basics_3.TomEnvironment _: return $tom_core_kernel_21.TomObject<$tom_basics_3.TomEnvironment>(initialValue);
-          case $tom_core_kernel_2.TomExecutionContext _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_2.TomExecutionContext>(initialValue);
-          case $tom_core_kernel_10.TomExecutor _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_10.TomExecutor>(initialValue);
-          case $tom_core_kernel_31.TomGetSettingsMessage _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_31.TomGetSettingsMessage>(initialValue);
-          case $tom_core_kernel_31.TomGetSettingsResult _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_31.TomGetSettingsResult>(initialValue);
-          case $tom_core_kernel_30.TomGroup _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomGroup>(initialValue);
-          case $tom_core_kernel_5.TomHeader _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_5.TomHeader>(initialValue);
-          case $tom_core_kernel_9.TomHttpClientAbstractFactory _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomHttpClientAbstractFactory>(initialValue);
-          case $tom_core_kernel_6.TomHttpMethod _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_6.TomHttpMethod>(initialValue);
-          case $tom_core_kernel_17.TomInterIsolateLogMessage _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_17.TomInterIsolateLogMessage>(initialValue);
-          case $tom_core_kernel_17.TomIsolateLogging _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_17.TomIsolateLogging>(initialValue);
-          case $tom_core_kernel_11.TomJsonSerializable _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_11.TomJsonSerializable>(initialValue);
-          case $tom_crypto_1.TomJwtConfiguration _: return $tom_core_kernel_21.TomObject<$tom_crypto_1.TomJwtConfiguration>(initialValue);
-          case $tom_core_kernel_21.TomListLifecycleListener _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_21.TomListLifecycleListener>(initialValue);
-          case $tom_basics_2.TomLogLevel _: return $tom_core_kernel_21.TomObject<$tom_basics_2.TomLogLevel>(initialValue);
-          case $tom_basics_2.TomLogOutput _: return $tom_core_kernel_21.TomObject<$tom_basics_2.TomLogOutput>(initialValue);
-          case $tom_basics_2.TomLoggable _: return $tom_core_kernel_21.TomObject<$tom_basics_2.TomLoggable>(initialValue);
-          case $tom_basics_2.TomLogger _: return $tom_core_kernel_21.TomObject<$tom_basics_2.TomLogger>(initialValue);
-          case $tom_core_kernel_18.TomLoggingContext _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_18.TomLoggingContext>(initialValue);
-          case $tom_core_kernel_7.TomMimeType _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_7.TomMimeType>(initialValue);
-          case $tom_core_kernel_1.TomNoInterface _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_1.TomNoInterface>(initialValue);
-          case $tom_core_kernel_1.TomNullInterface _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_1.TomNullInterface>(initialValue);
-          case $tom_core_kernel_20.TomObservable _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_20.TomObservable>(initialValue);
-          case $tom_core_kernel_20.TomObserver _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_20.TomObserver>(initialValue);
-          case $tom_crypto_2.TomPasswordHasher _: return $tom_core_kernel_21.TomObject<$tom_crypto_2.TomPasswordHasher>(initialValue);
-          case $tom_basics_3.TomPlatform _: return $tom_core_kernel_21.TomObject<$tom_basics_3.TomPlatform>(initialValue);
-          case $tom_basics_4.TomPlatformUtils _: return $tom_core_kernel_21.TomObject<$tom_basics_4.TomPlatformUtils>(initialValue);
-          case $tom_core_kernel_30.TomPrincipal _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomPrincipal>(initialValue);
-          case $tom_core_kernel_22.TomReflectionInfo _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_22.TomReflectionInfo>(initialValue);
-          case $tom_core_kernel_4.TomRemoteApis _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_4.TomRemoteApis>(initialValue);
-          case $tom_core_kernel_18.TomRemoteLogMessage _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_18.TomRemoteLogMessage>(initialValue);
-          case $tom_core_kernel_18.TomRemoteLogResult _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_18.TomRemoteLogResult>(initialValue);
-          case $tom_core_kernel_19.TomRemoteLogServer _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_19.TomRemoteLogServer>(initialValue);
-          case $tom_core_kernel_25.TomResourceKeyProtection _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_25.TomResourceKeyProtection>(initialValue);
-          case $tom_core_kernel_28.TomResourceRoleRegistry _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_28.TomResourceRoleRegistry>(initialValue);
-          case $tom_core_kernel_30.TomRole _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomRole>(initialValue);
-          case $tom_basics_3.TomRuntime _: return $tom_core_kernel_21.TomObject<$tom_basics_3.TomRuntime>(initialValue);
-          case $tom_core_kernel_24.TomScope _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_24.TomScope>(initialValue);
-          case $tom_core_kernel_9.TomServerCall _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomServerCall>(initialValue);
-          case $tom_core_kernel_9.TomServerCallError _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomServerCallError>(initialValue);
-          case $tom_core_kernel_9.TomServerCallLoad _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomServerCallLoad>(initialValue);
-          case $tom_core_kernel_9.TomServerCallSpecs _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomServerCallSpecs>(initialValue);
-          case $tom_core_kernel_9.TomServerChannel _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomServerChannel>(initialValue);
-          case $tom_core_kernel_9.TomServerEndpoint _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_9.TomServerEndpoint>(initialValue);
-          case $tom_crypto_1.TomServerJwtToken _: return $tom_core_kernel_21.TomObject<$tom_crypto_1.TomServerJwtToken>(initialValue);
-          case $tom_core_kernel_32.TomShutdownCleanup _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_32.TomShutdownCleanup>(initialValue);
-          case $tom_core_kernel_23.TomTextResourceProvider _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_23.TomTextResourceProvider>(initialValue);
-          case $tom_core_kernel_34.TomTimezone _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_34.TomTimezone>(initialValue);
-          case $tom_core_kernel_29.TomUIStateController _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_29.TomUIStateController>(initialValue);
-          case $tom_core_kernel_30.TomUser _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_30.TomUser>(initialValue);
-          case $tom_core_kernel_10.TomWorker _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_10.TomWorker>(initialValue);
-          case $tom_core_kernel_10.TomWorkerContext _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_10.TomWorkerContext>(initialValue);
-          case $tom_core_kernel_10.TomWorkerPool _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_10.TomWorkerPool>(initialValue);
-          case $tom_core_kernel_2.TomZoneValues _: return $tom_core_kernel_21.TomObject<$tom_core_kernel_2.TomZoneValues>(initialValue);
-          case $tom_reflection_2.TypeValue _: return $tom_core_kernel_21.TomObject<$tom_reflection_2.TypeValue>(initialValue);
-          default: return $tom_core_kernel_21.TomObject(initialValue);
+          case double _: return $tom_core_kernel_22.TomObject<double>(initialValue);
+          case int _: return $tom_core_kernel_22.TomObject<int>(initialValue);
+          case String _: return $tom_core_kernel_22.TomObject<String>(initialValue);
+          case bool _: return $tom_core_kernel_22.TomObject<bool>(initialValue);
+          case $tom_reflection_3.GenericClassMirrorImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.GenericClassMirrorImpl>(initialValue);
+          case $tom_reflection_3.NonGenericClassMirrorImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.NonGenericClassMirrorImpl>(initialValue);
+          case $tom_reflection_3.ParameterMirrorImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.ParameterMirrorImpl>(initialValue);
+          case $tom_reflection_2.FunctionTypeMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.FunctionTypeMirror>(initialValue);
+          case $tom_reflection_3.ImplicitSetterMirrorImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.ImplicitSetterMirrorImpl>(initialValue);
+          case $tom_reflection_3.LibraryMirrorImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.LibraryMirrorImpl>(initialValue);
+          case $tom_reflection_3.VariableMirrorImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.VariableMirrorImpl>(initialValue);
+          case $tom_reflection_2.ClassMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.ClassMirror>(initialValue);
+          case $tom_reflection_3.MethodMirrorImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.MethodMirrorImpl>(initialValue);
+          case $tom_core_kernel_3.TomAuthExpiredException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_3.TomAuthExpiredException>(initialValue);
+          case $tom_core_kernel_1.TomBeanLocatorException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_1.TomBeanLocatorException>(initialValue);
+          case $tom_core_kernel_8.TomClientRemoteContextException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_8.TomClientRemoteContextException>(initialValue);
+          case $tom_core_kernel_22.TomDateRange _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomDateRange>(initialValue);
+          case $tom_core_kernel_22.TomDateTimeRange _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomDateTimeRange>(initialValue);
+          case $tom_core_kernel_4.TomEndpointException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_4.TomEndpointException>(initialValue);
+          case $tom_core_kernel_22.TomList _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomList>(initialValue);
+          case $tom_core_kernel_7.TomMimeTypeException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_7.TomMimeTypeException>(initialValue);
+          case $tom_core_kernel_22.TomNOZonedDate _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNOZonedDate>(initialValue);
+          case $tom_core_kernel_22.TomNOZonedDateTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNOZonedDateTime>(initialValue);
+          case $tom_core_kernel_22.TomNOZonedTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNOZonedTime>(initialValue);
+          case $tom_core_kernel_22.TomObservableException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomObservableException>(initialValue);
+          case $tom_core_kernel_23.TomReflector _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_23.TomReflector>(initialValue);
+          case $tom_core_kernel_23.TomReflectorException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_23.TomReflectorException>(initialValue);
+          case $tom_core_kernel_9.TomRequestAbortedException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomRequestAbortedException>(initialValue);
+          case $tom_core_kernel_9.TomServerConnectionException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomServerConnectionException>(initialValue);
+          case $tom_core_kernel_22.TomTimeRange _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomTimeRange>(initialValue);
+          case $tom_core_kernel_35.TomTimezoneException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_35.TomTimezoneException>(initialValue);
+          case $tom_core_kernel_10.TomWorkerDiedException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_10.TomWorkerDiedException>(initialValue);
+          case $tom_core_kernel_10.TomWorkerException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_10.TomWorkerException>(initialValue);
+          case $tom_reflection_2.ClosureMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.ClosureMirror>(initialValue);
+          case $tom_reflection_2.LibraryMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.LibraryMirror>(initialValue);
+          case $tom_reflection_2.ParameterMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.ParameterMirror>(initialValue);
+          case $pointycastle_2.RSAPrivateKey _: return $tom_core_kernel_22.TomObject<$pointycastle_2.RSAPrivateKey>(initialValue);
+          case $pointycastle_2.RSAPublicKey _: return $tom_core_kernel_22.TomObject<$pointycastle_2.RSAPublicKey>(initialValue);
+          case $tom_core_kernel_22.TomClass _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomClass>(initialValue);
+          case $tom_core_kernel_14.TomException _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_14.TomException>(initialValue);
+          case $tom_core_kernel_22.TomMap _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomMap>(initialValue);
+          case $tom_core_kernel_22.TomNOTimezoned _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNOTimezoned>(initialValue);
+          case $tom_core_kernel_22.TomOZonedDate _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomOZonedDate>(initialValue);
+          case $tom_core_kernel_22.TomOZonedDateTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomOZonedDateTime>(initialValue);
+          case $tom_core_kernel_22.TomOZonedTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomOZonedTime>(initialValue);
+          case $tom_core_kernel_34.TomZonedDate _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_34.TomZonedDate>(initialValue);
+          case $tom_core_kernel_34.TomZonedDateTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_34.TomZonedDateTime>(initialValue);
+          case $tom_core_kernel_34.TomZonedTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_34.TomZonedTime>(initialValue);
+          case $tom_reflection_2.TypeVariableMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.TypeVariableMirror>(initialValue);
+          case $tom_reflection_2.TypedefMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.TypedefMirror>(initialValue);
+          case $tom_reflection_2.InstanceMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.InstanceMirror>(initialValue);
+          case $tom_reflection_2.MethodMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.MethodMirror>(initialValue);
+          case $tom_reflection_3.ReflectionImpl _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.ReflectionImpl>(initialValue);
+          case $tom_core_kernel_22.TomBool _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomBool>(initialValue);
+          case $tom_core_kernel_22.TomDateTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomDateTime>(initialValue);
+          case $tom_core_kernel_9.TomDefaultHttpClientFactory _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomDefaultHttpClientFactory>(initialValue);
+          case $tom_core_kernel_22.TomDouble _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomDouble>(initialValue);
+          case $tom_core_kernel_22.TomInt _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomInt>(initialValue);
+          case $tom_crypto_1.TomJwtTokenException _: return $tom_core_kernel_22.TomObject<$tom_crypto_1.TomJwtTokenException>(initialValue);
+          case $tom_core_kernel_22.TomNBool _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNBool>(initialValue);
+          case $tom_core_kernel_22.TomNDateTime _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNDateTime>(initialValue);
+          case $tom_core_kernel_22.TomNDouble _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNDouble>(initialValue);
+          case $tom_core_kernel_22.TomNInt _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNInt>(initialValue);
+          case $tom_core_kernel_22.TomNString _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomNString>(initialValue);
+          case $tom_core_kernel_22.TomOTimezoned _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomOTimezoned>(initialValue);
+          case $tom_core_kernel_25.TomScopeBase _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_25.TomScopeBase>(initialValue);
+          case $tom_core_kernel_22.TomString _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomString>(initialValue);
+          case $tom_core_kernel_34.TomTimezoned _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_34.TomTimezoned>(initialValue);
+          case $tom_reflection_2.TypeMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.TypeMirror>(initialValue);
+          case $tom_reflection_2.VariableMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.VariableMirror>(initialValue);
+          case $tom_reflection_2.CombinatorMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.CombinatorMirror>(initialValue);
+          case $tom_reflection_2.DeclarationMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.DeclarationMirror>(initialValue);
+          case $tom_reflection_2.LibraryDependencyMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.LibraryDependencyMirror>(initialValue);
+          case $tom_reflection_2.ObjectMirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.ObjectMirror>(initialValue);
+          case $pointycastle_1.PrivateKey _: return $tom_core_kernel_22.TomObject<$pointycastle_1.PrivateKey>(initialValue);
+          case $pointycastle_1.PublicKey _: return $tom_core_kernel_22.TomObject<$pointycastle_1.PublicKey>(initialValue);
+          case $pointycastle_1.SecureRandom _: return $tom_core_kernel_22.TomObject<$pointycastle_1.SecureRandom>(initialValue);
+          case $tom_core_kernel_26.TomAuthenticatedAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomAuthenticatedAccess>(initialValue);
+          case $tom_basics_1.TomBaseException _: return $tom_core_kernel_22.TomObject<$tom_basics_1.TomBaseException>(initialValue);
+          case $tom_core_kernel_33.TomCloseAdaptor _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_33.TomCloseAdaptor>(initialValue);
+          case $tom_basics_2.TomConsoleLogOutput _: return $tom_core_kernel_22.TomObject<$tom_basics_2.TomConsoleLogOutput>(initialValue);
+          case $tom_core_kernel_18.TomCreatorLogOutput _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_18.TomCreatorLogOutput>(initialValue);
+          case $tom_core_kernel_26.TomCustomAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomCustomAccess>(initialValue);
+          case $tom_core_kernel_26.TomEntitlementAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomEntitlementAccess>(initialValue);
+          case $tom_basics_4.TomFallbackPlatformUtils _: return $tom_core_kernel_22.TomObject<$tom_basics_4.TomFallbackPlatformUtils>(initialValue);
+          case $tom_core_kernel_17.TomFileLogReplayStore _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_17.TomFileLogReplayStore>(initialValue);
+          case $tom_core_kernel_21.TomFunctionObserver _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_21.TomFunctionObserver>(initialValue);
+          case $tom_core_kernel_26.TomGradedAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomGradedAccess>(initialValue);
+          case $tom_core_kernel_26.TomGroupAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomGroupAccess>(initialValue);
+          case $tom_core_kernel_26.TomGuestAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomGuestAccess>(initialValue);
+          case $tom_core_kernel_9.TomHttpClientFactory _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomHttpClientFactory>(initialValue);
+          case $tom_core_kernel_19.TomInMemoryLogReplayStore _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_19.TomInMemoryLogReplayStore>(initialValue);
+          case $tom_core_kernel_18.TomIsolateLogOutput _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_18.TomIsolateLogOutput>(initialValue);
+          case $tom_core_kernel_18.TomLoggingExecutor _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_18.TomLoggingExecutor>(initialValue);
+          case $tom_core_kernel_18.TomLoggingWorkerContext _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_18.TomLoggingWorkerContext>(initialValue);
+          case $tom_core_kernel_26.TomNoAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomNoAccess>(initialValue);
+          case $tom_core_kernel_26.TomPublicAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomPublicAccess>(initialValue);
+          case $tom_core_kernel_19.TomRemoteLogOutput _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_19.TomRemoteLogOutput>(initialValue);
+          case $tom_core_kernel_26.TomResourceKeyAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomResourceKeyAccess>(initialValue);
+          case $tom_core_kernel_29.TomResourceRoleAdapter _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_29.TomResourceRoleAdapter>(initialValue);
+          case $tom_core_kernel_26.TomRoleAccess _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomRoleAccess>(initialValue);
+          case $tom_core_kernel_25.TomScopeMixin _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_25.TomScopeMixin>(initialValue);
+          case $pointycastle_1.AsymmetricKeyPair _: return $tom_core_kernel_22.TomObject<$pointycastle_1.AsymmetricKeyPair>(initialValue);
+          case $tom_reflection_2.Comment _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.Comment>(initialValue);
+          case $tom_core_kernel_25.InScopeBuilder _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_25.InScopeBuilder>(initialValue);
+          case $tom_reflection_2.Mirror _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.Mirror>(initialValue);
+          case $tom_reflection_3.ReflectorData _: return $tom_core_kernel_22.TomObject<$tom_reflection_3.ReflectorData>(initialValue);
+          case $tom_crypto_4.RsaKeyHelper _: return $tom_core_kernel_22.TomObject<$tom_crypto_4.RsaKeyHelper>(initialValue);
+          case $tom_reflection_2.SourceLocation _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.SourceLocation>(initialValue);
+          case $tom_core_kernel_7.StaticFileMimetypeMapping _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_7.StaticFileMimetypeMapping>(initialValue);
+          case $tom_core_kernel_26.TomAccessControl _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomAccessControl>(initialValue);
+          case $tom_core_kernel_31.TomAccessControlDefinition _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomAccessControlDefinition>(initialValue);
+          case $tom_core_kernel_31.TomAccessControlInformation _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomAccessControlInformation>(initialValue);
+          case $tom_core_kernel_4.TomApi _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_4.TomApi>(initialValue);
+          case $tom_core_kernel_4.TomApiEndpoint _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_4.TomApiEndpoint>(initialValue);
+          case $tom_core_kernel_3.TomAuthRefresher _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_3.TomAuthRefresher>(initialValue);
+          case $tom_core_kernel_3.TomAuthRetryPolicy _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_3.TomAuthRetryPolicy>(initialValue);
+          case $tom_core_kernel_27.TomAuthenticationMessage _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_27.TomAuthenticationMessage>(initialValue);
+          case $tom_core_kernel_27.TomAuthenticationResult _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_27.TomAuthenticationResult>(initialValue);
+          case $tom_core_kernel_30.TomAuthorizable _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_30.TomAuthorizable>(initialValue);
+          case $tom_core_kernel_30.TomAuthorization _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_30.TomAuthorization>(initialValue);
+          case $tom_core_kernel_30.TomAuthorizationAdapter _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_30.TomAuthorizationAdapter>(initialValue);
+          case $tom_core_kernel_30.TomAuthorizationGroup _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_30.TomAuthorizationGroup>(initialValue);
+          case $tom_core_kernel_30.TomAuthorizer _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_30.TomAuthorizer>(initialValue);
+          case $tom_core_kernel_1.TomBean _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_1.TomBean>(initialValue);
+          case $tom_core_kernel_28.TomBearerAuthentication _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_28.TomBearerAuthentication>(initialValue);
+          case $tom_crypto_1.TomClientJwtToken _: return $tom_core_kernel_22.TomObject<$tom_crypto_1.TomClientJwtToken>(initialValue);
+          case $tom_core_kernel_31.TomClientLimitsInformation _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomClientLimitsInformation>(initialValue);
+          case $tom_core_kernel_8.TomClientRemoteContext _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_8.TomClientRemoteContext>(initialValue);
+          case $tom_core_kernel_33.TomClosable _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_33.TomClosable>(initialValue);
+          case $tom_core_kernel_10.TomCommand _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_10.TomCommand>(initialValue);
+          case $tom_core_kernel_1.TomComponent _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_1.TomComponent>(initialValue);
+          case $tom_core_kernel_24.TomConfigResourceProvider _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_24.TomConfigResourceProvider>(initialValue);
+          case $tom_core_kernel_4.TomContentDisposition _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_4.TomContentDisposition>(initialValue);
+          case $tom_core_kernel_2.TomContextEntry _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_2.TomContextEntry>(initialValue);
+          case $tom_core_kernel_2.TomContextProviders _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_2.TomContextProviders>(initialValue);
+          case $tom_core_kernel_33.TomDisposable _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_33.TomDisposable>(initialValue);
+          case $tom_core_kernel_31.TomEntitlement _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomEntitlement>(initialValue);
+          case $tom_basics_3.TomEnvironment _: return $tom_core_kernel_22.TomObject<$tom_basics_3.TomEnvironment>(initialValue);
+          case $tom_core_kernel_2.TomExecutionContext _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_2.TomExecutionContext>(initialValue);
+          case $tom_core_kernel_10.TomExecutor _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_10.TomExecutor>(initialValue);
+          case $tom_core_kernel_32.TomGetSettingsMessage _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_32.TomGetSettingsMessage>(initialValue);
+          case $tom_core_kernel_32.TomGetSettingsResult _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_32.TomGetSettingsResult>(initialValue);
+          case $tom_core_kernel_31.TomGroup _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomGroup>(initialValue);
+          case $tom_core_kernel_5.TomHeader _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_5.TomHeader>(initialValue);
+          case $tom_core_kernel_9.TomHttpClientAbstractFactory _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomHttpClientAbstractFactory>(initialValue);
+          case $tom_core_kernel_6.TomHttpMethod _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_6.TomHttpMethod>(initialValue);
+          case $tom_core_kernel_18.TomInterIsolateLogMessage _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_18.TomInterIsolateLogMessage>(initialValue);
+          case $tom_core_kernel_18.TomIsolateLogging _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_18.TomIsolateLogging>(initialValue);
+          case $tom_core_kernel_11.TomJsonSerializable _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_11.TomJsonSerializable>(initialValue);
+          case $tom_crypto_1.TomJwtConfiguration _: return $tom_core_kernel_22.TomObject<$tom_crypto_1.TomJwtConfiguration>(initialValue);
+          case $tom_core_kernel_22.TomListLifecycleListener _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_22.TomListLifecycleListener>(initialValue);
+          case $tom_basics_2.TomLogLevel _: return $tom_core_kernel_22.TomObject<$tom_basics_2.TomLogLevel>(initialValue);
+          case $tom_basics_2.TomLogOutput _: return $tom_core_kernel_22.TomObject<$tom_basics_2.TomLogOutput>(initialValue);
+          case $tom_core_kernel_19.TomLogReplayStore _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_19.TomLogReplayStore>(initialValue);
+          case $tom_basics_2.TomLoggable _: return $tom_core_kernel_22.TomObject<$tom_basics_2.TomLoggable>(initialValue);
+          case $tom_basics_2.TomLogger _: return $tom_core_kernel_22.TomObject<$tom_basics_2.TomLogger>(initialValue);
+          case $tom_core_kernel_19.TomLoggingContext _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_19.TomLoggingContext>(initialValue);
+          case $tom_core_kernel_7.TomMimeType _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_7.TomMimeType>(initialValue);
+          case $tom_core_kernel_1.TomNoInterface _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_1.TomNoInterface>(initialValue);
+          case $tom_core_kernel_1.TomNullInterface _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_1.TomNullInterface>(initialValue);
+          case $tom_core_kernel_21.TomObservable _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_21.TomObservable>(initialValue);
+          case $tom_core_kernel_21.TomObserver _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_21.TomObserver>(initialValue);
+          case $tom_crypto_2.TomPasswordHasher _: return $tom_core_kernel_22.TomObject<$tom_crypto_2.TomPasswordHasher>(initialValue);
+          case $tom_basics_3.TomPlatform _: return $tom_core_kernel_22.TomObject<$tom_basics_3.TomPlatform>(initialValue);
+          case $tom_basics_4.TomPlatformUtils _: return $tom_core_kernel_22.TomObject<$tom_basics_4.TomPlatformUtils>(initialValue);
+          case $tom_core_kernel_31.TomPrincipal _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomPrincipal>(initialValue);
+          case $tom_core_kernel_23.TomReflectionInfo _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_23.TomReflectionInfo>(initialValue);
+          case $tom_core_kernel_4.TomRemoteApis _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_4.TomRemoteApis>(initialValue);
+          case $tom_core_kernel_19.TomRemoteLogMessage _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_19.TomRemoteLogMessage>(initialValue);
+          case $tom_core_kernel_19.TomRemoteLogResult _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_19.TomRemoteLogResult>(initialValue);
+          case $tom_core_kernel_20.TomRemoteLogServer _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_20.TomRemoteLogServer>(initialValue);
+          case $tom_core_kernel_26.TomResourceKeyProtection _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_26.TomResourceKeyProtection>(initialValue);
+          case $tom_core_kernel_29.TomResourceRoleRegistry _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_29.TomResourceRoleRegistry>(initialValue);
+          case $tom_core_kernel_31.TomRole _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomRole>(initialValue);
+          case $tom_basics_3.TomRuntime _: return $tom_core_kernel_22.TomObject<$tom_basics_3.TomRuntime>(initialValue);
+          case $tom_core_kernel_25.TomScope _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_25.TomScope>(initialValue);
+          case $tom_core_kernel_9.TomServerCall _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomServerCall>(initialValue);
+          case $tom_core_kernel_9.TomServerCallError _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomServerCallError>(initialValue);
+          case $tom_core_kernel_9.TomServerCallLoad _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomServerCallLoad>(initialValue);
+          case $tom_core_kernel_9.TomServerCallSpecs _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomServerCallSpecs>(initialValue);
+          case $tom_core_kernel_9.TomServerChannel _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomServerChannel>(initialValue);
+          case $tom_core_kernel_9.TomServerEndpoint _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_9.TomServerEndpoint>(initialValue);
+          case $tom_crypto_1.TomServerJwtToken _: return $tom_core_kernel_22.TomObject<$tom_crypto_1.TomServerJwtToken>(initialValue);
+          case $tom_core_kernel_33.TomShutdownCleanup _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_33.TomShutdownCleanup>(initialValue);
+          case $tom_core_kernel_24.TomTextResourceProvider _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_24.TomTextResourceProvider>(initialValue);
+          case $tom_core_kernel_35.TomTimezone _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_35.TomTimezone>(initialValue);
+          case $tom_core_kernel_30.TomUIStateController _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_30.TomUIStateController>(initialValue);
+          case $tom_core_kernel_31.TomUser _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_31.TomUser>(initialValue);
+          case $tom_core_kernel_10.TomWorker _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_10.TomWorker>(initialValue);
+          case $tom_core_kernel_10.TomWorkerContext _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_10.TomWorkerContext>(initialValue);
+          case $tom_core_kernel_10.TomWorkerPool _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_10.TomWorkerPool>(initialValue);
+          case $tom_core_kernel_2.TomZoneValues _: return $tom_core_kernel_22.TomObject<$tom_core_kernel_2.TomZoneValues>(initialValue);
+          case $tom_reflection_2.TypeValue _: return $tom_core_kernel_22.TomObject<$tom_reflection_2.TypeValue>(initialValue);
+          default: return $tom_core_kernel_22.TomObject(initialValue);
         }
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<dynamic>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         final other = D4.getRequiredArg<dynamic>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomObject>(target, 'TomObject');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomObject>(target, 'TomObject');
         final other = D4.getRequiredArg<dynamic>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -10200,94 +11003,94 @@ BridgedClass _createTomObjectBridge() {
 
 BridgedClass _createTomStringBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomString,
+    nativeType: $tom_core_kernel_22.TomString,
     name: 'TomString',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomString,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomString,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomString');
         final initialValue = D4.getRequiredArg<String>(positional, 0, 'initialValue', 'TomString');
-        return $tom_core_kernel_21.TomString(initialValue);
+        return $tom_core_kernel_22.TomString(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<String>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         final other = D4.getRequiredArg<String>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomString>(target, 'TomString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomString>(target, 'TomString');
         final other = D4.getRequiredArg<String>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -10321,94 +11124,94 @@ BridgedClass _createTomStringBridge() {
 
 BridgedClass _createTomIntBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomInt,
+    nativeType: $tom_core_kernel_22.TomInt,
     name: 'TomInt',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomInt,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomInt,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomInt');
         final initialValue = D4.getRequiredArg<int>(positional, 0, 'initialValue', 'TomInt');
-        return $tom_core_kernel_21.TomInt(initialValue);
+        return $tom_core_kernel_22.TomInt(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<int>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         final other = D4.getRequiredArg<int>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomInt>(target, 'TomInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomInt>(target, 'TomInt');
         final other = D4.getRequiredArg<int>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -10442,94 +11245,94 @@ BridgedClass _createTomIntBridge() {
 
 BridgedClass _createTomDoubleBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomDouble,
+    nativeType: $tom_core_kernel_22.TomDouble,
     name: 'TomDouble',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomDouble,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomDouble,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDouble');
         final initialValue = D4.getRequiredArg<double>(positional, 0, 'initialValue', 'TomDouble');
-        return $tom_core_kernel_21.TomDouble(initialValue);
+        return $tom_core_kernel_22.TomDouble(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<double>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         final other = D4.getRequiredArg<double>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDouble>(target, 'TomDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDouble>(target, 'TomDouble');
         final other = D4.getRequiredArg<double>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -10563,94 +11366,94 @@ BridgedClass _createTomDoubleBridge() {
 
 BridgedClass _createTomBoolBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomBool,
+    nativeType: $tom_core_kernel_22.TomBool,
     name: 'TomBool',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomBool,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomBool,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomBool');
         final initialValue = D4.getRequiredArg<bool>(positional, 0, 'initialValue', 'TomBool');
-        return $tom_core_kernel_21.TomBool(initialValue);
+        return $tom_core_kernel_22.TomBool(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<bool>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         final other = D4.getRequiredArg<bool>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomBool>(target, 'TomBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomBool>(target, 'TomBool');
         final other = D4.getRequiredArg<bool>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -10684,101 +11487,101 @@ BridgedClass _createTomBoolBridge() {
 
 BridgedClass _createTomDateTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomDateTime,
+    nativeType: $tom_core_kernel_22.TomDateTime,
     name: 'TomDateTime',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomDateTime,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomDateTime,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDateTime');
         final initialValue = D4.getRequiredArg<DateTime>(positional, 0, 'initialValue', 'TomDateTime');
-        return $tom_core_kernel_21.TomDateTime(initialValue);
+        return $tom_core_kernel_22.TomDateTime(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTime>(target, 'TomDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTime>(target, 'TomDateTime');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noDateTime': (visitor) => $tom_core_kernel_21.TomDateTime.noDateTime,
-      'serializationPrefix': (visitor) => $tom_core_kernel_21.TomDateTime.serializationPrefix,
+      'noDateTime': (visitor) => $tom_core_kernel_22.TomDateTime.noDateTime,
+      'serializationPrefix': (visitor) => $tom_core_kernel_22.TomDateTime.serializationPrefix,
     },
     constructorSignatures: {
       '': 'TomDateTime(DateTime initialValue)',
@@ -10813,106 +11616,106 @@ BridgedClass _createTomDateTimeBridge() {
 
 BridgedClass _createTomOTimezonedBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomOTimezoned,
+    nativeType: $tom_core_kernel_22.TomOTimezoned,
     name: 'TomOTimezoned',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomOTimezoned,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomOTimezoned,
     hierarchyDepth: 2,
     constructors: {
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomTimezoned?>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomTimezoned?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomTimezoned?>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomTimezoned?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOTimezoned>(target, 'TomOTimezoned');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomTimezoned?>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOTimezoned>(target, 'TomOTimezoned');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomTimezoned?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noDateTime': (visitor) => $tom_core_kernel_21.TomOTimezoned.noDateTime,
+      'noDateTime': (visitor) => $tom_core_kernel_22.TomOTimezoned.noDateTime,
     },
     methodSignatures: {
       'mute': 'void mute()',
@@ -10945,112 +11748,112 @@ BridgedClass _createTomOTimezonedBridge() {
 
 BridgedClass _createTomOZonedTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomOZonedTime,
+    nativeType: $tom_core_kernel_22.TomOZonedTime,
     name: 'TomOZonedTime',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomOZonedTime,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomOZonedTime,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomOZonedTime');
-        final initialValue = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime>(positional, 0, 'initialValue', 'TomOZonedTime');
-        return $tom_core_kernel_21.TomOZonedTime(initialValue);
+        final initialValue = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime>(positional, 0, 'initialValue', 'TomOZonedTime');
+        return $tom_core_kernel_22.TomOZonedTime(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedTime>(target, 'TomOZonedTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedTime>(target, 'TomOZonedTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noZonedTime': (visitor) => $tom_core_kernel_21.TomOZonedTime.noZonedTime,
-      'noTime': (visitor) => $tom_core_kernel_21.TomOZonedTime.noTime,
+      'noZonedTime': (visitor) => $tom_core_kernel_22.TomOZonedTime.noZonedTime,
+      'noTime': (visitor) => $tom_core_kernel_22.TomOZonedTime.noTime,
     },
     constructorSignatures: {
       '': 'TomOZonedTime(TomZonedTime initialValue)',
@@ -11087,112 +11890,112 @@ BridgedClass _createTomOZonedTimeBridge() {
 
 BridgedClass _createTomOZonedDateBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomOZonedDate,
+    nativeType: $tom_core_kernel_22.TomOZonedDate,
     name: 'TomOZonedDate',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomOZonedDate,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomOZonedDate,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomOZonedDate');
-        final initialValue = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate>(positional, 0, 'initialValue', 'TomOZonedDate');
-        return $tom_core_kernel_21.TomOZonedDate(initialValue);
+        final initialValue = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate>(positional, 0, 'initialValue', 'TomOZonedDate');
+        return $tom_core_kernel_22.TomOZonedDate(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDate>(target, 'TomOZonedDate');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDate>(target, 'TomOZonedDate');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noZonedDate': (visitor) => $tom_core_kernel_21.TomOZonedDate.noZonedDate,
-      'noTime': (visitor) => $tom_core_kernel_21.TomOZonedDate.noTime,
+      'noZonedDate': (visitor) => $tom_core_kernel_22.TomOZonedDate.noZonedDate,
+      'noTime': (visitor) => $tom_core_kernel_22.TomOZonedDate.noTime,
     },
     constructorSignatures: {
       '': 'TomOZonedDate(TomZonedDate initialValue)',
@@ -11229,112 +12032,112 @@ BridgedClass _createTomOZonedDateBridge() {
 
 BridgedClass _createTomOZonedDateTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomOZonedDateTime,
+    nativeType: $tom_core_kernel_22.TomOZonedDateTime,
     name: 'TomOZonedDateTime',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomOZonedDateTime,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomOZonedDateTime,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomOZonedDateTime');
-        final initialValue = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime>(positional, 0, 'initialValue', 'TomOZonedDateTime');
-        return $tom_core_kernel_21.TomOZonedDateTime(initialValue);
+        final initialValue = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime>(positional, 0, 'initialValue', 'TomOZonedDateTime');
+        return $tom_core_kernel_22.TomOZonedDateTime(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomOZonedDateTime>(target, 'TomOZonedDateTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomOZonedDateTime>(target, 'TomOZonedDateTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noZonedDateTime': (visitor) => $tom_core_kernel_21.TomOZonedDateTime.noZonedDateTime,
-      'noTime': (visitor) => $tom_core_kernel_21.TomOZonedDateTime.noTime,
+      'noZonedDateTime': (visitor) => $tom_core_kernel_22.TomOZonedDateTime.noZonedDateTime,
+      'noTime': (visitor) => $tom_core_kernel_22.TomOZonedDateTime.noTime,
     },
     constructorSignatures: {
       '': 'TomOZonedDateTime(TomZonedDateTime initialValue)',
@@ -11371,94 +12174,94 @@ BridgedClass _createTomOZonedDateTimeBridge() {
 
 BridgedClass _createTomNStringBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNString,
+    nativeType: $tom_core_kernel_22.TomNString,
     name: 'TomNString',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNString,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNString,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNString');
         final initialValue = D4.getRequiredArg<String?>(positional, 0, 'initialValue', 'TomNString');
-        return $tom_core_kernel_21.TomNString(initialValue);
+        return $tom_core_kernel_22.TomNString(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<String?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         final other = D4.getRequiredArg<String?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNString>(target, 'TomNString');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNString>(target, 'TomNString');
         final other = D4.getRequiredArg<String?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -11492,94 +12295,94 @@ BridgedClass _createTomNStringBridge() {
 
 BridgedClass _createTomNIntBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNInt,
+    nativeType: $tom_core_kernel_22.TomNInt,
     name: 'TomNInt',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNInt,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNInt,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNInt');
         final initialValue = D4.getRequiredArg<int?>(positional, 0, 'initialValue', 'TomNInt');
-        return $tom_core_kernel_21.TomNInt(initialValue);
+        return $tom_core_kernel_22.TomNInt(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<int?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         final other = D4.getRequiredArg<int?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNInt>(target, 'TomNInt');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNInt>(target, 'TomNInt');
         final other = D4.getRequiredArg<int?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -11613,94 +12416,94 @@ BridgedClass _createTomNIntBridge() {
 
 BridgedClass _createTomNDoubleBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNDouble,
+    nativeType: $tom_core_kernel_22.TomNDouble,
     name: 'TomNDouble',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNDouble,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNDouble,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNDouble');
         final initialValue = D4.getRequiredArg<double?>(positional, 0, 'initialValue', 'TomNDouble');
-        return $tom_core_kernel_21.TomNDouble(initialValue);
+        return $tom_core_kernel_22.TomNDouble(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<double?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         final other = D4.getRequiredArg<double?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDouble>(target, 'TomNDouble');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDouble>(target, 'TomNDouble');
         final other = D4.getRequiredArg<double?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -11734,94 +12537,94 @@ BridgedClass _createTomNDoubleBridge() {
 
 BridgedClass _createTomNBoolBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNBool,
+    nativeType: $tom_core_kernel_22.TomNBool,
     name: 'TomNBool',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNBool,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNBool,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNBool');
         final initialValue = D4.getRequiredArg<bool?>(positional, 0, 'initialValue', 'TomNBool');
-        return $tom_core_kernel_21.TomNBool(initialValue);
+        return $tom_core_kernel_22.TomNBool(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<bool?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         final other = D4.getRequiredArg<bool?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNBool>(target, 'TomNBool');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNBool>(target, 'TomNBool');
         final other = D4.getRequiredArg<bool?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -11855,101 +12658,101 @@ BridgedClass _createTomNBoolBridge() {
 
 BridgedClass _createTomNDateTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNDateTime,
+    nativeType: $tom_core_kernel_22.TomNDateTime,
     name: 'TomNDateTime',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNDateTime,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNDateTime,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNDateTime');
         final initialValue = D4.getRequiredArg<DateTime?>(positional, 0, 'initialValue', 'TomNDateTime');
-        return $tom_core_kernel_21.TomNDateTime(initialValue);
+        return $tom_core_kernel_22.TomNDateTime(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<DateTime?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         return t.toString();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         final other = D4.getRequiredArg<DateTime?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNDateTime>(target, 'TomNDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNDateTime>(target, 'TomNDateTime');
         final other = D4.getRequiredArg<DateTime?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noDateTime': (visitor) => $tom_core_kernel_21.TomNDateTime.noDateTime,
-      'serializationPrefix': (visitor) => $tom_core_kernel_21.TomNDateTime.serializationPrefix,
+      'noDateTime': (visitor) => $tom_core_kernel_22.TomNDateTime.noDateTime,
+      'serializationPrefix': (visitor) => $tom_core_kernel_22.TomNDateTime.serializationPrefix,
     },
     constructorSignatures: {
       '': 'TomNDateTime(DateTime? initialValue)',
@@ -11984,106 +12787,106 @@ BridgedClass _createTomNDateTimeBridge() {
 
 BridgedClass _createTomNOTimezonedBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNOTimezoned,
+    nativeType: $tom_core_kernel_22.TomNOTimezoned,
     name: 'TomNOTimezoned',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNOTimezoned,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNOTimezoned,
     hierarchyDepth: 3,
     constructors: {
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomTimezoned?>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomTimezoned?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomTimezoned?>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomTimezoned?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOTimezoned>(target, 'TomNOTimezoned');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomTimezoned?>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOTimezoned>(target, 'TomNOTimezoned');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomTimezoned?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noDateTime': (visitor) => $tom_core_kernel_21.TomNOTimezoned.noDateTime,
+      'noDateTime': (visitor) => $tom_core_kernel_22.TomNOTimezoned.noDateTime,
     },
     methodSignatures: {
       'mute': 'void mute()',
@@ -12116,112 +12919,112 @@ BridgedClass _createTomNOTimezonedBridge() {
 
 BridgedClass _createTomNOZonedTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNOZonedTime,
+    nativeType: $tom_core_kernel_22.TomNOZonedTime,
     name: 'TomNOZonedTime',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNOZonedTime,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNOZonedTime,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNOZonedTime');
-        final initialValue = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime?>(positional, 0, 'initialValue', 'TomNOZonedTime');
-        return $tom_core_kernel_21.TomNOZonedTime(initialValue);
+        final initialValue = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime?>(positional, 0, 'initialValue', 'TomNOZonedTime');
+        return $tom_core_kernel_22.TomNOZonedTime(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime?>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime?>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedTime>(target, 'TomNOZonedTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedTime?>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedTime>(target, 'TomNOZonedTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedTime?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noZonedTime': (visitor) => $tom_core_kernel_21.TomNOZonedTime.noZonedTime,
-      'noTime': (visitor) => $tom_core_kernel_21.TomNOZonedTime.noTime,
+      'noZonedTime': (visitor) => $tom_core_kernel_22.TomNOZonedTime.noZonedTime,
+      'noTime': (visitor) => $tom_core_kernel_22.TomNOZonedTime.noTime,
     },
     constructorSignatures: {
       '': 'TomNOZonedTime(TomZonedTime? initialValue)',
@@ -12258,112 +13061,112 @@ BridgedClass _createTomNOZonedTimeBridge() {
 
 BridgedClass _createTomNOZonedDateBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNOZonedDate,
+    nativeType: $tom_core_kernel_22.TomNOZonedDate,
     name: 'TomNOZonedDate',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNOZonedDate,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNOZonedDate,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNOZonedDate');
-        final initialValue = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate?>(positional, 0, 'initialValue', 'TomNOZonedDate');
-        return $tom_core_kernel_21.TomNOZonedDate(initialValue);
+        final initialValue = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate?>(positional, 0, 'initialValue', 'TomNOZonedDate');
+        return $tom_core_kernel_22.TomNOZonedDate(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate?>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate?>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDate>(target, 'TomNOZonedDate');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDate?>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDate>(target, 'TomNOZonedDate');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDate?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noZonedDate': (visitor) => $tom_core_kernel_21.TomNOZonedDate.noZonedDate,
-      'noTime': (visitor) => $tom_core_kernel_21.TomNOZonedDate.noTime,
+      'noZonedDate': (visitor) => $tom_core_kernel_22.TomNOZonedDate.noZonedDate,
+      'noTime': (visitor) => $tom_core_kernel_22.TomNOZonedDate.noTime,
     },
     constructorSignatures: {
       '': 'TomNOZonedDate(TomZonedDate? initialValue)',
@@ -12400,112 +13203,112 @@ BridgedClass _createTomNOZonedDateBridge() {
 
 BridgedClass _createTomNOZonedDateTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomNOZonedDateTime,
+    nativeType: $tom_core_kernel_22.TomNOZonedDateTime,
     name: 'TomNOZonedDateTime',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomNOZonedDateTime,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomNOZonedDateTime,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomNOZonedDateTime');
-        final initialValue = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime?>(positional, 0, 'initialValue', 'TomNOZonedDateTime');
-        return $tom_core_kernel_21.TomNOZonedDateTime(initialValue);
+        final initialValue = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime?>(positional, 0, 'initialValue', 'TomNOZonedDateTime');
+        return $tom_core_kernel_22.TomNOZonedDateTime(initialValue);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'set');
-        final value = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime?>(positional, 0, 'value', 'set');
+        final value = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         return t.toString();
       },
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         return t.getSerializationPrefix();
       },
       'setByString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         D4.requireMinArgs(positional, 1, 'setByString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'setByString');
         t.setByString(s);
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime?>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
-        final other = D4.getRequiredArg<$tom_core_kernel_33.TomZonedDateTime?>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomNOZonedDateTime>(target, 'TomNOZonedDateTime');
+        final other = D4.getRequiredArg<$tom_core_kernel_34.TomZonedDateTime?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
     },
     staticGetters: {
-      'noZonedDateTime': (visitor) => $tom_core_kernel_21.TomNOZonedDateTime.noZonedDateTime,
-      'noTime': (visitor) => $tom_core_kernel_21.TomNOZonedDateTime.noTime,
+      'noZonedDateTime': (visitor) => $tom_core_kernel_22.TomNOZonedDateTime.noZonedDateTime,
+      'noTime': (visitor) => $tom_core_kernel_22.TomNOZonedDateTime.noTime,
     },
     constructorSignatures: {
       '': 'TomNOZonedDateTime(TomZonedDateTime? initialValue)',
@@ -12542,110 +13345,110 @@ BridgedClass _createTomNOZonedDateTimeBridge() {
 
 BridgedClass _createTomDateRangeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomDateRange,
+    nativeType: $tom_core_kernel_22.TomDateRange,
     name: 'TomDateRange',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomDateRange,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomDateRange,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_21.TomDateRange();
+        return $tom_core_kernel_22.TomDateRange();
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange').isNull,
-      'startDate': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange').startDate,
-      'endDate': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange').endDate,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange').isNull,
+      'startDate': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange').startDate,
+      'endDate': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange').endDate,
     },
     setters: {
       'startDate': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange').startDate = D4.extractBridgedArg<$tom_core_kernel_21.TomNOZonedDate>(value, 'startDate'),
+        D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange').startDate = D4.extractBridgedArg<$tom_core_kernel_22.TomNOZonedDate>(value, 'startDate'),
       'endDate': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange').endDate = D4.extractBridgedArg<$tom_core_kernel_21.TomNOZonedDate>(value, 'endDate'),
+        D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange').endDate = D4.extractBridgedArg<$tom_core_kernel_22.TomNOZonedDate>(value, 'endDate'),
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         D4.requireMinArgs(positional, 1, 'set');
         if (positional.isEmpty) {
           throw ArgumentError('set: Missing required argument "value" at position 0');
         }
-        final value = D4.coerceMap<String, $tom_core_kernel_21.TomObject>(positional[0], 'value');
+        final value = D4.coerceMap<String, $tom_core_kernel_22.TomObject>(positional[0], 'value');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.toString();
       },
       'prepareForSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         t.prepareForSelfObservation();
         return null;
       },
       'startSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         t.startSelfObservation();
         return null;
       },
       'getMembers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.getMembers();
       },
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
       'setValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         D4.requireMinArgs(positional, 1, 'setValues');
         if (positional.isEmpty) {
           throw ArgumentError('setValues: Missing required argument "values" at position 0');
@@ -12655,7 +13458,7 @@ BridgedClass _createTomDateRangeBridge() {
         return null;
       },
       'setOrMergeValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         D4.requireMinArgs(positional, 2, 'setOrMergeValues');
         if (positional.isEmpty) {
           throw ArgumentError('setOrMergeValues: Missing required argument "values" at position 0');
@@ -12666,36 +13469,36 @@ BridgedClass _createTomDateRangeBridge() {
         return null;
       },
       'getValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.getValues();
       },
       'fromJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         D4.requireMinArgs(positional, 1, 'fromJson');
         final json = D4.getRequiredArg<String>(positional, 0, 'json', 'fromJson');
         t.fromJson(json);
         return null;
       },
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return t.toJson();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
-        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_21.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
+        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_22.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateRange>(target, 'TomDateRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateRange>(target, 'TomDateRange');
         final other = D4.getRequiredArg<Map<String, dynamic>>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -12744,110 +13547,110 @@ BridgedClass _createTomDateRangeBridge() {
 
 BridgedClass _createTomTimeRangeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomTimeRange,
+    nativeType: $tom_core_kernel_22.TomTimeRange,
     name: 'TomTimeRange',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomTimeRange,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomTimeRange,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_21.TomTimeRange();
+        return $tom_core_kernel_22.TomTimeRange();
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange').isNull,
-      'startTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange').startTime,
-      'endTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange').endTime,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange').isNull,
+      'startTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange').startTime,
+      'endTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange').endTime,
     },
     setters: {
       'startTime': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange').startTime = D4.extractBridgedArg<$tom_core_kernel_21.TomNOZonedTime>(value, 'startTime'),
+        D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange').startTime = D4.extractBridgedArg<$tom_core_kernel_22.TomNOZonedTime>(value, 'startTime'),
       'endTime': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange').endTime = D4.extractBridgedArg<$tom_core_kernel_21.TomNOZonedTime>(value, 'endTime'),
+        D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange').endTime = D4.extractBridgedArg<$tom_core_kernel_22.TomNOZonedTime>(value, 'endTime'),
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         D4.requireMinArgs(positional, 1, 'set');
         if (positional.isEmpty) {
           throw ArgumentError('set: Missing required argument "value" at position 0');
         }
-        final value = D4.coerceMap<String, $tom_core_kernel_21.TomObject>(positional[0], 'value');
+        final value = D4.coerceMap<String, $tom_core_kernel_22.TomObject>(positional[0], 'value');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.toString();
       },
       'prepareForSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         t.prepareForSelfObservation();
         return null;
       },
       'startSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         t.startSelfObservation();
         return null;
       },
       'getMembers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.getMembers();
       },
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
       'setValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         D4.requireMinArgs(positional, 1, 'setValues');
         if (positional.isEmpty) {
           throw ArgumentError('setValues: Missing required argument "values" at position 0');
@@ -12857,7 +13660,7 @@ BridgedClass _createTomTimeRangeBridge() {
         return null;
       },
       'setOrMergeValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         D4.requireMinArgs(positional, 2, 'setOrMergeValues');
         if (positional.isEmpty) {
           throw ArgumentError('setOrMergeValues: Missing required argument "values" at position 0');
@@ -12868,36 +13671,36 @@ BridgedClass _createTomTimeRangeBridge() {
         return null;
       },
       'getValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.getValues();
       },
       'fromJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         D4.requireMinArgs(positional, 1, 'fromJson');
         final json = D4.getRequiredArg<String>(positional, 0, 'json', 'fromJson');
         t.fromJson(json);
         return null;
       },
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return t.toJson();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
-        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_21.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
+        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_22.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomTimeRange>(target, 'TomTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomTimeRange>(target, 'TomTimeRange');
         final other = D4.getRequiredArg<Map<String, dynamic>>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -12946,110 +13749,110 @@ BridgedClass _createTomTimeRangeBridge() {
 
 BridgedClass _createTomDateTimeRangeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomDateTimeRange,
+    nativeType: $tom_core_kernel_22.TomDateTimeRange,
     name: 'TomDateTimeRange',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomDateTimeRange,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomDateTimeRange,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_21.TomDateTimeRange();
+        return $tom_core_kernel_22.TomDateTimeRange();
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange').isNull,
-      'startDateTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange').startDateTime,
-      'endDateTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange').endDateTime,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange').isNull,
+      'startDateTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange').startDateTime,
+      'endDateTime': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange').endDateTime,
     },
     setters: {
       'startDateTime': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange').startDateTime = D4.extractBridgedArg<$tom_core_kernel_21.TomNOZonedDateTime>(value, 'startDateTime'),
+        D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange').startDateTime = D4.extractBridgedArg<$tom_core_kernel_22.TomNOZonedDateTime>(value, 'startDateTime'),
       'endDateTime': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange').endDateTime = D4.extractBridgedArg<$tom_core_kernel_21.TomNOZonedDateTime>(value, 'endDateTime'),
+        D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange').endDateTime = D4.extractBridgedArg<$tom_core_kernel_22.TomNOZonedDateTime>(value, 'endDateTime'),
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         D4.requireMinArgs(positional, 1, 'set');
         if (positional.isEmpty) {
           throw ArgumentError('set: Missing required argument "value" at position 0');
         }
-        final value = D4.coerceMap<String, $tom_core_kernel_21.TomObject>(positional[0], 'value');
+        final value = D4.coerceMap<String, $tom_core_kernel_22.TomObject>(positional[0], 'value');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.toString();
       },
       'prepareForSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         t.prepareForSelfObservation();
         return null;
       },
       'startSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         t.startSelfObservation();
         return null;
       },
       'getMembers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.getMembers();
       },
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
       'setValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         D4.requireMinArgs(positional, 1, 'setValues');
         if (positional.isEmpty) {
           throw ArgumentError('setValues: Missing required argument "values" at position 0');
@@ -13059,7 +13862,7 @@ BridgedClass _createTomDateTimeRangeBridge() {
         return null;
       },
       'setOrMergeValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         D4.requireMinArgs(positional, 2, 'setOrMergeValues');
         if (positional.isEmpty) {
           throw ArgumentError('setOrMergeValues: Missing required argument "values" at position 0');
@@ -13070,36 +13873,36 @@ BridgedClass _createTomDateTimeRangeBridge() {
         return null;
       },
       'getValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.getValues();
       },
       'fromJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         D4.requireMinArgs(positional, 1, 'fromJson');
         final json = D4.getRequiredArg<String>(positional, 0, 'json', 'fromJson');
         t.fromJson(json);
         return null;
       },
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return t.toJson();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
-        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_21.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_22.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomDateTimeRange>(target, 'TomDateTimeRange');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomDateTimeRange>(target, 'TomDateTimeRange');
         final other = D4.getRequiredArg<Map<String, dynamic>>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -13148,102 +13951,102 @@ BridgedClass _createTomDateTimeRangeBridge() {
 
 BridgedClass _createTomClassBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomClass,
+    nativeType: $tom_core_kernel_22.TomClass,
     name: 'TomClass',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomClass,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomClass,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_21.TomClass();
+        return $tom_core_kernel_22.TomClass();
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass').isNull,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         D4.requireMinArgs(positional, 1, 'set');
         if (positional.isEmpty) {
           throw ArgumentError('set: Missing required argument "value" at position 0');
         }
-        final value = D4.coerceMap<String, $tom_core_kernel_21.TomObject>(positional[0], 'value');
+        final value = D4.coerceMap<String, $tom_core_kernel_22.TomObject>(positional[0], 'value');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.toString();
       },
       'prepareForSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         t.prepareForSelfObservation();
         return null;
       },
       'startSelfObservation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         t.startSelfObservation();
         return null;
       },
       'getMembers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.getMembers();
       },
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
       'setValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         D4.requireMinArgs(positional, 1, 'setValues');
         if (positional.isEmpty) {
           throw ArgumentError('setValues: Missing required argument "values" at position 0');
@@ -13253,7 +14056,7 @@ BridgedClass _createTomClassBridge() {
         return null;
       },
       'setOrMergeValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         D4.requireMinArgs(positional, 2, 'setOrMergeValues');
         if (positional.isEmpty) {
           throw ArgumentError('setOrMergeValues: Missing required argument "values" at position 0');
@@ -13264,36 +14067,36 @@ BridgedClass _createTomClassBridge() {
         return null;
       },
       'getValues': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.getValues();
       },
       'fromJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         D4.requireMinArgs(positional, 1, 'fromJson');
         final json = D4.getRequiredArg<String>(positional, 0, 'json', 'fromJson');
         t.fromJson(json);
         return null;
       },
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return t.toJson();
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
-        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_21.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
+        final other = D4.getRequiredArg<Map<String, $tom_core_kernel_22.TomObject<dynamic>>>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomClass>(target, 'TomClass');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomClass>(target, 'TomClass');
         final other = D4.getRequiredArg<Map<String, dynamic>>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
@@ -13336,24 +14139,24 @@ BridgedClass _createTomClassBridge() {
 
 BridgedClass _createTomListLifecycleListenerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomListLifecycleListener,
+    nativeType: $tom_core_kernel_22.TomListLifecycleListener,
     name: 'TomListLifecycleListener',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomListLifecycleListener,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomListLifecycleListener,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'onBeforeClear': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomListLifecycleListener>(target, 'TomListLifecycleListener');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomListLifecycleListener>(target, 'TomListLifecycleListener');
         D4.requireMinArgs(positional, 1, 'onBeforeClear');
-        final list = D4.getRequiredArg<$tom_core_kernel_21.TomList<$tom_core_kernel_21.TomObject>>(positional, 0, 'list', 'onBeforeClear');
+        final list = D4.getRequiredArg<$tom_core_kernel_22.TomList<$tom_core_kernel_22.TomObject>>(positional, 0, 'list', 'onBeforeClear');
         t.onBeforeClear(list);
         return null;
       },
       'onAfterReset': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomListLifecycleListener>(target, 'TomListLifecycleListener');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomListLifecycleListener>(target, 'TomListLifecycleListener');
         D4.requireMinArgs(positional, 1, 'onAfterReset');
-        final list = D4.getRequiredArg<$tom_core_kernel_21.TomList<$tom_core_kernel_21.TomObject>>(positional, 0, 'list', 'onAfterReset');
+        final list = D4.getRequiredArg<$tom_core_kernel_22.TomList<$tom_core_kernel_22.TomObject>>(positional, 0, 'list', 'onAfterReset');
         t.onAfterReset(list);
         return null;
       },
@@ -13371,441 +14174,441 @@ BridgedClass _createTomListLifecycleListenerBridge() {
 
 BridgedClass _createTomListBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomList,
+    nativeType: $tom_core_kernel_22.TomList,
     name: 'TomList',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomList,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomList,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_21.TomList();
+        return $tom_core_kernel_22.TomList();
       },
       'from': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomList');
-        final existing = D4.getRequiredArg<$tom_core_kernel_21.TomList<$tom_core_kernel_21.TomObject>>(positional, 0, 'existing', 'TomList');
-        return $tom_core_kernel_21.TomList.from(existing);
+        final existing = D4.getRequiredArg<$tom_core_kernel_22.TomList<$tom_core_kernel_22.TomObject>>(positional, 0, 'existing', 'TomList');
+        return $tom_core_kernel_22.TomList.from(existing);
       },
       'of': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomList');
-        final existing = D4.getRequiredArg<$tom_core_kernel_21.TomList<$tom_core_kernel_21.TomObject>>(positional, 0, 'existing', 'TomList');
-        return $tom_core_kernel_21.TomList.of(existing);
+        final existing = D4.getRequiredArg<$tom_core_kernel_22.TomList<$tom_core_kernel_22.TomObject>>(positional, 0, 'existing', 'TomList');
+        return $tom_core_kernel_22.TomList.of(existing);
       },
       'ofList': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomList');
         if (positional.isEmpty) {
           throw ArgumentError('TomList: Missing required argument "list" at position 0');
         }
-        final list = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[0], 'list');
-        return $tom_core_kernel_21.TomList.ofList(list);
+        final list = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[0], 'list');
+        return $tom_core_kernel_22.TomList.ofList(list);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').isNull,
-      'first': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').first,
-      'last': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').last,
-      'length': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').length,
-      'reversed': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').reversed,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').hashCode,
-      'isEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').isEmpty,
-      'isNotEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').isNotEmpty,
-      'iterator': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').iterator,
-      'single': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').single,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').isNull,
+      'first': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').first,
+      'last': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').last,
+      'length': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').length,
+      'reversed': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').reversed,
+      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').hashCode,
+      'isEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').isEmpty,
+      'isNotEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').isNotEmpty,
+      'iterator': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').iterator,
+      'single': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').single,
     },
     setters: {
       'first': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').first = D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(value, 'first'),
+        D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').first = D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(value, 'first'),
       'last': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').last = D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(value, 'last'),
+        D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').last = D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(value, 'last'),
       'length': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList').length = D4.extractBridgedArg<int>(value, 'length'),
+        D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList').length = D4.extractBridgedArg<int>(value, 'length'),
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'set');
         if (positional.isEmpty) {
           throw ArgumentError('set: Missing required argument "value" at position 0');
         }
-        final value = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[0], 'value');
+        final value = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[0], 'value');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.toString();
       },
       'addLifecycleListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'addLifecycleListener');
-        final listener = D4.getRequiredArg<$tom_core_kernel_21.TomListLifecycleListener>(positional, 0, 'listener', 'addLifecycleListener');
+        final listener = D4.getRequiredArg<$tom_core_kernel_22.TomListLifecycleListener>(positional, 0, 'listener', 'addLifecycleListener');
         t.addLifecycleListener(listener);
         return null;
       },
       'removeLifecycleListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'removeLifecycleListener');
-        final listener = D4.getRequiredArg<$tom_core_kernel_21.TomListLifecycleListener>(positional, 0, 'listener', 'removeLifecycleListener');
+        final listener = D4.getRequiredArg<$tom_core_kernel_22.TomListLifecycleListener>(positional, 0, 'listener', 'removeLifecycleListener');
         t.removeLifecycleListener(listener);
         return null;
       },
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
       'append': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'append');
-        final element = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 0, 'element', 'append');
+        final element = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 0, 'element', 'append');
         return t.append(element);
       },
       'any': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'any');
         if (positional.isEmpty) {
           throw ArgumentError('any: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        return (t as dynamic).any((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject));
+        return (t as dynamic).any((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject));
       },
       'cast': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.cast();
       },
       'contains': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'contains');
         final o = D4.getRequiredArg<Object?>(positional, 0, 'o', 'contains');
         return t.contains(o);
       },
       'elementAt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'elementAt');
         final index = D4.getRequiredArg<int>(positional, 0, 'index', 'elementAt');
         return t.elementAt(index);
       },
       'every': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'every');
         if (positional.isEmpty) {
           throw ArgumentError('every: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        return (t as dynamic).every((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject));
+        return (t as dynamic).every((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject));
       },
       'expand': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'expand');
         if (positional.isEmpty) {
           throw ArgumentError('expand: Missing required argument "toElements" at position 0');
         }
         final toElementsRaw = positional[0];
-        return (t as dynamic).expand((($tom_core_kernel_21.TomObject p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($tom_core_kernel_21.TomObject));
+        return (t as dynamic).expand((($tom_core_kernel_22.TomObject p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($tom_core_kernel_22.TomObject));
       },
       'firstWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'firstWhere');
         if (positional.isEmpty) {
           throw ArgumentError('firstWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
         final orElseRaw = named['orElse'];
-        return (t as dynamic).firstWhere((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject), orElse: orElseRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, orElseRaw, []), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function());
+        return (t as dynamic).firstWhere((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject), orElse: orElseRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, orElseRaw, []), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function());
       },
       'fold': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 2, 'fold');
         final initialValue = D4.getRequiredArg<dynamic>(positional, 0, 'initialValue', 'fold');
         if (positional.length <= 1) {
           throw ArgumentError('fold: Missing required argument "combine" at position 1');
         }
         final combineRaw = positional[1];
-        return (t as dynamic).fold(initialValue, (dynamic p0, $tom_core_kernel_21.TomObject p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
+        return (t as dynamic).fold(initialValue, (dynamic p0, $tom_core_kernel_22.TomObject p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
       },
       'followedBy': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'followedBy');
         if (positional.isEmpty) {
           throw ArgumentError('followedBy: Missing required argument "other" at position 0');
         }
-        final other = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[0], 'other');
+        final other = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[0], 'other');
         return t.followedBy(other);
       },
       'forEach': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'forEach');
         if (positional.isEmpty) {
           throw ArgumentError('forEach: Missing required argument "action" at position 0');
         }
         final actionRaw = positional[0];
-        (t as dynamic).forEach(($tom_core_kernel_21.TomObject p0) { D4.callInterpreterCallback(visitor!, actionRaw, [p0]); });
+        (t as dynamic).forEach(($tom_core_kernel_22.TomObject p0) { D4.callInterpreterCallback(visitor!, actionRaw, [p0]); });
         return null;
       },
       'join': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         final separator = D4.getOptionalArgWithDefault<String>(positional, 0, 'separator', "");
         return t.join(separator);
       },
       'lastWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'lastWhere');
         if (positional.isEmpty) {
           throw ArgumentError('lastWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
         final orElseRaw = named['orElse'];
-        return (t as dynamic).lastWhere((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject), orElse: orElseRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, orElseRaw, []), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function());
+        return (t as dynamic).lastWhere((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject), orElse: orElseRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, orElseRaw, []), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function());
       },
       'map': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'map');
         if (positional.isEmpty) {
           throw ArgumentError('map: Missing required argument "toElement" at position 0');
         }
         final toElementRaw = positional[0];
-        return (t as dynamic).map(($tom_core_kernel_21.TomObject p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
+        return (t as dynamic).map(($tom_core_kernel_22.TomObject p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
       },
       'reduce': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'reduce');
         if (positional.isEmpty) {
           throw ArgumentError('reduce: Missing required argument "combine" at position 0');
         }
         final combineRaw = positional[0];
-        return (t as dynamic).reduce((($tom_core_kernel_21.TomObject p0, $tom_core_kernel_21.TomObject p1) { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1]), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function($tom_core_kernel_21.TomObject, $tom_core_kernel_21.TomObject));
+        return (t as dynamic).reduce((($tom_core_kernel_22.TomObject p0, $tom_core_kernel_22.TomObject p1) { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1]), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function($tom_core_kernel_22.TomObject, $tom_core_kernel_22.TomObject));
       },
       'singleWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'singleWhere');
         if (positional.isEmpty) {
           throw ArgumentError('singleWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
         final orElseRaw = named['orElse'];
-        return (t as dynamic).singleWhere((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject), orElse: orElseRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, orElseRaw, []), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function());
+        return (t as dynamic).singleWhere((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject), orElse: orElseRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, orElseRaw, []), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function());
       },
       'skip': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'skip');
         final count = D4.getRequiredArg<int>(positional, 0, 'count', 'skip');
         return t.skip(count);
       },
       'skipWhile': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'skipWhile');
         if (positional.isEmpty) {
           throw ArgumentError('skipWhile: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        return (t as dynamic).skipWhile((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject));
+        return (t as dynamic).skipWhile((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject));
       },
       'take': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'take');
         final count = D4.getRequiredArg<int>(positional, 0, 'count', 'take');
         return t.take(count);
       },
       'takeWhile': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'takeWhile');
         if (positional.isEmpty) {
           throw ArgumentError('takeWhile: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        return (t as dynamic).takeWhile((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject));
+        return (t as dynamic).takeWhile((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject));
       },
       'toList': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         final growable = D4.getNamedArgWithDefault<bool>(named, 'growable', true);
         return t.toList(growable: growable);
       },
       'toSet': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.toSet();
       },
       'where': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'where');
         if (positional.isEmpty) {
           throw ArgumentError('where: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        return (t as dynamic).where((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject));
+        return (t as dynamic).where((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject));
       },
       'whereType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.whereType();
       },
       'resetWith': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'resetWith');
         if (positional.isEmpty) {
           throw ArgumentError('resetWith: Missing required argument "elements" at position 0');
         }
-        final elements = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[0], 'elements');
+        final elements = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[0], 'elements');
         t.resetWith(elements);
         return null;
       },
       'add': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'add');
-        final value = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 0, 'value', 'add');
+        final value = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 0, 'value', 'add');
         t.add(value);
         return null;
       },
       'addAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'addAll');
         if (positional.isEmpty) {
           throw ArgumentError('addAll: Missing required argument "iterable" at position 0');
         }
-        final iterable = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[0], 'iterable');
+        final iterable = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[0], 'iterable');
         t.addAll(iterable);
         return null;
       },
       'asMap': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.asMap();
       },
       'clear': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         t.clear();
         return null;
       },
       'fillRange': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 2, 'fillRange');
         final start = D4.getRequiredArg<int>(positional, 0, 'start', 'fillRange');
         final end = D4.getRequiredArg<int>(positional, 1, 'end', 'fillRange');
-        final fillValue = D4.getOptionalArg<$tom_core_kernel_21.TomObject?>(positional, 2, 'fillValue');
+        final fillValue = D4.getOptionalArg<$tom_core_kernel_22.TomObject?>(positional, 2, 'fillValue');
         t.fillRange(start, end, fillValue);
         return null;
       },
       'getRange': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 2, 'getRange');
         final start = D4.getRequiredArg<int>(positional, 0, 'start', 'getRange');
         final end = D4.getRequiredArg<int>(positional, 1, 'end', 'getRange');
         return t.getRange(start, end);
       },
       'indexOf': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'indexOf');
-        final element = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 0, 'element', 'indexOf');
+        final element = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 0, 'element', 'indexOf');
         final start = D4.getOptionalArgWithDefault<int>(positional, 1, 'start', 0);
         return t.indexOf(element, start);
       },
       'indexWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'indexWhere');
         if (positional.isEmpty) {
           throw ArgumentError('indexWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
         final start = D4.getOptionalArgWithDefault<int>(positional, 1, 'start', 0);
-        return (t as dynamic).indexWhere((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject), start);
+        return (t as dynamic).indexWhere((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject), start);
       },
       'insert': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 2, 'insert');
         final index = D4.getRequiredArg<int>(positional, 0, 'index', 'insert');
-        final element = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 1, 'element', 'insert');
+        final element = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 1, 'element', 'insert');
         t.insert(index, element);
         return null;
       },
       'insertAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 2, 'insertAll');
         final index = D4.getRequiredArg<int>(positional, 0, 'index', 'insertAll');
         if (positional.length <= 1) {
           throw ArgumentError('insertAll: Missing required argument "iterable" at position 1');
         }
-        final iterable = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[1], 'iterable');
+        final iterable = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[1], 'iterable');
         t.insertAll(index, iterable);
         return null;
       },
       'lastIndexOf': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'lastIndexOf');
-        final element = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 0, 'element', 'lastIndexOf');
+        final element = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 0, 'element', 'lastIndexOf');
         final start = D4.getOptionalArg<int?>(positional, 1, 'start');
         return t.lastIndexOf(element, start);
       },
       'lastIndexWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'lastIndexWhere');
         if (positional.isEmpty) {
           throw ArgumentError('lastIndexWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
         final start = D4.getOptionalArg<int?>(positional, 1, 'start');
-        return (t as dynamic).lastIndexWhere((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject), start);
+        return (t as dynamic).lastIndexWhere((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject), start);
       },
       'remove': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'remove');
         final value = D4.getRequiredArg<Object?>(positional, 0, 'value', 'remove');
         return t.remove(value);
       },
       'removeAt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'removeAt');
         final index = D4.getRequiredArg<int>(positional, 0, 'index', 'removeAt');
         return t.removeAt(index);
       },
       'removeLast': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return t.removeLast();
       },
       'removeRange': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 2, 'removeRange');
         final start = D4.getRequiredArg<int>(positional, 0, 'start', 'removeRange');
         final end = D4.getRequiredArg<int>(positional, 1, 'end', 'removeRange');
@@ -13813,118 +14616,118 @@ BridgedClass _createTomListBridge() {
         return null;
       },
       'removeWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'removeWhere');
         if (positional.isEmpty) {
           throw ArgumentError('removeWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        (t as dynamic).removeWhere((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject));
+        (t as dynamic).removeWhere((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject));
         return null;
       },
       'replaceRange': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 3, 'replaceRange');
         final start = D4.getRequiredArg<int>(positional, 0, 'start', 'replaceRange');
         final end = D4.getRequiredArg<int>(positional, 1, 'end', 'replaceRange');
         if (positional.length <= 2) {
           throw ArgumentError('replaceRange: Missing required argument "replacements" at position 2');
         }
-        final replacements = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[2], 'replacements');
+        final replacements = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[2], 'replacements');
         t.replaceRange(start, end, replacements);
         return null;
       },
       'retainWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'retainWhere');
         if (positional.isEmpty) {
           throw ArgumentError('retainWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        (t as dynamic).retainWhere((($tom_core_kernel_21.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_21.TomObject));
+        (t as dynamic).retainWhere((($tom_core_kernel_22.TomObject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; }) as bool Function($tom_core_kernel_22.TomObject));
         return null;
       },
       'setAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 2, 'setAll');
         final index = D4.getRequiredArg<int>(positional, 0, 'index', 'setAll');
         if (positional.length <= 1) {
           throw ArgumentError('setAll: Missing required argument "iterable" at position 1');
         }
-        final iterable = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[1], 'iterable');
+        final iterable = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[1], 'iterable');
         t.setAll(index, iterable);
         return null;
       },
       'setRange': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 3, 'setRange');
         final start = D4.getRequiredArg<int>(positional, 0, 'start', 'setRange');
         final end = D4.getRequiredArg<int>(positional, 1, 'end', 'setRange');
         if (positional.length <= 2) {
           throw ArgumentError('setRange: Missing required argument "iterable" at position 2');
         }
-        final iterable = D4.coerceList<$tom_core_kernel_21.TomObject>(positional[2], 'iterable');
+        final iterable = D4.coerceList<$tom_core_kernel_22.TomObject>(positional[2], 'iterable');
         final skipCount = D4.getOptionalArgWithDefault<int>(positional, 3, 'skipCount', 0);
         t.setRange(start, end, iterable, skipCount);
         return null;
       },
       'shuffle': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         final random = D4.getOptionalArg<$dart_math.Random?>(positional, 0, 'random');
         t.shuffle(random);
         return null;
       },
       'sort': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         final compareRaw = positional.isNotEmpty ? positional[0] : null;
-        (t as dynamic).sort(compareRaw == null ? null : (($tom_core_kernel_21.TomObject p0, $tom_core_kernel_21.TomObject p1) { return D4.callInterpreterCallback(visitor!, compareRaw, [p0, p1]) as int; }) as int Function($tom_core_kernel_21.TomObject, $tom_core_kernel_21.TomObject));
+        (t as dynamic).sort(compareRaw == null ? null : (($tom_core_kernel_22.TomObject p0, $tom_core_kernel_22.TomObject p1) { return D4.callInterpreterCallback(visitor!, compareRaw, [p0, p1]) as int; }) as int Function($tom_core_kernel_22.TomObject, $tom_core_kernel_22.TomObject));
         return null;
       },
       'sublist': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         D4.requireMinArgs(positional, 1, 'sublist');
         final start = D4.getRequiredArg<int>(positional, 0, 'start', 'sublist');
         final end = D4.getOptionalArg<int?>(positional, 1, 'end');
         return t.sublist(start, end);
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
-        final other = D4.getRequiredArg<List<$tom_core_kernel_21.TomObject>>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
+        final other = D4.getRequiredArg<List<$tom_core_kernel_22.TomObject>>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
-        final other = D4.getRequiredArg<List<$tom_core_kernel_21.TomObject>>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
+        final other = D4.getRequiredArg<List<$tom_core_kernel_22.TomObject>>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '[]': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         final index = D4.getRequiredArg<int>(positional, 0, 'index', 'operator[]');
         return t[index];
       },
       '[]=': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         final index = D4.getRequiredArg<int>(positional, 0, 'index', 'operator[]=');
-        final value = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 1, 'value', 'operator[]=');
+        final value = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 1, 'value', 'operator[]=');
         t[index] = value;
         return null;
       },
       '+': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
-        final other = D4.getRequiredArg<$tom_core_kernel_21.TomList<$tom_core_kernel_21.TomObject>>(positional, 0, 'other', 'operator+');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
+        final other = D4.getRequiredArg<$tom_core_kernel_22.TomList<$tom_core_kernel_22.TomObject>>(positional, 0, 'other', 'operator+');
         return t + other;
       },
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomList>(target, 'TomList');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomList>(target, 'TomList');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -13934,8 +14737,8 @@ BridgedClass _createTomListBridge() {
     staticMethods: {
       'castFrom': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'castFrom');
-        final source = D4.getRequiredArg<$tom_core_kernel_21.TomList<$tom_core_kernel_21.TomObject>>(positional, 0, 'source', 'castFrom');
-        return $tom_core_kernel_21.TomList.castFrom(source);
+        final source = D4.getRequiredArg<$tom_core_kernel_22.TomList<$tom_core_kernel_22.TomObject>>(positional, 0, 'source', 'castFrom');
+        return $tom_core_kernel_22.TomList.castFrom(source);
       },
     },
     constructorSignatures: {
@@ -14039,207 +14842,207 @@ BridgedClass _createTomListBridge() {
 
 BridgedClass _createTomMapBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_21.TomMap,
+    nativeType: $tom_core_kernel_22.TomMap,
     name: 'TomMap',
-    isAssignable: (v) => v is $tom_core_kernel_21.TomMap,
+    isAssignable: (v) => v is $tom_core_kernel_22.TomMap,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_kernel_21.TomMap();
+        return $tom_core_kernel_22.TomMap();
       },
       'from': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomMap');
-        final existing = D4.getRequiredArg<$tom_core_kernel_21.TomMap<dynamic, $tom_core_kernel_21.TomObject>>(positional, 0, 'existing', 'TomMap');
-        return $tom_core_kernel_21.TomMap.from(existing);
+        final existing = D4.getRequiredArg<$tom_core_kernel_22.TomMap<dynamic, $tom_core_kernel_22.TomObject>>(positional, 0, 'existing', 'TomMap');
+        return $tom_core_kernel_22.TomMap.from(existing);
       },
       'of': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomMap');
-        final existing = D4.getRequiredArg<$tom_core_kernel_21.TomMap<dynamic, $tom_core_kernel_21.TomObject>>(positional, 0, 'existing', 'TomMap');
-        return $tom_core_kernel_21.TomMap.of(existing);
+        final existing = D4.getRequiredArg<$tom_core_kernel_22.TomMap<dynamic, $tom_core_kernel_22.TomObject>>(positional, 0, 'existing', 'TomMap');
+        return $tom_core_kernel_22.TomMap.of(existing);
       },
       'ofMap': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomMap');
         if (positional.isEmpty) {
           throw ArgumentError('TomMap: Missing required argument "map" at position 0');
         }
-        final map = D4.coerceMap<dynamic, $tom_core_kernel_21.TomObject>(positional[0], 'map');
-        return $tom_core_kernel_21.TomMap.ofMap(map);
+        final map = D4.coerceMap<dynamic, $tom_core_kernel_22.TomObject>(positional[0], 'map');
+        return $tom_core_kernel_22.TomMap.ofMap(map);
       },
     },
     getters: {
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').isMuted,
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').isNull,
-      'length': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').length,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').hashCode,
-      'isEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').isEmpty,
-      'isNotEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').isNotEmpty,
-      'keys': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').keys,
-      'values': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').values,
-      'entries': (visitor, target) => D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap').entries,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').isNull,
+      'length': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').length,
+      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').hashCode,
+      'isEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').isEmpty,
+      'isNotEmpty': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').isNotEmpty,
+      'keys': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').keys,
+      'values': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').values,
+      'entries': (visitor, target) => D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap').entries,
     },
     methods: {
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'addObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'addObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'removeObserver');
-        final observer = D4.getRequiredArg<$tom_core_kernel_20.TomObserver<$tom_core_kernel_20.TomObservable>>(positional, 0, 'observer', 'removeObserver');
+        final observer = D4.getRequiredArg<$tom_core_kernel_21.TomObserver<$tom_core_kernel_21.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'set');
         if (positional.isEmpty) {
           throw ArgumentError('set: Missing required argument "value" at position 0');
         }
-        final value = D4.coerceMap<dynamic, $tom_core_kernel_21.TomObject>(positional[0], 'value');
+        final value = D4.coerceMap<dynamic, $tom_core_kernel_22.TomObject>(positional[0], 'value');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         return t.call();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         return t.toString();
       },
       'onNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'onNotify');
-        final observable = D4.getRequiredArg<$tom_core_kernel_20.TomObservable>(positional, 0, 'observable', 'onNotify');
+        final observable = D4.getRequiredArg<$tom_core_kernel_21.TomObservable>(positional, 0, 'observable', 'onNotify');
         t.onNotify(observable);
         return null;
       },
       'add': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 2, 'add');
         final key = D4.getRequiredArg<dynamic>(positional, 0, 'key', 'add');
-        final value = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 1, 'value', 'add');
+        final value = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 1, 'value', 'add');
         t.add(key, value);
         return null;
       },
       'addAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'addAll');
         if (positional.isEmpty) {
           throw ArgumentError('addAll: Missing required argument "other" at position 0');
         }
-        final other = D4.coerceMap<dynamic, $tom_core_kernel_21.TomObject>(positional[0], 'other');
+        final other = D4.coerceMap<dynamic, $tom_core_kernel_22.TomObject>(positional[0], 'other');
         t.addAll(other);
         return null;
       },
       'addEntries': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'addEntries');
         if (positional.isEmpty) {
           throw ArgumentError('addEntries: Missing required argument "newEntries" at position 0');
         }
-        final newEntries = D4.coerceList<MapEntry<dynamic, $tom_core_kernel_21.TomObject>>(positional[0], 'newEntries');
+        final newEntries = D4.coerceList<MapEntry<dynamic, $tom_core_kernel_22.TomObject>>(positional[0], 'newEntries');
         t.addEntries(newEntries);
         return null;
       },
       'cast': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         return t.cast();
       },
       'clear': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         t.clear();
         return null;
       },
       'containsKey': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'containsKey');
         final key = D4.getRequiredArg<dynamic>(positional, 0, 'key', 'containsKey');
         return t.containsKey(key);
       },
       'containsValue': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'containsValue');
-        final value = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 0, 'value', 'containsValue');
+        final value = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 0, 'value', 'containsValue');
         return t.containsValue(value);
       },
       'forEach': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'forEach');
         if (positional.isEmpty) {
           throw ArgumentError('forEach: Missing required argument "action" at position 0');
         }
         final actionRaw = positional[0];
-        (t as dynamic).forEach((dynamic p0, $tom_core_kernel_21.TomObject p1) { D4.callInterpreterCallback(visitor!, actionRaw, [p0, p1]); });
+        (t as dynamic).forEach((dynamic p0, $tom_core_kernel_22.TomObject p1) { D4.callInterpreterCallback(visitor!, actionRaw, [p0, p1]); });
         return null;
       },
       'map': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'map');
         if (positional.isEmpty) {
           throw ArgumentError('map: Missing required argument "convert" at position 0');
         }
         final convertRaw = positional[0];
-        return (t as dynamic).map(((dynamic p0, $tom_core_kernel_21.TomObject p1) { return D4.extractBridgedArg<MapEntry<dynamic, dynamic>>(D4.callInterpreterCallback(visitor!, convertRaw, [p0, p1]), 'callback', visitor) as MapEntry<dynamic, dynamic>; }) as MapEntry<dynamic, dynamic> Function(dynamic, $tom_core_kernel_21.TomObject));
+        return (t as dynamic).map(((dynamic p0, $tom_core_kernel_22.TomObject p1) { return D4.extractBridgedArg<MapEntry<dynamic, dynamic>>(D4.callInterpreterCallback(visitor!, convertRaw, [p0, p1]), 'callback', visitor) as MapEntry<dynamic, dynamic>; }) as MapEntry<dynamic, dynamic> Function(dynamic, $tom_core_kernel_22.TomObject));
       },
       'putIfAbsent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 2, 'putIfAbsent');
         final key = D4.getRequiredArg<dynamic>(positional, 0, 'key', 'putIfAbsent');
         if (positional.length <= 1) {
           throw ArgumentError('putIfAbsent: Missing required argument "ifAbsent" at position 1');
         }
         final ifAbsentRaw = positional[1];
-        return (t as dynamic).putIfAbsent(key, (() { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, ifAbsentRaw, []), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function());
+        return (t as dynamic).putIfAbsent(key, (() { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, ifAbsentRaw, []), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function());
       },
       'remove': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'remove');
         final key = D4.getRequiredArg<dynamic>(positional, 0, 'key', 'remove');
         return t.remove(key);
       },
       'removeWhere': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'removeWhere');
         if (positional.isEmpty) {
           throw ArgumentError('removeWhere: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        (t as dynamic).removeWhere(((dynamic p0, $tom_core_kernel_21.TomObject p1) { return D4.callInterpreterCallback(visitor!, testRaw, [p0, p1]) as bool; }) as bool Function(dynamic, $tom_core_kernel_21.TomObject));
+        (t as dynamic).removeWhere(((dynamic p0, $tom_core_kernel_22.TomObject p1) { return D4.callInterpreterCallback(visitor!, testRaw, [p0, p1]) as bool; }) as bool Function(dynamic, $tom_core_kernel_22.TomObject));
         return null;
       },
       'update': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 2, 'update');
         final key = D4.getRequiredArg<dynamic>(positional, 0, 'key', 'update');
         if (positional.length <= 1) {
@@ -14247,56 +15050,56 @@ BridgedClass _createTomMapBridge() {
         }
         final updateRaw = positional[1];
         final ifAbsentRaw = named['ifAbsent'];
-        return (t as dynamic).update(key, (($tom_core_kernel_21.TomObject p0) { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, updateRaw, [p0]), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function($tom_core_kernel_21.TomObject), ifAbsent: ifAbsentRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, ifAbsentRaw, []), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function());
+        return (t as dynamic).update(key, (($tom_core_kernel_22.TomObject p0) { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, updateRaw, [p0]), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function($tom_core_kernel_22.TomObject), ifAbsent: ifAbsentRaw == null ? null : (() { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, ifAbsentRaw, []), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function());
       },
       'updateAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         D4.requireMinArgs(positional, 1, 'updateAll');
         if (positional.isEmpty) {
           throw ArgumentError('updateAll: Missing required argument "update" at position 0');
         }
         final updateRaw = positional[0];
-        (t as dynamic).updateAll(((dynamic p0, $tom_core_kernel_21.TomObject p1) { return D4.extractBridgedArg<$tom_core_kernel_21.TomObject>(D4.callInterpreterCallback(visitor!, updateRaw, [p0, p1]), 'callback', visitor) as $tom_core_kernel_21.TomObject; }) as $tom_core_kernel_21.TomObject Function(dynamic, $tom_core_kernel_21.TomObject));
+        (t as dynamic).updateAll(((dynamic p0, $tom_core_kernel_22.TomObject p1) { return D4.extractBridgedArg<$tom_core_kernel_22.TomObject>(D4.callInterpreterCallback(visitor!, updateRaw, [p0, p1]), 'callback', visitor) as $tom_core_kernel_22.TomObject; }) as $tom_core_kernel_22.TomObject Function(dynamic, $tom_core_kernel_22.TomObject));
         return null;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_20.TomObservable)>(positional, 0, 'other', 'operator>>');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
+        final other = D4.getRequiredArg<void Function($tom_core_kernel_21.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
-        final other = D4.getRequiredArg<Map<dynamic, $tom_core_kernel_21.TomObject>>(positional, 0, 'other', 'operator|');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
+        final other = D4.getRequiredArg<Map<dynamic, $tom_core_kernel_22.TomObject>>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
-        final other = D4.getRequiredArg<Map<dynamic, $tom_core_kernel_21.TomObject>>(positional, 0, 'other', 'operator<<');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
+        final other = D4.getRequiredArg<Map<dynamic, $tom_core_kernel_22.TomObject>>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '[]': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         final index = D4.getRequiredArg<dynamic>(positional, 0, 'index', 'operator[]');
         return t[index];
       },
       '[]=': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         final index = D4.getRequiredArg<dynamic>(positional, 0, 'index', 'operator[]=');
-        final value = D4.getRequiredArg<$tom_core_kernel_21.TomObject>(positional, 1, 'value', 'operator[]=');
+        final value = D4.getRequiredArg<$tom_core_kernel_22.TomObject>(positional, 1, 'value', 'operator[]=');
         t[index] = value;
         return null;
       },
       '+': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
-        final other = D4.getRequiredArg<$tom_core_kernel_21.TomMap<dynamic, $tom_core_kernel_21.TomObject>>(positional, 0, 'other', 'operator+');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
+        final other = D4.getRequiredArg<$tom_core_kernel_22.TomMap<dynamic, $tom_core_kernel_22.TomObject>>(positional, 0, 'other', 'operator+');
         return t + other;
       },
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_21.TomMap>(target, 'TomMap');
+        final t = D4.validateTarget<$tom_core_kernel_22.TomMap>(target, 'TomMap');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -14306,8 +15109,8 @@ BridgedClass _createTomMapBridge() {
     staticMethods: {
       'castFrom': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'castFrom');
-        final source = D4.getRequiredArg<$tom_core_kernel_21.TomMap<dynamic, $tom_core_kernel_21.TomObject>>(positional, 0, 'source', 'castFrom');
-        return $tom_core_kernel_21.TomMap.castFrom(source);
+        final source = D4.getRequiredArg<$tom_core_kernel_22.TomMap<dynamic, $tom_core_kernel_22.TomObject>>(positional, 0, 'source', 'castFrom');
+        return $tom_core_kernel_22.TomMap.castFrom(source);
       },
     },
     constructorSignatures: {
@@ -14367,9 +15170,9 @@ BridgedClass _createTomMapBridge() {
 
 BridgedClass _createTomTimezonedBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_33.TomTimezoned,
+    nativeType: $tom_core_kernel_34.TomTimezoned,
     name: 'TomTimezoned',
-    isAssignable: (v) => v is $tom_core_kernel_33.TomTimezoned,
+    isAssignable: (v) => v is $tom_core_kernel_34.TomTimezoned,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -14381,8 +15184,8 @@ BridgedClass _createTomTimezonedBridge() {
         final second = D4.getNamedArgWithDefault<int>(named, 'second', 0);
         final millisecond = D4.getNamedArgWithDefault<int>(named, 'millisecond', 0);
         final microsecond = D4.getNamedArgWithDefault<int>(named, 'microsecond', 0);
-        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_34.TomTimezone?>(named, 'timezone');
-        return $tom_core_kernel_33.TomTimezoned(year: year, month: month, day: day, hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond, timezone: timezone);
+        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_35.TomTimezone?>(named, 'timezone');
+        return $tom_core_kernel_34.TomTimezoned(year: year, month: month, day: day, hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond, timezone: timezone);
       },
       'utc': (visitor, positional, named) {
         final year = D4.getNamedArgWithDefault<int>(named, 'year', 1970);
@@ -14393,120 +15196,120 @@ BridgedClass _createTomTimezonedBridge() {
         final second = D4.getNamedArgWithDefault<int>(named, 'second', 0);
         final millisecond = D4.getNamedArgWithDefault<int>(named, 'millisecond', 0);
         final microsecond = D4.getNamedArgWithDefault<int>(named, 'microsecond', 0);
-        return $tom_core_kernel_33.TomTimezoned.utc(year: year, month: month, day: day, hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond);
+        return $tom_core_kernel_34.TomTimezoned.utc(year: year, month: month, day: day, hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond);
       },
       'now': (visitor, positional, named) {
-        final timezone = D4.getOptionalArg<$tom_core_kernel_34.TomTimezone?>(positional, 0, 'timezone');
-        return $tom_core_kernel_33.TomTimezoned.now(timezone);
+        final timezone = D4.getOptionalArg<$tom_core_kernel_35.TomTimezone?>(positional, 0, 'timezone');
+        return $tom_core_kernel_34.TomTimezoned.now(timezone);
       },
       'fromDateTime': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomTimezoned');
         final dateTime = D4.getRequiredArg<DateTime>(positional, 0, 'dateTime', 'TomTimezoned');
-        final timezone = D4.getOptionalArg<$tom_core_kernel_34.TomTimezone?>(positional, 1, 'timezone');
-        return $tom_core_kernel_33.TomTimezoned.fromDateTime(dateTime, timezone);
+        final timezone = D4.getOptionalArg<$tom_core_kernel_35.TomTimezone?>(positional, 1, 'timezone');
+        return $tom_core_kernel_34.TomTimezoned.fromDateTime(dateTime, timezone);
       },
       'parseFromString': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomTimezoned');
         final formattedString = D4.getRequiredArg<String>(positional, 0, 'formattedString', 'TomTimezoned');
-        return $tom_core_kernel_33.TomTimezoned.parseFromString(formattedString);
+        return $tom_core_kernel_34.TomTimezoned.parseFromString(formattedString);
       },
     },
     getters: {
-      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').timezone,
-      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localYear,
-      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localMonth,
-      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localDay,
-      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localHour,
-      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localMinute,
-      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localSecond,
-      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localMillisecond,
-      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localMicrosecond,
-      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').localWeekday,
-      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').isUtc,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').hashCode,
-      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').millisecondsSinceEpoch,
-      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').microsecondsSinceEpoch,
-      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').timeZoneName,
-      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').timeZoneOffset,
-      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').year,
-      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').month,
-      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').day,
-      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').hour,
-      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').minute,
-      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').second,
-      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').millisecond,
-      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').microsecond,
-      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned').weekday,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').timezone,
+      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localYear,
+      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localMonth,
+      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localDay,
+      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localHour,
+      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localMinute,
+      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localSecond,
+      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localMillisecond,
+      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localMicrosecond,
+      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').localWeekday,
+      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').isUtc,
+      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').hashCode,
+      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').millisecondsSinceEpoch,
+      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').microsecondsSinceEpoch,
+      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').timeZoneName,
+      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').timeZoneOffset,
+      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').year,
+      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').month,
+      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').day,
+      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').hour,
+      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').minute,
+      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').second,
+      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').millisecond,
+      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').microsecond,
+      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned').weekday,
     },
     methods: {
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         return t.getSerializationPrefix();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         return t.toString();
       },
       'toDateTime': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         return t.toDateTime();
       },
       'isBefore': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         D4.requireMinArgs(positional, 1, 'isBefore');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isBefore');
         return t.isBefore(other);
       },
       'isAfter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         D4.requireMinArgs(positional, 1, 'isAfter');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAfter');
         return t.isAfter(other);
       },
       'isAtSameMomentAs': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         D4.requireMinArgs(positional, 1, 'isAtSameMomentAs');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAtSameMomentAs');
         return t.isAtSameMomentAs(other);
       },
       'compareTo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         D4.requireMinArgs(positional, 1, 'compareTo');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'compareTo');
         return t.compareTo(other);
       },
       'toLocal': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         return t.toLocal();
       },
       'toUtc': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         return t.toUtc();
       },
       'toIso8601String': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         return t.toIso8601String();
       },
       'add': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         D4.requireMinArgs(positional, 1, 'add');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'add');
         return t.add(duration);
       },
       'subtract': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         D4.requireMinArgs(positional, 1, 'subtract');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'subtract');
         return t.subtract(duration);
       },
       'difference': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         D4.requireMinArgs(positional, 1, 'difference');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'difference');
         return t.difference(other);
       },
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomTimezoned>(target, 'TomTimezoned');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoned>(target, 'TomTimezoned');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -14517,7 +15320,7 @@ BridgedClass _createTomTimezonedBridge() {
       'isTomTimezonedString': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isTomTimezonedString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'isTomTimezonedString');
-        return $tom_core_kernel_33.TomTimezoned.isTomTimezonedString(s);
+        return $tom_core_kernel_34.TomTimezoned.isTomTimezonedString(s);
       },
     },
     constructorSignatures: {
@@ -14581,132 +15384,132 @@ BridgedClass _createTomTimezonedBridge() {
 
 BridgedClass _createTomZonedDateBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_33.TomZonedDate,
+    nativeType: $tom_core_kernel_34.TomZonedDate,
     name: 'TomZonedDate',
-    isAssignable: (v) => v is $tom_core_kernel_33.TomZonedDate,
+    isAssignable: (v) => v is $tom_core_kernel_34.TomZonedDate,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         final year = D4.getNamedArgWithDefault<int>(named, 'year', 1970);
         final month = D4.getNamedArgWithDefault<int>(named, 'month', 1);
         final day = D4.getNamedArgWithDefault<int>(named, 'day', 1);
-        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_34.TomTimezone?>(named, 'timezone');
-        return $tom_core_kernel_33.TomZonedDate(year: year, month: month, day: day, timezone: timezone);
+        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_35.TomTimezone?>(named, 'timezone');
+        return $tom_core_kernel_34.TomZonedDate(year: year, month: month, day: day, timezone: timezone);
       },
       'fromDateTime': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomZonedDate');
         final dtx = D4.getRequiredArg<DateTime>(positional, 0, 'dtx', 'TomZonedDate');
-        final timezone = D4.getOptionalArg<$tom_core_kernel_34.TomTimezone?>(positional, 1, 'timezone');
-        return $tom_core_kernel_33.TomZonedDate.fromDateTime(dtx, timezone);
+        final timezone = D4.getOptionalArg<$tom_core_kernel_35.TomTimezone?>(positional, 1, 'timezone');
+        return $tom_core_kernel_34.TomZonedDate.fromDateTime(dtx, timezone);
       },
       'parseFromString': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomZonedDate');
         final formattedString = D4.getRequiredArg<String>(positional, 0, 'formattedString', 'TomZonedDate');
-        return $tom_core_kernel_33.TomZonedDate.parseFromString(formattedString);
+        return $tom_core_kernel_34.TomZonedDate.parseFromString(formattedString);
       },
     },
     getters: {
-      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').timezone,
-      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localYear,
-      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localMonth,
-      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localDay,
-      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localHour,
-      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localMinute,
-      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localSecond,
-      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localMillisecond,
-      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localMicrosecond,
-      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').localWeekday,
-      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').isUtc,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').hashCode,
-      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').millisecondsSinceEpoch,
-      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').microsecondsSinceEpoch,
-      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').timeZoneName,
-      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').timeZoneOffset,
-      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').year,
-      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').month,
-      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').day,
-      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').hour,
-      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').minute,
-      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').second,
-      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').millisecond,
-      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').microsecond,
-      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate').weekday,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').timezone,
+      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localYear,
+      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localMonth,
+      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localDay,
+      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localHour,
+      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localMinute,
+      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localSecond,
+      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localMillisecond,
+      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localMicrosecond,
+      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').localWeekday,
+      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').isUtc,
+      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').hashCode,
+      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').millisecondsSinceEpoch,
+      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').microsecondsSinceEpoch,
+      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').timeZoneName,
+      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').timeZoneOffset,
+      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').year,
+      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').month,
+      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').day,
+      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').hour,
+      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').minute,
+      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').second,
+      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').millisecond,
+      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').microsecond,
+      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate').weekday,
     },
     methods: {
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         return t.getSerializationPrefix();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         return t.toString();
       },
       'toDateTime': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         return t.toDateTime();
       },
       'isBefore': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'isBefore');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isBefore');
         return t.isBefore(other);
       },
       'isAfter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'isAfter');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAfter');
         return t.isAfter(other);
       },
       'isAtSameMomentAs': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'isAtSameMomentAs');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAtSameMomentAs');
         return t.isAtSameMomentAs(other);
       },
       'compareTo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'compareTo');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'compareTo');
         return t.compareTo(other);
       },
       'toLocal': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         return t.toLocal();
       },
       'toUtc': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         return t.toUtc();
       },
       'toIso8601String': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         return t.toIso8601String();
       },
       'add': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'add');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'add');
         return t.add(duration);
       },
       'subtract': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'subtract');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'subtract');
         return t.subtract(duration);
       },
       'difference': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'difference');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'difference');
         return t.difference(other);
       },
       'convertToTimezone': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         D4.requireMinArgs(positional, 1, 'convertToTimezone');
-        final targetTimezone = D4.getRequiredArg<$tom_core_kernel_34.TomTimezone>(positional, 0, 'targetTimezone', 'convertToTimezone');
+        final targetTimezone = D4.getRequiredArg<$tom_core_kernel_35.TomTimezone>(positional, 0, 'targetTimezone', 'convertToTimezone');
         return t.convertToTimezone(targetTimezone);
       },
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDate>(target, 'TomZonedDate');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDate>(target, 'TomZonedDate');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -14714,18 +15517,18 @@ BridgedClass _createTomZonedDateBridge() {
       },
     },
     staticGetters: {
-      'serializationPrefix': (visitor) => $tom_core_kernel_33.TomZonedDate.serializationPrefix,
+      'serializationPrefix': (visitor) => $tom_core_kernel_34.TomZonedDate.serializationPrefix,
     },
     staticMethods: {
       'isTomZonedDateString': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isTomZonedDateString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'isTomZonedDateString');
-        return $tom_core_kernel_33.TomZonedDate.isTomZonedDateString(s);
+        return $tom_core_kernel_34.TomZonedDate.isTomZonedDateString(s);
       },
       'isDate': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isDate');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'isDate');
-        return $tom_core_kernel_33.TomZonedDate.isDate(dt);
+        return $tom_core_kernel_34.TomZonedDate.isDate(dt);
       },
     },
     constructorSignatures: {
@@ -14792,9 +15595,9 @@ BridgedClass _createTomZonedDateBridge() {
 
 BridgedClass _createTomZonedTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_33.TomZonedTime,
+    nativeType: $tom_core_kernel_34.TomZonedTime,
     name: 'TomZonedTime',
-    isAssignable: (v) => v is $tom_core_kernel_33.TomZonedTime,
+    isAssignable: (v) => v is $tom_core_kernel_34.TomZonedTime,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
@@ -14803,129 +15606,129 @@ BridgedClass _createTomZonedTimeBridge() {
         final second = D4.getNamedArgWithDefault<int>(named, 'second', 0);
         final millisecond = D4.getNamedArgWithDefault<int>(named, 'millisecond', 0);
         final microsecond = D4.getNamedArgWithDefault<int>(named, 'microsecond', 0);
-        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_34.TomTimezone?>(named, 'timezone');
-        return $tom_core_kernel_33.TomZonedTime(hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond, timezone: timezone);
+        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_35.TomTimezone?>(named, 'timezone');
+        return $tom_core_kernel_34.TomZonedTime(hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond, timezone: timezone);
       },
       'fromDateTime': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomZonedTime');
         final dtx = D4.getRequiredArg<DateTime>(positional, 0, 'dtx', 'TomZonedTime');
-        final timezone = D4.getOptionalArg<$tom_core_kernel_34.TomTimezone?>(positional, 1, 'timezone');
-        return $tom_core_kernel_33.TomZonedTime.fromDateTime(dtx, timezone);
+        final timezone = D4.getOptionalArg<$tom_core_kernel_35.TomTimezone?>(positional, 1, 'timezone');
+        return $tom_core_kernel_34.TomZonedTime.fromDateTime(dtx, timezone);
       },
       'parseFromString': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomZonedTime');
         final formattedString = D4.getRequiredArg<String>(positional, 0, 'formattedString', 'TomZonedTime');
-        return $tom_core_kernel_33.TomZonedTime.parseFromString(formattedString);
+        return $tom_core_kernel_34.TomZonedTime.parseFromString(formattedString);
       },
     },
     getters: {
-      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').timezone,
-      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localYear,
-      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localMonth,
-      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localDay,
-      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localHour,
-      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localMinute,
-      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localSecond,
-      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localMillisecond,
-      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localMicrosecond,
-      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').localWeekday,
-      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').isUtc,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').hashCode,
-      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').millisecondsSinceEpoch,
-      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').microsecondsSinceEpoch,
-      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').timeZoneName,
-      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').timeZoneOffset,
-      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').year,
-      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').month,
-      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').day,
-      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').hour,
-      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').minute,
-      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').second,
-      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').millisecond,
-      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').microsecond,
-      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime').weekday,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').timezone,
+      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localYear,
+      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localMonth,
+      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localDay,
+      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localHour,
+      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localMinute,
+      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localSecond,
+      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localMillisecond,
+      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localMicrosecond,
+      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').localWeekday,
+      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').isUtc,
+      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').hashCode,
+      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').millisecondsSinceEpoch,
+      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').microsecondsSinceEpoch,
+      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').timeZoneName,
+      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').timeZoneOffset,
+      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').year,
+      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').month,
+      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').day,
+      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').hour,
+      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').minute,
+      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').second,
+      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').millisecond,
+      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').microsecond,
+      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime').weekday,
     },
     methods: {
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         return t.getSerializationPrefix();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         return t.toString();
       },
       'toDateTime': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         return t.toDateTime();
       },
       'isBefore': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'isBefore');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isBefore');
         return t.isBefore(other);
       },
       'isAfter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'isAfter');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAfter');
         return t.isAfter(other);
       },
       'isAtSameMomentAs': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'isAtSameMomentAs');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAtSameMomentAs');
         return t.isAtSameMomentAs(other);
       },
       'compareTo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'compareTo');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'compareTo');
         return t.compareTo(other);
       },
       'toLocal': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         return t.toLocal();
       },
       'toUtc': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         return t.toUtc();
       },
       'toIso8601String': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         return t.toIso8601String();
       },
       'add': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'add');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'add');
         return t.add(duration);
       },
       'subtract': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'subtract');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'subtract');
         return t.subtract(duration);
       },
       'difference': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'difference');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'difference');
         return t.difference(other);
       },
       'convertToTimezone': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'convertToTimezone');
-        final targetTimezone = D4.getRequiredArg<$tom_core_kernel_34.TomTimezone>(positional, 0, 'targetTimezone', 'convertToTimezone');
+        final targetTimezone = D4.getRequiredArg<$tom_core_kernel_35.TomTimezone>(positional, 0, 'targetTimezone', 'convertToTimezone');
         return t.convertToTimezone(targetTimezone);
       },
       'inTimezoneOn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         D4.requireMinArgs(positional, 1, 'inTimezoneOn');
         final when = D4.getRequiredArg<DateTime>(positional, 0, 'when', 'inTimezoneOn');
         return t.inTimezoneOn(when);
       },
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedTime>(target, 'TomZonedTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedTime>(target, 'TomZonedTime');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -14933,18 +15736,18 @@ BridgedClass _createTomZonedTimeBridge() {
       },
     },
     staticGetters: {
-      'serializationPrefix': (visitor) => $tom_core_kernel_33.TomZonedTime.serializationPrefix,
+      'serializationPrefix': (visitor) => $tom_core_kernel_34.TomZonedTime.serializationPrefix,
     },
     staticMethods: {
       'isTomZonedTimeString': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isTomZonedTimeString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'isTomZonedTimeString');
-        return $tom_core_kernel_33.TomZonedTime.isTomZonedTimeString(s);
+        return $tom_core_kernel_34.TomZonedTime.isTomZonedTimeString(s);
       },
       'isTime': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isTime');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'isTime');
-        return $tom_core_kernel_33.TomZonedTime.isTime(dt);
+        return $tom_core_kernel_34.TomZonedTime.isTime(dt);
       },
     },
     constructorSignatures: {
@@ -15012,9 +15815,9 @@ BridgedClass _createTomZonedTimeBridge() {
 
 BridgedClass _createTomZonedDateTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_33.TomZonedDateTime,
+    nativeType: $tom_core_kernel_34.TomZonedDateTime,
     name: 'TomZonedDateTime',
-    isAssignable: (v) => v is $tom_core_kernel_33.TomZonedDateTime,
+    isAssignable: (v) => v is $tom_core_kernel_34.TomZonedDateTime,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
@@ -15026,123 +15829,123 @@ BridgedClass _createTomZonedDateTimeBridge() {
         final second = D4.getNamedArgWithDefault<int>(named, 'second', 0);
         final millisecond = D4.getNamedArgWithDefault<int>(named, 'millisecond', 0);
         final microsecond = D4.getNamedArgWithDefault<int>(named, 'microsecond', 0);
-        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_34.TomTimezone?>(named, 'timezone');
-        return $tom_core_kernel_33.TomZonedDateTime(year: year, month: month, day: day, hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond, timezone: timezone);
+        final timezone = D4.getOptionalNamedArg<$tom_core_kernel_35.TomTimezone?>(named, 'timezone');
+        return $tom_core_kernel_34.TomZonedDateTime(year: year, month: month, day: day, hour: hour, minute: minute, second: second, millisecond: millisecond, microsecond: microsecond, timezone: timezone);
       },
       'fromDateTime': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomZonedDateTime');
         final dtx = D4.getRequiredArg<DateTime>(positional, 0, 'dtx', 'TomZonedDateTime');
-        final timezone = D4.getOptionalArg<$tom_core_kernel_34.TomTimezone?>(positional, 1, 'timezone');
-        return $tom_core_kernel_33.TomZonedDateTime.fromDateTime(dtx, timezone);
+        final timezone = D4.getOptionalArg<$tom_core_kernel_35.TomTimezone?>(positional, 1, 'timezone');
+        return $tom_core_kernel_34.TomZonedDateTime.fromDateTime(dtx, timezone);
       },
       'parseFromString': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomZonedDateTime');
         final formattedString = D4.getRequiredArg<String>(positional, 0, 'formattedString', 'TomZonedDateTime');
-        return $tom_core_kernel_33.TomZonedDateTime.parseFromString(formattedString);
+        return $tom_core_kernel_34.TomZonedDateTime.parseFromString(formattedString);
       },
     },
     getters: {
-      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').timezone,
-      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localYear,
-      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localMonth,
-      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localDay,
-      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localHour,
-      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localMinute,
-      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localSecond,
-      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localMillisecond,
-      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localMicrosecond,
-      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').localWeekday,
-      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').isUtc,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').hashCode,
-      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').millisecondsSinceEpoch,
-      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').microsecondsSinceEpoch,
-      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').timeZoneName,
-      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').timeZoneOffset,
-      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').year,
-      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').month,
-      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').day,
-      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').hour,
-      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').minute,
-      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').second,
-      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').millisecond,
-      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').microsecond,
-      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime').weekday,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').timezone,
+      'localYear': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localYear,
+      'localMonth': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localMonth,
+      'localDay': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localDay,
+      'localHour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localHour,
+      'localMinute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localMinute,
+      'localSecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localSecond,
+      'localMillisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localMillisecond,
+      'localMicrosecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localMicrosecond,
+      'localWeekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').localWeekday,
+      'isUtc': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').isUtc,
+      'hashCode': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').hashCode,
+      'millisecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').millisecondsSinceEpoch,
+      'microsecondsSinceEpoch': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').microsecondsSinceEpoch,
+      'timeZoneName': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').timeZoneName,
+      'timeZoneOffset': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').timeZoneOffset,
+      'year': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').year,
+      'month': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').month,
+      'day': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').day,
+      'hour': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').hour,
+      'minute': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').minute,
+      'second': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').second,
+      'millisecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').millisecond,
+      'microsecond': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').microsecond,
+      'weekday': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime').weekday,
     },
     methods: {
       'getSerializationPrefix': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         return t.getSerializationPrefix();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         return t.toString();
       },
       'toDateTime': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         return t.toDateTime();
       },
       'isBefore': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'isBefore');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isBefore');
         return t.isBefore(other);
       },
       'isAfter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'isAfter');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAfter');
         return t.isAfter(other);
       },
       'isAtSameMomentAs': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'isAtSameMomentAs');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'isAtSameMomentAs');
         return t.isAtSameMomentAs(other);
       },
       'compareTo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'compareTo');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'compareTo');
         return t.compareTo(other);
       },
       'toLocal': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         return t.toLocal();
       },
       'toUtc': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         return t.toUtc();
       },
       'toIso8601String': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         return t.toIso8601String();
       },
       'add': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'add');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'add');
         return t.add(duration);
       },
       'subtract': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'subtract');
         final duration = D4.getRequiredArg<Duration>(positional, 0, 'duration', 'subtract');
         return t.subtract(duration);
       },
       'difference': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'difference');
         final other = D4.getRequiredArg<DateTime>(positional, 0, 'other', 'difference');
         return t.difference(other);
       },
       'convertToTimezone': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         D4.requireMinArgs(positional, 1, 'convertToTimezone');
-        final targetTimezone = D4.getRequiredArg<$tom_core_kernel_34.TomTimezone>(positional, 0, 'targetTimezone', 'convertToTimezone');
+        final targetTimezone = D4.getRequiredArg<$tom_core_kernel_35.TomTimezone>(positional, 0, 'targetTimezone', 'convertToTimezone');
         return t.convertToTimezone(targetTimezone);
       },
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_33.TomZonedDateTime>(target, 'TomZonedDateTime');
+        final t = D4.validateTarget<$tom_core_kernel_34.TomZonedDateTime>(target, 'TomZonedDateTime');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -15150,18 +15953,18 @@ BridgedClass _createTomZonedDateTimeBridge() {
       },
     },
     staticGetters: {
-      'serializationPrefix': (visitor) => $tom_core_kernel_33.TomZonedDateTime.serializationPrefix,
+      'serializationPrefix': (visitor) => $tom_core_kernel_34.TomZonedDateTime.serializationPrefix,
     },
     staticMethods: {
       'isTomZonedDateTimeString': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isTomZonedDateTimeString');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'isTomZonedDateTimeString');
-        return $tom_core_kernel_33.TomZonedDateTime.isTomZonedDateTimeString(s);
+        return $tom_core_kernel_34.TomZonedDateTime.isTomZonedDateTimeString(s);
       },
       'isTomDateTime': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isTomDateTime');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'isTomDateTime');
-        return $tom_core_kernel_33.TomZonedDateTime.isTomDateTime(dt);
+        return $tom_core_kernel_34.TomZonedDateTime.isTomDateTime(dt);
       },
     },
     constructorSignatures: {
@@ -15228,9 +16031,9 @@ BridgedClass _createTomZonedDateTimeBridge() {
 
 BridgedClass _createTomTimezoneExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_34.TomTimezoneException,
+    nativeType: $tom_core_kernel_35.TomTimezoneException,
     name: 'TomTimezoneException',
-    isAssignable: (v) => v is $tom_core_kernel_34.TomTimezoneException,
+    isAssignable: (v) => v is $tom_core_kernel_35.TomTimezoneException,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
@@ -15241,55 +16044,55 @@ BridgedClass _createTomTimezoneExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_kernel_34.TomTimezoneException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_kernel_35.TomTimezoneException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').stackTrace,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').logRepresentation,
     },
     setters: {
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_9.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezoneException>(target, 'TomTimezoneException');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezoneException>(target, 'TomTimezoneException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -15340,102 +16143,102 @@ BridgedClass _createTomTimezoneExceptionBridge() {
 
 BridgedClass _createTomTimezoneBridge() {
   return BridgedClass(
-    nativeType: $tom_core_kernel_34.TomTimezone,
+    nativeType: $tom_core_kernel_35.TomTimezone,
     name: 'TomTimezone',
-    isAssignable: (v) => v is $tom_core_kernel_34.TomTimezone,
+    isAssignable: (v) => v is $tom_core_kernel_35.TomTimezone,
     constructors: {
     },
     getters: {
-      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone').timezone,
-      'location': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone').location,
-      'timezoneOffsetMin': (visitor, target) => D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone').timezoneOffsetMin,
+      'timezone': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone').timezone,
+      'location': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone').location,
+      'timezoneOffsetMin': (visitor, target) => D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone').timezoneOffsetMin,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         return t.toString();
       },
       'toStringOn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         D4.requireMinArgs(positional, 1, 'toStringOn');
         final when = D4.getRequiredArg<DateTime>(positional, 0, 'when', 'toStringOn');
         return t.toStringOn(when);
       },
       'getUtcOffsetOn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         D4.requireMinArgs(positional, 1, 'getUtcOffsetOn');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'getUtcOffsetOn');
         return t.getUtcOffsetOn(dt);
       },
       'getUtcOffsetStringOn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         D4.requireMinArgs(positional, 1, 'getUtcOffsetStringOn');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'getUtcOffsetStringOn');
         return t.getUtcOffsetStringOn(dt);
       },
       'getCurrentUtcOffset': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         return t.getCurrentUtcOffset();
       },
       'getCurrentUtcOffsetString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         return t.getCurrentUtcOffsetString();
       },
       'toTZDateTime': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         D4.requireMinArgs(positional, 1, 'toTZDateTime');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'toTZDateTime');
         return t.toTZDateTime(dt);
       },
       'now': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         return t.now();
       },
       'changeToThisLocation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_kernel_34.TomTimezone>(target, 'TomTimezone');
+        final t = D4.validateTarget<$tom_core_kernel_35.TomTimezone>(target, 'TomTimezone');
         D4.requireMinArgs(positional, 2, 'changeToThisLocation');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'changeToThisLocation');
-        final inTimezone = D4.getRequiredArg<$tom_core_kernel_34.TomTimezone>(positional, 1, 'inTimezone', 'changeToThisLocation');
+        final inTimezone = D4.getRequiredArg<$tom_core_kernel_35.TomTimezone>(positional, 1, 'inTimezone', 'changeToThisLocation');
         return t.changeToThisLocation(dt, inTimezone);
       },
     },
     staticGetters: {
-      'utc': (visitor) => $tom_core_kernel_34.TomTimezone.utc,
-      'timezones': (visitor) => $tom_core_kernel_34.TomTimezone.timezones,
+      'utc': (visitor) => $tom_core_kernel_35.TomTimezone.utc,
+      'timezones': (visitor) => $tom_core_kernel_35.TomTimezone.timezones,
     },
     staticMethods: {
       'fromName': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'fromName');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'fromName');
-        return $tom_core_kernel_34.TomTimezone.fromName(name);
+        return $tom_core_kernel_35.TomTimezone.fromName(name);
       },
       'firstWithOffset': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'firstWithOffset');
         final utcOffsetMinutes = D4.getRequiredArg<int>(positional, 0, 'utcOffsetMinutes', 'firstWithOffset');
-        return $tom_core_kernel_34.TomTimezone.firstWithOffset(utcOffsetMinutes);
+        return $tom_core_kernel_35.TomTimezone.firstWithOffset(utcOffsetMinutes);
       },
       'allWithOffset': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'allWithOffset');
         final utcOffsetMinutes = D4.getRequiredArg<int>(positional, 0, 'utcOffsetMinutes', 'allWithOffset');
-        return $tom_core_kernel_34.TomTimezone.allWithOffset(utcOffsetMinutes);
+        return $tom_core_kernel_35.TomTimezone.allWithOffset(utcOffsetMinutes);
       },
       'findTimezone': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'findTimezone');
         final name = D4.getRequiredArg<String?>(positional, 0, 'name', 'findTimezone');
         final utcOffsetMinutes = D4.getRequiredArg<int?>(positional, 1, 'utcOffsetMinutes', 'findTimezone');
-        return $tom_core_kernel_34.TomTimezone.findTimezone(name, utcOffsetMinutes);
+        return $tom_core_kernel_35.TomTimezone.findTimezone(name, utcOffsetMinutes);
       },
       'convertMinutesToUtcOffset': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'convertMinutesToUtcOffset');
         final totalMinutes = D4.getRequiredArg<int>(positional, 0, 'totalMinutes', 'convertMinutesToUtcOffset');
-        return $tom_core_kernel_34.TomTimezone.convertMinutesToUtcOffset(totalMinutes);
+        return $tom_core_kernel_35.TomTimezone.convertMinutesToUtcOffset(totalMinutes);
       },
       'changeLocation': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'changeLocation');
         final dt = D4.getRequiredArg<DateTime>(positional, 0, 'dt', 'changeLocation');
-        final inTimezone = D4.getRequiredArg<$tom_core_kernel_34.TomTimezone>(positional, 1, 'inTimezone', 'changeLocation');
-        final toTimezone = D4.getRequiredArg<$tom_core_kernel_34.TomTimezone>(positional, 2, 'toTimezone', 'changeLocation');
-        return $tom_core_kernel_34.TomTimezone.changeLocation(dt, inTimezone, toTimezone);
+        final inTimezone = D4.getRequiredArg<$tom_core_kernel_35.TomTimezone>(positional, 1, 'inTimezone', 'changeLocation');
+        final toTimezone = D4.getRequiredArg<$tom_core_kernel_35.TomTimezone>(positional, 2, 'toTimezone', 'changeLocation');
+        return $tom_core_kernel_35.TomTimezone.changeLocation(dt, inTimezone, toTimezone);
       },
     },
     methodSignatures: {

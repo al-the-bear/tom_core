@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 3 files
-// Generated: 2026-06-17T18:46:44.492463
+// Generated: 2026-07-18T00:04:19.096966
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -15,6 +15,10 @@ import 'package:tom_reflection/src/reflection/reflection_builder_based.dart' as 
 /// Bridge class for tom_reflection module.
 class TomReflectionBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createReflectionInterfaceBridge(),
@@ -70,6 +74,127 @@ class TomReflectionBridge {
       _createCommentBridge(),
       _createTypeValueBridge(),
     ];
+  }
+
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'ReflectionInterface': _createReflectionInterfaceBridge,
+      'Reflection': _createReflectionBridge,
+      'StringInvocation': _createStringInvocationBridge,
+      'ReflectCapability': _createReflectCapabilityBridge,
+      'ApiReflectCapability': _createApiReflectCapabilityBridge,
+      'NamePatternCapability': _createNamePatternCapabilityBridge,
+      'MetadataQuantifiedCapability': _createMetadataQuantifiedCapabilityBridge,
+      'InstanceInvokeCapability': _createInstanceInvokeCapabilityBridge,
+      'InstanceInvokeMetaCapability': _createInstanceInvokeMetaCapabilityBridge,
+      'StaticInvokeCapability': _createStaticInvokeCapabilityBridge,
+      'StaticInvokeMetaCapability': _createStaticInvokeMetaCapabilityBridge,
+      'TopLevelInvokeCapability': _createTopLevelInvokeCapabilityBridge,
+      'TopLevelInvokeMetaCapability': _createTopLevelInvokeMetaCapabilityBridge,
+      'NewInstanceCapability': _createNewInstanceCapabilityBridge,
+      'NewInstanceMetaCapability': _createNewInstanceMetaCapabilityBridge,
+      'MetadataCapability': _createMetadataCapabilityBridge,
+      'TypeCapability': _createTypeCapabilityBridge,
+      'TypeRelationsCapability': _createTypeRelationsCapabilityBridge,
+      'LibraryCapability': _createLibraryCapabilityBridge,
+      'DeclarationsCapability': _createDeclarationsCapabilityBridge,
+      'UriCapability': _createUriCapabilityBridge,
+      'LibraryDependenciesCapability': _createLibraryDependenciesCapabilityBridge,
+      'InvokingCapability': _createInvokingCapabilityBridge,
+      'InvokingMetaCapability': _createInvokingMetaCapabilityBridge,
+      'TypingCapability': _createTypingCapabilityBridge,
+      'ReflecteeQuantifyCapability': _createReflecteeQuantifyCapabilityBridge,
+      'SuperclassQuantifyCapability': _createSuperclassQuantifyCapabilityBridge,
+      'TypeAnnotationQuantifyCapability': _createTypeAnnotationQuantifyCapabilityBridge,
+      'ImportAttachedCapability': _createImportAttachedCapabilityBridge,
+      'GlobalQuantifyCapability': _createGlobalQuantifyCapabilityBridge,
+      'GlobalQuantifyMetaCapability': _createGlobalQuantifyMetaCapabilityBridge,
+      'NoSuchCapabilityError': _createNoSuchCapabilityErrorBridge,
+      'ReflectionNoSuchMethodError': _createReflectionNoSuchMethodErrorBridge,
+      'Mirror': _createMirrorBridge,
+      'DeclarationMirror': _createDeclarationMirrorBridge,
+      'ObjectMirror': _createObjectMirrorBridge,
+      'InstanceMirror': _createInstanceMirrorBridge,
+      'ClosureMirror': _createClosureMirrorBridge,
+      'LibraryMirror': _createLibraryMirrorBridge,
+      'LibraryDependencyMirror': _createLibraryDependencyMirrorBridge,
+      'CombinatorMirror': _createCombinatorMirrorBridge,
+      'TypeMirror': _createTypeMirrorBridge,
+      'ClassMirror': _createClassMirrorBridge,
+      'FunctionTypeMirror': _createFunctionTypeMirrorBridge,
+      'TypeVariableMirror': _createTypeVariableMirrorBridge,
+      'TypedefMirror': _createTypedefMirrorBridge,
+      'MethodMirror': _createMethodMirrorBridge,
+      'VariableMirror': _createVariableMirrorBridge,
+      'ParameterMirror': _createParameterMirrorBridge,
+      'SourceLocation': _createSourceLocationBridge,
+      'Comment': _createCommentBridge,
+      'TypeValue': _createTypeValueBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'ReflectionInterface': $tom_reflection_3.ReflectionInterface,
+      'Reflection': $tom_reflection_3.Reflection,
+      'StringInvocation': $tom_reflection_3.StringInvocation,
+      'ReflectCapability': $tom_reflection_1.ReflectCapability,
+      'ApiReflectCapability': $tom_reflection_1.ApiReflectCapability,
+      'NamePatternCapability': $tom_reflection_1.NamePatternCapability,
+      'MetadataQuantifiedCapability': $tom_reflection_1.MetadataQuantifiedCapability,
+      'InstanceInvokeCapability': $tom_reflection_1.InstanceInvokeCapability,
+      'InstanceInvokeMetaCapability': $tom_reflection_1.InstanceInvokeMetaCapability,
+      'StaticInvokeCapability': $tom_reflection_1.StaticInvokeCapability,
+      'StaticInvokeMetaCapability': $tom_reflection_1.StaticInvokeMetaCapability,
+      'TopLevelInvokeCapability': $tom_reflection_1.TopLevelInvokeCapability,
+      'TopLevelInvokeMetaCapability': $tom_reflection_1.TopLevelInvokeMetaCapability,
+      'NewInstanceCapability': $tom_reflection_1.NewInstanceCapability,
+      'NewInstanceMetaCapability': $tom_reflection_1.NewInstanceMetaCapability,
+      'MetadataCapability': $tom_reflection_1.MetadataCapability,
+      'TypeCapability': $tom_reflection_1.TypeCapability,
+      'TypeRelationsCapability': $tom_reflection_1.TypeRelationsCapability,
+      'LibraryCapability': $tom_reflection_1.LibraryCapability,
+      'DeclarationsCapability': $tom_reflection_1.DeclarationsCapability,
+      'UriCapability': $tom_reflection_1.UriCapability,
+      'LibraryDependenciesCapability': $tom_reflection_1.LibraryDependenciesCapability,
+      'InvokingCapability': $tom_reflection_1.InvokingCapability,
+      'InvokingMetaCapability': $tom_reflection_1.InvokingMetaCapability,
+      'TypingCapability': $tom_reflection_1.TypingCapability,
+      'ReflecteeQuantifyCapability': $tom_reflection_1.ReflecteeQuantifyCapability,
+      'SuperclassQuantifyCapability': $tom_reflection_1.SuperclassQuantifyCapability,
+      'TypeAnnotationQuantifyCapability': $tom_reflection_1.TypeAnnotationQuantifyCapability,
+      'ImportAttachedCapability': $tom_reflection_1.ImportAttachedCapability,
+      'GlobalQuantifyCapability': $tom_reflection_1.GlobalQuantifyCapability,
+      'GlobalQuantifyMetaCapability': $tom_reflection_1.GlobalQuantifyMetaCapability,
+      'NoSuchCapabilityError': $tom_reflection_1.NoSuchCapabilityError,
+      'ReflectionNoSuchMethodError': $tom_reflection_1.ReflectionNoSuchMethodError,
+      'Mirror': $tom_reflection_2.Mirror,
+      'DeclarationMirror': $tom_reflection_2.DeclarationMirror,
+      'ObjectMirror': $tom_reflection_2.ObjectMirror,
+      'InstanceMirror': $tom_reflection_2.InstanceMirror,
+      'ClosureMirror': $tom_reflection_2.ClosureMirror,
+      'LibraryMirror': $tom_reflection_2.LibraryMirror,
+      'LibraryDependencyMirror': $tom_reflection_2.LibraryDependencyMirror,
+      'CombinatorMirror': $tom_reflection_2.CombinatorMirror,
+      'TypeMirror': $tom_reflection_2.TypeMirror,
+      'ClassMirror': $tom_reflection_2.ClassMirror,
+      'FunctionTypeMirror': $tom_reflection_2.FunctionTypeMirror,
+      'TypeVariableMirror': $tom_reflection_2.TypeVariableMirror,
+      'TypedefMirror': $tom_reflection_2.TypedefMirror,
+      'MethodMirror': $tom_reflection_2.MethodMirror,
+      'VariableMirror': $tom_reflection_2.VariableMirror,
+      'ParameterMirror': $tom_reflection_2.ParameterMirror,
+      'SourceLocation': $tom_reflection_2.SourceLocation,
+      'Comment': $tom_reflection_2.Comment,
+      'TypeValue': $tom_reflection_2.TypeValue,
+    };
   }
 
   /// Returns a map of class names to their canonical source URIs.
@@ -257,11 +382,20 @@ class TomReflectionBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so

@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
-// Sources: 43 files
-// Generated: 2026-07-14T12:52:59.588512
+// Sources: 44 files
+// Generated: 2026-07-18T00:04:23.152038
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -55,24 +55,25 @@ import 'package:tom_core_server/src/tomserver/datasources/mariadb_datasource.dar
 import 'package:tom_core_server/src/tomserver/datasources/mariadb_sql_dialect.dart' as $tom_core_server_14;
 import 'package:tom_core_server/src/tomserver/datasources/queries.dart' as $tom_core_server_15;
 import 'package:tom_core_server/src/tomserver/datasources/sql_dialects.dart' as $tom_core_server_16;
-import 'package:tom_core_server/src/tomserver/datasources/types_operator.dart' as $tom_core_server_17;
-import 'package:tom_core_server/src/tomserver/db_migration/db_migration.dart' as $tom_core_server_18;
-import 'package:tom_core_server/src/tomserver/db_migration/mariadb_migration_adapter.dart' as $tom_core_server_19;
-import 'package:tom_core_server/src/tomserver/endpoints/endpoint_annotation.dart' as $tom_core_server_20;
-import 'package:tom_core_server/src/tomserver/endpoints/endpoint_pipeline.dart' as $tom_core_server_21;
-import 'package:tom_core_server/src/tomserver/healthcheck/health_check.dart' as $tom_core_server_22;
-import 'package:tom_core_server/src/tomserver/little_things/server_exception.dart' as $tom_core_server_23;
-import 'package:tom_core_server/src/tomserver/object_persistence/annotation_analyzer.dart' as $tom_core_server_24;
-import 'package:tom_core_server/src/tomserver/object_persistence/column_authorization.dart' as $tom_core_server_25;
-import 'package:tom_core_server/src/tomserver/object_persistence/crud_repository.dart' as $tom_core_server_26;
-import 'package:tom_core_server/src/tomserver/object_persistence/data_scope.dart' as $tom_core_server_27;
-import 'package:tom_core_server/src/tomserver/object_persistence/mariadb_repository.dart' as $tom_core_server_28;
-import 'package:tom_core_server/src/tomserver/object_persistence/operators_expressions.dart' as $tom_core_server_29;
-import 'package:tom_core_server/src/tomserver/object_persistence/persistence_annotations.dart' as $tom_core_server_30;
-import 'package:tom_core_server/src/tomserver/object_persistence/query_builder.dart' as $tom_core_server_31;
-import 'package:tom_core_server/src/tomserver/object_persistence/query_sentence_compiler.dart' as $tom_core_server_32;
-import 'package:tom_core_server/src/tomserver/server/server.dart' as $tom_core_server_33;
-import 'package:tom_core_server/src/tomserver/transactions/transaction_manager.dart' as $tom_core_server_34;
+import 'package:tom_core_server/src/tomserver/datasources/sql_placeholder_scan.dart' as $tom_core_server_17;
+import 'package:tom_core_server/src/tomserver/datasources/types_operator.dart' as $tom_core_server_18;
+import 'package:tom_core_server/src/tomserver/db_migration/db_migration.dart' as $tom_core_server_19;
+import 'package:tom_core_server/src/tomserver/db_migration/mariadb_migration_adapter.dart' as $tom_core_server_20;
+import 'package:tom_core_server/src/tomserver/endpoints/endpoint_annotation.dart' as $tom_core_server_21;
+import 'package:tom_core_server/src/tomserver/endpoints/endpoint_pipeline.dart' as $tom_core_server_22;
+import 'package:tom_core_server/src/tomserver/healthcheck/health_check.dart' as $tom_core_server_23;
+import 'package:tom_core_server/src/tomserver/little_things/server_exception.dart' as $tom_core_server_24;
+import 'package:tom_core_server/src/tomserver/object_persistence/annotation_analyzer.dart' as $tom_core_server_25;
+import 'package:tom_core_server/src/tomserver/object_persistence/column_authorization.dart' as $tom_core_server_26;
+import 'package:tom_core_server/src/tomserver/object_persistence/crud_repository.dart' as $tom_core_server_27;
+import 'package:tom_core_server/src/tomserver/object_persistence/data_scope.dart' as $tom_core_server_28;
+import 'package:tom_core_server/src/tomserver/object_persistence/mariadb_repository.dart' as $tom_core_server_29;
+import 'package:tom_core_server/src/tomserver/object_persistence/operators_expressions.dart' as $tom_core_server_30;
+import 'package:tom_core_server/src/tomserver/object_persistence/persistence_annotations.dart' as $tom_core_server_31;
+import 'package:tom_core_server/src/tomserver/object_persistence/query_builder.dart' as $tom_core_server_32;
+import 'package:tom_core_server/src/tomserver/object_persistence/query_sentence_compiler.dart' as $tom_core_server_33;
+import 'package:tom_core_server/src/tomserver/server/server.dart' as $tom_core_server_34;
+import 'package:tom_core_server/src/tomserver/transactions/transaction_manager.dart' as $tom_core_server_35;
 import 'package:tom_crypto/src/jwt_token.dart' as $tom_crypto_1;
 import 'package:tom_reflection/src/reflection/mirrors.dart' as $tom_reflection_1;
 import 'package:shelf/src/message.dart' as $aux_shelf_2;
@@ -82,6 +83,10 @@ import 'package:tom_core_kernel/src/tombase/little_things/exception_base.dart' a
 /// Bridge class for tom_core_server module.
 class TomCoreServerBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createTomAuthenticationAdaptorBridge(),
@@ -150,6 +155,7 @@ class TomCoreServerBridge {
       _createTomDeleteBridge(),
       _createTomStandardSqlDialectBridge(),
       _createTomSqlDialectBridge(),
+      _createSqlPlaceholderScanBridge(),
       _createTomDbTypeBridge(),
       _createTomDbIntBridge(),
       _createTomDbDoubleBridge(),
@@ -202,6 +208,7 @@ class TomCoreServerBridge {
       _createTomDataScopeAuthorizationExceptionBridge(),
       _createTomDataScopeRegistryBridge(),
       _createTomDataScopePredicateBridge(),
+      _createTomDataScopeBypassBridge(),
       _createTomDataScopeBridge(),
       _createMariadbRepositoryBridge(),
       _createTomQuerySyntaxExceptionBridge(),
@@ -283,6 +290,419 @@ class TomCoreServerBridge {
     ];
   }
 
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'TomAuthenticationAdaptor': _createTomAuthenticationAdaptorBridge,
+      'Tom2FAAdaptor': _createTom2FAAdaptorBridge,
+      'LoginException': _createLoginExceptionBridge,
+      'TomAuthenticationData': _createTomAuthenticationDataBridge,
+      'TomAuthenticationService': _createTomAuthenticationServiceBridge,
+      'Tom2FAService': _createTom2FAServiceBridge,
+      'TomAuthenticationInfo': _createTomAuthenticationInfoBridge,
+      'TomDummyAuthenticationService': _createTomDummyAuthenticationServiceBridge,
+      'TomAuthenticationServer': _createTomAuthenticationServerBridge,
+      'TomAuthorizationCacheException': _createTomAuthorizationCacheExceptionBridge,
+      'TomAuthorizationCacheEntry': _createTomAuthorizationCacheEntryBridge,
+      'TomAuthorizationCache': _createTomAuthorizationCacheBridge,
+      'TomAuthorizationCacheStoreMessage': _createTomAuthorizationCacheStoreMessageBridge,
+      'TomAuthorizationCacheRetrieveMessage': _createTomAuthorizationCacheRetrieveMessageBridge,
+      'TomAuthorizationCacheExecutor': _createTomAuthorizationCacheExecutorBridge,
+      'TomAuthStateCodec': _createTomAuthStateCodecBridge,
+      'TomResourceGrant': _createTomResourceGrantBridge,
+      'TomGradedAccessControlInformation': _createTomGradedAccessControlInformationBridge,
+      'TomPrincipalDelegation': _createTomPrincipalDelegationBridge,
+      'PrincipalDelegationStore': _createPrincipalDelegationStoreBridge,
+      'TomDelegationResolver': _createTomDelegationResolverBridge,
+      'RepositoryPrincipalDelegationStore': _createRepositoryPrincipalDelegationStoreBridge,
+      'InMemoryPrincipalDelegationStore': _createInMemoryPrincipalDelegationStoreBridge,
+      'TomPrincipalResourceGrant': _createTomPrincipalResourceGrantBridge,
+      'PrincipalResourceGrantStore': _createPrincipalResourceGrantStoreBridge,
+      'TomPrincipalResourceRoleResolver': _createTomPrincipalResourceRoleResolverBridge,
+      'RepositoryPrincipalResourceGrantStore': _createRepositoryPrincipalResourceGrantStoreBridge,
+      'InMemoryPrincipalResourceGrantStore': _createInMemoryPrincipalResourceGrantStoreBridge,
+      'TomArgs': _createTomArgsBridge,
+      'TomEnvFile': _createTomEnvFileBridge,
+      'TomServerConfigResourceProvider': _createTomServerConfigResourceProviderBridge,
+      'TomBaseServerConfiguration': _createTomBaseServerConfigurationBridge,
+      'TomConfig': _createTomConfigBridge,
+      'TomStringConfig': _createTomStringConfigBridge,
+      'TomIntConfig': _createTomIntConfigBridge,
+      'TomDoubleConfig': _createTomDoubleConfigBridge,
+      'TomBoolConfig': _createTomBoolConfigBridge,
+      'TomYaml': _createTomYamlBridge,
+      'TomCacheException': _createTomCacheExceptionBridge,
+      'TomCacheEntry': _createTomCacheEntryBridge,
+      'TomCacheManager': _createTomCacheManagerBridge,
+      'TomCache': _createTomCacheBridge,
+      'TomCacheStoreMessage': _createTomCacheStoreMessageBridge,
+      'TomCacheRemoveMessage': _createTomCacheRemoveMessageBridge,
+      'TomCacheRetrieveMessage': _createTomCacheRetrieveMessageBridge,
+      'TomDatasourceInitException': _createTomDatasourceInitExceptionBridge,
+      'TomDatasourceDriver': _createTomDatasourceDriverBridge,
+      'TomPreparedStatement': _createTomPreparedStatementBridge,
+      'TomDataSource': _createTomDataSourceBridge,
+      'TomDataSourceInfo': _createTomDataSourceInfoBridge,
+      'MariadbDatasourceException': _createMariadbDatasourceExceptionBridge,
+      'MariadbPreparedStatementException': _createMariadbPreparedStatementExceptionBridge,
+      'MariadbPreparedStatement': _createMariadbPreparedStatementBridge,
+      'MariaDbDatasource': _createMariaDbDatasourceBridge,
+      'MariaDbXADatasource': _createMariaDbXADatasourceBridge,
+      'MariadbSqlDialect': _createMariadbSqlDialectBridge,
+      'TomTypePersistenceInfo': _createTomTypePersistenceInfoBridge,
+      'TomTypedPersistenceBase': _createTomTypedPersistenceBaseBridge,
+      'TomQuery': _createTomQueryBridge,
+      'TomGeneratedQuery': _createTomGeneratedQueryBridge,
+      'TomSelect': _createTomSelectBridge,
+      'TomLiteralSelect': _createTomLiteralSelectBridge,
+      'TomCount': _createTomCountBridge,
+      'TomDelete': _createTomDeleteBridge,
+      'TomStandardSqlDialect': _createTomStandardSqlDialectBridge,
+      'TomSqlDialect': _createTomSqlDialectBridge,
+      'SqlPlaceholderScan': _createSqlPlaceholderScanBridge,
+      'TomDbType': _createTomDbTypeBridge,
+      'TomDbInt': _createTomDbIntBridge,
+      'TomDbDouble': _createTomDbDoubleBridge,
+      'TomDbString': _createTomDbStringBridge,
+      'TomDbDateTime': _createTomDbDateTimeBridge,
+      'TomDbDate': _createTomDbDateBridge,
+      'TomDbTime': _createTomDbTimeBridge,
+      'TomDbBool': _createTomDbBoolBridge,
+      'TomOperator': _createTomOperatorBridge,
+      'TomDbMigrationException': _createTomDbMigrationExceptionBridge,
+      'TomDbMigrationAdaptor': _createTomDbMigrationAdaptorBridge,
+      'TomDbMigrator': _createTomDbMigratorBridge,
+      'TomMigrationFileName': _createTomMigrationFileNameBridge,
+      'TomDbMigrations': _createTomDbMigrationsBridge,
+      'MariadbMigrationException': _createMariadbMigrationExceptionBridge,
+      'MariadbMigrationAdaptor': _createMariadbMigrationAdaptorBridge,
+      'TomDbVersion': _createTomDbVersionBridge,
+      'TomErrorHandler': _createTomErrorHandlerBridge,
+      'TomDefaultErrorHandler': _createTomDefaultErrorHandlerBridge,
+      'TomService': _createTomServiceBridge,
+      'TomApiImplementation': _createTomApiImplementationBridge,
+      'TomEndpointBase': _createTomEndpointBaseBridge,
+      'TomApiEndpointImplementation': _createTomApiEndpointImplementationBridge,
+      'TomEndpoint': _createTomEndpointBridge,
+      'TomComponentReference': _createTomComponentReferenceBridge,
+      'TomTransactional': _createTomTransactionalBridge,
+      'TomEndpointHandlerException': _createTomEndpointHandlerExceptionBridge,
+      'TomEndpointPipelineException': _createTomEndpointPipelineExceptionBridge,
+      'TomEndpointHandler': _createTomEndpointHandlerBridge,
+      'TomEndpointRoutingInfo': _createTomEndpointRoutingInfoBridge,
+      'TomEndpointRouting': _createTomEndpointRoutingBridge,
+      'TomMethodMetadata': _createTomMethodMetadataBridge,
+      'TomClassScanResult': _createTomClassScanResultBridge,
+      'HealthAnalyzer': _createHealthAnalyzerBridge,
+      'DefaultHealthAnalyzer': _createDefaultHealthAnalyzerBridge,
+      'TomHealthService': _createTomHealthServiceBridge,
+      'TomHealthServer': _createTomHealthServerBridge,
+      'TomServerException': _createTomServerExceptionBridge,
+      'TomAnnotationAnalyzerException': _createTomAnnotationAnalyzerExceptionBridge,
+      'TomAnnotationAnalyzerSyntaxException': _createTomAnnotationAnalyzerSyntaxExceptionBridge,
+      'TomAnnotationAnalyzer': _createTomAnnotationAnalyzerBridge,
+      'TomColumnAuthorizationException': _createTomColumnAuthorizationExceptionBridge,
+      'TomColumnWriteDecision': _createTomColumnWriteDecisionBridge,
+      'TomColumnAuthorization': _createTomColumnAuthorizationBridge,
+      'TomCountResult': _createTomCountResultBridge,
+      'TomRepository': _createTomRepositoryBridge,
+      'TomSqlDatasourceRepository': _createTomSqlDatasourceRepositoryBridge,
+      'TomRepositoryType': _createTomRepositoryTypeBridge,
+      'TomDataScopeException': _createTomDataScopeExceptionBridge,
+      'TomDataScopeAuthorizationException': _createTomDataScopeAuthorizationExceptionBridge,
+      'TomDataScopeRegistry': _createTomDataScopeRegistryBridge,
+      'TomDataScopePredicate': _createTomDataScopePredicateBridge,
+      'TomDataScopeBypass': _createTomDataScopeBypassBridge,
+      'TomDataScope': _createTomDataScopeBridge,
+      'MariadbRepository': _createMariadbRepositoryBridge,
+      'TomQuerySyntaxException': _createTomQuerySyntaxExceptionBridge,
+      'TomUnaryOperator': _createTomUnaryOperatorBridge,
+      'Parameter': _createParameterBridge,
+      'DbCol': _createDbColBridge,
+      'IntCol': _createIntColBridge,
+      'StringCol': _createStringColBridge,
+      'DoubleCol': _createDoubleColBridge,
+      'BoolCol': _createBoolColBridge,
+      'DateTimeCol': _createDateTimeColBridge,
+      'DateCol': _createDateColBridge,
+      'StringLiteral': _createStringLiteralBridge,
+      'IntegerLiteral': _createIntegerLiteralBridge,
+      'DoubleLiteral': _createDoubleLiteralBridge,
+      'BoolLiteral': _createBoolLiteralBridge,
+      'DateTimeLiteral': _createDateTimeLiteralBridge,
+      'DateLiteral': _createDateLiteralBridge,
+      'Not': _createNotBridge,
+      'IsNull': _createIsNullBridge,
+      'IsNotNull': _createIsNotNullBridge,
+      'TomBinaryOperator': _createTomBinaryOperatorBridge,
+      'And': _createAndBridge,
+      'Or': _createOrBridge,
+      'Eq': _createEqBridge,
+      'Neq': _createNeqBridge,
+      'Lt': _createLtBridge,
+      'Gt': _createGtBridge,
+      'Lte': _createLteBridge,
+      'Gte': _createGteBridge,
+      'Like': _createLikeBridge,
+      'NotLike': _createNotLikeBridge,
+      'In': _createInBridge,
+      'Group': _createGroupBridge,
+      'Between': _createBetweenBridge,
+      'Regexp': _createRegexpBridge,
+      'TomDartType': _createTomDartTypeBridge,
+      'TomDbTable': _createTomDbTableBridge,
+      'TomDbColumn': _createTomDbColumnBridge,
+      'TomEntityId': _createTomEntityIdBridge,
+      'TomDbScope': _createTomDbScopeBridge,
+      'TomJoinTable': _createTomJoinTableBridge,
+      'TomReference': _createTomReferenceBridge,
+      'TomPersistenceEventHandler': _createTomPersistenceEventHandlerBridge,
+      'TomColumnInformation': _createTomColumnInformationBridge,
+      'TomQueryBuilder': _createTomQueryBuilderBridge,
+      'TomQuerySentenceCompiler': _createTomQuerySentenceCompilerBridge,
+      'TomRequestId': _createTomRequestIdBridge,
+      'TomRequestLogInfo': _createTomRequestLogInfoBridge,
+      'TomServer': _createTomServerBridge,
+      'TomTransactionException': _createTomTransactionExceptionBridge,
+      'TomTransactionParticipant': _createTomTransactionParticipantBridge,
+      'TomTransaction': _createTomTransactionBridge,
+      'TomTransactionManager': _createTomTransactionManagerBridge,
+      'MySQLConnection': _createMySQLConnectionBridge,
+      'IResultSet': _createIResultSetBridge,
+      'ResultSet': _createResultSetBridge,
+      'IterableResultSet': _createIterableResultSetBridge,
+      'PreparedStmtResultSet': _createPreparedStmtResultSetBridge,
+      'IterablePreparedStmtResultSet': _createIterablePreparedStmtResultSetBridge,
+      'EmptyResultSet': _createEmptyResultSetBridge,
+      'ResultSetRow': _createResultSetRowBridge,
+      'ResultSetColumn': _createResultSetColumnBridge,
+      'PreparedStmt': _createPreparedStmtBridge,
+      'MySQLConnectionPool': _createMySQLConnectionPoolBridge,
+      'TomStandalonePlatformUtils': _createTomStandalonePlatformUtilsBridge,
+      'TomBaseException': _createTomBaseExceptionBridge,
+      'TomLogLevel': _createTomLogLevelBridge,
+      'TomLogger': _createTomLoggerBridge,
+      'TomLoggable': _createTomLoggableBridge,
+      'TomLogOutput': _createTomLogOutputBridge,
+      'TomConsoleLogOutput': _createTomConsoleLogOutputBridge,
+      'TomPlatformUtils': _createTomPlatformUtilsBridge,
+      'TomFallbackPlatformUtils': _createTomFallbackPlatformUtilsBridge,
+      'TomEnvironment': _createTomEnvironmentBridge,
+      'TomPlatform': _createTomPlatformBridge,
+      'TomRuntime': _createTomRuntimeBridge,
+      'Request': _createRequestBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'TomAuthenticationAdaptor': $tom_core_server_1.TomAuthenticationAdaptor,
+      'Tom2FAAdaptor': $tom_core_server_1.Tom2FAAdaptor,
+      'LoginException': $tom_core_server_1.LoginException,
+      'TomAuthenticationData': $tom_core_server_1.TomAuthenticationData,
+      'TomAuthenticationService': $tom_core_server_1.TomAuthenticationService,
+      'Tom2FAService': $tom_core_server_1.Tom2FAService,
+      'TomAuthenticationInfo': $tom_core_server_1.TomAuthenticationInfo,
+      'TomDummyAuthenticationService': $tom_core_server_1.TomDummyAuthenticationService,
+      'TomAuthenticationServer': $tom_core_server_1.TomAuthenticationServer,
+      'TomAuthorizationCacheException': $tom_core_server_2.TomAuthorizationCacheException,
+      'TomAuthorizationCacheEntry': $tom_core_server_2.TomAuthorizationCacheEntry,
+      'TomAuthorizationCache': $tom_core_server_2.TomAuthorizationCache,
+      'TomAuthorizationCacheStoreMessage': $tom_core_server_2.TomAuthorizationCacheStoreMessage,
+      'TomAuthorizationCacheRetrieveMessage': $tom_core_server_2.TomAuthorizationCacheRetrieveMessage,
+      'TomAuthorizationCacheExecutor': $tom_core_server_2.TomAuthorizationCacheExecutor,
+      'TomAuthStateCodec': $tom_core_server_3.TomAuthStateCodec,
+      'TomResourceGrant': $tom_core_server_3.TomResourceGrant,
+      'TomGradedAccessControlInformation': $tom_core_server_3.TomGradedAccessControlInformation,
+      'TomPrincipalDelegation': $tom_core_server_4.TomPrincipalDelegation,
+      'PrincipalDelegationStore': $tom_core_server_4.PrincipalDelegationStore,
+      'TomDelegationResolver': $tom_core_server_4.TomDelegationResolver,
+      'RepositoryPrincipalDelegationStore': $tom_core_server_4.RepositoryPrincipalDelegationStore,
+      'InMemoryPrincipalDelegationStore': $tom_core_server_4.InMemoryPrincipalDelegationStore,
+      'TomPrincipalResourceGrant': $tom_core_server_5.TomPrincipalResourceGrant,
+      'PrincipalResourceGrantStore': $tom_core_server_5.PrincipalResourceGrantStore,
+      'TomPrincipalResourceRoleResolver': $tom_core_server_5.TomPrincipalResourceRoleResolver,
+      'RepositoryPrincipalResourceGrantStore': $tom_core_server_5.RepositoryPrincipalResourceGrantStore,
+      'InMemoryPrincipalResourceGrantStore': $tom_core_server_5.InMemoryPrincipalResourceGrantStore,
+      'TomArgs': $tom_core_server_7.TomArgs,
+      'TomEnvFile': $tom_core_server_8.TomEnvFile,
+      'TomServerConfigResourceProvider': $tom_core_server_9.TomServerConfigResourceProvider,
+      'TomBaseServerConfiguration': $tom_core_server_9.TomBaseServerConfiguration,
+      'TomConfig': $tom_core_server_10.TomConfig,
+      'TomStringConfig': $tom_core_server_10.TomStringConfig,
+      'TomIntConfig': $tom_core_server_10.TomIntConfig,
+      'TomDoubleConfig': $tom_core_server_10.TomDoubleConfig,
+      'TomBoolConfig': $tom_core_server_10.TomBoolConfig,
+      'TomYaml': $tom_core_server_11.TomYaml,
+      'TomCacheException': $tom_core_server_6.TomCacheException,
+      'TomCacheEntry': $tom_core_server_6.TomCacheEntry,
+      'TomCacheManager': $tom_core_server_6.TomCacheManager,
+      'TomCache': $tom_core_server_6.TomCache,
+      'TomCacheStoreMessage': $tom_core_server_6.TomCacheStoreMessage,
+      'TomCacheRemoveMessage': $tom_core_server_6.TomCacheRemoveMessage,
+      'TomCacheRetrieveMessage': $tom_core_server_6.TomCacheRetrieveMessage,
+      'TomDatasourceInitException': $tom_core_server_12.TomDatasourceInitException,
+      'TomDatasourceDriver': $tom_core_server_12.TomDatasourceDriver,
+      'TomPreparedStatement': $tom_core_server_12.TomPreparedStatement,
+      'TomDataSource': $tom_core_server_12.TomDataSource,
+      'TomDataSourceInfo': $tom_core_server_12.TomDataSourceInfo,
+      'MariadbDatasourceException': $tom_core_server_13.MariadbDatasourceException,
+      'MariadbPreparedStatementException': $tom_core_server_13.MariadbPreparedStatementException,
+      'MariadbPreparedStatement': $tom_core_server_13.MariadbPreparedStatement,
+      'MariaDbDatasource': $tom_core_server_13.MariaDbDatasource,
+      'MariaDbXADatasource': $tom_core_server_13.MariaDbXADatasource,
+      'MariadbSqlDialect': $tom_core_server_14.MariadbSqlDialect,
+      'TomTypePersistenceInfo': $tom_core_server_15.TomTypePersistenceInfo,
+      'TomTypedPersistenceBase': $tom_core_server_15.TomTypedPersistenceBase,
+      'TomQuery': $tom_core_server_15.TomQuery,
+      'TomGeneratedQuery': $tom_core_server_15.TomGeneratedQuery,
+      'TomSelect': $tom_core_server_15.TomSelect,
+      'TomLiteralSelect': $tom_core_server_15.TomLiteralSelect,
+      'TomCount': $tom_core_server_15.TomCount,
+      'TomDelete': $tom_core_server_15.TomDelete,
+      'TomStandardSqlDialect': $tom_core_server_16.TomStandardSqlDialect,
+      'TomSqlDialect': $tom_core_server_16.TomSqlDialect,
+      'SqlPlaceholderScan': $tom_core_server_17.SqlPlaceholderScan,
+      'TomDbType': $tom_core_server_18.TomDbType,
+      'TomDbInt': $tom_core_server_18.TomDbInt,
+      'TomDbDouble': $tom_core_server_18.TomDbDouble,
+      'TomDbString': $tom_core_server_18.TomDbString,
+      'TomDbDateTime': $tom_core_server_18.TomDbDateTime,
+      'TomDbDate': $tom_core_server_18.TomDbDate,
+      'TomDbTime': $tom_core_server_18.TomDbTime,
+      'TomDbBool': $tom_core_server_18.TomDbBool,
+      'TomOperator': $tom_core_server_18.TomOperator,
+      'TomDbMigrationException': $tom_core_server_19.TomDbMigrationException,
+      'TomDbMigrationAdaptor': $tom_core_server_19.TomDbMigrationAdaptor,
+      'TomDbMigrator': $tom_core_server_19.TomDbMigrator,
+      'TomMigrationFileName': $tom_core_server_19.TomMigrationFileName,
+      'TomDbMigrations': $tom_core_server_19.TomDbMigrations,
+      'MariadbMigrationException': $tom_core_server_20.MariadbMigrationException,
+      'MariadbMigrationAdaptor': $tom_core_server_20.MariadbMigrationAdaptor,
+      'TomDbVersion': $tom_core_server_20.TomDbVersion,
+      'TomErrorHandler': $tom_core_server_21.TomErrorHandler,
+      'TomDefaultErrorHandler': $tom_core_server_21.TomDefaultErrorHandler,
+      'TomService': $tom_core_server_21.TomService,
+      'TomApiImplementation': $tom_core_server_21.TomApiImplementation,
+      'TomEndpointBase': $tom_core_server_21.TomEndpointBase,
+      'TomApiEndpointImplementation': $tom_core_server_21.TomApiEndpointImplementation,
+      'TomEndpoint': $tom_core_server_21.TomEndpoint,
+      'TomComponentReference': $tom_core_server_21.TomComponentReference,
+      'TomTransactional': $tom_core_server_21.TomTransactional,
+      'TomEndpointHandlerException': $tom_core_server_22.TomEndpointHandlerException,
+      'TomEndpointPipelineException': $tom_core_server_22.TomEndpointPipelineException,
+      'TomEndpointHandler': $tom_core_server_22.TomEndpointHandler,
+      'TomEndpointRoutingInfo': $tom_core_server_22.TomEndpointRoutingInfo,
+      'TomEndpointRouting': $tom_core_server_22.TomEndpointRouting,
+      'TomMethodMetadata': $tom_core_server_22.TomMethodMetadata,
+      'TomClassScanResult': $tom_core_server_22.TomClassScanResult,
+      'HealthAnalyzer': $tom_core_server_23.HealthAnalyzer,
+      'DefaultHealthAnalyzer': $tom_core_server_23.DefaultHealthAnalyzer,
+      'TomHealthService': $tom_core_server_23.TomHealthService,
+      'TomHealthServer': $tom_core_server_23.TomHealthServer,
+      'TomServerException': $tom_core_server_24.TomServerException,
+      'TomAnnotationAnalyzerException': $tom_core_server_25.TomAnnotationAnalyzerException,
+      'TomAnnotationAnalyzerSyntaxException': $tom_core_server_25.TomAnnotationAnalyzerSyntaxException,
+      'TomAnnotationAnalyzer': $tom_core_server_25.TomAnnotationAnalyzer,
+      'TomColumnAuthorizationException': $tom_core_server_26.TomColumnAuthorizationException,
+      'TomColumnWriteDecision': $tom_core_server_26.TomColumnWriteDecision,
+      'TomColumnAuthorization': $tom_core_server_26.TomColumnAuthorization,
+      'TomCountResult': $tom_core_server_27.TomCountResult,
+      'TomRepository': $tom_core_server_27.TomRepository,
+      'TomSqlDatasourceRepository': $tom_core_server_27.TomSqlDatasourceRepository,
+      'TomRepositoryType': $tom_core_server_27.TomRepositoryType,
+      'TomDataScopeException': $tom_core_server_28.TomDataScopeException,
+      'TomDataScopeAuthorizationException': $tom_core_server_28.TomDataScopeAuthorizationException,
+      'TomDataScopeRegistry': $tom_core_server_28.TomDataScopeRegistry,
+      'TomDataScopePredicate': $tom_core_server_28.TomDataScopePredicate,
+      'TomDataScopeBypass': $tom_core_server_28.TomDataScopeBypass,
+      'TomDataScope': $tom_core_server_28.TomDataScope,
+      'MariadbRepository': $tom_core_server_29.MariadbRepository,
+      'TomQuerySyntaxException': $tom_core_server_30.TomQuerySyntaxException,
+      'TomUnaryOperator': $tom_core_server_30.TomUnaryOperator,
+      'Parameter': $tom_core_server_30.Parameter,
+      'DbCol': $tom_core_server_30.DbCol,
+      'IntCol': $tom_core_server_30.IntCol,
+      'StringCol': $tom_core_server_30.StringCol,
+      'DoubleCol': $tom_core_server_30.DoubleCol,
+      'BoolCol': $tom_core_server_30.BoolCol,
+      'DateTimeCol': $tom_core_server_30.DateTimeCol,
+      'DateCol': $tom_core_server_30.DateCol,
+      'StringLiteral': $tom_core_server_30.StringLiteral,
+      'IntegerLiteral': $tom_core_server_30.IntegerLiteral,
+      'DoubleLiteral': $tom_core_server_30.DoubleLiteral,
+      'BoolLiteral': $tom_core_server_30.BoolLiteral,
+      'DateTimeLiteral': $tom_core_server_30.DateTimeLiteral,
+      'DateLiteral': $tom_core_server_30.DateLiteral,
+      'Not': $tom_core_server_30.Not,
+      'IsNull': $tom_core_server_30.IsNull,
+      'IsNotNull': $tom_core_server_30.IsNotNull,
+      'TomBinaryOperator': $tom_core_server_30.TomBinaryOperator,
+      'And': $tom_core_server_30.And,
+      'Or': $tom_core_server_30.Or,
+      'Eq': $tom_core_server_30.Eq,
+      'Neq': $tom_core_server_30.Neq,
+      'Lt': $tom_core_server_30.Lt,
+      'Gt': $tom_core_server_30.Gt,
+      'Lte': $tom_core_server_30.Lte,
+      'Gte': $tom_core_server_30.Gte,
+      'Like': $tom_core_server_30.Like,
+      'NotLike': $tom_core_server_30.NotLike,
+      'In': $tom_core_server_30.In,
+      'Group': $tom_core_server_30.Group,
+      'Between': $tom_core_server_30.Between,
+      'Regexp': $tom_core_server_30.Regexp,
+      'TomDartType': $tom_core_server_31.TomDartType,
+      'TomDbTable': $tom_core_server_31.TomDbTable,
+      'TomDbColumn': $tom_core_server_31.TomDbColumn,
+      'TomEntityId': $tom_core_server_31.TomEntityId,
+      'TomDbScope': $tom_core_server_31.TomDbScope,
+      'TomJoinTable': $tom_core_server_31.TomJoinTable,
+      'TomReference': $tom_core_server_31.TomReference,
+      'TomPersistenceEventHandler': $tom_core_server_31.TomPersistenceEventHandler,
+      'TomColumnInformation': $tom_core_server_31.TomColumnInformation,
+      'TomQueryBuilder': $tom_core_server_32.TomQueryBuilder,
+      'TomQuerySentenceCompiler': $tom_core_server_33.TomQuerySentenceCompiler,
+      'TomRequestId': $tom_core_server_34.TomRequestId,
+      'TomRequestLogInfo': $tom_core_server_34.TomRequestLogInfo,
+      'TomServer': $tom_core_server_34.TomServer,
+      'TomTransactionException': $tom_core_server_35.TomTransactionException,
+      'TomTransactionParticipant': $tom_core_server_35.TomTransactionParticipant,
+      'TomTransaction': $tom_core_server_35.TomTransaction,
+      'TomTransactionManager': $tom_core_server_35.TomTransactionManager,
+      'MySQLConnection': $mysql_client_1.MySQLConnection,
+      'IResultSet': $mysql_client_1.IResultSet,
+      'ResultSet': $mysql_client_1.ResultSet,
+      'IterableResultSet': $mysql_client_1.IterableResultSet,
+      'PreparedStmtResultSet': $mysql_client_1.PreparedStmtResultSet,
+      'IterablePreparedStmtResultSet': $mysql_client_1.IterablePreparedStmtResultSet,
+      'EmptyResultSet': $mysql_client_1.EmptyResultSet,
+      'ResultSetRow': $mysql_client_1.ResultSetRow,
+      'ResultSetColumn': $mysql_client_1.ResultSetColumn,
+      'PreparedStmt': $mysql_client_1.PreparedStmt,
+      'MySQLConnectionPool': $mysql_client_2.MySQLConnectionPool,
+      'TomStandalonePlatformUtils': $tom_basics_console_1.TomStandalonePlatformUtils,
+      'TomBaseException': $tom_basics_1.TomBaseException,
+      'TomLogLevel': $tom_basics_2.TomLogLevel,
+      'TomLogger': $tom_basics_2.TomLogger,
+      'TomLoggable': $tom_basics_2.TomLoggable,
+      'TomLogOutput': $tom_basics_2.TomLogOutput,
+      'TomConsoleLogOutput': $tom_basics_2.TomConsoleLogOutput,
+      'TomPlatformUtils': $tom_basics_4.TomPlatformUtils,
+      'TomFallbackPlatformUtils': $tom_basics_4.TomFallbackPlatformUtils,
+      'TomEnvironment': $tom_basics_3.TomEnvironment,
+      'TomPlatform': $tom_basics_3.TomPlatform,
+      'TomRuntime': $tom_basics_3.TomRuntime,
+      'Request': $shelf_3.Request,
+    };
+  }
+
   /// Returns a map of class names to their canonical source URIs.
   ///
   /// Used for deduplication when the same class is exported through
@@ -355,6 +775,7 @@ class TomCoreServerBridge {
       'TomDelete': 'package:tom_core_server/src/tomserver/datasources/queries.dart',
       'TomStandardSqlDialect': 'package:tom_core_server/src/tomserver/datasources/sql_dialects.dart',
       'TomSqlDialect': 'package:tom_core_server/src/tomserver/datasources/sql_dialects.dart',
+      'SqlPlaceholderScan': 'package:tom_core_server/src/tomserver/datasources/sql_placeholder_scan.dart',
       'TomDbType': 'package:tom_core_server/src/tomserver/datasources/types_operator.dart',
       'TomDbInt': 'package:tom_core_server/src/tomserver/datasources/types_operator.dart',
       'TomDbDouble': 'package:tom_core_server/src/tomserver/datasources/types_operator.dart',
@@ -407,6 +828,7 @@ class TomCoreServerBridge {
       'TomDataScopeAuthorizationException': 'package:tom_core_server/src/tomserver/object_persistence/data_scope.dart',
       'TomDataScopeRegistry': 'package:tom_core_server/src/tomserver/object_persistence/data_scope.dart',
       'TomDataScopePredicate': 'package:tom_core_server/src/tomserver/object_persistence/data_scope.dart',
+      'TomDataScopeBypass': 'package:tom_core_server/src/tomserver/object_persistence/data_scope.dart',
       'TomDataScope': 'package:tom_core_server/src/tomserver/object_persistence/data_scope.dart',
       'MariadbRepository': 'package:tom_core_server/src/tomserver/object_persistence/mariadb_repository.dart',
       'TomQuerySyntaxException': 'package:tom_core_server/src/tomserver/object_persistence/operators_expressions.dart',
@@ -625,6 +1047,7 @@ class TomCoreServerBridge {
       'Handler',
       'TomColumnAuthResolver',
       'TomDataScopeResolver',
+      'TomAsyncDataScopeResolver',
     ];
   }
 
@@ -698,11 +1121,20 @@ class TomCoreServerBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so
@@ -768,7 +1200,7 @@ class TomCoreServerBridge {
       errors.add('Failed to register variable "tomAppId": $e');
     }
     try {
-      interpreter.registerGlobalVariable('tomService', $tom_core_server_20.tomService, importPath, sourceUri: 'package:tom_core_server/src/tomserver/endpoints/endpoint_annotation.dart');
+      interpreter.registerGlobalVariable('tomService', $tom_core_server_21.tomService, importPath, sourceUri: 'package:tom_core_server/src/tomserver/endpoints/endpoint_annotation.dart');
     } catch (e) {
       errors.add('Failed to register variable "tomService": $e');
     }
@@ -841,28 +1273,28 @@ class TomCoreServerBridge {
         D4.requireMinArgs(positional, 1, 'contextSetupMiddleware');
         final id = D4.getRequiredArg<String>(positional, 0, 'id', 'contextSetupMiddleware');
         final context = positional.length > 1 ? positional[1] as Map<String, Object>? : null;
-        return $tom_core_server_33.contextSetupMiddleware(id, context);
+        return $tom_core_server_34.contextSetupMiddleware(id, context);
       },
       'extractAuthentication': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'extractAuthentication');
         final req = D4.getRequiredArg<$shelf_3.Request>(positional, 0, 'req', 'extractAuthentication');
-        final $result = $tom_core_server_33.extractAuthentication(req);
+        final $result = $tom_core_server_34.extractAuthentication(req);
         return InterpretedRecord([$result.$1, $result.$2], {});
       },
       'tomDefaultAuthenticationMiddleware': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'tomDefaultAuthenticationMiddleware');
         final id = D4.getRequiredArg<String>(positional, 0, 'id', 'tomDefaultAuthenticationMiddleware');
         final context = positional.length > 1 ? positional[1] as Map<String, Object>? : null;
-        return $tom_core_server_33.tomDefaultAuthenticationMiddleware(id, context);
+        return $tom_core_server_34.tomDefaultAuthenticationMiddleware(id, context);
       },
       'tomLoggingMiddleware': (visitor, positional, named, typeArgs) {
-        return $tom_core_server_33.tomLoggingMiddleware();
+        return $tom_core_server_34.tomLoggingMiddleware();
       },
       'noopHandler': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'noopHandler');
         final id = D4.getRequiredArg<String>(positional, 0, 'id', 'noopHandler');
         final statusCode = D4.getRequiredArg<int>(positional, 1, 'statusCode', 'noopHandler');
-        return $tom_core_server_33.noopHandler(id, statusCode);
+        return $tom_core_server_34.noopHandler(id, statusCode);
       },
       'limited': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'limited');
@@ -931,6 +1363,7 @@ class TomCoreServerBridge {
       'package:tom_core_server/src/tomserver/datasources/mariadb_sql_dialect.dart',
       'package:tom_core_server/src/tomserver/datasources/queries.dart',
       'package:tom_core_server/src/tomserver/datasources/sql_dialects.dart',
+      'package:tom_core_server/src/tomserver/datasources/sql_placeholder_scan.dart',
       'package:tom_core_server/src/tomserver/datasources/types_operator.dart',
       'package:tom_core_server/src/tomserver/db_migration/db_migration.dart',
       'package:tom_core_server/src/tomserver/db_migration/mariadb_migration_adapter.dart',
@@ -1785,7 +2218,7 @@ BridgedClass _createTomAuthStateCodecBridge() {
       },
       'fromDbColumn': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'fromDbColumn');
-        final column = D4.getRequiredArg<$tom_core_server_17.TomDbType>(positional, 0, 'column', 'fromDbColumn');
+        final column = D4.getRequiredArg<$tom_core_server_18.TomDbType>(positional, 0, 'column', 'fromDbColumn');
         return $tom_core_server_3.TomAuthStateCodec.fromDbColumn(column);
       },
       'toDbColumn': (visitor, positional, named, typeArgs) {
@@ -2134,7 +2567,7 @@ BridgedClass _createRepositoryPrincipalDelegationStoreBridge() {
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'RepositoryPrincipalDelegationStore');
-        final repository = D4.getRequiredArg<$tom_core_server_26.TomSqlDatasourceRepository<$tom_core_server_4.TomPrincipalDelegation, int>>(positional, 0, 'repository', 'RepositoryPrincipalDelegationStore');
+        final repository = D4.getRequiredArg<$tom_core_server_27.TomSqlDatasourceRepository<$tom_core_server_4.TomPrincipalDelegation, int>>(positional, 0, 'repository', 'RepositoryPrincipalDelegationStore');
         return $tom_core_server_4.RepositoryPrincipalDelegationStore(repository);
       },
     },
@@ -2378,7 +2811,7 @@ BridgedClass _createRepositoryPrincipalResourceGrantStoreBridge() {
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'RepositoryPrincipalResourceGrantStore');
-        final repository = D4.getRequiredArg<$tom_core_server_26.TomSqlDatasourceRepository<$tom_core_server_5.TomPrincipalResourceGrant, int>>(positional, 0, 'repository', 'RepositoryPrincipalResourceGrantStore');
+        final repository = D4.getRequiredArg<$tom_core_server_27.TomSqlDatasourceRepository<$tom_core_server_5.TomPrincipalResourceGrant, int>>(positional, 0, 'repository', 'RepositoryPrincipalResourceGrantStore');
         return $tom_core_server_5.RepositoryPrincipalResourceGrantStore(repository);
       },
     },
@@ -2870,109 +3303,109 @@ BridgedClass _createTomConfigBridge() {
           case bool _: return $tom_core_server_10.TomConfig<bool>.withDefault(key, value);
           case $tom_core_server_1.LoginException _: return $tom_core_server_10.TomConfig<$tom_core_server_1.LoginException>.withDefault(key, value);
           case $tom_core_server_13.MariadbDatasourceException _: return $tom_core_server_10.TomConfig<$tom_core_server_13.MariadbDatasourceException>.withDefault(key, value);
-          case $tom_core_server_19.MariadbMigrationException _: return $tom_core_server_10.TomConfig<$tom_core_server_19.MariadbMigrationException>.withDefault(key, value);
+          case $tom_core_server_20.MariadbMigrationException _: return $tom_core_server_10.TomConfig<$tom_core_server_20.MariadbMigrationException>.withDefault(key, value);
           case $tom_core_server_13.MariadbPreparedStatementException _: return $tom_core_server_10.TomConfig<$tom_core_server_13.MariadbPreparedStatementException>.withDefault(key, value);
-          case $tom_core_server_24.TomAnnotationAnalyzerException _: return $tom_core_server_10.TomConfig<$tom_core_server_24.TomAnnotationAnalyzerException>.withDefault(key, value);
-          case $tom_core_server_24.TomAnnotationAnalyzerSyntaxException _: return $tom_core_server_10.TomConfig<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>.withDefault(key, value);
+          case $tom_core_server_25.TomAnnotationAnalyzerException _: return $tom_core_server_10.TomConfig<$tom_core_server_25.TomAnnotationAnalyzerException>.withDefault(key, value);
+          case $tom_core_server_25.TomAnnotationAnalyzerSyntaxException _: return $tom_core_server_10.TomConfig<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>.withDefault(key, value);
           case $tom_core_server_6.TomCacheException _: return $tom_core_server_10.TomConfig<$tom_core_server_6.TomCacheException>.withDefault(key, value);
-          case $tom_core_server_25.TomColumnAuthorizationException _: return $tom_core_server_10.TomConfig<$tom_core_server_25.TomColumnAuthorizationException>.withDefault(key, value);
-          case $tom_core_server_27.TomDataScopeAuthorizationException _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomDataScopeAuthorizationException>.withDefault(key, value);
-          case $tom_core_server_27.TomDataScopeException _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomDataScopeException>.withDefault(key, value);
-          case $tom_core_server_18.TomDbMigrationException _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbMigrationException>.withDefault(key, value);
-          case $tom_core_server_21.TomEndpointHandlerException _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomEndpointHandlerException>.withDefault(key, value);
-          case $tom_core_server_21.TomEndpointPipelineException _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomEndpointPipelineException>.withDefault(key, value);
-          case $tom_core_server_29.TomQuerySyntaxException _: return $tom_core_server_10.TomConfig<$tom_core_server_29.TomQuerySyntaxException>.withDefault(key, value);
-          case $tom_core_server_34.TomTransactionException _: return $tom_core_server_10.TomConfig<$tom_core_server_34.TomTransactionException>.withDefault(key, value);
+          case $tom_core_server_26.TomColumnAuthorizationException _: return $tom_core_server_10.TomConfig<$tom_core_server_26.TomColumnAuthorizationException>.withDefault(key, value);
+          case $tom_core_server_28.TomDataScopeAuthorizationException _: return $tom_core_server_10.TomConfig<$tom_core_server_28.TomDataScopeAuthorizationException>.withDefault(key, value);
+          case $tom_core_server_28.TomDataScopeException _: return $tom_core_server_10.TomConfig<$tom_core_server_28.TomDataScopeException>.withDefault(key, value);
+          case $tom_core_server_19.TomDbMigrationException _: return $tom_core_server_10.TomConfig<$tom_core_server_19.TomDbMigrationException>.withDefault(key, value);
+          case $tom_core_server_22.TomEndpointHandlerException _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomEndpointHandlerException>.withDefault(key, value);
+          case $tom_core_server_22.TomEndpointPipelineException _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomEndpointPipelineException>.withDefault(key, value);
+          case $tom_core_server_30.TomQuerySyntaxException _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomQuerySyntaxException>.withDefault(key, value);
+          case $tom_core_server_35.TomTransactionException _: return $tom_core_server_10.TomConfig<$tom_core_server_35.TomTransactionException>.withDefault(key, value);
           case $tom_core_server_2.TomAuthorizationCacheException _: return $tom_core_server_10.TomConfig<$tom_core_server_2.TomAuthorizationCacheException>.withDefault(key, value);
           case $tom_core_server_12.TomDatasourceInitException _: return $tom_core_server_10.TomConfig<$tom_core_server_12.TomDatasourceInitException>.withDefault(key, value);
-          case $tom_core_server_23.TomServerException _: return $tom_core_server_10.TomConfig<$tom_core_server_23.TomServerException>.withDefault(key, value);
-          case $tom_core_server_29.BoolCol _: return $tom_core_server_10.TomConfig<$tom_core_server_29.BoolCol>.withDefault(key, value);
-          case $tom_core_server_29.DateCol _: return $tom_core_server_10.TomConfig<$tom_core_server_29.DateCol>.withDefault(key, value);
-          case $tom_core_server_29.DateTimeCol _: return $tom_core_server_10.TomConfig<$tom_core_server_29.DateTimeCol>.withDefault(key, value);
-          case $tom_core_server_29.DoubleCol _: return $tom_core_server_10.TomConfig<$tom_core_server_29.DoubleCol>.withDefault(key, value);
+          case $tom_core_server_24.TomServerException _: return $tom_core_server_10.TomConfig<$tom_core_server_24.TomServerException>.withDefault(key, value);
+          case $tom_core_server_30.BoolCol _: return $tom_core_server_10.TomConfig<$tom_core_server_30.BoolCol>.withDefault(key, value);
+          case $tom_core_server_30.DateCol _: return $tom_core_server_10.TomConfig<$tom_core_server_30.DateCol>.withDefault(key, value);
+          case $tom_core_server_30.DateTimeCol _: return $tom_core_server_10.TomConfig<$tom_core_server_30.DateTimeCol>.withDefault(key, value);
+          case $tom_core_server_30.DoubleCol _: return $tom_core_server_10.TomConfig<$tom_core_server_30.DoubleCol>.withDefault(key, value);
           case $mysql_client_1.EmptyResultSet _: return $tom_core_server_10.TomConfig<$mysql_client_1.EmptyResultSet>.withDefault(key, value);
-          case $tom_core_server_29.IntCol _: return $tom_core_server_10.TomConfig<$tom_core_server_29.IntCol>.withDefault(key, value);
+          case $tom_core_server_30.IntCol _: return $tom_core_server_10.TomConfig<$tom_core_server_30.IntCol>.withDefault(key, value);
           case $mysql_client_1.IterablePreparedStmtResultSet _: return $tom_core_server_10.TomConfig<$mysql_client_1.IterablePreparedStmtResultSet>.withDefault(key, value);
           case $mysql_client_1.IterableResultSet _: return $tom_core_server_10.TomConfig<$mysql_client_1.IterableResultSet>.withDefault(key, value);
           case $tom_core_server_13.MariaDbXADatasource _: return $tom_core_server_10.TomConfig<$tom_core_server_13.MariaDbXADatasource>.withDefault(key, value);
-          case $tom_core_server_28.MariadbRepository _: return $tom_core_server_10.TomConfig<$tom_core_server_28.MariadbRepository>.withDefault(key, value);
+          case $tom_core_server_29.MariadbRepository _: return $tom_core_server_10.TomConfig<$tom_core_server_29.MariadbRepository>.withDefault(key, value);
           case $mysql_client_1.PreparedStmtResultSet _: return $tom_core_server_10.TomConfig<$mysql_client_1.PreparedStmtResultSet>.withDefault(key, value);
           case $mysql_client_1.ResultSet _: return $tom_core_server_10.TomConfig<$mysql_client_1.ResultSet>.withDefault(key, value);
-          case $tom_core_server_29.StringCol _: return $tom_core_server_10.TomConfig<$tom_core_server_29.StringCol>.withDefault(key, value);
+          case $tom_core_server_30.StringCol _: return $tom_core_server_10.TomConfig<$tom_core_server_30.StringCol>.withDefault(key, value);
           case $tom_core_server_15.TomCount _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomCount>.withDefault(key, value);
-          case $tom_core_server_17.TomDbBool _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbBool>.withDefault(key, value);
-          case $tom_core_server_17.TomDbDate _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbDate>.withDefault(key, value);
-          case $tom_core_server_17.TomDbDateTime _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbDateTime>.withDefault(key, value);
-          case $tom_core_server_17.TomDbDouble _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbDouble>.withDefault(key, value);
-          case $tom_core_server_17.TomDbInt _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbInt>.withDefault(key, value);
-          case $tom_core_server_17.TomDbString _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbString>.withDefault(key, value);
-          case $tom_core_server_17.TomDbTime _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbTime>.withDefault(key, value);
+          case $tom_core_server_18.TomDbBool _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbBool>.withDefault(key, value);
+          case $tom_core_server_18.TomDbDate _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbDate>.withDefault(key, value);
+          case $tom_core_server_18.TomDbDateTime _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbDateTime>.withDefault(key, value);
+          case $tom_core_server_18.TomDbDouble _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbDouble>.withDefault(key, value);
+          case $tom_core_server_18.TomDbInt _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbInt>.withDefault(key, value);
+          case $tom_core_server_18.TomDbString _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbString>.withDefault(key, value);
+          case $tom_core_server_18.TomDbTime _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbTime>.withDefault(key, value);
           case $tom_core_server_15.TomDelete _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomDelete>.withDefault(key, value);
           case $tom_core_server_15.TomSelect _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomSelect>.withDefault(key, value);
-          case $tom_core_server_29.And _: return $tom_core_server_10.TomConfig<$tom_core_server_29.And>.withDefault(key, value);
-          case $tom_core_server_29.Between _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Between>.withDefault(key, value);
-          case $tom_core_server_29.BoolLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_29.BoolLiteral>.withDefault(key, value);
-          case $tom_core_server_29.DateLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_29.DateLiteral>.withDefault(key, value);
-          case $tom_core_server_29.DateTimeLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_29.DateTimeLiteral>.withDefault(key, value);
-          case $tom_core_server_29.DbCol _: return $tom_core_server_10.TomConfig<$tom_core_server_29.DbCol>.withDefault(key, value);
-          case $tom_core_server_29.DoubleLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_29.DoubleLiteral>.withDefault(key, value);
-          case $tom_core_server_29.Eq _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Eq>.withDefault(key, value);
-          case $tom_core_server_29.Group _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Group>.withDefault(key, value);
-          case $tom_core_server_29.Gt _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Gt>.withDefault(key, value);
-          case $tom_core_server_29.Gte _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Gte>.withDefault(key, value);
+          case $tom_core_server_30.And _: return $tom_core_server_10.TomConfig<$tom_core_server_30.And>.withDefault(key, value);
+          case $tom_core_server_30.Between _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Between>.withDefault(key, value);
+          case $tom_core_server_30.BoolLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_30.BoolLiteral>.withDefault(key, value);
+          case $tom_core_server_30.DateLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_30.DateLiteral>.withDefault(key, value);
+          case $tom_core_server_30.DateTimeLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_30.DateTimeLiteral>.withDefault(key, value);
+          case $tom_core_server_30.DbCol _: return $tom_core_server_10.TomConfig<$tom_core_server_30.DbCol>.withDefault(key, value);
+          case $tom_core_server_30.DoubleLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_30.DoubleLiteral>.withDefault(key, value);
+          case $tom_core_server_30.Eq _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Eq>.withDefault(key, value);
+          case $tom_core_server_30.Group _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Group>.withDefault(key, value);
+          case $tom_core_server_30.Gt _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Gt>.withDefault(key, value);
+          case $tom_core_server_30.Gte _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Gte>.withDefault(key, value);
           case $mysql_client_1.IResultSet _: return $tom_core_server_10.TomConfig<$mysql_client_1.IResultSet>.withDefault(key, value);
-          case $tom_core_server_29.In _: return $tom_core_server_10.TomConfig<$tom_core_server_29.In>.withDefault(key, value);
-          case $tom_core_server_29.IntegerLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_29.IntegerLiteral>.withDefault(key, value);
-          case $tom_core_server_29.IsNotNull _: return $tom_core_server_10.TomConfig<$tom_core_server_29.IsNotNull>.withDefault(key, value);
-          case $tom_core_server_29.IsNull _: return $tom_core_server_10.TomConfig<$tom_core_server_29.IsNull>.withDefault(key, value);
-          case $tom_core_server_29.Like _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Like>.withDefault(key, value);
-          case $tom_core_server_29.Lt _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Lt>.withDefault(key, value);
-          case $tom_core_server_29.Lte _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Lte>.withDefault(key, value);
+          case $tom_core_server_30.In _: return $tom_core_server_10.TomConfig<$tom_core_server_30.In>.withDefault(key, value);
+          case $tom_core_server_30.IntegerLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_30.IntegerLiteral>.withDefault(key, value);
+          case $tom_core_server_30.IsNotNull _: return $tom_core_server_10.TomConfig<$tom_core_server_30.IsNotNull>.withDefault(key, value);
+          case $tom_core_server_30.IsNull _: return $tom_core_server_10.TomConfig<$tom_core_server_30.IsNull>.withDefault(key, value);
+          case $tom_core_server_30.Like _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Like>.withDefault(key, value);
+          case $tom_core_server_30.Lt _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Lt>.withDefault(key, value);
+          case $tom_core_server_30.Lte _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Lte>.withDefault(key, value);
           case $tom_core_server_13.MariaDbDatasource _: return $tom_core_server_10.TomConfig<$tom_core_server_13.MariaDbDatasource>.withDefault(key, value);
-          case $tom_core_server_29.Neq _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Neq>.withDefault(key, value);
-          case $tom_core_server_29.Not _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Not>.withDefault(key, value);
-          case $tom_core_server_29.NotLike _: return $tom_core_server_10.TomConfig<$tom_core_server_29.NotLike>.withDefault(key, value);
-          case $tom_core_server_29.Or _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Or>.withDefault(key, value);
-          case $tom_core_server_29.Regexp _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Regexp>.withDefault(key, value);
-          case $tom_core_server_29.StringLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_29.StringLiteral>.withDefault(key, value);
-          case $tom_core_server_17.TomDbType _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomDbType>.withDefault(key, value);
+          case $tom_core_server_30.Neq _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Neq>.withDefault(key, value);
+          case $tom_core_server_30.Not _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Not>.withDefault(key, value);
+          case $tom_core_server_30.NotLike _: return $tom_core_server_10.TomConfig<$tom_core_server_30.NotLike>.withDefault(key, value);
+          case $tom_core_server_30.Or _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Or>.withDefault(key, value);
+          case $tom_core_server_30.Regexp _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Regexp>.withDefault(key, value);
+          case $tom_core_server_30.StringLiteral _: return $tom_core_server_10.TomConfig<$tom_core_server_30.StringLiteral>.withDefault(key, value);
+          case $tom_core_server_18.TomDbType _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbType>.withDefault(key, value);
           case $tom_core_server_15.TomGeneratedQuery _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomGeneratedQuery>.withDefault(key, value);
           case $tom_core_server_15.TomLiteralSelect _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomLiteralSelect>.withDefault(key, value);
-          case $tom_core_server_32.TomQuerySentenceCompiler _: return $tom_core_server_10.TomConfig<$tom_core_server_32.TomQuerySentenceCompiler>.withDefault(key, value);
-          case $tom_core_server_26.TomSqlDatasourceRepository _: return $tom_core_server_10.TomConfig<$tom_core_server_26.TomSqlDatasourceRepository>.withDefault(key, value);
+          case $tom_core_server_33.TomQuerySentenceCompiler _: return $tom_core_server_10.TomConfig<$tom_core_server_33.TomQuerySentenceCompiler>.withDefault(key, value);
+          case $tom_core_server_27.TomSqlDatasourceRepository _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomSqlDatasourceRepository>.withDefault(key, value);
           case $tom_basics_console_1.TomStandalonePlatformUtils _: return $tom_core_server_10.TomConfig<$tom_basics_console_1.TomStandalonePlatformUtils>.withDefault(key, value);
-          case $tom_core_server_22.DefaultHealthAnalyzer _: return $tom_core_server_10.TomConfig<$tom_core_server_22.DefaultHealthAnalyzer>.withDefault(key, value);
+          case $tom_core_server_23.DefaultHealthAnalyzer _: return $tom_core_server_10.TomConfig<$tom_core_server_23.DefaultHealthAnalyzer>.withDefault(key, value);
           case $tom_core_server_4.InMemoryPrincipalDelegationStore _: return $tom_core_server_10.TomConfig<$tom_core_server_4.InMemoryPrincipalDelegationStore>.withDefault(key, value);
           case $tom_core_server_5.InMemoryPrincipalResourceGrantStore _: return $tom_core_server_10.TomConfig<$tom_core_server_5.InMemoryPrincipalResourceGrantStore>.withDefault(key, value);
-          case $tom_core_server_19.MariadbMigrationAdaptor _: return $tom_core_server_10.TomConfig<$tom_core_server_19.MariadbMigrationAdaptor>.withDefault(key, value);
+          case $tom_core_server_20.MariadbMigrationAdaptor _: return $tom_core_server_10.TomConfig<$tom_core_server_20.MariadbMigrationAdaptor>.withDefault(key, value);
           case $tom_core_server_13.MariadbPreparedStatement _: return $tom_core_server_10.TomConfig<$tom_core_server_13.MariadbPreparedStatement>.withDefault(key, value);
           case $tom_core_server_14.MariadbSqlDialect _: return $tom_core_server_10.TomConfig<$tom_core_server_14.MariadbSqlDialect>.withDefault(key, value);
-          case $tom_core_server_29.Parameter _: return $tom_core_server_10.TomConfig<$tom_core_server_29.Parameter>.withDefault(key, value);
+          case $tom_core_server_30.Parameter _: return $tom_core_server_10.TomConfig<$tom_core_server_30.Parameter>.withDefault(key, value);
           case $tom_core_server_4.RepositoryPrincipalDelegationStore _: return $tom_core_server_10.TomConfig<$tom_core_server_4.RepositoryPrincipalDelegationStore>.withDefault(key, value);
           case $tom_core_server_5.RepositoryPrincipalResourceGrantStore _: return $tom_core_server_10.TomConfig<$tom_core_server_5.RepositoryPrincipalResourceGrantStore>.withDefault(key, value);
           case $shelf_3.Request _: return $tom_core_server_10.TomConfig<$shelf_3.Request>.withDefault(key, value);
-          case $tom_core_server_20.TomApiEndpointImplementation _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomApiEndpointImplementation>.withDefault(key, value);
-          case $tom_core_server_20.TomApiImplementation _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomApiImplementation>.withDefault(key, value);
+          case $tom_core_server_21.TomApiEndpointImplementation _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomApiEndpointImplementation>.withDefault(key, value);
+          case $tom_core_server_21.TomApiImplementation _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomApiImplementation>.withDefault(key, value);
           case $tom_core_server_2.TomAuthorizationCacheExecutor _: return $tom_core_server_10.TomConfig<$tom_core_server_2.TomAuthorizationCacheExecutor>.withDefault(key, value);
           case $tom_basics_1.TomBaseException _: return $tom_core_server_10.TomConfig<$tom_basics_1.TomBaseException>.withDefault(key, value);
-          case $tom_core_server_29.TomBinaryOperator _: return $tom_core_server_10.TomConfig<$tom_core_server_29.TomBinaryOperator>.withDefault(key, value);
+          case $tom_core_server_30.TomBinaryOperator _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomBinaryOperator>.withDefault(key, value);
           case $tom_core_server_10.TomBoolConfig _: return $tom_core_server_10.TomConfig<$tom_core_server_10.TomBoolConfig>.withDefault(key, value);
           case $tom_core_server_6.TomCacheRemoveMessage _: return $tom_core_server_10.TomConfig<$tom_core_server_6.TomCacheRemoveMessage>.withDefault(key, value);
           case $tom_core_server_6.TomCacheRetrieveMessage _: return $tom_core_server_10.TomConfig<$tom_core_server_6.TomCacheRetrieveMessage>.withDefault(key, value);
           case $tom_core_server_6.TomCacheStoreMessage _: return $tom_core_server_10.TomConfig<$tom_core_server_6.TomCacheStoreMessage>.withDefault(key, value);
           case $tom_basics_2.TomConsoleLogOutput _: return $tom_core_server_10.TomConfig<$tom_basics_2.TomConsoleLogOutput>.withDefault(key, value);
           case $tom_core_server_12.TomDataSource _: return $tom_core_server_10.TomConfig<$tom_core_server_12.TomDataSource>.withDefault(key, value);
-          case $tom_core_server_20.TomDefaultErrorHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomDefaultErrorHandler>.withDefault(key, value);
+          case $tom_core_server_21.TomDefaultErrorHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomDefaultErrorHandler>.withDefault(key, value);
           case $tom_core_server_10.TomDoubleConfig _: return $tom_core_server_10.TomConfig<$tom_core_server_10.TomDoubleConfig>.withDefault(key, value);
           case $tom_core_server_1.TomDummyAuthenticationService _: return $tom_core_server_10.TomConfig<$tom_core_server_1.TomDummyAuthenticationService>.withDefault(key, value);
-          case $tom_core_server_20.TomEndpoint _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomEndpoint>.withDefault(key, value);
+          case $tom_core_server_21.TomEndpoint _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomEndpoint>.withDefault(key, value);
           case $tom_basics_4.TomFallbackPlatformUtils _: return $tom_core_server_10.TomConfig<$tom_basics_4.TomFallbackPlatformUtils>.withDefault(key, value);
-          case $tom_core_server_22.TomHealthServer _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomHealthServer>.withDefault(key, value);
+          case $tom_core_server_23.TomHealthServer _: return $tom_core_server_10.TomConfig<$tom_core_server_23.TomHealthServer>.withDefault(key, value);
           case $tom_core_server_10.TomIntConfig _: return $tom_core_server_10.TomConfig<$tom_core_server_10.TomIntConfig>.withDefault(key, value);
           case $tom_core_server_15.TomQuery _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomQuery>.withDefault(key, value);
           case $tom_core_server_10.TomStringConfig _: return $tom_core_server_10.TomConfig<$tom_core_server_10.TomStringConfig>.withDefault(key, value);
-          case $tom_core_server_29.TomUnaryOperator _: return $tom_core_server_10.TomConfig<$tom_core_server_29.TomUnaryOperator>.withDefault(key, value);
-          case $tom_core_server_22.HealthAnalyzer _: return $tom_core_server_10.TomConfig<$tom_core_server_22.HealthAnalyzer>.withDefault(key, value);
+          case $tom_core_server_30.TomUnaryOperator _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomUnaryOperator>.withDefault(key, value);
+          case $tom_core_server_23.HealthAnalyzer _: return $tom_core_server_10.TomConfig<$tom_core_server_23.HealthAnalyzer>.withDefault(key, value);
           case $mysql_client_1.MySQLConnection _: return $tom_core_server_10.TomConfig<$mysql_client_1.MySQLConnection>.withDefault(key, value);
           case $mysql_client_2.MySQLConnectionPool _: return $tom_core_server_10.TomConfig<$mysql_client_2.MySQLConnectionPool>.withDefault(key, value);
           case $mysql_client_1.PreparedStmt _: return $tom_core_server_10.TomConfig<$mysql_client_1.PreparedStmt>.withDefault(key, value);
@@ -2980,9 +3413,10 @@ BridgedClass _createTomConfigBridge() {
           case $tom_core_server_5.PrincipalResourceGrantStore _: return $tom_core_server_10.TomConfig<$tom_core_server_5.PrincipalResourceGrantStore>.withDefault(key, value);
           case $mysql_client_1.ResultSetColumn _: return $tom_core_server_10.TomConfig<$mysql_client_1.ResultSetColumn>.withDefault(key, value);
           case $mysql_client_1.ResultSetRow _: return $tom_core_server_10.TomConfig<$mysql_client_1.ResultSetRow>.withDefault(key, value);
+          case $tom_core_server_17.SqlPlaceholderScan _: return $tom_core_server_10.TomConfig<$tom_core_server_17.SqlPlaceholderScan>.withDefault(key, value);
           case $tom_core_server_1.Tom2FAAdaptor _: return $tom_core_server_10.TomConfig<$tom_core_server_1.Tom2FAAdaptor>.withDefault(key, value);
           case $tom_core_server_1.Tom2FAService _: return $tom_core_server_10.TomConfig<$tom_core_server_1.Tom2FAService>.withDefault(key, value);
-          case $tom_core_server_24.TomAnnotationAnalyzer _: return $tom_core_server_10.TomConfig<$tom_core_server_24.TomAnnotationAnalyzer>.withDefault(key, value);
+          case $tom_core_server_25.TomAnnotationAnalyzer _: return $tom_core_server_10.TomConfig<$tom_core_server_25.TomAnnotationAnalyzer>.withDefault(key, value);
           case $tom_core_server_7.TomArgs _: return $tom_core_server_10.TomConfig<$tom_core_server_7.TomArgs>.withDefault(key, value);
           case $tom_core_server_3.TomAuthStateCodec _: return $tom_core_server_10.TomConfig<$tom_core_server_3.TomAuthStateCodec>.withDefault(key, value);
           case $tom_core_server_1.TomAuthenticationAdaptor _: return $tom_core_server_10.TomConfig<$tom_core_server_1.TomAuthenticationAdaptor>.withDefault(key, value);
@@ -2998,68 +3432,69 @@ BridgedClass _createTomConfigBridge() {
           case $tom_core_server_6.TomCache _: return $tom_core_server_10.TomConfig<$tom_core_server_6.TomCache>.withDefault(key, value);
           case $tom_core_server_6.TomCacheEntry _: return $tom_core_server_10.TomConfig<$tom_core_server_6.TomCacheEntry>.withDefault(key, value);
           case $tom_core_server_6.TomCacheManager _: return $tom_core_server_10.TomConfig<$tom_core_server_6.TomCacheManager>.withDefault(key, value);
-          case $tom_core_server_21.TomClassScanResult _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomClassScanResult>.withDefault(key, value);
-          case $tom_core_server_25.TomColumnAuthorization _: return $tom_core_server_10.TomConfig<$tom_core_server_25.TomColumnAuthorization>.withDefault(key, value);
-          case $tom_core_server_30.TomColumnInformation _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomColumnInformation>.withDefault(key, value);
-          case $tom_core_server_25.TomColumnWriteDecision _: return $tom_core_server_10.TomConfig<$tom_core_server_25.TomColumnWriteDecision>.withDefault(key, value);
-          case $tom_core_server_20.TomComponentReference _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomComponentReference>.withDefault(key, value);
-          case $tom_core_server_26.TomCountResult _: return $tom_core_server_10.TomConfig<$tom_core_server_26.TomCountResult>.withDefault(key, value);
-          case $tom_core_server_30.TomDartType _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomDartType>.withDefault(key, value);
-          case $tom_core_server_27.TomDataScope _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomDataScope>.withDefault(key, value);
-          case $tom_core_server_27.TomDataScopePredicate _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomDataScopePredicate>.withDefault(key, value);
-          case $tom_core_server_27.TomDataScopeRegistry _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomDataScopeRegistry>.withDefault(key, value);
+          case $tom_core_server_22.TomClassScanResult _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomClassScanResult>.withDefault(key, value);
+          case $tom_core_server_26.TomColumnAuthorization _: return $tom_core_server_10.TomConfig<$tom_core_server_26.TomColumnAuthorization>.withDefault(key, value);
+          case $tom_core_server_31.TomColumnInformation _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomColumnInformation>.withDefault(key, value);
+          case $tom_core_server_26.TomColumnWriteDecision _: return $tom_core_server_10.TomConfig<$tom_core_server_26.TomColumnWriteDecision>.withDefault(key, value);
+          case $tom_core_server_21.TomComponentReference _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomComponentReference>.withDefault(key, value);
+          case $tom_core_server_27.TomCountResult _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomCountResult>.withDefault(key, value);
+          case $tom_core_server_31.TomDartType _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomDartType>.withDefault(key, value);
+          case $tom_core_server_28.TomDataScope _: return $tom_core_server_10.TomConfig<$tom_core_server_28.TomDataScope>.withDefault(key, value);
+          case $tom_core_server_28.TomDataScopeBypass _: return $tom_core_server_10.TomConfig<$tom_core_server_28.TomDataScopeBypass>.withDefault(key, value);
+          case $tom_core_server_28.TomDataScopePredicate _: return $tom_core_server_10.TomConfig<$tom_core_server_28.TomDataScopePredicate>.withDefault(key, value);
+          case $tom_core_server_28.TomDataScopeRegistry _: return $tom_core_server_10.TomConfig<$tom_core_server_28.TomDataScopeRegistry>.withDefault(key, value);
           case $tom_core_server_12.TomDataSourceInfo _: return $tom_core_server_10.TomConfig<$tom_core_server_12.TomDataSourceInfo>.withDefault(key, value);
           case $tom_core_server_12.TomDatasourceDriver _: return $tom_core_server_10.TomConfig<$tom_core_server_12.TomDatasourceDriver>.withDefault(key, value);
-          case $tom_core_server_30.TomDbColumn _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomDbColumn>.withDefault(key, value);
-          case $tom_core_server_18.TomDbMigrationAdaptor _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbMigrationAdaptor>.withDefault(key, value);
-          case $tom_core_server_18.TomDbMigrations _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbMigrations>.withDefault(key, value);
-          case $tom_core_server_18.TomDbMigrator _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomDbMigrator>.withDefault(key, value);
-          case $tom_core_server_30.TomDbScope _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomDbScope>.withDefault(key, value);
-          case $tom_core_server_30.TomDbTable _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomDbTable>.withDefault(key, value);
-          case $tom_core_server_19.TomDbVersion _: return $tom_core_server_10.TomConfig<$tom_core_server_19.TomDbVersion>.withDefault(key, value);
+          case $tom_core_server_31.TomDbColumn _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomDbColumn>.withDefault(key, value);
+          case $tom_core_server_19.TomDbMigrationAdaptor _: return $tom_core_server_10.TomConfig<$tom_core_server_19.TomDbMigrationAdaptor>.withDefault(key, value);
+          case $tom_core_server_19.TomDbMigrations _: return $tom_core_server_10.TomConfig<$tom_core_server_19.TomDbMigrations>.withDefault(key, value);
+          case $tom_core_server_19.TomDbMigrator _: return $tom_core_server_10.TomConfig<$tom_core_server_19.TomDbMigrator>.withDefault(key, value);
+          case $tom_core_server_31.TomDbScope _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomDbScope>.withDefault(key, value);
+          case $tom_core_server_31.TomDbTable _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomDbTable>.withDefault(key, value);
+          case $tom_core_server_20.TomDbVersion _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomDbVersion>.withDefault(key, value);
           case $tom_core_server_4.TomDelegationResolver _: return $tom_core_server_10.TomConfig<$tom_core_server_4.TomDelegationResolver>.withDefault(key, value);
-          case $tom_core_server_20.TomEndpointBase _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomEndpointBase>.withDefault(key, value);
-          case $tom_core_server_21.TomEndpointHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomEndpointHandler>.withDefault(key, value);
-          case $tom_core_server_21.TomEndpointRouting _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomEndpointRouting>.withDefault(key, value);
-          case $tom_core_server_21.TomEndpointRoutingInfo _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomEndpointRoutingInfo>.withDefault(key, value);
-          case $tom_core_server_30.TomEntityId _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomEntityId>.withDefault(key, value);
+          case $tom_core_server_21.TomEndpointBase _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomEndpointBase>.withDefault(key, value);
+          case $tom_core_server_22.TomEndpointHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomEndpointHandler>.withDefault(key, value);
+          case $tom_core_server_22.TomEndpointRouting _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomEndpointRouting>.withDefault(key, value);
+          case $tom_core_server_22.TomEndpointRoutingInfo _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomEndpointRoutingInfo>.withDefault(key, value);
+          case $tom_core_server_31.TomEntityId _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomEntityId>.withDefault(key, value);
           case $tom_core_server_8.TomEnvFile _: return $tom_core_server_10.TomConfig<$tom_core_server_8.TomEnvFile>.withDefault(key, value);
           case $tom_basics_3.TomEnvironment _: return $tom_core_server_10.TomConfig<$tom_basics_3.TomEnvironment>.withDefault(key, value);
-          case $tom_core_server_20.TomErrorHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomErrorHandler>.withDefault(key, value);
+          case $tom_core_server_21.TomErrorHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomErrorHandler>.withDefault(key, value);
           case $tom_core_server_3.TomGradedAccessControlInformation _: return $tom_core_server_10.TomConfig<$tom_core_server_3.TomGradedAccessControlInformation>.withDefault(key, value);
-          case $tom_core_server_22.TomHealthService _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomHealthService>.withDefault(key, value);
-          case $tom_core_server_30.TomJoinTable _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomJoinTable>.withDefault(key, value);
+          case $tom_core_server_23.TomHealthService _: return $tom_core_server_10.TomConfig<$tom_core_server_23.TomHealthService>.withDefault(key, value);
+          case $tom_core_server_31.TomJoinTable _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomJoinTable>.withDefault(key, value);
           case $tom_basics_2.TomLogLevel _: return $tom_core_server_10.TomConfig<$tom_basics_2.TomLogLevel>.withDefault(key, value);
           case $tom_basics_2.TomLogOutput _: return $tom_core_server_10.TomConfig<$tom_basics_2.TomLogOutput>.withDefault(key, value);
           case $tom_basics_2.TomLoggable _: return $tom_core_server_10.TomConfig<$tom_basics_2.TomLoggable>.withDefault(key, value);
           case $tom_basics_2.TomLogger _: return $tom_core_server_10.TomConfig<$tom_basics_2.TomLogger>.withDefault(key, value);
-          case $tom_core_server_21.TomMethodMetadata _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomMethodMetadata>.withDefault(key, value);
-          case $tom_core_server_18.TomMigrationFileName _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomMigrationFileName>.withDefault(key, value);
-          case $tom_core_server_17.TomOperator _: return $tom_core_server_10.TomConfig<$tom_core_server_17.TomOperator>.withDefault(key, value);
-          case $tom_core_server_30.TomPersistenceEventHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomPersistenceEventHandler>.withDefault(key, value);
+          case $tom_core_server_22.TomMethodMetadata _: return $tom_core_server_10.TomConfig<$tom_core_server_22.TomMethodMetadata>.withDefault(key, value);
+          case $tom_core_server_19.TomMigrationFileName _: return $tom_core_server_10.TomConfig<$tom_core_server_19.TomMigrationFileName>.withDefault(key, value);
+          case $tom_core_server_18.TomOperator _: return $tom_core_server_10.TomConfig<$tom_core_server_18.TomOperator>.withDefault(key, value);
+          case $tom_core_server_31.TomPersistenceEventHandler _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomPersistenceEventHandler>.withDefault(key, value);
           case $tom_basics_3.TomPlatform _: return $tom_core_server_10.TomConfig<$tom_basics_3.TomPlatform>.withDefault(key, value);
           case $tom_basics_4.TomPlatformUtils _: return $tom_core_server_10.TomConfig<$tom_basics_4.TomPlatformUtils>.withDefault(key, value);
           case $tom_core_server_12.TomPreparedStatement _: return $tom_core_server_10.TomConfig<$tom_core_server_12.TomPreparedStatement>.withDefault(key, value);
           case $tom_core_server_4.TomPrincipalDelegation _: return $tom_core_server_10.TomConfig<$tom_core_server_4.TomPrincipalDelegation>.withDefault(key, value);
           case $tom_core_server_5.TomPrincipalResourceGrant _: return $tom_core_server_10.TomConfig<$tom_core_server_5.TomPrincipalResourceGrant>.withDefault(key, value);
           case $tom_core_server_5.TomPrincipalResourceRoleResolver _: return $tom_core_server_10.TomConfig<$tom_core_server_5.TomPrincipalResourceRoleResolver>.withDefault(key, value);
-          case $tom_core_server_31.TomQueryBuilder _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomQueryBuilder>.withDefault(key, value);
-          case $tom_core_server_30.TomReference _: return $tom_core_server_10.TomConfig<$tom_core_server_30.TomReference>.withDefault(key, value);
-          case $tom_core_server_26.TomRepository _: return $tom_core_server_10.TomConfig<$tom_core_server_26.TomRepository>.withDefault(key, value);
-          case $tom_core_server_26.TomRepositoryType _: return $tom_core_server_10.TomConfig<$tom_core_server_26.TomRepositoryType>.withDefault(key, value);
-          case $tom_core_server_33.TomRequestId _: return $tom_core_server_10.TomConfig<$tom_core_server_33.TomRequestId>.withDefault(key, value);
-          case $tom_core_server_33.TomRequestLogInfo _: return $tom_core_server_10.TomConfig<$tom_core_server_33.TomRequestLogInfo>.withDefault(key, value);
+          case $tom_core_server_32.TomQueryBuilder _: return $tom_core_server_10.TomConfig<$tom_core_server_32.TomQueryBuilder>.withDefault(key, value);
+          case $tom_core_server_31.TomReference _: return $tom_core_server_10.TomConfig<$tom_core_server_31.TomReference>.withDefault(key, value);
+          case $tom_core_server_27.TomRepository _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomRepository>.withDefault(key, value);
+          case $tom_core_server_27.TomRepositoryType _: return $tom_core_server_10.TomConfig<$tom_core_server_27.TomRepositoryType>.withDefault(key, value);
+          case $tom_core_server_34.TomRequestId _: return $tom_core_server_10.TomConfig<$tom_core_server_34.TomRequestId>.withDefault(key, value);
+          case $tom_core_server_34.TomRequestLogInfo _: return $tom_core_server_10.TomConfig<$tom_core_server_34.TomRequestLogInfo>.withDefault(key, value);
           case $tom_core_server_3.TomResourceGrant _: return $tom_core_server_10.TomConfig<$tom_core_server_3.TomResourceGrant>.withDefault(key, value);
           case $tom_basics_3.TomRuntime _: return $tom_core_server_10.TomConfig<$tom_basics_3.TomRuntime>.withDefault(key, value);
-          case $tom_core_server_33.TomServer _: return $tom_core_server_10.TomConfig<$tom_core_server_33.TomServer>.withDefault(key, value);
+          case $tom_core_server_34.TomServer _: return $tom_core_server_10.TomConfig<$tom_core_server_34.TomServer>.withDefault(key, value);
           case $tom_core_server_9.TomServerConfigResourceProvider _: return $tom_core_server_10.TomConfig<$tom_core_server_9.TomServerConfigResourceProvider>.withDefault(key, value);
-          case $tom_core_server_20.TomService _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomService>.withDefault(key, value);
+          case $tom_core_server_21.TomService _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomService>.withDefault(key, value);
           case $tom_core_server_16.TomSqlDialect _: return $tom_core_server_10.TomConfig<$tom_core_server_16.TomSqlDialect>.withDefault(key, value);
           case $tom_core_server_16.TomStandardSqlDialect _: return $tom_core_server_10.TomConfig<$tom_core_server_16.TomStandardSqlDialect>.withDefault(key, value);
-          case $tom_core_server_34.TomTransaction _: return $tom_core_server_10.TomConfig<$tom_core_server_34.TomTransaction>.withDefault(key, value);
-          case $tom_core_server_34.TomTransactionManager _: return $tom_core_server_10.TomConfig<$tom_core_server_34.TomTransactionManager>.withDefault(key, value);
-          case $tom_core_server_34.TomTransactionParticipant _: return $tom_core_server_10.TomConfig<$tom_core_server_34.TomTransactionParticipant>.withDefault(key, value);
-          case $tom_core_server_20.TomTransactional _: return $tom_core_server_10.TomConfig<$tom_core_server_20.TomTransactional>.withDefault(key, value);
+          case $tom_core_server_35.TomTransaction _: return $tom_core_server_10.TomConfig<$tom_core_server_35.TomTransaction>.withDefault(key, value);
+          case $tom_core_server_35.TomTransactionManager _: return $tom_core_server_10.TomConfig<$tom_core_server_35.TomTransactionManager>.withDefault(key, value);
+          case $tom_core_server_35.TomTransactionParticipant _: return $tom_core_server_10.TomConfig<$tom_core_server_35.TomTransactionParticipant>.withDefault(key, value);
+          case $tom_core_server_21.TomTransactional _: return $tom_core_server_10.TomConfig<$tom_core_server_21.TomTransactional>.withDefault(key, value);
           case $tom_core_server_15.TomTypePersistenceInfo _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomTypePersistenceInfo>.withDefault(key, value);
           case $tom_core_server_15.TomTypedPersistenceBase _: return $tom_core_server_10.TomConfig<$tom_core_server_15.TomTypedPersistenceBase>.withDefault(key, value);
           case $tom_core_server_11.TomYaml _: return $tom_core_server_10.TomConfig<$tom_core_server_11.TomYaml>.withDefault(key, value);
@@ -4927,108 +5362,108 @@ BridgedClass _createMariadbSqlDialectBridge() {
       'isNull': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 1, 'isNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
         return t.isNull(what);
       },
       'isNotNull': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 1, 'isNotNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
         return t.isNotNull(what);
       },
       'isin': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'isin');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isin');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isin');
         if (positional.length <= 1) {
           throw ArgumentError('isin: Missing required argument "choices" at position 1');
         }
-        final choices = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'choices');
+        final choices = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'choices');
         return t.isin(what, choices);
       },
       'between': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'between');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'between');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'between');
         if (positional.length <= 1) {
           throw ArgumentError('between: Missing required argument "betweenLimits" at position 1');
         }
-        final betweenLimits = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'betweenLimits');
+        final betweenLimits = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'betweenLimits');
         return t.between(what, betweenLimits);
       },
       'like': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'like');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'like');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'like');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'like');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'like');
         return t.like(text, test);
       },
       'notLike': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'notLike');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'notLike');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'notLike');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'notLike');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'notLike');
         return t.notLike(text, test);
       },
       'regexp': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'regexp');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'regexp');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'regexp');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'regexp');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'regexp');
         return t.regexp(text, test);
       },
       'group': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 1, 'group');
-        final operant = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
+        final operant = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
         return t.group(operant);
       },
       'eq': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'eq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
         return t.eq(operant1, operant2);
       },
       'neq': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'neq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
         return t.neq(operant1, operant2);
       },
       'lt': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'lt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
         return t.lt(operant1, operant2);
       },
       'lte': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'lte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
         return t.lte(operant1, operant2);
       },
       'gt': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'gt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
         return t.gt(operant1, operant2);
       },
       'gte': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 2, 'gte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
         return t.gte(operant1, operant2);
       },
       'not': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 1, 'not');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'operant1', 'not');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'operant1', 'not');
         return t.not(operant1);
       },
       'and': (visitor, target, positional, named, typeArgs) {
@@ -5037,7 +5472,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         if (positional.isEmpty) {
           throw ArgumentError('and: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.and(operant1);
       },
       'or': (visitor, target, positional, named, typeArgs) {
@@ -5046,7 +5481,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         if (positional.isEmpty) {
           throw ArgumentError('or: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.or(operant1);
       },
       'text': (visitor, target, positional, named, typeArgs) {
@@ -5111,7 +5546,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 3, 'textF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'textF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'textF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'textF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'textF');
         return t.textF(fieldName, column, dbType);
       },
@@ -5119,7 +5554,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 3, 'intF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'intF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'intF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'intF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'intF');
         return t.intF(fieldName, column, dbType);
       },
@@ -5127,7 +5562,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 3, 'doubleF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'doubleF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'doubleF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'doubleF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'doubleF');
         return t.doubleF(fieldName, column, dbType);
       },
@@ -5135,7 +5570,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 3, 'boolF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'boolF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'boolF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'boolF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'boolF');
         return t.boolF(fieldName, column, dbType);
       },
@@ -5143,7 +5578,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 3, 'dateTimeF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateTimeF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'dateTimeF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'dateTimeF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'dateTimeF');
         return t.dateTimeF(fieldName, column, dbType);
       },
@@ -5151,7 +5586,7 @@ BridgedClass _createMariadbSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_14.MariadbSqlDialect>(target, 'MariadbSqlDialect');
         D4.requireMinArgs(positional, 3, 'dateF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'dateF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'dateF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'dateF');
         return t.dateF(fieldName, column, dbType);
       },
@@ -5210,11 +5645,11 @@ BridgedClass _createTomTypePersistenceInfoBridge() {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'TomTypePersistenceInfo');
         final classMirror = D4.getRequiredArg<$tom_reflection_1.ClassMirror>(positional, 0, 'classMirror', 'TomTypePersistenceInfo');
-        final table = D4.getRequiredArg<$tom_core_server_30.TomDbTable>(positional, 1, 'table', 'TomTypePersistenceInfo');
+        final table = D4.getRequiredArg<$tom_core_server_31.TomDbTable>(positional, 1, 'table', 'TomTypePersistenceInfo');
         if (positional.length <= 2) {
           throw ArgumentError('TomTypePersistenceInfo: Missing required argument "columnInfo" at position 2');
         }
-        final columnInfo = D4.coerceList<$tom_core_server_30.TomColumnInformation>(positional[2], 'columnInfo');
+        final columnInfo = D4.coerceList<$tom_core_server_31.TomColumnInformation>(positional[2], 'columnInfo');
         return $tom_core_server_15.TomTypePersistenceInfo(classMirror, table, columnInfo);
       },
     },
@@ -5227,9 +5662,9 @@ BridgedClass _createTomTypePersistenceInfoBridge() {
       'classMirror': (visitor, target, value) => 
         D4.validateTarget<$tom_core_server_15.TomTypePersistenceInfo>(target, 'TomTypePersistenceInfo').classMirror = D4.extractBridgedArg<$tom_reflection_1.ClassMirror>(value, 'classMirror'),
       'table': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_15.TomTypePersistenceInfo>(target, 'TomTypePersistenceInfo').table = D4.extractBridgedArg<$tom_core_server_30.TomDbTable>(value, 'table'),
+        D4.validateTarget<$tom_core_server_15.TomTypePersistenceInfo>(target, 'TomTypePersistenceInfo').table = D4.extractBridgedArg<$tom_core_server_31.TomDbTable>(value, 'table'),
       'columnInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_15.TomTypePersistenceInfo>(target, 'TomTypePersistenceInfo').columnInfo = D4.coerceList<$tom_core_server_30.TomColumnInformation>(value, 'columnInfo'),
+        D4.validateTarget<$tom_core_server_15.TomTypePersistenceInfo>(target, 'TomTypePersistenceInfo').columnInfo = D4.coerceList<$tom_core_server_31.TomColumnInformation>(value, 'columnInfo'),
     },
     constructorSignatures: {
       '': 'TomTypePersistenceInfo(ClassMirror classMirror, TomDbTable table, List<TomColumnInformation> columnInfo)',
@@ -5499,7 +5934,7 @@ BridgedClass _createTomSelectBridge() {
           throw ArgumentError('TomSelect: Missing required argument "types" at position 0');
         }
         final types = D4.coerceList<Type>(positional[0], 'types');
-        final query = D4.getRequiredNamedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(named, 'query', 'TomSelect');
+        final query = D4.getRequiredNamedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(named, 'query', 'TomSelect');
         final distinct = D4.getNamedArgWithDefault<bool>(named, 'distinct', false);
         final orderBy = named.containsKey('orderBy') && named['orderBy'] != null
             ? D4.coerceList<String>(named['orderBy'], 'orderBy')
@@ -5695,7 +6130,7 @@ BridgedClass _createTomCountBridge() {
           throw ArgumentError('TomCount: Missing required argument "types" at position 0');
         }
         final types = D4.coerceList<Type>(positional[0], 'types');
-        final query = D4.getRequiredNamedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(named, 'query', 'TomCount');
+        final query = D4.getRequiredNamedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(named, 'query', 'TomCount');
         final distinct = D4.getNamedArgWithDefault<bool>(named, 'distinct', false);
         final orderBy = named.containsKey('orderBy') && named['orderBy'] != null
             ? D4.coerceList<String>(named['orderBy'], 'orderBy')
@@ -5800,7 +6235,7 @@ BridgedClass _createTomDeleteBridge() {
           throw ArgumentError('TomDelete: Missing required argument "types" at position 0');
         }
         final types = D4.coerceList<Type>(positional[0], 'types');
-        final query = D4.getRequiredNamedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(named, 'query', 'TomDelete');
+        final query = D4.getRequiredNamedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(named, 'query', 'TomDelete');
         final distinct = D4.getNamedArgWithDefault<bool>(named, 'distinct', false);
         final orderBy = named.containsKey('orderBy') && named['orderBy'] != null
             ? D4.coerceList<String>(named['orderBy'], 'orderBy')
@@ -5906,108 +6341,108 @@ BridgedClass _createTomStandardSqlDialectBridge() {
       'isNull': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 1, 'isNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
         return t.isNull(what);
       },
       'isNotNull': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 1, 'isNotNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
         return t.isNotNull(what);
       },
       'isin': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'isin');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isin');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isin');
         if (positional.length <= 1) {
           throw ArgumentError('isin: Missing required argument "choices" at position 1');
         }
-        final choices = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'choices');
+        final choices = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'choices');
         return t.isin(what, choices);
       },
       'between': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'between');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'between');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'between');
         if (positional.length <= 1) {
           throw ArgumentError('between: Missing required argument "betweenLimits" at position 1');
         }
-        final betweenLimits = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'betweenLimits');
+        final betweenLimits = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'betweenLimits');
         return t.between(what, betweenLimits);
       },
       'like': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'like');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'like');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'like');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'like');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'like');
         return t.like(text, test);
       },
       'notLike': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'notLike');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'notLike');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'notLike');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'notLike');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'notLike');
         return t.notLike(text, test);
       },
       'regexp': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'regexp');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'regexp');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'regexp');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'regexp');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'regexp');
         return t.regexp(text, test);
       },
       'group': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 1, 'group');
-        final operant = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
+        final operant = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
         return t.group(operant);
       },
       'eq': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'eq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
         return t.eq(operant1, operant2);
       },
       'neq': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'neq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
         return t.neq(operant1, operant2);
       },
       'lt': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'lt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
         return t.lt(operant1, operant2);
       },
       'lte': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'lte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
         return t.lte(operant1, operant2);
       },
       'gt': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'gt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
         return t.gt(operant1, operant2);
       },
       'gte': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 2, 'gte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
         return t.gte(operant1, operant2);
       },
       'not': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 1, 'not');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'operant1', 'not');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'operant1', 'not');
         return t.not(operant1);
       },
       'and': (visitor, target, positional, named, typeArgs) {
@@ -6016,7 +6451,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         if (positional.isEmpty) {
           throw ArgumentError('and: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.and(operant1);
       },
       'or': (visitor, target, positional, named, typeArgs) {
@@ -6025,7 +6460,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         if (positional.isEmpty) {
           throw ArgumentError('or: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.or(operant1);
       },
       'text': (visitor, target, positional, named, typeArgs) {
@@ -6090,7 +6525,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 3, 'textF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'textF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'textF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'textF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'textF');
         return t.textF(fieldName, column, dbType);
       },
@@ -6098,7 +6533,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 3, 'intF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'intF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'intF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'intF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'intF');
         return t.intF(fieldName, column, dbType);
       },
@@ -6106,7 +6541,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 3, 'doubleF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'doubleF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'doubleF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'doubleF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'doubleF');
         return t.doubleF(fieldName, column, dbType);
       },
@@ -6114,7 +6549,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 3, 'boolF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'boolF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'boolF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'boolF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'boolF');
         return t.boolF(fieldName, column, dbType);
       },
@@ -6122,7 +6557,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 3, 'dateTimeF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateTimeF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'dateTimeF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'dateTimeF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'dateTimeF');
         return t.dateTimeF(fieldName, column, dbType);
       },
@@ -6130,7 +6565,7 @@ BridgedClass _createTomStandardSqlDialectBridge() {
         final t = D4.validateTarget<$tom_core_server_16.TomStandardSqlDialect>(target, 'TomStandardSqlDialect');
         D4.requireMinArgs(positional, 3, 'dateF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateF');
-        final column = D4.getRequiredArg<$tom_core_server_29.DbCol>(positional, 1, 'column', 'dateF');
+        final column = D4.getRequiredArg<$tom_core_server_30.DbCol>(positional, 1, 'column', 'dateF');
         final dbType = D4.getRequiredArg<Type>(positional, 2, 'dbType', 'dateF');
         return t.dateF(fieldName, column, dbType);
       },
@@ -6205,95 +6640,125 @@ BridgedClass _createTomSqlDialectBridge() {
 }
 
 // =============================================================================
+// SqlPlaceholderScan Bridge
+// =============================================================================
+
+BridgedClass _createSqlPlaceholderScanBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_server_17.SqlPlaceholderScan,
+    name: 'SqlPlaceholderScan',
+    isAssignable: (v) => v is $tom_core_server_17.SqlPlaceholderScan,
+    constructors: {
+    },
+    staticMethods: {
+      'toPositional': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'toPositional');
+        final namedSql = D4.getRequiredArg<String>(positional, 0, 'namedSql', 'toPositional');
+        return $tom_core_server_17.SqlPlaceholderScan.toPositional(namedSql);
+      },
+      'extractNames': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'extractNames');
+        final namedSql = D4.getRequiredArg<String>(positional, 0, 'namedSql', 'extractNames');
+        return $tom_core_server_17.SqlPlaceholderScan.extractNames(namedSql);
+      },
+    },
+    staticMethodSignatures: {
+      'toPositional': '(String, List<String>) toPositional(String namedSql)',
+      'extractNames': 'List<String> extractNames(String namedSql)',
+    },
+  );
+}
+
+// =============================================================================
 // TomDbType Bridge
 // =============================================================================
 
 BridgedClass _createTomDbTypeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbType,
+    nativeType: $tom_core_server_18.TomDbType,
     name: 'TomDbType',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbType,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbType,
     hierarchyDepth: 2,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<dynamic>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         final other = D4.getRequiredArg<dynamic>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         final other = D4.getRequiredArg<dynamic>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbType>(target, 'TomDbType');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbType>(target, 'TomDbType');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -6324,94 +6789,94 @@ BridgedClass _createTomDbTypeBridge() {
 
 BridgedClass _createTomDbIntBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbInt,
+    nativeType: $tom_core_server_18.TomDbInt,
     name: 'TomDbInt',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbInt,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbInt,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbInt');
         final value = D4.getRequiredArg<int?>(positional, 0, 'value', 'TomDbInt');
-        return $tom_core_server_17.TomDbInt(value);
+        return $tom_core_server_18.TomDbInt(value);
       },
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<int?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         final other = D4.getRequiredArg<int?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         final other = D4.getRequiredArg<int?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbInt>(target, 'TomDbInt');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbInt>(target, 'TomDbInt');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -6420,7 +6885,7 @@ BridgedClass _createTomDbIntBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final s = D4.getRequiredArg<String?>(positional, 0, 's', 'of');
-        return $tom_core_server_17.TomDbInt.of(s);
+        return $tom_core_server_18.TomDbInt.of(s);
       },
     },
     constructorSignatures: {
@@ -6455,94 +6920,94 @@ BridgedClass _createTomDbIntBridge() {
 
 BridgedClass _createTomDbDoubleBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbDouble,
+    nativeType: $tom_core_server_18.TomDbDouble,
     name: 'TomDbDouble',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbDouble,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbDouble,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbDouble');
         final value = D4.getRequiredArg<double?>(positional, 0, 'value', 'TomDbDouble');
-        return $tom_core_server_17.TomDbDouble(value);
+        return $tom_core_server_18.TomDbDouble(value);
       },
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<double?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         final other = D4.getRequiredArg<double?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         final other = D4.getRequiredArg<double?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDouble>(target, 'TomDbDouble');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDouble>(target, 'TomDbDouble');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -6551,7 +7016,7 @@ BridgedClass _createTomDbDoubleBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final s = D4.getRequiredArg<String?>(positional, 0, 's', 'of');
-        return $tom_core_server_17.TomDbDouble.of(s);
+        return $tom_core_server_18.TomDbDouble.of(s);
       },
     },
     constructorSignatures: {
@@ -6586,94 +7051,94 @@ BridgedClass _createTomDbDoubleBridge() {
 
 BridgedClass _createTomDbStringBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbString,
+    nativeType: $tom_core_server_18.TomDbString,
     name: 'TomDbString',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbString,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbString,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbString');
         final value = D4.getRequiredArg<String?>(positional, 0, 'value', 'TomDbString');
-        return $tom_core_server_17.TomDbString(value);
+        return $tom_core_server_18.TomDbString(value);
       },
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<String?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         final other = D4.getRequiredArg<String?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         final other = D4.getRequiredArg<String?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbString>(target, 'TomDbString');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbString>(target, 'TomDbString');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -6682,7 +7147,7 @@ BridgedClass _createTomDbStringBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final s = D4.getRequiredArg<String?>(positional, 0, 's', 'of');
-        return $tom_core_server_17.TomDbString.of(s);
+        return $tom_core_server_18.TomDbString.of(s);
       },
     },
     constructorSignatures: {
@@ -6717,94 +7182,94 @@ BridgedClass _createTomDbStringBridge() {
 
 BridgedClass _createTomDbDateTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbDateTime,
+    nativeType: $tom_core_server_18.TomDbDateTime,
     name: 'TomDbDateTime',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbDateTime,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbDateTime,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbDateTime');
         final value = D4.getRequiredArg<DateTime?>(positional, 0, 'value', 'TomDbDateTime');
-        return $tom_core_server_17.TomDbDateTime(value);
+        return $tom_core_server_18.TomDbDateTime(value);
       },
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<DateTime?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         final other = D4.getRequiredArg<DateTime?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         final other = D4.getRequiredArg<DateTime?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDateTime>(target, 'TomDbDateTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDateTime>(target, 'TomDbDateTime');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -6813,7 +7278,7 @@ BridgedClass _createTomDbDateTimeBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final s = D4.getRequiredArg<String?>(positional, 0, 's', 'of');
-        return $tom_core_server_17.TomDbDateTime.of(s);
+        return $tom_core_server_18.TomDbDateTime.of(s);
       },
     },
     constructorSignatures: {
@@ -6848,94 +7313,94 @@ BridgedClass _createTomDbDateTimeBridge() {
 
 BridgedClass _createTomDbDateBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbDate,
+    nativeType: $tom_core_server_18.TomDbDate,
     name: 'TomDbDate',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbDate,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbDate,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbDate');
         final value = D4.getRequiredArg<$tom_core_kernel_12.TomZonedDate?>(positional, 0, 'value', 'TomDbDate');
-        return $tom_core_server_17.TomDbDate(value);
+        return $tom_core_server_18.TomDbDate(value);
       },
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<$tom_core_kernel_12.TomZonedDate?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         final other = D4.getRequiredArg<$tom_core_kernel_12.TomZonedDate?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         final other = D4.getRequiredArg<$tom_core_kernel_12.TomZonedDate?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbDate>(target, 'TomDbDate');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbDate>(target, 'TomDbDate');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -6944,7 +7409,7 @@ BridgedClass _createTomDbDateBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final s = D4.getRequiredArg<String?>(positional, 0, 's', 'of');
-        return $tom_core_server_17.TomDbDate.of(s);
+        return $tom_core_server_18.TomDbDate.of(s);
       },
     },
     constructorSignatures: {
@@ -6979,94 +7444,94 @@ BridgedClass _createTomDbDateBridge() {
 
 BridgedClass _createTomDbTimeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbTime,
+    nativeType: $tom_core_server_18.TomDbTime,
     name: 'TomDbTime',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbTime,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbTime,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbTime');
         final value = D4.getRequiredArg<$tom_core_kernel_12.TomZonedTime?>(positional, 0, 'value', 'TomDbTime');
-        return $tom_core_server_17.TomDbTime(value);
+        return $tom_core_server_18.TomDbTime(value);
       },
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<$tom_core_kernel_12.TomZonedTime?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         final other = D4.getRequiredArg<$tom_core_kernel_12.TomZonedTime?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         final other = D4.getRequiredArg<$tom_core_kernel_12.TomZonedTime?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbTime>(target, 'TomDbTime');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbTime>(target, 'TomDbTime');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -7075,7 +7540,7 @@ BridgedClass _createTomDbTimeBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final s = D4.getRequiredArg<String?>(positional, 0, 's', 'of');
-        return $tom_core_server_17.TomDbTime.of(s);
+        return $tom_core_server_18.TomDbTime.of(s);
       },
     },
     constructorSignatures: {
@@ -7110,94 +7575,94 @@ BridgedClass _createTomDbTimeBridge() {
 
 BridgedClass _createTomDbBoolBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomDbBool,
+    nativeType: $tom_core_server_18.TomDbBool,
     name: 'TomDbBool',
-    isAssignable: (v) => v is $tom_core_server_17.TomDbBool,
+    isAssignable: (v) => v is $tom_core_server_18.TomDbBool,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbBool');
         final value = D4.getRequiredArg<bool?>(positional, 0, 'value', 'TomDbBool');
-        return $tom_core_server_17.TomDbBool(value);
+        return $tom_core_server_18.TomDbBool(value);
       },
     },
     getters: {
-      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool').isNull,
-      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool').isMuted,
+      'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool').isNull,
+      'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool').isMuted,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         return t.toString();
       },
       'getType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         return t.getType();
       },
       'get': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         return t.get();
       },
       'set': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         D4.requireMinArgs(positional, 1, 'set');
         final value = D4.getRequiredArg<bool?>(positional, 0, 'value', 'set');
         return t.set(value);
       },
       'getOrNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         return t.getOrNull();
       },
       'call': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         return t.call();
       },
       'mute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         t.mute();
         return null;
       },
       'unmute': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         t.unmute();
         return null;
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         D4.requireMinArgs(positional, 1, 'addObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'addObserver');
         t.addObserver(observer);
         return null;
       },
       'removeObserver': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         D4.requireMinArgs(positional, 1, 'removeObserver');
         final observer = D4.getRequiredArg<$tom_core_kernel_5.TomObserver<$tom_core_kernel_5.TomObservable>>(positional, 0, 'observer', 'removeObserver');
         t.removeObserver(observer);
         return null;
       },
       'notifyObservers': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         final message = D4.getOptionalArg<dynamic>(positional, 0, 'message');
         t.notifyObservers(message);
         return null;
       },
       '~': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         return ~t;
       },
       '|': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         final other = D4.getRequiredArg<bool?>(positional, 0, 'other', 'operator|');
         return t | other;
       },
       '<<': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         final other = D4.getRequiredArg<bool?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
       '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomDbBool>(target, 'TomDbBool');
+        final t = D4.validateTarget<$tom_core_server_18.TomDbBool>(target, 'TomDbBool');
         final other = D4.getRequiredArg<void Function($tom_core_kernel_5.TomObservable)>(positional, 0, 'other', 'operator>>');
         return t >> other;
       },
@@ -7206,7 +7671,7 @@ BridgedClass _createTomDbBoolBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final s = D4.getRequiredArg<String?>(positional, 0, 's', 'of');
-        return $tom_core_server_17.TomDbBool.of(s);
+        return $tom_core_server_18.TomDbBool.of(s);
       },
     },
     constructorSignatures: {
@@ -7241,61 +7706,61 @@ BridgedClass _createTomDbBoolBridge() {
 
 BridgedClass _createTomOperatorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_17.TomOperator,
+    nativeType: $tom_core_server_18.TomOperator,
     name: 'TomOperator',
-    isAssignable: (v) => v is $tom_core_server_17.TomOperator,
+    isAssignable: (v) => v is $tom_core_server_18.TomOperator,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator').returnType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator').returnType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator');
+        final t = D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator');
+        final t = D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator');
+        final t = D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator');
+        final t = D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator');
+        final t = D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_17.TomOperator>(target, 'TomOperator');
+        final t = D4.validateTarget<$tom_core_server_18.TomOperator>(target, 'TomOperator');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
       },
     },
     staticGetters: {
-      'defaultDialect': (visitor) => $tom_core_server_17.TomOperator.defaultDialect,
+      'defaultDialect': (visitor) => $tom_core_server_18.TomOperator.defaultDialect,
     },
     staticSetters: {
       'defaultDialect': (visitor, value) => 
-        $tom_core_server_17.TomOperator.defaultDialect = D4.extractBridgedArg<$tom_core_server_16.TomStandardSqlDialect>(value, 'defaultDialect'),
+        $tom_core_server_18.TomOperator.defaultDialect = D4.extractBridgedArg<$tom_core_server_16.TomStandardSqlDialect>(value, 'defaultDialect'),
     },
     methodSignatures: {
       'generate': 'String generate(TomStandardSqlDialect t)',
@@ -7326,9 +7791,9 @@ BridgedClass _createTomOperatorBridge() {
 
 BridgedClass _createTomDbMigrationExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_18.TomDbMigrationException,
+    nativeType: $tom_core_server_19.TomDbMigrationException,
     name: 'TomDbMigrationException',
-    isAssignable: (v) => v is $tom_core_server_18.TomDbMigrationException,
+    isAssignable: (v) => v is $tom_core_server_19.TomDbMigrationException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -7339,61 +7804,61 @@ BridgedClass _createTomDbMigrationExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_18.TomDbMigrationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_19.TomDbMigrationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException');
+        final t = D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_18.TomDbMigrationException>(target, 'TomDbMigrationException');
+        final t = D4.validateTarget<$tom_core_server_19.TomDbMigrationException>(target, 'TomDbMigrationException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -7448,18 +7913,18 @@ BridgedClass _createTomDbMigrationExceptionBridge() {
 
 BridgedClass _createTomDbMigrationAdaptorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_18.TomDbMigrationAdaptor,
+    nativeType: $tom_core_server_19.TomDbMigrationAdaptor,
     name: 'TomDbMigrationAdaptor',
-    isAssignable: (v) => v is $tom_core_server_18.TomDbMigrationAdaptor,
+    isAssignable: (v) => v is $tom_core_server_19.TomDbMigrationAdaptor,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDbMigrationAdaptor');
         final type = D4.getRequiredArg<String>(positional, 0, 'type', 'TomDbMigrationAdaptor');
-        return $tom_core_server_18.TomDbMigrationAdaptor(type);
+        return $tom_core_server_19.TomDbMigrationAdaptor(type);
       },
     },
     getters: {
-      'type': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomDbMigrationAdaptor>(target, 'TomDbMigrationAdaptor').type,
+      'type': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbMigrationAdaptor>(target, 'TomDbMigrationAdaptor').type,
     },
     constructorSignatures: {
       '': 'const TomDbMigrationAdaptor(String type)',
@@ -7476,22 +7941,22 @@ BridgedClass _createTomDbMigrationAdaptorBridge() {
 
 BridgedClass _createTomDbMigratorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_18.TomDbMigrator,
+    nativeType: $tom_core_server_19.TomDbMigrator,
     name: 'TomDbMigrator',
-    isAssignable: (v) => v is $tom_core_server_18.TomDbMigrator,
+    isAssignable: (v) => v is $tom_core_server_19.TomDbMigrator,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'initializeMigration': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_18.TomDbMigrator>(target, 'TomDbMigrator');
+        final t = D4.validateTarget<$tom_core_server_19.TomDbMigrator>(target, 'TomDbMigrator');
         D4.requireMinArgs(positional, 2, 'initializeMigration');
         final dsi = D4.getRequiredArg<$tom_core_server_12.TomDataSourceInfo>(positional, 0, 'dsi', 'initializeMigration');
         final schemaName = D4.getRequiredArg<String>(positional, 1, 'schemaName', 'initializeMigration');
         return t.initializeMigration(dsi, schemaName);
       },
       'applyMigration': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_18.TomDbMigrator>(target, 'TomDbMigrator');
+        final t = D4.validateTarget<$tom_core_server_19.TomDbMigrator>(target, 'TomDbMigrator');
         D4.requireMinArgs(positional, 5, 'applyMigration');
         final dsi = D4.getRequiredArg<$tom_core_server_12.TomDataSourceInfo>(positional, 0, 'dsi', 'applyMigration');
         final schemaName = D4.getRequiredArg<String>(positional, 1, 'schemaName', 'applyMigration');
@@ -7501,7 +7966,7 @@ BridgedClass _createTomDbMigratorBridge() {
         return t.applyMigration(dsi, schemaName, version, description, sql);
       },
       'reset': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_18.TomDbMigrator>(target, 'TomDbMigrator');
+        final t = D4.validateTarget<$tom_core_server_19.TomDbMigrator>(target, 'TomDbMigrator');
         t.reset();
         return null;
       },
@@ -7520,9 +7985,9 @@ BridgedClass _createTomDbMigratorBridge() {
 
 BridgedClass _createTomMigrationFileNameBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_18.TomMigrationFileName,
+    nativeType: $tom_core_server_19.TomMigrationFileName,
     name: 'TomMigrationFileName',
-    isAssignable: (v) => v is $tom_core_server_18.TomMigrationFileName,
+    isAssignable: (v) => v is $tom_core_server_19.TomMigrationFileName,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'TomMigrationFileName');
@@ -7531,17 +7996,17 @@ BridgedClass _createTomMigrationFileNameBridge() {
         final environments = positional.length > 2 && positional[2] != null
             ? D4.coerceList<String>(positional[2], 'environments')
             : const <String>[];
-        return $tom_core_server_18.TomMigrationFileName(version, description, environments);
+        return $tom_core_server_19.TomMigrationFileName(version, description, environments);
       },
     },
     getters: {
-      'version': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomMigrationFileName>(target, 'TomMigrationFileName').version,
-      'description': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomMigrationFileName>(target, 'TomMigrationFileName').description,
-      'environments': (visitor, target) => D4.validateTarget<$tom_core_server_18.TomMigrationFileName>(target, 'TomMigrationFileName').environments,
+      'version': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomMigrationFileName>(target, 'TomMigrationFileName').version,
+      'description': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomMigrationFileName>(target, 'TomMigrationFileName').description,
+      'environments': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomMigrationFileName>(target, 'TomMigrationFileName').environments,
     },
     methods: {
       'appliesInEnvironment': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_18.TomMigrationFileName>(target, 'TomMigrationFileName');
+        final t = D4.validateTarget<$tom_core_server_19.TomMigrationFileName>(target, 'TomMigrationFileName');
         D4.requireMinArgs(positional, 1, 'appliesInEnvironment');
         final environmentName = D4.getRequiredArg<String>(positional, 0, 'environmentName', 'appliesInEnvironment');
         return t.appliesInEnvironment(environmentName);
@@ -7567,19 +8032,19 @@ BridgedClass _createTomMigrationFileNameBridge() {
 
 BridgedClass _createTomDbMigrationsBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_18.TomDbMigrations,
+    nativeType: $tom_core_server_19.TomDbMigrations,
     name: 'TomDbMigrations',
-    isAssignable: (v) => v is $tom_core_server_18.TomDbMigrations,
+    isAssignable: (v) => v is $tom_core_server_19.TomDbMigrations,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_18.TomDbMigrations();
+        return $tom_core_server_19.TomDbMigrations();
       },
     },
     staticMethods: {
       'parseMigrationFileName': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parseMigrationFileName');
         final basename = D4.getRequiredArg<String>(positional, 0, 'basename', 'parseMigrationFileName');
-        return $tom_core_server_18.TomDbMigrations.parseMigrationFileName(basename);
+        return $tom_core_server_19.TomDbMigrations.parseMigrationFileName(basename);
       },
       'orderMigrationNames': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'orderMigrationNames');
@@ -7587,24 +8052,24 @@ BridgedClass _createTomDbMigrationsBridge() {
           throw ArgumentError('orderMigrationNames: Missing required argument "basenames" at position 0');
         }
         final basenames = D4.coerceList<String>(positional[0], 'basenames');
-        return $tom_core_server_18.TomDbMigrations.orderMigrationNames(basenames);
+        return $tom_core_server_19.TomDbMigrations.orderMigrationNames(basenames);
       },
       'resolveActiveEnvironment': (visitor, positional, named, typeArgs) {
-        return $tom_core_server_18.TomDbMigrations.resolveActiveEnvironment();
+        return $tom_core_server_19.TomDbMigrations.resolveActiveEnvironment();
       },
       'selectForEnvironment': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'selectForEnvironment');
         if (positional.isEmpty) {
           throw ArgumentError('selectForEnvironment: Missing required argument "ordered" at position 0');
         }
-        final ordered = D4.coerceList<({String basename, $tom_core_server_18.TomMigrationFileName parsed})>(positional[0], 'ordered');
+        final ordered = D4.coerceList<({String basename, $tom_core_server_19.TomMigrationFileName parsed})>(positional[0], 'ordered');
         final environmentName = D4.getRequiredArg<String>(positional, 1, 'environmentName', 'selectForEnvironment');
-        return $tom_core_server_18.TomDbMigrations.selectForEnvironment(ordered, environmentName);
+        return $tom_core_server_19.TomDbMigrations.selectForEnvironment(ordered, environmentName);
       },
       'migrateDatabases': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'migrateDatabases');
         final directory = D4.getRequiredArg<String>(positional, 0, 'directory', 'migrateDatabases');
-        return $tom_core_server_18.TomDbMigrations.migrateDatabases(directory);
+        return $tom_core_server_19.TomDbMigrations.migrateDatabases(directory);
       },
     },
     constructorSignatures: {
@@ -7626,9 +8091,9 @@ BridgedClass _createTomDbMigrationsBridge() {
 
 BridgedClass _createMariadbMigrationExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_19.MariadbMigrationException,
+    nativeType: $tom_core_server_20.MariadbMigrationException,
     name: 'MariadbMigrationException',
-    isAssignable: (v) => v is $tom_core_server_19.MariadbMigrationException,
+    isAssignable: (v) => v is $tom_core_server_20.MariadbMigrationException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -7639,61 +8104,61 @@ BridgedClass _createMariadbMigrationExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_19.MariadbMigrationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_20.MariadbMigrationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException');
+        final t = D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_19.MariadbMigrationException>(target, 'MariadbMigrationException');
+        final t = D4.validateTarget<$tom_core_server_20.MariadbMigrationException>(target, 'MariadbMigrationException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -7748,30 +8213,30 @@ BridgedClass _createMariadbMigrationExceptionBridge() {
 
 BridgedClass _createMariadbMigrationAdaptorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_19.MariadbMigrationAdaptor,
+    nativeType: $tom_core_server_20.MariadbMigrationAdaptor,
     name: 'MariadbMigrationAdaptor',
-    isAssignable: (v) => v is $tom_core_server_19.MariadbMigrationAdaptor,
+    isAssignable: (v) => v is $tom_core_server_20.MariadbMigrationAdaptor,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_19.MariadbMigrationAdaptor();
+        return $tom_core_server_20.MariadbMigrationAdaptor();
       },
     },
     getters: {
-      'versions': (visitor, target) => D4.validateTarget<$tom_core_server_19.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor').versions,
+      'versions': (visitor, target) => D4.validateTarget<$tom_core_server_20.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor').versions,
     },
     setters: {
       'versions': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor').versions = D4.coerceList<$tom_core_server_19.TomDbVersion>(value, 'versions'),
+        D4.validateTarget<$tom_core_server_20.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor').versions = D4.coerceList<$tom_core_server_20.TomDbVersion>(value, 'versions'),
     },
     methods: {
       'reset': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_19.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor');
+        final t = D4.validateTarget<$tom_core_server_20.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor');
         t.reset();
         return null;
       },
       'applyMigration': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_19.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor');
+        final t = D4.validateTarget<$tom_core_server_20.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor');
         D4.requireMinArgs(positional, 5, 'applyMigration');
         final dsi = D4.getRequiredArg<$tom_core_server_12.TomDataSourceInfo>(positional, 0, 'dsi', 'applyMigration');
         final schemaName = D4.getRequiredArg<String>(positional, 1, 'schemaName', 'applyMigration');
@@ -7781,7 +8246,7 @@ BridgedClass _createMariadbMigrationAdaptorBridge() {
         return t.applyMigration(dsi, schemaName, version, description, sql);
       },
       'initializeMigration': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_19.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor');
+        final t = D4.validateTarget<$tom_core_server_20.MariadbMigrationAdaptor>(target, 'MariadbMigrationAdaptor');
         D4.requireMinArgs(positional, 2, 'initializeMigration');
         final dsi = D4.getRequiredArg<$tom_core_server_12.TomDataSourceInfo>(positional, 0, 'dsi', 'initializeMigration');
         final schemaName = D4.getRequiredArg<String>(positional, 1, 'schemaName', 'initializeMigration');
@@ -7792,7 +8257,7 @@ BridgedClass _createMariadbMigrationAdaptorBridge() {
       'splitSqlStatements': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'splitSqlStatements');
         final sql = D4.getRequiredArg<String>(positional, 0, 'sql', 'splitSqlStatements');
-        return $tom_core_server_19.MariadbMigrationAdaptor.splitSqlStatements(sql);
+        return $tom_core_server_20.MariadbMigrationAdaptor.splitSqlStatements(sql);
       },
     },
     constructorSignatures: {
@@ -7821,41 +8286,41 @@ BridgedClass _createMariadbMigrationAdaptorBridge() {
 
 BridgedClass _createTomDbVersionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_19.TomDbVersion,
+    nativeType: $tom_core_server_20.TomDbVersion,
     name: 'TomDbVersion',
-    isAssignable: (v) => v is $tom_core_server_19.TomDbVersion,
+    isAssignable: (v) => v is $tom_core_server_20.TomDbVersion,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_19.TomDbVersion();
+        return $tom_core_server_20.TomDbVersion();
       },
     },
     getters: {
-      'installedRank': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').installedRank,
-      'version': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').version,
-      'description': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').description,
-      'script': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').script,
-      'checksum': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').checksum,
-      'installedBy': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').installedBy,
-      'installedOn': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').installedOn,
-      'success': (visitor, target) => D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').success,
+      'installedRank': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').installedRank,
+      'version': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').version,
+      'description': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').description,
+      'script': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').script,
+      'checksum': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').checksum,
+      'installedBy': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').installedBy,
+      'installedOn': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').installedOn,
+      'success': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').success,
     },
     setters: {
       'installedRank': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').installedRank = D4.extractBridgedArg<int>(value, 'installedRank'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').installedRank = D4.extractBridgedArg<int>(value, 'installedRank'),
       'version': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').version = D4.extractBridgedArg<int>(value, 'version'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').version = D4.extractBridgedArg<int>(value, 'version'),
       'description': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').description = D4.extractBridgedArg<String>(value, 'description'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').description = D4.extractBridgedArg<String>(value, 'description'),
       'script': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').script = D4.extractBridgedArg<String>(value, 'script'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').script = D4.extractBridgedArg<String>(value, 'script'),
       'checksum': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').checksum = D4.extractBridgedArg<String>(value, 'checksum'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').checksum = D4.extractBridgedArg<String>(value, 'checksum'),
       'installedBy': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').installedBy = D4.extractBridgedArg<String>(value, 'installedBy'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').installedBy = D4.extractBridgedArg<String>(value, 'installedBy'),
       'installedOn': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').installedOn = D4.extractBridgedArg<DateTime>(value, 'installedOn'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').installedOn = D4.extractBridgedArg<DateTime>(value, 'installedOn'),
       'success': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_19.TomDbVersion>(target, 'TomDbVersion').success = D4.extractBridgedArg<int>(value, 'success'),
+        D4.validateTarget<$tom_core_server_20.TomDbVersion>(target, 'TomDbVersion').success = D4.extractBridgedArg<int>(value, 'success'),
     },
     constructorSignatures: {
       '': 'TomDbVersion()',
@@ -7889,15 +8354,15 @@ BridgedClass _createTomDbVersionBridge() {
 
 BridgedClass _createTomErrorHandlerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomErrorHandler,
+    nativeType: $tom_core_server_21.TomErrorHandler,
     name: 'TomErrorHandler',
-    isAssignable: (v) => v is $tom_core_server_20.TomErrorHandler,
+    isAssignable: (v) => v is $tom_core_server_21.TomErrorHandler,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'handleInvocationError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomErrorHandler>(target, 'TomErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomErrorHandler>(target, 'TomErrorHandler');
         D4.requireMinArgs(positional, 3, 'handleInvocationError');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleInvocationError');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleInvocationError');
@@ -7905,7 +8370,7 @@ BridgedClass _createTomErrorHandlerBridge() {
         return t.handleInvocationError(error, stacktrace, r);
       },
       'handleConversionError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomErrorHandler>(target, 'TomErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomErrorHandler>(target, 'TomErrorHandler');
         D4.requireMinArgs(positional, 4, 'handleConversionError');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleConversionError');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleConversionError');
@@ -7914,7 +8379,7 @@ BridgedClass _createTomErrorHandlerBridge() {
         return t.handleConversionError(error, stacktrace, r, result);
       },
       'handleUnknowResultTypeError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomErrorHandler>(target, 'TomErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomErrorHandler>(target, 'TomErrorHandler');
         D4.requireMinArgs(positional, 4, 'handleUnknowResultTypeError');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleUnknowResultTypeError');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleUnknowResultTypeError');
@@ -7923,7 +8388,7 @@ BridgedClass _createTomErrorHandlerBridge() {
         return t.handleUnknowResultTypeError(error, stacktrace, r, result);
       },
       'handleErrorDefault': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomErrorHandler>(target, 'TomErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomErrorHandler>(target, 'TomErrorHandler');
         D4.requireMinArgs(positional, 4, 'handleErrorDefault');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleErrorDefault');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleErrorDefault');
@@ -7947,18 +8412,18 @@ BridgedClass _createTomErrorHandlerBridge() {
 
 BridgedClass _createTomDefaultErrorHandlerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomDefaultErrorHandler,
+    nativeType: $tom_core_server_21.TomDefaultErrorHandler,
     name: 'TomDefaultErrorHandler',
-    isAssignable: (v) => v is $tom_core_server_20.TomDefaultErrorHandler,
+    isAssignable: (v) => v is $tom_core_server_21.TomDefaultErrorHandler,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_20.TomDefaultErrorHandler();
+        return $tom_core_server_21.TomDefaultErrorHandler();
       },
     },
     methods: {
       'handleInvocationError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
         D4.requireMinArgs(positional, 3, 'handleInvocationError');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleInvocationError');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleInvocationError');
@@ -7966,7 +8431,7 @@ BridgedClass _createTomDefaultErrorHandlerBridge() {
         return t.handleInvocationError(error, stacktrace, r);
       },
       'handleConversionError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
         D4.requireMinArgs(positional, 4, 'handleConversionError');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleConversionError');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleConversionError');
@@ -7975,7 +8440,7 @@ BridgedClass _createTomDefaultErrorHandlerBridge() {
         return t.handleConversionError(error, stacktrace, r, result);
       },
       'handleUnknowResultTypeError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
         D4.requireMinArgs(positional, 4, 'handleUnknowResultTypeError');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleUnknowResultTypeError');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleUnknowResultTypeError');
@@ -7984,7 +8449,7 @@ BridgedClass _createTomDefaultErrorHandlerBridge() {
         return t.handleUnknowResultTypeError(error, stacktrace, r, result);
       },
       'handleErrorDefault': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
+        final t = D4.validateTarget<$tom_core_server_21.TomDefaultErrorHandler>(target, 'TomDefaultErrorHandler');
         D4.requireMinArgs(positional, 4, 'handleErrorDefault');
         final error = D4.getRequiredArg<Object>(positional, 0, 'error', 'handleErrorDefault');
         final stacktrace = D4.getRequiredArg<Object>(positional, 1, 'stacktrace', 'handleErrorDefault');
@@ -8011,12 +8476,12 @@ BridgedClass _createTomDefaultErrorHandlerBridge() {
 
 BridgedClass _createTomServiceBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomService,
+    nativeType: $tom_core_server_21.TomService,
     name: 'TomService',
-    isAssignable: (v) => v is $tom_core_server_20.TomService,
+    isAssignable: (v) => v is $tom_core_server_21.TomService,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_20.TomService();
+        return $tom_core_server_21.TomService();
       },
     },
     constructorSignatures: {
@@ -8031,22 +8496,22 @@ BridgedClass _createTomServiceBridge() {
 
 BridgedClass _createTomApiImplementationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomApiImplementation,
+    nativeType: $tom_core_server_21.TomApiImplementation,
     name: 'TomApiImplementation',
-    isAssignable: (v) => v is $tom_core_server_20.TomApiImplementation,
+    isAssignable: (v) => v is $tom_core_server_21.TomApiImplementation,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final apiId = D4.getRequiredNamedArg<String>(named, 'apiId', 'TomApiImplementation');
-        final errorHandler = D4.getOptionalNamedArg<$tom_core_server_20.TomErrorHandler?>(named, 'errorHandler');
+        final errorHandler = D4.getOptionalNamedArg<$tom_core_server_21.TomErrorHandler?>(named, 'errorHandler');
         final logRequestsDefault = D4.getNamedArgWithDefault<bool>(named, 'logRequestsDefault', true);
-        return $tom_core_server_20.TomApiImplementation(apiId: apiId, errorHandler: errorHandler, logRequestsDefault: logRequestsDefault);
+        return $tom_core_server_21.TomApiImplementation(apiId: apiId, errorHandler: errorHandler, logRequestsDefault: logRequestsDefault);
       },
     },
     getters: {
-      'apiId': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiImplementation>(target, 'TomApiImplementation').apiId,
-      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiImplementation>(target, 'TomApiImplementation').errorHandler,
-      'logRequestsDefault': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiImplementation>(target, 'TomApiImplementation').logRequestsDefault,
+      'apiId': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiImplementation>(target, 'TomApiImplementation').apiId,
+      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiImplementation>(target, 'TomApiImplementation').errorHandler,
+      'logRequestsDefault': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiImplementation>(target, 'TomApiImplementation').logRequestsDefault,
     },
     constructorSignatures: {
       '': 'const TomApiImplementation({required String apiId, TomErrorHandler? errorHandler, bool logRequestsDefault = true})',
@@ -8065,16 +8530,16 @@ BridgedClass _createTomApiImplementationBridge() {
 
 BridgedClass _createTomEndpointBaseBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomEndpointBase,
+    nativeType: $tom_core_server_21.TomEndpointBase,
     name: 'TomEndpointBase',
-    isAssignable: (v) => v is $tom_core_server_20.TomEndpointBase,
+    isAssignable: (v) => v is $tom_core_server_21.TomEndpointBase,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'convertToTomEndpoint': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomEndpointBase>(target, 'TomEndpointBase');
-        final apiImplementation = D4.getOptionalArg<$tom_core_server_20.TomApiImplementation?>(positional, 0, 'apiImplementation');
+        final t = D4.validateTarget<$tom_core_server_21.TomEndpointBase>(target, 'TomEndpointBase');
+        final apiImplementation = D4.getOptionalArg<$tom_core_server_21.TomApiImplementation?>(positional, 0, 'apiImplementation');
         return t.convertToTomEndpoint(apiImplementation);
       },
     },
@@ -8090,35 +8555,35 @@ BridgedClass _createTomEndpointBaseBridge() {
 
 BridgedClass _createTomApiEndpointImplementationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomApiEndpointImplementation,
+    nativeType: $tom_core_server_21.TomApiEndpointImplementation,
     name: 'TomApiEndpointImplementation',
-    isAssignable: (v) => v is $tom_core_server_20.TomApiEndpointImplementation,
+    isAssignable: (v) => v is $tom_core_server_21.TomApiEndpointImplementation,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final apiId = D4.getRequiredNamedArg<String>(named, 'apiId', 'TomApiEndpointImplementation');
         final endpointId = D4.getRequiredNamedArg<String>(named, 'endpointId', 'TomApiEndpointImplementation');
-        final errorHandler = D4.getOptionalNamedArg<$tom_core_server_20.TomErrorHandler?>(named, 'errorHandler');
+        final errorHandler = D4.getOptionalNamedArg<$tom_core_server_21.TomErrorHandler?>(named, 'errorHandler');
         final logRequests = D4.getOptionalNamedArg<bool?>(named, 'logRequests');
         final corsAllowedOrigins = D4.getOptionalNamedArg<String?>(named, 'corsAllowedOrigins');
         final corsAllowedMethods = D4.getOptionalNamedArg<String?>(named, 'corsAllowedMethods');
         final corsAllowedHeaders = D4.getOptionalNamedArg<String?>(named, 'corsAllowedHeaders');
-        return $tom_core_server_20.TomApiEndpointImplementation(apiId: apiId, endpointId: endpointId, errorHandler: errorHandler, logRequests: logRequests, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders);
+        return $tom_core_server_21.TomApiEndpointImplementation(apiId: apiId, endpointId: endpointId, errorHandler: errorHandler, logRequests: logRequests, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders);
       },
     },
     getters: {
-      'apiId': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').apiId,
-      'endpointId': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').endpointId,
-      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').errorHandler,
-      'logRequests': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').logRequests,
-      'corsAllowedOrigins': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').corsAllowedOrigins,
-      'corsAllowedMethods': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').corsAllowedMethods,
-      'corsAllowedHeaders': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').corsAllowedHeaders,
+      'apiId': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').apiId,
+      'endpointId': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').endpointId,
+      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').errorHandler,
+      'logRequests': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').logRequests,
+      'corsAllowedOrigins': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').corsAllowedOrigins,
+      'corsAllowedMethods': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').corsAllowedMethods,
+      'corsAllowedHeaders': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation').corsAllowedHeaders,
     },
     methods: {
       'convertToTomEndpoint': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation');
-        final apiImplementation = D4.getOptionalArg<$tom_core_server_20.TomApiImplementation?>(positional, 0, 'apiImplementation');
+        final t = D4.validateTarget<$tom_core_server_21.TomApiEndpointImplementation>(target, 'TomApiEndpointImplementation');
+        final apiImplementation = D4.getOptionalArg<$tom_core_server_21.TomApiImplementation?>(positional, 0, 'apiImplementation');
         return t.convertToTomEndpoint(apiImplementation);
       },
     },
@@ -8146,9 +8611,9 @@ BridgedClass _createTomApiEndpointImplementationBridge() {
 
 BridgedClass _createTomEndpointBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomEndpoint,
+    nativeType: $tom_core_server_21.TomEndpoint,
     name: 'TomEndpoint',
-    isAssignable: (v) => v is $tom_core_server_20.TomEndpoint,
+    isAssignable: (v) => v is $tom_core_server_21.TomEndpoint,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -8170,47 +8635,47 @@ BridgedClass _createTomEndpointBridge() {
             ? D4.coerceMap<String, String>(named['urlParameterMapping'], 'urlParameterMapping')
             : const <String, String>{};
         if (!named.containsKey('methods') && !named.containsKey('errorHandler')) {
-          return $tom_core_server_20.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping);
+          return $tom_core_server_21.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping);
         }
         if (named.containsKey('methods') && !named.containsKey('errorHandler')) {
           final methods = D4.coerceList<$tom_core_kernel_2.TomHttpMethod>(named['methods'], 'methods');
-          return $tom_core_server_20.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping, methods: methods);
+          return $tom_core_server_21.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping, methods: methods);
         }
         if (!named.containsKey('methods') && named.containsKey('errorHandler')) {
-          final errorHandler = D4.getRequiredNamedArg<$tom_core_server_20.TomErrorHandler?>(named, 'errorHandler', 'TomEndpoint');
-          return $tom_core_server_20.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping, errorHandler: errorHandler);
+          final errorHandler = D4.getRequiredNamedArg<$tom_core_server_21.TomErrorHandler?>(named, 'errorHandler', 'TomEndpoint');
+          return $tom_core_server_21.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping, errorHandler: errorHandler);
         }
         if (named.containsKey('methods') && named.containsKey('errorHandler')) {
           final methods = D4.coerceList<$tom_core_kernel_2.TomHttpMethod>(named['methods'], 'methods');
-          final errorHandler = D4.getRequiredNamedArg<$tom_core_server_20.TomErrorHandler?>(named, 'errorHandler', 'TomEndpoint');
-          return $tom_core_server_20.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping, methods: methods, errorHandler: errorHandler);
+          final errorHandler = D4.getRequiredNamedArg<$tom_core_server_21.TomErrorHandler?>(named, 'errorHandler', 'TomEndpoint');
+          return $tom_core_server_21.TomEndpoint(formFields: formFields, uri: uri, consumes: consumes, produces: produces, contentDisposition: contentDisposition, logRequests: logRequests, headers: headers, corsAllowedOrigins: corsAllowedOrigins, corsAllowedMethods: corsAllowedMethods, corsAllowedHeaders: corsAllowedHeaders, urlParameterMapping: urlParameterMapping, methods: methods, errorHandler: errorHandler);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
     },
     getters: {
-      'methods': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').methods,
-      'formFields': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').formFields,
-      'uri': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').uri,
-      'consumes': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').consumes,
-      'produces': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').produces,
-      'contentDisposition': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').contentDisposition,
-      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').errorHandler,
-      'logRequests': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').logRequests,
-      'headers': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').headers,
-      'corsAllowedOrigins': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').corsAllowedOrigins,
-      'corsAllowedMethods': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').corsAllowedMethods,
-      'corsAllowedHeaders': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').corsAllowedHeaders,
-      'urlParameterMapping': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint').urlParameterMapping,
+      'methods': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').methods,
+      'formFields': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').formFields,
+      'uri': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').uri,
+      'consumes': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').consumes,
+      'produces': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').produces,
+      'contentDisposition': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').contentDisposition,
+      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').errorHandler,
+      'logRequests': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').logRequests,
+      'headers': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').headers,
+      'corsAllowedOrigins': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').corsAllowedOrigins,
+      'corsAllowedMethods': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').corsAllowedMethods,
+      'corsAllowedHeaders': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').corsAllowedHeaders,
+      'urlParameterMapping': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint').urlParameterMapping,
     },
     methods: {
       'convertToTomEndpoint': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint');
-        final apiImplementation = D4.getOptionalArg<$tom_core_server_20.TomApiImplementation?>(positional, 0, 'apiImplementation');
+        final t = D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint');
+        final apiImplementation = D4.getOptionalArg<$tom_core_server_21.TomApiImplementation?>(positional, 0, 'apiImplementation');
         return t.convertToTomEndpoint(apiImplementation);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_20.TomEndpoint>(target, 'TomEndpoint');
+        final t = D4.validateTarget<$tom_core_server_21.TomEndpoint>(target, 'TomEndpoint');
         return t.toString();
       },
     },
@@ -8245,19 +8710,19 @@ BridgedClass _createTomEndpointBridge() {
 
 BridgedClass _createTomComponentReferenceBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomComponentReference,
+    nativeType: $tom_core_server_21.TomComponentReference,
     name: 'TomComponentReference',
-    isAssignable: (v) => v is $tom_core_server_20.TomComponentReference,
+    isAssignable: (v) => v is $tom_core_server_21.TomComponentReference,
     constructors: {
       '': (visitor, positional, named) {
         final componentName = D4.getOptionalNamedArg<String?>(named, 'componentName');
         final referencedType = D4.getOptionalNamedArg<Type?>(named, 'referencedType');
-        return $tom_core_server_20.TomComponentReference(componentName: componentName, referencedType: referencedType);
+        return $tom_core_server_21.TomComponentReference(componentName: componentName, referencedType: referencedType);
       },
     },
     getters: {
-      'componentName': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomComponentReference>(target, 'TomComponentReference').componentName,
-      'referencedType': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomComponentReference>(target, 'TomComponentReference').referencedType,
+      'componentName': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomComponentReference>(target, 'TomComponentReference').componentName,
+      'referencedType': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomComponentReference>(target, 'TomComponentReference').referencedType,
     },
     constructorSignatures: {
       '': 'const TomComponentReference({String? componentName, Type? referencedType})',
@@ -8275,19 +8740,19 @@ BridgedClass _createTomComponentReferenceBridge() {
 
 BridgedClass _createTomTransactionalBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_20.TomTransactional,
+    nativeType: $tom_core_server_21.TomTransactional,
     name: 'TomTransactional',
-    isAssignable: (v) => v is $tom_core_server_20.TomTransactional,
+    isAssignable: (v) => v is $tom_core_server_21.TomTransactional,
     constructors: {
       '': (visitor, positional, named) {
         final isReadOnly = D4.getNamedArgWithDefault<bool>(named, 'isReadOnly', false);
         final isTransactional = D4.getNamedArgWithDefault<bool>(named, 'isTransactional', true);
-        return $tom_core_server_20.TomTransactional(isReadOnly: isReadOnly, isTransactional: isTransactional);
+        return $tom_core_server_21.TomTransactional(isReadOnly: isReadOnly, isTransactional: isTransactional);
       },
     },
     getters: {
-      'isTransactional': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomTransactional>(target, 'TomTransactional').isTransactional,
-      'isReadOnly': (visitor, target) => D4.validateTarget<$tom_core_server_20.TomTransactional>(target, 'TomTransactional').isReadOnly,
+      'isTransactional': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomTransactional>(target, 'TomTransactional').isTransactional,
+      'isReadOnly': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomTransactional>(target, 'TomTransactional').isReadOnly,
     },
     constructorSignatures: {
       '': 'const TomTransactional({bool isReadOnly = false, bool isTransactional = true})',
@@ -8305,9 +8770,9 @@ BridgedClass _createTomTransactionalBridge() {
 
 BridgedClass _createTomEndpointHandlerExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_21.TomEndpointHandlerException,
+    nativeType: $tom_core_server_22.TomEndpointHandlerException,
     name: 'TomEndpointHandlerException',
-    isAssignable: (v) => v is $tom_core_server_21.TomEndpointHandlerException,
+    isAssignable: (v) => v is $tom_core_server_22.TomEndpointHandlerException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -8318,61 +8783,61 @@ BridgedClass _createTomEndpointHandlerExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_21.TomEndpointHandlerException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_22.TomEndpointHandlerException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointHandlerException>(target, 'TomEndpointHandlerException');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointHandlerException>(target, 'TomEndpointHandlerException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -8427,9 +8892,9 @@ BridgedClass _createTomEndpointHandlerExceptionBridge() {
 
 BridgedClass _createTomEndpointPipelineExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_21.TomEndpointPipelineException,
+    nativeType: $tom_core_server_22.TomEndpointPipelineException,
     name: 'TomEndpointPipelineException',
-    isAssignable: (v) => v is $tom_core_server_21.TomEndpointPipelineException,
+    isAssignable: (v) => v is $tom_core_server_22.TomEndpointPipelineException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -8440,61 +8905,61 @@ BridgedClass _createTomEndpointPipelineExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_21.TomEndpointPipelineException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_22.TomEndpointPipelineException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointPipelineException>(target, 'TomEndpointPipelineException');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointPipelineException>(target, 'TomEndpointPipelineException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -8549,9 +9014,9 @@ BridgedClass _createTomEndpointPipelineExceptionBridge() {
 
 BridgedClass _createTomEndpointHandlerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_21.TomEndpointHandler,
+    nativeType: $tom_core_server_22.TomEndpointHandler,
     name: 'TomEndpointHandler',
-    isAssignable: (v) => v is $tom_core_server_21.TomEndpointHandler,
+    isAssignable: (v) => v is $tom_core_server_22.TomEndpointHandler,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'TomEndpointHandler');
@@ -8560,75 +9025,75 @@ BridgedClass _createTomEndpointHandlerBridge() {
         final interface = D4.getOptionalNamedArg<$tom_reflection_1.ClassMirror?>(named, 'interface');
         final implementation = D4.getRequiredNamedArg<$tom_reflection_1.ClassMirror>(named, 'implementation', 'TomEndpointHandler');
         final methodName = D4.getRequiredNamedArg<String>(named, 'methodName', 'TomEndpointHandler');
-        final metadata = D4.getRequiredNamedArg<$tom_core_server_21.TomMethodMetadata>(named, 'metadata', 'TomEndpointHandler');
-        return $tom_core_server_21.TomEndpointHandler(name: name, instance: instance, method: method, interface: interface, implementation: implementation, methodName: methodName, metadata: metadata);
+        final metadata = D4.getRequiredNamedArg<$tom_core_server_22.TomMethodMetadata>(named, 'metadata', 'TomEndpointHandler');
+        return $tom_core_server_22.TomEndpointHandler(name: name, instance: instance, method: method, interface: interface, implementation: implementation, methodName: methodName, metadata: metadata);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').name,
-      'instance': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').instance,
-      'method': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').method,
-      'interface': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').interface,
-      'implementation': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').implementation,
-      'methodName': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').methodName,
-      'metadata': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').metadata,
+      'name': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').name,
+      'instance': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').instance,
+      'method': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').method,
+      'interface': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').interface,
+      'implementation': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').implementation,
+      'methodName': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').methodName,
+      'metadata': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').metadata,
     },
     setters: {
       'name': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').name = D4.extractBridgedArg<String>(value, 'name'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').name = D4.extractBridgedArg<String>(value, 'name'),
       'instance': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').instance = D4.extractBridgedArg<$tom_reflection_1.InstanceMirror>(value, 'instance'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').instance = D4.extractBridgedArg<$tom_reflection_1.InstanceMirror>(value, 'instance'),
       'method': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').method = D4.extractBridgedArg<$tom_reflection_1.MethodMirror>(value, 'method'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').method = D4.extractBridgedArg<$tom_reflection_1.MethodMirror>(value, 'method'),
       'interface': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').interface = D4.extractBridgedArgOrNull<$tom_reflection_1.ClassMirror>(value, 'interface'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').interface = D4.extractBridgedArgOrNull<$tom_reflection_1.ClassMirror>(value, 'interface'),
       'implementation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').implementation = D4.extractBridgedArg<$tom_reflection_1.ClassMirror>(value, 'implementation'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').implementation = D4.extractBridgedArg<$tom_reflection_1.ClassMirror>(value, 'implementation'),
       'methodName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').methodName = D4.extractBridgedArg<String>(value, 'methodName'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').methodName = D4.extractBridgedArg<String>(value, 'methodName'),
       'metadata': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler').metadata = D4.extractBridgedArg<$tom_core_server_21.TomMethodMetadata>(value, 'metadata'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler').metadata = D4.extractBridgedArg<$tom_core_server_22.TomMethodMetadata>(value, 'metadata'),
     },
     methods: {
       'handlePreflight': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler');
         D4.requireMinArgs(positional, 1, 'handlePreflight');
         final req = D4.getRequiredArg<$shelf_3.Request>(positional, 0, 'req', 'handlePreflight');
         return t.handlePreflight(req);
       },
       'handleMethodCall': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler');
         D4.requireMinArgs(positional, 1, 'handleMethodCall');
         final req = D4.getRequiredArg<$shelf_3.Request>(positional, 0, 'req', 'handleMethodCall');
         return t.handleMethodCall(req);
       },
       'checkAccess': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler');
         D4.requireMinArgs(positional, 1, 'checkAccess');
         final principal = D4.getRequiredArg<$tom_core_kernel_11.TomPrincipal?>(positional, 0, 'principal', 'checkAccess');
         return t.checkAccess(principal);
       },
       'checkAutomaticAccess': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointHandler>(target, 'TomEndpointHandler');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointHandler>(target, 'TomEndpointHandler');
         D4.requireMinArgs(positional, 1, 'checkAutomaticAccess');
         final accessCheck = D4.getRequiredArg<bool>(positional, 0, 'accessCheck', 'checkAutomaticAccess');
         return t.checkAutomaticAccess(accessCheck);
       },
     },
     staticGetters: {
-      'globalSettingLogRequestsDefault': (visitor) => $tom_core_server_21.TomEndpointHandler.globalSettingLogRequestsDefault,
-      'globalSettingCorsAllowedOriginsDefault': (visitor) => $tom_core_server_21.TomEndpointHandler.globalSettingCorsAllowedOriginsDefault,
-      'globalSettingCorsAllowedMethodsDefault': (visitor) => $tom_core_server_21.TomEndpointHandler.globalSettingCorsAllowedMethodsDefault,
-      'globalSettingCorsAllowedHeadersDefault': (visitor) => $tom_core_server_21.TomEndpointHandler.globalSettingCorsAllowedHeadersDefault,
-      'debugPrintContext': (visitor) => $tom_core_server_21.TomEndpointHandler.debugPrintContext,
-      'debugPrintAuthentication': (visitor) => $tom_core_server_21.TomEndpointHandler.debugPrintAuthentication,
+      'globalSettingLogRequestsDefault': (visitor) => $tom_core_server_22.TomEndpointHandler.globalSettingLogRequestsDefault,
+      'globalSettingCorsAllowedOriginsDefault': (visitor) => $tom_core_server_22.TomEndpointHandler.globalSettingCorsAllowedOriginsDefault,
+      'globalSettingCorsAllowedMethodsDefault': (visitor) => $tom_core_server_22.TomEndpointHandler.globalSettingCorsAllowedMethodsDefault,
+      'globalSettingCorsAllowedHeadersDefault': (visitor) => $tom_core_server_22.TomEndpointHandler.globalSettingCorsAllowedHeadersDefault,
+      'debugPrintContext': (visitor) => $tom_core_server_22.TomEndpointHandler.debugPrintContext,
+      'debugPrintAuthentication': (visitor) => $tom_core_server_22.TomEndpointHandler.debugPrintAuthentication,
     },
     staticMethods: {
       'coercePrimitiveParameter': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'coercePrimitiveParameter');
         final type = D4.getRequiredArg<Type>(positional, 0, 'type', 'coercePrimitiveParameter');
         final raw = D4.getRequiredArg<String>(positional, 1, 'raw', 'coercePrimitiveParameter');
-        return $tom_core_server_21.TomEndpointHandler.coercePrimitiveParameter(type, raw);
+        return $tom_core_server_22.TomEndpointHandler.coercePrimitiveParameter(type, raw);
       },
       'injectPathParameters': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'injectPathParameters');
@@ -8637,23 +9102,23 @@ BridgedClass _createTomEndpointHandlerBridge() {
         }
         final jsonBodyData = D4.coerceMap<String, dynamic>(positional[0], 'jsonBodyData');
         final req = D4.getRequiredArg<$shelf_3.Request>(positional, 1, 'req', 'injectPathParameters');
-        final endpoint = D4.getRequiredArg<$tom_core_server_20.TomEndpoint<Object, Object>>(positional, 2, 'endpoint', 'injectPathParameters');
-        return $tom_core_server_21.TomEndpointHandler.injectPathParameters(jsonBodyData, req, endpoint);
+        final endpoint = D4.getRequiredArg<$tom_core_server_21.TomEndpoint<Object, Object>>(positional, 2, 'endpoint', 'injectPathParameters');
+        return $tom_core_server_22.TomEndpointHandler.injectPathParameters(jsonBodyData, req, endpoint);
       },
     },
     staticSetters: {
       'globalSettingLogRequestsDefault': (visitor, value) => 
-        $tom_core_server_21.TomEndpointHandler.globalSettingLogRequestsDefault = D4.extractBridgedArg<bool>(value, 'globalSettingLogRequestsDefault'),
+        $tom_core_server_22.TomEndpointHandler.globalSettingLogRequestsDefault = D4.extractBridgedArg<bool>(value, 'globalSettingLogRequestsDefault'),
       'globalSettingCorsAllowedOriginsDefault': (visitor, value) => 
-        $tom_core_server_21.TomEndpointHandler.globalSettingCorsAllowedOriginsDefault = D4.extractBridgedArg<String>(value, 'globalSettingCorsAllowedOriginsDefault'),
+        $tom_core_server_22.TomEndpointHandler.globalSettingCorsAllowedOriginsDefault = D4.extractBridgedArg<String>(value, 'globalSettingCorsAllowedOriginsDefault'),
       'globalSettingCorsAllowedMethodsDefault': (visitor, value) => 
-        $tom_core_server_21.TomEndpointHandler.globalSettingCorsAllowedMethodsDefault = D4.extractBridgedArg<String>(value, 'globalSettingCorsAllowedMethodsDefault'),
+        $tom_core_server_22.TomEndpointHandler.globalSettingCorsAllowedMethodsDefault = D4.extractBridgedArg<String>(value, 'globalSettingCorsAllowedMethodsDefault'),
       'globalSettingCorsAllowedHeadersDefault': (visitor, value) => 
-        $tom_core_server_21.TomEndpointHandler.globalSettingCorsAllowedHeadersDefault = D4.extractBridgedArg<String>(value, 'globalSettingCorsAllowedHeadersDefault'),
+        $tom_core_server_22.TomEndpointHandler.globalSettingCorsAllowedHeadersDefault = D4.extractBridgedArg<String>(value, 'globalSettingCorsAllowedHeadersDefault'),
       'debugPrintContext': (visitor, value) => 
-        $tom_core_server_21.TomEndpointHandler.debugPrintContext = D4.extractBridgedArg<bool>(value, 'debugPrintContext'),
+        $tom_core_server_22.TomEndpointHandler.debugPrintContext = D4.extractBridgedArg<bool>(value, 'debugPrintContext'),
       'debugPrintAuthentication': (visitor, value) => 
-        $tom_core_server_21.TomEndpointHandler.debugPrintAuthentication = D4.extractBridgedArg<bool>(value, 'debugPrintAuthentication'),
+        $tom_core_server_22.TomEndpointHandler.debugPrintAuthentication = D4.extractBridgedArg<bool>(value, 'debugPrintAuthentication'),
     },
     constructorSignatures: {
       '': 'TomEndpointHandler({required String name, required InstanceMirror instance, required MethodMirror method, ClassMirror? interface, required ClassMirror implementation, required String methodName, required TomMethodMetadata metadata})',
@@ -8711,26 +9176,26 @@ BridgedClass _createTomEndpointHandlerBridge() {
 
 BridgedClass _createTomEndpointRoutingInfoBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_21.TomEndpointRoutingInfo,
+    nativeType: $tom_core_server_22.TomEndpointRoutingInfo,
     name: 'TomEndpointRoutingInfo',
-    isAssignable: (v) => v is $tom_core_server_21.TomEndpointRoutingInfo,
+    isAssignable: (v) => v is $tom_core_server_22.TomEndpointRoutingInfo,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'TomEndpointRoutingInfo');
-        final handler = D4.getRequiredArg<$tom_core_server_21.TomEndpointHandler>(positional, 0, 'handler', 'TomEndpointRoutingInfo');
-        final endpoint = D4.getRequiredArg<$tom_core_server_20.TomEndpoint<Object, Object>>(positional, 1, 'endpoint', 'TomEndpointRoutingInfo');
-        return $tom_core_server_21.TomEndpointRoutingInfo(handler, endpoint);
+        final handler = D4.getRequiredArg<$tom_core_server_22.TomEndpointHandler>(positional, 0, 'handler', 'TomEndpointRoutingInfo');
+        final endpoint = D4.getRequiredArg<$tom_core_server_21.TomEndpoint<Object, Object>>(positional, 1, 'endpoint', 'TomEndpointRoutingInfo');
+        return $tom_core_server_22.TomEndpointRoutingInfo(handler, endpoint);
       },
     },
     getters: {
-      'handler': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').handler,
-      'endpoint': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').endpoint,
+      'handler': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').handler,
+      'endpoint': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').endpoint,
     },
     setters: {
       'handler': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').handler = D4.extractBridgedArg<$tom_core_server_21.TomEndpointHandler>(value, 'handler'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').handler = D4.extractBridgedArg<$tom_core_server_22.TomEndpointHandler>(value, 'handler'),
       'endpoint': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').endpoint = D4.extractBridgedArg<$tom_core_server_20.TomEndpoint<Object, Object>>(value, 'endpoint'),
+        D4.validateTarget<$tom_core_server_22.TomEndpointRoutingInfo>(target, 'TomEndpointRoutingInfo').endpoint = D4.extractBridgedArg<$tom_core_server_21.TomEndpoint<Object, Object>>(value, 'endpoint'),
     },
     constructorSignatures: {
       '': 'TomEndpointRoutingInfo(TomEndpointHandler handler, TomEndpoint<Object, Object> endpoint)',
@@ -8752,25 +9217,25 @@ BridgedClass _createTomEndpointRoutingInfoBridge() {
 
 BridgedClass _createTomEndpointRoutingBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_21.TomEndpointRouting,
+    nativeType: $tom_core_server_22.TomEndpointRouting,
     name: 'TomEndpointRouting',
-    isAssignable: (v) => v is $tom_core_server_21.TomEndpointRouting,
+    isAssignable: (v) => v is $tom_core_server_22.TomEndpointRouting,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_21.TomEndpointRouting();
+        return $tom_core_server_22.TomEndpointRouting();
       },
     },
     methods: {
       'scanClasses': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointRouting>(target, 'TomEndpointRouting');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointRouting>(target, 'TomEndpointRouting');
         return t.scanClasses();
       },
       'initializeRouter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointRouting>(target, 'TomEndpointRouting');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointRouting>(target, 'TomEndpointRouting');
         return t.initializeRouter();
       },
       'createRoutesForClassMirror': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointRouting>(target, 'TomEndpointRouting');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointRouting>(target, 'TomEndpointRouting');
         D4.requireMinArgs(positional, 3, 'createRoutesForClassMirror');
         final serviceType = D4.getRequiredArg<$tom_reflection_1.ClassMirror>(positional, 0, 'serviceType', 'createRoutesForClassMirror');
         final serviceInstance = D4.getRequiredArg<Object?>(positional, 1, 'serviceInstance', 'createRoutesForClassMirror');
@@ -8779,30 +9244,30 @@ BridgedClass _createTomEndpointRoutingBridge() {
         return null;
       },
       'getReferencedComponent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointRouting>(target, 'TomEndpointRouting');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointRouting>(target, 'TomEndpointRouting');
         D4.requireMinArgs(positional, 1, 'getReferencedComponent');
         final serviceType = D4.getRequiredArg<$tom_reflection_1.ClassMirror>(positional, 0, 'serviceType', 'getReferencedComponent');
         return t.getReferencedComponent(serviceType);
       },
       'createRoutesForEndpoint': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointRouting>(target, 'TomEndpointRouting');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointRouting>(target, 'TomEndpointRouting');
         D4.requireMinArgs(positional, 5, 'createRoutesForEndpoint');
-        final tep = D4.getRequiredArg<$tom_core_server_20.TomEndpoint<Object, Object>>(positional, 0, 'tep', 'createRoutesForEndpoint');
+        final tep = D4.getRequiredArg<$tom_core_server_21.TomEndpoint<Object, Object>>(positional, 0, 'tep', 'createRoutesForEndpoint');
         final router = D4.getRequiredArg<$shelf_router_1.Router>(positional, 1, 'router', 'createRoutesForEndpoint');
-        final teph = D4.getRequiredArg<$tom_core_server_21.TomEndpointHandler>(positional, 2, 'teph', 'createRoutesForEndpoint');
-        final mmd = D4.getRequiredArg<$tom_core_server_21.TomMethodMetadata>(positional, 3, 'mmd', 'createRoutesForEndpoint');
+        final teph = D4.getRequiredArg<$tom_core_server_22.TomEndpointHandler>(positional, 2, 'teph', 'createRoutesForEndpoint');
+        final mmd = D4.getRequiredArg<$tom_core_server_22.TomMethodMetadata>(positional, 3, 'mmd', 'createRoutesForEndpoint');
         final instanceClassMirror = D4.getRequiredArg<$tom_reflection_1.ClassMirror>(positional, 4, 'instanceClassMirror', 'createRoutesForEndpoint');
         t.createRoutesForEndpoint(tep, router, teph, mmd, instanceClassMirror);
         return null;
       },
       'getClassMethodMetadata': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointRouting>(target, 'TomEndpointRouting');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointRouting>(target, 'TomEndpointRouting');
         D4.requireMinArgs(positional, 1, 'getClassMethodMetadata');
         final classMirror = D4.getRequiredArg<$tom_reflection_1.ClassMirror>(positional, 0, 'classMirror', 'getClassMethodMetadata');
         return t.getClassMethodMetadata(classMirror);
       },
       'findServiceInstance': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_21.TomEndpointRouting>(target, 'TomEndpointRouting');
+        final t = D4.validateTarget<$tom_core_server_22.TomEndpointRouting>(target, 'TomEndpointRouting');
         D4.requireMinArgs(positional, 3, 'findServiceInstance');
         if (positional.isEmpty) {
           throw ArgumentError('findServiceInstance: Missing required argument "componentClasses" at position 0');
@@ -8814,21 +9279,21 @@ BridgedClass _createTomEndpointRoutingBridge() {
       },
     },
     staticGetters: {
-      'handlers': (visitor) => $tom_core_server_21.TomEndpointRouting.handlers,
-      'routingInfo': (visitor) => $tom_core_server_21.TomEndpointRouting.routingInfo,
+      'handlers': (visitor) => $tom_core_server_22.TomEndpointRouting.handlers,
+      'routingInfo': (visitor) => $tom_core_server_22.TomEndpointRouting.routingInfo,
     },
     staticMethods: {
       'shelfRoutePath': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'shelfRoutePath');
         final uri = D4.getRequiredArg<String>(positional, 0, 'uri', 'shelfRoutePath');
-        return $tom_core_server_21.TomEndpointRouting.shelfRoutePath(uri);
+        return $tom_core_server_22.TomEndpointRouting.shelfRoutePath(uri);
       },
     },
     staticSetters: {
       'handlers': (visitor, value) => 
-        $tom_core_server_21.TomEndpointRouting.handlers = D4.coerceList<$tom_core_server_21.TomEndpointHandler>(value, 'handlers'),
+        $tom_core_server_22.TomEndpointRouting.handlers = D4.coerceList<$tom_core_server_22.TomEndpointHandler>(value, 'handlers'),
       'routingInfo': (visitor, value) => 
-        $tom_core_server_21.TomEndpointRouting.routingInfo = D4.coerceMap<String, $tom_core_server_21.TomEndpointRoutingInfo>(value, 'routingInfo', visitor),
+        $tom_core_server_22.TomEndpointRouting.routingInfo = D4.coerceMap<String, $tom_core_server_22.TomEndpointRoutingInfo>(value, 'routingInfo', visitor),
     },
     constructorSignatures: {
       '': 'TomEndpointRouting()',
@@ -8862,49 +9327,49 @@ BridgedClass _createTomEndpointRoutingBridge() {
 
 BridgedClass _createTomMethodMetadataBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_21.TomMethodMetadata,
+    nativeType: $tom_core_server_22.TomMethodMetadata,
     name: 'TomMethodMetadata',
-    isAssignable: (v) => v is $tom_core_server_21.TomMethodMetadata,
+    isAssignable: (v) => v is $tom_core_server_22.TomMethodMetadata,
     constructors: {
       '': (visitor, positional, named) {
-        final endpoint = D4.getRequiredNamedArg<$tom_core_server_20.TomEndpoint<Object, Object>>(named, 'endpoint', 'TomMethodMetadata');
+        final endpoint = D4.getRequiredNamedArg<$tom_core_server_21.TomEndpoint<Object, Object>>(named, 'endpoint', 'TomMethodMetadata');
         final methodMirror = D4.getRequiredNamedArg<$tom_reflection_1.MethodMirror>(named, 'methodMirror', 'TomMethodMetadata');
         final access = D4.getOptionalNamedArg<$tom_core_kernel_7.TomAccessControl?>(named, 'access');
-        final transactionInfo = D4.getOptionalNamedArg<$tom_core_server_20.TomTransactional?>(named, 'transactionInfo');
-        final apiEndpointImplementation = D4.getOptionalNamedArg<$tom_core_server_20.TomApiEndpointImplementation<Object, Object>?>(named, 'apiEndpointImplementation');
-        final apiImplementation = D4.getOptionalNamedArg<$tom_core_server_20.TomApiImplementation?>(named, 'apiImplementation');
+        final transactionInfo = D4.getOptionalNamedArg<$tom_core_server_21.TomTransactional?>(named, 'transactionInfo');
+        final apiEndpointImplementation = D4.getOptionalNamedArg<$tom_core_server_21.TomApiEndpointImplementation<Object, Object>?>(named, 'apiEndpointImplementation');
+        final apiImplementation = D4.getOptionalNamedArg<$tom_core_server_21.TomApiImplementation?>(named, 'apiImplementation');
         final api = D4.getOptionalNamedArg<$tom_core_kernel_1.TomApi?>(named, 'api');
         final apiEndpoint = D4.getOptionalNamedArg<$tom_core_kernel_1.TomApiEndpoint?>(named, 'apiEndpoint');
-        return $tom_core_server_21.TomMethodMetadata(endpoint: endpoint, methodMirror: methodMirror, access: access, transactionInfo: transactionInfo, apiEndpointImplementation: apiEndpointImplementation, apiImplementation: apiImplementation, api: api, apiEndpoint: apiEndpoint);
+        return $tom_core_server_22.TomMethodMetadata(endpoint: endpoint, methodMirror: methodMirror, access: access, transactionInfo: transactionInfo, apiEndpointImplementation: apiEndpointImplementation, apiImplementation: apiImplementation, api: api, apiEndpoint: apiEndpoint);
       },
     },
     getters: {
-      'methodMirror': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').methodMirror,
-      'endpoint': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').endpoint,
-      'access': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').access,
-      'transactionInfo': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').transactionInfo,
-      'apiEndpointImplementation': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpointImplementation,
-      'apiImplementation': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').apiImplementation,
-      'api': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').api,
-      'apiEndpoint': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpoint,
+      'methodMirror': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').methodMirror,
+      'endpoint': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').endpoint,
+      'access': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').access,
+      'transactionInfo': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').transactionInfo,
+      'apiEndpointImplementation': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpointImplementation,
+      'apiImplementation': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').apiImplementation,
+      'api': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').api,
+      'apiEndpoint': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpoint,
     },
     setters: {
       'methodMirror': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').methodMirror = D4.extractBridgedArg<$tom_reflection_1.MethodMirror>(value, 'methodMirror'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').methodMirror = D4.extractBridgedArg<$tom_reflection_1.MethodMirror>(value, 'methodMirror'),
       'endpoint': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').endpoint = D4.extractBridgedArg<$tom_core_server_20.TomEndpoint<Object, Object>>(value, 'endpoint'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').endpoint = D4.extractBridgedArg<$tom_core_server_21.TomEndpoint<Object, Object>>(value, 'endpoint'),
       'access': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').access = D4.extractBridgedArgOrNull<$tom_core_kernel_7.TomAccessControl>(value, 'access'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').access = D4.extractBridgedArgOrNull<$tom_core_kernel_7.TomAccessControl>(value, 'access'),
       'transactionInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').transactionInfo = D4.extractBridgedArgOrNull<$tom_core_server_20.TomTransactional>(value, 'transactionInfo'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').transactionInfo = D4.extractBridgedArgOrNull<$tom_core_server_21.TomTransactional>(value, 'transactionInfo'),
       'apiEndpointImplementation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpointImplementation = D4.extractBridgedArgOrNull<$tom_core_server_20.TomApiEndpointImplementation<Object, Object>>(value, 'apiEndpointImplementation'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpointImplementation = D4.extractBridgedArgOrNull<$tom_core_server_21.TomApiEndpointImplementation<Object, Object>>(value, 'apiEndpointImplementation'),
       'apiImplementation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').apiImplementation = D4.extractBridgedArgOrNull<$tom_core_server_20.TomApiImplementation>(value, 'apiImplementation'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').apiImplementation = D4.extractBridgedArgOrNull<$tom_core_server_21.TomApiImplementation>(value, 'apiImplementation'),
       'api': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').api = D4.extractBridgedArgOrNull<$tom_core_kernel_1.TomApi>(value, 'api'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').api = D4.extractBridgedArgOrNull<$tom_core_kernel_1.TomApi>(value, 'api'),
       'apiEndpoint': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpoint = D4.extractBridgedArgOrNull<$tom_core_kernel_1.TomApiEndpoint>(value, 'apiEndpoint'),
+        D4.validateTarget<$tom_core_server_22.TomMethodMetadata>(target, 'TomMethodMetadata').apiEndpoint = D4.extractBridgedArgOrNull<$tom_core_kernel_1.TomApiEndpoint>(value, 'apiEndpoint'),
     },
     constructorSignatures: {
       '': 'TomMethodMetadata({required TomEndpoint<Object, Object> endpoint, required MethodMirror methodMirror, TomAccessControl? access, TomTransactional? transactionInfo, TomApiEndpointImplementation<Object, Object>? apiEndpointImplementation, TomApiImplementation? apiImplementation, TomApi? api, TomApiEndpoint? apiEndpoint})',
@@ -8938,9 +9403,9 @@ BridgedClass _createTomMethodMetadataBridge() {
 
 BridgedClass _createTomClassScanResultBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_21.TomClassScanResult,
+    nativeType: $tom_core_server_22.TomClassScanResult,
     name: 'TomClassScanResult',
-    isAssignable: (v) => v is $tom_core_server_21.TomClassScanResult,
+    isAssignable: (v) => v is $tom_core_server_22.TomClassScanResult,
     constructors: {
       '': (visitor, positional, named) {
         final serviceInterfaces = named.containsKey('serviceInterfaces') && named['serviceInterfaces'] != null
@@ -8952,21 +9417,21 @@ BridgedClass _createTomClassScanResultBridge() {
         final componentClasses = named.containsKey('componentClasses') && named['componentClasses'] != null
             ? D4.coerceList<$tom_reflection_1.ClassMirror>(named['componentClasses'], 'componentClasses')
             : const <$tom_reflection_1.ClassMirror>[];
-        return $tom_core_server_21.TomClassScanResult(serviceInterfaces: serviceInterfaces, apiImplementations: apiImplementations, componentClasses: componentClasses);
+        return $tom_core_server_22.TomClassScanResult(serviceInterfaces: serviceInterfaces, apiImplementations: apiImplementations, componentClasses: componentClasses);
       },
     },
     getters: {
-      'serviceInterfaces': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomClassScanResult>(target, 'TomClassScanResult').serviceInterfaces,
-      'apiImplementations': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomClassScanResult>(target, 'TomClassScanResult').apiImplementations,
-      'componentClasses': (visitor, target) => D4.validateTarget<$tom_core_server_21.TomClassScanResult>(target, 'TomClassScanResult').componentClasses,
+      'serviceInterfaces': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomClassScanResult>(target, 'TomClassScanResult').serviceInterfaces,
+      'apiImplementations': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomClassScanResult>(target, 'TomClassScanResult').apiImplementations,
+      'componentClasses': (visitor, target) => D4.validateTarget<$tom_core_server_22.TomClassScanResult>(target, 'TomClassScanResult').componentClasses,
     },
     setters: {
       'serviceInterfaces': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomClassScanResult>(target, 'TomClassScanResult').serviceInterfaces = D4.coerceList<$tom_reflection_1.ClassMirror>(value, 'serviceInterfaces'),
+        D4.validateTarget<$tom_core_server_22.TomClassScanResult>(target, 'TomClassScanResult').serviceInterfaces = D4.coerceList<$tom_reflection_1.ClassMirror>(value, 'serviceInterfaces'),
       'apiImplementations': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomClassScanResult>(target, 'TomClassScanResult').apiImplementations = D4.coerceList<$tom_reflection_1.ClassMirror>(value, 'apiImplementations'),
+        D4.validateTarget<$tom_core_server_22.TomClassScanResult>(target, 'TomClassScanResult').apiImplementations = D4.coerceList<$tom_reflection_1.ClassMirror>(value, 'apiImplementations'),
       'componentClasses': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_21.TomClassScanResult>(target, 'TomClassScanResult').componentClasses = D4.coerceList<$tom_reflection_1.ClassMirror>(value, 'componentClasses'),
+        D4.validateTarget<$tom_core_server_22.TomClassScanResult>(target, 'TomClassScanResult').componentClasses = D4.coerceList<$tom_reflection_1.ClassMirror>(value, 'componentClasses'),
     },
     constructorSignatures: {
       '': 'TomClassScanResult({List<ClassMirror> serviceInterfaces = const [], List<ClassMirror> apiImplementations = const [], List<ClassMirror> componentClasses = const []})',
@@ -8990,15 +9455,15 @@ BridgedClass _createTomClassScanResultBridge() {
 
 BridgedClass _createHealthAnalyzerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_22.HealthAnalyzer,
+    nativeType: $tom_core_server_23.HealthAnalyzer,
     name: 'HealthAnalyzer',
-    isAssignable: (v) => v is $tom_core_server_22.HealthAnalyzer,
+    isAssignable: (v) => v is $tom_core_server_23.HealthAnalyzer,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'analyzeHealth': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_22.HealthAnalyzer>(target, 'HealthAnalyzer');
+        final t = D4.validateTarget<$tom_core_server_23.HealthAnalyzer>(target, 'HealthAnalyzer');
         return t.analyzeHealth();
       },
     },
@@ -9014,18 +9479,18 @@ BridgedClass _createHealthAnalyzerBridge() {
 
 BridgedClass _createDefaultHealthAnalyzerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_22.DefaultHealthAnalyzer,
+    nativeType: $tom_core_server_23.DefaultHealthAnalyzer,
     name: 'DefaultHealthAnalyzer',
-    isAssignable: (v) => v is $tom_core_server_22.DefaultHealthAnalyzer,
+    isAssignable: (v) => v is $tom_core_server_23.DefaultHealthAnalyzer,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_22.DefaultHealthAnalyzer();
+        return $tom_core_server_23.DefaultHealthAnalyzer();
       },
     },
     methods: {
       'analyzeHealth': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_22.DefaultHealthAnalyzer>(target, 'DefaultHealthAnalyzer');
+        final t = D4.validateTarget<$tom_core_server_23.DefaultHealthAnalyzer>(target, 'DefaultHealthAnalyzer');
         return t.analyzeHealth();
       },
     },
@@ -9044,15 +9509,15 @@ BridgedClass _createDefaultHealthAnalyzerBridge() {
 
 BridgedClass _createTomHealthServiceBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_22.TomHealthService,
+    nativeType: $tom_core_server_23.TomHealthService,
     name: 'TomHealthService',
-    isAssignable: (v) => v is $tom_core_server_22.TomHealthService,
+    isAssignable: (v) => v is $tom_core_server_23.TomHealthService,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'health': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_22.TomHealthService>(target, 'TomHealthService');
+        final t = D4.validateTarget<$tom_core_server_23.TomHealthService>(target, 'TomHealthService');
         return t.health();
       },
     },
@@ -9068,27 +9533,27 @@ BridgedClass _createTomHealthServiceBridge() {
 
 BridgedClass _createTomHealthServerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_22.TomHealthServer,
+    nativeType: $tom_core_server_23.TomHealthServer,
     name: 'TomHealthServer',
-    isAssignable: (v) => v is $tom_core_server_22.TomHealthServer,
+    isAssignable: (v) => v is $tom_core_server_23.TomHealthServer,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_22.TomHealthServer();
+        return $tom_core_server_23.TomHealthServer();
       },
     },
     methods: {
       'health': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_22.TomHealthServer>(target, 'TomHealthServer');
+        final t = D4.validateTarget<$tom_core_server_23.TomHealthServer>(target, 'TomHealthServer');
         return t.health();
       },
     },
     staticGetters: {
-      'globalSettingsHealthAnalyzer': (visitor) => $tom_core_server_22.TomHealthServer.globalSettingsHealthAnalyzer,
+      'globalSettingsHealthAnalyzer': (visitor) => $tom_core_server_23.TomHealthServer.globalSettingsHealthAnalyzer,
     },
     staticSetters: {
       'globalSettingsHealthAnalyzer': (visitor, value) => 
-        $tom_core_server_22.TomHealthServer.globalSettingsHealthAnalyzer = D4.extractBridgedArg<$tom_core_server_22.HealthAnalyzer>(value, 'globalSettingsHealthAnalyzer'),
+        $tom_core_server_23.TomHealthServer.globalSettingsHealthAnalyzer = D4.extractBridgedArg<$tom_core_server_23.HealthAnalyzer>(value, 'globalSettingsHealthAnalyzer'),
     },
     constructorSignatures: {
       '': 'TomHealthServer()',
@@ -9111,9 +9576,9 @@ BridgedClass _createTomHealthServerBridge() {
 
 BridgedClass _createTomServerExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_23.TomServerException,
+    nativeType: $tom_core_server_24.TomServerException,
     name: 'TomServerException',
-    isAssignable: (v) => v is $tom_core_server_23.TomServerException,
+    isAssignable: (v) => v is $tom_core_server_24.TomServerException,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
@@ -9125,61 +9590,61 @@ BridgedClass _createTomServerExceptionBridge() {
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final clientThrow = D4.getNamedArgWithDefault<bool>(named, 'clientThrow', true);
-        return $tom_core_server_23.TomServerException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, clientThrow: clientThrow);
+        return $tom_core_server_24.TomServerException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, clientThrow: clientThrow);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException');
+        final t = D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_23.TomServerException>(target, 'TomServerException');
+        final t = D4.validateTarget<$tom_core_server_24.TomServerException>(target, 'TomServerException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -9234,9 +9699,9 @@ BridgedClass _createTomServerExceptionBridge() {
 
 BridgedClass _createTomAnnotationAnalyzerExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_24.TomAnnotationAnalyzerException,
+    nativeType: $tom_core_server_25.TomAnnotationAnalyzerException,
     name: 'TomAnnotationAnalyzerException',
-    isAssignable: (v) => v is $tom_core_server_24.TomAnnotationAnalyzerException,
+    isAssignable: (v) => v is $tom_core_server_25.TomAnnotationAnalyzerException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -9247,61 +9712,61 @@ BridgedClass _createTomAnnotationAnalyzerExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_24.TomAnnotationAnalyzerException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_25.TomAnnotationAnalyzerException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException');
+        final t = D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException');
+        final t = D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerException>(target, 'TomAnnotationAnalyzerException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -9356,9 +9821,9 @@ BridgedClass _createTomAnnotationAnalyzerExceptionBridge() {
 
 BridgedClass _createTomAnnotationAnalyzerSyntaxExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_24.TomAnnotationAnalyzerSyntaxException,
+    nativeType: $tom_core_server_25.TomAnnotationAnalyzerSyntaxException,
     name: 'TomAnnotationAnalyzerSyntaxException',
-    isAssignable: (v) => v is $tom_core_server_24.TomAnnotationAnalyzerSyntaxException,
+    isAssignable: (v) => v is $tom_core_server_25.TomAnnotationAnalyzerSyntaxException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -9369,61 +9834,61 @@ BridgedClass _createTomAnnotationAnalyzerSyntaxExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_24.TomAnnotationAnalyzerSyntaxException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_25.TomAnnotationAnalyzerSyntaxException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException');
+        final t = D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_24.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException');
+        final t = D4.validateTarget<$tom_core_server_25.TomAnnotationAnalyzerSyntaxException>(target, 'TomAnnotationAnalyzerSyntaxException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -9478,50 +9943,50 @@ BridgedClass _createTomAnnotationAnalyzerSyntaxExceptionBridge() {
 
 BridgedClass _createTomAnnotationAnalyzerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_24.TomAnnotationAnalyzer,
+    nativeType: $tom_core_server_25.TomAnnotationAnalyzer,
     name: 'TomAnnotationAnalyzer',
-    isAssignable: (v) => v is $tom_core_server_24.TomAnnotationAnalyzer,
+    isAssignable: (v) => v is $tom_core_server_25.TomAnnotationAnalyzer,
     canBeUsedAsMixin: true,
     isAbstract: true,
     constructors: {
     },
     staticGetters: {
-      'mirrorCache': (visitor) => $tom_core_server_24.TomAnnotationAnalyzer.mirrorCache,
-      'tableCache': (visitor) => $tom_core_server_24.TomAnnotationAnalyzer.tableCache,
-      'columnInfoCache': (visitor) => $tom_core_server_24.TomAnnotationAnalyzer.columnInfoCache,
-      'dataScopeCache': (visitor) => $tom_core_server_24.TomAnnotationAnalyzer.dataScopeCache,
-      'authColumnCache': (visitor) => $tom_core_server_24.TomAnnotationAnalyzer.authColumnCache,
+      'mirrorCache': (visitor) => $tom_core_server_25.TomAnnotationAnalyzer.mirrorCache,
+      'tableCache': (visitor) => $tom_core_server_25.TomAnnotationAnalyzer.tableCache,
+      'columnInfoCache': (visitor) => $tom_core_server_25.TomAnnotationAnalyzer.columnInfoCache,
+      'dataScopeCache': (visitor) => $tom_core_server_25.TomAnnotationAnalyzer.dataScopeCache,
+      'authColumnCache': (visitor) => $tom_core_server_25.TomAnnotationAnalyzer.authColumnCache,
     },
     staticMethods: {
       'analysePersistentType': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'analysePersistentType');
         final T = D4.getRequiredArg<Type>(positional, 0, 'T', 'analysePersistentType');
-        return $tom_core_server_24.TomAnnotationAnalyzer.analysePersistentType(T);
+        return $tom_core_server_25.TomAnnotationAnalyzer.analysePersistentType(T);
       },
       'findMirror': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'findMirror');
         final dbType = D4.getRequiredArg<Type>(positional, 0, 'dbType', 'findMirror');
-        return $tom_core_server_24.TomAnnotationAnalyzer.findMirror(dbType);
+        return $tom_core_server_25.TomAnnotationAnalyzer.findMirror(dbType);
       },
       'findTable': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'findTable');
         final dbType = D4.getRequiredArg<Type>(positional, 0, 'dbType', 'findTable');
-        return $tom_core_server_24.TomAnnotationAnalyzer.findTable(dbType);
+        return $tom_core_server_25.TomAnnotationAnalyzer.findTable(dbType);
       },
       'findDataScope': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'findDataScope');
         final dbType = D4.getRequiredArg<Type>(positional, 0, 'dbType', 'findDataScope');
-        return $tom_core_server_24.TomAnnotationAnalyzer.findDataScope(dbType);
+        return $tom_core_server_25.TomAnnotationAnalyzer.findDataScope(dbType);
       },
       'findAuthColumns': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'findAuthColumns');
         final dbType = D4.getRequiredArg<Type>(positional, 0, 'dbType', 'findAuthColumns');
-        return $tom_core_server_24.TomAnnotationAnalyzer.findAuthColumns(dbType);
+        return $tom_core_server_25.TomAnnotationAnalyzer.findAuthColumns(dbType);
       },
       'getPersistentColumns': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'getPersistentColumns');
         final dbType = D4.getRequiredArg<Type>(positional, 0, 'dbType', 'getPersistentColumns');
-        return $tom_core_server_24.TomAnnotationAnalyzer.getPersistentColumns(dbType);
+        return $tom_core_server_25.TomAnnotationAnalyzer.getPersistentColumns(dbType);
       },
       'determineColumn': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'determineColumn');
@@ -9530,7 +9995,7 @@ BridgedClass _createTomAnnotationAnalyzerBridge() {
           throw ArgumentError('determineColumn: Missing required argument "persistenceInfo" at position 1');
         }
         final persistenceInfo = D4.coerceList<$tom_core_server_15.TomTypePersistenceInfo>(positional[1], 'persistenceInfo');
-        return $tom_core_server_24.TomAnnotationAnalyzer.determineColumn(name, persistenceInfo);
+        return $tom_core_server_25.TomAnnotationAnalyzer.determineColumn(name, persistenceInfo);
       },
     },
     staticMethodSignatures: {
@@ -9558,9 +10023,9 @@ BridgedClass _createTomAnnotationAnalyzerBridge() {
 
 BridgedClass _createTomColumnAuthorizationExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_25.TomColumnAuthorizationException,
+    nativeType: $tom_core_server_26.TomColumnAuthorizationException,
     name: 'TomColumnAuthorizationException',
-    isAssignable: (v) => v is $tom_core_server_25.TomColumnAuthorizationException,
+    isAssignable: (v) => v is $tom_core_server_26.TomColumnAuthorizationException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -9572,61 +10037,61 @@ BridgedClass _createTomColumnAuthorizationExceptionBridge() {
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final clientThrow = D4.getNamedArgWithDefault<bool>(named, 'clientThrow', true);
-        return $tom_core_server_25.TomColumnAuthorizationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, clientThrow: clientThrow);
+        return $tom_core_server_26.TomColumnAuthorizationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, clientThrow: clientThrow);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException');
+        final t = D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_25.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException');
+        final t = D4.validateTarget<$tom_core_server_26.TomColumnAuthorizationException>(target, 'TomColumnAuthorizationException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -9681,9 +10146,9 @@ BridgedClass _createTomColumnAuthorizationExceptionBridge() {
 
 BridgedClass _createTomColumnWriteDecisionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_25.TomColumnWriteDecision,
+    nativeType: $tom_core_server_26.TomColumnWriteDecision,
     name: 'TomColumnWriteDecision',
-    isAssignable: (v) => v is $tom_core_server_25.TomColumnWriteDecision,
+    isAssignable: (v) => v is $tom_core_server_26.TomColumnWriteDecision,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'TomColumnWriteDecision');
@@ -9695,12 +10160,12 @@ BridgedClass _createTomColumnWriteDecisionBridge() {
           throw ArgumentError('TomColumnWriteDecision: Missing required argument "preserved" at position 1');
         }
         final preserved = D4.coerceList<dynamic>(positional[1], 'preserved');
-        return $tom_core_server_25.TomColumnWriteDecision(writable, preserved);
+        return $tom_core_server_26.TomColumnWriteDecision(writable, preserved);
       },
     },
     getters: {
-      'writable': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnWriteDecision>(target, 'TomColumnWriteDecision').writable,
-      'preserved': (visitor, target) => D4.validateTarget<$tom_core_server_25.TomColumnWriteDecision>(target, 'TomColumnWriteDecision').preserved,
+      'writable': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnWriteDecision>(target, 'TomColumnWriteDecision').writable,
+      'preserved': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomColumnWriteDecision>(target, 'TomColumnWriteDecision').preserved,
     },
     constructorSignatures: {
       '': 'const TomColumnWriteDecision(List<C> writable, List<C> preserved)',
@@ -9718,9 +10183,9 @@ BridgedClass _createTomColumnWriteDecisionBridge() {
 
 BridgedClass _createTomColumnAuthorizationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_25.TomColumnAuthorization,
+    nativeType: $tom_core_server_26.TomColumnAuthorization,
     name: 'TomColumnAuthorization',
-    isAssignable: (v) => v is $tom_core_server_25.TomColumnAuthorization,
+    isAssignable: (v) => v is $tom_core_server_26.TomColumnAuthorization,
     constructors: {
     },
     staticMethods: {
@@ -9729,7 +10194,7 @@ BridgedClass _createTomColumnAuthorizationBridge() {
         final authKey = D4.getRequiredArg<String?>(positional, 0, 'authKey', 'stateForKey');
         final resolverRaw = named['resolver'];
         final resolver = resolverRaw == null ? null : ((String p0) { return D4.extractBridgedArg<$tom_core_kernel_10.TomAuthState>(D4.callInterpreterCallback(visitor!, resolverRaw, [p0]), 'callback', visitor) as $tom_core_kernel_10.TomAuthState; }) as $tom_core_kernel_10.TomAuthState Function(String);
-        return $tom_core_server_25.TomColumnAuthorization.stateForKey(authKey, resolver: resolver);
+        return $tom_core_server_26.TomColumnAuthorization.stateForKey(authKey, resolver: resolver);
       },
       'maskedColumns': (visitor, positional, named, typeArgs) {
         if (!named.containsKey('columns') || named['columns'] == null) {
@@ -9743,7 +10208,7 @@ BridgedClass _createTomColumnAuthorizationBridge() {
         final keyOf = ((dynamic p0) { return D4.callInterpreterCallback(visitor!, keyOfRaw, [p0]) as String?; }) as String? Function(dynamic);
         final resolverRaw = named['resolver'];
         final resolver = resolverRaw == null ? null : ((String p0) { return D4.extractBridgedArg<$tom_core_kernel_10.TomAuthState>(D4.callInterpreterCallback(visitor!, resolverRaw, [p0]), 'callback', visitor) as $tom_core_kernel_10.TomAuthState; }) as $tom_core_kernel_10.TomAuthState Function(String);
-        return $tom_core_server_25.TomColumnAuthorization.maskedColumns(columns: columns, keyOf: keyOf, resolver: resolver);
+        return $tom_core_server_26.TomColumnAuthorization.maskedColumns(columns: columns, keyOf: keyOf, resolver: resolver);
       },
       'decideWrites': (visitor, positional, named, typeArgs) {
         if (!named.containsKey('columns') || named['columns'] == null) {
@@ -9767,7 +10232,7 @@ BridgedClass _createTomColumnAuthorizationBridge() {
         final onForbidden = ((dynamic p0, String p1, $tom_core_kernel_10.TomAuthState p2) { return D4.extractBridgedArg<Never>(D4.callInterpreterCallback(visitor!, onForbiddenRaw, [p0, p1, p2]), 'callback', visitor) as Never; }) as Never Function(dynamic, String, $tom_core_kernel_10.TomAuthState);
         final resolverRaw = named['resolver'];
         final resolver = resolverRaw == null ? null : ((String p0) { return D4.extractBridgedArg<$tom_core_kernel_10.TomAuthState>(D4.callInterpreterCallback(visitor!, resolverRaw, [p0]), 'callback', visitor) as $tom_core_kernel_10.TomAuthState; }) as $tom_core_kernel_10.TomAuthState Function(String);
-        return $tom_core_server_25.TomColumnAuthorization.decideWrites(columns: columns, gradeOf: gradeOf, changed: changed, onForbidden: onForbidden, resolver: resolver);
+        return $tom_core_server_26.TomColumnAuthorization.decideWrites(columns: columns, gradeOf: gradeOf, changed: changed, onForbidden: onForbidden, resolver: resolver);
       },
       'applyReadMask': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'applyReadMask');
@@ -9775,10 +10240,10 @@ BridgedClass _createTomColumnAuthorizationBridge() {
         if (positional.length <= 1) {
           throw ArgumentError('applyReadMask: Missing required argument "columns" at position 1');
         }
-        final columns = D4.coerceList<$tom_core_server_30.TomColumnInformation>(positional[1], 'columns');
+        final columns = D4.coerceList<$tom_core_server_31.TomColumnInformation>(positional[1], 'columns');
         final resolverRaw = named['resolver'];
         final resolver = resolverRaw == null ? null : ((String p0) { return D4.extractBridgedArg<$tom_core_kernel_10.TomAuthState>(D4.callInterpreterCallback(visitor!, resolverRaw, [p0]), 'callback', visitor) as $tom_core_kernel_10.TomAuthState; }) as $tom_core_kernel_10.TomAuthState Function(String);
-        return $tom_core_server_25.TomColumnAuthorization.applyReadMask(instance, columns, resolver: resolver);
+        return $tom_core_server_26.TomColumnAuthorization.applyReadMask(instance, columns, resolver: resolver);
       },
     },
     staticMethodSignatures: {
@@ -9796,20 +10261,20 @@ BridgedClass _createTomColumnAuthorizationBridge() {
 
 BridgedClass _createTomCountResultBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_26.TomCountResult,
+    nativeType: $tom_core_server_27.TomCountResult,
     name: 'TomCountResult',
-    isAssignable: (v) => v is $tom_core_server_26.TomCountResult,
+    isAssignable: (v) => v is $tom_core_server_27.TomCountResult,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_26.TomCountResult();
+        return $tom_core_server_27.TomCountResult();
       },
     },
     getters: {
-      'count': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomCountResult>(target, 'TomCountResult').count,
+      'count': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomCountResult>(target, 'TomCountResult').count,
     },
     setters: {
       'count': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_26.TomCountResult>(target, 'TomCountResult').count = D4.extractBridgedArg<int>(value, 'count'),
+        D4.validateTarget<$tom_core_server_27.TomCountResult>(target, 'TomCountResult').count = D4.extractBridgedArg<int>(value, 'count'),
     },
     constructorSignatures: {
       '': 'TomCountResult()',
@@ -9829,21 +10294,21 @@ BridgedClass _createTomCountResultBridge() {
 
 BridgedClass _createTomRepositoryBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_26.TomRepository,
+    nativeType: $tom_core_server_27.TomRepository,
     name: 'TomRepository',
-    isAssignable: (v) => v is $tom_core_server_26.TomRepository,
+    isAssignable: (v) => v is $tom_core_server_27.TomRepository,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'delete': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'delete');
         final entity = D4.getRequiredArg<Object>(positional, 0, 'entity', 'delete');
         return t.delete(entity);
       },
       'deleteAllById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'deleteAllById');
         if (positional.isEmpty) {
           throw ArgumentError('deleteAllById: Missing required argument "ids" at position 0');
@@ -9852,13 +10317,13 @@ BridgedClass _createTomRepositoryBridge() {
         return t.deleteAllById(ids);
       },
       'deleteById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'deleteById');
         final id = D4.getRequiredArg<dynamic>(positional, 0, 'id', 'deleteById');
         return t.deleteById(id);
       },
       'existsById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'existsById');
         if (positional.isEmpty) {
           throw ArgumentError('existsById: Missing required argument "ids" at position 0');
@@ -9867,11 +10332,11 @@ BridgedClass _createTomRepositoryBridge() {
         return t.existsById(ids);
       },
       'findAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         return t.findAll();
       },
       'findAllById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'findAllById');
         if (positional.isEmpty) {
           throw ArgumentError('findAllById: Missing required argument "ids" at position 0');
@@ -9880,23 +10345,23 @@ BridgedClass _createTomRepositoryBridge() {
         return t.findAllById(ids);
       },
       'findById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'findById');
         final id = D4.getRequiredArg<dynamic>(positional, 0, 'id', 'findById');
         return t.findById(id);
       },
       'count': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         return t.count();
       },
       'save': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'save');
         final toSave = D4.getRequiredArg<Object>(positional, 0, 'toSave', 'save');
         return t.save(toSave);
       },
       'saveAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 1, 'saveAll');
         if (positional.isEmpty) {
           throw ArgumentError('saveAll: Missing required argument "entities" at position 0');
@@ -9905,7 +10370,7 @@ BridgedClass _createTomRepositoryBridge() {
         return t.saveAll(entities);
       },
       'findByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 2, 'findByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'findByQuerySentence');
         if (positional.length <= 1) {
@@ -9916,7 +10381,7 @@ BridgedClass _createTomRepositoryBridge() {
         return t.findByQuerySentence(querySentence, params, resultType);
       },
       'deleteByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 2, 'deleteByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'deleteByQuerySentence');
         if (positional.length <= 1) {
@@ -9926,7 +10391,7 @@ BridgedClass _createTomRepositoryBridge() {
         return t.deleteByQuerySentence(querySentence, params);
       },
       'countByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 2, 'countByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'countByQuerySentence');
         if (positional.length <= 1) {
@@ -9936,7 +10401,7 @@ BridgedClass _createTomRepositoryBridge() {
         return t.countByQuerySentence(querySentence, params);
       },
       'findByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 2, 'findByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomSelect>(positional, 0, 'query', 'findByQuery');
         if (positional.length <= 1) {
@@ -9946,7 +10411,7 @@ BridgedClass _createTomRepositoryBridge() {
         return t.findByQuery(query, params);
       },
       'deleteByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 2, 'deleteByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomDelete>(positional, 0, 'query', 'deleteByQuery');
         if (positional.length <= 1) {
@@ -9956,7 +10421,7 @@ BridgedClass _createTomRepositoryBridge() {
         return t.deleteByQuery(query, params);
       },
       'countByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 2, 'countByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomCount>(positional, 0, 'query', 'countByQuery');
         if (positional.length <= 1) {
@@ -9966,7 +10431,7 @@ BridgedClass _createTomRepositoryBridge() {
         return t.countByQuery(query, params);
       },
       'executeQueryString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomRepository>(target, 'TomRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomRepository>(target, 'TomRepository');
         D4.requireMinArgs(positional, 2, 'executeQueryString');
         final dbQuery = D4.getRequiredArg<String>(positional, 0, 'dbQuery', 'executeQueryString');
         if (positional.length <= 1) {
@@ -10004,45 +10469,45 @@ BridgedClass _createTomRepositoryBridge() {
 
 BridgedClass _createTomSqlDatasourceRepositoryBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_26.TomSqlDatasourceRepository,
+    nativeType: $tom_core_server_27.TomSqlDatasourceRepository,
     name: 'TomSqlDatasourceRepository',
-    isAssignable: (v) => v is $tom_core_server_26.TomSqlDatasourceRepository,
+    isAssignable: (v) => v is $tom_core_server_27.TomSqlDatasourceRepository,
     hierarchyDepth: 2,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'primaryKeyColumnInfo': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').primaryKeyColumnInfo,
-      'datasourceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').datasourceInfo,
-      'persistenceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').persistenceInfo,
-      'dbTable': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').dbTable,
-      'queryTypes': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').queryTypes,
-      'resultType': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').resultType,
-      'sqlDialect': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').sqlDialect,
+      'primaryKeyColumnInfo': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').primaryKeyColumnInfo,
+      'datasourceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').datasourceInfo,
+      'persistenceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').persistenceInfo,
+      'dbTable': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').dbTable,
+      'queryTypes': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').queryTypes,
+      'resultType': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').resultType,
+      'sqlDialect': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').sqlDialect,
     },
     setters: {
       'primaryKeyColumnInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').primaryKeyColumnInfo = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'primaryKeyColumnInfo'),
+        D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').primaryKeyColumnInfo = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'primaryKeyColumnInfo'),
       'datasourceInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').datasourceInfo = D4.extractBridgedArg<$tom_core_server_12.TomDataSourceInfo>(value, 'datasourceInfo'),
+        D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').datasourceInfo = D4.extractBridgedArg<$tom_core_server_12.TomDataSourceInfo>(value, 'datasourceInfo'),
       'persistenceInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').persistenceInfo = D4.extractBridgedArg<$tom_core_server_15.TomTypePersistenceInfo>(value, 'persistenceInfo'),
+        D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').persistenceInfo = D4.extractBridgedArg<$tom_core_server_15.TomTypePersistenceInfo>(value, 'persistenceInfo'),
       'dbTable': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').dbTable = D4.extractBridgedArg<$tom_core_server_30.TomDbTable>(value, 'dbTable'),
+        D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').dbTable = D4.extractBridgedArg<$tom_core_server_31.TomDbTable>(value, 'dbTable'),
       'queryTypes': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').queryTypes = D4.coerceList<Type>(value, 'queryTypes'),
+        D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').queryTypes = D4.coerceList<Type>(value, 'queryTypes'),
       'resultType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').resultType = D4.extractBridgedArg<Type>(value, 'resultType'),
+        D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository').resultType = D4.extractBridgedArg<Type>(value, 'resultType'),
     },
     methods: {
       'delete': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'delete');
         final entity = D4.getRequiredArg<Object>(positional, 0, 'entity', 'delete');
         return t.delete(entity);
       },
       'deleteAllById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'deleteAllById');
         if (positional.isEmpty) {
           throw ArgumentError('deleteAllById: Missing required argument "ids" at position 0');
@@ -10051,13 +10516,13 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.deleteAllById(ids);
       },
       'deleteById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'deleteById');
         final id = D4.getRequiredArg<dynamic>(positional, 0, 'id', 'deleteById');
         return t.deleteById(id);
       },
       'existsById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'existsById');
         if (positional.isEmpty) {
           throw ArgumentError('existsById: Missing required argument "ids" at position 0');
@@ -10066,11 +10531,11 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.existsById(ids);
       },
       'findAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         return t.findAll();
       },
       'findAllById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'findAllById');
         if (positional.isEmpty) {
           throw ArgumentError('findAllById: Missing required argument "ids" at position 0');
@@ -10079,23 +10544,23 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.findAllById(ids);
       },
       'findById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'findById');
         final id = D4.getRequiredArg<dynamic>(positional, 0, 'id', 'findById');
         return t.findById(id);
       },
       'count': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         return t.count();
       },
       'save': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'save');
         final toSave = D4.getRequiredArg<Object>(positional, 0, 'toSave', 'save');
         return t.save(toSave);
       },
       'saveAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'saveAll');
         if (positional.isEmpty) {
           throw ArgumentError('saveAll: Missing required argument "entities" at position 0');
@@ -10104,7 +10569,7 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.saveAll(entities);
       },
       'findByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'findByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'findByQuerySentence');
         if (positional.length <= 1) {
@@ -10115,7 +10580,7 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.findByQuerySentence(querySentence, params, resultType);
       },
       'deleteByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'deleteByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'deleteByQuerySentence');
         if (positional.length <= 1) {
@@ -10125,7 +10590,7 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.deleteByQuerySentence(querySentence, params);
       },
       'countByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'countByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'countByQuerySentence');
         if (positional.length <= 1) {
@@ -10135,7 +10600,7 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.countByQuerySentence(querySentence, params);
       },
       'findByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'findByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomSelect>(positional, 0, 'query', 'findByQuery');
         if (positional.length <= 1) {
@@ -10145,7 +10610,7 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.findByQuery(query, params);
       },
       'deleteByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'deleteByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomDelete>(positional, 0, 'query', 'deleteByQuery');
         if (positional.length <= 1) {
@@ -10155,7 +10620,7 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.deleteByQuery(query, params);
       },
       'countByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'countByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomCount>(positional, 0, 'query', 'countByQuery');
         if (positional.length <= 1) {
@@ -10165,7 +10630,7 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.countByQuery(query, params);
       },
       'executeQueryString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'executeQueryString');
         final dbQuery = D4.getRequiredArg<String>(positional, 0, 'dbQuery', 'executeQueryString');
         if (positional.length <= 1) {
@@ -10175,212 +10640,212 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         return t.executeQueryString(dbQuery, params);
       },
       'isNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'isNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
         return t.isNull(what);
       },
       'isNotNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'isNotNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
         return t.isNotNull(what);
       },
       'isIn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'isIn');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
         if (positional.length <= 1) {
           throw ArgumentError('isIn: Missing required argument "choices" at position 1');
         }
-        final choices = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'choices');
+        final choices = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'choices');
         return t.isIn(what, choices);
       },
       'between': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'between');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'between');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'between');
         if (positional.length <= 1) {
           throw ArgumentError('between: Missing required argument "betweenLimits" at position 1');
         }
-        final betweenLimits = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'betweenLimits');
+        final betweenLimits = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'betweenLimits');
         return t.between(what, betweenLimits);
       },
       'like': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'like');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'like');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'like');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'like');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'like');
         return t.like(text, test);
       },
       'notLike': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'notLike');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'notLike');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'notLike');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'notLike');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'notLike');
         return t.notLike(text, test);
       },
       'regexp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'regexp');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'regexp');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'regexp');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'regexp');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'regexp');
         return t.regexp(text, test);
       },
       'group': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'group');
-        final operant = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
+        final operant = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
         return t.group(operant);
       },
       'eq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'eq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
         return t.eq(operant1, operant2);
       },
       'neq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'neq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
         return t.neq(operant1, operant2);
       },
       'lt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'lt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
         return t.lt(operant1, operant2);
       },
       'lte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'lte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
         return t.lte(operant1, operant2);
       },
       'gt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'gt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
         return t.gt(operant1, operant2);
       },
       'gte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'gte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
         return t.gte(operant1, operant2);
       },
       'not': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'not');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'operant1', 'not');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'operant1', 'not');
         return t.not(operant1);
       },
       'and': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'and');
         if (positional.isEmpty) {
           throw ArgumentError('and: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.and(operant1);
       },
       'or': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'or');
         if (positional.isEmpty) {
           throw ArgumentError('or: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.or(operant1);
       },
       'text': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'text');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'text');
         return t.text(text);
       },
       'intOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'intOp');
         final value = D4.getRequiredArg<int>(positional, 0, 'value', 'intOp');
         return t.intOp(value);
       },
       'doubleOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'doubleOp');
         final value = D4.getRequiredArg<double>(positional, 0, 'value', 'doubleOp');
         return t.doubleOp(value);
       },
       'boolOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'boolOp');
         final value = D4.getRequiredArg<bool>(positional, 0, 'value', 'boolOp');
         return t.boolOp(value);
       },
       'dateTimeOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'dateTimeOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateTimeOp');
         return t.dateTimeOp(value);
       },
       'dateOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'dateOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateOp');
         return t.dateOp(value);
       },
       'p': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 1, 'p');
         final parameterName = D4.getRequiredArg<String>(positional, 0, 'parameterName', 'p');
         return t.p(parameterName);
       },
       'textF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'textF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'textF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
         return t.textF(fieldName, columnInformation);
       },
       'intF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'intF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'intF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
         return t.intF(fieldName, columnInformation);
       },
       'doubleF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'doubleF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'doubleF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
         return t.doubleF(fieldName, columnInformation);
       },
       'boolF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'boolF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'boolF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
         return t.boolF(fieldName, columnInformation);
       },
       'dateTimeF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'dateTimeF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateTimeF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
         return t.dateTimeF(fieldName, columnInformation);
       },
       'dateF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_26.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
+        final t = D4.validateTarget<$tom_core_server_27.TomSqlDatasourceRepository>(target, 'TomSqlDatasourceRepository');
         D4.requireMinArgs(positional, 2, 'dateF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
         return t.dateF(fieldName, columnInformation);
       },
     },
@@ -10388,12 +10853,12 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
       'isUnsavedKey': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isUnsavedKey');
         final primaryKey = D4.getRequiredArg<Object?>(positional, 0, 'primaryKey', 'isUnsavedKey');
-        return $tom_core_server_26.TomSqlDatasourceRepository.isUnsavedKey(primaryKey);
+        return $tom_core_server_27.TomSqlDatasourceRepository.isUnsavedKey(primaryKey);
       },
       'readPrimaryKey': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'readPrimaryKey');
         final raw = D4.getRequiredArg<Object?>(positional, 0, 'raw', 'readPrimaryKey');
-        return $tom_core_server_26.TomSqlDatasourceRepository.readPrimaryKey(raw);
+        return $tom_core_server_27.TomSqlDatasourceRepository.readPrimaryKey(raw);
       },
       'buildInsertStatement': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'buildInsertStatement');
@@ -10401,8 +10866,8 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         if (positional.length <= 1) {
           throw ArgumentError('buildInsertStatement: Missing required argument "columns" at position 1');
         }
-        final columns = D4.coerceList<$tom_core_server_30.TomColumnInformation>(positional[1], 'columns');
-        return $tom_core_server_26.TomSqlDatasourceRepository.buildInsertStatement(table, columns);
+        final columns = D4.coerceList<$tom_core_server_31.TomColumnInformation>(positional[1], 'columns');
+        return $tom_core_server_27.TomSqlDatasourceRepository.buildInsertStatement(table, columns);
       },
       'buildUpdateStatement': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'buildUpdateStatement');
@@ -10410,9 +10875,9 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
         if (positional.length <= 1) {
           throw ArgumentError('buildUpdateStatement: Missing required argument "columns" at position 1');
         }
-        final columns = D4.coerceList<$tom_core_server_30.TomColumnInformation>(positional[1], 'columns');
-        final primaryKey = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'primaryKey', 'buildUpdateStatement');
-        return $tom_core_server_26.TomSqlDatasourceRepository.buildUpdateStatement(table, columns, primaryKey);
+        final columns = D4.coerceList<$tom_core_server_31.TomColumnInformation>(positional[1], 'columns');
+        final primaryKey = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'primaryKey', 'buildUpdateStatement');
+        return $tom_core_server_27.TomSqlDatasourceRepository.buildUpdateStatement(table, columns, primaryKey);
       },
     },
     methodSignatures: {
@@ -10496,18 +10961,18 @@ BridgedClass _createTomSqlDatasourceRepositoryBridge() {
 
 BridgedClass _createTomRepositoryTypeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_26.TomRepositoryType,
+    nativeType: $tom_core_server_27.TomRepositoryType,
     name: 'TomRepositoryType',
-    isAssignable: (v) => v is $tom_core_server_26.TomRepositoryType,
+    isAssignable: (v) => v is $tom_core_server_27.TomRepositoryType,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomRepositoryType');
         final datasourceType = D4.getRequiredArg<String>(positional, 0, 'datasourceType', 'TomRepositoryType');
-        return $tom_core_server_26.TomRepositoryType(datasourceType);
+        return $tom_core_server_27.TomRepositoryType(datasourceType);
       },
     },
     getters: {
-      'datasourceType': (visitor, target) => D4.validateTarget<$tom_core_server_26.TomRepositoryType>(target, 'TomRepositoryType').datasourceType,
+      'datasourceType': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomRepositoryType>(target, 'TomRepositoryType').datasourceType,
     },
     constructorSignatures: {
       '': 'const TomRepositoryType(String datasourceType)',
@@ -10524,9 +10989,9 @@ BridgedClass _createTomRepositoryTypeBridge() {
 
 BridgedClass _createTomDataScopeExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_27.TomDataScopeException,
+    nativeType: $tom_core_server_28.TomDataScopeException,
     name: 'TomDataScopeException',
-    isAssignable: (v) => v is $tom_core_server_27.TomDataScopeException,
+    isAssignable: (v) => v is $tom_core_server_28.TomDataScopeException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -10537,61 +11002,61 @@ BridgedClass _createTomDataScopeExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_27.TomDataScopeException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_28.TomDataScopeException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException');
+        final t = D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_27.TomDataScopeException>(target, 'TomDataScopeException');
+        final t = D4.validateTarget<$tom_core_server_28.TomDataScopeException>(target, 'TomDataScopeException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -10646,9 +11111,9 @@ BridgedClass _createTomDataScopeExceptionBridge() {
 
 BridgedClass _createTomDataScopeAuthorizationExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_27.TomDataScopeAuthorizationException,
+    nativeType: $tom_core_server_28.TomDataScopeAuthorizationException,
     name: 'TomDataScopeAuthorizationException',
-    isAssignable: (v) => v is $tom_core_server_27.TomDataScopeAuthorizationException,
+    isAssignable: (v) => v is $tom_core_server_28.TomDataScopeAuthorizationException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -10660,61 +11125,61 @@ BridgedClass _createTomDataScopeAuthorizationExceptionBridge() {
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final clientThrow = D4.getNamedArgWithDefault<bool>(named, 'clientThrow', true);
-        return $tom_core_server_27.TomDataScopeAuthorizationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, clientThrow: clientThrow);
+        return $tom_core_server_28.TomDataScopeAuthorizationException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, clientThrow: clientThrow);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException');
+        final t = D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_27.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException');
+        final t = D4.validateTarget<$tom_core_server_28.TomDataScopeAuthorizationException>(target, 'TomDataScopeAuthorizationException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -10769,9 +11234,9 @@ BridgedClass _createTomDataScopeAuthorizationExceptionBridge() {
 
 BridgedClass _createTomDataScopeRegistryBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_27.TomDataScopeRegistry,
+    nativeType: $tom_core_server_28.TomDataScopeRegistry,
     name: 'TomDataScopeRegistry',
-    isAssignable: (v) => v is $tom_core_server_27.TomDataScopeRegistry,
+    isAssignable: (v) => v is $tom_core_server_28.TomDataScopeRegistry,
     constructors: {
     },
     staticMethods: {
@@ -10783,20 +11248,43 @@ BridgedClass _createTomDataScopeRegistryBridge() {
         }
         final resolverRaw = positional[1];
         final resolver = (($tom_core_kernel_11.TomPrincipal? p0) { return D4.extractBridgedArg<List<Object?>?>(D4.callInterpreterCallback(visitor!, resolverRaw, [p0]), 'callback', visitor) as List<Object?>?; }) as List<Object?>? Function($tom_core_kernel_11.TomPrincipal?);
-        return $tom_core_server_27.TomDataScopeRegistry.register(scope, resolver);
+        return $tom_core_server_28.TomDataScopeRegistry.register(scope, resolver);
+      },
+      'registerAsync': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 2, 'registerAsync');
+        final scope = D4.getRequiredArg<String>(positional, 0, 'scope', 'registerAsync');
+        if (positional.length <= 1) {
+          throw ArgumentError('registerAsync: Missing required argument "resolver" at position 1');
+        }
+        final resolverRaw = positional[1];
+        final resolver = (($tom_core_kernel_11.TomPrincipal? p0) { return Future.value(D4.callInterpreterCallback(visitor!, resolverRaw, [p0])).then((v) => v as List<List<dynamic>>); }) as Future<List<List<dynamic>>> Function($tom_core_kernel_11.TomPrincipal?);
+        return $tom_core_server_28.TomDataScopeRegistry.registerAsync(scope, resolver);
       },
       'resolverFor': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'resolverFor');
         final scope = D4.getRequiredArg<String>(positional, 0, 'scope', 'resolverFor');
-        return $tom_core_server_27.TomDataScopeRegistry.resolverFor(scope);
+        return $tom_core_server_28.TomDataScopeRegistry.resolverFor(scope);
+      },
+      'asyncResolverFor': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'asyncResolverFor');
+        final scope = D4.getRequiredArg<String>(positional, 0, 'scope', 'asyncResolverFor');
+        return $tom_core_server_28.TomDataScopeRegistry.asyncResolverFor(scope);
+      },
+      'isAsync': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'isAsync');
+        final scope = D4.getRequiredArg<String>(positional, 0, 'scope', 'isAsync');
+        return $tom_core_server_28.TomDataScopeRegistry.isAsync(scope);
       },
       'reset': (visitor, positional, named, typeArgs) {
-        return $tom_core_server_27.TomDataScopeRegistry.reset();
+        return $tom_core_server_28.TomDataScopeRegistry.reset();
       },
     },
     staticMethodSignatures: {
       'register': 'void register(String scope, TomDataScopeResolver resolver)',
+      'registerAsync': 'void registerAsync(String scope, TomAsyncDataScopeResolver resolver)',
       'resolverFor': 'TomDataScopeResolver? resolverFor(String scope)',
+      'asyncResolverFor': 'TomAsyncDataScopeResolver? asyncResolverFor(String scope)',
+      'isAsync': 'bool isAsync(String scope)',
       'reset': 'void reset()',
     },
   );
@@ -10808,23 +11296,23 @@ BridgedClass _createTomDataScopeRegistryBridge() {
 
 BridgedClass _createTomDataScopePredicateBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_27.TomDataScopePredicate,
+    nativeType: $tom_core_server_28.TomDataScopePredicate,
     name: 'TomDataScopePredicate',
-    isAssignable: (v) => v is $tom_core_server_27.TomDataScopePredicate,
+    isAssignable: (v) => v is $tom_core_server_28.TomDataScopePredicate,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'TomDataScopePredicate');
-        final predicate = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'predicate', 'TomDataScopePredicate');
+        final predicate = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'predicate', 'TomDataScopePredicate');
         if (positional.length <= 1) {
           throw ArgumentError('TomDataScopePredicate: Missing required argument "parameters" at position 1');
         }
         final parameters = D4.coerceMap<String, Object?>(positional[1], 'parameters');
-        return $tom_core_server_27.TomDataScopePredicate(predicate, parameters);
+        return $tom_core_server_28.TomDataScopePredicate(predicate, parameters);
       },
     },
     getters: {
-      'predicate': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopePredicate>(target, 'TomDataScopePredicate').predicate,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_27.TomDataScopePredicate>(target, 'TomDataScopePredicate').parameters,
+      'predicate': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopePredicate>(target, 'TomDataScopePredicate').predicate,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_28.TomDataScopePredicate>(target, 'TomDataScopePredicate').parameters,
     },
     constructorSignatures: {
       '': 'TomDataScopePredicate(TomOperator<TomDbBool> predicate, Map<String, Object?> parameters)',
@@ -10837,50 +11325,98 @@ BridgedClass _createTomDataScopePredicateBridge() {
 }
 
 // =============================================================================
+// TomDataScopeBypass Bridge
+// =============================================================================
+
+BridgedClass _createTomDataScopeBypassBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_server_28.TomDataScopeBypass,
+    name: 'TomDataScopeBypass',
+    isAssignable: (v) => v is $tom_core_server_28.TomDataScopeBypass,
+    constructors: {
+      '': (visitor, positional, named) {
+        return $tom_core_server_28.TomDataScopeBypass();
+      },
+    },
+    constructorSignatures: {
+      '': 'const TomDataScopeBypass()',
+    },
+  );
+}
+
+// =============================================================================
 // TomDataScope Bridge
 // =============================================================================
 
 BridgedClass _createTomDataScopeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_27.TomDataScope,
+    nativeType: $tom_core_server_28.TomDataScope,
     name: 'TomDataScope',
-    isAssignable: (v) => v is $tom_core_server_27.TomDataScope,
+    isAssignable: (v) => v is $tom_core_server_28.TomDataScope,
     constructors: {
     },
     staticGetters: {
-      'parameterPrefix': (visitor) => $tom_core_server_27.TomDataScope.parameterPrefix,
+      'parameterPrefix': (visitor) => $tom_core_server_28.TomDataScope.parameterPrefix,
+      'isBypassed': (visitor) => $tom_core_server_28.TomDataScope.isBypassed,
     },
     staticMethods: {
+      'runUnscoped': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'runUnscoped');
+        if (positional.isEmpty) {
+          throw ArgumentError('runUnscoped: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        final body = (() { return Future.value(D4.callInterpreterCallback(visitor!, bodyRaw, [])).then((v) => v as dynamic); }) as Future<dynamic> Function();
+        return $tom_core_server_28.TomDataScope.runUnscoped(body);
+      },
       'build': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 4, 'build');
-        final builder = D4.getRequiredArg<$tom_core_server_31.TomQueryBuilder>(positional, 0, 'builder', 'build');
-        final scope = D4.getRequiredArg<$tom_core_server_30.TomDbScope>(positional, 1, 'scope', 'build');
-        final col = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'col', 'build');
+        final builder = D4.getRequiredArg<$tom_core_server_32.TomQueryBuilder>(positional, 0, 'builder', 'build');
+        final scope = D4.getRequiredArg<$tom_core_server_31.TomDbScope>(positional, 1, 'scope', 'build');
+        final col = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'col', 'build');
         final principal = D4.getRequiredArg<$tom_core_kernel_11.TomPrincipal?>(positional, 3, 'principal', 'build');
-        return $tom_core_server_27.TomDataScope.build(builder, scope, col, principal);
+        return $tom_core_server_28.TomDataScope.build(builder, scope, col, principal);
+      },
+      'buildAsync': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 4, 'buildAsync');
+        final builder = D4.getRequiredArg<$tom_core_server_32.TomQueryBuilder>(positional, 0, 'builder', 'buildAsync');
+        final scope = D4.getRequiredArg<$tom_core_server_31.TomDbScope>(positional, 1, 'scope', 'buildAsync');
+        final col = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'col', 'buildAsync');
+        final principal = D4.getRequiredArg<$tom_core_kernel_11.TomPrincipal?>(positional, 3, 'principal', 'buildAsync');
+        return $tom_core_server_28.TomDataScope.buildAsync(builder, scope, col, principal);
+      },
+      'anyOf': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 3, 'anyOf');
+        final builder = D4.getRequiredArg<$tom_core_server_32.TomQueryBuilder>(positional, 0, 'builder', 'anyOf');
+        final col = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'col', 'anyOf');
+        if (positional.length <= 2) {
+          throw ArgumentError('anyOf: Missing required argument "groups" at position 2');
+        }
+        final groups = D4.coerceList<List<Object?>>(positional[2], 'groups');
+        return $tom_core_server_28.TomDataScope.anyOf(builder, col, groups);
       },
       'inList': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'inList');
-        final builder = D4.getRequiredArg<$tom_core_server_31.TomQueryBuilder>(positional, 0, 'builder', 'inList');
-        final col = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'col', 'inList');
+        final builder = D4.getRequiredArg<$tom_core_server_32.TomQueryBuilder>(positional, 0, 'builder', 'inList');
+        final col = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'col', 'inList');
         if (positional.length <= 2) {
           throw ArgumentError('inList: Missing required argument "values" at position 2');
         }
         final values = D4.coerceList<Object?>(positional[2], 'values');
         if (!named.containsKey('prefix')) {
-          return $tom_core_server_27.TomDataScope.inList(builder, col, values);
+          return $tom_core_server_28.TomDataScope.inList(builder, col, values);
         }
         if (named.containsKey('prefix')) {
           final prefix = D4.getRequiredNamedArg<String>(named, 'prefix', 'inList');
-          return $tom_core_server_27.TomDataScope.inList(builder, col, values, prefix: prefix);
+          return $tom_core_server_28.TomDataScope.inList(builder, col, values, prefix: prefix);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
       'allowedValues': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'allowedValues');
-        final scope = D4.getRequiredArg<$tom_core_server_30.TomDbScope>(positional, 0, 'scope', 'allowedValues');
+        final scope = D4.getRequiredArg<$tom_core_server_31.TomDbScope>(positional, 0, 'scope', 'allowedValues');
         final principal = D4.getRequiredArg<$tom_core_kernel_11.TomPrincipal?>(positional, 1, 'principal', 'allowedValues');
-        return $tom_core_server_27.TomDataScope.allowedValues(scope, principal);
+        return $tom_core_server_28.TomDataScope.allowedValues(scope, principal);
       },
       'permits': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'permits');
@@ -10889,28 +11425,31 @@ BridgedClass _createTomDataScopeBridge() {
         }
         final allowed = D4.coerceListOrNull<Object?>(positional[0], 'allowed');
         final value = D4.getRequiredArg<Object?>(positional, 1, 'value', 'permits');
-        return $tom_core_server_27.TomDataScope.permits(allowed, value);
+        return $tom_core_server_28.TomDataScope.permits(allowed, value);
       },
       'inColumn': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'inColumn');
-        final builder = D4.getRequiredArg<$tom_core_server_31.TomQueryBuilder>(positional, 0, 'builder', 'inColumn');
-        final col = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'col', 'inColumn');
+        final builder = D4.getRequiredArg<$tom_core_server_32.TomQueryBuilder>(positional, 0, 'builder', 'inColumn');
+        final col = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'col', 'inColumn');
         if (positional.length <= 2) {
           throw ArgumentError('inColumn: Missing required argument "parameterNames" at position 2');
         }
         final parameterNames = D4.coerceList<String>(positional[2], 'parameterNames');
-        return $tom_core_server_27.TomDataScope.inColumn(builder, col, parameterNames);
+        return $tom_core_server_28.TomDataScope.inColumn(builder, col, parameterNames);
       },
       'columnEqualsParam': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'columnEqualsParam');
-        final builder = D4.getRequiredArg<$tom_core_server_31.TomQueryBuilder>(positional, 0, 'builder', 'columnEqualsParam');
-        final col = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'col', 'columnEqualsParam');
+        final builder = D4.getRequiredArg<$tom_core_server_32.TomQueryBuilder>(positional, 0, 'builder', 'columnEqualsParam');
+        final col = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'col', 'columnEqualsParam');
         final parameterName = D4.getRequiredArg<String>(positional, 2, 'parameterName', 'columnEqualsParam');
-        return $tom_core_server_27.TomDataScope.columnEqualsParam(builder, col, parameterName);
+        return $tom_core_server_28.TomDataScope.columnEqualsParam(builder, col, parameterName);
       },
     },
     staticMethodSignatures: {
+      'runUnscoped': 'Future<T> runUnscoped(Future<T> Function() body)',
       'build': 'TomDataScopePredicate? build(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)',
+      'buildAsync': 'Future<TomDataScopePredicate?> buildAsync(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)',
+      'anyOf': 'TomDataScopePredicate anyOf(TomQueryBuilder builder, TomColumnInformation col, List<List<Object?>> groups)',
       'inList': 'TomDataScopePredicate inList(TomQueryBuilder builder, TomColumnInformation col, Iterable<Object?> values, {String prefix = parameterPrefix})',
       'allowedValues': 'List<Object?>? allowedValues(TomDbScope scope, TomPrincipal? principal)',
       'permits': 'bool permits(List<Object?>? allowed, Object? value)',
@@ -10919,6 +11458,7 @@ BridgedClass _createTomDataScopeBridge() {
     },
     staticGetterSignatures: {
       'parameterPrefix': 'String get parameterPrefix',
+      'isBypassed': 'bool get isBypassed',
     },
   );
 }
@@ -10929,9 +11469,9 @@ BridgedClass _createTomDataScopeBridge() {
 
 BridgedClass _createMariadbRepositoryBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_28.MariadbRepository,
+    nativeType: $tom_core_server_29.MariadbRepository,
     name: 'MariadbRepository',
-    isAssignable: (v) => v is $tom_core_server_28.MariadbRepository,
+    isAssignable: (v) => v is $tom_core_server_29.MariadbRepository,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
@@ -10939,41 +11479,41 @@ BridgedClass _createMariadbRepositoryBridge() {
             ? D4.coerceListOrNull<Type>(positional[0], 'queryTypes')
             : null;
         final resultType = D4.getOptionalArg<Type?>(positional, 1, 'resultType');
-        return $tom_core_server_28.MariadbRepository(queryTypes, resultType);
+        return $tom_core_server_29.MariadbRepository(queryTypes, resultType);
       },
     },
     getters: {
-      'primaryKeyColumnInfo': (visitor, target) => D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').primaryKeyColumnInfo,
-      'datasourceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').datasourceInfo,
-      'persistenceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').persistenceInfo,
-      'dbTable': (visitor, target) => D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').dbTable,
-      'queryTypes': (visitor, target) => D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').queryTypes,
-      'resultType': (visitor, target) => D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').resultType,
-      'sqlDialect': (visitor, target) => D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').sqlDialect,
+      'primaryKeyColumnInfo': (visitor, target) => D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').primaryKeyColumnInfo,
+      'datasourceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').datasourceInfo,
+      'persistenceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').persistenceInfo,
+      'dbTable': (visitor, target) => D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').dbTable,
+      'queryTypes': (visitor, target) => D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').queryTypes,
+      'resultType': (visitor, target) => D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').resultType,
+      'sqlDialect': (visitor, target) => D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').sqlDialect,
     },
     setters: {
       'primaryKeyColumnInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').primaryKeyColumnInfo = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'primaryKeyColumnInfo'),
+        D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').primaryKeyColumnInfo = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'primaryKeyColumnInfo'),
       'datasourceInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').datasourceInfo = D4.extractBridgedArg<$tom_core_server_12.TomDataSourceInfo>(value, 'datasourceInfo'),
+        D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').datasourceInfo = D4.extractBridgedArg<$tom_core_server_12.TomDataSourceInfo>(value, 'datasourceInfo'),
       'persistenceInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').persistenceInfo = D4.extractBridgedArg<$tom_core_server_15.TomTypePersistenceInfo>(value, 'persistenceInfo'),
+        D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').persistenceInfo = D4.extractBridgedArg<$tom_core_server_15.TomTypePersistenceInfo>(value, 'persistenceInfo'),
       'dbTable': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').dbTable = D4.extractBridgedArg<$tom_core_server_30.TomDbTable>(value, 'dbTable'),
+        D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').dbTable = D4.extractBridgedArg<$tom_core_server_31.TomDbTable>(value, 'dbTable'),
       'queryTypes': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').queryTypes = D4.coerceList<Type>(value, 'queryTypes'),
+        D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').queryTypes = D4.coerceList<Type>(value, 'queryTypes'),
       'resultType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository').resultType = D4.extractBridgedArg<Type>(value, 'resultType'),
+        D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository').resultType = D4.extractBridgedArg<Type>(value, 'resultType'),
     },
     methods: {
       'delete': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'delete');
         final entity = D4.getRequiredArg<Object>(positional, 0, 'entity', 'delete');
         return t.delete(entity);
       },
       'deleteAllById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'deleteAllById');
         if (positional.isEmpty) {
           throw ArgumentError('deleteAllById: Missing required argument "ids" at position 0');
@@ -10982,13 +11522,13 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.deleteAllById(ids);
       },
       'deleteById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'deleteById');
         final id = D4.getRequiredArg<dynamic>(positional, 0, 'id', 'deleteById');
         return t.deleteById(id);
       },
       'existsById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'existsById');
         if (positional.isEmpty) {
           throw ArgumentError('existsById: Missing required argument "ids" at position 0');
@@ -10997,11 +11537,11 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.existsById(ids);
       },
       'findAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         return t.findAll();
       },
       'findAllById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'findAllById');
         if (positional.isEmpty) {
           throw ArgumentError('findAllById: Missing required argument "ids" at position 0');
@@ -11010,23 +11550,23 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.findAllById(ids);
       },
       'findById': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'findById');
         final id = D4.getRequiredArg<dynamic>(positional, 0, 'id', 'findById');
         return t.findById(id);
       },
       'count': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         return t.count();
       },
       'save': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'save');
         final toSave = D4.getRequiredArg<Object>(positional, 0, 'toSave', 'save');
         return t.save(toSave);
       },
       'saveAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'saveAll');
         if (positional.isEmpty) {
           throw ArgumentError('saveAll: Missing required argument "entities" at position 0');
@@ -11035,7 +11575,7 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.saveAll(entities);
       },
       'findByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'findByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'findByQuerySentence');
         if (positional.length <= 1) {
@@ -11046,7 +11586,7 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.findByQuerySentence(querySentence, params, resultType);
       },
       'deleteByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'deleteByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'deleteByQuerySentence');
         if (positional.length <= 1) {
@@ -11056,7 +11596,7 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.deleteByQuerySentence(querySentence, params);
       },
       'countByQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'countByQuerySentence');
         final querySentence = D4.getRequiredArg<String>(positional, 0, 'querySentence', 'countByQuerySentence');
         if (positional.length <= 1) {
@@ -11066,7 +11606,7 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.countByQuerySentence(querySentence, params);
       },
       'findByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'findByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomSelect>(positional, 0, 'query', 'findByQuery');
         if (positional.length <= 1) {
@@ -11076,7 +11616,7 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.findByQuery(query, params);
       },
       'deleteByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'deleteByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomDelete>(positional, 0, 'query', 'deleteByQuery');
         if (positional.length <= 1) {
@@ -11086,7 +11626,7 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.deleteByQuery(query, params);
       },
       'countByQuery': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'countByQuery');
         final query = D4.getRequiredArg<$tom_core_server_15.TomCount>(positional, 0, 'query', 'countByQuery');
         if (positional.length <= 1) {
@@ -11096,7 +11636,7 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.countByQuery(query, params);
       },
       'executeQueryString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'executeQueryString');
         final dbQuery = D4.getRequiredArg<String>(positional, 0, 'dbQuery', 'executeQueryString');
         if (positional.length <= 1) {
@@ -11106,212 +11646,212 @@ BridgedClass _createMariadbRepositoryBridge() {
         return t.executeQueryString(dbQuery, params);
       },
       'isNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'isNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
         return t.isNull(what);
       },
       'isNotNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'isNotNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
         return t.isNotNull(what);
       },
       'isIn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'isIn');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
         if (positional.length <= 1) {
           throw ArgumentError('isIn: Missing required argument "choices" at position 1');
         }
-        final choices = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'choices');
+        final choices = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'choices');
         return t.isIn(what, choices);
       },
       'between': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'between');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'between');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'between');
         if (positional.length <= 1) {
           throw ArgumentError('between: Missing required argument "betweenLimits" at position 1');
         }
-        final betweenLimits = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'betweenLimits');
+        final betweenLimits = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'betweenLimits');
         return t.between(what, betweenLimits);
       },
       'like': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'like');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'like');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'like');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'like');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'like');
         return t.like(text, test);
       },
       'notLike': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'notLike');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'notLike');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'notLike');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'notLike');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'notLike');
         return t.notLike(text, test);
       },
       'regexp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'regexp');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'regexp');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'regexp');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'regexp');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'regexp');
         return t.regexp(text, test);
       },
       'group': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'group');
-        final operant = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
+        final operant = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
         return t.group(operant);
       },
       'eq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'eq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
         return t.eq(operant1, operant2);
       },
       'neq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'neq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
         return t.neq(operant1, operant2);
       },
       'lt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'lt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
         return t.lt(operant1, operant2);
       },
       'lte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'lte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
         return t.lte(operant1, operant2);
       },
       'gt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'gt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
         return t.gt(operant1, operant2);
       },
       'gte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'gte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
         return t.gte(operant1, operant2);
       },
       'not': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'not');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'operant1', 'not');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'operant1', 'not');
         return t.not(operant1);
       },
       'and': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'and');
         if (positional.isEmpty) {
           throw ArgumentError('and: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.and(operant1);
       },
       'or': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'or');
         if (positional.isEmpty) {
           throw ArgumentError('or: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.or(operant1);
       },
       'text': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'text');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'text');
         return t.text(text);
       },
       'intOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'intOp');
         final value = D4.getRequiredArg<int>(positional, 0, 'value', 'intOp');
         return t.intOp(value);
       },
       'doubleOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'doubleOp');
         final value = D4.getRequiredArg<double>(positional, 0, 'value', 'doubleOp');
         return t.doubleOp(value);
       },
       'boolOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'boolOp');
         final value = D4.getRequiredArg<bool>(positional, 0, 'value', 'boolOp');
         return t.boolOp(value);
       },
       'dateTimeOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'dateTimeOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateTimeOp');
         return t.dateTimeOp(value);
       },
       'dateOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'dateOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateOp');
         return t.dateOp(value);
       },
       'p': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 1, 'p');
         final parameterName = D4.getRequiredArg<String>(positional, 0, 'parameterName', 'p');
         return t.p(parameterName);
       },
       'textF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'textF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'textF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
         return t.textF(fieldName, columnInformation);
       },
       'intF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'intF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'intF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
         return t.intF(fieldName, columnInformation);
       },
       'doubleF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'doubleF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'doubleF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
         return t.doubleF(fieldName, columnInformation);
       },
       'boolF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'boolF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'boolF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
         return t.boolF(fieldName, columnInformation);
       },
       'dateTimeF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'dateTimeF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateTimeF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
         return t.dateTimeF(fieldName, columnInformation);
       },
       'dateF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_28.MariadbRepository>(target, 'MariadbRepository');
+        final t = D4.validateTarget<$tom_core_server_29.MariadbRepository>(target, 'MariadbRepository');
         D4.requireMinArgs(positional, 2, 'dateF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
         return t.dateF(fieldName, columnInformation);
       },
     },
@@ -11393,9 +11933,9 @@ BridgedClass _createMariadbRepositoryBridge() {
 
 BridgedClass _createTomQuerySyntaxExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.TomQuerySyntaxException,
+    nativeType: $tom_core_server_30.TomQuerySyntaxException,
     name: 'TomQuerySyntaxException',
-    isAssignable: (v) => v is $tom_core_server_29.TomQuerySyntaxException,
+    isAssignable: (v) => v is $tom_core_server_30.TomQuerySyntaxException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -11406,61 +11946,61 @@ BridgedClass _createTomQuerySyntaxExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_29.TomQuerySyntaxException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_30.TomQuerySyntaxException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException');
+        final t = D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomQuerySyntaxException>(target, 'TomQuerySyntaxException');
+        final t = D4.validateTarget<$tom_core_server_30.TomQuerySyntaxException>(target, 'TomQuerySyntaxException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -11515,54 +12055,54 @@ BridgedClass _createTomQuerySyntaxExceptionBridge() {
 
 BridgedClass _createTomUnaryOperatorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.TomUnaryOperator,
+    nativeType: $tom_core_server_30.TomUnaryOperator,
     name: 'TomUnaryOperator',
-    isAssignable: (v) => v is $tom_core_server_29.TomUnaryOperator,
+    isAssignable: (v) => v is $tom_core_server_30.TomUnaryOperator,
     hierarchyDepth: 1,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator').operant1 = value as dynamic,
+        D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator').operant1 = value as dynamic,
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomUnaryOperator>(target, 'TomUnaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomUnaryOperator>(target, 'TomUnaryOperator');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -11593,58 +12133,58 @@ BridgedClass _createTomUnaryOperatorBridge() {
 
 BridgedClass _createParameterBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Parameter,
+    nativeType: $tom_core_server_30.Parameter,
     name: 'Parameter',
-    isAssignable: (v) => v is $tom_core_server_29.Parameter,
+    isAssignable: (v) => v is $tom_core_server_30.Parameter,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Parameter');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'Parameter');
-        return $tom_core_server_29.Parameter(name);
+        return $tom_core_server_30.Parameter(name);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter').returnType,
-      'name': (visitor, target) => D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter').name,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter').returnType,
+      'name': (visitor, target) => D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter').name,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'name': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter').name = D4.extractBridgedArg<String>(value, 'name'),
+        D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter').name = D4.extractBridgedArg<String>(value, 'name'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter');
+        final t = D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter');
+        final t = D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter');
+        final t = D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter');
+        final t = D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter');
+        final t = D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Parameter>(target, 'Parameter');
+        final t = D4.validateTarget<$tom_core_server_30.Parameter>(target, 'Parameter');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -11678,60 +12218,60 @@ BridgedClass _createParameterBridge() {
 
 BridgedClass _createDbColBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.DbCol,
+    nativeType: $tom_core_server_30.DbCol,
     name: 'DbCol',
-    isAssignable: (v) => v is $tom_core_server_29.DbCol,
+    isAssignable: (v) => v is $tom_core_server_30.DbCol,
     hierarchyDepth: 2,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').operant1,
-      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').columnInformation,
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').tableType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').operant1,
+      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').columnInformation,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').tableType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
       'columnInformation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').columnInformation = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'columnInformation'),
+        D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').columnInformation = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'columnInformation'),
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol');
+        final t = D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol');
+        final t = D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol');
+        final t = D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol');
+        final t = D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol');
+        final t = D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DbCol>(target, 'DbCol');
+        final t = D4.validateTarget<$tom_core_server_30.DbCol>(target, 'DbCol');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -11766,66 +12306,66 @@ BridgedClass _createDbColBridge() {
 
 BridgedClass _createIntColBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.IntCol,
+    nativeType: $tom_core_server_30.IntCol,
     name: 'IntCol',
-    isAssignable: (v) => v is $tom_core_server_29.IntCol,
+    isAssignable: (v) => v is $tom_core_server_30.IntCol,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'IntCol');
         final tableType = D4.getRequiredArg<Type>(positional, 0, 'tableType', 'IntCol');
         final operant1 = D4.getRequiredArg<String>(positional, 1, 'operant1', 'IntCol');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'columnInformation', 'IntCol');
-        return $tom_core_server_29.IntCol(tableType, operant1, columnInformation);
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'columnInformation', 'IntCol');
+        return $tom_core_server_30.IntCol(tableType, operant1, columnInformation);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').operant1,
-      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').columnInformation,
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').tableType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').operant1,
+      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').columnInformation,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').tableType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
       'columnInformation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').columnInformation = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'columnInformation'),
+        D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').columnInformation = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'columnInformation'),
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol');
+        final t = D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol');
+        final t = D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol');
+        final t = D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol');
+        final t = D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol');
+        final t = D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntCol>(target, 'IntCol');
+        final t = D4.validateTarget<$tom_core_server_30.IntCol>(target, 'IntCol');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -11863,66 +12403,66 @@ BridgedClass _createIntColBridge() {
 
 BridgedClass _createStringColBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.StringCol,
+    nativeType: $tom_core_server_30.StringCol,
     name: 'StringCol',
-    isAssignable: (v) => v is $tom_core_server_29.StringCol,
+    isAssignable: (v) => v is $tom_core_server_30.StringCol,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'StringCol');
         final tableType = D4.getRequiredArg<Type>(positional, 0, 'tableType', 'StringCol');
         final operant1 = D4.getRequiredArg<String>(positional, 1, 'operant1', 'StringCol');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'columnInformation', 'StringCol');
-        return $tom_core_server_29.StringCol(tableType, operant1, columnInformation);
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'columnInformation', 'StringCol');
+        return $tom_core_server_30.StringCol(tableType, operant1, columnInformation);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').operant1,
-      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').columnInformation,
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').tableType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').operant1,
+      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').columnInformation,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').tableType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
       'columnInformation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').columnInformation = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'columnInformation'),
+        D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').columnInformation = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'columnInformation'),
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol');
+        final t = D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol');
+        final t = D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol');
+        final t = D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol');
+        final t = D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol');
+        final t = D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringCol>(target, 'StringCol');
+        final t = D4.validateTarget<$tom_core_server_30.StringCol>(target, 'StringCol');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -11960,66 +12500,66 @@ BridgedClass _createStringColBridge() {
 
 BridgedClass _createDoubleColBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.DoubleCol,
+    nativeType: $tom_core_server_30.DoubleCol,
     name: 'DoubleCol',
-    isAssignable: (v) => v is $tom_core_server_29.DoubleCol,
+    isAssignable: (v) => v is $tom_core_server_30.DoubleCol,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'DoubleCol');
         final tableType = D4.getRequiredArg<Type>(positional, 0, 'tableType', 'DoubleCol');
         final operant1 = D4.getRequiredArg<String>(positional, 1, 'operant1', 'DoubleCol');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'columnInformation', 'DoubleCol');
-        return $tom_core_server_29.DoubleCol(tableType, operant1, columnInformation);
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'columnInformation', 'DoubleCol');
+        return $tom_core_server_30.DoubleCol(tableType, operant1, columnInformation);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').operant1,
-      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').columnInformation,
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').tableType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').operant1,
+      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').columnInformation,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').tableType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
       'columnInformation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').columnInformation = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'columnInformation'),
+        D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').columnInformation = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'columnInformation'),
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleCol>(target, 'DoubleCol');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleCol>(target, 'DoubleCol');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12057,66 +12597,66 @@ BridgedClass _createDoubleColBridge() {
 
 BridgedClass _createBoolColBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.BoolCol,
+    nativeType: $tom_core_server_30.BoolCol,
     name: 'BoolCol',
-    isAssignable: (v) => v is $tom_core_server_29.BoolCol,
+    isAssignable: (v) => v is $tom_core_server_30.BoolCol,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'BoolCol');
         final tableType = D4.getRequiredArg<Type>(positional, 0, 'tableType', 'BoolCol');
         final operant1 = D4.getRequiredArg<String>(positional, 1, 'operant1', 'BoolCol');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'columnInformation', 'BoolCol');
-        return $tom_core_server_29.BoolCol(tableType, operant1, columnInformation);
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'columnInformation', 'BoolCol');
+        return $tom_core_server_30.BoolCol(tableType, operant1, columnInformation);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').operant1,
-      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').columnInformation,
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').tableType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').operant1,
+      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').columnInformation,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').tableType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
       'columnInformation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').columnInformation = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'columnInformation'),
+        D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').columnInformation = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'columnInformation'),
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol');
+        final t = D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol');
+        final t = D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol');
+        final t = D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol');
+        final t = D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol');
+        final t = D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolCol>(target, 'BoolCol');
+        final t = D4.validateTarget<$tom_core_server_30.BoolCol>(target, 'BoolCol');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12154,66 +12694,66 @@ BridgedClass _createBoolColBridge() {
 
 BridgedClass _createDateTimeColBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.DateTimeCol,
+    nativeType: $tom_core_server_30.DateTimeCol,
     name: 'DateTimeCol',
-    isAssignable: (v) => v is $tom_core_server_29.DateTimeCol,
+    isAssignable: (v) => v is $tom_core_server_30.DateTimeCol,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'DateTimeCol');
         final tableType = D4.getRequiredArg<Type>(positional, 0, 'tableType', 'DateTimeCol');
         final operant1 = D4.getRequiredArg<String>(positional, 1, 'operant1', 'DateTimeCol');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'columnInformation', 'DateTimeCol');
-        return $tom_core_server_29.DateTimeCol(tableType, operant1, columnInformation);
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'columnInformation', 'DateTimeCol');
+        return $tom_core_server_30.DateTimeCol(tableType, operant1, columnInformation);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').operant1,
-      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').columnInformation,
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').tableType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').operant1,
+      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').columnInformation,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').tableType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
       'columnInformation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').columnInformation = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'columnInformation'),
+        D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').columnInformation = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'columnInformation'),
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeCol>(target, 'DateTimeCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeCol>(target, 'DateTimeCol');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12251,66 +12791,66 @@ BridgedClass _createDateTimeColBridge() {
 
 BridgedClass _createDateColBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.DateCol,
+    nativeType: $tom_core_server_30.DateCol,
     name: 'DateCol',
-    isAssignable: (v) => v is $tom_core_server_29.DateCol,
+    isAssignable: (v) => v is $tom_core_server_30.DateCol,
     hierarchyDepth: 3,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'DateCol');
         final tableType = D4.getRequiredArg<Type>(positional, 0, 'tableType', 'DateCol');
         final operant1 = D4.getRequiredArg<String>(positional, 1, 'operant1', 'DateCol');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 2, 'columnInformation', 'DateCol');
-        return $tom_core_server_29.DateCol(tableType, operant1, columnInformation);
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 2, 'columnInformation', 'DateCol');
+        return $tom_core_server_30.DateCol(tableType, operant1, columnInformation);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').operant1,
-      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').columnInformation,
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').tableType,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').operant1,
+      'columnInformation': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').columnInformation,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').tableType,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
       'columnInformation': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').columnInformation = D4.extractBridgedArg<$tom_core_server_30.TomColumnInformation>(value, 'columnInformation'),
+        D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').columnInformation = D4.extractBridgedArg<$tom_core_server_31.TomColumnInformation>(value, 'columnInformation'),
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateCol>(target, 'DateCol');
+        final t = D4.validateTarget<$tom_core_server_30.DateCol>(target, 'DateCol');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12348,58 +12888,58 @@ BridgedClass _createDateColBridge() {
 
 BridgedClass _createStringLiteralBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.StringLiteral,
+    nativeType: $tom_core_server_30.StringLiteral,
     name: 'StringLiteral',
-    isAssignable: (v) => v is $tom_core_server_29.StringLiteral,
+    isAssignable: (v) => v is $tom_core_server_30.StringLiteral,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'StringLiteral');
         final operant1 = D4.getRequiredArg<String>(positional, 0, 'operant1', 'StringLiteral');
-        return $tom_core_server_29.StringLiteral(operant1);
+        return $tom_core_server_30.StringLiteral(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral').operant1 = D4.extractBridgedArg<String>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.StringLiteral>(target, 'StringLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.StringLiteral>(target, 'StringLiteral');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12433,58 +12973,58 @@ BridgedClass _createStringLiteralBridge() {
 
 BridgedClass _createIntegerLiteralBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.IntegerLiteral,
+    nativeType: $tom_core_server_30.IntegerLiteral,
     name: 'IntegerLiteral',
-    isAssignable: (v) => v is $tom_core_server_29.IntegerLiteral,
+    isAssignable: (v) => v is $tom_core_server_30.IntegerLiteral,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'IntegerLiteral');
         final operant1 = D4.getRequiredArg<int>(positional, 0, 'operant1', 'IntegerLiteral');
-        return $tom_core_server_29.IntegerLiteral(operant1);
+        return $tom_core_server_30.IntegerLiteral(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral').operant1 = D4.extractBridgedArg<int>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral').operant1 = D4.extractBridgedArg<int>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IntegerLiteral>(target, 'IntegerLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.IntegerLiteral>(target, 'IntegerLiteral');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12518,58 +13058,58 @@ BridgedClass _createIntegerLiteralBridge() {
 
 BridgedClass _createDoubleLiteralBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.DoubleLiteral,
+    nativeType: $tom_core_server_30.DoubleLiteral,
     name: 'DoubleLiteral',
-    isAssignable: (v) => v is $tom_core_server_29.DoubleLiteral,
+    isAssignable: (v) => v is $tom_core_server_30.DoubleLiteral,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'DoubleLiteral');
         final operant1 = D4.getRequiredArg<double>(positional, 0, 'operant1', 'DoubleLiteral');
-        return $tom_core_server_29.DoubleLiteral(operant1);
+        return $tom_core_server_30.DoubleLiteral(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral').operant1 = D4.extractBridgedArg<double>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral').operant1 = D4.extractBridgedArg<double>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DoubleLiteral>(target, 'DoubleLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DoubleLiteral>(target, 'DoubleLiteral');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12603,58 +13143,58 @@ BridgedClass _createDoubleLiteralBridge() {
 
 BridgedClass _createBoolLiteralBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.BoolLiteral,
+    nativeType: $tom_core_server_30.BoolLiteral,
     name: 'BoolLiteral',
-    isAssignable: (v) => v is $tom_core_server_29.BoolLiteral,
+    isAssignable: (v) => v is $tom_core_server_30.BoolLiteral,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'BoolLiteral');
         final operant1 = D4.getRequiredArg<bool>(positional, 0, 'operant1', 'BoolLiteral');
-        return $tom_core_server_29.BoolLiteral(operant1);
+        return $tom_core_server_30.BoolLiteral(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral').operant1 = D4.extractBridgedArg<bool>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral').operant1 = D4.extractBridgedArg<bool>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.BoolLiteral>(target, 'BoolLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.BoolLiteral>(target, 'BoolLiteral');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12688,58 +13228,58 @@ BridgedClass _createBoolLiteralBridge() {
 
 BridgedClass _createDateTimeLiteralBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.DateTimeLiteral,
+    nativeType: $tom_core_server_30.DateTimeLiteral,
     name: 'DateTimeLiteral',
-    isAssignable: (v) => v is $tom_core_server_29.DateTimeLiteral,
+    isAssignable: (v) => v is $tom_core_server_30.DateTimeLiteral,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'DateTimeLiteral');
         final operant1 = D4.getRequiredArg<DateTime>(positional, 0, 'operant1', 'DateTimeLiteral');
-        return $tom_core_server_29.DateTimeLiteral(operant1);
+        return $tom_core_server_30.DateTimeLiteral(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral').operant1 = D4.extractBridgedArg<DateTime>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral').operant1 = D4.extractBridgedArg<DateTime>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateTimeLiteral>(target, 'DateTimeLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateTimeLiteral>(target, 'DateTimeLiteral');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12773,58 +13313,58 @@ BridgedClass _createDateTimeLiteralBridge() {
 
 BridgedClass _createDateLiteralBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.DateLiteral,
+    nativeType: $tom_core_server_30.DateLiteral,
     name: 'DateLiteral',
-    isAssignable: (v) => v is $tom_core_server_29.DateLiteral,
+    isAssignable: (v) => v is $tom_core_server_30.DateLiteral,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'DateLiteral');
         final operant1 = D4.getRequiredArg<DateTime>(positional, 0, 'operant1', 'DateLiteral');
-        return $tom_core_server_29.DateLiteral(operant1);
+        return $tom_core_server_30.DateLiteral(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral').operant1 = D4.extractBridgedArg<DateTime>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral').operant1 = D4.extractBridgedArg<DateTime>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.DateLiteral>(target, 'DateLiteral');
+        final t = D4.validateTarget<$tom_core_server_30.DateLiteral>(target, 'DateLiteral');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12858,58 +13398,58 @@ BridgedClass _createDateLiteralBridge() {
 
 BridgedClass _createNotBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Not,
+    nativeType: $tom_core_server_30.Not,
     name: 'Not',
-    isAssignable: (v) => v is $tom_core_server_29.Not,
+    isAssignable: (v) => v is $tom_core_server_30.Not,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Not');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'operant1', 'Not');
-        return $tom_core_server_29.Not(operant1);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'operant1', 'Not');
+        return $tom_core_server_30.Not(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Not>(target, 'Not').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Not>(target, 'Not').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Not>(target, 'Not').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Not>(target, 'Not').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Not>(target, 'Not').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Not>(target, 'Not').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Not>(target, 'Not').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Not>(target, 'Not').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Not>(target, 'Not');
+        final t = D4.validateTarget<$tom_core_server_30.Not>(target, 'Not');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Not>(target, 'Not');
+        final t = D4.validateTarget<$tom_core_server_30.Not>(target, 'Not');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Not>(target, 'Not');
+        final t = D4.validateTarget<$tom_core_server_30.Not>(target, 'Not');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Not>(target, 'Not');
+        final t = D4.validateTarget<$tom_core_server_30.Not>(target, 'Not');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Not>(target, 'Not');
+        final t = D4.validateTarget<$tom_core_server_30.Not>(target, 'Not');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Not>(target, 'Not');
+        final t = D4.validateTarget<$tom_core_server_30.Not>(target, 'Not');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -12943,58 +13483,58 @@ BridgedClass _createNotBridge() {
 
 BridgedClass _createIsNullBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.IsNull,
+    nativeType: $tom_core_server_30.IsNull,
     name: 'IsNull',
-    isAssignable: (v) => v is $tom_core_server_29.IsNull,
+    isAssignable: (v) => v is $tom_core_server_30.IsNull,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'IsNull');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'IsNull');
-        return $tom_core_server_29.IsNull(operant1);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'IsNull');
+        return $tom_core_server_30.IsNull(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNull>(target, 'IsNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNull>(target, 'IsNull');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13028,58 +13568,58 @@ BridgedClass _createIsNullBridge() {
 
 BridgedClass _createIsNotNullBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.IsNotNull,
+    nativeType: $tom_core_server_30.IsNotNull,
     name: 'IsNotNull',
-    isAssignable: (v) => v is $tom_core_server_29.IsNotNull,
+    isAssignable: (v) => v is $tom_core_server_30.IsNotNull,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'IsNotNull');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'IsNotNull');
-        return $tom_core_server_29.IsNotNull(operant1);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'IsNotNull');
+        return $tom_core_server_30.IsNotNull(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.IsNotNull>(target, 'IsNotNull');
+        final t = D4.validateTarget<$tom_core_server_30.IsNotNull>(target, 'IsNotNull');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13113,57 +13653,57 @@ BridgedClass _createIsNotNullBridge() {
 
 BridgedClass _createTomBinaryOperatorBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.TomBinaryOperator,
+    nativeType: $tom_core_server_30.TomBinaryOperator,
     name: 'TomBinaryOperator',
-    isAssignable: (v) => v is $tom_core_server_29.TomBinaryOperator,
+    isAssignable: (v) => v is $tom_core_server_30.TomBinaryOperator,
     hierarchyDepth: 1,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator').operant1 = value as dynamic,
+        D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator').operant1 = value as dynamic,
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator').operant2 = value as dynamic,
+        D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator').operant2 = value as dynamic,
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.TomBinaryOperator>(target, 'TomBinaryOperator');
+        final t = D4.validateTarget<$tom_core_server_30.TomBinaryOperator>(target, 'TomBinaryOperator');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13196,9 +13736,9 @@ BridgedClass _createTomBinaryOperatorBridge() {
 
 BridgedClass _createAndBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.And,
+    nativeType: $tom_core_server_30.And,
     name: 'And',
-    isAssignable: (v) => v is $tom_core_server_29.And,
+    isAssignable: (v) => v is $tom_core_server_30.And,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -13206,51 +13746,51 @@ BridgedClass _createAndBridge() {
         if (positional.isEmpty) {
           throw ArgumentError('And: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
-        return $tom_core_server_29.And(operant1);
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
+        return $tom_core_server_30.And(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.And>(target, 'And').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.And>(target, 'And').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.And>(target, 'And').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.And>(target, 'And').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.And>(target, 'And').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.And>(target, 'And').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.And>(target, 'And').operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.And>(target, 'And').operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.And>(target, 'And');
+        final t = D4.validateTarget<$tom_core_server_30.And>(target, 'And');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.And>(target, 'And');
+        final t = D4.validateTarget<$tom_core_server_30.And>(target, 'And');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.And>(target, 'And');
+        final t = D4.validateTarget<$tom_core_server_30.And>(target, 'And');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.And>(target, 'And');
+        final t = D4.validateTarget<$tom_core_server_30.And>(target, 'And');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.And>(target, 'And');
+        final t = D4.validateTarget<$tom_core_server_30.And>(target, 'And');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.And>(target, 'And');
+        final t = D4.validateTarget<$tom_core_server_30.And>(target, 'And');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13284,9 +13824,9 @@ BridgedClass _createAndBridge() {
 
 BridgedClass _createOrBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Or,
+    nativeType: $tom_core_server_30.Or,
     name: 'Or',
-    isAssignable: (v) => v is $tom_core_server_29.Or,
+    isAssignable: (v) => v is $tom_core_server_30.Or,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -13294,51 +13834,51 @@ BridgedClass _createOrBridge() {
         if (positional.isEmpty) {
           throw ArgumentError('Or: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
-        return $tom_core_server_29.Or(operant1);
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
+        return $tom_core_server_30.Or(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Or>(target, 'Or').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Or>(target, 'Or').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Or>(target, 'Or').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Or>(target, 'Or').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Or>(target, 'Or').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Or>(target, 'Or').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Or>(target, 'Or').operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Or>(target, 'Or').operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Or>(target, 'Or');
+        final t = D4.validateTarget<$tom_core_server_30.Or>(target, 'Or');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Or>(target, 'Or');
+        final t = D4.validateTarget<$tom_core_server_30.Or>(target, 'Or');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Or>(target, 'Or');
+        final t = D4.validateTarget<$tom_core_server_30.Or>(target, 'Or');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Or>(target, 'Or');
+        final t = D4.validateTarget<$tom_core_server_30.Or>(target, 'Or');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Or>(target, 'Or');
+        final t = D4.validateTarget<$tom_core_server_30.Or>(target, 'Or');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Or>(target, 'Or');
+        final t = D4.validateTarget<$tom_core_server_30.Or>(target, 'Or');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13372,62 +13912,62 @@ BridgedClass _createOrBridge() {
 
 BridgedClass _createEqBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Eq,
+    nativeType: $tom_core_server_30.Eq,
     name: 'Eq',
-    isAssignable: (v) => v is $tom_core_server_29.Eq,
+    isAssignable: (v) => v is $tom_core_server_30.Eq,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Eq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Eq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'Eq');
-        return $tom_core_server_29.Eq(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Eq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'Eq');
+        return $tom_core_server_30.Eq(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq');
+        final t = D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq');
+        final t = D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq');
+        final t = D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq');
+        final t = D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq');
+        final t = D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Eq>(target, 'Eq');
+        final t = D4.validateTarget<$tom_core_server_30.Eq>(target, 'Eq');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13463,62 +14003,62 @@ BridgedClass _createEqBridge() {
 
 BridgedClass _createNeqBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Neq,
+    nativeType: $tom_core_server_30.Neq,
     name: 'Neq',
-    isAssignable: (v) => v is $tom_core_server_29.Neq,
+    isAssignable: (v) => v is $tom_core_server_30.Neq,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Neq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Neq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'Neq');
-        return $tom_core_server_29.Neq(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Neq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'Neq');
+        return $tom_core_server_30.Neq(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq');
+        final t = D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq');
+        final t = D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq');
+        final t = D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq');
+        final t = D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq');
+        final t = D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Neq>(target, 'Neq');
+        final t = D4.validateTarget<$tom_core_server_30.Neq>(target, 'Neq');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13554,62 +14094,62 @@ BridgedClass _createNeqBridge() {
 
 BridgedClass _createLtBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Lt,
+    nativeType: $tom_core_server_30.Lt,
     name: 'Lt',
-    isAssignable: (v) => v is $tom_core_server_29.Lt,
+    isAssignable: (v) => v is $tom_core_server_30.Lt,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Lt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Lt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'Lt');
-        return $tom_core_server_29.Lt(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Lt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'Lt');
+        return $tom_core_server_30.Lt(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt');
+        final t = D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt');
+        final t = D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt');
+        final t = D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt');
+        final t = D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt');
+        final t = D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lt>(target, 'Lt');
+        final t = D4.validateTarget<$tom_core_server_30.Lt>(target, 'Lt');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13645,62 +14185,62 @@ BridgedClass _createLtBridge() {
 
 BridgedClass _createGtBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Gt,
+    nativeType: $tom_core_server_30.Gt,
     name: 'Gt',
-    isAssignable: (v) => v is $tom_core_server_29.Gt,
+    isAssignable: (v) => v is $tom_core_server_30.Gt,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Gt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Gt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'Gt');
-        return $tom_core_server_29.Gt(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Gt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'Gt');
+        return $tom_core_server_30.Gt(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt');
+        final t = D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt');
+        final t = D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt');
+        final t = D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt');
+        final t = D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt');
+        final t = D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gt>(target, 'Gt');
+        final t = D4.validateTarget<$tom_core_server_30.Gt>(target, 'Gt');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13736,62 +14276,62 @@ BridgedClass _createGtBridge() {
 
 BridgedClass _createLteBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Lte,
+    nativeType: $tom_core_server_30.Lte,
     name: 'Lte',
-    isAssignable: (v) => v is $tom_core_server_29.Lte,
+    isAssignable: (v) => v is $tom_core_server_30.Lte,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Lte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Lte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'Lte');
-        return $tom_core_server_29.Lte(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Lte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'Lte');
+        return $tom_core_server_30.Lte(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte');
+        final t = D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte');
+        final t = D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte');
+        final t = D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte');
+        final t = D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte');
+        final t = D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Lte>(target, 'Lte');
+        final t = D4.validateTarget<$tom_core_server_30.Lte>(target, 'Lte');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13827,62 +14367,62 @@ BridgedClass _createLteBridge() {
 
 BridgedClass _createGteBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Gte,
+    nativeType: $tom_core_server_30.Gte,
     name: 'Gte',
-    isAssignable: (v) => v is $tom_core_server_29.Gte,
+    isAssignable: (v) => v is $tom_core_server_30.Gte,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Gte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Gte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'Gte');
-        return $tom_core_server_29.Gte(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Gte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'Gte');
+        return $tom_core_server_30.Gte(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte');
+        final t = D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte');
+        final t = D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte');
+        final t = D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte');
+        final t = D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte');
+        final t = D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Gte>(target, 'Gte');
+        final t = D4.validateTarget<$tom_core_server_30.Gte>(target, 'Gte');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -13918,62 +14458,62 @@ BridgedClass _createGteBridge() {
 
 BridgedClass _createLikeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Like,
+    nativeType: $tom_core_server_30.Like,
     name: 'Like',
-    isAssignable: (v) => v is $tom_core_server_29.Like,
+    isAssignable: (v) => v is $tom_core_server_30.Like,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Like');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'operant1', 'Like');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'operant2', 'Like');
-        return $tom_core_server_29.Like(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'operant1', 'Like');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'operant2', 'Like');
+        return $tom_core_server_30.Like(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Like>(target, 'Like').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Like>(target, 'Like').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Like>(target, 'Like').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Like>(target, 'Like').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Like>(target, 'Like').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Like>(target, 'Like').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Like>(target, 'Like').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Like>(target, 'Like').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Like>(target, 'Like').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Like>(target, 'Like').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Like>(target, 'Like').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Like>(target, 'Like').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Like>(target, 'Like');
+        final t = D4.validateTarget<$tom_core_server_30.Like>(target, 'Like');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Like>(target, 'Like');
+        final t = D4.validateTarget<$tom_core_server_30.Like>(target, 'Like');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Like>(target, 'Like');
+        final t = D4.validateTarget<$tom_core_server_30.Like>(target, 'Like');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Like>(target, 'Like');
+        final t = D4.validateTarget<$tom_core_server_30.Like>(target, 'Like');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Like>(target, 'Like');
+        final t = D4.validateTarget<$tom_core_server_30.Like>(target, 'Like');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Like>(target, 'Like');
+        final t = D4.validateTarget<$tom_core_server_30.Like>(target, 'Like');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -14009,62 +14549,62 @@ BridgedClass _createLikeBridge() {
 
 BridgedClass _createNotLikeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.NotLike,
+    nativeType: $tom_core_server_30.NotLike,
     name: 'NotLike',
-    isAssignable: (v) => v is $tom_core_server_29.NotLike,
+    isAssignable: (v) => v is $tom_core_server_30.NotLike,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'NotLike');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'operant1', 'NotLike');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'operant2', 'NotLike');
-        return $tom_core_server_29.NotLike(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'operant1', 'NotLike');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'operant2', 'NotLike');
+        return $tom_core_server_30.NotLike(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike');
+        final t = D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike');
+        final t = D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike');
+        final t = D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike');
+        final t = D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike');
+        final t = D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.NotLike>(target, 'NotLike');
+        final t = D4.validateTarget<$tom_core_server_30.NotLike>(target, 'NotLike');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -14100,65 +14640,65 @@ BridgedClass _createNotLikeBridge() {
 
 BridgedClass _createInBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.In,
+    nativeType: $tom_core_server_30.In,
     name: 'In',
-    isAssignable: (v) => v is $tom_core_server_29.In,
+    isAssignable: (v) => v is $tom_core_server_30.In,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'In');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'In');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'In');
         if (positional.length <= 1) {
           throw ArgumentError('In: Missing required argument "operant2" at position 1');
         }
-        final operant2 = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'operant2');
-        return $tom_core_server_29.In(operant1, operant2);
+        final operant2 = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'operant2');
+        return $tom_core_server_30.In(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.In>(target, 'In').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.In>(target, 'In').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.In>(target, 'In').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.In>(target, 'In').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.In>(target, 'In').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.In>(target, 'In').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.In>(target, 'In').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.In>(target, 'In').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.In>(target, 'In').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.In>(target, 'In').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.In>(target, 'In').operant2 = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.In>(target, 'In').operant2 = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.In>(target, 'In');
+        final t = D4.validateTarget<$tom_core_server_30.In>(target, 'In');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.In>(target, 'In');
+        final t = D4.validateTarget<$tom_core_server_30.In>(target, 'In');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.In>(target, 'In');
+        final t = D4.validateTarget<$tom_core_server_30.In>(target, 'In');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.In>(target, 'In');
+        final t = D4.validateTarget<$tom_core_server_30.In>(target, 'In');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.In>(target, 'In');
+        final t = D4.validateTarget<$tom_core_server_30.In>(target, 'In');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.In>(target, 'In');
+        final t = D4.validateTarget<$tom_core_server_30.In>(target, 'In');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -14194,58 +14734,58 @@ BridgedClass _createInBridge() {
 
 BridgedClass _createGroupBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Group,
+    nativeType: $tom_core_server_30.Group,
     name: 'Group',
-    isAssignable: (v) => v is $tom_core_server_29.Group,
+    isAssignable: (v) => v is $tom_core_server_30.Group,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Group');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Group');
-        return $tom_core_server_29.Group(operant1);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Group');
+        return $tom_core_server_30.Group(operant1);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Group>(target, 'Group').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Group>(target, 'Group').operant1,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Group>(target, 'Group').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Group>(target, 'Group').operant1,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Group>(target, 'Group').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Group>(target, 'Group').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Group>(target, 'Group').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Group>(target, 'Group').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Group>(target, 'Group');
+        final t = D4.validateTarget<$tom_core_server_30.Group>(target, 'Group');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Group>(target, 'Group');
+        final t = D4.validateTarget<$tom_core_server_30.Group>(target, 'Group');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Group>(target, 'Group');
+        final t = D4.validateTarget<$tom_core_server_30.Group>(target, 'Group');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Group>(target, 'Group');
+        final t = D4.validateTarget<$tom_core_server_30.Group>(target, 'Group');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Group>(target, 'Group');
+        final t = D4.validateTarget<$tom_core_server_30.Group>(target, 'Group');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Group>(target, 'Group');
+        final t = D4.validateTarget<$tom_core_server_30.Group>(target, 'Group');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -14279,65 +14819,65 @@ BridgedClass _createGroupBridge() {
 
 BridgedClass _createBetweenBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Between,
+    nativeType: $tom_core_server_30.Between,
     name: 'Between',
-    isAssignable: (v) => v is $tom_core_server_29.Between,
+    isAssignable: (v) => v is $tom_core_server_30.Between,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Between');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'Between');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'Between');
         if (positional.length <= 1) {
           throw ArgumentError('Between: Missing required argument "operant2" at position 1');
         }
-        final operant2 = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'operant2');
-        return $tom_core_server_29.Between(operant1, operant2);
+        final operant2 = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'operant2');
+        return $tom_core_server_30.Between(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Between>(target, 'Between').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Between>(target, 'Between').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Between>(target, 'Between').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Between>(target, 'Between').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Between>(target, 'Between').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Between>(target, 'Between').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Between>(target, 'Between').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Between>(target, 'Between').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Between>(target, 'Between').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Between>(target, 'Between').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Between>(target, 'Between').operant2 = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Between>(target, 'Between').operant2 = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Between>(target, 'Between');
+        final t = D4.validateTarget<$tom_core_server_30.Between>(target, 'Between');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Between>(target, 'Between');
+        final t = D4.validateTarget<$tom_core_server_30.Between>(target, 'Between');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Between>(target, 'Between');
+        final t = D4.validateTarget<$tom_core_server_30.Between>(target, 'Between');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Between>(target, 'Between');
+        final t = D4.validateTarget<$tom_core_server_30.Between>(target, 'Between');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Between>(target, 'Between');
+        final t = D4.validateTarget<$tom_core_server_30.Between>(target, 'Between');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Between>(target, 'Between');
+        final t = D4.validateTarget<$tom_core_server_30.Between>(target, 'Between');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -14373,62 +14913,62 @@ BridgedClass _createBetweenBridge() {
 
 BridgedClass _createRegexpBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_29.Regexp,
+    nativeType: $tom_core_server_30.Regexp,
     name: 'Regexp',
-    isAssignable: (v) => v is $tom_core_server_29.Regexp,
+    isAssignable: (v) => v is $tom_core_server_30.Regexp,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Regexp');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'operant1', 'Regexp');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'operant2', 'Regexp');
-        return $tom_core_server_29.Regexp(operant1, operant2);
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'operant1', 'Regexp');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'operant2', 'Regexp');
+        return $tom_core_server_30.Regexp(operant1, operant2);
       },
     },
     getters: {
-      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp').returnType,
-      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp').operant1,
-      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp').operant2,
+      'returnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp').returnType,
+      'operant1': (visitor, target) => D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp').operant1,
+      'operant2': (visitor, target) => D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp').operant2,
     },
     setters: {
       'returnType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
+        D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp').returnType = D4.extractBridgedArg<Type>(value, 'returnType'),
       'operant1': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp').operant1 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(value, 'operant1'),
+        D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp').operant1 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(value, 'operant1'),
       'operant2': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp').operant2 = D4.extractBridgedArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(value, 'operant2'),
+        D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp').operant2 = D4.extractBridgedArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(value, 'operant2'),
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp');
+        final t = D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp');
         D4.requireMinArgs(positional, 1, 'generate');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'generate');
         return t.generate(t_);
       },
       'getParameters': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp');
+        final t = D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp');
         D4.requireMinArgs(positional, 1, 'getParameters');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getParameters');
         return t.getParameters(t_);
       },
       'getFields': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp');
+        final t = D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp');
         D4.requireMinArgs(positional, 1, 'getFields');
         final t_ = D4.getRequiredArg<$tom_core_server_16.TomStandardSqlDialect>(positional, 0, 't', 'getFields');
         return t.getFields(t_);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp');
+        final t = D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp');
         return t.toString();
       },
       'indent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp');
+        final t = D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp');
         D4.requireMinArgs(positional, 1, 'indent');
         final i = D4.getRequiredArg<int>(positional, 0, 'i', 'indent');
         return t.indent(i);
       },
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_29.Regexp>(target, 'Regexp');
+        final t = D4.validateTarget<$tom_core_server_30.Regexp>(target, 'Regexp');
         D4.requireMinArgs(positional, 1, 'analyze');
         final l = D4.getRequiredArg<int>(positional, 0, 'l', 'analyze');
         return t.analyze(l);
@@ -14464,18 +15004,18 @@ BridgedClass _createRegexpBridge() {
 
 BridgedClass _createTomDartTypeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomDartType,
+    nativeType: $tom_core_server_31.TomDartType,
     name: 'TomDartType',
-    isAssignable: (v) => v is $tom_core_server_30.TomDartType,
+    isAssignable: (v) => v is $tom_core_server_31.TomDartType,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomDartType');
         final type = D4.getRequiredArg<Type>(positional, 0, 'type', 'TomDartType');
-        return $tom_core_server_30.TomDartType(type);
+        return $tom_core_server_31.TomDartType(type);
       },
     },
     getters: {
-      'type': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDartType>(target, 'TomDartType').type,
+      'type': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDartType>(target, 'TomDartType').type,
     },
     constructorSignatures: {
       '': 'TomDartType(Type type)',
@@ -14492,9 +15032,9 @@ BridgedClass _createTomDartTypeBridge() {
 
 BridgedClass _createTomDbTableBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomDbTable,
+    nativeType: $tom_core_server_31.TomDbTable,
     name: 'TomDbTable',
-    isAssignable: (v) => v is $tom_core_server_30.TomDbTable,
+    isAssignable: (v) => v is $tom_core_server_31.TomDbTable,
     constructors: {
       '': (visitor, positional, named) {
         final datasource = D4.getRequiredNamedArg<String>(named, 'datasource', 'TomDbTable');
@@ -14502,15 +15042,15 @@ BridgedClass _createTomDbTableBridge() {
         final primaryKeyField = D4.getRequiredNamedArg<String>(named, 'primaryKeyField', 'TomDbTable');
         final idColumn = D4.getOptionalNamedArg<String?>(named, 'idColumn');
         final schema = D4.getOptionalNamedArg<String?>(named, 'schema');
-        return $tom_core_server_30.TomDbTable(datasource: datasource, table: table, primaryKeyField: primaryKeyField, idColumn: idColumn, schema: schema);
+        return $tom_core_server_31.TomDbTable(datasource: datasource, table: table, primaryKeyField: primaryKeyField, idColumn: idColumn, schema: schema);
       },
     },
     getters: {
-      'datasource': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbTable>(target, 'TomDbTable').datasource,
-      'table': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbTable>(target, 'TomDbTable').table,
-      'schema': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbTable>(target, 'TomDbTable').schema,
-      'primaryKeyField': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbTable>(target, 'TomDbTable').primaryKeyField,
-      'idColumn': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbTable>(target, 'TomDbTable').idColumn,
+      'datasource': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbTable>(target, 'TomDbTable').datasource,
+      'table': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbTable>(target, 'TomDbTable').table,
+      'schema': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbTable>(target, 'TomDbTable').schema,
+      'primaryKeyField': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbTable>(target, 'TomDbTable').primaryKeyField,
+      'idColumn': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbTable>(target, 'TomDbTable').idColumn,
     },
     constructorSignatures: {
       '': 'const TomDbTable({required String datasource, required String table, required String primaryKeyField, String? idColumn, String? schema})',
@@ -14531,9 +15071,9 @@ BridgedClass _createTomDbTableBridge() {
 
 BridgedClass _createTomDbColumnBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomDbColumn,
+    nativeType: $tom_core_server_31.TomDbColumn,
     name: 'TomDbColumn',
-    isAssignable: (v) => v is $tom_core_server_30.TomDbColumn,
+    isAssignable: (v) => v is $tom_core_server_31.TomDbColumn,
     constructors: {
       '': (visitor, positional, named) {
         final columnName = D4.getRequiredNamedArg<String?>(named, 'columnName', 'TomDbColumn');
@@ -14545,27 +15085,27 @@ BridgedClass _createTomDbColumnBridge() {
         final fromDbConverterRaw = named['fromDbConverter'];
         final toDbConverterRaw = named['toDbConverter'];
         final columnType = D4.getOptionalNamedArg<Type?>(named, 'columnType');
-        return $tom_core_server_30.TomDbColumn(columnName: columnName, isReadOnly: isReadOnly, noLoad: noLoad, isJson: isJson, authKey: authKey, dartType: dartType, fromDbConverter: fromDbConverterRaw == null ? null : ($tom_core_server_17.TomDbType p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fromDbConverterRaw, [p0])); }, toDbConverter: toDbConverterRaw == null ? null : ((dynamic p0) { return D4.extractBridgedArg<$tom_core_server_17.TomDbType>(D4.callInterpreterCallback(visitor!, toDbConverterRaw, [p0]), 'callback', visitor) as $tom_core_server_17.TomDbType; }) as $tom_core_server_17.TomDbType Function(dynamic), columnType: columnType);
+        return $tom_core_server_31.TomDbColumn(columnName: columnName, isReadOnly: isReadOnly, noLoad: noLoad, isJson: isJson, authKey: authKey, dartType: dartType, fromDbConverter: fromDbConverterRaw == null ? null : ($tom_core_server_18.TomDbType p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fromDbConverterRaw, [p0])); }, toDbConverter: toDbConverterRaw == null ? null : ((dynamic p0) { return D4.extractBridgedArg<$tom_core_server_18.TomDbType>(D4.callInterpreterCallback(visitor!, toDbConverterRaw, [p0]), 'callback', visitor) as $tom_core_server_18.TomDbType; }) as $tom_core_server_18.TomDbType Function(dynamic), columnType: columnType);
       },
     },
     getters: {
-      'columnName': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').columnName,
-      'isReadOnly': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').isReadOnly,
-      'noLoad': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').noLoad,
-      'isJson': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').isJson,
-      'authKey': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').authKey,
-      'dartType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').dartType,
-      'columnType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').columnType,
-      'fromDbConverter': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').fromDbConverter,
-      'toDbConverter': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn').toDbConverter,
+      'columnName': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').columnName,
+      'isReadOnly': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').isReadOnly,
+      'noLoad': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').noLoad,
+      'isJson': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').isJson,
+      'authKey': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').authKey,
+      'dartType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').dartType,
+      'columnType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').columnType,
+      'fromDbConverter': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').fromDbConverter,
+      'toDbConverter': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn').toDbConverter,
     },
     methods: {
       'declaredDartType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn');
+        final t = D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn');
         return t.declaredDartType();
       },
       'declaredColumnType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomDbColumn>(target, 'TomDbColumn');
+        final t = D4.validateTarget<$tom_core_server_31.TomDbColumn>(target, 'TomDbColumn');
         return t.declaredColumnType();
       },
     },
@@ -14596,12 +15136,12 @@ BridgedClass _createTomDbColumnBridge() {
 
 BridgedClass _createTomEntityIdBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomEntityId,
+    nativeType: $tom_core_server_31.TomEntityId,
     name: 'TomEntityId',
-    isAssignable: (v) => v is $tom_core_server_30.TomEntityId,
+    isAssignable: (v) => v is $tom_core_server_31.TomEntityId,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_30.TomEntityId();
+        return $tom_core_server_31.TomEntityId();
       },
     },
     constructorSignatures: {
@@ -14616,19 +15156,19 @@ BridgedClass _createTomEntityIdBridge() {
 
 BridgedClass _createTomDbScopeBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomDbScope,
+    nativeType: $tom_core_server_31.TomDbScope,
     name: 'TomDbScope',
-    isAssignable: (v) => v is $tom_core_server_30.TomDbScope,
+    isAssignable: (v) => v is $tom_core_server_31.TomDbScope,
     constructors: {
       '': (visitor, positional, named) {
         final field = D4.getRequiredNamedArg<String>(named, 'field', 'TomDbScope');
         final scope = D4.getNamedArgWithDefault<String>(named, 'scope', 'owner');
-        return $tom_core_server_30.TomDbScope(field: field, scope: scope);
+        return $tom_core_server_31.TomDbScope(field: field, scope: scope);
       },
     },
     getters: {
-      'field': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbScope>(target, 'TomDbScope').field,
-      'scope': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomDbScope>(target, 'TomDbScope').scope,
+      'field': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbScope>(target, 'TomDbScope').field,
+      'scope': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomDbScope>(target, 'TomDbScope').scope,
     },
     constructorSignatures: {
       '': 'const TomDbScope({required String field, String scope = \'owner\'})',
@@ -14646,9 +15186,9 @@ BridgedClass _createTomDbScopeBridge() {
 
 BridgedClass _createTomJoinTableBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomJoinTable,
+    nativeType: $tom_core_server_31.TomJoinTable,
     name: 'TomJoinTable',
-    isAssignable: (v) => v is $tom_core_server_30.TomJoinTable,
+    isAssignable: (v) => v is $tom_core_server_31.TomJoinTable,
     constructors: {
       '': (visitor, positional, named) {
         final targetEntity = D4.getRequiredNamedArg<Type>(named, 'targetEntity', 'TomJoinTable');
@@ -14666,17 +15206,17 @@ BridgedClass _createTomJoinTableBridge() {
         final contextColumns = named.containsKey('contextColumns') && named['contextColumns'] != null
             ? D4.coerceList<String>(named['contextColumns'], 'contextColumns')
             : const <String>[];
-        return $tom_core_server_30.TomJoinTable(targetEntity: targetEntity, repositoryType: repositoryType, keyType: keyType, originEntity: originEntity, leftSideColumns: leftSideColumns, rightSideColumns: rightSideColumns, contextColumns: contextColumns);
+        return $tom_core_server_31.TomJoinTable(targetEntity: targetEntity, repositoryType: repositoryType, keyType: keyType, originEntity: originEntity, leftSideColumns: leftSideColumns, rightSideColumns: rightSideColumns, contextColumns: contextColumns);
       },
     },
     getters: {
-      'targetEntity': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomJoinTable>(target, 'TomJoinTable').targetEntity,
-      'repositoryType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomJoinTable>(target, 'TomJoinTable').repositoryType,
-      'originEntity': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomJoinTable>(target, 'TomJoinTable').originEntity,
-      'keyType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomJoinTable>(target, 'TomJoinTable').keyType,
-      'leftSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomJoinTable>(target, 'TomJoinTable').leftSideColumns,
-      'rightSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomJoinTable>(target, 'TomJoinTable').rightSideColumns,
-      'contextColumns': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomJoinTable>(target, 'TomJoinTable').contextColumns,
+      'targetEntity': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomJoinTable>(target, 'TomJoinTable').targetEntity,
+      'repositoryType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomJoinTable>(target, 'TomJoinTable').repositoryType,
+      'originEntity': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomJoinTable>(target, 'TomJoinTable').originEntity,
+      'keyType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomJoinTable>(target, 'TomJoinTable').keyType,
+      'leftSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomJoinTable>(target, 'TomJoinTable').leftSideColumns,
+      'rightSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomJoinTable>(target, 'TomJoinTable').rightSideColumns,
+      'contextColumns': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomJoinTable>(target, 'TomJoinTable').contextColumns,
     },
     constructorSignatures: {
       '': 'const TomJoinTable({required Type targetEntity, required Type repositoryType, required Type keyType, required Type originEntity, required List<String> leftSideColumns, required List<String> rightSideColumns, List<String> contextColumns = const []})',
@@ -14699,9 +15239,9 @@ BridgedClass _createTomJoinTableBridge() {
 
 BridgedClass _createTomReferenceBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomReference,
+    nativeType: $tom_core_server_31.TomReference,
     name: 'TomReference',
-    isAssignable: (v) => v is $tom_core_server_30.TomReference,
+    isAssignable: (v) => v is $tom_core_server_31.TomReference,
     constructors: {
       '': (visitor, positional, named) {
         final targetEntity = D4.getRequiredNamedArg<Type>(named, 'targetEntity', 'TomReference');
@@ -14720,34 +15260,34 @@ BridgedClass _createTomReferenceBridge() {
             ? D4.coerceList<String>(named['contextColumns'], 'contextColumns')
             : const <String>[];
         final isOneToOne = D4.getNamedArgWithDefault<bool>(named, 'isOneToOne', false);
-        return $tom_core_server_30.TomReference(targetEntity: targetEntity, repositoryType: repositoryType, keyType: keyType, joinEntity: joinEntity, leftSideColumns: leftSideColumns, rightSideColumns: rightSideColumns, contextColumns: contextColumns, isOneToOne: isOneToOne);
+        return $tom_core_server_31.TomReference(targetEntity: targetEntity, repositoryType: repositoryType, keyType: keyType, joinEntity: joinEntity, leftSideColumns: leftSideColumns, rightSideColumns: rightSideColumns, contextColumns: contextColumns, isOneToOne: isOneToOne);
       },
     },
     getters: {
-      'targetEntity': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').targetEntity,
-      'repositoryType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').repositoryType,
-      'joinEntity': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').joinEntity,
-      'keyType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').keyType,
-      'leftSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').leftSideColumns,
-      'rightSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').rightSideColumns,
-      'contextColumns': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').contextColumns,
-      'isOneToOne': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference').isOneToOne,
+      'targetEntity': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').targetEntity,
+      'repositoryType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').repositoryType,
+      'joinEntity': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').joinEntity,
+      'keyType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').keyType,
+      'leftSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').leftSideColumns,
+      'rightSideColumns': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').rightSideColumns,
+      'contextColumns': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').contextColumns,
+      'isOneToOne': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference').isOneToOne,
     },
     methods: {
       'getReferencedType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference');
+        final t = D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference');
         return t.getReferencedType();
       },
       'getRepositoryType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference');
+        final t = D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference');
         return t.getRepositoryType();
       },
       'getKeyType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference');
+        final t = D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference');
         return t.getKeyType();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomReference>(target, 'TomReference');
+        final t = D4.validateTarget<$tom_core_server_31.TomReference>(target, 'TomReference');
         return t.toString();
       },
     },
@@ -14779,23 +15319,23 @@ BridgedClass _createTomReferenceBridge() {
 
 BridgedClass _createTomPersistenceEventHandlerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomPersistenceEventHandler,
+    nativeType: $tom_core_server_31.TomPersistenceEventHandler,
     name: 'TomPersistenceEventHandler',
-    isAssignable: (v) => v is $tom_core_server_30.TomPersistenceEventHandler,
+    isAssignable: (v) => v is $tom_core_server_31.TomPersistenceEventHandler,
     constructors: {
       '': (visitor, positional, named) {
         final postPersistRaw = named['postPersist'];
         final postLoadRaw = named['postLoad'];
         final preLoadRaw = named['preLoad'];
         final prePersistRaw = named['prePersist'];
-        return $tom_core_server_30.TomPersistenceEventHandler(postPersist: postPersistRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, postPersistRaw, [p0]); }, postLoad: postLoadRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, postLoadRaw, [p0]); }, preLoad: preLoadRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, preLoadRaw, [p0]); }, prePersist: prePersistRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, prePersistRaw, [p0]); });
+        return $tom_core_server_31.TomPersistenceEventHandler(postPersist: postPersistRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, postPersistRaw, [p0]); }, postLoad: postLoadRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, postLoadRaw, [p0]); }, preLoad: preLoadRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, preLoadRaw, [p0]); }, prePersist: prePersistRaw == null ? null : (dynamic p0) { D4.callInterpreterCallback(visitor!, prePersistRaw, [p0]); });
       },
     },
     getters: {
-      'postPersist': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').postPersist,
-      'postLoad': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').postLoad,
-      'prePersist': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').prePersist,
-      'preLoad': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').preLoad,
+      'postPersist': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').postPersist,
+      'postLoad': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').postLoad,
+      'prePersist': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').prePersist,
+      'preLoad': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomPersistenceEventHandler>(target, 'TomPersistenceEventHandler').preLoad,
     },
     constructorSignatures: {
       '': 'TomPersistenceEventHandler({void Function(DBTYPE)? postPersist, void Function(DBTYPE)? postLoad, void Function(DBTYPE)? preLoad, void Function(DBTYPE)? prePersist})',
@@ -14815,72 +15355,72 @@ BridgedClass _createTomPersistenceEventHandlerBridge() {
 
 BridgedClass _createTomColumnInformationBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_30.TomColumnInformation,
+    nativeType: $tom_core_server_31.TomColumnInformation,
     name: 'TomColumnInformation',
-    isAssignable: (v) => v is $tom_core_server_30.TomColumnInformation,
+    isAssignable: (v) => v is $tom_core_server_31.TomColumnInformation,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 9, 'TomColumnInformation');
-        final table = D4.getRequiredArg<$tom_core_server_30.TomDbTable>(positional, 0, 'table', 'TomColumnInformation');
+        final table = D4.getRequiredArg<$tom_core_server_31.TomDbTable>(positional, 0, 'table', 'TomColumnInformation');
         final tableType = D4.getRequiredArg<Type>(positional, 1, 'tableType', 'TomColumnInformation');
-        final column = D4.getRequiredArg<$tom_core_server_30.TomDbColumn<dynamic, $tom_core_server_17.TomDbType>?>(positional, 2, 'column', 'TomColumnInformation');
-        final entityId = D4.getRequiredArg<$tom_core_server_30.TomEntityId?>(positional, 3, 'entityId', 'TomColumnInformation');
-        final reference = D4.getRequiredArg<$tom_core_server_30.TomReference<Object, dynamic, $tom_core_server_26.TomRepository<Object, dynamic>>?>(positional, 4, 'reference', 'TomColumnInformation');
-        final eventHandler = D4.getRequiredArg<$tom_core_server_30.TomPersistenceEventHandler?>(positional, 5, 'eventHandler', 'TomColumnInformation');
+        final column = D4.getRequiredArg<$tom_core_server_31.TomDbColumn<dynamic, $tom_core_server_18.TomDbType>?>(positional, 2, 'column', 'TomColumnInformation');
+        final entityId = D4.getRequiredArg<$tom_core_server_31.TomEntityId?>(positional, 3, 'entityId', 'TomColumnInformation');
+        final reference = D4.getRequiredArg<$tom_core_server_31.TomReference<Object, dynamic, $tom_core_server_27.TomRepository<Object, dynamic>>?>(positional, 4, 'reference', 'TomColumnInformation');
+        final eventHandler = D4.getRequiredArg<$tom_core_server_31.TomPersistenceEventHandler?>(positional, 5, 'eventHandler', 'TomColumnInformation');
         final declaredType = D4.getRequiredArg<Type>(positional, 6, 'declaredType', 'TomColumnInformation');
         final declaredName = D4.getRequiredArg<String>(positional, 7, 'declaredName', 'TomColumnInformation');
         final field = D4.getRequiredArg<String>(positional, 8, 'field', 'TomColumnInformation');
-        return $tom_core_server_30.TomColumnInformation(table, tableType, column, entityId, reference, eventHandler, declaredType, declaredName, field);
+        return $tom_core_server_31.TomColumnInformation(table, tableType, column, entityId, reference, eventHandler, declaredType, declaredName, field);
       },
     },
     getters: {
-      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').tableType,
-      'table': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').table,
-      'column': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').column,
-      'entityId': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').entityId,
-      'reference': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').reference,
-      'eventHandler': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').eventHandler,
-      'declaredType': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').declaredType,
-      'declaredName': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').declaredName,
-      'field': (visitor, target) => D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').field,
+      'tableType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').tableType,
+      'table': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').table,
+      'column': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').column,
+      'entityId': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').entityId,
+      'reference': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').reference,
+      'eventHandler': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').eventHandler,
+      'declaredType': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').declaredType,
+      'declaredName': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').declaredName,
+      'field': (visitor, target) => D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').field,
     },
     setters: {
       'tableType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').tableType = D4.extractBridgedArg<Type>(value, 'tableType'),
       'table': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').table = D4.extractBridgedArg<$tom_core_server_30.TomDbTable>(value, 'table'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').table = D4.extractBridgedArg<$tom_core_server_31.TomDbTable>(value, 'table'),
       'column': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').column = D4.extractBridgedArgOrNull<$tom_core_server_30.TomDbColumn<dynamic, $tom_core_server_17.TomDbType>>(value, 'column'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').column = D4.extractBridgedArgOrNull<$tom_core_server_31.TomDbColumn<dynamic, $tom_core_server_18.TomDbType>>(value, 'column'),
       'entityId': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').entityId = D4.extractBridgedArgOrNull<$tom_core_server_30.TomEntityId>(value, 'entityId'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').entityId = D4.extractBridgedArgOrNull<$tom_core_server_31.TomEntityId>(value, 'entityId'),
       'reference': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').reference = D4.extractBridgedArgOrNull<$tom_core_server_30.TomReference<Object, dynamic, $tom_core_server_26.TomRepository<Object, dynamic>>>(value, 'reference'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').reference = D4.extractBridgedArgOrNull<$tom_core_server_31.TomReference<Object, dynamic, $tom_core_server_27.TomRepository<Object, dynamic>>>(value, 'reference'),
       'eventHandler': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').eventHandler = D4.extractBridgedArgOrNull<$tom_core_server_30.TomPersistenceEventHandler>(value, 'eventHandler'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').eventHandler = D4.extractBridgedArgOrNull<$tom_core_server_31.TomPersistenceEventHandler>(value, 'eventHandler'),
       'declaredType': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').declaredType = D4.extractBridgedArg<Type>(value, 'declaredType'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').declaredType = D4.extractBridgedArg<Type>(value, 'declaredType'),
       'declaredName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').declaredName = D4.extractBridgedArg<String>(value, 'declaredName'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').declaredName = D4.extractBridgedArg<String>(value, 'declaredName'),
       'field': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation').field = D4.extractBridgedArg<String>(value, 'field'),
+        D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation').field = D4.extractBridgedArg<String>(value, 'field'),
     },
     methods: {
       'getDatabaseType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation');
+        final t = D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation');
         return t.getDatabaseType();
       },
       'getQueryFieldName': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation');
+        final t = D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation');
         return t.getQueryFieldName();
       },
       'getVariableValue': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation');
+        final t = D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation');
         D4.requireMinArgs(positional, 1, 'getVariableValue');
         final instance = D4.getRequiredArg<Object>(positional, 0, 'instance', 'getVariableValue');
         return t.getVariableValue(instance);
       },
       'setVariableValue': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_30.TomColumnInformation>(target, 'TomColumnInformation');
+        final t = D4.validateTarget<$tom_core_server_31.TomColumnInformation>(target, 'TomColumnInformation');
         D4.requireMinArgs(positional, 2, 'setVariableValue');
         final instance = D4.getRequiredArg<Object>(positional, 0, 'instance', 'setVariableValue');
         final value = D4.getRequiredArg<Object?>(positional, 1, 'value', 'setVariableValue');
@@ -14927,221 +15467,221 @@ BridgedClass _createTomColumnInformationBridge() {
 
 BridgedClass _createTomQueryBuilderBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_31.TomQueryBuilder,
+    nativeType: $tom_core_server_32.TomQueryBuilder,
     name: 'TomQueryBuilder',
-    isAssignable: (v) => v is $tom_core_server_31.TomQueryBuilder,
+    isAssignable: (v) => v is $tom_core_server_32.TomQueryBuilder,
     canBeUsedAsMixin: true,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'isNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'isNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
         return t.isNull(what);
       },
       'isNotNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'isNotNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
         return t.isNotNull(what);
       },
       'isIn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'isIn');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
         if (positional.length <= 1) {
           throw ArgumentError('isIn: Missing required argument "choices" at position 1');
         }
-        final choices = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'choices');
+        final choices = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'choices');
         return t.isIn(what, choices);
       },
       'between': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'between');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'between');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'between');
         if (positional.length <= 1) {
           throw ArgumentError('between: Missing required argument "betweenLimits" at position 1');
         }
-        final betweenLimits = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'betweenLimits');
+        final betweenLimits = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'betweenLimits');
         return t.between(what, betweenLimits);
       },
       'like': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'like');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'like');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'like');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'like');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'like');
         return t.like(text, test);
       },
       'notLike': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'notLike');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'notLike');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'notLike');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'notLike');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'notLike');
         return t.notLike(text, test);
       },
       'regexp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'regexp');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'regexp');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'regexp');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'regexp');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'regexp');
         return t.regexp(text, test);
       },
       'group': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'group');
-        final operant = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
+        final operant = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
         return t.group(operant);
       },
       'eq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'eq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
         return t.eq(operant1, operant2);
       },
       'neq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'neq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
         return t.neq(operant1, operant2);
       },
       'lt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'lt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
         return t.lt(operant1, operant2);
       },
       'lte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'lte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
         return t.lte(operant1, operant2);
       },
       'gt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'gt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
         return t.gt(operant1, operant2);
       },
       'gte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'gte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
         return t.gte(operant1, operant2);
       },
       'not': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'not');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'operant1', 'not');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'operant1', 'not');
         return t.not(operant1);
       },
       'and': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'and');
         if (positional.isEmpty) {
           throw ArgumentError('and: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.and(operant1);
       },
       'or': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'or');
         if (positional.isEmpty) {
           throw ArgumentError('or: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.or(operant1);
       },
       'text': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'text');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'text');
         return t.text(text);
       },
       'intOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'intOp');
         final value = D4.getRequiredArg<int>(positional, 0, 'value', 'intOp');
         return t.intOp(value);
       },
       'doubleOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'doubleOp');
         final value = D4.getRequiredArg<double>(positional, 0, 'value', 'doubleOp');
         return t.doubleOp(value);
       },
       'boolOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'boolOp');
         final value = D4.getRequiredArg<bool>(positional, 0, 'value', 'boolOp');
         return t.boolOp(value);
       },
       'dateTimeOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'dateTimeOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateTimeOp');
         return t.dateTimeOp(value);
       },
       'dateOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'dateOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateOp');
         return t.dateOp(value);
       },
       'p': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 1, 'p');
         final parameterName = D4.getRequiredArg<String>(positional, 0, 'parameterName', 'p');
         return t.p(parameterName);
       },
       'textF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'textF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'textF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
         return t.textF(fieldName, columnInformation);
       },
       'intF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'intF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'intF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
         return t.intF(fieldName, columnInformation);
       },
       'doubleF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'doubleF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'doubleF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
         return t.doubleF(fieldName, columnInformation);
       },
       'boolF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'boolF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'boolF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
         return t.boolF(fieldName, columnInformation);
       },
       'dateTimeF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'dateTimeF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateTimeF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
         return t.dateTimeF(fieldName, columnInformation);
       },
       'dateF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_31.TomQueryBuilder>(target, 'TomQueryBuilder');
+        final t = D4.validateTarget<$tom_core_server_32.TomQueryBuilder>(target, 'TomQueryBuilder');
         D4.requireMinArgs(positional, 2, 'dateF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
         return t.dateF(fieldName, columnInformation);
       },
     },
@@ -15186,9 +15726,9 @@ BridgedClass _createTomQueryBuilderBridge() {
 
 BridgedClass _createTomQuerySentenceCompilerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_32.TomQuerySentenceCompiler,
+    nativeType: $tom_core_server_33.TomQuerySentenceCompiler,
     name: 'TomQuerySentenceCompiler',
-    isAssignable: (v) => v is $tom_core_server_32.TomQuerySentenceCompiler,
+    isAssignable: (v) => v is $tom_core_server_33.TomQuerySentenceCompiler,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -15197,241 +15737,241 @@ BridgedClass _createTomQuerySentenceCompilerBridge() {
           throw ArgumentError('TomQuerySentenceCompiler: Missing required argument "types" at position 0');
         }
         final types = D4.coerceList<Type>(positional[0], 'types');
-        return $tom_core_server_32.TomQuerySentenceCompiler(types);
+        return $tom_core_server_33.TomQuerySentenceCompiler(types);
       },
     },
     getters: {
-      'types': (visitor, target) => D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler').types,
-      'persistenceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler').persistenceInfo,
+      'types': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler').types,
+      'persistenceInfo': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler').persistenceInfo,
     },
     setters: {
       'types': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler').types = D4.coerceList<Type>(value, 'types'),
+        D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler').types = D4.coerceList<Type>(value, 'types'),
     },
     methods: {
       'getColumnInformation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         return t.getColumnInformation();
       },
       'determineColumn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'determineColumn');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'determineColumn');
         return t.determineColumn(name);
       },
       'compileQuerySentence': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'compileQuerySentence');
         final qs = D4.getRequiredArg<String>(positional, 0, 'qs', 'compileQuerySentence');
         return t.compileQuerySentence(qs);
       },
       'isNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'isNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNull');
         return t.isNull(what);
       },
       'isNotNull': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'isNotNull');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isNotNull');
         return t.isNotNull(what);
       },
       'isIn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'isIn');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'isIn');
         if (positional.length <= 1) {
           throw ArgumentError('isIn: Missing required argument "choices" at position 1');
         }
-        final choices = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'choices');
+        final choices = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'choices');
         return t.isIn(what, choices);
       },
       'between': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'between');
-        final what = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'what', 'between');
+        final what = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'what', 'between');
         if (positional.length <= 1) {
           throw ArgumentError('between: Missing required argument "betweenLimits" at position 1');
         }
-        final betweenLimits = D4.coerceList<$tom_core_server_17.TomOperator<dynamic>>(positional[1], 'betweenLimits');
+        final betweenLimits = D4.coerceList<$tom_core_server_18.TomOperator<dynamic>>(positional[1], 'betweenLimits');
         return t.between(what, betweenLimits);
       },
       'like': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'like');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'like');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'like');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'like');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'like');
         return t.like(text, test);
       },
       'notLike': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'notLike');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'notLike');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'notLike');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'notLike');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'notLike');
         return t.notLike(text, test);
       },
       'regexp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'regexp');
-        final text = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 0, 'text', 'regexp');
-        final test = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbString>>(positional, 1, 'test', 'regexp');
+        final text = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 0, 'text', 'regexp');
+        final test = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbString>>(positional, 1, 'test', 'regexp');
         return t.regexp(text, test);
       },
       'group': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'group');
-        final operant = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
+        final operant = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant', 'group');
         return t.group(operant);
       },
       'eq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'eq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'eq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'eq');
         return t.eq(operant1, operant2);
       },
       'neq': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'neq');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'neq');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'neq');
         return t.neq(operant1, operant2);
       },
       'lt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'lt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lt');
         return t.lt(operant1, operant2);
       },
       'lte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'lte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'lte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'lte');
         return t.lte(operant1, operant2);
       },
       'gt': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'gt');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gt');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gt');
         return t.gt(operant1, operant2);
       },
       'gte': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'gte');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
-        final operant2 = D4.getRequiredArg<$tom_core_server_17.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 0, 'operant1', 'gte');
+        final operant2 = D4.getRequiredArg<$tom_core_server_18.TomOperator<dynamic>>(positional, 1, 'operant2', 'gte');
         return t.gte(operant1, operant2);
       },
       'not': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'not');
-        final operant1 = D4.getRequiredArg<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional, 0, 'operant1', 'not');
+        final operant1 = D4.getRequiredArg<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional, 0, 'operant1', 'not');
         return t.not(operant1);
       },
       'and': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'and');
         if (positional.isEmpty) {
           throw ArgumentError('and: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.and(operant1);
       },
       'or': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'or');
         if (positional.isEmpty) {
           throw ArgumentError('or: Missing required argument "operant1" at position 0');
         }
-        final operant1 = D4.coerceList<$tom_core_server_17.TomOperator<$tom_core_server_17.TomDbBool>>(positional[0], 'operant1');
+        final operant1 = D4.coerceList<$tom_core_server_18.TomOperator<$tom_core_server_18.TomDbBool>>(positional[0], 'operant1');
         return t.or(operant1);
       },
       'text': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'text');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'text');
         return t.text(text);
       },
       'intOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'intOp');
         final value = D4.getRequiredArg<int>(positional, 0, 'value', 'intOp');
         return t.intOp(value);
       },
       'doubleOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'doubleOp');
         final value = D4.getRequiredArg<double>(positional, 0, 'value', 'doubleOp');
         return t.doubleOp(value);
       },
       'boolOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'boolOp');
         final value = D4.getRequiredArg<bool>(positional, 0, 'value', 'boolOp');
         return t.boolOp(value);
       },
       'dateTimeOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'dateTimeOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateTimeOp');
         return t.dateTimeOp(value);
       },
       'dateOp': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'dateOp');
         final value = D4.getRequiredArg<DateTime>(positional, 0, 'value', 'dateOp');
         return t.dateOp(value);
       },
       'p': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 1, 'p');
         final parameterName = D4.getRequiredArg<String>(positional, 0, 'parameterName', 'p');
         return t.p(parameterName);
       },
       'textF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'textF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'textF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
         return t.textF(fieldName, columnInformation);
       },
       'intF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'intF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'intF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
         return t.intF(fieldName, columnInformation);
       },
       'doubleF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'doubleF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'doubleF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
         return t.doubleF(fieldName, columnInformation);
       },
       'boolF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'boolF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'boolF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
         return t.boolF(fieldName, columnInformation);
       },
       'dateTimeF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'dateTimeF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateTimeF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
         return t.dateTimeF(fieldName, columnInformation);
       },
       'dateF': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_32.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
+        final t = D4.validateTarget<$tom_core_server_33.TomQuerySentenceCompiler>(target, 'TomQuerySentenceCompiler');
         D4.requireMinArgs(positional, 2, 'dateF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_30.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_31.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
         return t.dateF(fieldName, columnInformation);
       },
     },
@@ -15489,24 +16029,24 @@ BridgedClass _createTomQuerySentenceCompilerBridge() {
 
 BridgedClass _createTomRequestIdBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_33.TomRequestId,
+    nativeType: $tom_core_server_34.TomRequestId,
     name: 'TomRequestId',
-    isAssignable: (v) => v is $tom_core_server_33.TomRequestId,
+    isAssignable: (v) => v is $tom_core_server_34.TomRequestId,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_33.TomRequestId();
+        return $tom_core_server_34.TomRequestId();
       },
     },
     getters: {
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomRequestId>(target, 'TomRequestId').uuid,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomRequestId>(target, 'TomRequestId').uuid,
     },
     setters: {
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_33.TomRequestId>(target, 'TomRequestId').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_34.TomRequestId>(target, 'TomRequestId').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_33.TomRequestId>(target, 'TomRequestId');
+        final t = D4.validateTarget<$tom_core_server_34.TomRequestId>(target, 'TomRequestId');
         return t.toString();
       },
     },
@@ -15531,32 +16071,32 @@ BridgedClass _createTomRequestIdBridge() {
 
 BridgedClass _createTomRequestLogInfoBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_33.TomRequestLogInfo,
+    nativeType: $tom_core_server_34.TomRequestLogInfo,
     name: 'TomRequestLogInfo',
-    isAssignable: (v) => v is $tom_core_server_33.TomRequestLogInfo,
+    isAssignable: (v) => v is $tom_core_server_34.TomRequestLogInfo,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_core_server_33.TomRequestLogInfo();
+        return $tom_core_server_34.TomRequestLogInfo();
       },
     },
     getters: {
-      'hasBeenLogged': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomRequestLogInfo>(target, 'TomRequestLogInfo').hasBeenLogged,
-      'shouldBeLogged': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomRequestLogInfo>(target, 'TomRequestLogInfo').shouldBeLogged,
+      'hasBeenLogged': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomRequestLogInfo>(target, 'TomRequestLogInfo').hasBeenLogged,
+      'shouldBeLogged': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomRequestLogInfo>(target, 'TomRequestLogInfo').shouldBeLogged,
     },
     setters: {
       'hasBeenLogged': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_33.TomRequestLogInfo>(target, 'TomRequestLogInfo').hasBeenLogged = D4.extractBridgedArg<bool>(value, 'hasBeenLogged'),
+        D4.validateTarget<$tom_core_server_34.TomRequestLogInfo>(target, 'TomRequestLogInfo').hasBeenLogged = D4.extractBridgedArg<bool>(value, 'hasBeenLogged'),
       'shouldBeLogged': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_33.TomRequestLogInfo>(target, 'TomRequestLogInfo').shouldBeLogged = D4.extractBridgedArg<bool>(value, 'shouldBeLogged'),
+        D4.validateTarget<$tom_core_server_34.TomRequestLogInfo>(target, 'TomRequestLogInfo').shouldBeLogged = D4.extractBridgedArg<bool>(value, 'shouldBeLogged'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_33.TomRequestLogInfo>(target, 'TomRequestLogInfo');
+        final t = D4.validateTarget<$tom_core_server_34.TomRequestLogInfo>(target, 'TomRequestLogInfo');
         return t.toString();
       },
     },
     staticGetters: {
-      'contextName': (visitor) => $tom_core_server_33.TomRequestLogInfo.contextName,
+      'contextName': (visitor) => $tom_core_server_34.TomRequestLogInfo.contextName,
     },
     constructorSignatures: {
       '': 'TomRequestLogInfo()',
@@ -15584,47 +16124,47 @@ BridgedClass _createTomRequestLogInfoBridge() {
 
 BridgedClass _createTomServerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_33.TomServer,
+    nativeType: $tom_core_server_34.TomServer,
     name: 'TomServer',
-    isAssignable: (v) => v is $tom_core_server_33.TomServer,
+    isAssignable: (v) => v is $tom_core_server_34.TomServer,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomServer');
         final configuration = D4.getRequiredArg<$tom_core_server_9.TomBaseServerConfiguration>(positional, 0, 'configuration', 'TomServer');
-        return $tom_core_server_33.TomServer(configuration);
+        return $tom_core_server_34.TomServer(configuration);
       },
     },
     getters: {
-      'configuration': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').configuration,
-      'securityContext': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').securityContext,
-      'router': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').router,
-      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').errorHandler,
-      'authenticationErrorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').authenticationErrorHandler,
-      'loggingMiddleware': (visitor, target) => D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').loggingMiddleware,
+      'configuration': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').configuration,
+      'securityContext': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').securityContext,
+      'router': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').router,
+      'errorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').errorHandler,
+      'authenticationErrorHandler': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').authenticationErrorHandler,
+      'loggingMiddleware': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').loggingMiddleware,
     },
     setters: {
       'configuration': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').configuration = D4.extractBridgedArg<$tom_core_server_9.TomBaseServerConfiguration>(value, 'configuration'),
+        D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').configuration = D4.extractBridgedArg<$tom_core_server_9.TomBaseServerConfiguration>(value, 'configuration'),
       'securityContext': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').securityContext = D4.extractBridgedArgOrNull<SecurityContext>(value, 'securityContext'),
+        D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').securityContext = D4.extractBridgedArgOrNull<SecurityContext>(value, 'securityContext'),
       'router': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').router = D4.extractBridgedArgOrNull<$shelf_router_1.Router>(value, 'router'),
+        D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').router = D4.extractBridgedArgOrNull<$shelf_router_1.Router>(value, 'router'),
       'errorHandler': (visitor, target, value) {
         final errorHandlerRaw = D4.extractBridgedArgOrNull<dynamic>(value, 'errorHandler');
-        D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').errorHandler = (($shelf_3.Request p0, Object p1, StackTrace p2) { return D4.extractBridgedArg<$shelf_4.Response?>(D4.callInterpreterCallback(visitor!, errorHandlerRaw, [p0, p1, p2]), 'callback', visitor) as $shelf_4.Response?; }) as $shelf_4.Response? Function($shelf_3.Request, Object, StackTrace);
+        D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').errorHandler = (($shelf_3.Request p0, Object p1, StackTrace p2) { return D4.extractBridgedArg<$shelf_4.Response?>(D4.callInterpreterCallback(visitor!, errorHandlerRaw, [p0, p1, p2]), 'callback', visitor) as $shelf_4.Response?; }) as $shelf_4.Response? Function($shelf_3.Request, Object, StackTrace);
       },
       'authenticationErrorHandler': (visitor, target, value) {
         final authenticationErrorHandlerRaw = D4.extractBridgedArgOrNull<dynamic>(value, 'authenticationErrorHandler');
-        D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').authenticationErrorHandler = authenticationErrorHandlerRaw == null ? null : (($shelf_3.Request p0, Object p1, StackTrace p2) { return D4.extractBridgedArg<$shelf_4.Response?>(D4.callInterpreterCallback(visitor!, authenticationErrorHandlerRaw, [p0, p1, p2]), 'callback', visitor) as $shelf_4.Response?; }) as $shelf_4.Response? Function($shelf_3.Request, Object, StackTrace);
+        D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').authenticationErrorHandler = authenticationErrorHandlerRaw == null ? null : (($shelf_3.Request p0, Object p1, StackTrace p2) { return D4.extractBridgedArg<$shelf_4.Response?>(D4.callInterpreterCallback(visitor!, authenticationErrorHandlerRaw, [p0, p1, p2]), 'callback', visitor) as $shelf_4.Response?; }) as $shelf_4.Response? Function($shelf_3.Request, Object, StackTrace);
       },
       'loggingMiddleware': (visitor, target, value) {
         final loggingMiddlewareRaw = D4.extractBridgedArgOrNull<dynamic>(value, 'loggingMiddleware');
-        D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer').loggingMiddleware = ((FutureOr<$shelf_4.Response> Function($shelf_3.Request) p0) { return D4.extractBridgedArg<FutureOr<$shelf_4.Response> Function($shelf_3.Request)>(D4.callInterpreterCallback(visitor!, loggingMiddlewareRaw, [p0]), 'callback', visitor) as FutureOr<$shelf_4.Response> Function($shelf_3.Request); }) as FutureOr<$shelf_4.Response> Function($shelf_3.Request) Function(FutureOr<$shelf_4.Response> Function($shelf_3.Request));
+        D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer').loggingMiddleware = ((FutureOr<$shelf_4.Response> Function($shelf_3.Request) p0) { return D4.extractBridgedArg<FutureOr<$shelf_4.Response> Function($shelf_3.Request)>(D4.callInterpreterCallback(visitor!, loggingMiddlewareRaw, [p0]), 'callback', visitor) as FutureOr<$shelf_4.Response> Function($shelf_3.Request); }) as FutureOr<$shelf_4.Response> Function($shelf_3.Request) Function(FutureOr<$shelf_4.Response> Function($shelf_3.Request));
       },
     },
     methods: {
       'start': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_33.TomServer>(target, 'TomServer');
+        final t = D4.validateTarget<$tom_core_server_34.TomServer>(target, 'TomServer');
         t.start();
         return null;
       },
@@ -15660,9 +16200,9 @@ BridgedClass _createTomServerBridge() {
 
 BridgedClass _createTomTransactionExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_34.TomTransactionException,
+    nativeType: $tom_core_server_35.TomTransactionException,
     name: 'TomTransactionException',
-    isAssignable: (v) => v is $tom_core_server_34.TomTransactionException,
+    isAssignable: (v) => v is $tom_core_server_35.TomTransactionException,
     hierarchyDepth: 5,
     constructors: {
       '': (visitor, positional, named) {
@@ -15673,61 +16213,61 @@ BridgedClass _createTomTransactionExceptionBridge() {
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        return $tom_core_server_34.TomTransactionException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+        return $tom_core_server_35.TomTransactionException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
       },
     },
     getters: {
-      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').isolateName,
-      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').clientThrow,
-      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').autoLog,
-      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').serverCallError,
-      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').newField,
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').logRepresentation,
-      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').stackTrace,
+      'isolateName': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').isolateName,
+      'clientThrow': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').clientThrow,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').serverCallError,
+      'newField': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').newField,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').logRepresentation,
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').stackTrace,
     },
     setters: {
       'isolateName': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').isolateName = D4.extractBridgedArg<String>(value, 'isolateName'),
       'clientThrow': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').clientThrow = D4.extractBridgedArg<bool>(value, 'clientThrow'),
       'autoLog': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
       'serverCallError': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_4.TomServerCallError>(value, 'serverCallError'),
       'newField': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').newField = D4.extractBridgedArgOrNull<String>(value, 'newField'),
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').key = D4.extractBridgedArg<String>(value, 'key'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+        D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransactionException>(target, 'TomTransactionException');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransactionException>(target, 'TomTransactionException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -15782,31 +16322,31 @@ BridgedClass _createTomTransactionExceptionBridge() {
 
 BridgedClass _createTomTransactionParticipantBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_34.TomTransactionParticipant,
+    nativeType: $tom_core_server_35.TomTransactionParticipant,
     name: 'TomTransactionParticipant',
-    isAssignable: (v) => v is $tom_core_server_34.TomTransactionParticipant,
+    isAssignable: (v) => v is $tom_core_server_35.TomTransactionParticipant,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'getParticipantId': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransactionParticipant>(target, 'TomTransactionParticipant');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransactionParticipant>(target, 'TomTransactionParticipant');
         return t.getParticipantId();
       },
       'startTransaction': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransactionParticipant>(target, 'TomTransactionParticipant');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransactionParticipant>(target, 'TomTransactionParticipant');
         return t.startTransaction();
       },
       'endTransaction': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransactionParticipant>(target, 'TomTransactionParticipant');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransactionParticipant>(target, 'TomTransactionParticipant');
         return t.endTransaction();
       },
       'commit': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransactionParticipant>(target, 'TomTransactionParticipant');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransactionParticipant>(target, 'TomTransactionParticipant');
         return t.commit();
       },
       'rollback': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransactionParticipant>(target, 'TomTransactionParticipant');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransactionParticipant>(target, 'TomTransactionParticipant');
         return t.rollback();
       },
     },
@@ -15826,28 +16366,28 @@ BridgedClass _createTomTransactionParticipantBridge() {
 
 BridgedClass _createTomTransactionBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_34.TomTransaction,
+    nativeType: $tom_core_server_35.TomTransaction,
     name: 'TomTransaction',
-    isAssignable: (v) => v is $tom_core_server_34.TomTransaction,
+    isAssignable: (v) => v is $tom_core_server_35.TomTransaction,
     constructors: {
     },
     getters: {
-      'isReadOnly': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransaction>(target, 'TomTransaction').isReadOnly,
-      'isRunning': (visitor, target) => D4.validateTarget<$tom_core_server_34.TomTransaction>(target, 'TomTransaction').isRunning,
+      'isReadOnly': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransaction>(target, 'TomTransaction').isReadOnly,
+      'isRunning': (visitor, target) => D4.validateTarget<$tom_core_server_35.TomTransaction>(target, 'TomTransaction').isRunning,
     },
     methods: {
       'registerParticipant': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransaction>(target, 'TomTransaction');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransaction>(target, 'TomTransaction');
         D4.requireMinArgs(positional, 1, 'registerParticipant');
-        final ttp = D4.getRequiredArg<$tom_core_server_34.TomTransactionParticipant>(positional, 0, 'ttp', 'registerParticipant');
+        final ttp = D4.getRequiredArg<$tom_core_server_35.TomTransactionParticipant>(positional, 0, 'ttp', 'registerParticipant');
         return t.registerParticipant(ttp);
       },
       'commitTransaction': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransaction>(target, 'TomTransaction');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransaction>(target, 'TomTransaction');
         return t.commitTransaction();
       },
       'rollbackTransaction': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_34.TomTransaction>(target, 'TomTransaction');
+        final t = D4.validateTarget<$tom_core_server_35.TomTransaction>(target, 'TomTransaction');
         return t.rollbackTransaction();
       },
     },
@@ -15869,22 +16409,22 @@ BridgedClass _createTomTransactionBridge() {
 
 BridgedClass _createTomTransactionManagerBridge() {
   return BridgedClass(
-    nativeType: $tom_core_server_34.TomTransactionManager,
+    nativeType: $tom_core_server_35.TomTransactionManager,
     name: 'TomTransactionManager',
-    isAssignable: (v) => v is $tom_core_server_34.TomTransactionManager,
+    isAssignable: (v) => v is $tom_core_server_35.TomTransactionManager,
     isAbstract: true,
     constructors: {
     },
     staticGetters: {
-      'transactional': (visitor) => $tom_core_server_34.TomTransactionManager.transactional,
+      'transactional': (visitor) => $tom_core_server_35.TomTransactionManager.transactional,
     },
     staticMethods: {
       'startTransaction': (visitor, positional, named, typeArgs) {
         final isReadOnly = D4.getOptionalArgWithDefault<bool>(positional, 0, 'isReadOnly', false);
-        return $tom_core_server_34.TomTransactionManager.startTransaction(isReadOnly);
+        return $tom_core_server_35.TomTransactionManager.startTransaction(isReadOnly);
       },
       'getCurrentTransaction': (visitor, positional, named, typeArgs) {
-        return $tom_core_server_34.TomTransactionManager.getCurrentTransaction();
+        return $tom_core_server_35.TomTransactionManager.getCurrentTransaction();
       },
     },
     staticMethodSignatures: {

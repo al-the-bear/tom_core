@@ -203,7 +203,7 @@ class ReplayTestHelper {
   Future<bool> _generateBridges() async {
     // Resolve the generator project path
     final generatorPath = p.normalize(
-      p.join(projectPath, '../../xternal/tom_module_d4rt/tom_d4rt_generator'),
+      p.join(projectPath, '../../d4rt/tom_d4rt_generator'),
     );
 
     // Resolve DART_SDK

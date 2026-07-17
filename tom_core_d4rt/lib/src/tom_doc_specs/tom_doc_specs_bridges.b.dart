@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 18 files
-// Generated: 2026-06-17T18:46:46.806509
+// Generated: 2026-07-18T00:04:24.256570
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -34,6 +34,10 @@ import 'package:tom_doc_scanner/src/doc_scanner_factory.dart' as $aux_tom_doc_sc
 /// Bridge class for tom_doc_specs module.
 class TomDocSpecsBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createDocSpecsBridge(),
@@ -66,6 +70,81 @@ class TomDocSpecsBridge {
       _createInsertMarkerParserBridge(),
       _createInsertMarkerProcessorBridge(),
     ];
+  }
+
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'DocSpecs': _createDocSpecsBridge,
+      'DocSpecsFactory': _createDocSpecsFactoryBridge,
+      'SpecSection': _createSpecSectionBridge,
+      'SpecDoc': _createSpecDocBridge,
+      'SpecSectionType': _createSpecSectionTypeBridge,
+      'DocSpecSchema': _createDocSpecSchemaBridge,
+      'PatternCheckDef': _createPatternCheckDefBridge,
+      'SubsectionConstraint': _createSubsectionConstraintBridge,
+      'SectionTypeDef': _createSectionTypeDefBridge,
+      'ForEachDef': _createForEachDefBridge,
+      'SectionDef': _createSectionDefBridge,
+      'SubsectionDef': _createSubsectionDefBridge,
+      'DocumentStructure': _createDocumentStructureBridge,
+      'FormFieldDef': _createFormFieldDefBridge,
+      'FormTypeDef': _createFormTypeDefBridge,
+      'SchemaInfo': _createSchemaInfoBridge,
+      'SchemaFilenameParser': _createSchemaFilenameParserBridge,
+      'SchemaLoader': _createSchemaLoaderBridge,
+      'SchemaResolver': _createSchemaResolverBridge,
+      'SchemaDiscovery': _createSchemaDiscoveryBridge,
+      'SchemaExpander': _createSchemaExpanderBridge,
+      'DocSpecsSkeletonGenerator': _createDocSpecsSkeletonGeneratorBridge,
+      'AiValidator': _createAiValidatorBridge,
+      'PromptExpander': _createPromptExpanderBridge,
+      'ValidationError': _createValidationErrorBridge,
+      'DocSpecsValidator': _createDocSpecsValidatorBridge,
+      'InsertMarker': _createInsertMarkerBridge,
+      'InsertMarkerParser': _createInsertMarkerParserBridge,
+      'InsertMarkerProcessor': _createInsertMarkerProcessorBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'DocSpecs': $tom_doc_specs_1.DocSpecs,
+      'DocSpecsFactory': $tom_doc_specs_2.DocSpecsFactory,
+      'SpecSection': $tom_doc_specs_10.SpecSection,
+      'SpecDoc': $tom_doc_specs_9.SpecDoc,
+      'SpecSectionType': $tom_doc_specs_11.SpecSectionType,
+      'DocSpecSchema': $tom_doc_specs_4.DocSpecSchema,
+      'PatternCheckDef': $tom_doc_specs_8.PatternCheckDef,
+      'SubsectionConstraint': $tom_doc_specs_8.SubsectionConstraint,
+      'SectionTypeDef': $tom_doc_specs_8.SectionTypeDef,
+      'ForEachDef': $tom_doc_specs_5.ForEachDef,
+      'SectionDef': $tom_doc_specs_5.SectionDef,
+      'SubsectionDef': $tom_doc_specs_5.SubsectionDef,
+      'DocumentStructure': $tom_doc_specs_5.DocumentStructure,
+      'FormFieldDef': $tom_doc_specs_6.FormFieldDef,
+      'FormTypeDef': $tom_doc_specs_6.FormTypeDef,
+      'SchemaInfo': $tom_doc_specs_7.SchemaInfo,
+      'SchemaFilenameParser': $tom_doc_specs_13.SchemaFilenameParser,
+      'SchemaLoader': $tom_doc_specs_13.SchemaLoader,
+      'SchemaResolver': $tom_doc_specs_13.SchemaResolver,
+      'SchemaDiscovery': $tom_doc_specs_13.SchemaDiscovery,
+      'SchemaExpander': $tom_doc_specs_12.SchemaExpander,
+      'DocSpecsSkeletonGenerator': $tom_doc_specs_14.DocSpecsSkeletonGenerator,
+      'AiValidator': $tom_doc_specs_15.AiValidator,
+      'PromptExpander': $tom_doc_specs_16.PromptExpander,
+      'ValidationError': $tom_doc_specs_17.ValidationError,
+      'DocSpecsValidator': $tom_doc_specs_18.DocSpecsValidator,
+      'InsertMarker': $tom_doc_specs_3.InsertMarker,
+      'InsertMarkerParser': $tom_doc_specs_3.InsertMarkerParser,
+      'InsertMarkerProcessor': $tom_doc_specs_3.InsertMarkerProcessor,
+    };
   }
 
   /// Returns a map of class names to their canonical source URIs.
@@ -184,25 +263,6 @@ class TomDocSpecsBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/doc_specs.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/doc_specs_factory.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_scanner/tom_doc_scanner.dart', show: {'Section', 'Document'}, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/spec_section.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/spec_doc.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/spec_section_type.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/schema/doc_spec_schema.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/schema/section_type_def.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/schema/document_structure.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/schema/form_type_def.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/models/schema/schema_info.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/schema/schema_loader.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/schema/schema_expander.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/skeleton/skeleton_generator.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/validation/ai_validator.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/validation/prompt_expander.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/validation/validation_error.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/validation/validator.dart', show: null, hide: null),
-      (source: 'package:tom_doc_specs/tom_doc_specs.dart', target: 'package:tom_doc_specs/src/markers/insert_markers.dart', show: null, hide: null),
     ];
   }
 
@@ -211,11 +271,20 @@ class TomDocSpecsBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so
@@ -228,11 +297,6 @@ class TomDocSpecsBridge {
     final enumSources = enumSourceUris();
     for (final enumDef in enums) {
       interpreter.registerBridgedEnum(enumDef, importPath, sourceUri: enumSources[enumDef.name]);
-    }
-
-    // GEN-107: Register library re-exports
-    for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
     }
   }
 
@@ -1013,6 +1077,7 @@ BridgedClass _createSectionTypeDefBridge() {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'SectionTypeDef');
         final prefix = D4.getOptionalNamedArg<String?>(named, 'prefix');
         final maxCountInDocument = D4.getOptionalNamedArg<int?>(named, 'maxCountInDocument');
+        final minCountInDocument = D4.getOptionalNamedArg<int?>(named, 'minCountInDocument');
         final maxSubsectionLevels = D4.getOptionalNamedArg<int?>(named, 'maxSubsectionLevels');
         final subsectionTypes = D4.coerceMapOrNull<String, $tom_doc_specs_8.SubsectionConstraint>(named['subsectionTypes'], 'subsectionTypes');
         final patternCheckId = D4.getOptionalNamedArg<$tom_doc_specs_8.PatternCheckDef?>(named, 'patternCheckId');
@@ -1025,7 +1090,7 @@ BridgedClass _createSectionTypeDefBridge() {
         final allowedTags = D4.coerceListOrNull<String>(named['allowedTags'], 'allowedTags');
         final validationPrompt = D4.getOptionalNamedArg<String?>(named, 'validationPrompt');
         final requiredFields = D4.coerceListOrNull<String>(named['requiredFields'], 'requiredFields');
-        return $tom_doc_specs_8.SectionTypeDef(name: name, prefix: prefix, maxCountInDocument: maxCountInDocument, maxSubsectionLevels: maxSubsectionLevels, subsectionTypes: subsectionTypes, patternCheckId: patternCheckId, patternCheckText: patternCheckText, format: format, textRequired: textRequired, minTextLength: minTextLength, maxTextLength: maxTextLength, description: description, allowedTags: allowedTags, validationPrompt: validationPrompt, requiredFields: requiredFields);
+        return $tom_doc_specs_8.SectionTypeDef(name: name, prefix: prefix, maxCountInDocument: maxCountInDocument, minCountInDocument: minCountInDocument, maxSubsectionLevels: maxSubsectionLevels, subsectionTypes: subsectionTypes, patternCheckId: patternCheckId, patternCheckText: patternCheckText, format: format, textRequired: textRequired, minTextLength: minTextLength, maxTextLength: maxTextLength, description: description, allowedTags: allowedTags, validationPrompt: validationPrompt, requiredFields: requiredFields);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'SectionTypeDef');
@@ -1041,6 +1106,7 @@ BridgedClass _createSectionTypeDefBridge() {
       'name': (visitor, target) => D4.validateTarget<$tom_doc_specs_8.SectionTypeDef>(target, 'SectionTypeDef').name,
       'prefix': (visitor, target) => D4.validateTarget<$tom_doc_specs_8.SectionTypeDef>(target, 'SectionTypeDef').prefix,
       'maxCountInDocument': (visitor, target) => D4.validateTarget<$tom_doc_specs_8.SectionTypeDef>(target, 'SectionTypeDef').maxCountInDocument,
+      'minCountInDocument': (visitor, target) => D4.validateTarget<$tom_doc_specs_8.SectionTypeDef>(target, 'SectionTypeDef').minCountInDocument,
       'maxSubsectionLevels': (visitor, target) => D4.validateTarget<$tom_doc_specs_8.SectionTypeDef>(target, 'SectionTypeDef').maxSubsectionLevels,
       'subsectionTypes': (visitor, target) => D4.validateTarget<$tom_doc_specs_8.SectionTypeDef>(target, 'SectionTypeDef').subsectionTypes,
       'patternCheckId': (visitor, target) => D4.validateTarget<$tom_doc_specs_8.SectionTypeDef>(target, 'SectionTypeDef').patternCheckId,
@@ -1061,7 +1127,7 @@ BridgedClass _createSectionTypeDefBridge() {
       },
     },
     constructorSignatures: {
-      '': 'const SectionTypeDef({required String name, String? prefix, int? maxCountInDocument, int? maxSubsectionLevels, Map<String, SubsectionConstraint>? subsectionTypes, PatternCheckDef? patternCheckId, PatternCheckDef? patternCheckText, String? format, bool? textRequired, int? minTextLength, int? maxTextLength, String? description, List<String>? allowedTags, String? validationPrompt, List<String>? requiredFields})',
+      '': 'const SectionTypeDef({required String name, String? prefix, int? maxCountInDocument, int? minCountInDocument, int? maxSubsectionLevels, Map<String, SubsectionConstraint>? subsectionTypes, PatternCheckDef? patternCheckId, PatternCheckDef? patternCheckText, String? format, bool? textRequired, int? minTextLength, int? maxTextLength, String? description, List<String>? allowedTags, String? validationPrompt, List<String>? requiredFields})',
       'fromYaml': 'factory SectionTypeDef.fromYaml(String name, Map<String, dynamic> yaml)',
     },
     methodSignatures: {
@@ -1071,6 +1137,7 @@ BridgedClass _createSectionTypeDefBridge() {
       'name': 'String get name',
       'prefix': 'String? get prefix',
       'maxCountInDocument': 'int? get maxCountInDocument',
+      'minCountInDocument': 'int? get minCountInDocument',
       'maxSubsectionLevels': 'int? get maxSubsectionLevels',
       'subsectionTypes': 'Map<String, SubsectionConstraint>? get subsectionTypes',
       'patternCheckId': 'PatternCheckDef? get patternCheckId',
@@ -1308,7 +1375,8 @@ BridgedClass _createFormFieldDefBridge() {
         final fieldname = D4.getRequiredNamedArg<String>(named, 'fieldname', 'FormFieldDef');
         final required = D4.getOptionalNamedArg<bool?>(named, 'required');
         final patternCheck = D4.getOptionalNamedArg<$tom_doc_specs_8.PatternCheckDef?>(named, 'patternCheck');
-        return $tom_doc_specs_6.FormFieldDef(fieldname: fieldname, required: required, patternCheck: patternCheck);
+        final description = D4.getOptionalNamedArg<String?>(named, 'description');
+        return $tom_doc_specs_6.FormFieldDef(fieldname: fieldname, required: required, patternCheck: patternCheck, description: description);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'FormFieldDef');
@@ -1323,6 +1391,7 @@ BridgedClass _createFormFieldDefBridge() {
       'fieldname': (visitor, target) => D4.validateTarget<$tom_doc_specs_6.FormFieldDef>(target, 'FormFieldDef').fieldname,
       'required': (visitor, target) => D4.validateTarget<$tom_doc_specs_6.FormFieldDef>(target, 'FormFieldDef').required,
       'patternCheck': (visitor, target) => D4.validateTarget<$tom_doc_specs_6.FormFieldDef>(target, 'FormFieldDef').patternCheck,
+      'description': (visitor, target) => D4.validateTarget<$tom_doc_specs_6.FormFieldDef>(target, 'FormFieldDef').description,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
@@ -1331,7 +1400,7 @@ BridgedClass _createFormFieldDefBridge() {
       },
     },
     constructorSignatures: {
-      '': 'const FormFieldDef({required String fieldname, bool? required, PatternCheckDef? patternCheck})',
+      '': 'const FormFieldDef({required String fieldname, bool? required, PatternCheckDef? patternCheck, String? description})',
       'fromYaml': 'factory FormFieldDef.fromYaml(Map<String, dynamic> yaml)',
     },
     methodSignatures: {
@@ -1341,6 +1410,7 @@ BridgedClass _createFormFieldDefBridge() {
       'fieldname': 'String get fieldname',
       'required': 'bool? get required',
       'patternCheck': 'PatternCheckDef? get patternCheck',
+      'description': 'String? get description',
     },
   );
 }

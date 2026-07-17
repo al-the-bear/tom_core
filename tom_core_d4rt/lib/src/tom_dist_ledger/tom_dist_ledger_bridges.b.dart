@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 9 files
-// Generated: 2026-06-17T18:46:46.546227
+// Generated: 2026-07-18T00:04:23.736795
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -22,6 +22,10 @@ import 'package:tom_dist_ledger/src/ledger_local/file_ledger.dart' as $tom_dist_
 /// Bridge class for tom_dist_ledger module.
 class TomDistLedgerBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createCleanupHandlerBridge(),
@@ -55,6 +59,83 @@ class TomDistLedgerBridge {
       _createDiscoveryFailedExceptionBridge(),
       _createServerDiscoveryBridge(),
     ];
+  }
+
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'CleanupHandler': _createCleanupHandlerBridge,
+      'CallFrame': _createCallFrameBridge,
+      'TempResource': _createTempResourceBridge,
+      'LedgerData': _createLedgerDataBridge,
+      'HeartbeatResult': _createHeartbeatResultBridge,
+      'HeartbeatError': _createHeartbeatErrorBridge,
+      'Operation': _createOperationBridge,
+      'Ledger': _createLedgerBridge,
+      'LocalOperation': _createLocalOperationBridge,
+      'LocalLedger': _createLocalLedgerBridge,
+      'LedgerCallback': _createLedgerCallbackBridge,
+      'OperationCallback': _createOperationCallbackBridge,
+      'CallCallback': _createCallCallbackBridge,
+      'OperationFailedInfo': _createOperationFailedInfoBridge,
+      'OperationFailedException': _createOperationFailedExceptionBridge,
+      'CallLifecycle': _createCallLifecycleBridge,
+      'Call': _createCallBridge,
+      'SpawnedCall': _createSpawnedCallBridge,
+      'SyncResult': _createSyncResultBridge,
+      'OperationHelper': _createOperationHelperBridge,
+      'LedgerServer': _createLedgerServerBridge,
+      'RemoteLedgerClient': _createRemoteLedgerClientBridge,
+      'RemoteLedgerException': _createRemoteLedgerExceptionBridge,
+      'RemoteOperation': _createRemoteOperationBridge,
+      'RetryExhaustedException': _createRetryExhaustedExceptionBridge,
+      'RetryConfig': _createRetryConfigBridge,
+      'DiscoveredServer': _createDiscoveredServerBridge,
+      'DiscoveryOptions': _createDiscoveryOptionsBridge,
+      'DiscoveryFailedException': _createDiscoveryFailedExceptionBridge,
+      'ServerDiscovery': _createServerDiscoveryBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'CleanupHandler': $tom_dist_ledger_1.CleanupHandler,
+      'CallFrame': $tom_dist_ledger_6.CallFrame,
+      'TempResource': $tom_dist_ledger_6.TempResource,
+      'LedgerData': $tom_dist_ledger_6.LedgerData,
+      'HeartbeatResult': $tom_dist_ledger_6.HeartbeatResult,
+      'HeartbeatError': $tom_dist_ledger_4.HeartbeatError,
+      'Operation': $tom_dist_ledger_3.Operation,
+      'Ledger': $tom_dist_ledger_3.Ledger,
+      'LocalOperation': $tom_dist_ledger_2.LocalOperation,
+      'LocalLedger': $tom_dist_ledger_2.LocalLedger,
+      'LedgerCallback': $tom_dist_ledger_2.LedgerCallback,
+      'OperationCallback': $tom_dist_ledger_2.OperationCallback,
+      'CallCallback': $tom_dist_ledger_2.CallCallback,
+      'OperationFailedInfo': $tom_dist_ledger_2.OperationFailedInfo,
+      'OperationFailedException': $tom_dist_ledger_2.OperationFailedException,
+      'CallLifecycle': $tom_dist_ledger_2.CallLifecycle,
+      'Call': $tom_dist_ledger_2.Call,
+      'SpawnedCall': $tom_dist_ledger_2.SpawnedCall,
+      'SyncResult': $tom_dist_ledger_2.SyncResult,
+      'OperationHelper': $tom_dist_ledger_2.OperationHelper,
+      'LedgerServer': $tom_dist_ledger_2.LedgerServer,
+      'RemoteLedgerClient': $tom_dist_ledger_5.RemoteLedgerClient,
+      'RemoteLedgerException': $tom_dist_ledger_5.RemoteLedgerException,
+      'RemoteOperation': $tom_dist_ledger_5.RemoteOperation,
+      'RetryExhaustedException': $tom_basics_network_1.RetryExhaustedException,
+      'RetryConfig': $tom_basics_network_1.RetryConfig,
+      'DiscoveredServer': $tom_basics_network_2.DiscoveredServer,
+      'DiscoveryOptions': $tom_basics_network_2.DiscoveryOptions,
+      'DiscoveryFailedException': $tom_basics_network_2.DiscoveryFailedException,
+      'ServerDiscovery': $tom_basics_network_2.ServerDiscovery,
+    };
   }
 
   /// Returns a map of class names to their canonical source URIs.
@@ -216,15 +297,6 @@ class TomDistLedgerBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_dist_ledger/tom_dist_ledger.dart', target: 'package:tom_dist_ledger/src/ledger_api/ledger_api.dart', show: null, hide: null),
-      (source: 'package:tom_dist_ledger/tom_dist_ledger.dart', target: 'package:tom_dist_ledger/src/ledger_local/file_ledger.dart', show: null, hide: null),
-      (source: 'package:tom_dist_ledger/tom_dist_ledger.dart', target: 'package:tom_dist_ledger/src/ledger_client/remote_ledger_client.dart', show: null, hide: null),
-      (source: 'package:tom_dist_ledger/tom_dist_ledger.dart', target: 'package:tom_basics_network/tom_basics_network.dart', show: null, hide: null),
-      (source: 'package:tom_dist_ledger/src/ledger_api/ledger_types.dart', target: 'package:tom_dist_ledger/src/ledger_local/file_ledger.dart', show: {'HeartbeatResult'}, hide: null),
-      (source: 'package:tom_dist_ledger/src/ledger_api/ledger_base.dart', target: 'package:tom_dist_ledger/src/ledger_api/ledger_types.dart', show: null, hide: null),
-      (source: 'package:tom_dist_ledger/src/ledger_api/ledger_api.dart', target: 'package:tom_dist_ledger/src/ledger_api/cleanup_handler.dart', show: null, hide: null),
-      (source: 'package:tom_dist_ledger/src/ledger_api/ledger_api.dart', target: 'package:tom_dist_ledger/src/ledger_api/ledger_base.dart', show: null, hide: null),
-      (source: 'package:tom_dist_ledger/src/ledger_api/ledger_api.dart', target: 'package:tom_dist_ledger/src/ledger_api/ledger_types.dart', show: null, hide: null),
       (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/http_retry.dart', show: null, hide: null),
       (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/server_discovery.dart', show: null, hide: null),
     ];
@@ -235,11 +307,20 @@ class TomDistLedgerBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so

@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 4 files
-// Generated: 2026-06-17T18:46:46.951645
+// Generated: 2026-07-18T00:04:24.481914
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -17,6 +17,10 @@ import 'package:tom_md2latex/src/md_latex_converter.dart' as $tom_md2latex_4;
 /// Bridge class for tom_md2latex module.
 class TomMd2latexBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createMd2LatexBridge(),
@@ -43,6 +47,69 @@ class TomMd2latexBridge {
       _createConvertedFileBridge(),
       _createConversionErrorBridge(),
     ];
+  }
+
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'Md2Latex': _createMd2LatexBridge,
+      'LatexMacros': _createLatexMacrosBridge,
+      'MarkdownParserOptions': _createMarkdownParserOptionsBridge,
+      'MarkdownParser': _createMarkdownParserBridge,
+      'ParsedMarkdown': _createParsedMarkdownBridge,
+      'MarkdownElement': _createMarkdownElementBridge,
+      'HeadingElement': _createHeadingElementBridge,
+      'ParagraphElement': _createParagraphElementBridge,
+      'CodeBlockElement': _createCodeBlockElementBridge,
+      'InlineCodeElement': _createInlineCodeElementBridge,
+      'TableElement': _createTableElementBridge,
+      'UnorderedListElement': _createUnorderedListElementBridge,
+      'OrderedListElement': _createOrderedListElementBridge,
+      'BlockQuoteElement': _createBlockQuoteElementBridge,
+      'HorizontalRuleElement': _createHorizontalRuleElementBridge,
+      'LinkElement': _createLinkElementBridge,
+      'ImageElement': _createImageElementBridge,
+      'RawTextElement': _createRawTextElementBridge,
+      'MdLatexConverter': _createMdLatexConverterBridge,
+      'MdLatexConverterOptions': _createMdLatexConverterOptionsBridge,
+      'MdLatexConverterResult': _createMdLatexConverterResultBridge,
+      'ConvertedFile': _createConvertedFileBridge,
+      'ConversionError': _createConversionErrorBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'Md2Latex': $tom_md2latex_3.Md2Latex,
+      'LatexMacros': $tom_md2latex_1.LatexMacros,
+      'MarkdownParserOptions': $tom_md2latex_2.MarkdownParserOptions,
+      'MarkdownParser': $tom_md2latex_2.MarkdownParser,
+      'ParsedMarkdown': $tom_md2latex_2.ParsedMarkdown,
+      'MarkdownElement': $tom_md2latex_2.MarkdownElement,
+      'HeadingElement': $tom_md2latex_2.HeadingElement,
+      'ParagraphElement': $tom_md2latex_2.ParagraphElement,
+      'CodeBlockElement': $tom_md2latex_2.CodeBlockElement,
+      'InlineCodeElement': $tom_md2latex_2.InlineCodeElement,
+      'TableElement': $tom_md2latex_2.TableElement,
+      'UnorderedListElement': $tom_md2latex_2.UnorderedListElement,
+      'OrderedListElement': $tom_md2latex_2.OrderedListElement,
+      'BlockQuoteElement': $tom_md2latex_2.BlockQuoteElement,
+      'HorizontalRuleElement': $tom_md2latex_2.HorizontalRuleElement,
+      'LinkElement': $tom_md2latex_2.LinkElement,
+      'ImageElement': $tom_md2latex_2.ImageElement,
+      'RawTextElement': $tom_md2latex_2.RawTextElement,
+      'MdLatexConverter': $tom_md2latex_4.MdLatexConverter,
+      'MdLatexConverterOptions': $tom_md2latex_4.MdLatexConverterOptions,
+      'MdLatexConverterResult': $tom_md2latex_4.MdLatexConverterResult,
+      'ConvertedFile': $tom_md2latex_4.ConvertedFile,
+      'ConversionError': $tom_md2latex_4.ConversionError,
+    };
   }
 
   /// Returns a map of class names to their canonical source URIs.
@@ -154,12 +221,6 @@ class TomMd2latexBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/md2latex.dart', show: null, hide: null),
-      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/md_latex_converter.dart', show: null, hide: null),
-      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/latex_macros.dart', show: null, hide: null),
-      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/markdown_parser.dart', show: null, hide: null),
-      (source: 'package:tom_md2latex/src/md_latex_converter.dart', target: 'package:tom_md2latex/src/latex_macros.dart', show: null, hide: null),
-      (source: 'package:tom_md2latex/src/md_latex_converter.dart', target: 'package:tom_md2latex/src/markdown_parser.dart', show: null, hide: null),
     ];
   }
 
@@ -168,22 +229,26 @@ class TomMd2latexBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so
     // interpreted subclasses pass subtype checks against bridged
     // ancestors. Idempotent — safe to call per barrel.
     BridgedClass.registerSupertypes(classSupertypes());
-
-    // GEN-107: Register library re-exports
-    for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
-    }
   }
 
   /// Returns a map of global function names to their native implementations.

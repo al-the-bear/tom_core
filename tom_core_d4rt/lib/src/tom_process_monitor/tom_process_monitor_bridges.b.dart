@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 31 files
-// Generated: 2026-06-17T18:46:44.702450
+// Generated: 2026-07-18T00:04:20.070837
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -44,6 +44,10 @@ import 'package:tom_process_monitor/src/services/registry_service.dart' as $tom_
 /// Bridge class for tom_process_monitor module.
 class TomProcessMonitorBridge {
   /// Returns all bridge class definitions.
+  ///
+  /// Eager — building every class. Prefer [bridgeClassThunks] +
+  /// [bridgeClassTypes] for lazy registration (Step #17); this remains
+  /// for diagnostics and callers that need the full list.
   static List<BridgedClass> bridgeClasses() {
     return [
       _createProcessConfigBridge(),
@@ -84,6 +88,97 @@ class TomProcessMonitorBridge {
       _createRemoteApiServerBridge(),
       _createProcessMonitorBridge(),
     ];
+  }
+
+  /// Returns deferred factory thunks keyed by class name.
+  ///
+  /// Each thunk builds one class's [BridgedClass] on demand. Plugs into
+  /// the interpreter's lazy registry via [registerBridges] (Step #17).
+  static Map<String, BridgedClass Function()> bridgeClassThunks() {
+    return {
+      'ProcessConfig': _createProcessConfigBridge,
+      'ProcessEntry': _createProcessEntryBridge,
+      'ProcessStatus': _createProcessStatusBridge,
+      'MonitorStatus': _createMonitorStatusBridge,
+      'RestartPolicy': _createRestartPolicyBridge,
+      'AlivenessCheck': _createAlivenessCheckBridge,
+      'StartupCheck': _createStartupCheckBridge,
+      'RemoteAccessConfig': _createRemoteAccessConfigBridge,
+      'PartnerDiscoveryConfig': _createPartnerDiscoveryConfigBridge,
+      'AlivenessServerConfig': _createAlivenessServerConfigBridge,
+      'WatcherInfo': _createWatcherInfoBridge,
+      'ProcessRegistry': _createProcessRegistryBridge,
+      'ProcessMonitorException': _createProcessMonitorExceptionBridge,
+      'LockTimeoutException': _createLockTimeoutExceptionBridge,
+      'ProcessNotFoundException': _createProcessNotFoundExceptionBridge,
+      'ProcessDisabledException': _createProcessDisabledExceptionBridge,
+      'PermissionDeniedException': _createPermissionDeniedExceptionBridge,
+      'LockInfo': _createLockInfoBridge,
+      'RegistryLock': _createRegistryLockBridge,
+      'RegistryService': _createRegistryServiceBridge,
+      'ProcessControl': _createProcessControlBridge,
+      'AlivenessServer': _createAlivenessServerBridge,
+      'AlivenessChecker': _createAlivenessCheckerBridge,
+      'AlivenessCallback': _createAlivenessCallbackBridge,
+      'AlivenessServerHelper': _createAlivenessServerHelperBridge,
+      'LogManager': _createLogManagerBridge,
+      'RetryExhaustedException': _createRetryExhaustedExceptionBridge,
+      'RetryConfig': _createRetryConfigBridge,
+      'DiscoveredServer': _createDiscoveredServerBridge,
+      'DiscoveryOptions': _createDiscoveryOptionsBridge,
+      'DiscoveryFailedException': _createDiscoveryFailedExceptionBridge,
+      'ServerDiscovery': _createServerDiscoveryBridge,
+      'ProcessMonitorClient': _createProcessMonitorClientBridge,
+      'LocalProcessMonitorClient': _createLocalProcessMonitorClientBridge,
+      'RemoteProcessMonitorClient': _createRemoteProcessMonitorClientBridge,
+      'RemoteApiServer': _createRemoteApiServerBridge,
+      'ProcessMonitor': _createProcessMonitorBridge,
+    };
+  }
+
+  /// Returns native [Type]s keyed by class name, parallel to
+  /// [bridgeClassThunks] (Step #17). Used to register the native-type
+  /// lookup thunk without building the BridgedClass.
+  static Map<String, Type> bridgeClassTypes() {
+    return {
+      'ProcessConfig': $tom_process_monitor_13.ProcessConfig,
+      'ProcessEntry': $tom_process_monitor_14.ProcessEntry,
+      'ProcessStatus': $tom_process_monitor_16.ProcessStatus,
+      'MonitorStatus': $tom_process_monitor_11.MonitorStatus,
+      'RestartPolicy': $tom_process_monitor_19.RestartPolicy,
+      'AlivenessCheck': $tom_process_monitor_10.AlivenessCheck,
+      'StartupCheck': $tom_process_monitor_20.StartupCheck,
+      'RemoteAccessConfig': $tom_process_monitor_18.RemoteAccessConfig,
+      'PartnerDiscoveryConfig': $tom_process_monitor_12.PartnerDiscoveryConfig,
+      'AlivenessServerConfig': $tom_process_monitor_17.AlivenessServerConfig,
+      'WatcherInfo': $tom_process_monitor_17.WatcherInfo,
+      'ProcessRegistry': $tom_process_monitor_17.ProcessRegistry,
+      'ProcessMonitorException': $tom_process_monitor_7.ProcessMonitorException,
+      'LockTimeoutException': $tom_process_monitor_4.LockTimeoutException,
+      'ProcessNotFoundException': $tom_process_monitor_8.ProcessNotFoundException,
+      'ProcessDisabledException': $tom_process_monitor_6.ProcessDisabledException,
+      'PermissionDeniedException': $tom_process_monitor_5.PermissionDeniedException,
+      'LockInfo': $tom_process_monitor_27.LockInfo,
+      'RegistryLock': $tom_process_monitor_27.RegistryLock,
+      'RegistryService': $tom_process_monitor_28.RegistryService,
+      'ProcessControl': $tom_process_monitor_26.ProcessControl,
+      'AlivenessServer': $tom_process_monitor_23.AlivenessServer,
+      'AlivenessChecker': $tom_process_monitor_22.AlivenessChecker,
+      'AlivenessCallback': $tom_process_monitor_24.AlivenessCallback,
+      'AlivenessServerHelper': $tom_process_monitor_24.AlivenessServerHelper,
+      'LogManager': $tom_process_monitor_25.LogManager,
+      'RetryExhaustedException': $tom_basics_network_1.RetryExhaustedException,
+      'RetryConfig': $tom_basics_network_1.RetryConfig,
+      'DiscoveredServer': $tom_basics_network_2.DiscoveredServer,
+      'DiscoveryOptions': $tom_basics_network_2.DiscoveryOptions,
+      'DiscoveryFailedException': $tom_basics_network_2.DiscoveryFailedException,
+      'ServerDiscovery': $tom_basics_network_2.ServerDiscovery,
+      'ProcessMonitorClient': $tom_process_monitor_2.ProcessMonitorClient,
+      'LocalProcessMonitorClient': $tom_process_monitor_1.LocalProcessMonitorClient,
+      'RemoteProcessMonitorClient': $tom_process_monitor_3.RemoteProcessMonitorClient,
+      'RemoteApiServer': $tom_process_monitor_9.RemoteApiServer,
+      'ProcessMonitor': $tom_process_monitor_21.ProcessMonitor,
+    };
   }
 
   /// Returns a map of class names to their canonical source URIs.
@@ -230,35 +325,6 @@ class TomProcessMonitorBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_config.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_entry.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_state.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_status.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/monitor_status.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/restart_policy.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/aliveness_check.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/startup_check.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/remote_access_config.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/partner_discovery_config.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/registry.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/process_monitor_exception.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/lock_timeout_exception.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/process_not_found_exception.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/process_disabled_exception.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/permission_denied_exception.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/registry_lock.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/registry_service.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/process_control.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/aliveness_server.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/aliveness_checker.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/aliveness_server_helper.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/log_manager.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_basics_network/tom_basics_network.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/client/process_monitor_base.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/client/local_process_monitor_client.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/client/remote_process_monitor_client.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/http/remote_api_server.dart', show: null, hide: null),
-      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/process_monitor.dart', show: null, hide: null),
       (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/http_retry.dart', show: null, hide: null),
       (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/server_discovery.dart', show: null, hide: null),
     ];
@@ -269,11 +335,20 @@ class TomProcessMonitorBridge {
   /// [importPath] is the package import path that D4rt scripts will use
   /// to access these classes (e.g., 'package:tom_build/tom.dart').
   static void registerBridges(D4rt interpreter, String importPath) {
-    // Register bridged classes with source URIs for deduplication
-    final classes = bridgeClasses();
+    // Step #17 — register deferred factory thunks (not pre-built
+    // BridgedClass objects): a script touching N of the M classes
+    // materializes ≈N (each thunk builds its class on first resolve).
+    final classThunks = bridgeClassThunks();
+    final classTypes = bridgeClassTypes();
     final classSources = classSourceUris();
-    for (final bridge in classes) {
-      interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    for (final entry in classThunks.entries) {
+      interpreter.registerBridgedClassLazy(
+        entry.key,
+        classTypes[entry.key]!,
+        entry.value,
+        importPath,
+        sourceUri: classSources[entry.key],
+      );
     }
 
     // MCI#1 / A1: Register the flattened native supertype table so
