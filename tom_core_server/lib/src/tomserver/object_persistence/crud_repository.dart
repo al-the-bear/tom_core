@@ -15,9 +15,14 @@ import 'data_scope.dart';
 
 /// Result holder for a `COUNT(*)` query: a single [count] field populated by
 /// the row mapper. Reflectable so the data source can materialise it.
+///
+/// It is a plain reflected holder (no `@TomDbTable`), so the row mapper fills it
+/// by *field name*: the `COUNT(*) AS count` projection names its column `count`,
+/// which matches this field. (Before RCK13 the mapper had no field-name path for
+/// table-less holders and silently left `count` at its default `0`.)
 @tomReflector
 class TomCountResult {
-  /// The row count returned by the query.
+  /// The row count returned by the query, mapped from the `count` result column.
   int count = 0;
 }
 

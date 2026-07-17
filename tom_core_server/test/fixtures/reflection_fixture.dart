@@ -86,3 +86,51 @@ class FixtureServerConfig {
   /// Assigned from a bare `verbose` flag (recorded as `"true"`, coerced to bool).
   bool verbose = false;
 }
+
+/// A reflected persistence entity for the DB-backed test surfaces (RCK13).
+///
+/// Mirrors the sample's `@TomDbTable` / `@TomEntityId` / `@TomDbColumn` record
+/// shape (a nullable surrogate key that is `null` before the first insert, plus
+/// typed nullable columns) so the CRUD/query paths of
+/// [TomSqlDatasourceRepository] can be exercised against a real MariaDB. It maps
+/// to the `fixture_task` table in the `tom_core_server_test` data source that
+/// `test_database.dart` provisions and tears down per run. The type is
+/// `@tomReflector` because the data source's row mapper and the annotation
+/// analyzer resolve it by mirror.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_task',
+  primaryKeyField: 'id',
+)
+class FixtureTaskRecord {
+  /// Surrogate primary key — `null` until first persisted, then the
+  /// database-assigned AUTO_INCREMENT value. `isReadOnly` keeps it out of the
+  /// generated INSERT/UPDATE column lists.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A plain string column.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+
+  /// An int column, to cover integer binding and row mapping.
+  @TomDbColumn(columnName: 'priority')
+  int? priority;
+
+  /// A bool column, to cover the Dart `bool` → MariaDB `TINYINT(1)` (`1`/`0`)
+  /// bind translation (bug §72) end-to-end.
+  @TomDbColumn(columnName: 'done')
+  bool? done;
+}
+
+/// The MariaDB-backed repository for [FixtureTaskRecord].
+///
+/// Extends [TomSqlDatasourceRepository] directly (no `@tomReflector`): it is
+/// constructed with `new`, never through a mirror, and inherits every
+/// CRUD/query method. Its constructor resolves the entity's persistence
+/// metadata and looks up the `tom_core_server_test` data source, so it must be
+/// created only *after* `test_database.dart` has registered that data source.
+class FixtureTaskRepository
+    extends TomSqlDatasourceRepository<FixtureTaskRecord, int> {}

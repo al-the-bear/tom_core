@@ -1,0 +1,18 @@
+# Default test configuration for tom_core_server.
+#
+# Run suites sequentially. The DB-backed suites (RCK13) share one MariaDB
+# schema — they register the same `tom_core_server_test` data source in the
+# process-wide `TomDataSourceInfo` registry and truncate the same
+# `fixture_task` table between tests. Running suites in parallel would let two
+# isolates race that shared schema and registry, so serialize them.
+concurrency: 1
+
+tags:
+  # DB-backed surfaces (datasources, object-persistence CRUD, db_migration).
+  # These require a reachable MariaDB and are self-skipping when none is found,
+  # so the default run stays green everywhere. Select them explicitly with
+  # `--tags db` (after `docker compose -f docker-compose.test.yaml up -d`).
+  db:
+    # A DB round-trip (connect + schema setup + CRUD) is slower than the
+    # in-memory suites; give it headroom over the default 30s.
+    timeout: 2x

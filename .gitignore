@@ -39,6 +39,8 @@ desktop.ini
 !**/example/**/migrations/**/*.sql
 # Server-sample migration trees are deliverables (schema + seed), not local DBs
 !**/database_migrations/**/*.sql
+# DB-migration test fixtures are committed input, not local DB dumps
+!**/test/fixtures/migrations/**/*.sql
 *.sqlite
 *.sqlite3
 

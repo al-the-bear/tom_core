@@ -441,6 +441,71 @@ class MariaDbDatasource implements TomDataSource {
         }
         result.add(rowResult as T);
       }
+    } else if (TomAnnotationAnalyzer.findTable(rType) == null) {
+      // A plain reflected result holder with no @TomDbTable (e.g.
+      // TomCountResult). It cannot be mapped by *persistent columns* — those
+      // require a table — so map it by plain field name, the direct analogue of
+      // the by-member-name path taken above for a table-less TomClass. Each
+      // reflected instance field whose declared name matches a result column is
+      // populated through its reflection setter.
+      for (var row in qResult.rows) {
+        Object rowResult;
+        try {
+          rowResult = classMirror.newInstance("", []);
+        } catch (exception) {
+          throw MariadbDatasourceException(
+            "error.result_processing_field.failed_to_instantiate_row",
+            "Failed to instantiate result row instance of type ${classMirror.reflectedType}, error: $exception",
+            parameters: {"type": classMirror.reflectedType},
+          );
+        }
+        InstanceMirror im = tomReflector.reflect(rowResult);
+        for (var dEntry in classMirror.declarations.entries) {
+          if (dEntry.value is! VariableMirror) {
+            continue;
+          }
+          final VariableMirror dm = dEntry.value as VariableMirror;
+          final String fieldName = dEntry.key;
+          if (!qResult.cols.any((c) => c.name == fieldName)) {
+            continue;
+          }
+          switch (dm.reflectedType) {
+            case int:
+              im.invokeSetter(dm.simpleName, row.typedColByName<int>(fieldName));
+            case double:
+              im.invokeSetter(
+                dm.simpleName,
+                row.typedColByName<double>(fieldName),
+              );
+            case String:
+              im.invokeSetter(
+                dm.simpleName,
+                row.typedColByName<String>(fieldName),
+              );
+            case bool:
+              im.invokeSetter(
+                dm.simpleName,
+                row.typedColByName<bool>(fieldName),
+              );
+            case DateTime:
+              String? stringForm = row.typedColByName<String>(fieldName);
+              if (stringForm != null) {
+                im.invokeSetter(dm.simpleName, DateTime.parse(stringForm));
+              }
+            default:
+              throw MariadbDatasourceException(
+                "error.result_processing_field.unknown_type",
+                "Unexpected and unsupported type for result field value: ${dm.reflectedType} for member ${dm.simpleName} in $classMirror",
+                parameters: {
+                  "type": classMirror.reflectedType,
+                  "fieldType": dm.reflectedType,
+                  "attribute": dm.simpleName,
+                },
+              );
+          }
+        }
+        result.add(rowResult as T);
+      }
     } else if (TomAnnotationAnalyzer.getPersistentColumns(rType) != null) {
       List<
         (

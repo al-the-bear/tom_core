@@ -1,0 +1,30 @@
+# Ephemeral MariaDB for the `tom_core_server` DB-backed test surfaces (RCK13).
+#
+# `dart test` cannot exercise the MariaDB datasource driver, the object-
+# persistence CRUD/query paths, or the migration orchestrator without a real
+# server. This brings one up on host port 3309 — deliberately clear of the
+# stock 3306 and the advanced sample's 3307/3308, so it can run alongside them.
+# The test fixture (`test/fixtures/test_database.dart`) reads the same
+# coordinates by default, so no env wiring is needed for the common case.
+#
+# The DB-tagged tests probe reachability first and `skip:` when nothing is
+# listening, so the default `testkit :test` run stays green without this. To run
+# the DB surfaces, use `tool/run_db_tests.sh` (which drives this file), or:
+#
+#   docker compose -f docker-compose.test.yaml up -d
+#   testkit :test --test-args="--tags db"
+#   docker compose -f docker-compose.test.yaml down -v
+services:
+  db:
+    image: ${TOM_CORE_SERVER_TEST_DB_IMAGE:-mariadb:11}
+    container_name: tom-core-server-test-db
+    ports:
+      - "${TOM_CORE_SERVER_TEST_DB_PORT:-3309}:3306"
+    environment:
+      MARIADB_DATABASE: "${TOM_CORE_SERVER_TEST_DB_NAME:-tom_core_server_test}"
+      MARIADB_ROOT_PASSWORD: "${TOM_CORE_SERVER_TEST_DB_PASSWORD:-password}"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
