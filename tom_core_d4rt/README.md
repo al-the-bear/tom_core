@@ -268,5 +268,16 @@ DartScript. See the [repository map](../README.md) for the full picture.
   reachability-pinned, because a driven loopback fixture is impossible in the
   replay harness — d4rt cannot top-level-`await`, an async factory assigned to a
   variable stays a raw `Future`, and a `.then()` continuation runs after the
-  summary and re-triggers the interpreter's async bug.
+  summary and re-triggers the interpreter's async bug. The
+  `tom_process_monitor` replay (RCK19) instead drives a genuine live localhost
+  fixture — every network class there has a synchronous constructor, so real
+  bind/unbind lifecycles (`AlivenessServer`, `AlivenessServerHelper`,
+  `RemoteApiServer`, verified via the `isRunning` toggle) and real file IO
+  (`LogManager`, `RegistryService`, `LocalProcessMonitorClient`, verified via
+  files appearing on disk) run inside the replay, with async `start`/`stop`/IO
+  methods executed as bare auto-awaiting statements; only the return-value-only
+  async methods and process-spawning entry points (`ProcessMonitor.start`,
+  `ProcessControl.startProcess`) fall back to construction/value coverage, and
+  the abstract `ProcessMonitorClient` base plus `ServerDiscovery` stay
+  reachability-pinned.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

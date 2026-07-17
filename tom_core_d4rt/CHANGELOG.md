@@ -1,3 +1,31 @@
+## 1.0.11
+
+### Tests
+
+- **Drove the `tom_process_monitor` network/IO classes with a live localhost
+  fixture (RCK19).** Unlike `tom_dist_ledger` (RCK18), every
+  `tom_process_monitor` network class has a *synchronous* constructor, so it
+  yields a real instance rather than a raw `Future` — which makes a genuine
+  self-contained fixture possible inside the replay.
+  `test/replay/test_d4rt_tom_process_monitor.d4rt` now drives real bind/unbind
+  lifecycles (async `start`/`stop` run as bare statements that auto-await,
+  verified via the observable `isRunning` toggle) for `AlivenessServer`,
+  `AlivenessServerHelper` (with `addRoute`), and `RemoteApiServer` (constructed
+  with real `RegistryService` + `ProcessControl` deps), plus real file IO for
+  `LogManager` (`initialize`/`info`/`warn`/`error`/`getProcessLogDir`/`close`),
+  `RegistryService` (`initialize` creates the dir, `save` writes the registry
+  file through its file lock, `load`), and `LocalProcessMonitorClient`
+  (`register`/`deregister` write the registry file) — each verified through the
+  file appearing on disk. `AlivenessChecker` and `RemoteProcessMonitorClient`
+  are constructed and disposed. The return-value-only async methods
+  (`isProcessAlive`/`checkAlive`/`fetchPid`, which stay raw `Future`s when
+  captured) and the process-spawning entry points (`ProcessMonitor.start`,
+  `ProcessControl.startProcess`) are covered by their synchronous construction +
+  value surface; the abstract `ProcessMonitorClient` base and `ServerDiscovery`
+  stay reachability-pinned. Every server is stopped and every temp tree removed
+  before the replay exits, so it terminates cleanly (330 lines executed). No
+  bridge or public-behaviour change.
+
 ## 1.0.10
 
 ### Tests

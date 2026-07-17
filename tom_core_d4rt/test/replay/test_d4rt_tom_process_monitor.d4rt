@@ -210,15 +210,117 @@ var discFailed = DiscoveryFailedException('no server found');
 verifyEquals(discFailed.message, 'no server found', 'DiscoveryFailedException message');
 
 # =============================================================================
-# Test: Runtime entry points exist (integration-only: scan/serve/spawn IO)
+# RCK19: live localhost fixture for the network / IO classes
+# =============================================================================
+# Unlike tom_dist_ledger (RCK18), every tom_process_monitor network class has a
+# SYNCHRONOUS constructor, so it yields a real instance (not a raw Future). Its
+# start()/stop()/IO methods are async but are driven here as BARE statements
+# (which auto-await) and verified through observable side effects — a live
+# HttpServer bind toggling isRunning, or a registry/log file appearing on disk.
+# This is a genuine self-contained fixture: the d4rt binary runs with full IO,
+# HttpServer.bind uses localhost ports, and every server is stopped (and every
+# temp tree removed) before the replay exits, so it terminates cleanly.
+# Return-value-only async methods (isProcessAlive/checkAlive/fetchPid, which
+# stay raw Futures when captured) and process-spawning entry points
+# (ProcessMonitor.start, ProcessControl.startProcess) are covered by their
+# synchronous construction + value surface and reachability-pinned instead.
+
+var monStatusFixture = MonitorStatus(instanceId: 'fx', pid: 4321, startedAt: DateTime.now(), uptime: 1000, state: 'running', standaloneMode: true, managedProcessCount: 0, runningProcessCount: 0);
+
+# --- AlivenessServer: real bind/unbind lifecycle (localhost:19993) ---
+var aliveSrv = AlivenessServer(port: 19993, getStatus: () { return monStatusFixture; });
+verifyEquals(aliveSrv.port, 19993, 'AlivenessServer port');
+verifyEquals(aliveSrv.isRunning, false, 'AlivenessServer not running before start');
+aliveSrv.start();
+verifyEquals(aliveSrv.isRunning, true, 'AlivenessServer isRunning after live HttpServer.bind');
+aliveSrv.stop();
+verifyEquals(aliveSrv.isRunning, false, 'AlivenessServer isRunning false after stop');
+
+# --- AlivenessServerHelper: real bind/unbind lifecycle + addRoute (19994) ---
+var aliveHelper = AlivenessServerHelper(port: 19994);
+verifyEquals(aliveHelper.port, 19994, 'AlivenessServerHelper port');
+verifyEquals(aliveHelper.isRunning, false, 'AlivenessServerHelper not running before start');
+aliveHelper.addRoute('/ping', (req) { return null; });
+aliveHelper.start();
+verifyEquals(aliveHelper.isRunning, true, 'AlivenessServerHelper isRunning after start');
+aliveHelper.stop();
+verifyEquals(aliveHelper.isRunning, false, 'AlivenessServerHelper isRunning false after stop');
+
+# --- LogManager: real log directory + file writing over a temp tree ---
+var lmRoot = TomFs.tempDir(prefix: 'rck19_lm_');
+var logManager = LogManager(baseDirectory: lmRoot, instanceId: 'inst-1');
+verifyEquals(logManager.instanceId, 'inst-1', 'LogManager instanceId');
+verifyEquals(logManager.maxLogFiles, 10, 'LogManager default maxLogFiles');
+logManager.initialize();
+logManager.info('info message');
+logManager.warn('warn message');
+logManager.error('error message');
+var procLogDir = logManager.getProcessLogDir('p1');
+verifyNotNull(procLogDir, 'LogManager getProcessLogDir returns a path');
+logManager.close();
+
+# --- RegistryService: initialize (dir), save (file, via file lock), load ---
+var regRoot = TomFs.tempDir(prefix: 'rck19_reg_');
+var regSubdir = regRoot + '/reg';
+var registryService = RegistryService(directory: regSubdir, instanceId: 'inst-1');
+verifyNotNull(registryService.registryPath, 'RegistryService registryPath');
+registryService.initialize();
+verifyEquals(TomFs.exists(regSubdir), true, 'RegistryService.initialize created the directory');
+var registry = ProcessRegistry(instanceId: 'inst-1', standaloneMode: true);
+registryService.save(registry);
+verifyEquals(TomFs.exists(registryService.registryPath), true, 'RegistryService.save wrote the registry file');
+registryService.load();
+
+# --- ProcessControl: construct + value surface (spawn/kill are OS-level, pinned) ---
+var processControl = ProcessControl(logDirectory: regRoot, instanceId: 'inst-1');
+verifyEquals(processControl.logDirectory, regRoot, 'ProcessControl logDirectory');
+verifyEquals(processControl.instanceId, 'inst-1', 'ProcessControl instanceId');
+
+# --- RemoteApiServer: real bind/unbind lifecycle with real deps (19995) ---
+var apiServer = RemoteApiServer(port: 19995, registryService: registryService, processControl: processControl, getStatus: () { return monStatusFixture; });
+verifyEquals(apiServer.port, 19995, 'RemoteApiServer port');
+verifyEquals(apiServer.isRunning, false, 'RemoteApiServer not running before start');
+apiServer.start();
+verifyEquals(apiServer.isRunning, true, 'RemoteApiServer isRunning after live bind');
+verifyNotNull(apiServer.boundAddress, 'RemoteApiServer boundAddress after start');
+apiServer.stop();
+verifyEquals(apiServer.isRunning, false, 'RemoteApiServer isRunning false after stop');
+
+# --- LocalProcessMonitorClient: register + deregister (registry file IO) ---
+var clientRoot = TomFs.tempDir(prefix: 'rck19_cli_');
+var localClient = LocalProcessMonitorClient(directory: clientRoot, instanceId: 'default');
+verifyEquals(localClient.directory, clientRoot, 'LocalProcessMonitorClient directory');
+verifyEquals(localClient.instanceId, 'default', 'LocalProcessMonitorClient instanceId');
+var regConfig = ProcessConfig(id: 'p-reg', name: 'svc', command: 'dart');
+localClient.register(regConfig);
+verifyEquals(TomFs.exists(clientRoot + '/processes_default.json'), true, 'LocalProcessMonitorClient.register wrote the registry file');
+localClient.deregister('p-reg');
+
+# --- AlivenessChecker: construct + dispose (HTTP fetches stay raw Futures) ---
+var aliveChecker = AlivenessChecker();
+verifyNotNull(aliveChecker, 'AlivenessChecker constructed');
+aliveChecker.dispose();
+
+# --- RemoteProcessMonitorClient: construct inert + getters + dispose ---
+var remoteClient = RemoteProcessMonitorClient(baseUrl: 'http://localhost:19995', instanceId: 'default');
+verifyEquals(remoteClient.baseUrl, 'http://localhost:19995', 'RemoteProcessMonitorClient baseUrl');
+verifyEquals(remoteClient.instanceId, 'default', 'RemoteProcessMonitorClient instanceId');
+remoteClient.dispose();
+
+# --- ProcessMonitor: construct + value surface (start spawns watcher/timers, pinned) ---
+var monitor = ProcessMonitor(directory: clientRoot, instanceId: 'default');
+verifyEquals(monitor.instanceId, 'default', 'ProcessMonitor instanceId');
+verifyEquals(monitor.isRunning, false, 'ProcessMonitor not running before start');
+
+TomFs.delete(lmRoot, recursive: true);
+TomFs.delete(regRoot, recursive: true);
+TomFs.delete(clientRoot, recursive: true);
+
+# =============================================================================
+# Reachability pins (abstract base + discovery entry point)
 # =============================================================================
 
-verifyNotNull(ProcessRegistry, 'ProcessRegistry class exists');
-verifyNotNull(RegistryService, 'RegistryService class exists');
-verifyNotNull(ProcessControl, 'ProcessControl class exists');
-verifyNotNull(ProcessMonitor, 'ProcessMonitor class exists');
-verifyNotNull(LocalProcessMonitorClient, 'LocalProcessMonitorClient class exists');
-verifyNotNull(RemoteProcessMonitorClient, 'RemoteProcessMonitorClient class exists');
+verifyNotNull(ProcessMonitorClient, 'ProcessMonitorClient abstract base exists');
 verifyNotNull(ServerDiscovery, 'ServerDiscovery class exists');
 
 # =============================================================================
