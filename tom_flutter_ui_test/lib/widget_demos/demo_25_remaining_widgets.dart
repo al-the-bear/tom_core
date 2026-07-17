@@ -873,9 +873,8 @@ class _RemainingWidgetsDemoContentState
             height: 250,
             child: TomReorderableListView(
               tomId: 'reorderableList.demo',
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 setState(() {
-                  if (newIndex > oldIndex) newIndex--;
                   final item = _reorderItems.removeAt(oldIndex);
                   _reorderItems.insert(newIndex, item);
                 });

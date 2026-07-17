@@ -45,7 +45,7 @@ class TomListView extends TomListBase {
   late final bool _resolvedShrinkWrap;
   late final EdgeInsetsGeometry? _resolvedPadding;
   late final double? _resolvedItemExtent;
-  late final double? _resolvedCacheExtent;
+  late final ScrollCacheExtent? _resolvedCacheExtent;
   late final int? _resolvedSemanticChildCount;
   late final String? _resolvedRestorationId;
   late final bool _resolvedAddAutomaticKeepAlives;
@@ -216,7 +216,8 @@ class TomListView extends TomListBase {
     _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
-    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    final cacheExtentPixels = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedCacheExtent = cacheExtentPixels == null ? null : ScrollCacheExtent.pixels(cacheExtentPixels);
     _resolvedSemanticChildCount = semanticChildCount ?? TomCtr.intVal(basePath, 'semanticChildCount');
     _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
     _resolvedAddAutomaticKeepAlives = TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
@@ -243,7 +244,7 @@ class TomListView extends TomListBase {
         padding: _resolvedPadding,
         itemExtent: _resolvedItemExtent,
         prototypeItem: prototypeItem,
-        cacheExtent: _resolvedCacheExtent,
+        scrollCacheExtent: _resolvedCacheExtent,
         semanticChildCount: _resolvedSemanticChildCount,
         dragStartBehavior: dragStartBehavior,
         keyboardDismissBehavior: keyboardDismissBehavior,
@@ -267,7 +268,7 @@ class TomListView extends TomListBase {
       itemExtent: _resolvedItemExtent,
       prototypeItem: prototypeItem,
       childrenDelegate: _childrenDelegate!,
-      cacheExtent: _resolvedCacheExtent,
+      scrollCacheExtent: _resolvedCacheExtent,
       semanticChildCount: _resolvedSemanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
@@ -667,7 +668,7 @@ class TomCupertinoListSection extends TomListBase {
 /// Reorderable list implementation. Auth on list content and reorder capability.
 class TomReorderableList extends TomListBase {
   final SliverChildDelegate childrenDelegate;
-  final ReorderCallback onReorder;
+  final ReorderCallback onReorderItem;
   final void Function(int)? onReorderStart;
   final void Function(int)? onReorderEnd;
   final double? itemExtent;
@@ -693,7 +694,7 @@ class TomReorderableList extends TomListBase {
   late final bool _resolvedShrinkWrap;
   late final EdgeInsetsGeometry? _resolvedPadding;
   late final double _resolvedAnchor;
-  late final double? _resolvedCacheExtent;
+  late final ScrollCacheExtent? _resolvedCacheExtent;
 
   TomReorderableList({
     super.key,
@@ -704,7 +705,7 @@ class TomReorderableList extends TomListBase {
     super.authorizerStrategy,
     super.uiStateController,
     required this.childrenDelegate,
-    required ReorderCallback onReorder,
+    required ReorderCallback onReorderItem,
     void Function(int)? onReorderStart,
     void Function(int)? onReorderEnd,
     this.itemExtent,
@@ -724,14 +725,15 @@ class TomReorderableList extends TomListBase {
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
-  })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
+  })  : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
         onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
         onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
     _resolvedShrinkWrap = shrinkWrap ?? TomCtr.boolVal(basePath, 'shrinkWrap') ?? false;
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedAnchor = anchor != 0.0 ? anchor : TomCtr.doubleVal(basePath, 'anchor') ?? 0.0;
-    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    final cacheExtentPixels = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedCacheExtent = cacheExtentPixels == null ? null : ScrollCacheExtent.pixels(cacheExtentPixels);
   }
 
   @override
@@ -761,7 +763,7 @@ class TomReorderableList extends TomListBase {
     return ReorderableList(
       itemBuilder: resolvedItemBuilder,
       itemCount: resolvedItemCount,
-      onReorder: onReorder,
+      onReorderItem: onReorderItem,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
       itemExtent: _resolvedItemExtent,
@@ -777,7 +779,7 @@ class TomReorderableList extends TomListBase {
       padding: _resolvedPadding,
       clipBehavior: clipBehavior,
       anchor: _resolvedAnchor,
-      cacheExtent: _resolvedCacheExtent,
+      scrollCacheExtent: _resolvedCacheExtent,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
       restorationId: restorationId,
@@ -791,7 +793,7 @@ class TomReorderableList extends TomListBase {
 class TomSliverReorderableList extends TomListBase {
   final Widget Function(BuildContext, int) itemBuilder;
   final int itemCount;
-  final ReorderCallback onReorder;
+  final ReorderCallback onReorderItem;
   final void Function(int)? onReorderStart;
   final void Function(int)? onReorderEnd;
   final double? itemExtent;
@@ -812,14 +814,14 @@ class TomSliverReorderableList extends TomListBase {
     super.uiStateController,
     required this.itemBuilder,
     required this.itemCount,
-    required ReorderCallback onReorder,
+    required ReorderCallback onReorderItem,
     void Function(int)? onReorderStart,
     void Function(int)? onReorderEnd,
     this.itemExtent,
     this.itemExtentBuilder,
     this.prototypeItem,
     this.proxyDecorator,
-  })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
+  })  : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
         onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
         onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
@@ -830,7 +832,7 @@ class TomSliverReorderableList extends TomListBase {
     return SliverReorderableList(
       itemBuilder: itemBuilder,
       itemCount: itemCount,
-      onReorder: onReorder,
+      onReorderItem: onReorderItem,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
       itemExtent: _resolvedItemExtent,

@@ -539,11 +539,8 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
               child: TomReorderableListView(
                 tomId: 'reorderable.list',
                 padding: const EdgeInsets.all(8),
-                onReorder: (oldIndex, newIndex) {
+                onReorderItem: (oldIndex, newIndex) {
                   setState(() {
-                    if (newIndex > oldIndex) {
-                      newIndex -= 1;
-                    }
                     final item = _reorderableItems.removeAt(oldIndex);
                     _reorderableItems.insert(newIndex, item);
                   });

@@ -349,11 +349,11 @@ class _TomInlineListFormImplState<TItem extends TomClass,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: list.length,
         proxyDecorator: widget.proxyDecorator,
-        onReorder: (from, to) {
-          // ReorderableListView reports `to` as the index *after*
-          // removal when moving downward — normalise to TomListForm
-          // semantics so callers see a single, consistent convention.
-          final adjusted = to > from ? to - 1 : to;
+        onReorderItem: (from, to) {
+          // onReorderItem already delivers `to` adjusted for the removed
+          // item, so it matches TomListForm's final-index semantics
+          // directly — no manual normalisation.
+          final adjusted = to;
           if (adjusted == from) return;
           list.reorder(from, adjusted);
           widget.onReorder?.call(from, adjusted);

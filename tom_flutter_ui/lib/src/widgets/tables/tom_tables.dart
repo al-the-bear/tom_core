@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../theme/tom_theme.dart';
@@ -347,7 +348,7 @@ class TomGridView extends TomTableBase {
   late final bool _resolvedReverse;
   late final bool? _resolvedPrimary;
   late final bool _resolvedShrinkWrap;
-  late final double? _resolvedCacheExtent;
+  late final ScrollCacheExtent? _resolvedCacheExtent;
   late final int? _resolvedSemanticChildCount;
   late final String? _resolvedRestorationId;
   late final EdgeInsetsGeometry? _resolvedPadding;
@@ -379,7 +380,8 @@ class TomGridView extends TomTableBase {
     _resolvedReverse = TomCtr.boolVal(basePath, 'reverse') ?? reverse;
     _resolvedPrimary = primary ?? TomCtr.boolVal(basePath, 'primary');
     _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
-    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    final cacheExtentPixels = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedCacheExtent = cacheExtentPixels == null ? null : ScrollCacheExtent.pixels(cacheExtentPixels);
     _resolvedSemanticChildCount = semanticChildCount ?? TomCtr.intVal(basePath, 'semanticChildCount');
     _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
@@ -397,7 +399,7 @@ class TomGridView extends TomTableBase {
       padding: _resolvedPadding,
       gridDelegate: gridDelegate,
       childrenDelegate: childrenDelegate,
-      cacheExtent: _resolvedCacheExtent,
+      scrollCacheExtent: _resolvedCacheExtent,
       semanticChildCount: _resolvedSemanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
@@ -412,7 +414,7 @@ class TomGridView extends TomTableBase {
 /// Adds ID, group, authorization, and resource resolution.
 class TomReorderableListView extends TomTableBase {
   final List<Widget> children;
-  final ReorderCallback onReorder;
+  final ReorderCallback onReorderItem;
   final void Function(int)? onReorderStart;
   final void Function(int)? onReorderEnd;
   final double? itemExtent;
@@ -438,7 +440,7 @@ class TomReorderableListView extends TomTableBase {
 
   // Pre-resolved resource values
   late final double? _resolvedItemExtent;
-  late final double? _resolvedCacheExtent;
+  late final ScrollCacheExtent? _resolvedCacheExtent;
   late final double _resolvedAnchor;
   late final double? _resolvedAutoScrollerVelocityScalar;
   late final bool _resolvedBuildDefaultDragHandles;
@@ -457,7 +459,7 @@ class TomReorderableListView extends TomTableBase {
     super.authorizerStrategy,
     super.uiStateController,
     required this.children,
-    required ReorderCallback onReorder,
+    required ReorderCallback onReorderItem,
     void Function(int)? onReorderStart,
     void Function(int)? onReorderEnd,
     this.itemExtent,
@@ -480,11 +482,12 @@ class TomReorderableListView extends TomTableBase {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.autoScrollerVelocityScalar,
-  })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
+  })  : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
         onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
         onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
-    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    final cacheExtentPixels = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedCacheExtent = cacheExtentPixels == null ? null : ScrollCacheExtent.pixels(cacheExtentPixels);
     _resolvedAnchor = anchor ?? TomCtr.doubleVal(basePath, 'anchor') ?? 0.0;
     _resolvedAutoScrollerVelocityScalar = autoScrollerVelocityScalar ?? TomCtr.doubleVal(basePath, 'autoScrollerVelocityScalar');
     _resolvedBuildDefaultDragHandles = TomCtr.boolVal(basePath, 'buildDefaultDragHandles') ?? buildDefaultDragHandles;
@@ -498,7 +501,7 @@ class TomReorderableListView extends TomTableBase {
   @override
   Widget buildContent(BuildContext context) {
     return ReorderableListView(
-      onReorder: onReorder,
+      onReorderItem: onReorderItem,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
       itemExtent: _resolvedItemExtent,
@@ -515,7 +518,7 @@ class TomReorderableListView extends TomTableBase {
       physics: physics,
       shrinkWrap: _resolvedShrinkWrap,
       anchor: _resolvedAnchor,
-      cacheExtent: _resolvedCacheExtent,
+      scrollCacheExtent: _resolvedCacheExtent,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
       restorationId: _resolvedRestorationId,

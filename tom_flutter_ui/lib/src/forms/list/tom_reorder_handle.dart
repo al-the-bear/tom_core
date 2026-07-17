@@ -25,7 +25,7 @@ import '../../widget_base/tom_family_base.dart';
 /// ```
 ///
 /// The widget itself does NOT trigger reorders — that's the host
-/// [ReorderableListView.onReorder] callback's responsibility. This widget
+/// [ReorderableListView.onReorderItem] callback's responsibility. This widget
 /// only wires the touch / mouse drag-start signal that lets the host
 /// pick the row up.
 ///

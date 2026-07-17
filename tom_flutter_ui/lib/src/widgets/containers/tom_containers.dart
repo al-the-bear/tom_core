@@ -1841,7 +1841,7 @@ class TomCustomScrollView extends TomContainerBase {
   final Clip clipBehavior;
 
   // Pre-resolved resource values
-  late final double? _resolvedCacheExtent;
+  late final ScrollCacheExtent? _resolvedCacheExtent;
 
   TomCustomScrollView({
     super.key,
@@ -1868,7 +1868,8 @@ class TomCustomScrollView extends TomContainerBase {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
   }) {
-    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    final cacheExtentPixels = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedCacheExtent = cacheExtentPixels == null ? null : ScrollCacheExtent.pixels(cacheExtentPixels);
   }
 
   @override
@@ -1883,7 +1884,7 @@ class TomCustomScrollView extends TomContainerBase {
       shrinkWrap: shrinkWrap,
       center: center,
       anchor: anchor,
-      cacheExtent: _resolvedCacheExtent,
+      scrollCacheExtent: _resolvedCacheExtent,
       slivers: slivers,
       semanticChildCount: semanticChildCount,
       dragStartBehavior: dragStartBehavior,

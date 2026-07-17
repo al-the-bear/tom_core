@@ -507,8 +507,10 @@ class _TomExpandableListFormImplState<TItem extends TomClass,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: list.length,
         proxyDecorator: widget.proxyDecorator,
-        onReorder: (from, to) {
-          final adjusted = to > from ? to - 1 : to;
+        onReorderItem: (from, to) {
+          // onReorderItem already delivers `to` adjusted for the removed
+          // item, so it is the final destination index directly.
+          final adjusted = to;
           if (adjusted == from) return;
           // Recompute expansion state after the move so the dragged
           // row stays in its previous open/closed state at the new

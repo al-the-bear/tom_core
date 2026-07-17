@@ -1,3 +1,35 @@
+## 1.1.0
+
+Adapts the widget set to the Flutter 3.44 scroll/reorder API changes. **This is
+a breaking change with no backwards-compatibility shims** (per framework
+policy).
+
+### Changed
+
+- **Reorder callback renamed `onReorder` → `onReorderItem`** on
+  `TomReorderableListView`, `TomReorderableList`, and `TomSliverReorderableList`,
+  mirroring Flutter's own rename. The new callback's `newIndex` is **already
+  adjusted for the removed item**, so callers must drop the classic
+  `if (newIndex > oldIndex) newIndex -= 1` fixup — the plain
+  `removeAt(oldIndex)` / `insert(newIndex, item)` body is now correct. All
+  demos and consumers updated accordingly.
+- **`cacheExtent` now flows through `ScrollCacheExtent` internally.** The public
+  `cacheExtent` field and the `cacheExtent` resource key stay `double?` (pixel)
+  for API/config stability; the widgets wrap the resolved value via
+  `ScrollCacheExtent.pixels(...)` and pass `scrollCacheExtent:` to the
+  underlying Flutter widgets (`TomListView`, `TomGridView`,
+  `TomCustomScrollView`, `TomReorderableList`, `TomReorderableListView`).
+- The list-form widgets (`TomInlineListForm`, `TomExpandableListForm`) migrate
+  their internal `ReorderableListView.builder` usage to `onReorderItem`; their
+  public `onReorder(from, to)` domain callback is unchanged (still delivers the
+  final destination index).
+
+### Added
+
+- Widget test asserting the reorder behaviour end-to-end: a real drag on
+  `TomReorderableListView` moves the first row down one slot and reports the
+  post-removal `newIndex` (proving the manual fixup is gone).
+
 ## 1.0.0
 
 First versioned release of the Tom Flutter UI widget library. Promotes the
