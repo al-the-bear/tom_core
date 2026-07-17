@@ -186,16 +186,14 @@ verifyEquals(logger.logLevel.levelPattern, 16, 'setLogLevel makes warn the curre
 logger.setLogLevelByName('info');
 verifyEquals(logger.logLevel.levelPattern, 8, 'setLogLevelByName(info) sets info as current level');
 
-# push/pop level-stack bridge methods. NOTE: tom_core_d4rt resolves the
-# PUBLISHED tom_basics 1.0.0, which predates the RCE6 LIFO fix — so we assert
-# only the push (current level becomes the pushed level, true in every version)
-# and that pop executes and yields a valid level. Tightening the post-pop
-# assertion to the RCE6 LIFO restore value is filed as an RCH residual (needs
-# tom_basics republished with RCE6 + the constraint bumped here).
+# push/pop level-stack bridge methods (RCE6 LIFO semantics). The current level
+# is above at info=8; pushing trace makes trace current, and popping restores
+# the pre-push level (info=8) — a true LIFO scope. This asserts the RCE6 fix,
+# consumable here because tom_core_d4rt now resolves tom_basics >=1.0.1.
 logger.pushLogLevel(TomLogLevel.trace);
 verifyEquals(logger.logLevel.levelPattern, 1, 'pushLogLevel(trace) makes trace the current level');
 logger.popLogLevel();
-verifyNotNull(logger.logLevel, 'popLogLevel executes and leaves a valid current level');
+verifyEquals(logger.logLevel.levelPattern, 8, 'popLogLevel restores the pre-push level (info=8) — RCE6 LIFO');
 
 # Per-name level overrides round-trip
 logger.addNameLevel('MyService', TomLogLevel.debug);

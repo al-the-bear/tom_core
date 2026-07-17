@@ -22,7 +22,7 @@ import 'package:shelf/src/request.dart' as $shelf_3;
 import 'package:shelf/src/response.dart' as $shelf_4;
 import 'package:shelf_router/src/router.dart' as $shelf_router_1;
 import 'package:stream_channel/stream_channel.dart' as $stream_channel_1;
-import 'package:tom_basics/src/exception_base.dart' as $tom_basics_1;
+import 'package:tom_basics/src/exceptions/exception_base.dart' as $tom_basics_1;
 import 'package:tom_basics/src/logging/logging.dart' as $tom_basics_2;
 import 'package:tom_basics/src/runtime/platform_environment_runtime.dart' as $tom_basics_3;
 import 'package:tom_basics/src/runtime/platform_neutral.dart' as $tom_basics_4;
@@ -473,7 +473,7 @@ class TomCoreServerBridge {
       'PreparedStmt': 'package:mysql_client/src/mysql_client/connection.dart',
       'MySQLConnectionPool': 'package:mysql_client/src/mysql_client/pool.dart',
       'TomStandalonePlatformUtils': 'package:tom_basics_console/src/runtime/platform_detection_standalone.dart',
-      'TomBaseException': 'package:tom_basics/src/exception_base.dart',
+      'TomBaseException': 'package:tom_basics/src/exceptions/exception_base.dart',
       'TomLogLevel': 'package:tom_basics/src/logging/logging.dart',
       'TomLogger': 'package:tom_basics/src/logging/logging.dart',
       'TomLoggable': 'package:tom_basics/src/logging/logging.dart',
@@ -684,7 +684,7 @@ class TomCoreServerBridge {
     return [
       (source: 'package:mysql_client/mysql_client.dart', target: 'package:mysql_client/src/mysql_client/connection.dart', show: null, hide: null),
       (source: 'package:mysql_client/mysql_client.dart', target: 'package:mysql_client/src/mysql_client/pool.dart', show: null, hide: null),
-      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exception_base.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exceptions/exception_base.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/logging/logging.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_neutral.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_environment_runtime.dart', show: null, hide: null),
@@ -910,7 +910,7 @@ class TomCoreServerBridge {
       'package:mysql_client/src/mysql_client/connection.dart',
       'package:mysql_client/src/mysql_client/pool.dart',
       'package:shelf/src/request.dart',
-      'package:tom_basics/src/exception_base.dart',
+      'package:tom_basics/src/exceptions/exception_base.dart',
       'package:tom_basics/src/logging/logging.dart',
       'package:tom_basics/src/runtime/platform_environment_runtime.dart',
       'package:tom_basics/src/runtime/platform_neutral.dart',

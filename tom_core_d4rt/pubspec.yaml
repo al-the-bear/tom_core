@@ -1,6 +1,6 @@
 name: tom_core_d4rt
 description: D4rt tool with full Tom Framework bridge support.
-version: 1.0.6
+version: 1.0.7
 publish_to: none
 
 environment:
@@ -36,7 +36,10 @@ dependencies:
   tom_md2pdf:
     path: ../../devops/tom_md2pdf
   tom_basics_network: ">=1.0.1"
-  
+  # >=1.0.1 carries the RCE6 TomLogger push/pop LIFO fix that the tom_basics
+  # replay's post-pop restore assertion depends on.
+  tom_basics: ">=1.0.1"
+
   # External packages
   dcli: ^8.4.2
   dcli_core: ^8.2.8

@@ -26,7 +26,7 @@ import 'package:pointycastle/asymmetric/api.dart' as $pointycastle_2;
 import 'package:pointycastle/key_derivators/api.dart' as $pointycastle_3;
 import 'package:timezone/src/date_time.dart' as $timezone_1;
 import 'package:timezone/src/location.dart' as $timezone_2;
-import 'package:tom_basics/src/exception_base.dart' as $tom_basics_1;
+import 'package:tom_basics/src/exceptions/exception_base.dart' as $tom_basics_1;
 import 'package:tom_basics/src/logging/logging.dart' as $tom_basics_2;
 import 'package:tom_basics/src/runtime/platform_environment_runtime.dart' as $tom_basics_3;
 import 'package:tom_basics/src/runtime/platform_neutral.dart' as $tom_basics_4;
@@ -275,7 +275,7 @@ class TomCoreKernelBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'TomBaseException': 'package:tom_basics/src/exception_base.dart',
+      'TomBaseException': 'package:tom_basics/src/exceptions/exception_base.dart',
       'TomLogLevel': 'package:tom_basics/src/logging/logging.dart',
       'TomLogger': 'package:tom_basics/src/logging/logging.dart',
       'TomLoggable': 'package:tom_basics/src/logging/logging.dart',
@@ -664,7 +664,7 @@ class TomCoreKernelBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exception_base.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exceptions/exception_base.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/logging/logging.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_neutral.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_environment_runtime.dart', show: null, hide: null),
@@ -1139,7 +1139,7 @@ class TomCoreKernelBridge {
     return [
       'package:pointycastle/api.dart',
       'package:pointycastle/asymmetric/api.dart',
-      'package:tom_basics/src/exception_base.dart',
+      'package:tom_basics/src/exceptions/exception_base.dart',
       'package:tom_basics/src/logging/logging.dart',
       'package:tom_basics/src/runtime/platform_environment_runtime.dart',
       'package:tom_basics/src/runtime/platform_neutral.dart',

@@ -1,3 +1,17 @@
+## 1.0.7
+
+### Tests
+
+- **Tightened the `tom_basics` replay's TomLogger push/pop assertion to the
+  RCE6 LIFO restore value (RCK15).** `tom_basics` 1.0.1 — which ships the RCE6
+  `TomLogger` push/pop LIFO fix — is now published to pub.dev, and
+  `tom_core_d4rt` pins `tom_basics: ">=1.0.1"` so the replay resolves the fixed
+  package rather than the pre-RCE6 1.0.0. The previously coverage-only post-pop
+  assertion in `test/replay/test_d4rt_tom_basics.d4rt` (a bare `verifyNotNull`)
+  is now `verifyEquals(logger.logLevel.levelPattern, 8, ...)`, asserting that
+  `popLogLevel()` restores the pre-push level (`info`=8) — the real LIFO scope
+  contract. No bridge or public-behaviour change.
+
 ## 1.0.6
 
 ### Tests
