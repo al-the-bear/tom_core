@@ -1,3 +1,20 @@
+## 1.0.13
+
+### Tests
+
+- **Covered the `DocSpecsSkeletonGenerator` bridged surface the replays
+  previously only pinned by reachability (RCJ8).** During RCK17 the tom_doc_specs
+  IO/scan surfaces were driven live, but `DocSpecsSkeletonGenerator` was left
+  reachability-pinned in `test_d4rt_tom_doc_specs.d4rt`. It is now driven live
+  over the same self-contained mini-1.0 fixture schema: `generate(schema)`
+  returns the skeleton markdown as a `String` (it does not write files itself —
+  the caller persists it), so the replay asserts the emitted structure (the
+  `<!-- docspec: mini/1.0 -->` comment, the `# [overview-overview] Overview`
+  section headline, and the `TODO: Add content for this section.` text-required
+  placeholder), then persists it with `TomFs.write` and confirms the written
+  file round-trips (`TomFs.exists` + `TomFs.read(...).contains(...)`). No bridged
+  behaviour changed.
+
 ## 1.0.12
 
 ### Tests

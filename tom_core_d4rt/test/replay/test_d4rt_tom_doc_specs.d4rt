@@ -204,13 +204,12 @@ verifyEquals(SchemaResolver.isDocSpecDocument('quest.overview.ds.md'), true, 'Sc
 verifyEquals(SchemaResolver.isDocSpecDocument('plain.md'), false, 'SchemaResolver.isDocSpecDocument false for a plain name');
 
 # =============================================================================
-# Test: reachability of the scan/generator entry points
-# DocSpecsSkeletonGenerator and AiValidator are pinned by reachability:
-# the skeleton generator writes files from a schema, and AiValidator is an
-# abstract LLM-injection interface with no invokable behaviour standalone.
+# Test: reachability of the AI-injection entry point
+# AiValidator is pinned by reachability: it is an abstract LLM-injection
+# interface with no invokable behaviour standalone. (DocSpecsSkeletonGenerator
+# is driven live below over the RCK17 fixture schema — see RCJ8.)
 # =============================================================================
 
-verifyNotNull(DocSpecsSkeletonGenerator, 'DocSpecsSkeletonGenerator class exists');
 verifyNotNull(AiValidator, 'AiValidator abstract interface exists');
 
 # =============================================================================
@@ -280,6 +279,20 @@ verify(fxFolder.allDocuments.length >= 1, 'DocSpecs.scanTreeSync discovered the 
 verifyNotNull(DocSpecs.validate(fxScanned, schema: fxLoaded), 'DocSpecs.validate returns an error list');
 verify(DocSpecs.listSchemasInSync(dirPath: fxSchemaDir).length >= 1, 'DocSpecs.listSchemasInSync facade');
 verify(DocSpecs.listSchemasSync(documentPath: fxDocPath, workspaceRoot: fxRoot).length >= 1, 'DocSpecs.listSchemasSync facade');
+
+# ---- DocSpecsSkeletonGenerator.generate (RCJ8) ----
+# generate(schema) returns the skeleton markdown as a String (it does not write
+# files itself — the caller persists it). Drive it over the loaded mini-1.0
+# schema, assert the emitted structure, then persist it with TomFs and confirm
+# the written file round-trips.
+var fxSkeleton = DocSpecsSkeletonGenerator.generate(fxLoaded);
+verify(fxSkeleton.contains('<!-- docspec: mini/1.0 -->'), 'DocSpecsSkeletonGenerator.generate emits the schema docspec comment');
+verify(fxSkeleton.contains('# [overview-overview] Overview'), 'DocSpecsSkeletonGenerator.generate emits the Overview section headline');
+verify(fxSkeleton.contains('TODO: Add content for this section.'), 'DocSpecsSkeletonGenerator.generate emits the text-required placeholder');
+var fxSkeletonPath = fxDocsDir + '/skeleton.mini.ds.md';
+TomFs.write(fxSkeletonPath, fxSkeleton);
+verifyEquals(TomFs.exists(fxSkeletonPath), true, 'DocSpecsSkeletonGenerator skeleton written to disk');
+verify(TomFs.read(fxSkeletonPath).contains('# [overview-overview] Overview'), 'written skeleton file contains the Overview section headline');
 
 # ---- cleanup ----
 TomFs.delete(fxRoot, recursive: true);
