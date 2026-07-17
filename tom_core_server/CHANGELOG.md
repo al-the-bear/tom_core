@@ -1,3 +1,21 @@
+## 1.1.4
+
+### Bug Fixes
+
+- **bare-flag bool coercion (RCJ2).** `TomArgs.fillFromArgs` recorded a bare
+  flag (an argument with no `=`, e.g. `verbose`) as the String `"true"`, while
+  its docstring claimed the reflection layer coerced it to the field's declared
+  type. The reflection layer does **not** coerce a String into a `bool` field —
+  it throws `reflection.set.unexpected_string_type` — so a bare bool flag could
+  never fill a `bool` config field. Aligned `fillFromArgs` with
+  `parseArgsToMap` by recording a bare flag as the boolean `true`, which
+  matches how `key=true` already converts (`_convertString`) and keeps the
+  reflection layer's strict String/typed contract intact. A bare flag now fills
+  a reflected `bool` field directly; the pinned characterization test in
+  `endpoints_pipeline_test.dart` was flipped from "throws" to assert success.
+  Docstrings and `doc/cmdline.md` / `doc/api_reference/api_summary_cmdline.md`
+  updated to describe the unified boolean encoding.
+
 ## 1.1.3
 
 ### Tests / Examples

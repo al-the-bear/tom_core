@@ -227,18 +227,16 @@ void main() {
       expect(config.verbose, isFalse);
     });
 
-    // Current behaviour, pinned deliberately (see RCJ2). A *bare* flag is
-    // recorded by fillFromArgs as the String "true", but the reflection layer
-    // does not coerce a String into a bool field — it throws. The args.dart
-    // docstring claims the reflection layer performs that coercion; the two
-    // disagree. This test makes the discrepancy visible so RCJ2 closes it on
-    // purpose rather than a future change flipping it silently.
-    test('a bare bool flag currently throws (RCJ2: docstring vs reflection)',
-        () {
-      expect(
-        () => TomArgs.fillFromArgs(['verbose'], FixtureServerConfig()),
-        throwsA(isA<TomException>()),
-      );
+    // RCJ2: a *bare* flag is recorded by fillFromArgs as the boolean `true`
+    // (matching how `key=true` converts), so it fills a reflected bool field
+    // directly. Previously fillFromArgs stored the String "true", which the
+    // reflection layer refused to coerce into a bool field (it threw). Aligning
+    // the bare-flag encoding with parseArgsToMap keeps the reflection layer's
+    // strict String/typed contract intact while making bare flags usable.
+    test('a bare bool flag fills the bool field (RCJ2)', () {
+      final config =
+          TomArgs.fillFromArgs(['verbose'], FixtureServerConfig());
+      expect(config.verbose, isTrue);
     });
   });
 }

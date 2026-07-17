@@ -12,17 +12,17 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// - [convertToObjectMap] converts an existing string map (e.g.
 ///   `Platform.environment`) using the same rules.
 ///
-/// An argument with no `=` is treated as a flag. Note the two map-producing
-/// paths differ in how they encode a bare flag: [parseArgsToMap] stores the
-/// boolean `true`, whereas [fillFromArgs] stores the string `"true"` (the
-/// reflection layer coerces it to the target field's type on assignment).
+/// An argument with no `=` is treated as a flag. Both map-producing paths
+/// encode a bare flag identically as the boolean `true` — consistent with how
+/// `key=true` is converted (see [convertToObjectMap]) — so a bare flag can fill
+/// a reflected `bool` field directly.
 class TomArgs {
   /// Fills [fillIn] from `key=value` [args] using reflection and returns it.
   ///
   /// Each `key=value` argument becomes a field assignment on [fillIn]: the key
   /// names the field and the value is type-converted (see [convertToObjectMap]).
-  /// A bare flag (`--verbose`) is recorded as the string `"true"`, which the
-  /// reflection layer coerces to the field's declared type.
+  /// A bare flag (`--verbose`) is recorded as the boolean `true`, matching how
+  /// `key=true` converts, so it fills a reflected `bool` field directly.
   ///
   /// [T] must be a type registered with the reflection system
   /// (`tomReflectionInfo.setValues` performs the assignment); unknown keys that
@@ -34,7 +34,7 @@ class TomArgs {
       if (parts.length > 1) {
         argMap[parts[0]] = _convertString(parts[1]);
       } else {
-        argMap[arg] = "true";
+        argMap[arg] = true;
       }
     }
     tomReflectionInfo.setValues<T>(fillIn, argMap);

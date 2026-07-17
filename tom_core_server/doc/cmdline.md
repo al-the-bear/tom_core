@@ -41,10 +41,9 @@ final map = TomArgs.parseArgsToMap(['port=8080', 'debug=true', '--verbose']);
 final env = TomArgs.convertToObjectMap(Platform.environment);
 ```
 
-A token with no `=` is a **flag**. The two map paths encode a flag slightly
-differently — `parseArgsToMap` stores the boolean `true`, while `fillFromArgs`
-stores the string `"true"` and lets the reflection layer coerce it to the target
-field's declared type.
+A token with no `=` is a **flag**. Both map paths encode a flag identically as
+the boolean `true` — consistent with how `key=true` is converted — so a flag
+fills a reflected `bool` field directly.
 
 > **`fillFromArgs` needs a reflected type.** It assigns through
 > `tomReflectionInfo.setValues`, so `T` must be registered with the reflection
