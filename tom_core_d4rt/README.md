@@ -245,10 +245,10 @@ DartScript. See the [repository map](../README.md) for the full picture.
   `dart test` or the `bin/d4rtrun.b.dart` replay runner). The `tom_reflection`
   (RCF5) and `tom_basics` (RCG5) replays each exercise every bridged class
   their containers register (zero-gap cross-check); the `tom_build` replay
-  (RCH5) covers every connection-free bridged class (55/60), with only the five
-  IO-driver classes (`WorkspaceAnalyzer`, `ReflectionGeneratorRunner`,
-  `TomShell`, `TomFs`, `TomGlob`) deferred as they need a live
-  filesystem/process. The `tom_doc_specs` replay (RCI5) covers every
+  (RCH5/RCK16) covers all 60/60 bridged classes, with the five IO-driver
+  classes (`WorkspaceAnalyzer`, `ReflectionGeneratorRunner`, `TomShell`,
+  `TomFs`, `TomGlob`) exercised over a live self-contained temp fixture created
+  and removed inside the replay. The `tom_doc_specs` replay (RCI5) covers every
   connection-free bridged class across all 31 registrations (zero-gap
   cross-check), with only the IO/scan surfaces (`SchemaResolver.resolve*`,
   `SchemaDiscovery.listSchemas*`, document scanning) deferred as they need a

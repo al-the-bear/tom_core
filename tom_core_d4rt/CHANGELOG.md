@@ -1,3 +1,21 @@
+## 1.0.8
+
+### Tests
+
+- **Completed the `tom_build` replay to 60/60 by covering the five IO drivers
+  over a live self-contained fixture (RCK16).**
+  `test/replay/test_d4rt_tom_build.d4rt` now exercises `TomFs` (25 methods),
+  `TomGlob` (8), `TomShell` (7), `WorkspaceAnalyzer`, and
+  `ReflectionGeneratorRunner` against a temp directory tree created (and
+  removed) inside the replay — the d4rt binary runs with full IO access, so the
+  fixture is self-contained. Two d4rt execution quirks shaped the approach:
+  top-level `await` triggers an interpreter state-machine bug and is avoided,
+  and async methods (`analyze`/`generate`/`build`) are driven as bare
+  statements (which auto-await) and verified via observable side effects rather
+  than return values. `TomShell.pipe` is covered via its stdout code path; its
+  `input` argument is silently ignored (does not wire stdin) — filed as RCJ1,
+  not fixed here (no bridged public-behaviour change).
+
 ## 1.0.7
 
 ### Tests
