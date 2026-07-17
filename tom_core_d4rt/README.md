@@ -279,5 +279,15 @@ DartScript. See the [repository map](../README.md) for the full picture.
   async methods and process-spawning entry points (`ProcessMonitor.start`,
   `ProcessControl.startProcess`) fall back to construction/value coverage, and
   the abstract `ProcessMonitorClient` base plus `ServerDiscovery` stay
-  reachability-pinned.
+  reachability-pinned. The `tom_core` replays (RCK20) close the last deferred
+  kernel/server surfaces: the `tom_core_kernel` replay now drives the timezone
+  value types (`TomZonedTime`/`TomZonedDate`/`TomTimezoned`, which default to
+  `TomTimezone.utc` so they need no `initializeTimeZones()`) and their
+  observable wrappers directly, plus the connection-free isolate-pooling static
+  surface (`TomWorker`/`TomExecutor`); the DB-dependent `MariaDbDatasource`
+  path lives in a separate **live-DB replay** (`test_d4rt_tom_core_server_db`)
+  that opens a real MariaDB connection and drives CREATE/INSERT/rollback/commit/
+  DROP/close as bare auto-awaited statements, gated by a `tom_core (db)` group
+  that TCP-probes `127.0.0.1:3309` (the RCK13 docker fixture) and skips cleanly
+  when no database is reachable.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

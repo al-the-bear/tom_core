@@ -266,6 +266,43 @@ var isNotNull = IsNotNull(StringLiteral('name'));
 verifyContains(isNotNull.analyze(0), 'IsNotNull', 'IsNotNull analyze names the operator');
 
 # =============================================================================
+# Test: MariaDbDatasource connection-free surface (RCK20)
+# The driver's static port helpers and its unconnected-instance getters/setters
+# need no server. The live connect/execute/transaction paths are covered by the
+# DB-gated replay test_d4rt_tom_core_server_db.d4rt, which skips when no MariaDB
+# is reachable — keeping the default run green everywhere.
+# =============================================================================
+
+verifyEquals(MariaDbDatasource.parsePort(3309), 3309, 'parsePort passes an int through');
+verifyEquals(MariaDbDatasource.parsePort('3309'), 3309, 'parsePort parses a string port');
+var normalizedSettings = MariaDbDatasource.normalizePort({'port': '3306'});
+verifyEquals(normalizedSettings['port'], 3306, 'normalizePort folds a string port to int');
+
+var freshDs = MariaDbDatasource();
+verifyNotNull(freshDs, 'MariaDbDatasource constructed');
+verifyEquals(freshDs.connected, false, 'a fresh datasource is not connected');
+verifyEquals(freshDs.isOperational(), false, 'a fresh datasource is not operational');
+verifyEquals(freshDs.port, -1, 'port is -1 until configured');
+freshDs.host = '127.0.0.1';
+verifyEquals(freshDs.host, '127.0.0.1', 'host setter round-trips');
+freshDs.port = 3309;
+verifyEquals(freshDs.port, 3309, 'port setter round-trips');
+freshDs.databaseName = 'demo';
+verifyEquals(freshDs.databaseName, 'demo', 'databaseName setter round-trips');
+
+# =============================================================================
+# Test: TomEndpointRouting static route-template rewrite (RCK20)
+# shelfRoutePath is pure — it rewrites Tom's `{name}` path variables to
+# shelf_router's `<name>` syntax (a route left with `{name}` silently 404s).
+# The reflection/server-bound surface (scanClasses/initializeRouter over a live
+# annotated pipeline) needs a server and is filed as an RCJ follow-up.
+# =============================================================================
+
+verifyEquals(TomEndpointRouting.shelfRoutePath('/items/{id}/field-states'), '/items/<id>/field-states', 'shelfRoutePath rewrites a single path variable');
+verifyEquals(TomEndpointRouting.shelfRoutePath('/projects/{pid}/tasks/{tid}'), '/projects/<pid>/tasks/<tid>', 'shelfRoutePath rewrites multiple path variables');
+verifyEquals(TomEndpointRouting.shelfRoutePath('/health'), '/health', 'shelfRoutePath leaves a variable-free route unchanged');
+
+# =============================================================================
 # Summary
 # =============================================================================
 

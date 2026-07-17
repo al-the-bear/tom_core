@@ -1,0 +1,73 @@
+# =============================================================================
+# Live-DB replay: MariaDbDatasource against a real MariaDB (RCK20)
+# =============================================================================
+# This replay needs a reachable MariaDB. It is NOT part of the default replay
+# harness: the DB-gated group in test/d4rt_replay_test.dart TCP-probes
+# 127.0.0.1:3309 and skips this file when nothing answers, so `testkit :test`
+# stays green on machines without a database.
+#
+# Coordinates are PINNED to the RCK13 docker fixture
+# (tom_core_server/docker-compose.test.yaml): 127.0.0.1:3309, db
+# tom_core_server_test, root/password. The d4rt gate does NOT honor the
+# TOM_CORE_SERVER_TEST_DB_* env overrides that the dart-side RCK13 suites read;
+# bring the fixture up with `tool/run_db_tests.sh` (or docker compose) on the
+# default port before running this replay.
+#
+# Method (RCK16 finding): async IO methods driven as BARE statements auto-await
+# sequentially. Query results cannot be captured into script vars (a captured
+# async result stays an unresolved Future), so every mutation is verified via
+# the synchronous connected/isOperational getters and by a verify(true, ...)
+# placed AFTER the bare statement — a throw would abort the script before it,
+# so reaching the verify proves the prior statement succeeded.
+# =============================================================================
+
+# --- Open a live connection (bypass reflection-based initialize; set fields) ---
+var ds = MariaDbDatasource();
+verifyNotNull(ds, 'MariaDbDatasource constructed');
+ds.host = '127.0.0.1';
+ds.port = 3309;
+ds.username = 'root';
+ds.password = 'password';
+ds.databaseName = 'tom_core_server_test';
+ds.connect();
+verifyEquals(ds.connected, true, 'connect() opened a live connection');
+verifyEquals(ds.isOperational(), true, 'datasource is operational after connect');
+
+# --- Schema setup: a throwaway table, driven as bare auto-awaited statements ---
+ds.executeCommand('DROP TABLE IF EXISTS rck20_probe');
+verify(true, 'DROP TABLE IF EXISTS did not throw');
+ds.executeCommand('CREATE TABLE rck20_probe (id BIGINT NOT NULL AUTO_INCREMENT, label VARCHAR(64) NULL, PRIMARY KEY (id))');
+verify(true, 'CREATE TABLE executed');
+
+# --- Inserts ---
+ds.executeCommand('INSERT INTO rck20_probe (label) VALUES (:label)', {'label': 'alpha'});
+verify(true, 'parameterised INSERT executed');
+ds.executeCommand('INSERT INTO rck20_probe (label) VALUES (:label)', {'label': 'beta'});
+verify(true, 'second INSERT executed');
+
+# --- Transaction: rollback path ---
+ds.startTransaction();
+verify(true, 'startTransaction (rollback path) began');
+ds.executeCommand('INSERT INTO rck20_probe (label) VALUES (:label)', {'label': 'doomed'});
+verify(true, 'INSERT inside rolled-back transaction executed');
+ds.rollback();
+verify(true, 'rollback completed');
+
+# --- Transaction: commit path ---
+ds.startTransaction();
+verify(true, 'startTransaction (commit path) began');
+ds.executeCommand('INSERT INTO rck20_probe (label) VALUES (:label)', {'label': 'kept'});
+verify(true, 'INSERT inside committed transaction executed');
+ds.commit();
+verify(true, 'commit completed');
+
+# --- Teardown of the probe table ---
+ds.executeCommand('DROP TABLE rck20_probe');
+verify(true, 'DROP TABLE executed');
+
+# --- Close the connection ---
+ds.close();
+verifyEquals(ds.connected, false, 'connection reports closed after close()');
+verifyEquals(ds.isOperational(), false, 'datasource is not operational after close()');
+
+testSummary();

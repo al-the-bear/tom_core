@@ -1,3 +1,43 @@
+## 1.0.12
+
+### Tests
+
+- **Covered the kernel/server bridge surfaces the replays previously deferred
+  because they need a value fixture or a live database (RCK20).** Three gaps
+  from `completion_steps.tom_core.md` are now closed:
+  - *Timezone value types (§17 timezoned).* `TomZonedTime` / `TomZonedDate` /
+    `TomTimezoned` default their timezone to `TomTimezone.utc`, which wraps the
+    `timezone` package's predefined `tz.UTC` constant — so they construct
+    without `initializeTimeZones()`. `test_d4rt_tom_core_kernel.d4rt` now drives
+    their constructors and getters directly, plus the observable wrappers
+    `TomOZonedTime` (box/get/set) and the `TomOTimezoned.noDateTime` sentinel
+    (which boxes the Unix epoch, so it is *not* null).
+  - *Isolate pooling (§17 isolate_pooling).* `TomWorker.spawn` /
+    `TomWorkerPool.withSize` start real OS isolates whose entrypoint would have
+    to host the interpreter — impossible from a replay — so the replay covers
+    only the connection-free static surface (`readyMessage`, `isMainIsolate`,
+    `canSendToCreator`, `workerCount`, `TomExecutor.noResult`) and class
+    reachability; the spawn/execute paths stay covered by the native kernel
+    isolate tests.
+  - *`MariaDbDatasource` (server datasource).* The connection-free surface
+    (`parsePort` / `normalizePort` / field setters / `connected` /
+    `isOperational` before connect) is asserted in
+    `test_d4rt_tom_core_server.d4rt`. The genuinely DB-dependent path lives in a
+    new **live-DB replay** `test_d4rt_tom_core_server_db.d4rt`: it opens a real
+    connection (setting fields + `connect()`, bypassing the reflection-based
+    `initialize`) and drives CREATE/INSERT/rollback-transaction/
+    commit-transaction/DROP/close as bare auto-awaited statements, verified via
+    the synchronous `connected`/`isOperational` getters and a post-statement
+    `verify(true, …)` (a throw would abort before it).
+- **Made the live-DB replay cleanly skippable.** A new `tom_core (db)` group in
+  `d4rt_replay_test.dart` TCP-probes `127.0.0.1:3309` and `markTestSkipped`s
+  when nothing answers, so `testkit :test` stays green on machines without a
+  database. Coordinates are pinned to the RCK13 docker fixture
+  (`tom_core_server/docker-compose.test.yaml`); the d4rt gate does **not** read
+  the `TOM_CORE_SERVER_TEST_DB_*` overrides that the dart-side RCK13 suites
+  honor. Verified both paths: 25/25 green with the fixture up (the DB replay
+  runs), all-skipped with it down.
+
 ## 1.0.11
 
 ### Tests

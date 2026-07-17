@@ -255,9 +255,70 @@ verifyNotNull(cleanup.paused, 'paused getter returns a bool');
 cleanup.silent = true;
 verifyEquals(cleanup.silent, true, 'silent setter round-trips');
 
-# Note: isolate pooling (TomWorkerPool/TomExecutor/TomWorker) and timezone
-# (TomOTimezoned/TomOZonedTime, which require a TomZonedTime value) are deferred
-# — see completion_steps.tom_core.md.
+# =============================================================================
+# Test: Timezone-aware value types (§17 timezoned) — connection-free (RCK20)
+# TomZonedTime/TomZonedDate/TomTimezoned default their timezone to
+# TomTimezone.utc, which wraps the `timezone` package's predefined `tz.UTC`
+# Location constant — so they construct without initializeTimeZones(). The
+# deferred surface in completion_steps.tom_core.md is now covered directly.
+# =============================================================================
+
+var zonedTime = TomZonedTime(hour: 14, minute: 30);
+verifyNotNull(zonedTime, 'TomZonedTime constructed');
+verifyEquals(zonedTime.hour, 14, 'TomZonedTime hour preserved');
+verifyEquals(zonedTime.minute, 30, 'TomZonedTime minute preserved');
+verifyNotNull(zonedTime.timezone, 'TomZonedTime carries a timezone');
+verifyEquals(zonedTime.timezone.timezone, 'UTC', 'TomZonedTime default timezone is UTC');
+
+var zonedDate = TomZonedDate(year: 2026, month: 7, day: 17);
+verifyNotNull(zonedDate, 'TomZonedDate constructed');
+verifyEquals(zonedDate.year, 2026, 'TomZonedDate year preserved');
+verifyEquals(zonedDate.month, 7, 'TomZonedDate month preserved');
+verifyEquals(zonedDate.day, 17, 'TomZonedDate day preserved');
+
+var zoned = TomTimezoned(year: 2026, month: 7, day: 17, hour: 9, minute: 0);
+verifyNotNull(zoned, 'TomTimezoned constructed');
+verifyEquals(zoned.year, 2026, 'TomTimezoned year preserved');
+verifyEquals(zoned.hour, 9, 'TomTimezoned hour preserved');
+verifyEquals(zoned.timezone.timezone, 'UTC', 'TomTimezoned default timezone is UTC');
+
+# =============================================================================
+# Test: Observable timezone wrappers (§17 timezoned/observable) (RCK20)
+# TomOZonedTime boxes a TomZonedTime; TomOTimezoned.noDateTime is the shared
+# sentinel observable (boxes the Unix epoch, so it is NOT null). Both were
+# deferred because they need a TomZonedTime value — now constructible above.
+# =============================================================================
+
+var oZonedTime = TomOZonedTime(zonedTime);
+verifyNotNull(oZonedTime, 'TomOZonedTime constructed from a TomZonedTime');
+verifyEquals(oZonedTime.isNull, false, 'TomOZonedTime is not null with a value');
+verifyEquals(oZonedTime.isMuted, false, 'TomOZonedTime not muted by default');
+verifyEquals(oZonedTime.get().hour, 14, 'TomOZonedTime.get returns the boxed value');
+var zonedTime2 = TomZonedTime(hour: 8, minute: 15);
+oZonedTime.set(zonedTime2);
+verifyEquals(oZonedTime.get().hour, 8, 'TomOZonedTime.set updates the boxed value');
+
+var oTimezoned = TomOTimezoned.noDateTime;
+verifyNotNull(oTimezoned, 'TomOTimezoned.noDateTime resolves');
+verifyEquals(oTimezoned.isNull, false, 'noDateTime observable boxes the epoch sentinel (not null)');
+verifyEquals(oTimezoned.get().year, 1970, 'noDateTime observable holds the Unix epoch');
+
+# =============================================================================
+# Test: Isolate pooling (§17 isolate_pooling) — sync surface only (RCK20)
+# TomWorker.spawn / TomWorkerPool.withSize start real OS isolates whose
+# entrypoint would have to run interpreted d4rt closures — impossible from a
+# replay (a spawned isolate cannot host the interpreter). So only the
+# connection-free static surface and class reachability are covered here; the
+# spawn/execute paths are exercised by the native tom_core_kernel isolate tests.
+# =============================================================================
+
+verifyEquals(TomWorker.readyMessage, '--- ready ---', 'TomWorker.readyMessage resolves');
+verifyEquals(TomWorker.isMainIsolate, true, 'replay runs on the main isolate');
+verifyEquals(TomWorker.canSendToCreator(), false, 'main isolate has no creator back-channel');
+verifyEquals(TomWorker.workerCount, 0, 'no workers spawned in the replay');
+verifyNotNull(TomExecutor.noResult, 'TomExecutor.noResult sentinel resolves');
+verifyNotNull(TomWorkerPool, 'TomWorkerPool class symbol reachable');
+verifyNotNull(TomWorkerContext, 'TomWorkerContext class symbol reachable');
 
 # =============================================================================
 # Test: Resource-role authorization (C-5) — regenerated bridge surface (RCA6)

@@ -187,6 +187,30 @@ void main() {
     );
   });
 
+  // DB-gated: needs the RCK13 MariaDB fixture on 127.0.0.1:3309. When nothing
+  // answers, the test skips itself so `testkit :test` stays green without a DB.
+  // Coordinates are pinned to the docker fixture; the d4rt gate does NOT read
+  // the TOM_CORE_SERVER_TEST_DB_* overrides the dart-side RCK13 suites honor.
+  group('tom_core (db)', () {
+    test(
+      'tom_core_server MariaDbDatasource — live connection',
+      () async {
+        if (!await _isDbReachable('127.0.0.1', 3309)) {
+          markTestSkipped(
+            'No MariaDB on 127.0.0.1:3309 — start tom_core_server/'
+            'docker-compose.test.yaml (or tool/run_db_tests.sh) to run this.',
+          );
+          return;
+        }
+        final result = await helper.runReplay(
+          'test/replay/test_d4rt_tom_core_server_db.d4rt',
+          timeout: const Duration(seconds: 60),
+        );
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
+  });
+
   group('tom_build', () {
     test(
       'tom_build classes',
@@ -296,4 +320,22 @@ void main() {
       },
     );
   });
+}
+
+/// TCP-probes [host]:[port] to decide whether the live-DB replay can run.
+///
+/// Returns `true` only if a socket opens within the timeout. Used to gate the
+/// DB replay so the default suite stays green on machines without a database.
+Future<bool> _isDbReachable(String host, int port) async {
+  try {
+    final socket = await Socket.connect(
+      host,
+      port,
+      timeout: const Duration(seconds: 2),
+    );
+    socket.destroy();
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
