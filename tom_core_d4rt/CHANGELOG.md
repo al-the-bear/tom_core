@@ -1,3 +1,32 @@
+## 1.0.6
+
+### Tests
+
+- **Drove the `tom_md2latex` replay to exhaustive connection-free per-bridge
+  coverage (RCK14).** `test/replay/test_d4rt_tom_md2latex.d4rt` now references
+  every class the `tom_md2latex_bridges.b.dart` container registers — a
+  registered name→reference cross-check (excluding comment lines) confirms zero
+  gaps across all 23 bridges. The two previously name-uncovered classes are now
+  covered: `MarkdownElement` (the empty `sealed` base — pinned for reachability
+  and exercised via `is MarkdownElement` subtype checks on every concrete
+  element) and `ParsedMarkdown` (constructed directly to assert all six getters
+  — `title`/`author`/`date`/`generateToc`/`tocDepth`/`elements` — plus a
+  defaults case the `# Hello` parse cannot reach). Remaining connection-free
+  gaps were filled at the same time: `CodeBlockElement.code`, `LinkElement.text`,
+  `TableElement.rows`/`alignments`, `MarkdownParserOptions.asciiDiagramPatterns`,
+  `MarkdownParser.content`/`options`, `MdLatexConverter.convert` (the pure,
+  filesystem-free entry point) plus its getters, `MdLatexConverterOptions`
+  defaults, `MdLatexConverterResult.converted`, `ConversionError` construction +
+  `toString`, and a representative set of `LatexMacros` pure static string
+  transforms (`bold`/`italic`/`heading`/`paragraph`/`inlineCode`/
+  `horizontalRule`/`beginDocument`/`endDocument`/`makeTitle`/`unorderedList`/
+  `orderedList`/`blockQuote`/`link`/`textToSlug`/`escapeText`/`image`/
+  `codeBlock`). The only members not exercised are the IO/async surfaces that
+  require a live filesystem — `MdLatexConverter.findMarkdownFiles`/`convertAll`/
+  `convertFile` and the `Md2Latex.convertFile*`/`convertDirectory` helpers —
+  documented as integration-only in the replay header. Bridged public behaviour
+  is unchanged.
+
 ## 1.0.5
 
 ### Tests

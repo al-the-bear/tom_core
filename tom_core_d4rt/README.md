@@ -240,7 +240,7 @@ DartScript. See the [repository map](../README.md) for the full picture.
 
 ## Status
 
-- **Version:** 1.0.5
+- **Version:** 1.0.6
 - **Tests:** 33 test cases across 3 suites (replay + dcli-compat; run with
   `dart test` or the `bin/d4rtrun.b.dart` replay runner). The `tom_reflection`
   (RCF5) and `tom_basics` (RCG5) replays each exercise every bridged class
@@ -252,5 +252,9 @@ DartScript. See the [repository map](../README.md) for the full picture.
   connection-free bridged class across all 31 registrations (zero-gap
   cross-check), with only the IO/scan surfaces (`SchemaResolver.resolve*`,
   `SchemaDiscovery.listSchemas*`, document scanning) deferred as they need a
-  live filesystem.
+  live filesystem. The `tom_md2latex` replay (RCK14) covers every one of its 23
+  bridged classes (zero-gap cross-check), with only the IO/async converter
+  surfaces (`MdLatexConverter.findMarkdownFiles`/`convertAll`/`convertFile`,
+  `Md2Latex.convertFile*`/`convertDirectory`) deferred as they need a live
+  filesystem.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
