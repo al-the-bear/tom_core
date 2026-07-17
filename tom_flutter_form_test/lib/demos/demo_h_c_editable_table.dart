@@ -663,11 +663,10 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
       buildDefaultDragHandles: false,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: items.length,
-      onReorder: (from, to) {
-        // ReorderableListView reports `to` as the index *after* removal
-        // when moving downward — normalise to TomListForm.reorder semantics.
-        final adjusted = to > from ? to - 1 : to;
-        setState(() => _form.items.reorder(from, adjusted));
+      onReorderItem: (from, to) {
+        // onReorderItem already adjusts `to` for the removed item, so it maps
+        // directly onto TomListForm.reorder semantics with no manual fixup.
+        setState(() => _form.items.reorder(from, to));
       },
       itemBuilder: (context, index) {
         final form = items[index];
