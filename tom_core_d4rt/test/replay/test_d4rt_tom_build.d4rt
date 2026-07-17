@@ -381,9 +381,11 @@ verifyEquals(TomShell.run('echo probe123', workingDir: root, quiet: true).trim()
 verifyEquals(TomShell.capture('echo cap', workingDir: root).trim(), 'cap', 'TomShell.capture');
 verifyEquals(TomShell.exec('true', workingDir: root), 0, 'TomShell.exec exit code');
 verifyEquals(TomShell.runAll(['echo a', 'echo b'], workingDir: root).length, 2, 'TomShell.runAll');
-# NOTE: TomShell.pipe currently ignores its `input` arg (does not wire stdin) —
-# see RCJ1. Here we cover pipe()'s real code path (shell exec + trim of stdout).
-verifyEquals(TomShell.pipe('echo fromcmd', 'ignored', workingDir: root), 'fromcmd', 'TomShell.pipe (stdout path)');
+# TomShell.pipe feeds `input` to the command's stdin (RCJ7 fix): `cat` echoes
+# the piped input back, and the subshell redirect binds stdin to the head of a
+# pipeline (`cat | tr`).
+verifyEquals(TomShell.pipe('cat', 'piped-stdin', workingDir: root), 'piped-stdin', 'TomShell.pipe (stdin round-trip)');
+verifyEquals(TomShell.pipe('cat | tr a-z A-Z', 'hello', workingDir: root), 'HELLO', 'TomShell.pipe (stdin to pipeline head)');
 verifyEquals(TomShell.hasCommand('sh'), true, 'TomShell.hasCommand sh');
 verifyNotNull(TomShell.which('sh'), 'TomShell.which sh');
 
