@@ -16,6 +16,7 @@ import 'dart:io';
 import '01_worker_basics_example.dart' as worker_basics;
 import '02_worker_pool_example.dart' as worker_pool;
 import '03_creator_backchannel_example.dart' as creator_backchannel;
+import '04_worker_pool_supervision_example.dart' as worker_pool_supervision;
 
 void main() async {
   print('╔══════════════════════════════════════════════════════════════════╗');
@@ -26,6 +27,7 @@ void main() async {
   await worker_basics.run();
   await worker_pool.run();
   await creator_backchannel.run();
+  await worker_pool_supervision.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Examples Complete!                        ║');

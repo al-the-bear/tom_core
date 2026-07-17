@@ -92,6 +92,22 @@ class DelayedCommand extends TomCommand {
   }
 }
 
+/// Test command that kills its own worker isolate mid-execution.
+///
+/// Simulates an unexpected worker death (a crash / `Isolate.kill` / OOM): the
+/// isolate terminates before it can answer, so the awaiting request would hang
+/// forever without liveness supervision. Used to assert the supervised pool
+/// fails the in-flight request and respawns a replacement.
+class SuicideCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async {
+    Isolate.current.kill(priority: Isolate.immediate);
+    // Unreachable once the kill takes effect, but keeps the body well-typed.
+    await Future<void>.delayed(const Duration(seconds: 60));
+    return 'never';
+  }
+}
+
 /// Command executed in the CREATOR isolate via the back-channel.
 ///
 /// Used by [CreatorRoundTripCommand] to exercise the worker→creator
@@ -963,6 +979,82 @@ void main() {
         expect(results, containsAll(['first', 'second', 'third']));
 
         smallPool.close();
+      });
+    });
+
+    group('liveness supervision', () {
+      test('is off by default (opt-in)', () async {
+        final context = TestWorkerContext(namePrefix: 'Unsupervised');
+        final pool = await TomWorkerPool.withSize(1, context);
+
+        expect(pool.isSupervised, isFalse);
+
+        pool.close();
+      });
+
+      test('recovers when a worker isolate dies mid-command', () async {
+        final context = TestWorkerContext(namePrefix: 'Supervised');
+        final pool = await TomWorkerPool.withSize(
+          2,
+          context,
+          healthCheckInterval: const Duration(milliseconds: 50),
+        );
+
+        expect(pool.isSupervised, isTrue);
+        expect(pool.workerCount, equals(2));
+
+        // A command that kills its own isolate must surface as a hard failure,
+        // not an infinite hang, once supervision fails the in-flight request.
+        await expectLater(
+          pool.execute(SuicideCommand()),
+          throwsA(isA<TomWorkerDiedException>()),
+        );
+
+        // The pool respawns a replacement asynchronously; wait for it to return
+        // to full capacity.
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (pool.workerCount < 2 && DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+        expect(pool.workerCount, equals(2),
+            reason: 'pool should respawn a replacement worker after a death');
+
+        // And the recovered pool still executes work correctly.
+        final result = await pool.execute(ComputeCommand(7, 8));
+        expect(result, equals(15));
+
+        pool.close();
+      });
+
+      test('periodic health checks leave healthy idle workers untouched',
+          () async {
+        final context = TestWorkerContext(namePrefix: 'HealthyPing');
+        final pool = await TomWorkerPool.withSize(
+          2,
+          context,
+          healthCheckInterval: const Duration(milliseconds: 20),
+        );
+
+        // Let several health-check ticks run over idle workers.
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+
+        expect(pool.workerCount, equals(2),
+            reason: 'healthy workers must not be killed by pings');
+        final result = await pool.execute(ComputeCommand(4, 5));
+        expect(result, equals(9));
+
+        pool.close();
+      });
+
+      test('execute after close throws instead of hanging', () async {
+        final context = TestWorkerContext(namePrefix: 'ClosedPool');
+        final pool = await TomWorkerPool.withSize(1, context);
+        pool.close();
+
+        await expectLater(
+          pool.execute(FixedValueCommand('x')),
+          throwsA(isA<TomWorkerException>()),
+        );
       });
     });
   });

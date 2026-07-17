@@ -94,6 +94,33 @@ class TomWorkerException extends TomException {
   });
 }
 
+/// Exception used to fail a command whose worker isolate died mid-flight.
+///
+/// When liveness supervision is enabled on a [TomWorkerPool] (or a worker is
+/// supervised directly via [TomWorker.superviseExit]) and the worker's isolate
+/// terminates unexpectedly — an uncaught error, [Isolate.kill], or an
+/// out-of-memory kill — every request still awaiting a response is completed
+/// with this exception rather than hanging forever on its completer.
+///
+/// The command is **not** re-dispatched: re-running a command that may have
+/// already produced side effects before the isolate died would risk executing
+/// non-idempotent work twice. Recovery instead means the pool respawns a
+/// replacement worker to restore capacity, while the in-flight caller observes
+/// this failure and decides how to react.
+class TomWorkerDiedException extends TomException {
+  /// Creates a [TomWorkerDiedException] with the given error details.
+  TomWorkerDiedException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.uuid,
+    super.serverCallError,
+  });
+}
+
 // =============================================================================
 // INTERNAL HELPER CLASSES
 // =============================================================================
@@ -261,6 +288,19 @@ class _TomIsolateResponse {
 
   _TomIsolateResponse(this.id, this.response);
 }
+
+/// Internal liveness-probe command sent by pool supervision to an idle worker.
+///
+/// The worker's message loop answers it immediately with [_healthPongMessage],
+/// letting the pool confirm the isolate is responsive without running any user
+/// command. It is handled before the [TomCommand]/executor dispatch so a
+/// worker with no executors registered still answers pings.
+class _TomHealthPingCommand {
+  const _TomHealthPingCommand();
+}
+
+/// Reply payload a worker sends back for a [_TomHealthPingCommand].
+const String _healthPongMessage = '--- pong ---';
 
 // =============================================================================
 // WORKER CONTEXT
@@ -433,6 +473,14 @@ class TomWorker {
   final Map<int, Completer<Object?>> _activeRequests = {};
   int _idCounter = 0;
 
+  /// Port registered with [Isolate.addOnExitListener] when this worker is
+  /// supervised via [superviseExit]; `null` when supervision is off.
+  RawReceivePort? _exitPort;
+
+  /// Callback invoked once when a supervised worker's isolate dies
+  /// unexpectedly (not through [close]). Set by [superviseExit].
+  void Function()? _onDeath;
+
   /// Indicates whether the current code is running in the main isolate.
   ///
   /// This is set to `false` when [startRemoteIsolate] is called in a
@@ -536,8 +584,13 @@ class TomWorker {
       isReady = true;
       _instanceCompleter.complete(this);
     } else if (message is _TomIsolateResponse) {
-      final completer = _activeRequests.remove(message.id)!;
-      _completeFromResponse(completer, message.response);
+      // The request may already be gone: a timed-out [ping] abandons its
+      // completer and removes the id before the (late) pong arrives, so a
+      // missing entry is expected and must not crash the handler.
+      final completer = _activeRequests.remove(message.id);
+      if (completer != null) {
+        _completeFromResponse(completer, message.response);
+      }
       // If close() was requested while requests were still in flight, the
       // response port could not be closed then; close it now that the last
       // pending request has resolved so the ReceivePort does not leak (bug §5).
@@ -662,6 +715,12 @@ class TomWorker {
         return;
       }
       if (message is _TomIsolateCommand) {
+        // Liveness probe: answer immediately, before any executor dispatch, so
+        // even a worker with no executors registered proves it is responsive.
+        if (message.command is _TomHealthPingCommand) {
+          sendPort.send(_TomIsolateResponse(message.id, _healthPongMessage));
+          return;
+        }
         try {
           if (message.command is TomCommand) {
             var command = message.command as TomCommand;
@@ -819,6 +878,91 @@ class TomWorker {
     return await completer.future;
   }
 
+  /// Registers a one-shot [onDeath] callback for unexpected isolate exit.
+  ///
+  /// Uses [Isolate.addOnExitListener] as the primary death signal: it fires for
+  /// every way the isolate can terminate — an uncaught error, [Isolate.kill],
+  /// or an out-of-memory kill — which a request-response ping alone cannot
+  /// observe once a command is already hung.
+  ///
+  /// A normal [close] is **not** an unexpected death: [close] sets [isClosed]
+  /// and tears down the exit port before the isolate terminates, so
+  /// [onDeath] does not fire for orderly shutdowns.
+  ///
+  /// Idempotent: calling it again while already supervised is a no-op.
+  void superviseExit(void Function() onDeath) {
+    if (_closed || _exitPort != null) return;
+    _onDeath = onDeath;
+    final port = RawReceivePort();
+    port.handler = (_) => _handleUnexpectedDeath();
+    _exitPort = port;
+    isolate.addOnExitListener(port.sendPort);
+  }
+
+  /// Handles an unexpected isolate exit reported by the [superviseExit] port.
+  ///
+  /// Marks the worker closed, fails every in-flight request with a
+  /// [TomWorkerDiedException] (so callers stop hanging on their completers),
+  /// releases the ports, and finally invokes the supervisor callback so the
+  /// owning pool can respawn a replacement.
+  void _handleUnexpectedDeath() {
+    if (_closed) return;
+    _closed = true;
+    _exitPort?.close();
+    _exitPort = null;
+
+    final pending = List<Completer<Object?>>.of(_activeRequests.values);
+    _activeRequests.clear();
+    for (final completer in pending) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          TomWorkerDiedException(
+            'isolate.worker_died.in_flight_request',
+            'Worker isolate ${isolate.debugName} died while a command was '
+                'in flight; the request was failed rather than re-dispatched.',
+            parameters: {'isolateName': isolate.debugName},
+          ),
+        );
+      }
+    }
+    _responses.close();
+
+    final callback = _onDeath;
+    _onDeath = null;
+    callback?.call();
+  }
+
+  /// Sends a liveness probe to the worker and awaits its pong within [timeout].
+  ///
+  /// Returns `true` if the worker answered in time, `false` on timeout. A
+  /// timed-out probe abandons its request slot so a late pong is silently
+  /// ignored (see the null-safe branch in [_handleResponsesFromIsolate]); it
+  /// deliberately does **not** kill the isolate — that decision belongs to the
+  /// supervisor, which only pings idle workers.
+  Future<bool> ping(Duration timeout) async {
+    if (_closed) return false;
+    final completer = Completer<Object?>.sync();
+    final id = _idCounter++;
+    _activeRequests[id] = completer;
+    _commands.send(_TomIsolateCommand(id, const _TomHealthPingCommand()));
+    try {
+      await completer.future.timeout(timeout);
+      return true;
+    } on TimeoutException {
+      _activeRequests.remove(id);
+      return false;
+    }
+  }
+
+  /// Force-kills the worker's isolate at [Isolate.immediate] priority.
+  ///
+  /// Intended for supervisors that detected an unresponsive (hung) worker via
+  /// [ping]. The kill triggers the [superviseExit] listener, which fails any
+  /// in-flight requests and notifies the pool to respawn a replacement.
+  void killUnresponsive() {
+    isolate.kill(priority: Isolate.immediate);
+  }
+
   /// Sends an executor to the worker isolate.
   ///
   /// The executor will be added to the worker's executor list and will
@@ -841,6 +985,11 @@ class TomWorker {
   void close() {
     if (!_closed) {
       _closed = true;
+      // Tear down exit supervision first so the imminent (orderly) isolate
+      // termination is not mistaken for an unexpected death.
+      _exitPort?.close();
+      _exitPort = null;
+      _onDeath = null;
       _commands.send('shutdown');
       if (_activeRequests.isEmpty) _responses.close();
       tomLog.trace(
@@ -853,11 +1002,6 @@ class TomWorker {
 // =============================================================================
 // WORKER POOL
 // =============================================================================
-
-// Note: this pool has no liveness supervision. A worker whose isolate dies
-// (uncaught error, `Isolate.kill`) is not detected or replaced, and a command
-// dispatched to it would never complete. Adding periodic health pings with
-// automatic restart is tracked as a follow-up enhancement (quest todo RCJ1).
 
 /// Manages a pool of worker isolates for parallel task execution.
 ///
@@ -886,6 +1030,29 @@ class TomWorker {
 /// ]);
 /// ```
 ///
+/// ## Liveness supervision (opt-in)
+///
+/// By default the pool performs **no** liveness supervision — behaviour is
+/// unchanged from an unsupervised pool. Pass a [healthCheckInterval] to
+/// [withSize] to enable it. When enabled:
+///
+/// - Every worker is watched via [TomWorker.superviseExit]. If an isolate
+///   dies for any reason (uncaught error, [Isolate.kill], OOM), each in-flight
+///   command on it is **failed** with a [TomWorkerDiedException] instead of
+///   hanging forever, and the pool respawns a replacement worker (via
+///   [TomWorker.spawn] with the pool's stored context) to restore capacity.
+/// - A periodic timer pings **idle** workers to catch hangs that never emit an
+///   exit signal. Only idle workers are probed: a ping queued behind a busy
+///   worker's in-flight command cannot be distinguished from legitimately slow
+///   work, and busy-worker crashes are already covered by the exit listener. A
+///   worker that fails to answer within [healthCheckTimeout] is force-killed,
+///   which routes it through the same death/respawn path.
+///
+/// A failed in-flight command is deliberately **not** re-dispatched:
+/// re-running a command that may have already produced side effects before the
+/// isolate died would risk executing non-idempotent work twice. The caller
+/// observes the [TomWorkerDiedException] and decides how to react.
+///
 /// ## Notes
 ///
 /// - Workers are created during pool initialization
@@ -901,39 +1068,150 @@ class TomWorkerPool {
   /// Workers currently processing tasks.
   final List<TomWorker> _busy = [];
 
+  /// Context used to (re)spawn workers; stored so dead workers can be replaced.
+  late final TomWorkerContext _context;
+
+  /// Interval between liveness probes; `null` disables supervision entirely.
+  Duration? _healthCheckInterval;
+
+  /// Maximum time a probed idle worker has to answer before being force-killed.
+  Duration _healthCheckTimeout = const Duration(seconds: 5);
+
+  /// Periodic supervision timer; `null` when supervision is off or closed.
+  Timer? _healthTimer;
+
+  /// Guards against overlapping health-check passes (a slow pass must not be
+  /// re-entered by the next timer tick).
+  bool _healthCheckRunning = false;
+
+  /// Whether [close] has been called; stops supervision and new dispatch.
+  bool _closed = false;
+
   /// Private constructor - use [withSize] to create instances.
   TomWorkerPool._();
+
+  /// Whether liveness supervision is enabled for this pool.
+  bool get isSupervised => _healthCheckInterval != null;
+
+  /// Number of live workers currently registered in the pool.
+  int get workerCount => _workers.length;
 
   /// Creates a worker pool with the specified number of workers.
   ///
   /// Each worker is spawned using [TomWorker.spawn] with the provided
-  /// context. The method waits for all workers to be ready before
+  /// [context]. The method waits for all workers to be ready before
   /// returning.
   ///
   /// - [size]: Number of workers to create
-  /// - [context]: Configuration for each worker
+  /// - [context]: Configuration for each worker (also retained to respawn
+  ///   workers that die when supervision is enabled)
+  /// - [healthCheckInterval]: opt-in; when non-null, enables liveness
+  ///   supervision (exit detection + idle-worker pings). Defaults to `null`
+  ///   (supervision off — existing behaviour unchanged).
+  /// - [healthCheckTimeout]: how long a probed idle worker has to answer a
+  ///   ping before it is treated as hung and force-killed. Only used when
+  ///   [healthCheckInterval] is set.
   ///
   /// Returns a [Future] that completes when all workers are ready.
   static Future<TomWorkerPool> withSize(
     int size,
-    TomWorkerContext context,
-  ) async {
-    TomWorkerPool twp = TomWorkerPool._();
+    TomWorkerContext context, {
+    Duration? healthCheckInterval,
+    Duration healthCheckTimeout = const Duration(seconds: 5),
+  }) async {
+    final twp = TomWorkerPool._();
+    twp._context = context;
+    twp._healthCheckInterval = healthCheckInterval;
+    twp._healthCheckTimeout = healthCheckTimeout;
     for (int i = 0; i < size; i++) {
       tomLog.info(
         'Creating worker #$i for workerpool in  ${Isolate.current.debugName}',
       );
-      TomWorker tw = await TomWorker.spawn(
-        TomWorker.startRemoteIsolate,
-        context,
-      );
+      await twp._spawnAndRegister();
       tomLog.info(
         'Done creating worker #$i for workerpool in  ${Isolate.current.debugName}',
       );
-      twp._workers.add(tw);
-      twp._free.add(tw);
+    }
+    if (healthCheckInterval != null) {
+      twp._healthTimer =
+          Timer.periodic(healthCheckInterval, (_) => twp._runHealthCheck());
     }
     return twp;
+  }
+
+  /// Spawns a worker, registers it as free, and (when supervised) attaches the
+  /// exit listener. If the pool was closed while the spawn was in flight, the
+  /// fresh worker is closed immediately instead of being added.
+  Future<void> _spawnAndRegister() async {
+    final tw = await TomWorker.spawn(TomWorker.startRemoteIsolate, _context);
+    if (_closed) {
+      tw.close();
+      return;
+    }
+    _workers.add(tw);
+    _free.add(tw);
+    if (_healthCheckInterval != null) {
+      tw.superviseExit(() => _handleWorkerDeath(tw));
+    }
+  }
+
+  /// Removes a dead [worker] from every list and respawns a replacement.
+  ///
+  /// Invoked from [TomWorker.superviseExit]'s callback when an isolate dies
+  /// unexpectedly. The dead worker's in-flight request (if any) has already
+  /// been failed with a [TomWorkerDiedException] by the worker itself.
+  void _handleWorkerDeath(TomWorker worker) {
+    if (_closed) return;
+    _workers.remove(worker);
+    _free.remove(worker);
+    _busy.remove(worker);
+    unawaited(_replaceDeadWorker());
+  }
+
+  /// Restores pool capacity by spawning one replacement worker.
+  Future<void> _replaceDeadWorker() async {
+    if (_closed) return;
+    try {
+      await _spawnAndRegister();
+    } catch (e) {
+      tomLog.error(
+        'TomWorkerPool: failed to respawn a worker after an isolate death: $e',
+      );
+    }
+  }
+
+  /// Pings every idle worker; force-kills any that do not answer in time.
+  ///
+  /// Each probed worker is reserved (pulled out of [_free]) for the duration of
+  /// its ping so [execute] cannot dispatch real work onto it mid-probe — that
+  /// would make a timed-out ping kill a worker that just started legitimate
+  /// work. Responsive workers are returned to rotation; unresponsive ones are
+  /// killed, which routes them through [_handleWorkerDeath] for respawn.
+  Future<void> _runHealthCheck() async {
+    if (_closed || _healthCheckRunning) return;
+    _healthCheckRunning = true;
+    try {
+      final idle = List<TomWorker>.of(_free);
+      for (final tw in idle) {
+        if (_closed) break;
+        // Atomically reserve; skip if execute() already took it.
+        if (!_free.remove(tw)) continue;
+        bool alive;
+        try {
+          alive = await tw.ping(_healthCheckTimeout);
+        } catch (_) {
+          alive = false;
+        }
+        if (_closed) break;
+        if (alive) {
+          _free.add(tw);
+        } else {
+          tw.killUnresponsive();
+        }
+      }
+    } finally {
+      _healthCheckRunning = false;
+    }
   }
 
   /// Executes a command using an available worker from the pool.
@@ -946,29 +1224,49 @@ class TomWorkerPool {
   ///
   /// Returns the result of executing the command.
   ///
+  /// Throws [TomWorkerException] if the pool has been closed, and (when
+  /// supervision is enabled) [TomWorkerDiedException] if the worker handling
+  /// this command dies before it completes.
+  ///
   /// Example:
   /// ```dart
   /// final result = await pool.execute(MyCommand());
   /// ```
   Future<Object?> execute(Object command) async {
+    if (_closed) throw _closedException();
     while (_free.isEmpty) {
+      if (_closed) throw _closedException();
       await Future.delayed(Duration(milliseconds: 1));
     }
-    TomWorker tw = _free.removeAt(0);
+    final TomWorker tw = _free.removeAt(0);
     _busy.add(tw);
-    Object? result = await tw.executeCommand(command);
-    _busy.remove(tw);
-    _free.add(tw);
-    return result;
+    try {
+      return await tw.executeCommand(command);
+    } finally {
+      // Only recycle a worker that is still alive. A worker that died mid-
+      // command has already been pulled from [_busy] by [_handleWorkerDeath];
+      // in that case the removal below returns false and we do not re-add it.
+      if (_busy.remove(tw) && !tw.isClosed) {
+        _free.add(tw);
+      }
+    }
   }
+
+  TomWorkerException _closedException() => TomWorkerException(
+        'isolate.pool_closed.execute_after_close',
+        'Cannot execute on a TomWorkerPool that has been closed.',
+      );
 
   /// Shuts down every worker in this pool and releases their isolates.
   ///
   /// After calling this method the pool is empty and must not be reused.
-  /// Each worker is closed via [TomWorker.close]; workers still processing
-  /// in-flight commands close their response ports once those commands
-  /// resolve (see [TomWorker.close]).
+  /// Supervision (if enabled) is stopped first. Each worker is closed via
+  /// [TomWorker.close]; workers still processing in-flight commands close their
+  /// response ports once those commands resolve (see [TomWorker.close]).
   void close() {
+    _closed = true;
+    _healthTimer?.cancel();
+    _healthTimer = null;
     for (final TomWorker tw in _workers) {
       tw.close();
     }

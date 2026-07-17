@@ -1,3 +1,27 @@
+## 1.1.15
+
+### Added
+
+- **Opt-in liveness supervision for `TomWorkerPool` (RCJ1).** A worker whose
+  isolate dies (uncaught error, `Isolate.kill`, OOM) was previously neither
+  detected nor replaced, and any command dispatched to it hung forever on its
+  completer. `TomWorkerPool.withSize` now accepts an optional
+  `healthCheckInterval` (default `null` = supervision off, existing behaviour
+  unchanged) and `healthCheckTimeout`. When enabled, each worker is watched via
+  `Isolate.addOnExitListener`: on an unexpected death every in-flight request is
+  failed with a new `TomWorkerDiedException` (rather than re-dispatched — a
+  command that already produced side effects must not run twice), and the pool
+  respawns a replacement worker from its stored context to restore capacity. A
+  periodic timer additionally pings **idle** workers to catch hangs that emit no
+  exit signal; an unresponsive idle worker is force-killed, routing it through
+  the same death/respawn path. `execute` on a closed pool now throws
+  `TomWorkerException` instead of hanging. New `TomWorkerPool.isSupervised` /
+  `workerCount` accessors, plus `TomWorker.superviseExit` / `ping` /
+  `killUnresponsive`. Covered by tests that kill a worker isolate mid-command
+  and assert recovery, and an example demonstrating recovery
+  (`example/isolate_pooling/04_worker_pool_supervision_example.dart`). Closes
+  the carve-out filed from RCK1.
+
 ## 1.1.14
 
 ### Added

@@ -16,6 +16,7 @@ import '../../run_all_samples.reflection.dart';
 import '01_worker_basics_example.dart' as worker_basics;
 import '02_worker_pool_example.dart' as worker_pool;
 import '03_worker_creator_communication_example.dart' as worker_creator;
+import '04_worker_pool_supervision_example.dart' as worker_pool_supervision;
 
 /// Standalone entry point for running isolate pooling examples.
 Future<void> main() async {
@@ -43,6 +44,11 @@ Future<void> run() async {
   print('-' * 40);
   await worker_creator.run();
   print('✓ Worker-creator communication examples passed\n');
+
+  print('04: Worker Pool Liveness Supervision Example');
+  print('-' * 40);
+  await worker_pool_supervision.run();
+  print('✓ Worker pool supervision examples passed\n');
 
   print('=' * 60);
   print('All isolate pooling examples completed successfully!');
