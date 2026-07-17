@@ -259,5 +259,14 @@ DartScript. See the [repository map](../README.md) for the full picture.
   bridged classes (zero-gap cross-check), with only the IO/async converter
   surfaces (`MdLatexConverter.findMarkdownFiles`/`convertAll`/`convertFile`,
   `Md2Latex.convertFile*`/`convertDirectory`) deferred as they need a live
-  filesystem.
+  filesystem. The `tom_dist_ledger` replay (RCK18) covers the synchronous
+  construction + value surface of every network class that exposes one
+  (`SpawnedCall`, `CallFrame`, `LocalLedger`, `RemoteLedgerClient`, the
+  `Ledger`/`Operation`/`Call` callback carriers, `OperationHelper`'s poll
+  builders, `CleanupHandler`); the async-only classes (`LedgerServer`,
+  `RemoteOperation`, `LocalOperation`, driven `Ledger`/`Call`) stay
+  reachability-pinned, because a driven loopback fixture is impossible in the
+  replay harness — d4rt cannot top-level-`await`, an async factory assigned to a
+  variable stays a raw `Future`, and a `.then()` continuation runs after the
+  summary and re-triggers the interpreter's async bug.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

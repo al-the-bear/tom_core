@@ -123,13 +123,145 @@ verifyEquals(discOpts.port, 19880, 'DiscoveryOptions default port');
 verifyEquals(discOpts.scanSubnet, true, 'DiscoveryOptions default scanSubnet');
 
 # =============================================================================
-# Test: Runtime entry points exist (integration-only: server/socket/call model)
+# Live-network classes: construction / value surface (RCK18)
+#
+# The network-gated classes (LedgerServer, RemoteLedgerClient, Ledger,
+# RemoteOperation, LocalOperation, Call, CallLifecycle, ...) are reachable ONLY
+# through async factories: LedgerServer.start, RemoteLedgerClient.connect /
+# .discover, ledger.createOperation / .joinOperation, operation.startCall. A
+# DRIVEN loopback fixture is impossible inside the d4rt replay harness:
+#   (1) top-level `await` triggers the interpreter state-machine bug
+#       ("Undefined variable"), failing the replay;
+#   (2) an async factory assigned to a variable stays a raw Future -- it never
+#       resolves to the LedgerServer/RemoteLedgerClient/Operation, so the object
+#       cannot be bound to drive follow-up calls (empirically: a captured
+#       LedgerServer.start(...) `is LedgerServer` == false);
+#   (3) a `.then()` continuation runs AFTER testSummary() (its verifications are
+#       never counted) and its async-void body re-triggers the interpreter bug.
+# Empirically confirmed 2026-07-17 (see RCK18 notes). We therefore cover the
+# SYNCHRONOUS construction + value surface of every network class that exposes
+# one, and reachability-pin the async-only remainder.
+# =============================================================================
+
+# --- SpawnedCall: the full sync call-model surface (success path) ---
+var scOk = SpawnedCall(callId: 'call-ok', description: 'a spawned call');
+verifyEquals(scOk.callId, 'call-ok', 'SpawnedCall callId');
+verifyEquals(scOk.description, 'a spawned call', 'SpawnedCall description');
+verifyEquals(scOk.isCompleted, false, 'SpawnedCall not completed at start');
+verifyEquals(scOk.isSuccess, false, 'SpawnedCall not success at start');
+verifyEquals(scOk.isFailed, false, 'SpawnedCall not failed at start');
+verifyEquals(scOk.isCancelled, false, 'SpawnedCall not cancelled at start');
+verifyEquals(scOk.resultOrNull, null, 'SpawnedCall resultOrNull null before complete');
+verifyEquals(scOk.resultOr(-1), -1, 'SpawnedCall resultOr default before complete');
+verifyEquals(scOk.kill(), false, 'SpawnedCall kill() false with no process');
+scOk.complete(42);
+verifyEquals(scOk.isCompleted, true, 'SpawnedCall completed after complete()');
+verifyEquals(scOk.isSuccess, true, 'SpawnedCall success after complete()');
+verifyEquals(scOk.isFailed, false, 'SpawnedCall not failed after complete()');
+verifyEquals(scOk.result, 42, 'SpawnedCall result after complete()');
+verifyEquals(scOk.resultOrNull, 42, 'SpawnedCall resultOrNull after complete()');
+verifyEquals(scOk.resultOr(-1), 42, 'SpawnedCall resultOr returns result after complete()');
+
+# --- SpawnedCall: failure path ---
+var scFail = SpawnedCall(callId: 'call-fail');
+scFail.fail('boom');
+verifyEquals(scFail.isCompleted, true, 'failed SpawnedCall isCompleted');
+verifyEquals(scFail.isSuccess, false, 'failed SpawnedCall not success');
+verifyEquals(scFail.isFailed, true, 'failed SpawnedCall isFailed');
+verifyEquals(scFail.error, 'boom', 'failed SpawnedCall error');
+verifyEquals(scFail.resultOr(-7), -7, 'failed SpawnedCall resultOr default');
+verifyEquals(scFail.resultOrNull, null, 'failed SpawnedCall resultOrNull null');
+
+# --- CallFrame: value carrier + setter + json round-trip + staleness ---
+var cf = CallFrame(participantId: 'p1', callId: 'c1', pid: 4321, startTime: DateTime.now());
+verifyEquals(cf.participantId, 'p1', 'CallFrame participantId');
+verifyEquals(cf.callId, 'c1', 'CallFrame callId');
+verifyEquals(cf.pid, 4321, 'CallFrame pid');
+verifyEquals(cf.failOnCrash, true, 'CallFrame default failOnCrash');
+verifyEquals(cf.state, FrameState.active, 'CallFrame default state active');
+verifyEquals(cf.isStale(timeoutMs: 100000), false, 'fresh CallFrame not stale within 100s');
+cf.state = FrameState.crashed;
+verifyEquals(cf.state, FrameState.crashed, 'CallFrame state setter');
+var cfJson = cf.toJson();
+verifyNotNull(cfJson, 'CallFrame toJson');
+var cf2 = CallFrame.fromJson(cfJson);
+verifyEquals(cf2.callId, 'c1', 'CallFrame.fromJson callId round-trip');
+verifyEquals(cf2.pid, 4321, 'CallFrame.fromJson pid round-trip');
+verifyEquals(cf2.state, FrameState.crashed, 'CallFrame.fromJson state round-trip');
+
+# --- LocalLedger: sync construction (creates dirs + starts global heartbeat
+#     timer), value surface, and dispose() (cancels the timer). Real IO against
+#     a self-contained temp fixture. ---
+var llRoot = TomFs.tempDir(prefix: 'rck18_localledger_');
+var localLedger = LocalLedger(basePath: llRoot, participantId: 'p-local');
+verifyEquals(localLedger.participantId, 'p-local', 'LocalLedger participantId');
+verifyEquals(localLedger.basePath, llRoot, 'LocalLedger basePath');
+verifyEquals(localLedger.maxBackups, 20, 'LocalLedger default maxBackups');
+verifyEquals(localLedger.heartbeatInterval.inSeconds, 5, 'LocalLedger default heartbeatInterval 5s');
+verifyEquals(localLedger.staleThreshold.inSeconds, 15, 'LocalLedger default staleThreshold 15s');
+verifyEquals(localLedger.lockTimeout.inSeconds, 2, 'LocalLedger default lockTimeout 2s');
+verify(TomFs.exists(llRoot + '/backup'), 'LocalLedger created backup dir on construction');
+localLedger.dispose();
+TomFs.delete(llRoot, recursive: true);
+
+# --- RemoteLedgerClient: sync construction (inert HttpClient, no connect),
+#     value surface, and dispose(). ---
+var remoteClient = RemoteLedgerClient(serverUrl: 'http://localhost:19880', participantId: 'p-remote');
+verifyEquals(remoteClient.serverUrl, 'http://localhost:19880', 'RemoteLedgerClient serverUrl');
+verifyEquals(remoteClient.participantId, 'p-remote', 'RemoteLedgerClient participantId');
+verifyEquals(remoteClient.maxBackups, 20, 'RemoteLedgerClient default maxBackups');
+verifyEquals(remoteClient.heartbeatInterval.inSeconds, 5, 'RemoteLedgerClient default heartbeatInterval 5s');
+verifyEquals(remoteClient.staleThreshold.inSeconds, 15, 'RemoteLedgerClient default staleThreshold 15s');
+remoteClient.dispose();
+
+# --- Callback carriers: sync construction (default ctor + named factories) ---
+var ledgerCb = LedgerCallback();
+verifyNotNull(ledgerCb, 'LedgerCallback default construction');
+var opCb = OperationCallback();
+verifyNotNull(opCb, 'OperationCallback default construction');
+var opCbFail = OperationCallback.onFailure((op, info) { });
+verifyNotNull(opCbFail.onFailure, 'OperationCallback.onFailure factory stores callback');
+var callCb = CallCallback();
+verifyNotNull(callCb, 'CallCallback default construction');
+var callCbCleanup = CallCallback.cleanup(() { });
+verifyNotNull(callCbCleanup.onCleanup, 'CallCallback.cleanup factory stores callback');
+
+# --- OperationHelper: static poll builders return a closure synchronously
+#     (no IO until the returned function is later invoked). ---
+var pollFileFn = OperationHelper.pollFile(path: '/nonexistent/rck18.json');
+verifyNotNull(pollFileFn, 'OperationHelper.pollFile returns a poll function');
+var pollUntilFn = OperationHelper.pollUntil(check: () { return null; });
+verifyNotNull(pollUntilFn, 'OperationHelper.pollUntil returns a poll function');
+var pollFilesFn = OperationHelper.pollFiles(paths: ['/nonexistent/a.json']);
+verifyNotNull(pollFilesFn, 'OperationHelper.pollFiles returns a poll function');
+
+# --- CleanupHandler: process-global singleton + register/unregister; dispose()
+#     cancels the installed SIGINT/SIGTERM subscriptions so the replay exits. ---
+var cleanup = CleanupHandler.instance;
+verifyNotNull(cleanup, 'CleanupHandler.instance singleton');
+var cleanupId = cleanup.register(() { });
+verifyNotNull(cleanupId, 'CleanupHandler.register returns an id');
+cleanup.unregister(cleanupId);
+cleanup.dispose();
+
+# =============================================================================
+# Async-only classes: reachability pins (driven behaviour requires a live
+# network / async factory, impossible in-replay -- see the RCK18 note above).
 # =============================================================================
 
 verifyNotNull(Ledger, 'Ledger class exists');
 verifyNotNull(LocalLedger, 'LocalLedger class exists');
 verifyNotNull(RemoteLedgerClient, 'RemoteLedgerClient class exists');
 verifyNotNull(ServerDiscovery, 'ServerDiscovery class exists');
+verifyNotNull(LedgerServer, 'LedgerServer class exists');
+verifyNotNull(Operation, 'Operation class exists');
+verifyNotNull(LocalOperation, 'LocalOperation class exists');
+verifyNotNull(RemoteOperation, 'RemoteOperation class exists');
+verifyNotNull(CallLifecycle, 'CallLifecycle class exists');
+verifyNotNull(Call, 'Call class exists');
+verifyNotNull(SpawnedCall, 'SpawnedCall class exists');
+verifyNotNull(OperationHelper, 'OperationHelper class exists');
+verifyNotNull(CleanupHandler, 'CleanupHandler class exists');
 
 # =============================================================================
 # Summary

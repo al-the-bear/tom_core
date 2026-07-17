@@ -1,3 +1,27 @@
+## 1.0.10
+
+### Tests
+
+- **Extended the `tom_dist_ledger` replay to cover every network class'
+  synchronous construction + value surface (RCK18).**
+  `test/replay/test_d4rt_tom_dist_ledger.d4rt` now exercises the sync surfaces of
+  `SpawnedCall` (complete/fail, `result`/`resultOr`/`resultOrNull`, `kill`),
+  `CallFrame` (default `FrameState.active`, `isStale`, state setter, `toJson`/
+  `fromJson` round-trip), `LocalLedger` (constructed over a temp fixture, getters,
+  `heartbeatInterval`, `dispose`), `RemoteLedgerClient` (constructed inert,
+  getters, `dispose`), the `Ledger`/`Operation`/`Call` callback carriers
+  (`LedgerCallback`, `OperationCallback`(+`onFailure`), `CallCallback`(+`cleanup`)),
+  `OperationHelper`'s poll builders (`pollFile`/`pollUntil`/`pollFiles`), and
+  `CleanupHandler` (`instance`, `register`/`unregister`/`dispose`). The async-only
+  classes (`LedgerServer`, `RemoteOperation`, `LocalOperation`, and the driven
+  `Ledger`/`Call` roles) stay reachability-pinned: a driven loopback fixture is
+  impossible inside the replay harness because d4rt cannot top-level-`await`, an
+  async factory assigned to a variable stays a raw `Future` (never resolves to the
+  object), and a `.then()` continuation runs after `testSummary()` and re-triggers
+  the interpreter's async state-machine bug. Both hazards were re-confirmed
+  empirically before falling back to the documented sync-surface coverage. No
+  bridge or public-behaviour change.
+
 ## 1.0.9
 
 ### Tests
