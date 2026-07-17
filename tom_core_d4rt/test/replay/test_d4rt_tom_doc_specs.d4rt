@@ -2,11 +2,13 @@
 # Run with: d4rt test_d4rt_tom_doc_specs.d4rt -test
 # Tests tom_doc_specs bridged classes (schema model, validation, enums).
 # NOTE: Uses single-line syntax for D4rt parser compatibility.
-# Covers all 31 registered bridges. The only members not exercised are the
-# IO/scan surfaces: SchemaResolver.resolve*/resolveByDocumentFilename*,
-# SchemaDiscovery.listSchemas* (disk scans), SchemaLoader/DocSpecs read from
-# disk, and AiValidator (abstract LLM-injection interface) — pinned by
-# reachability. Everything connection-free is asserted directly.
+# Covers all 31 registered bridges. The connection-free surface is asserted
+# directly; the IO/scan surfaces (SchemaLoader.loadSync, SchemaResolver.resolve*
+# /resolveByDocumentFilename*, SchemaDiscovery.listSchemas*, and the DocSpecs
+# scan/loadSchema/validate facade) are exercised over a live self-contained
+# fixture written to a temp dir (RCK17, see the final section). The only member
+# left reachability-pinned is AiValidator — an abstract LLM-injection interface
+# that has no invokable behaviour without a concrete implementation.
 
 
 # =============================================================================
@@ -202,18 +204,85 @@ verifyEquals(SchemaResolver.isDocSpecDocument('quest.overview.ds.md'), true, 'Sc
 verifyEquals(SchemaResolver.isDocSpecDocument('plain.md'), false, 'SchemaResolver.isDocSpecDocument false for a plain name');
 
 # =============================================================================
-# Test: IO/scan entry points exist (integration-only)
-# DocSpecs/SchemaLoader/DocSpecsSkeletonGenerator scan or read from disk;
-# SchemaDiscovery's listSchemas* statics scan folders; AiValidator is an abstract
-# LLM-injection interface. Only their reachability / connection-free constructor
-# is pinned here.
+# Test: reachability of the scan/generator entry points
+# DocSpecsSkeletonGenerator and AiValidator are pinned by reachability:
+# the skeleton generator writes files from a schema, and AiValidator is an
+# abstract LLM-injection interface with no invokable behaviour standalone.
 # =============================================================================
 
-verifyNotNull(DocSpecs, 'DocSpecs class exists');
-verifyNotNull(SchemaLoader, 'SchemaLoader class exists');
 verifyNotNull(DocSpecsSkeletonGenerator, 'DocSpecsSkeletonGenerator class exists');
-verifyNotNull(SchemaDiscovery(), 'SchemaDiscovery default constructor (listSchemas* are IO)');
 verifyNotNull(AiValidator, 'AiValidator abstract interface exists');
+
+# =============================================================================
+# Test: IO/scan surfaces over a live self-contained fixture (RCK17)
+# =============================================================================
+#
+# The d4rt binary runs with full IO access, so the IO/scan surfaces are driven
+# against a temp directory tree built (and removed) inside this replay. Two
+# schema-folder layouts are laid down so both resolution styles are exercised:
+# a schema file DIRECTLY under `.tom/docspecs-schema/` (found by ID) and one in
+# a `*.<type>/` subfolder (found by the `<title>.<type>.ds.md` convention).
+#
+# DECISION: the SYNC variants are covered. Their async twins (resolve,
+# resolveByDocumentFilename, listSchemas(In), scanDocument(s), scanTree) await
+# the exact same File operations; d4rt cannot top-level-`await` (interpreter
+# state-machine bug), and the sync methods traverse identical IO code paths, so
+# covering *Sync gives the same behavioural assurance without the await hazard.
+
+# ---- fixture ----
+var fxRoot = TomFs.tempDir(prefix: 'rck17_');
+var fxSchemaDir = fxRoot + '/.tom/docspecs-schema';
+TomFs.mkdir(fxSchemaDir);
+var fxSchemaYaml = 'section-types:\n  overview:\n    prefix: overview\n    text-required: true\ndocument:\n  sections:\n    overview:\n      section-type: overview\n';
+TomFs.write(fxSchemaDir + '/mini-1.0.docspecs-schema.yaml', fxSchemaYaml);
+TomFs.mkdir(fxSchemaDir + '/quest.mini');
+TomFs.write(fxSchemaDir + '/quest.mini/mini-1.0.docspecs-schema.yaml', fxSchemaYaml);
+var fxDocsDir = fxRoot + '/docs';
+TomFs.mkdir(fxDocsDir);
+var fxDocPath = fxDocsDir + '/test.mini.ds.md';
+TomFs.write(fxDocPath, '# <!-- schema=mini-1.0 --> Mini Test Document\n\n## <!--[overview] --> Overview\n\nThis is the overview body text.\n');
+
+# ---- SchemaLoader.loadSync ----
+var fxLoaded = SchemaLoader.loadSync(fxSchemaDir + '/mini-1.0.docspecs-schema.yaml');
+verifyEquals(fxLoaded.id, 'mini', 'SchemaLoader.loadSync reads the schema id');
+verifyEquals(fxLoaded.version, '1.0', 'SchemaLoader.loadSync reads the version');
+verifyEquals(fxLoaded.fullId, 'mini/1.0', 'SchemaLoader.loadSync fullId');
+
+# ---- SchemaResolver.resolveSync (by id, via schemaFolder) ----
+var fxR1 = SchemaResolver.resolveSync(schemaId: 'mini-1.0', schemaFolder: fxSchemaDir);
+verifyNotNull(fxR1, 'SchemaResolver.resolveSync resolves via schemaFolder');
+verifyEquals(fxR1.id, 'mini', 'SchemaResolver.resolveSync resolved id');
+verifyEquals(SchemaResolver.resolveSync(schemaId: 'nope-9.9', schemaFolder: fxSchemaDir), null, 'SchemaResolver.resolveSync returns null when unresolved');
+
+# ---- SchemaResolver.resolveByDocumentFilenameSync (by <type>) ----
+var fxR2 = SchemaResolver.resolveByDocumentFilenameSync(documentFilename: 'test.mini.ds.md', schemaFolder: fxSchemaDir);
+verifyNotNull(fxR2, 'SchemaResolver.resolveByDocumentFilenameSync resolves the *.<type>/ folder');
+verifyEquals(fxR2.id, 'mini', 'SchemaResolver.resolveByDocumentFilenameSync resolved id');
+verifyEquals(SchemaResolver.resolveByDocumentFilenameSync(documentFilename: 'plain.md', schemaFolder: fxSchemaDir), null, 'SchemaResolver.resolveByDocumentFilenameSync null for a non-ds.md name');
+
+# ---- SchemaDiscovery.listSchemas* ----
+var fxInfos = SchemaDiscovery.listSchemasInSync(fxSchemaDir);
+verify(fxInfos.length >= 1, 'SchemaDiscovery.listSchemasInSync discovers schema files');
+verifyEquals(fxInfos[0].id, 'mini', 'SchemaDiscovery.listSchemasInSync SchemaInfo id');
+verify(SchemaDiscovery.listSchemasSync(documentPath: fxDocPath, workspaceRoot: fxRoot).length >= 1, 'SchemaDiscovery.listSchemasSync walks up to the .tom folder');
+
+# ---- DocSpecs facade (loadSchema / scan / validate / listSchemas) ----
+var fxSchema = DocSpecs.loadSchemaSync(schemaId: 'mini-1.0', documentPath: fxDocPath, workspaceRoot: fxRoot);
+verifyEquals(fxSchema.id, 'mini', 'DocSpecs.loadSchemaSync resolves through the document walk');
+var fxScanned = DocSpecs.scanDocumentSync(filePath: fxDocPath, workspaceRoot: fxRoot);
+verifyNotNull(fxScanned, 'DocSpecs.scanDocumentSync returns a SpecDoc');
+verifyEquals(fxScanned.filename, 'test.mini.ds.md', 'DocSpecs.scanDocumentSync filename');
+verifyNotNull(fxScanned.sections, 'DocSpecs.scanDocumentSync parsed the document sections');
+verifyEquals(DocSpecs.scanDocumentsSync(filePaths: [fxDocPath], workspaceRoot: fxRoot).length, 1, 'DocSpecs.scanDocumentsSync count');
+var fxFolder = DocSpecs.scanTreeSync(dirPath: fxDocsDir, workspaceRoot: fxRoot);
+verifyNotNull(fxFolder, 'DocSpecs.scanTreeSync returns a DocumentFolder');
+verify(fxFolder.allDocuments.length >= 1, 'DocSpecs.scanTreeSync discovered the fixture document');
+verifyNotNull(DocSpecs.validate(fxScanned, schema: fxLoaded), 'DocSpecs.validate returns an error list');
+verify(DocSpecs.listSchemasInSync(dirPath: fxSchemaDir).length >= 1, 'DocSpecs.listSchemasInSync facade');
+verify(DocSpecs.listSchemasSync(documentPath: fxDocPath, workspaceRoot: fxRoot).length >= 1, 'DocSpecs.listSchemasSync facade');
+
+# ---- cleanup ----
+TomFs.delete(fxRoot, recursive: true);
 
 # =============================================================================
 # Summary

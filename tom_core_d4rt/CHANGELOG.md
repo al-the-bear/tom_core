@@ -1,3 +1,23 @@
+## 1.0.9
+
+### Tests
+
+- **Completed the `tom_doc_specs` replay to full member-level coverage by
+  exercising the IO/scan surfaces over a live self-contained fixture (RCK17).**
+  `test/replay/test_d4rt_tom_doc_specs.d4rt` now drives `SchemaLoader.loadSync`,
+  `SchemaResolver.resolveSync`/`resolveByDocumentFilenameSync`,
+  `SchemaDiscovery.listSchemasInSync`/`listSchemasSync`, and the `DocSpecs`
+  facade (`loadSchemaSync`, `scanDocumentSync`, `scanDocumentsSync`,
+  `scanTreeSync`, `validate`, `listSchemas*Sync`) against a temp directory tree
+  written (and removed) inside the replay — two schema-folder layouts (a schema
+  file directly under `.tom/docspecs-schema/` for ID resolution, and one in a
+  `*.<type>/` subfolder for the `<title>.<type>.ds.md` convention) plus a
+  minimal `.ds.md` document. The sync variants are covered because d4rt cannot
+  top-level-`await` and they traverse identical IO code paths to their async
+  twins. Only `AiValidator` (an abstract LLM-injection interface with no
+  standalone behaviour) stays reachability-pinned. No bridge or public-behaviour
+  change.
+
 ## 1.0.8
 
 ### Tests

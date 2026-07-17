@@ -248,11 +248,14 @@ DartScript. See the [repository map](../README.md) for the full picture.
   (RCH5/RCK16) covers all 60/60 bridged classes, with the five IO-driver
   classes (`WorkspaceAnalyzer`, `ReflectionGeneratorRunner`, `TomShell`,
   `TomFs`, `TomGlob`) exercised over a live self-contained temp fixture created
-  and removed inside the replay. The `tom_doc_specs` replay (RCI5) covers every
-  connection-free bridged class across all 31 registrations (zero-gap
-  cross-check), with only the IO/scan surfaces (`SchemaResolver.resolve*`,
-  `SchemaDiscovery.listSchemas*`, document scanning) deferred as they need a
-  live filesystem. The `tom_md2latex` replay (RCK14) covers every one of its 23
+  and removed inside the replay. The `tom_doc_specs` replay (RCI5/RCK17) covers
+  every bridged class across all 31 registrations (zero-gap cross-check),
+  including the IO/scan surfaces (`SchemaLoader.loadSync`,
+  `SchemaResolver.resolve*`/`resolveByDocumentFilename*`,
+  `SchemaDiscovery.listSchemas*`, and the `DocSpecs` scan/loadSchema/validate
+  facade) which are exercised over a live self-contained temp fixture; only
+  `AiValidator` (an abstract LLM-injection interface) stays reachability-pinned.
+  The `tom_md2latex` replay (RCK14) covers every one of its 23
   bridged classes (zero-gap cross-check), with only the IO/async converter
   surfaces (`MdLatexConverter.findMarkdownFiles`/`convertAll`/`convertFile`,
   `Md2Latex.convertFile*`/`convertDirectory`) deferred as they need a live
