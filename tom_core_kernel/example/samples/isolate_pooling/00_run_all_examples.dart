@@ -11,6 +11,8 @@
 /// ```
 library;
 
+import 'dart:io';
+
 import '../../run_all_samples.reflection.dart';
 
 import '01_worker_basics_example.dart' as worker_basics;
@@ -19,9 +21,23 @@ import '03_worker_creator_communication_example.dart' as worker_creator;
 import '04_worker_pool_supervision_example.dart' as worker_pool_supervision;
 
 /// Standalone entry point for running isolate pooling examples.
+///
+/// The pool examples intentionally leave some worker isolates running to
+/// demonstrate real-world usage (see `02_worker_pool_example.dart`), so the
+/// process would not terminate on its own. Force an explicit `exit` once the
+/// examples finish — the same lifecycle contract the master runner
+/// (`example/run_all_samples.dart`) applies. The shared [run] must not exit,
+/// because the master runner calls it mid-sequence.
 Future<void> main() async {
   initializeReflection();
-  await run();
+  try {
+    await run();
+  } catch (e, st) {
+    print('\n❌ ERROR running isolate pooling examples: $e');
+    print(st);
+    exit(1);
+  }
+  exit(0);
 }
 
 /// Run all isolate pooling examples.

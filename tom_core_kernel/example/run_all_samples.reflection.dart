@@ -2041,7 +2041,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const <Object>[
           prefix17.tomReflector,
-          const prefix10.TomComponent(EmailService),
+          const prefix10.TomComponent(prefix45.EmailService),
         ],
         null,
       ),
@@ -2066,7 +2066,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const <Object>[
           prefix17.tomReflector,
-          const prefix10.TomComponent(StorageService),
+          const prefix10.TomComponent(prefix45.StorageService),
         ],
         null,
       ),

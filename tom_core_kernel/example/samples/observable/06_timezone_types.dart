@@ -266,7 +266,12 @@ class TimezoneTypesExample {
   static void example10FromDateTime() {
     print('\n10. Creating from DateTime:');
 
-    final dateTime = DateTime(2024, 6, 15, 14, 30);
+    // Use an explicit UTC DateTime. TomZonedDateTime.fromDateTime converts the
+    // DateTime's *absolute instant* to UTC, and localHour reports the hour in
+    // the attached zone (UTC here). A wall-clock local DateTime would make the
+    // stored instant — and therefore localHour — depend on the host machine's
+    // timezone, so a UTC DateTime keeps this example deterministic everywhere.
+    final dateTime = DateTime.utc(2024, 6, 15, 14, 30);
     final zonedDateTime = TomZonedDateTime.fromDateTime(dateTime);
     final observableDateTime = TomOZonedDateTime(zonedDateTime);
 

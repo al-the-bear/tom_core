@@ -3,6 +3,23 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+// Deep call chain used to verify that a depth-limited trace keeps the frames
+// nearest the throw site (the innermost frames), not the outermost ones. The
+// distinction only becomes observable when the total stack is deeper than the
+// requested depth, which is why a dedicated multi-level chain is needed.
+void _deepLevelInnermost() => throw Exception('deep throw site');
+void _deepLevelMiddle() => _deepLevelInnermost();
+void _deepLevelOuter() => _deepLevelMiddle();
+
+StackTrace _captureDeepStack() {
+  try {
+    _deepLevelOuter();
+  } catch (_, stack) {
+    return stack;
+  }
+  return StackTrace.current;
+}
+
 void main() {
   // =========================================================================
   // ZONE UTILITIES
@@ -270,6 +287,17 @@ void main() {
     test('should contain file location information', () {
       final trace = tomGetStackTrace(StackTrace.current);
       expect(trace, contains('little_things_test.dart'));
+    });
+
+    test('depth limit keeps the frames nearest the throw site', () {
+      final stack = _captureDeepStack();
+      // Sanity: the full trace contains the throwing frame.
+      expect(tomGetStackTrace(stack), contains('_deepLevelInnermost'));
+      // Truncating to a small depth must retain the frames nearest the error
+      // (the throw site), not discard them in favour of the outermost frames.
+      final limited = tomGetStackTrace(stack, 2);
+      expect(limited.split('\n').length, lessThanOrEqualTo(2));
+      expect(limited, contains('_deepLevelInnermost'));
     });
   });
 

@@ -310,6 +310,11 @@ void run() {
   print('ADVANCED RUNTIME EXAMPLE');
   print('═══════════════════════════════════════════════════════════════════\n');
 
+  // Clear the process-global environment/platform registries so this sample
+  // starts from a clean runtime — the master samples runner executes every
+  // module in one process, so a prior sample's registrations would otherwise
+  // leak in and shadow the environments registered here.
+  TomRuntime.reset();
   AdvancedRuntimeExample.example1EnvironmentHierarchy();
   AdvancedRuntimeExample.example2DiagnosticReport();
   AdvancedRuntimeExample.example3PlatformInitializers();

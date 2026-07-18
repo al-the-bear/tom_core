@@ -9,7 +9,13 @@ environment:
 # Add regular dependencies here.
 dependencies:
   tom_reflection: ">=1.0.1"
-  tom_basics: ">=1.0.0"
+  # Floor 1.0.3: setCurrentEnvironment now applies its fallback unconditionally
+  # (RCL1) — earlier it kept an already-set environment when the requested name
+  # was absent, so the runtime fallback sample never switched. 1.0.2 added
+  # TomRuntime.reset() (clears the process-global environment/platform registries
+  # so the runtime samples isolate themselves in the single-process master
+  # runner). 1.0.1 was the TomLogger push/pop log-level stack fix.
+  tom_basics: ">=1.0.3"
   tom_crypto: ">=1.0.0"
   stack_trace:
   http:
@@ -24,7 +30,10 @@ dev_dependencies:
   build: ^4.0.3
   tom_build:
     path: ../../devops/tom_build
-  tom_reflection_generator: ">=1.2.1"
+  # Floor 1.3.1: type-literal annotation arguments (e.g. `@TomComponent(EmailService)`)
+  # are emitted import-prefixed; earlier versions dropped the prefix and produced
+  # an undefined-name reference that broke the samples runner (RCL1).
+  tom_reflection_generator: ">=1.3.1"
   tom_core_server:
     path: ../tom_core_server
   mysql_client: any

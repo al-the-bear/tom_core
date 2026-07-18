@@ -112,7 +112,7 @@ class PoolCommandExecutionExample {
     final numbersToCheck = [97, 100, 127, 150, 199, 200];
 
     for (final num in numbersToCheck) {
-      final isPrime = pool.execute(IsPrimeCommand(num)) as bool;
+      final isPrime = (await pool.execute(IsPrimeCommand(num))) as bool;
       primeResults[num] = isPrime;
     }
 

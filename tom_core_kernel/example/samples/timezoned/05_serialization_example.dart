@@ -153,8 +153,17 @@ class SerializationExample {
   static void example6ParseTime() {
     print('\n6. Parsing TomZonedTime:');
 
-    // Note: parseFromString expects the @T@ prefix
-    final parseString = '@T@1970-01-01T09:30:00.000Z_+00:00_Europe/London';
+    // Note: parseFromString expects the @T@ prefix.
+    //
+    // A time-only TomZonedTime is anchored to the epoch date 1970-01-01, and
+    // parseFromString recomputes the zone offset from the IANA database for
+    // that instant (the offset embedded in the string is informational). On
+    // 1970-01-01 Europe/London was UTC+1 year-round — the 1968–1971 British
+    // Standard Time experiment — so 09:30 London is UTC 08:30 with a +01:00
+    // offset, exactly as the framework serializes it (see example 3). Using
+    // the naive `09:30Z / +00:00` would parse back to 10:30 local, because the
+    // authoritative database offset (+01:00) wins over the wrong embedded one.
+    final parseString = '@T@1970-01-01T08:30:00.000Z_+01:00_Europe/London';
     final parsedTime = TomZonedTime.parseFromString(parseString);
 
     print('   - Input: $parseString');
@@ -176,7 +185,9 @@ class SerializationExample {
     final testStrings = [
       '@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',
       '@D@2024-12-25T05:00:00.000Z_-05:00_America/New_York',
-      '@T@1970-01-01T09:30:00.000Z_+00:00_Europe/London',
+      // 08:30Z / +01:00: the epoch-date London offset (BST experiment), the
+      // same valid serialization parsed in example 6.
+      '@T@1970-01-01T08:30:00.000Z_+01:00_Europe/London',
       '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo', // No prefix
     ];
 

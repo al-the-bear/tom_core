@@ -190,20 +190,39 @@ class NamedBeansExample {
   static void example4StaticAccess() {
     print('\n4. Static bean access methods:');
 
-    // Get by name using static method
+    // getBeanByName resolves a bean registered with TomBean.withName. The
+    // named beans registered in example 1 are keyed by their name.
     final byNameResult = TomBean.getBeanByName('named_primaryDb');
     print('   - TomBean.getBeanByName("named_primaryDb"):');
     print('     Type: ${byNameResult.runtimeType}');
     print('     Value: $byNameResult');
 
-    // Get by type
+    // getBeanByType resolves a bean registered with TomBean.withType, keyed by
+    // its Type. Named beans are keyed by name, not type, so they are NOT
+    // reachable through getBeanByType — a distinct registration is required.
+    final typedDb = DatabaseConfig(
+      host: 'typed.db.example.com',
+      port: 5432,
+      database: 'app_typed',
+      isPrimary: true,
+    );
+    TomBean.withType(DatabaseConfig, typedDb);
+
     final byTypeResult = TomBean.getBeanByType(DatabaseConfig);
     print('   - TomBean.getBeanByType(DatabaseConfig):');
     print('     Type: ${byTypeResult?.runtimeType}');
+    print('     Value: $byTypeResult');
 
+    // Named beans are not reachable by type: no DatabaseConfig was registered
+    // with withType before this example, so the named beans stay invisible to
+    // getBeanByType until the typed registration above.
     // Assertions
     assert(byNameResult is DatabaseConfig, 'Should be DatabaseConfig');
-    assert(byTypeResult != null, 'Should find bean by type');
+    assert(byTypeResult != null, 'Should find the type-registered bean');
+    assert(
+      identical(byTypeResult, typedDb),
+      'getBeanByType should return the type-registered instance',
+    );
   }
 
   // -------------------------------------------------------------------------

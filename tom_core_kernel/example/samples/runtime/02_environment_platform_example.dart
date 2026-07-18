@@ -194,6 +194,11 @@ class RuntimeReportExample {
 // =============================================================================
 
 void run() {
+  // Clear the process-global environment/platform registries so this sample
+  // starts from a clean runtime — the master samples runner executes every
+  // module in one process, so a prior sample's registrations would otherwise
+  // leak in and shadow the environments registered here.
+  TomRuntime.reset();
   CustomEnvironmentsExample.example1CustomEnvironments();
   EnvironmentInitializerExample.example2EnvironmentInitializer();
   PlatformConstantsExample.example3PlatformConstants();

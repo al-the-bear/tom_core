@@ -938,23 +938,30 @@ void main() {
         expect(TomRuntime.getRoot().env, equals('root-env'));
       });
 
-      test('should keep current environment if already set when name not found',
-          () {
-        // When current environment is already set and a non-existent name is provided,
-        // the fallback logic only triggers if _currentEnvironment is null.
-        // Since previous tests have set an environment, this verifies that
-        // the current environment is preserved.
+      test('should apply the named fallback even when a current environment '
+          'is already set', () {
+        // setCurrentEnvironment is an unconditional setter: when the requested
+        // name is not registered it resolves the fallback and *replaces* the
+        // current environment, regardless of whether one was already active.
+        // (Previously the fallback was guarded by `_currentEnvironment == null`,
+        // so an already-set environment was silently kept — a setter that
+        // refused to set. That was a bug, not the contract.)
+        TomRuntime.reset();
+        const activeEnv = TomEnvironment('env-active');
         const fallbackEnv = TomEnvironment('env-fallback-test');
+        TomRuntime.addEnvironment(activeEnv);
         TomRuntime.addEnvironment(fallbackEnv);
 
-        // Get the current environment before attempting to set non-existent
-        final currentBefore = TomRuntime.getCurrentEnvironment();
+        // Establish a current environment.
+        TomRuntime.setCurrentEnvironment('env-active');
+        expect(TomRuntime.getCurrentEnvironment().env, equals('env-active'));
 
-        // Try to set non-existent environment - should keep existing
+        // Requesting a non-existent name must switch to the named fallback.
         TomRuntime.setCurrentEnvironment('nonexistent-xyz', 'env-fallback-test');
-
-        // Current environment should remain unchanged because it was already set
-        expect(TomRuntime.getCurrentEnvironment().env, equals(currentBefore.env));
+        expect(
+          TomRuntime.getCurrentEnvironment().env,
+          equals('env-fallback-test'),
+        );
       });
     });
 

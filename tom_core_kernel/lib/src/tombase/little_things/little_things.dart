@@ -201,7 +201,12 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
   final resultList = <String>[];
   var remaining = depth;
 
-  for (final f in frames.reversed) {
+  // Iterate frames newest-first (throw site first, as documented above). This
+  // ordering is load-bearing for truncation: a depth limit must keep the
+  // frames nearest the error, so those must come first. Iterating reversed
+  // (oldest-first) would truncate the throw-site frames away — the most useful
+  // ones — leaving only the outermost `main`-side frames.
+  for (final f in frames) {
     // Enforce the limit before appending so depth == 0 yields no frames
     // (and depth == n yields exactly n). Checking after appending caused an
     // off-by-one where depth == 0 returned every frame.
