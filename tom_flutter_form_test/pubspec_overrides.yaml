@@ -1,8 +1,0 @@
-# Local-path overrides for transitive dev-dependencies that aren't
-# yet on pub.dev. The reflection generator's `tom_analyzer_shared`
-# dep was added recently and hasn't been published; mirroring the
-# override that `tom_reflection_generator/pubspec_overrides.yaml`
-# uses lets `flutter pub get` resolve in this consumer too.
-dependency_overrides:
-  tom_analyzer_shared:
-    path: ../../basics/tom_analyzer_shared
