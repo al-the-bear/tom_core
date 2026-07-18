@@ -12,7 +12,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,40 +24,7 @@ import 'package:tom_flutter_form_test/main.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
 import 'package:tom_flutter_form_test/state/project_brief_state.dart';
 
-Future<void> _loadRealFonts() async {
-  const fontDir =
-      '/srv/flutter/flutter/bin/cache/dart-sdk/bin/resources/devtools/assets/fonts/Roboto';
-  for (final variant in [
-    'Roboto-Regular.ttf',
-    'Roboto-Medium.ttf',
-    'Roboto-Bold.ttf',
-  ]) {
-    final file = File('$fontDir/$variant');
-    if (file.existsSync()) {
-      final bytes = file.readAsBytesSync();
-      final loader = FontLoader('Roboto')
-        ..addFont(Future.value(ByteData.view(bytes.buffer)));
-      await loader.load();
-    }
-  }
-  for (final variant in ['DejaVuSerif.ttf', 'DejaVuSerif-Bold.ttf']) {
-    final file = File('/usr/share/fonts/truetype/dejavu/$variant');
-    if (file.existsSync()) {
-      final bytes = file.readAsBytesSync();
-      final loader = FontLoader('serif')
-        ..addFont(Future.value(ByteData.view(bytes.buffer)));
-      await loader.load();
-    }
-  }
-  final icons = File(
-      '/srv/flutter/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
-  if (icons.existsSync()) {
-    final bytes = icons.readAsBytesSync();
-    final loader = FontLoader('MaterialIcons')
-      ..addFont(Future.value(ByteData.view(bytes.buffer)));
-    await loader.load();
-  }
-}
+import 'support/test_fonts.dart';
 
 ThemeData _mkBlueSerifXl() {
   final base = ThemeData(
@@ -130,7 +96,7 @@ void main() {
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
-    await _loadRealFonts();
+    await loadTestFonts();
   });
 
   testWidgets('Bordered floating labels fit above the outline at 18 px theme',

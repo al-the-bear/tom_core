@@ -15,12 +15,13 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import 'support/test_fonts.dart';
 
 import 'package:tom_flutter_form_test/examples/example_h_a_master_detail.dart';
 import 'package:tom_flutter_form_test/examples/example_h_b_expandable_rows.dart';
@@ -34,35 +35,6 @@ import 'package:tom_flutter_form_test/main.reflection.dart';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/// Load Roboto + MaterialIcons from the local Flutter SDK so that golden
-/// screenshots render readable text instead of Ahem blocks.
-Future<void> loadRealFonts() async {
-  const robotoDir =
-      '/srv/flutter/flutter/bin/cache/dart-sdk/bin/resources/devtools/assets/fonts/Roboto';
-  const variants = [
-    'Roboto-Regular.ttf',
-    'Roboto-Medium.ttf',
-    'Roboto-Bold.ttf',
-    'Roboto-Light.ttf',
-  ];
-  for (final name in variants) {
-    final file = File('$robotoDir/$name');
-    if (file.existsSync()) {
-      final loader = FontLoader('Roboto')
-        ..addFont(Future.value(ByteData.view(file.readAsBytesSync().buffer)));
-      await loader.load();
-    }
-  }
-  final iconsFile = File(
-      '/srv/flutter/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
-  if (iconsFile.existsSync()) {
-    final loader = FontLoader('MaterialIcons')
-      ..addFont(
-          Future.value(ByteData.view(iconsFile.readAsBytesSync().buffer)));
-    await loader.load();
-  }
-}
 
 /// Wrap [child] in the same [MaterialApp] + theme the main app uses so
 /// colours and typography are consistent with production.
@@ -106,7 +78,7 @@ void main() {
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
-    await loadRealFonts();
+    await loadTestFonts();
   });
 
   // ── Example list (entry screen) ──────────────────────────────────────────

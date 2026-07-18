@@ -4,7 +4,6 @@
 // Generated PNGs go to: test/goldens/
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,38 +16,7 @@ import 'package:tom_flutter_form_test/demos/demo_3_authorization.dart';
 import 'package:tom_flutter_form_test/demos/demo_4_validation.dart';
 import 'package:tom_flutter_form_test/demos/demo_5_settings.dart';
 
-/// Load real fonts so golden screenshots render readable text instead of
-/// black Ahem blocks.
-Future<void> loadRealFonts() async {
-  const fontDir =
-      '/srv/flutter/flutter/bin/cache/dart-sdk/bin/resources/devtools/assets/fonts/Roboto';
-  final variants = <(String, int)>[
-    ('Roboto-Regular.ttf', 400),
-    ('Roboto-Medium.ttf', 500),
-    ('Roboto-Bold.ttf', 700),
-    ('Roboto-Light.ttf', 300),
-    ('Roboto-Thin.ttf', 100),
-    ('Roboto-Black.ttf', 900),
-  ];
-  for (final (fileName, _) in variants) {
-    final file = File('$fontDir/$fileName');
-    if (file.existsSync()) {
-      final bytes = file.readAsBytesSync();
-      final fontLoader = FontLoader('Roboto');
-      fontLoader.addFont(Future.value(ByteData.view(bytes.buffer)));
-      await fontLoader.load();
-    }
-  }
-  // Also load MaterialIcons so icons render properly.
-  final iconsFile =
-      File('/srv/flutter/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
-  if (iconsFile.existsSync()) {
-    final bytes = iconsFile.readAsBytesSync();
-    final fontLoader = FontLoader('MaterialIcons');
-    fontLoader.addFont(Future.value(ByteData.view(bytes.buffer)));
-    await fontLoader.load();
-  }
-}
+import 'support/test_fonts.dart';
 
 Widget buildTestApp(Widget child) {
   return MaterialApp(
@@ -69,7 +37,7 @@ void main() {
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
-    await loadRealFonts();
+    await loadTestFonts();
   });
 
   // ── Demo 1: Basic Form ─────────────────────────────────────────────────

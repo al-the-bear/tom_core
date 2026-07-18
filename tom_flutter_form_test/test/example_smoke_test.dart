@@ -11,13 +11,13 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'support/test_fonts.dart';
 import 'package:tom_flutter_form_test/examples/example_h_a_master_detail.dart';
 import 'package:tom_flutter_form_test/examples/example_h_b_expandable_rows.dart';
 import 'package:tom_flutter_form_test/examples/example_h_c_editable_table.dart';
@@ -48,39 +48,10 @@ Future<void> _pump(WidgetTester tester, Widget widget) async {
 }
 
 // ---------------------------------------------------------------------------
-// Font loading — mirrors screenshot_tests.dart so text metrics are
-// identical between smoke and golden tests. Without this, the Ahem test
-// font causes taller text, which shrinks Expanded children and produces
-// spurious overflow errors.
-// ---------------------------------------------------------------------------
-
-Future<void> _loadRealFonts() async {
-  const robotoDir =
-      '/srv/flutter/flutter/bin/cache/dart-sdk/bin/resources/devtools/assets/fonts/Roboto';
-  for (final name in [
-    'Roboto-Regular.ttf',
-    'Roboto-Medium.ttf',
-    'Roboto-Bold.ttf',
-  ]) {
-    final file = File('$robotoDir/$name');
-    if (file.existsSync()) {
-      final loader = FontLoader('Roboto')
-        ..addFont(Future.value(ByteData.view(file.readAsBytesSync().buffer)));
-      await loader.load();
-    }
-  }
-  final iconsFile = File(
-      '/srv/flutter/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
-  if (iconsFile.existsSync()) {
-    final loader = FontLoader('MaterialIcons')
-      ..addFont(
-          Future.value(ByteData.view(iconsFile.readAsBytesSync().buffer)));
-    await loader.load();
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Shared setup
+// Shared setup — loads the committed test fonts (see support/test_fonts.dart)
+// so text metrics are identical between smoke and golden tests. Without real
+// fonts the Ahem test font causes taller text, which shrinks Expanded children
+// and produces spurious overflow errors.
 // ---------------------------------------------------------------------------
 
 void main() {
@@ -93,7 +64,7 @@ void main() {
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
-    await _loadRealFonts();
+    await loadTestFonts();
   });
 
   // ── Example list screen ─────────────────────────────────────────────────

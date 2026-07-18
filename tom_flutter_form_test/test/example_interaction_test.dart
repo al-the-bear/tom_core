@@ -21,7 +21,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,6 +38,8 @@ import 'package:tom_flutter_form_test/examples/example_h_a_master_detail.dart';
 import 'package:tom_flutter_form_test/examples/example_list_screen.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
 import 'package:tom_flutter_form_test/state/phase2a_state.dart';
+
+import 'support/test_fonts.dart';
 
 // ---------------------------------------------------------------------------
 // Fixture — a fresh 3-customer directory per test. H-A binds the shared
@@ -68,35 +69,6 @@ CustomerDirectory _seedCustomers() {
   return dir;
 }
 
-// ---------------------------------------------------------------------------
-// Font loading — mirrors example_smoke_test.dart so Ahem's taller metrics
-// don't shrink Expanded children into spurious overflow FlutterErrors.
-// ---------------------------------------------------------------------------
-
-Future<void> _loadRealFonts() async {
-  const robotoDir =
-      '/srv/flutter/flutter/bin/cache/dart-sdk/bin/resources/devtools/assets/fonts/Roboto';
-  for (final name in [
-    'Roboto-Regular.ttf',
-    'Roboto-Medium.ttf',
-    'Roboto-Bold.ttf',
-  ]) {
-    final file = File('$robotoDir/$name');
-    if (file.existsSync()) {
-      final loader = FontLoader('Roboto')
-        ..addFont(Future.value(ByteData.view(file.readAsBytesSync().buffer)));
-      await loader.load();
-    }
-  }
-  final iconsFile = File(
-      '/srv/flutter/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
-  if (iconsFile.existsSync()) {
-    final loader = FontLoader('MaterialIcons')
-      ..addFont(
-          Future.value(ByteData.view(iconsFile.readAsBytesSync().buffer)));
-    await loader.load();
-  }
-}
 
 void main() {
   setUpAll(() async {
@@ -107,7 +79,7 @@ void main() {
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
-    await _loadRealFonts();
+    await loadTestFonts();
   });
 
   setUp(() {
