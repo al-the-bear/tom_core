@@ -17,10 +17,11 @@ linter:
   rules:
     dangling_library_doc_comments: false
 
-# Suppress lints for generated bridge code
+# Suppress lints for generated bridge + reflection code
 analyzer:
   exclude:
     - "**/*.b.dart"
+    - "**/*.reflection.dart"
   errors:
     unnecessary_cast: ignore
     body_might_complete_normally: ignore

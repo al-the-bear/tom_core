@@ -6,6 +6,8 @@ library;
 
 import 'package:tom_core_d4rt/tom_dartscript_bridges.dart';
 
+import '../demo_persistence/reflection_root.reflection.dart'
+    as demo_reflection;
 import 'version.versioner.dart';
 
 /// D4rt REPL with full Tom Framework bridges and VS Code integration.
@@ -122,6 +124,13 @@ class D4rtRepl extends D4rtReplBase with VSCodeIntegrationMixin {
 
 /// Entry point for the D4rt REPL.
 Future<void> d4rtMain(List<String> arguments) async {
+  // Bootstrap tomReflector's registry so scripts can reflectType() reflected
+  // types. Without this the registry is empty and every reflectType() throws,
+  // which blocks the reflection-backed server surfaces (the annotation analyzer,
+  // the datasource row mapper, the endpoint pipeline). Called once, before any
+  // bridge or script runs, so the seeded metadata is baked into the AOT binary.
+  demo_reflection.initializeReflection();
+
   // Parse VS Code port from arguments
   int? port;
   for (var i = 0; i < arguments.length; i++) {

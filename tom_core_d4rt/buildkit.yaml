@@ -52,6 +52,18 @@ d4rtgen:
       excludeVariables:
         - data
         - memberSymbolMap
+    # RCL7: the reflected persistence demo entity + repository. Bridged so a
+    # d4rt script can construct D4rtDemoTaskRecord / D4rtDemoTaskRepository and
+    # drive the reflection-backed persistence surface. The barrel only *declares*
+    # these two types (it imports, not exports, tom_core_server), so only they
+    # are bridged; the server + kernel re-exports are skipped (bridged by their
+    # own modules).
+    - name: demo_persistence
+      barrelImport: package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart
+      outputPath: lib/src/demo_persistence/demo_persistence_bridges.b.dart
+      skipReExports:
+        - package:tom_core_server/tom_core_server.dart
+        - package:tom_core_kernel/tom_core_kernel.dart
     - name: tom_dist_ledger
       barrelImport: package:tom_dist_ledger/tom_dist_ledger.dart
       outputPath: lib/src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart

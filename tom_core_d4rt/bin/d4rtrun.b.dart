@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Test runner for tom_dartscript_bridges
-// Generated: 2026-07-18T00:04:24.691775
+// Generated: 2026-07-18T18:30:27.510076
 
 // ignore_for_file: avoid_print
 
@@ -25,6 +25,7 @@ import 'package:tom_core_d4rt/src/tom_process_monitor/tom_process_monitor_bridge
 import 'package:tom_core_d4rt/src/tom_core_kernel/tom_core_kernel_bridges.b.dart' as tom_core_kernel_bridges;
 import 'package:tom_core_d4rt/src/tom_build/tom_build_bridges.b.dart' as tom_build_bridges;
 import 'package:tom_core_d4rt/src/tom_core_server/tom_core_server_bridges.b.dart' as tom_core_server_bridges;
+import 'package:tom_core_d4rt/src/demo_persistence/demo_persistence_bridges.b.dart' as demo_persistence_bridges;
 import 'package:tom_core_d4rt/src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
 import 'package:tom_core_d4rt/src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
 import 'package:tom_core_d4rt/src/tom_doc_specs/tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
@@ -39,6 +40,7 @@ import 'package:tom_process_monitor/tom_process_monitor.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_build/tom_build.dart';
 import 'package:tom_core_server/tom_core_server.dart';
+import 'package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart';
 import 'package:tom_dist_ledger/tom_dist_ledger.dart';
 import 'package:tom_doc_scanner/tom_doc_scanner.dart';
 import 'package:tom_doc_specs/tom_doc_specs.dart';
@@ -74,6 +76,10 @@ void _registerBridges(D4rt d4rt) {
   tom_core_server_bridges.TomCoreServerBridge.registerBridges(
     d4rt,
     'package:tom_core_server/tom_core_server.dart',
+  );
+  demo_persistence_bridges.DemoPersistenceBridge.registerBridges(
+    d4rt,
+    'package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart',
   );
   tom_dist_ledger_bridges.TomDistLedgerBridge.registerBridges(
     d4rt,

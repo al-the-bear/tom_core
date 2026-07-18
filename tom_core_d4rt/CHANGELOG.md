@@ -1,3 +1,39 @@
+## 1.0.15
+
+### Features
+
+- **The d4rt tool now bootstraps `tomReflector`'s registry at boot (RCL7).**
+  Before this the tool performed no tom_reflection bootstrap — there were zero
+  `*.reflection.dart` files and no `initializeReflection()` call — so the global
+  registry was empty at runtime and EVERY `tomReflector.reflectType(T)` threw.
+  That blocked the reflection-backed server surfaces from a d4rt script: the
+  annotation analyzer (`TomAnnotationAnalyzer.analysePersistentType`), the
+  datasource row mapper, and the endpoint pipeline's `getClassMethodMetadata`.
+  RCL7 closes the gap: a native reflected demo entity
+  (`D4rtDemoTaskRecord`, `@tomReflector @TomDbTable` with `@TomEntityId` /
+  `@TomDbColumn` fields) plus a concrete `TomSqlDatasourceRepository` subclass
+  (`D4rtDemoTaskRepository`) live in `lib/src/demo_persistence/` (a bridgeable
+  lib location — generators only follow `lib/`). `build_runner` reflection
+  generation (root `lib/src/demo_persistence/reflection_root.dart`, run via
+  `reflection_generation.sh`) emits `reflection_root.reflection.dart`, and
+  `d4rtMain` calls its `initializeReflection()` once before any bridge or script
+  runs — so the seeded metadata is baked into the AOT `bin/d4rt_test` binary.
+  Both demo types are bridged (`demo_persistence` module in `buildkit.yaml`).
+
+### Tests
+
+- **Added `test_d4rt_reflected_persistence.d4rt` (RCL7).** Proves the bootstrap
+  from a d4rt script: `reflectType(D4rtDemoTaskRecord)` resolves a mirror (empty
+  registry throws here); the entity constructs and its typed nullable columns
+  round-trip; `analysePersistentType(D4rtDemoTaskRecord)` resolves the
+  `@TomDbTable`/`@TomDbColumn` metadata (four columns, the class mirror, table
+  `d4rt_demo_task`, datasource `d4rt_demo`, primary key `id`); and
+  `D4rtDemoTaskRepository()` construction runs reflection first, then reaches the
+  (unregistered) data-source lookup — reaching that stage is only possible once
+  the in-constructor `analysePersistentType` has succeeded. Wired into
+  `d4rt_replay_test.dart` under a new `tom_core (reflection)` group. Full replay
+  suite stays green.
+
 ## 1.0.14
 
 ### Tests

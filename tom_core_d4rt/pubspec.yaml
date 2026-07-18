@@ -1,6 +1,6 @@
 name: tom_core_d4rt
 description: D4rt tool with full Tom Framework bridge support.
-version: 1.0.14
+version: 1.0.15
 publish_to: none
 
 environment:
@@ -39,6 +39,11 @@ dependencies:
   # >=1.0.1 carries the RCE6 TomLogger push/pop LIFO fix that the tom_basics
   # replay's post-pop restore assertion depends on.
   tom_basics: ">=1.0.1"
+  # RCL7: reflection registry types for the demo persistence bootstrap. The
+  # generated reflection_root.reflection.dart imports package:tom_reflection
+  # (generated.dart + tom_reflection.dart) and its initializeReflection() seeds
+  # tomReflector so scripts can reflectType() the reflected persistence entity.
+  tom_reflection: ">=1.0.1"
 
   # External packages
   dcli: ^8.4.2
@@ -47,9 +52,14 @@ dependencies:
   console_markdown: ^0.0.3
 
 dev_dependencies:
+  build: ^4.0.3
   build_runner: ^2.4.15
   lints: ^6.0.0
   test: ^1.25.6
   # >=1.9.5 carries the B3b (explicit method type args) + B4 (part-of via
   # package_config) AOT bridge-compile fixes for this project's corpus.
   tom_d4rt_generator: ">=1.12.1"
+  # RCL7: build_runner reflection builder that emits
+  # reflection_root.reflection.dart from the demo persistence reflection root.
+  tom_reflection_generator:
+    path: ../../reflection/tom_reflection_generator

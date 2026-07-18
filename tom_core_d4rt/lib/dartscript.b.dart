@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for tom_dartscript_bridges
-// Generated: 2026-07-18T00:04:24.687719
+// Generated: 2026-07-18T18:30:27.506767
 
 /// D4rt Bridge Registration for tom_dartscript_bridges
 library;
@@ -13,6 +13,7 @@ import 'src/tom_process_monitor/tom_process_monitor_bridges.b.dart' as tom_proce
 import 'src/tom_core_kernel/tom_core_kernel_bridges.b.dart' as tom_core_kernel_bridges;
 import 'src/tom_build/tom_build_bridges.b.dart' as tom_build_bridges;
 import 'src/tom_core_server/tom_core_server_bridges.b.dart' as tom_core_server_bridges;
+import 'src/demo_persistence/demo_persistence_bridges.b.dart' as demo_persistence_bridges;
 import 'src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
 import 'src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
 import 'src/tom_doc_specs/tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
@@ -78,6 +79,14 @@ class TomDartscriptBridges {
     for (final barrel in tom_core_server_bridges.TomCoreServerBridge.subPackageBarrels()) {
       tom_core_server_bridges.TomCoreServerBridge.registerBridges(d4rt, barrel);
     }
+    demo_persistence_bridges.DemoPersistenceBridge.registerBridges(
+      d4rt,
+      'package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in demo_persistence_bridges.DemoPersistenceBridge.subPackageBarrels()) {
+      demo_persistence_bridges.DemoPersistenceBridge.registerBridges(d4rt, barrel);
+    }
     tom_dist_ledger_bridges.TomDistLedgerBridge.registerBridges(
       d4rt,
       'package:tom_dist_ledger/tom_dist_ledger.dart',
@@ -135,6 +144,7 @@ class TomDartscriptBridges {
     buffer.writeln(tom_core_kernel_bridges.TomCoreKernelBridge.getImportBlock());
     buffer.writeln(tom_build_bridges.TomBuildBridge.getImportBlock());
     buffer.writeln(tom_core_server_bridges.TomCoreServerBridge.getImportBlock());
+    buffer.writeln(demo_persistence_bridges.DemoPersistenceBridge.getImportBlock());
     buffer.writeln(tom_dist_ledger_bridges.TomDistLedgerBridge.getImportBlock());
     buffer.writeln(tom_doc_scanner_bridges.TomDocScannerBridge.getImportBlock());
     buffer.writeln(tom_doc_specs_bridges.TomDocSpecsBridge.getImportBlock());

@@ -187,6 +187,18 @@ void main() {
     );
   });
 
+  group('tom_core (reflection)', () {
+    test(
+      'reflected persistence bootstrap — reflectType + analysePersistentType',
+      () async {
+        final result = await helper.runReplay(
+          'test/replay/test_d4rt_reflected_persistence.d4rt',
+        );
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
+  });
+
   // DB-gated: needs the RCK13 MariaDB fixture on 127.0.0.1:3309. When nothing
   // answers, the test skips itself so `testkit :test` stays green without a DB.
   // Coordinates are pinned to the docker fixture; the d4rt gate does NOT read

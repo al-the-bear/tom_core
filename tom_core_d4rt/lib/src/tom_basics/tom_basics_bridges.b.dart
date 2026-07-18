@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 4 files
-// Generated: 2026-07-18T00:04:18.851562
+// Generated: 2026-07-18T18:30:20.834112
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -1400,6 +1400,9 @@ BridgedClass _createTomRuntimeBridge() {
         final env = D4.getRequiredArg<$tom_basics_3.TomEnvironment>(positional, 0, 'env', 'setRootEnvironment');
         return $tom_basics_3.TomRuntime.setRootEnvironment(env);
       },
+      'reset': (visitor, positional, named, typeArgs) {
+        return $tom_basics_3.TomRuntime.reset();
+      },
       'setCurrentEnvironment': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setCurrentEnvironment');
         final name = D4.getRequiredArg<String?>(positional, 0, 'name', 'setCurrentEnvironment');
@@ -1443,6 +1446,7 @@ BridgedClass _createTomRuntimeBridge() {
       'getEnvironments': 'List<TomEnvironment> getEnvironments()',
       'addEnvironment': 'TomEnvironment addEnvironment(TomEnvironment env)',
       'setRootEnvironment': 'void setRootEnvironment(TomEnvironment env)',
+      'reset': 'void reset()',
       'setCurrentEnvironment': 'void setCurrentEnvironment(String? name, [String fallback = "defaultRoot"])',
       'getCurrentEnvironment': 'TomEnvironment getCurrentEnvironment()',
       'getEnvironmentHierarchy': 'List<TomEnvironment> getEnvironmentHierarchy()',
