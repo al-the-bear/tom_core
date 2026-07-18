@@ -1,3 +1,34 @@
+## 1.0.16
+
+### Tests
+
+- **Added `test_d4rt_reflected_persistence_db.d4rt` (RCL8): a DB-gated CRUD
+  round-trip driven entirely from a d4rt script.** It exercises the full
+  `TomSqlDatasourceRepository` surface against the live RCK13 MariaDB fixture,
+  using the RCL7 reflected demo entity (`D4rtDemoTaskRecord` /
+  `D4rtDemoTaskRepository`): registers the `d4rt_demo` data source via
+  `TomDataSourceInfo.initializeDatasourceInfo`, provisions a throwaway
+  `d4rt_demo_task` table, then mirrors
+  `tom_core_server/test/object_persistence_db_test.dart` — `save` inserts a row
+  and reads back the generated key, then updates it; `findById` / `findAll` /
+  `count`; `delete` / `deleteById` / `existsById`; and `findByQuerySentence`
+  plus a raw `executeQueryString`. Wired into `d4rt_replay_test.dart` as a
+  second test in the `tom_core (db)` group behind the same 127.0.0.1:3309 TCP
+  skip gate, so `testkit :test` stays green without a database.
+- **Two d4rt-replay authoring constraints captured in the replay's header.**
+  (1) The whole round-trip runs inside a single `.start-script`/`.end` block:
+  the harness wraps it in an awaited `async` function, so a captured
+  `await repo.save(t)` resolves to a concrete value there — unlike a bare REPL
+  statement (RCK16), where the captured async result stays an unresolved
+  Future and the generated key could never be read back. (2) A method may not
+  be chained directly onto an `await` expression (`(await repo.findAll())
+  .toList()` fails with "Undefined property or method 'toList' on
+  AsyncSuspensionRequest"): the await must land in its own local first
+  (`var rows = await repo.findAll(); var all = rows.toList();`). The block body
+  is wrapped in a `try`/`catch` that converts any throw into `verify(false, …)`,
+  because the harness otherwise swallows exceptions raised inside a multiline
+  block and the run would be falsely green.
+
 ## 1.0.15
 
 ### Features

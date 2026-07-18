@@ -1,0 +1,191 @@
+# =============================================================================
+# Live-DB replay: reflected-entity CRUD round-trip (RCL8)
+# =============================================================================
+# Drives TomSqlDatasourceRepository's full CRUD / query surface from a d4rt
+# script, against a real MariaDB, using the RCL7 reflected demo entity
+# (D4rtDemoTaskRecord / D4rtDemoTaskRepository). It mirrors the dart-side
+# tom_core_server/test/object_persistence_db_test.dart: save insert → read the
+# generated key → update; findById / findAll / count; delete / deleteById /
+# existsById; findByQuerySentence + a raw executeQueryString.
+#
+# This replay needs a reachable MariaDB. It is NOT part of the default replay
+# harness: the DB-gated group in test/d4rt_replay_test.dart TCP-probes
+# 127.0.0.1:3309 and skips this file when nothing answers, so `testkit :test`
+# stays green on machines without a database.
+#
+# Coordinates are PINNED to the RCK13 docker fixture
+# (tom_core_server/docker-compose.test.yaml): 127.0.0.1:3309, db
+# tom_core_server_test, root/password. The d4rt gate does NOT honor the
+# TOM_CORE_SERVER_TEST_DB_* env overrides that the dart-side suites read; bring
+# the fixture up with `tool/run_db_tests.sh` (or docker compose) on the default
+# port before running this replay.
+#
+# Why one .start-script block (RCK16 finding): a captured async result driven as
+# a REPL statement stays an unresolved Future (`var x = await repo.save(t)` does
+# not resolve), so the generated key could never be read back line-by-line. A
+# single .start-script/.end block is wrapped by the harness in an async
+# `__repl_multiline__()` that IS awaited, so inside it real async Dart works —
+# `await` resolves and locals capture concrete values. Every CRUD call and every
+# assertion therefore lives inside the ONE block. The block body is wrapped in a
+# try/catch that converts any throw into `verify(false, ...)`: the harness
+# swallows exceptions raised inside a multiline block (it only prints them), so
+# without this a mid-block failure would leave the run falsely green.
+# =============================================================================
+
+.start-script
+try {
+  // --- Register the 'd4rt_demo' data source against the live fixture DB. The
+  //     entity's @TomDbTable binds to this name; the driver is resolved from
+  //     the RCL7 reflection registry ('mariadb'), seeded at boot.
+  await TomDataSourceInfo.initializeDatasourceInfo({
+    'd4rt_demo': {
+      'type': 'mariadb',
+      'username': 'root',
+      'password': 'password',
+      'host': '127.0.0.1',
+      'port': 3309,
+      'databaseName': 'tom_core_server_test',
+    },
+  });
+  var dsi = TomDataSourceInfo.getDataSourceInfo('d4rt_demo');
+  verifyNotNull(dsi, 'd4rt_demo data source registered and resolvable');
+
+  // --- Provision a throwaway table matching D4rtDemoTaskRecord's columns.
+  await dsi.datasource.executeCommand('DROP TABLE IF EXISTS d4rt_demo_task');
+  await dsi.datasource.executeCommand('CREATE TABLE d4rt_demo_task (id BIGINT NOT NULL AUTO_INCREMENT, title VARCHAR(255) NULL, priority INT NULL, done TINYINT(1) NULL, PRIMARY KEY (id))');
+
+  var repo = D4rtDemoTaskRepository();
+  verifyNotNull(repo, 'D4rtDemoTaskRepository constructs (reflection + data source resolved)');
+
+  // --- save inserts a new row and returns the database-assigned key.
+  await dsi.datasource.executeCommand('TRUNCATE TABLE d4rt_demo_task');
+  var t1 = D4rtDemoTaskRecord();
+  t1.title = 'write tests';
+  t1.priority = 3;
+  t1.done = true;
+  var saved = await repo.save(t1);
+  verifyNotNull(saved.id, 'save() returns a database-assigned key');
+  verifyEquals(saved.title, 'write tests', 'save() round-trips title');
+  verifyEquals(saved.priority, 3, 'save() round-trips priority');
+  verifyEquals(saved.done, true, 'save() round-trips done (bool -> TINYINT(1))');
+
+  // --- findById loads a previously saved row.
+  var loaded = await repo.findById(saved.id);
+  verifyNotNull(loaded, 'findById loads the saved row');
+  verifyEquals(loaded.title, 'write tests', 'findById maps title');
+  verifyEquals(loaded.priority, 3, 'findById maps priority');
+
+  // --- findById returns null for an absent id.
+  var absent = await repo.findById(999999);
+  verify(absent == null, 'findById returns null for an absent id');
+
+  // --- save updates an existing row when the key is set.
+  saved.title = 'final';
+  saved.priority = 9;
+  var updated = await repo.save(saved);
+  verifyEquals(updated.id, saved.id, 'update keeps the same key');
+  verifyEquals(updated.title, 'final', 'update persists the new title');
+  var reloaded = await repo.findById(saved.id);
+  verifyEquals(reloaded.priority, 9, 'update persists the new priority');
+
+  // --- findAll returns every saved row.
+  await dsi.datasource.executeCommand('TRUNCATE TABLE d4rt_demo_task');
+  var a = D4rtDemoTaskRecord();
+  a.title = 'a';
+  a.priority = 1;
+  await repo.save(a);
+  var b = D4rtDemoTaskRecord();
+  b.title = 'b';
+  b.priority = 2;
+  await repo.save(b);
+  var c = D4rtDemoTaskRecord();
+  c.title = 'c';
+  c.priority = 3;
+  await repo.save(c);
+  var allRows = await repo.findAll();
+  var all = allRows.toList();
+  verifyLength(all, 3, 'findAll returns every saved row');
+  var titles = all.map((t) => t.title).toSet();
+  verify(titles.contains('a') && titles.contains('b') && titles.contains('c'), 'findAll maps each row title');
+
+  // --- count returns the number of rows.
+  var total = await repo.count();
+  verifyEquals(total.get(), 3, 'count returns the number of rows');
+
+  // --- delete removes the row by its entity key.
+  await dsi.datasource.executeCommand('TRUNCATE TABLE d4rt_demo_task');
+  var d1 = D4rtDemoTaskRecord();
+  d1.title = 'doomed';
+  d1.priority = 1;
+  var savedD1 = await repo.save(d1);
+  await repo.delete(savedD1);
+  var afterDelete = await repo.findById(savedD1.id);
+  verify(afterDelete == null, 'delete removes the row by its entity key');
+  var countAfterDelete = await repo.count();
+  verifyEquals(countAfterDelete.get(), 0, 'count is 0 after delete');
+
+  // --- deleteById removes the row by id.
+  var d2 = D4rtDemoTaskRecord();
+  d2.title = 'doomed by id';
+  d2.priority = 1;
+  var savedD2 = await repo.save(d2);
+  await repo.deleteById(savedD2.id);
+  var afterDeleteById = await repo.findById(savedD2.id);
+  verify(afterDeleteById == null, 'deleteById removes the row by id');
+
+  // --- existsById reflects presence of every requested id.
+  await dsi.datasource.executeCommand('TRUNCATE TABLE d4rt_demo_task');
+  var e1 = D4rtDemoTaskRecord();
+  e1.title = 'a';
+  e1.priority = 1;
+  var savedE1 = await repo.save(e1);
+  var e2 = D4rtDemoTaskRecord();
+  e2.title = 'b';
+  e2.priority = 2;
+  var savedE2 = await repo.save(e2);
+  var bothExist = await repo.existsById([savedE1.id, savedE2.id]);
+  verifyEquals(bothExist, true, 'existsById is true when every id is present');
+  var notAllExist = await repo.existsById([savedE1.id, 999999]);
+  verifyEquals(notAllExist, false, 'existsById is false when any id is absent');
+
+  // --- findByQuerySentence binds parameters and maps rows.
+  await dsi.datasource.executeCommand('TRUNCATE TABLE d4rt_demo_task');
+  var q1 = D4rtDemoTaskRecord();
+  q1.title = 'low';
+  q1.priority = 1;
+  await repo.save(q1);
+  var q2 = D4rtDemoTaskRecord();
+  q2.title = 'high';
+  q2.priority = 9;
+  await repo.save(q2);
+  var matchRows = await repo.findByQuerySentence('FIND BY priority = :priority', {'priority': 9});
+  var matches = matchRows.toList();
+  verifyLength(matches, 1, 'findByQuerySentence binds parameters and maps rows');
+  verifyEquals(matches.first.title, 'high', 'findByQuerySentence returns the matching row');
+
+  // --- executeQueryString runs raw SQL with bound placeholders.
+  await dsi.datasource.executeCommand('TRUNCATE TABLE d4rt_demo_task');
+  var r1 = D4rtDemoTaskRecord();
+  r1.title = 'needle';
+  r1.priority = 5;
+  await repo.save(r1);
+  var r2 = D4rtDemoTaskRecord();
+  r2.title = 'hay';
+  r2.priority = 5;
+  await repo.save(r2);
+  var rawRows = await repo.executeQueryString('SELECT id, title, priority, done FROM d4rt_demo_task WHERE title = :title', {'title': 'needle'});
+  var raw = rawRows.toList();
+  verifyLength(raw, 1, 'executeQueryString runs raw SQL with bound placeholders');
+  verifyEquals(raw.first.priority, 5, 'executeQueryString maps the raw row');
+
+  // --- Teardown: drop the throwaway table and close the connection.
+  await dsi.datasource.executeCommand('DROP TABLE IF EXISTS d4rt_demo_task');
+  await TomDataSourceInfo.closeAll();
+
+  verify(true, 'full reflected-entity CRUD round-trip completed without throwing');
+} catch (e) {
+  verify(false, 'CRUD replay threw: $e');
+}
+.end
+
+testSummary();

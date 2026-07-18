@@ -221,6 +221,24 @@ void main() {
         expect(result.success, isTrue, reason: result.failureReason);
       },
     );
+
+    test(
+      'reflected-entity CRUD round-trip — TomSqlDatasourceRepository',
+      () async {
+        if (!await _isDbReachable('127.0.0.1', 3309)) {
+          markTestSkipped(
+            'No MariaDB on 127.0.0.1:3309 — start tom_core_server/'
+            'docker-compose.test.yaml (or tool/run_db_tests.sh) to run this.',
+          );
+          return;
+        }
+        final result = await helper.runReplay(
+          'test/replay/test_d4rt_reflected_persistence_db.d4rt',
+          timeout: const Duration(seconds: 60),
+        );
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
   });
 
   group('tom_build', () {
