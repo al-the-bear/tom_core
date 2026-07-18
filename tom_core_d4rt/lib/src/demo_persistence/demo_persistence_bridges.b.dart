@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Source: lib/src/demo_persistence/demo_persistence.dart
-// Generated: 2026-07-18T18:30:26.107838
+// Generated: 2026-07-18T19:16:53.062864
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -27,6 +27,8 @@ class DemoPersistenceBridge {
     return [
       _createD4rtDemoTaskRecordBridge(),
       _createD4rtDemoTaskRepositoryBridge(),
+      _createD4rtDemoApiServiceBridge(),
+      _createD4rtDemoApiServerBridge(),
     ];
   }
 
@@ -38,6 +40,8 @@ class DemoPersistenceBridge {
     return {
       'D4rtDemoTaskRecord': _createD4rtDemoTaskRecordBridge,
       'D4rtDemoTaskRepository': _createD4rtDemoTaskRepositoryBridge,
+      'D4rtDemoApiService': _createD4rtDemoApiServiceBridge,
+      'D4rtDemoApiServer': _createD4rtDemoApiServerBridge,
     };
   }
 
@@ -48,6 +52,8 @@ class DemoPersistenceBridge {
     return {
       'D4rtDemoTaskRecord': $tom_core_d4rt_1.D4rtDemoTaskRecord,
       'D4rtDemoTaskRepository': $tom_core_d4rt_1.D4rtDemoTaskRepository,
+      'D4rtDemoApiService': $tom_core_d4rt_1.D4rtDemoApiService,
+      'D4rtDemoApiServer': $tom_core_d4rt_1.D4rtDemoApiServer,
     };
   }
 
@@ -59,6 +65,8 @@ class DemoPersistenceBridge {
     return {
       'D4rtDemoTaskRecord': 'package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart',
       'D4rtDemoTaskRepository': 'package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart',
+      'D4rtDemoApiService': 'package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart',
+      'D4rtDemoApiServer': 'package:tom_core_d4rt/src/demo_persistence/demo_persistence.dart',
     };
   }
 
@@ -72,6 +80,7 @@ class DemoPersistenceBridge {
   static Map<String, List<String>> classSupertypes() {
     return {
       'D4rtDemoTaskRepository': ['TomSqlDatasourceRepository', 'TomRepository', 'TomQueryBuilder'],
+      'D4rtDemoApiServer': ['D4rtDemoApiService'],
     };
   }
 
@@ -708,6 +717,70 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
       'dbTable': 'set dbTable(TomDbTable value)',
       'queryTypes': 'set queryTypes(List<Type> value)',
       'resultType': 'set resultType(Type value)',
+    },
+  );
+}
+
+// =============================================================================
+// D4rtDemoApiService Bridge
+// =============================================================================
+
+BridgedClass _createD4rtDemoApiServiceBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_d4rt_1.D4rtDemoApiService,
+    name: 'D4rtDemoApiService',
+    isAssignable: (v) => v is $tom_core_d4rt_1.D4rtDemoApiService,
+    isAbstract: true,
+    constructors: {
+    },
+    methods: {
+      'health': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoApiService>(target, 'D4rtDemoApiService');
+        return t.health();
+      },
+      'unguarded': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoApiService>(target, 'D4rtDemoApiService');
+        return t.unguarded();
+      },
+    },
+    methodSignatures: {
+      'health': 'Future<Map<String, Object>> health()',
+      'unguarded': 'Future<Map<String, Object>> unguarded()',
+    },
+  );
+}
+
+// =============================================================================
+// D4rtDemoApiServer Bridge
+// =============================================================================
+
+BridgedClass _createD4rtDemoApiServerBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_d4rt_1.D4rtDemoApiServer,
+    name: 'D4rtDemoApiServer',
+    isAssignable: (v) => v is $tom_core_d4rt_1.D4rtDemoApiServer,
+    hierarchyDepth: 1,
+    constructors: {
+      '': (visitor, positional, named) {
+        return $tom_core_d4rt_1.D4rtDemoApiServer();
+      },
+    },
+    methods: {
+      'health': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoApiServer>(target, 'D4rtDemoApiServer');
+        return t.health();
+      },
+      'unguarded': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoApiServer>(target, 'D4rtDemoApiServer');
+        return t.unguarded();
+      },
+    },
+    constructorSignatures: {
+      '': 'D4rtDemoApiServer()',
+    },
+    methodSignatures: {
+      'health': 'Future<Map<String, Object>> health()',
+      'unguarded': 'Future<Map<String, Object>> unguarded()',
     },
   );
 }

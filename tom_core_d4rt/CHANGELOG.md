@@ -1,3 +1,46 @@
+## 1.0.17
+
+### Tests
+
+- **Added `test_d4rt_reflected_endpoint_and_query.d4rt` (RCL9): d4rt-replay
+  coverage of the two remaining reflection-bound server surfaces, both
+  connection-free.** Now that RCL7 seeds `tomReflector` at boot, a d4rt script
+  can drive:
+  - **The endpoint-pipeline scan.** `TomEndpointRouting().scanClasses()`
+    partitions the reflected classes — the replay asserts the new
+    `@tomService` `D4rtDemoApiService` lands in `serviceInterfaces` and its
+    `@tomComponent` `D4rtDemoApiServer` in `componentClasses` — and
+    `getClassMethodMetadata()` reads each `@TomEndpoint` off the reflected
+    interface (asserting the `/d4rt_demo/health` and `/d4rt_demo/unguarded`
+    uris). Mirrors `tom_core_server/test/endpoints_pipeline_test.dart`.
+    `initializeRouter()` is intentionally not driven from the script: it
+    resolves a registered component bean for *every* captured service interface
+    across the whole registry (the server barrel captures more than the demo
+    pair), so it is not registration-free — the reflection proof is
+    `scanClasses` + `getClassMethodMetadata`.
+  - **The reflected-column query builders.** `TomQuerySentenceCompiler`
+    constructed with a real reflected entity (`D4rtDemoTaskRecord`) analyses its
+    columns by mirror. The entity's native `Type` is obtained through the
+    reflection surface — `tomReflector.reflectType(D4rtDemoTaskRecord)
+    .reflectedType` — because a bare d4rt type literal evaluates to a
+    `BridgedClass` that the `List<Type>` coercion does not unwrap (only
+    single-value/map-key coercion does); `reflectedType` returns a real Dart
+    `Type` the coercion accepts, keeping the construction reflection-bound. So
+    `getColumnInformation` returns the four reflected
+    columns, `determineColumn` resolves one by field name, and `textF` / `intF`
+    / `boolF` render qualified `d4rt_demo_task.<column>` SQL through the dialect
+    — the reflection-derived builders RCJ10 could not reach with an empty type
+    list. `compileQuerySentence('FIND BY priority = :priority')` builds a
+    `TomSelect` that references the reflected column and binds the parameter.
+- **Added the reflected annotated pipeline to the demo corpus.**
+  `demo_persistence.dart` now declares `@tomReflector @tomService`
+  `D4rtDemoApiService` (two annotated `@TomEndpoint` methods) and its
+  `@tomReflector @tomComponent` implementation `D4rtDemoApiServer`, mirroring
+  the `tom_core_server` fixture `FixtureApiService`/`FixtureApiServer`. The
+  reflection root and d4rt bridges are regenerated to capture them. Wired into
+  `d4rt_replay_test.dart` as a second test in the (non-DB-gated)
+  `tom_core (reflection)` group.
+
 ## 1.0.16
 
 ### Tests

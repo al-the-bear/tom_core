@@ -1,0 +1,132 @@
+# =============================================================================
+# D4rt Test Suite - Reflection-bound endpoint scan + reflected-column builders (RCL9)
+# Run with: d4rt -run-replay test_d4rt_reflected_endpoint_and_query.d4rt -test
+# =============================================================================
+# RCL7 seeded tomReflector's registry at boot, which unlocked the reflection-
+# bound server surfaces from a d4rt script. RCL8 drove the CRUD repository
+# against a live DB. This replay closes the two remaining reflection-bound
+# surfaces, both connection-free (no data source, no DB), using the reflected
+# demo corpus registered at boot:
+#
+#   Surface 1 - the endpoint pipeline scan (TomEndpointRouting). scanClasses()
+#     partitions the annotated classes by reflecting over tomReflector's
+#     registry, and getClassMethodMetadata() reads each @TomEndpoint off the
+#     reflected @tomService interface. Mirrors tom_core_server's
+#     endpoints_pipeline_test.dart against the demo D4rtDemoApiService /
+#     D4rtDemoApiServer (added in RCL9). initializeRouter() is deliberately NOT
+#     driven here: it resolves a registered component bean for EVERY captured
+#     service interface across the whole registry (the server barrel captures
+#     more than the demo pair), so it is not connection/registration-free — the
+#     reflection proof is scanClasses + getClassMethodMetadata.
+#
+#   Surface 2 - the reflected-column query builders on TomQueryBuilder
+#     (textF/intF/boolF) plus getColumnInformation / determineColumn /
+#     compileQuerySentence on TomQuerySentenceCompiler, constructed with a REAL
+#     reflected entity type (D4rtDemoTaskRecord) so the annotation analyser
+#     resolves its columns by mirror. RCJ10 covered the connection-free
+#     value/predicate builders with an EMPTY type list; this closes the
+#     remaining builders that need reflection-derived TomColumnInformation.
+#
+# Every assertion here would fail with "not in tomReflector" if the RCL7
+# bootstrap were absent, so a green run is the proof both surfaces are live.
+# No await is needed (every call is synchronous), so this uses plain REPL
+# statements rather than a .start-script async block.
+
+# =============================================================================
+# Surface 1: TomEndpointRouting.scanClasses partitions the reflected pipeline
+# scanClasses reflects over tomReflector.annotatedClasses; the @tomService
+# interface lands in serviceInterfaces and the @tomComponent implementation in
+# componentClasses. An empty registry would leave both partitions without the
+# demo types.
+# =============================================================================
+
+var scan = TomEndpointRouting().scanClasses();
+verifyNotNull(scan, 'scanClasses returns a partition of the reflected classes');
+
+# The d4rt REPL parses each bare statement individually, so a multi-line
+# `for (...) { }` block does not parse. Collect the simple names with a
+# single-expression .map(...).toList() instead.
+var serviceNames = scan.serviceInterfaces.map((c) => c.simpleName).toList();
+verify(serviceNames.contains('D4rtDemoApiService'), 'the @tomService interface is partitioned as a service interface');
+
+var componentNames = scan.componentClasses.map((c) => c.simpleName).toList();
+verify(componentNames.contains('D4rtDemoApiServer'), 'the @tomComponent implementation is partitioned as a component class');
+
+# =============================================================================
+# Surface 1: getClassMethodMetadata reads the @TomEndpoint metadata by mirror
+# The reflected service interface's two abstract methods each carry a
+# @TomEndpoint; getClassMethodMetadata resolves them into TomMethodMetadata,
+# exposing each endpoint's uri. This is the exact reflection path
+# initializeRouter uses to mount routes.
+# =============================================================================
+
+var svcMirror = tomReflector.reflectType(D4rtDemoApiService);
+verifyNotNull(svcMirror, 'tomReflector.reflectType(D4rtDemoApiService) resolves the service mirror');
+
+var mds = TomEndpointRouting().getClassMethodMetadata(svcMirror);
+verifyLength(mds, 2, 'getClassMethodMetadata resolves both @TomEndpoint methods');
+
+var uris = mds.map((m) => m.endpoint.uri).toList();
+verify(uris.contains('/d4rt_demo/health'), 'the health endpoint uri is read from the reflected metadata');
+verify(uris.contains('/d4rt_demo/unguarded'), 'the unguarded endpoint uri is read from the reflected metadata');
+
+# =============================================================================
+# Surface 2: TomQuerySentenceCompiler analyses a REAL reflected entity's columns
+# The constructor calls analysePersistentType(D4rtDemoTaskRecord) by mirror, so
+# getColumnInformation returns the four reflected @TomDbColumn columns and
+# determineColumn resolves one by field name.
+# =============================================================================
+
+# A d4rt type literal (D4rtDemoTaskRecord) evaluates to a BridgedClass, and the
+# List<Type> coercion does not unwrap BridgedClass elements to their nativeType
+# (only single-value/map-key coercion does). Resolve the entity's native Type
+# through the reflection surface instead — reflectType(...).reflectedType returns
+# a real Dart Type, which the List<Type> coercion accepts. This also keeps the
+# construction reflection-bound, exactly the surface RCL9 targets.
+var taskMirror = tomReflector.reflectType(D4rtDemoTaskRecord);
+var taskType = taskMirror.reflectedType;
+var compiler = TomQuerySentenceCompiler([taskType]);
+verifyNotNull(compiler, 'TomQuerySentenceCompiler constructs over a reflected entity type');
+
+var cols = compiler.getColumnInformation();
+verifyLength(cols, 4, 'getColumnInformation returns all four reflected columns (id, title, priority, done)');
+
+var titleCol = compiler.determineColumn('title');
+verifyNotNull(titleCol, 'determineColumn resolves the title column by field name');
+verifyEquals(titleCol.getQueryFieldName(), 'title', 'the resolved column maps to its @TomDbColumn name');
+
+# =============================================================================
+# Surface 2: the reflected-column builders render qualified table.column SQL
+# textF/intF/boolF each take a reflection-derived TomColumnInformation and
+# generate() a `table.column` reference through the dialect — the builders
+# RCJ10 could not reach with an empty type list.
+# =============================================================================
+
+var dialect = MariadbSqlDialect();
+
+verifyEquals(compiler.textF('title', titleCol).generate(dialect), 'd4rt_demo_task.title', 'textF renders the reflected String column as table.column');
+
+var priorityCol = compiler.determineColumn('priority');
+verifyEquals(compiler.intF('priority', priorityCol).generate(dialect), 'd4rt_demo_task.priority', 'intF renders the reflected int column as table.column');
+
+var doneCol = compiler.determineColumn('done');
+verifyEquals(compiler.boolF('done', doneCol).generate(dialect), 'd4rt_demo_task.done', 'boolF renders the reflected bool column as table.column');
+
+# =============================================================================
+# Surface 2: compileQuerySentence parses a sentence against the reflected columns
+# The parser resolves `priority` to its reflected column and binds the named
+# parameter, producing a TomSelect that renders qualified SQL.
+# =============================================================================
+
+var query = compiler.compileQuerySentence('FIND BY priority = :priority');
+verifyNotNull(query, 'compileQuerySentence builds a query over the reflected entity');
+
+var sql = query.generateQuery(dialect);
+verify(sql.contains('d4rt_demo_task.priority'), 'the compiled query references the reflected column');
+verify(sql.contains(':priority'), 'the compiled query binds the named parameter');
+
+# =============================================================================
+# Summary
+# =============================================================================
+
+testSummary();

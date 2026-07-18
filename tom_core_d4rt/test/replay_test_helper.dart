@@ -109,11 +109,21 @@ class ReplayTestHelper {
   bool get isPrepared => _prepared;
   bool _prepared = false;
 
+  /// Whether this helper compiled the binary itself (and therefore owns its
+  /// lifecycle). Only an owned binary is removed by [cleanup]; a pre-existing
+  /// binary reused via [markPrepared] is left in place so that sibling test
+  /// suites sharing the same `bin/d4rt_test` do not delete it out from under
+  /// each other when running concurrently.
+  bool _ownsBinary = false;
+
   /// Mark as prepared without running generation or compilation.
   ///
-  /// Use when the binary already exists (e.g. built by another test suite).
+  /// Use when the binary already exists (e.g. built by another test suite or a
+  /// manual build). The binary is treated as externally owned, so [cleanup]
+  /// will not delete it.
   void markPrepared() {
     _prepared = true;
+    _ownsBinary = false;
   }
 
   /// Errors from preparation, if any.
@@ -136,6 +146,7 @@ class ReplayTestHelper {
     if (!compileOk) return false;
 
     _prepared = true;
+    _ownsBinary = true;
     return true;
   }
 
@@ -294,6 +305,10 @@ class ReplayTestHelper {
 
   /// Clean up the test binary.
   void cleanup() {
+    // Only remove a binary this helper compiled. A pre-existing binary reused
+    // via markPrepared() is externally owned — deleting it would break a
+    // sibling suite still running against the same shared bin/d4rt_test.
+    if (!_ownsBinary) return;
     final binFile = File(binaryPath);
     if (binFile.existsSync()) {
       binFile.deleteSync();

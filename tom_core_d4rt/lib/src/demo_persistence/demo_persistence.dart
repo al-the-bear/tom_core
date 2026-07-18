@@ -66,3 +66,59 @@ class D4rtDemoTaskRecord {
 /// that data source has not been registered.
 class D4rtDemoTaskRepository
     extends TomSqlDatasourceRepository<D4rtDemoTaskRecord, int> {}
+
+/// The reflected endpoint contract for the d4rt demo (RCL9).
+///
+/// Mirrors `tom_core_server`'s test `FixtureApiService`: a `@tomService`
+/// **interface** whose abstract methods carry the `@TomEndpoint` /
+/// `@TomPublicAccess` annotations the endpoint router reads via
+/// [TomEndpointRouting.getClassMethodMetadata]. It exists so a d4rt script can
+/// drive the reflection-bound routing surface (`scanClasses`,
+/// `getClassMethodMetadata`, `initializeRouter`) against a real reflected
+/// annotated pipeline — the gap RCL9 closes now that RCL7 seeds `tomReflector`.
+///
+/// The endpoint annotations must sit on the service *interface* (not the
+/// implementation): `getClassMethodMetadata` reads them from the service type,
+/// and `findServiceInstance` resolves the body only through a `@tomComponent`
+/// whose superinterface *is* the service — so the two roles are separate types.
+@tomReflector
+@tomService
+abstract class D4rtDemoApiService {
+  /// Public liveness probe. `@TomPublicAccess` makes `checkAccess(null)` grant
+  /// access without a principal, so the route serves an anonymous request.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/d4rt_demo/health',
+    produces: TomMimeType.json,
+    logRequests: true,
+  )
+  Future<Map<String, Object>> health();
+
+  /// An endpoint with **no** access annotation, so `metadata.access` is null and
+  /// `checkAccess` falls back to the global protection default.
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/d4rt_demo/unguarded',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> unguarded();
+}
+
+/// The reflected `@tomComponent` implementation of [D4rtDemoApiService].
+///
+/// The endpoint pipeline invokes these bodies on the instance registered with
+/// the bean locator; `initializeRouter` resolves this component for the
+/// [D4rtDemoApiService] interface because its superinterface is the service.
+@tomReflector
+@tomComponent
+class D4rtDemoApiServer implements D4rtDemoApiService {
+  @override
+  Future<Map<String, Object>> health() async =>
+      <String, Object>{'status': 'ok', 'app': 'd4rt_demo'};
+
+  @override
+  Future<Map<String, Object>> unguarded() async =>
+      <String, Object>{'guarded': false};
+}

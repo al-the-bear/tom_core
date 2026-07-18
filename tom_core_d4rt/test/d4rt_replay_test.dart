@@ -197,6 +197,16 @@ void main() {
         expect(result.success, isTrue, reason: result.failureReason);
       },
     );
+
+    test(
+      'reflected endpoint scan + reflected-column query builders',
+      () async {
+        final result = await helper.runReplay(
+          'test/replay/test_d4rt_reflected_endpoint_and_query.d4rt',
+        );
+        expect(result.success, isTrue, reason: result.failureReason);
+      },
+    );
   });
 
   // DB-gated: needs the RCK13 MariaDB fixture on 127.0.0.1:3309. When nothing

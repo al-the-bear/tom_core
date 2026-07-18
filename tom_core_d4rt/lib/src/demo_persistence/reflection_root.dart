@@ -19,6 +19,11 @@ import 'demo_persistence.dart';
 /// the demo types so the `demo_persistence.dart` import is retained (and the
 /// analyzer stays clean) while the generator walks the import graph.
 void main() {
-  final captured = <Type>[D4rtDemoTaskRecord, D4rtDemoTaskRepository];
+  final captured = <Type>[
+    D4rtDemoTaskRecord,
+    D4rtDemoTaskRepository,
+    D4rtDemoApiService,
+    D4rtDemoApiServer,
+  ];
   assert(captured.isNotEmpty);
 }
