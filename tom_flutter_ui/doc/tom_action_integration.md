@@ -642,4 +642,3 @@ These widgets still need to be analyzed, as every callback can be linked to an a
 
 - [tom_ui_design_architecture.md](../../../_doc/tom/tom_ui_design_architecture.md) — Full UI architecture (§10: Actions)
 - [tom_ui_widgets_forms.md](../../../_doc/tom/tom_ui_widgets_forms.md) — Form actions (save, discard, validate)
-- [resource_and_authorization_ids.md](../../../_doc/tom/resource_and_authorization_ids.md) — Authorization paths

@@ -1,0 +1,5686 @@
+# Tom UI — Forms Framework Specification
+
+*Part of the [Tom Flutter UI documentation set](README.md).*
+
+**Date:** 2026-04-07
+**Status:** Active Specification
+**Package:** tom_flutter_ui
+**Location:** `tom_flutter_ui/lib/src/forms/`
+
+This document is the complete specification for the Tom Forms Framework — a system for validated, coordinated editing of application state through typed, observable form fields. Forms integrate with Tom's observable state system (`TomClass`/`TomObject`), the four-state authorization model (`TomAuthState`), resource lookup, and the action system.
+
+**Key design principles:**
+- **Logical form ≠ visual layout** — forms define data structure, fields, and validation; layout is separate
+- **Input type abstraction** — logical field types (what is edited) are decoupled from concrete widgets (how it looks)
+- **Observable by default** — every field extends `TomObject<T>`, every form extends `TomClass`
+- **Nestable and reusable** — forms can be nested, reused (same definition, different instances), and composed in lists
+- **Authorization-aware** — forms and fields participate in the four-state auth model via basePath
+
+---
+
+## Table of Contents
+
+### Part 1 — Architecture Overview
+1. [Form System Overview](#1-form-system-overview)
+2. [Logical Form vs Visual Presentation](#2-logical-form-vs-visual-presentation)
+3. [Input Type Abstraction](#3-input-type-abstraction)
+
+### Part 2 — Core Types
+4. [TomField — The Base Form Field](#4-tomfield--the-base-form-field)
+5. [TomForm — Form Container](#5-tomform--form-container)
+6. [Abstract Field Types Catalog](#6-abstract-field-types-catalog)
+
+### Part 3 — Concrete Implementations
+7. [Concrete Implementation Classes](#7-concrete-implementation-classes)
+8. [Flutter Widget Binding Strategy](#8-flutter-widget-binding-strategy)
+9. [Current Implementation Status](#9-current-implementation-status)
+10. [Form Field Anatomy](#10-form-field-anatomy)
+
+### Part 4 — Nested and Reusable Forms
+11. [Nested Forms](#11-nested-forms)
+12. [Form Templates and Reuse](#12-form-templates-and-reuse)
+13. [List Forms](#13-list-forms)
+
+### Part 5 — Form Layout Patterns
+14. [Logical vs Visual Separation in Practice](#14-logical-vs-visual-separation-in-practice)
+15. [Master-Detail Forms](#15-master-detail-forms)
+16. [Inline Forms in Lists](#16-inline-forms-in-lists)
+
+### Part 6 — Authorization, Resources, and Groups
+17. [Form Identity and Resource Resolution](#17-form-identity-and-resource-resolution)
+18. [Form Authorization](#18-form-authorization)
+19. [TomAuthorizationGroup and Forms](#19-tomauthorizationgroup-and-forms)
+
+### Part 7 — Validation and Lifecycle
+20. [Validation System](#20-validation-system)
+21. [Form Lifecycle](#21-form-lifecycle)
+22. [Form Actions](#22-form-actions)
+
+### Part 8 — Non-Form Custom Widgets
+23. [Custom Tom Widgets (Non-Form)](#23-custom-tom-widgets-non-form)
+
+### Part 9 — Implementation Guide
+24. [Package Structure](#24-package-structure)
+25. [Extension Roadmap](#25-extension-roadmap)
+26. [API Summary](#26-api-summary)
+
+### Appendices
+- [Appendix A — Data Type Coverage Analysis](#appendix-a--data-type-coverage-analysis)
+- [Appendix B — Form Widget Cross-Reference](#appendix-b--form-widget-cross-reference)
+- [Appendix C — Form Class Hierarchy Inventory](#appendix-c--form-class-hierarchy-inventory)
+
+---
+
+# Part 1 — Architecture Overview
+
+## 1. Form System Overview
+
+The Tom Form system provides validated, coordinated editing of application state. Forms integrate with Tom's observable state system — forms ARE observable objects.
+
+### Core Design Principles
+
+1. **TomField\<T\> extends TomObject\<T\>** — each field is an observable with a typed value
+2. **TomForm extends TomClass** — fields register as members, form itself is observable
+3. **Logical field type ≠ widget** — the logical field defines what is edited; the widget defines how
+4. **Initial + current values** — fields track both original and edited state
+5. **Straightforward state integration** — `getValues()` / `setValues()` for bulk operations
+6. **Form is a TomScreenElementsProvider and an ActionController** — contributes scope, widgets, actions, and resources
+
+### Key Differences from Wrapped Widgets
+
+| Aspect | Wrapped Flutter Widgets | Form Widgets |
+|--------|------------------------|--------------|
+| **State binding** | External (via `TomObservingWidget`) | Internal edit buffer |
+| **Observable integration** | Never direct | Via TomForm bind/save |
+| **Validation** | None | Built-in per-field and cross-field |
+| **Resources** | ID-based lookup | Full anatomy support (label, hint, error, description) |
+| **Purpose** | General UI | Data entry with validation |
+
+### When to Use Forms vs. Wrapped Widgets
+
+**Use TomForm + Form Fields when:**
+- Editing domain objects with validation requirements
+- Multiple related fields that should save/discard together
+- Undo/redo editing at the form level
+- Complex validation (cross-field, async)
+
+**Use Wrapped Widgets directly when:**
+- Simple immediate-effect controls (settings toggles)
+- Filters and search inputs
+- Navigation and layout
+
+---
+
+## 2. Logical Form vs Visual Presentation
+
+A core architectural principle: **the form is separate from its visual layout**. A `TomForm` defines the data model, fields, and validation. The layout is handled by the widget tree that consumes the form.
+
+### The Separation
+
+**Logical layer (TomForm + TomField subclasses):**
+- Defines which data is edited (field types, initial values, validators)
+- Owns the edit buffer and dirty tracking
+- Provides bind/save/discard lifecycle
+- Computes basePath for resource and auth lookups
+
+**Visual layer (Flutter widget tree):**
+- Positions fields on screen alongside other widgets
+- May mix form fields with non-form content (headings, dividers, images)
+- May use different layouts for the same form (compact vs. full, mobile vs. desktop)
+- Accesses fields as widgets via `myForm.fieldName.widget`
+
+### Why This Matters
+
+1. **Flexibility** — the same form can be displayed differently in different screens
+2. **Composition** — form fields can be mixed with non-form UI elements
+3. **Responsive layouts** — layout adapts while form logic stays constant
+4. **Testability** — form logic (validation, dirty tracking, save) can be unit-tested without UI
+5. **Master-detail** — the detail panel renders a form whose binding changes with selection
+
+### Form Fields as Widgets
+
+Each field produces its widget on demand:
+
+```dart
+// Spec — declares what data is edited, not how
+abstract class CustomerFormSpec extends TomForm<Customer> {
+  CustomerFormSpec({required super.formId});
+  late TomFormStringField name;
+  late TomFormStringField email;
+  late TomFormStringField phone;
+}
+
+// Impl — assigns concrete visual representations. In the common case
+// the concrete class simply declares `late final` members with
+// `form: this`; reflection auto-discovers them. Override
+// `createFormElements()` only when fields need cross-references or
+// other post-construction wiring that `late final` can't express.
+@tomReflector
+class CustomerForm extends CustomerFormSpec {
+  CustomerForm() : super(formId: 'customer');
+
+  late final name  = TomFormStringInput('name',  '', form: this);
+  late final email = TomFormEmailStringInput('email', '', form: this);
+  late final phone = TomFormPhoneStringInput('phone', '', form: this);
+}
+
+// Layout: mix form fields and other content freely
+Widget build(BuildContext context) {
+  return Column(children: [
+    Row(children: [
+      Expanded(child: customerForm.name.widget),
+      SizedBox(width: 16),
+      Expanded(child: customerForm.email.widget),
+    ]),
+    Divider(),
+    Text('Contact Information'),
+    customerForm.phone.widget,
+    Row(children: [
+      TomElevatedButton(onPressed: customerForm.saveAction.trigger, child: Text('Save')),
+      TomElevatedButton(onPressed: customerForm.discardAction.trigger, child: Text('Cancel')),
+    ]),
+  ]);
+}
+```
+
+The form doesn't dictate layout. The widget tree consumes `form.field.widget` wherever it wants.
+
+---
+
+## 3. Input Type Abstraction
+
+The forms framework uses a two-layer class hierarchy to decouple **what is edited** from **how it is presented**:
+
+### Layer 1 — Abstract Field Types
+
+Abstract field types define:
+- The Dart value type (`String`, `int`, `DateTime`, `T`, etc.)
+- Default validation rules for that data type
+- The `TomField<T>` subclass
+
+Abstract field types answer: *"What kind of data does the user provide?"*
+
+**Abstract field types are never instantiated directly.** They are used in form declarations to express intent without committing to a visual representation.
+
+### Layer 2 — Concrete Implementations
+
+Concrete implementations extend abstract field types and define:
+- The visual appearance (TextField, Dropdown, DatePicker dialog, Slider, etc.)
+- Interaction behavior (keyboard type, gestures, dialogs)
+- Additional bindings specific to the widget (e.g., min/max for sliders, option source for dropdowns)
+- The Flutter widget subtree
+
+Concrete implementations answer: *"How does the user interact with the field?"*
+
+### FormSpec / Form — Two-Layer Declaration
+
+Forms use an optional but important two-layer pattern that separates **declaration** (what fields exist) from **implementation** (how they are rendered):
+
+```dart
+// a) Declaration — abstract spec, defines data shape only
+@tomReflector
+abstract class MyFormSpec extends TomForm<MyData> {
+  MyFormSpec({required super.formId});
+  late TomFormStringField name;
+  late TomFormStringField address;
+  late TomFormIntField income;
+}
+
+// b) Implementation — assigns concrete visual representations.
+// Default pattern: `late final` initializers with `form: this` — the
+// form's reflected members become its fields automatically.
+@tomReflector
+class MyForm extends MyFormSpec {
+  MyForm() : super(formId: 'myForm');
+
+  late final name    = TomFormStringInput('name',    '', form: this);
+  late final address = TomFormStringDropdown('address', null,
+      form: this, source: countriesSource);
+  late final income  = TomFormIntSlider('income', 50000,
+      form: this,
+      min: TomInt(0),
+      max: TomInt(1000000));
+}
+```
+
+This separation is optional — a form can instantiate concrete types directly without a spec class. But the two-layer pattern is important for:
+1. **Swappable implementations** — change how fields render without touching the spec
+2. **Testing** — test form logic against the abstract spec
+3. **Platform adaptation** — different implementations per platform (Material vs. Cupertino)
+4. **Implementation sequencing** — build specs first, add visual implementations later
+
+### @tomReflector Annotation Requirement
+
+All form classes and state classes **must** be annotated with `@tomReflector`. This annotation enables the observer mechanism that underpins the entire forms system — field discovery, observable notifications, dirty tracking, and automatic UI rebuilds all depend on it:
+
+```dart
+@tomReflector
+class OrderForm extends TomForm<Order> {
+  OrderForm() : super(formId: 'order');
+  // ...fields...
+}
+
+@tomReflector
+class Order extends TomClass {
+  TomString name = TomString('');
+  TomInt quantity = TomInt(0);
+}
+```
+
+Without `@tomReflector`, the form cannot discover its fields and the observer system will not function.
+
+### Additional Observable Bindings
+
+Concrete implementations often need more than just the field value. Parameters like min/max, step, divisions, or option sources can be **observable** so they react to state changes:
+
+```dart
+// Slider with dynamic bounds — min/max update reactively
+income = TomFormIntSlider('income', 50000,
+  min: appState.salary.minBracket,   // TomInt — observable
+  max: appState.salary.maxBracket,   // TomInt — observable
+  divisions: 100,
+);
+
+// Dropdown with reactive options
+country = TomFormStringDropdown('country', null,
+  source: ObservableSelectableSource<String>(
+    appState.availableCountries,  // TomList<TomString> — reactive
+    mapper: (c) => (label: c.value, value: c.value),
+  ),
+);
+```
+
+### Fields ARE Widgets
+
+Since every concrete field has a `.widget` getter, fields participate directly in the widget tree:
+
+```dart
+...child: myForm.income.widget  // returns the Slider configured by TomIntSlider
+```
+
+The field is not itself a Widget, but it produces one. This is true for both abstract types (which delegate to their concrete subclass) and concrete types (which build the actual Flutter widget).
+
+### Value Access — Always Use setValue(T)
+
+All `TomObject<T>` subclasses (and therefore all form fields) expose a `setValue(T)` method. **This method must always be used** for writing values — never assign to `.value` directly. `setValue(T)` ensures:
+
+1. **Overridability** — subclasses can intercept and transform value changes
+2. **Observable notifications** — all registered observers are notified of the change
+3. **Dirty tracking** — the field's `isDirty` state updates correctly
+
+```dart
+// ✅ Correct: uses setValue for overridability and notifications
+field.setValue('new value');
+
+// ✅ Correct: the ~ operator reads the value (shorthand for .value)
+final current = ~field;
+
+// ❌ Wrong: bypasses observer notifications and overridability
+field.value = 'new value';  // DO NOT DO THIS
+```
+
+### Technical Mechanism
+
+```dart
+/// Abstract field type — not instantiated directly
+abstract class TomFormStringField extends TomField<String> {
+  TomFormStringField(super.tomId, super.initialValue);
+}
+
+/// Concrete implementation — extends abstract type
+class TomFormStringInput extends TomFormStringField {
+  final TextInputType keyboard;
+
+  TomFormStringInput(super.tomId, super.initialValue, {
+    this.keyboard = TextInputType.text,
+  });
+
+  @override
+  Widget get widget => TomTextFieldWidget(field: this);
+}
+
+/// Concrete implementation with selection via SelectableItem
+class TomFormStringDropdown extends TomFormStringField {
+  final TomSelectableSource<String> source;
+
+  TomFormStringDropdown(super.tomId, super.initialValue, {
+    required this.source,
+  });
+
+  @override
+  Widget get widget => TomDropdownWidget<String>(field: this, source: source);
+}
+
+/// Concrete implementation with additional observable bindings
+class TomFormIntSlider extends TomFormIntField {
+  final TomObject<int> min;
+  final TomObject<int> max;
+  final int? divisions;
+
+  TomFormIntSlider(super.tomId, super.initialValue, {
+    required this.min,
+    required this.max,
+    this.divisions,
+  });
+
+  @override
+  Widget get widget => TomSliderWidget(field: this, min: min, max: max);
+}
+```
+
+This makes the system open for extension: new implementations can be added without changing the logical field types.
+
+---
+
+# Part 2 — Core Types
+
+## 4. TomField — The Base Form Field
+
+All form fields extend `TomField<T>`, which extends `TomObject<T>`:
+
+```dart
+/// Base class for all form fields.
+///
+/// Identity model (consistent with the rest of tom_flutter_ui):
+///   - `tomId`  — short identifier the caller passes to the constructor.
+///                The `<suffix>` half of every resource key of the form
+///                `"$basePath.<suffix>"`.
+///   - `basePath` — scope-prefixed full path, e.g. `"demoC.customer.email"`.
+///                  Built from either `form.basePath` (when `form:` is
+///                  passed) or `TomScope.current.getScopePath()` otherwise.
+abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
+  @override
+  String tomId;
+  TomForm? form;
+  T _initialValue;
+  late final String scope;
+  late final String basePath;
+
+  /// Validators applied to this field. Sync validators return immediately;
+  /// async validators return Future<ValidationResult>.
+  final List<Validator<T>> validators;
+
+  /// Current validation state — may be pending, success, or error.
+  ValidationResult _validationState = const ValidationSuccess();
+
+  /// Debounce timer for change-triggered validation.
+  Timer? _debounceTimer;
+
+  /// Authorization group this field belongs to (optional).
+  @override
+  TomAuthorizationGroup? tomGroup;
+
+  /// Per-widget authorizer (optional).
+  TomAuthorizer? authorizer;
+
+  /// Build-time UI state controller (optional).
+  TomUIStateController? uiStateController;
+
+  TomField(this.tomId, T initialValue, {
+    this.form,
+    this.validators = const [],
+    this.tomGroup,
+    this.authorizer,
+    this.uiStateController,
+  })  : _initialValue = initialValue,
+        super(initialValue) {
+    // Prefer the owning form's basePath — lets a field be instantiated at
+    // its declaration site (`late final x = TomFormStringInput('x', '',
+    // form: this)`) and still anchor on the right scope regardless of
+    // whatever TomScope.current carries at lazy-init time. Falls back to
+    // the ambient zone scope when `form` is omitted.
+    scope = form != null
+        ? form!.basePath
+        : TomScope.current.getScopePath();
+    basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
+  }
+
+  // --- Value tracking ---
+
+  /// The value when the field was initialized or last saved.
+  T get initialValue => _initialValue;
+
+  /// Whether the field value differs from initial.
+  bool get isDirty => value != _initialValue;
+
+  /// Commit current value as the new initial value.
+  void commit() => _initialValue = value;
+
+  /// Reset to initial value and clear validation state.
+  void reset() {
+    set(_initialValue);
+    _debounceTimer?.cancel();
+    _validationState = const ValidationSuccess();
+  }
+
+  // --- Authorization ---
+
+  @override
+  String? get tomId => basePath;
+
+  /// Resolved effective authorization state (see §19 for resolution order).
+  @override
+  TomAuthState get effectiveAuthState => resolveEffectiveAuth();
+
+  /// Whether the field is currently editable (full auth).
+  bool get isEditable => effectiveAuthState == TomAuthState.full;
+
+  /// Whether the field is visible (not `none`).
+  bool get isVisible => effectiveAuthState != TomAuthState.none;
+
+  // --- Validation ---
+
+  /// Current validation state.
+  ValidationResult get validationState => _validationState;
+
+  /// Debounce duration for change-triggered validation. Default: 300ms.
+  Duration get validationDebounce => const Duration(milliseconds: 300);
+
+  /// Validate the current value. Always async.
+  Future<ValidationResult> validate() async { /* see §20 */ }
+
+  // --- Widget ---
+
+  /// The implementation widget for this field (overridden by concrete classes).
+  Widget get widget;
+
+  // --- Lifecycle ---
+
+  /// Dispose resources (timers, controllers, listeners).
+  void dispose() {
+    _debounceTimer?.cancel();
+  }
+
+  @override
+  String toString() => '$runtimeType($tomId: $value, dirty: $isDirty)';
+}
+```
+
+### Observable Integration
+
+Since `TomField<T>` extends `TomObject<T>`:
+- `set(value)` notifies observers (cascades to parent form)
+- `get()` / `~field` / `field()` reads the current value
+- `field >> callback` subscribes to changes
+- `field | newValue` sets via pipe operator
+
+### Form Registration
+
+When a `TomForm` discovers its members via reflection (`getMembers()`), it finds all `TomField` instances and registers them. Changes to any field propagate up to the form via the `TomClass` observation cascade.
+
+---
+
+## 5. TomForm — Form Container
+
+Forms extend `TomClass`, so fields register as members and the entire form is observable:
+
+```dart
+@tomReflector
+abstract class TomForm<T extends TomClass> extends TomClass
+    implements TomScreenElementsProvider, TomActionController {
+  final String formId;
+  late final TomScope scope;
+  late final String basePath;
+  late final Map<String, TomField> fields = {};
+  T? _binding;
+
+  TomForm({required this.formId}) {
+    scope = TomScope.current;
+    final parentPath = scope.getScopePath();
+    basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
+  }
+
+  /// Optional override hook for forms that need to create fields with
+  /// cross-references that can't be expressed as plain `late final`
+  /// initializers. Default implementation is a no-op — most forms
+  /// declare their fields as `late final` members with
+  /// `form: this`, and reflection auto-discovers them.
+  void createFormElements() {}
+
+  /// Called by the framework after construction to register the
+  /// field members with the form. Walks the reflected members list,
+  /// picks out every `TomField`, calls `field.form = this`, and
+  /// stores it under its `tomId` in [fields]. Nested `TomForm`
+  /// members are treated the same way — the parent's `basePath`
+  /// becomes the child's scope prefix (see §11).
+  void _registerReflectedFields() {
+    getMembers().entries
+      .where((entry) => entry.value is TomField)
+      .forEach((entry) {
+        final field = entry.value as TomField;
+        field.form = this;
+        fields[entry.key] = field;
+      });
+  }
+
+  // --- Binding ---
+
+  /// Bind to a TomClass instance (state).
+  void bind(T target) {
+    _binding = target;
+    final values = target.getValues();
+    _initialSnapshot = Map.unmodifiable(values);
+    setValues(values);
+    for (final field in fields.values) field.commit();
+    onBound();
+  }
+
+  /// Save form values back to bound state.
+  /// Runs full validation first — returns `false` if any errors.
+  Future<bool> save() async {
+    final errors = await validate();
+    if (errors.isNotEmpty) return false;
+    onSaving();
+    _binding?.setValues(getValues());
+    for (final field in fields.values) field.commit();
+    _initialSnapshot = Map.unmodifiable(getValues());
+    onSaved();
+    return true;
+  }
+
+  /// Discard edits, reset all fields.
+  void discard() {
+    onDiscarding();
+    for (final field in fields.values) field.reset();
+    onDiscarded();
+  }
+
+  // --- State queries ---
+
+  bool get isDirty => fields.values.any((f) => f.isDirty);
+  bool get isValid => fields.values.every(
+    (f) => f.validationState is ValidationSuccess,
+  );
+
+  // --- Validation (async — see §20) ---
+
+  Future<List<FormValidationError>> validate() async { /* see §20 */ }
+  Future<List<FormValidationError>> validateForm() async => [];
+
+  // --- Inspection ---
+
+  /// Get a field by its tomId.
+  TomField? getField(String tomId) => fields[tomId];
+
+  /// Get the current values of all fields as a map.
+  Map<String, dynamic> getValues() { /* collects from all fields */ }
+
+  /// Get the initial snapshot (values at bind time / last save).
+  Map<String, dynamic>? get initialSnapshot => _initialSnapshot;
+
+  /// All fields that currently have validation errors.
+  List<TomField> get fieldsWithErrors => fields.values
+      .where((f) => f.validationState is ValidationError)
+      .toList();
+
+  /// All fields that are dirty (value differs from initial).
+  List<TomField> get dirtyFields => fields.values
+      .where((f) => f.isDirty)
+      .toList();
+
+  // --- Lifecycle hooks ---
+
+  @protected void onBound() {}
+  @protected void onUnbinding() {}
+  @protected void onSaving() {}
+  @protected void onSaved() {}
+  @protected void onDiscarding() {}
+  @protected void onDiscarded() {}
+
+  /// Dispose all fields and clean up.
+  void dispose() {
+    for (final field in fields.values) field.dispose();
+  }
+}
+```
+
+### Form Example
+
+The shipped demos and Phase 1 code declare fields as **`late final`
+members that pass `form: this`**. Reflection auto-discovers every
+`TomField` member in the concrete class and registers it with the
+form — no explicit `createFormElements()` body is needed for the
+common case. Override `createFormElements()` only when fields need
+cross-references or other post-construction wiring that `late final`
+initializers can't express.
+
+```dart
+// Address form — reused for billing, shipping, or any address slot.
+@tomReflector
+class AddressForm extends TomForm<TomClass> {
+  AddressForm({
+    required String tomId,
+    TomForm? form,
+    TomAuthorizationGroup? tomGroup,
+  })  : super(formId: tomId) {
+    if (form != null) super.form = form;
+    if (tomGroup != null) authorizationGroup = tomGroup;
+  }
+
+  // Fields are `late final` members that pass `form: this` so the
+  // form's basePath becomes each field's scope prefix. Reflection
+  // does the rest.
+  late final street = TomFormStringInput(
+    'street', '',
+    form: this,
+    validators: [Validators.required()],
+  );
+  late final city = TomFormStringInput(
+    'city', '',
+    form: this,
+    validators: [Validators.required()],
+  );
+  late final zip = TomFormStringInput(
+    'zip', '',
+    form: this,
+    validators: [Validators.required(), Validators.pattern(r'^\d{5}$')],
+  );
+  late final country = TomFormStringDropdown(
+    'country', 'US',
+    form: this,
+    source: StaticSelectableSource<String>(
+      const ['US', 'CA', 'MX', 'GB', 'DE', 'FR'],
+    ),
+  );
+}
+
+// Usage
+final billingForm = AddressForm(tomId: 'billing')
+  ..bind(appState.order.billing);
+
+if (await billingForm.save()) {
+  // save() already copies values back into the bound TomClass.
+}
+```
+
+Some forms need an explicit `createFormElements()` — e.g. when a
+field constructor needs another field as a cross-reference that
+can't be captured via `late final`. In those cases the override
+body runs inside `TomScope.withScope(formId, ...)` so newly-created
+fields inherit the form's basePath even when they're assigned from
+inside a method body:
+
+```dart
+@tomReflector
+class DependentFieldsForm extends TomForm<TomClass> {
+  DependentFieldsForm() : super(formId: 'dep');
+
+  late TomFormStringInput primary;
+  late TomFormStringInput secondary;
+
+  @override
+  void createFormElements() {
+    primary = TomFormStringInput('primary', '', form: this);
+    // secondary's validator reads primary — needs primary to be
+    // constructed first, so we place both in createFormElements().
+    secondary = TomFormStringInput(
+      'secondary', '',
+      form: this,
+      validators: [Validators.mustMatch(() => primary.get())],
+    );
+  }
+}
+```
+
+---
+
+## 6. Abstract Field Types Catalog
+
+Abstract field types define what kind of data the user provides. Each corresponds to a `TomField<T>` subclass with appropriate defaults. **These are not instantiated directly** — concrete implementations (see §7) extend them.
+
+### Naming Convention
+
+Form field classes follow a two-layer naming convention that distinguishes **logical field types** (what data is edited) from **concrete implementations** (how the field is rendered):
+
+| Layer | Pattern | Example | Purpose |
+|-------|---------|---------|---------|
+| **Abstract field type** | `TomForm{Type}Field` | `TomFormStringField`, `TomFormIntField` | Declares field intent in FormSpec; extends `TomField<T>` |
+| **Concrete implementation** | `TomForm{Format}{Type}{Widget}` | `TomFormEmailStringInput`, `TomFormIntSlider` | Instantiated as a `late final` form member (or in `createFormElements()` for cross-referencing fields); extends abstract type |
+| **Widget wrapper** | `Tom{FlutterWidget}` | `TomTextField`, `TomSlider` | Wraps a Flutter widget; lives in `tom_flutter_ui` widgets layer |
+| **Text-input base** | `TomTextFormFieldBase<T>` | — | Generic base for text-input form fields with `TextEditingController` |
+
+**Implementation naming rule:** `TomForm` + optional *Format* prefix + *Type* + *WidgetKind*
+
+- **Format** — optional specialization of the data type (e.g., `Email`, `Password`, `Multiline`, `Currency`, `Percent`, `Url`, `Phone`)
+- **Type** — the Dart value type (`String`, `Int`, `Double`, `Bool`, `Date`, `Enum`, etc.)
+- **WidgetKind** — the visual interaction style (`Input`, `Slider`, `Stepper`, `Checkbox`, `Switch`, `Dropdown`, `Picker`, etc.)
+
+| Logical Field Type | Implementation Examples |
+|-------------------|----------------------|
+| `TomFormStringField` | `TomFormStringInput`, `TomFormEmailStringInput`, `TomFormPasswordStringInput`, `TomFormMultilineStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput` |
+| `TomFormIntField` | `TomFormIntInput`, `TomFormIntSlider`, `TomFormIntStepper` |
+| `TomFormDoubleField` | `TomFormDoubleInput`, `TomFormDoubleSlider`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput` |
+| `TomFormBoolField` | `TomFormBoolCheckbox`, `TomFormBoolSwitch`, `TomFormBoolToggle` |
+
+The `FormField` suffix on abstract types prevents naming collisions with widget wrappers. For example, `TomTextField` is the widget wrapper around Flutter's `TextField`, while `TomFormStringField` is the form field for string input.
+
+**No separate `TomFieldImplementation<T>`** — the concrete implementation class IS the field. Declare it as `late final name = TomFormEmailStringInput('name', '', form: this)` on the concrete form, or — when you use the two-layer FormSpec / FormImpl split — declare `late TomFormStringField name` in the spec and assign `name = TomFormEmailStringInput('name', '', form: this)` in `createFormElements()`. The concrete class extends the abstract type directly.
+
+### Text Fields
+
+| Abstract Type | Observable Type | Observed Value | Description | Default Validation | Implementations |
+|-------------|----------------|---------------|-------------|-------------------|-----------------|
+| `TomFormStringField` | `TomString` | `String` | All string-based input | Optional: required, minLength, maxLength, pattern | `TomFormStringInput`, `TomFormEmailStringInput`, `TomFormPasswordStringInput`, `TomFormMultilineStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput`, `TomFormStringOutlinedInput` |
+
+There is **one** abstract string field type. Format-specific behavior (email validation, password obscuring, multiline layout, URL/phone keyboard types) is provided by the concrete implementation class. This keeps the logical type simple while allowing many visual representations.
+
+Each field binds to its `TomObject<T>` wrapper — **not** the raw Dart type. For example, `TomFormStringField` binds to `TomString`, and code accesses the inner `String` via `.value` or the `~` operator.
+
+### Numeric Fields
+
+| Abstract Type | Observable Type | Observed Value | Description | Default Validation | Implementations |
+|-------------|----------------|---------------|-------------|-------------------|-----------------|
+| `TomFormIntField` | `TomInt` | `int` | Integer value | Optional: min, max | `TomFormIntInput`, `TomFormIntSlider`, `TomFormIntStepper` |
+| `TomFormDoubleField` | `TomDouble` | `double` | Decimal value | Optional: min, max, precision | `TomFormDoubleInput`, `TomFormDoubleSlider`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput`, `TomFormPercentDoubleSlider` |
+
+Currency and percent are **not** separate field types — they are `TomFormDoubleField` with specialized implementations that provide formatting (currency symbol, percentage suffix) and additional validators.
+
+### Numeric Range Fields
+
+| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
+|-------------|----------------|---------------|-------------|-------------------|
+| `TomFormIntRangeField` | `TomIntRange` | `TomIntRange` (TomClass) | Integer min/max pair (TomClass with start/end) | start ≤ end; optional: absolute min, max |
+| `TomFormDoubleRangeField` | `TomDoubleRange` | `TomDoubleRange` (TomClass) | Decimal min/max pair (TomClass with start/end) | start ≤ end; optional: absolute min, max |
+
+### Boolean Fields
+
+| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
+|-------------|----------------|---------------|-------------|-------------------|
+| `TomFormBoolField` | `TomBool` | `bool` | Boolean toggle | None |
+
+### Date and Time Fields
+
+| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
+|-------------|----------------|---------------|-------------|-------------------|
+| `TomFormDateField` | `TomOZonedDate` | `ZonedDate` | Timezone-aware date | Optional: min, max date |
+| `TomFormTimeField` | `TomOZonedTime` | `ZonedTime` | Timezone-aware time | Optional: min, max time |
+| `TomFormDateTimeField` | `TomOZonedDateTime` | `ZonedDateTime` | Combined date and time | Optional: min, max |
+| `TomFormDateRangeField` | `TomDateRange` | `TomDateRange` (TomClass) | From-date to to-date | From ≤ To |
+| `TomFormTimeRangeField` | `TomTimeRange` | `TomTimeRange` (TomClass) | From-time to to-time | From ≤ To |
+| `TomFormDateTimeRangeField` | `TomDateTimeRange` | `TomDateTimeRange` (TomClass) | From-datetime to to-datetime | From ≤ To |
+| `TomFormDurationField` | `TomDuration` | `Duration` | Time duration | Optional: min, max |
+
+### Selection Fields (Single Value)
+
+Selection is handled by **concrete implementations** that extend the abstract field types. For example, `TomFormStringDropdown` extends `TomFormStringField`, `TomFormIntSegmented` extends `TomFormIntField`. Each concrete selection class takes a `TomSelectableSource<T>` for its options. See §7 for the full concrete implementation catalog.
+
+### Multi-Value Fields
+
+For selecting multiple values, each data type has a list variant that binds to `TomList<TomObject<T>>`:
+
+| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
+|-------------|----------------|---------------|-------------|-------------------|
+| `TomFormStringListField` | `TomList<TomString>` | `List<String>` | Multi-select strings | Optional: min/max selections |
+| `TomFormIntListField` | `TomList<TomInt>` | `List<int>` | Multi-select integers | Optional: min/max selections |
+| `TomFormDoubleListField` | `TomList<TomDouble>` | `List<double>` | Multi-select decimals | Optional: min/max selections |
+| `TomFormEnumListField<T>` | `TomList<TomObject<T>>` | `List<T>` | Multi-select enum values | Optional: min/max selections |
+| `TomFormObjectListField<T>` | `TomList<TomObject<T>>` | `List<T>` | Multi-select custom objects | Optional: min/max selections |
+
+Multi-value fields bind to `TomList<TomObject<T>>` for ordered, observable collections. Concrete selection implementations (e.g., `TomFormStringFilterChips`, `TomFormIntMultiCheckbox`) handle duplicate prevention at the widget level.
+
+### File and Media Fields
+
+| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
+|-------------|----------------|---------------|-------------|-------------------|
+| `TomFormFileField` | `TomFileRef` | `FileRef?` | File upload/selection | Optional: max size, allowed types |
+
+### Nullable Variants
+
+Every abstract field type has a nullable variant (e.g., `TomFormNStringField` for `String?`, `TomFormNIntField` for `int?`). Nullable fields use the nullable `TomObject<T>` wrapper (e.g., `TomNString`, `TomNInt`):
+- Allow `null` as a valid value
+- Start with `null` as initial value by default
+- Have `isNull` / `isNotNull` convenience getters
+- Render a clear/reset action in their widget
+
+### State Binding Requirements — TomObject\<T\>
+
+Every value type used in form fields must have a corresponding `TomObject<T>` wrapper in `tom_core_kernel` so that forms can bind to observable state. The following table shows the required wrappers:
+
+| Value Type | Observable Wrapper | Nullable Wrapper | Status |
+|-----------|-------------------|-----------------|--------|
+| `String` | `TomString` | `TomNString` | Exists |
+| `int` | `TomInt` | `TomNInt` | Exists |
+| `double` | `TomDouble` | `TomNDouble` | Exists |
+| `bool` | `TomBool` | `TomNBool` | Exists |
+| `DateTime` | `TomDateTime` | `TomNDateTime` | Exists |
+| `TomZonedDate` | `TomOZonedDate` | `TomNOZonedDate` | Exists |
+| `TomZonedTime` | `TomOZonedTime` | `TomNOZonedTime` | Exists |
+| `TomZonedDateTime` | `TomOZonedDateTime` | `TomNOZonedDateTime` | Exists |
+| `Duration` | `TomDuration` | `TomNDuration` | **TBD** |
+| `TomIntRange` | `TomIntRange` (TomClass) | — | **TBD** |
+| `TomDoubleRange` | `TomDoubleRange` (TomClass) | — | **TBD** |
+| `TomDateRange` | `TomDateRange` (TomClass) | — | Exists |
+| `TomTimeRange` | `TomTimeRange` (TomClass) | — | Exists |
+| `TomDateTimeRange` | `TomDateTimeRange` (TomClass) | — | Exists |
+| `Enum<T>` / `T` | `TomObject<T>` | `TomObject<T?>` | Generic |
+| `List<T>` | `TomList<T>` | — | For multi-select |
+| `FileRef` | `TomFileRef` | `TomNFileRef` | **TBD** |
+
+### Range Field Binding — TomClass with Start/End
+
+All range types follow the same `TomClass` pattern: a single observable object with nullable start and end members. This applies to numeric ranges (`TomIntRange`, `TomDoubleRange`) as well as the existing date/time ranges.
+
+```dart
+// TomIntRange follows the same pattern as TomDateRange
+@tomReflector
+class TomIntRange extends TomClass {
+  TomNInt start = TomNInt(null);
+  TomNInt end = TomNInt(null);
+}
+
+@tomReflector
+class TomDoubleRange extends TomClass {
+  TomNDouble start = TomNDouble(null);
+  TomNDouble end = TomNDouble(null);
+}
+```
+
+All range fields bind to a **single** TomClass observable (not dual-binding):
+
+| Range Field | Observable | Members |
+|------------|-----------|--------|
+| `TomFormIntRangeField` | `TomIntRange` | `TomNInt start`, `TomNInt end` |
+| `TomFormDoubleRangeField` | `TomDoubleRange` | `TomNDouble start`, `TomNDouble end` |
+| `TomFormDateRangeField` | `TomDateRange` | `TomNOZonedDate startDate`, `TomNOZonedDate endDate` |
+| `TomFormTimeRangeField` | `TomTimeRange` | `TomNOZonedTime startTime`, `TomNOZonedTime endTime` |
+| `TomFormDateTimeRangeField` | `TomDateTimeRange` | `TomNOZonedDateTime start`, `TomNOZonedDateTime end` |
+
+---
+
+# Part 3 — Concrete Implementations
+
+## 7. Concrete Implementation Classes
+
+Each abstract field type has one or more concrete implementations that the form author instantiates on the concrete form — usually as `late final` members with `form: this`, or inside `createFormElements()` when a field's constructor needs to reference another already-created field. Concrete classes extend the abstract type and may add additional observable bindings.
+
+**Naming convention:** `TomForm{Format}{Type}{WidgetStyle}` — e.g., `TomFormStringInput`, `TomFormIntSlider`, `TomFormEmailStringInput`.
+
+### Text Implementations
+
+All text implementations extend `TomFormStringField`:
+
+| Concrete Implementation | Description | Additional Bindings |
+|----------------------|-------------|-------------------|
+| `TomFormStringInput` | Standard Material `TextField` | `keyboard`, `maxLength` |
+| `TomFormStringOutlinedInput` | `TextField` with `OutlineInputBorder` | `keyboard`, `maxLength` |
+| `TomFormMultilineStringInput` | Multi-line `TextField` | `minLines`, `maxLines` |
+| `TomFormPasswordStringInput` | Obscured `TextField` with visibility toggle | — |
+| `TomFormEmailStringInput` | `TextField` with email keyboard + RFC 5322 validation | — |
+| `TomFormUrlStringInput` | `TextField` with URL keyboard + URL validation | — |
+| `TomFormPhoneStringInput` | `TextField` with phone keyboard | — |
+
+### Numeric Implementations
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormIntField` | `TomFormIntInput` | `TextField` with integer-only input filter | — |
+| | `TomFormIntSlider` | Slider with integer divisions | `min`, `max` (observable `TomObject<int>`), `divisions` |
+| | `TomFormIntStepper` | +/- stepper buttons | `min`, `max` (observable), `step` |
+| `TomFormDoubleField` | `TomFormDoubleInput` | `TextField` with decimal input | — |
+| | `TomFormDoubleSlider` | Continuous or stepped slider | `min`, `max` (observable `TomObject<double>`), `divisions` |
+| | `TomFormCurrencyDoubleInput` | `TextField` with currency mask | `currencySymbol`, `decimalDigits` |
+| | `TomFormPercentDoubleInput` | `TextField` with % suffix | — |
+| | `TomFormPercentDoubleSlider` | 0–100 range slider | — |
+
+### Numeric Range Implementations
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormIntRangeField` | `TomFormIntRangeSlider` | `RangeSlider` with integer divisions | `absoluteMin`, `absoluteMax` (observable), `divisions` |
+| | `TomFormIntRangeInput` | Two `TextField`s (min/max) | — |
+| `TomFormDoubleRangeField` | `TomFormDoubleRangeSlider` | `RangeSlider` continuous or stepped | `absoluteMin`, `absoluteMax` (observable), `divisions` |
+| | `TomFormDoubleRangeInput` | Two decimal `TextField`s | — |
+
+### Boolean Implementations
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormBoolField` | `TomFormBoolCheckbox` | Material `Checkbox` with label | — |
+| | `TomFormBoolSwitch` | Material `Switch` with label | — |
+| | `TomFormBoolToggle` | Segmented toggle (Yes/No) | `trueLabel`, `falseLabel` |
+
+### Date and Time Implementations
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormDateField` | `TomFormDatePicker` | Hybrid: text field + date picker dialog | `firstDate`, `lastDate` (observable) |
+| | `TomFormDateCalendar` | Inline calendar (no dialog) | `firstDate`, `lastDate` |
+| | `TomFormDateInput` | Text-only with date parsing | — |
+| | `TomFormCupertinoDatePicker` | Cupertino wheel (date mode) | `firstDate`, `lastDate` |
+| `TomFormTimeField` | `TomFormTimePicker` | Hybrid: text field + time picker dialog | — |
+| | `TomFormCupertinoTimePicker` | Cupertino wheel (time mode) | — |
+| `TomFormDateTimeField` | `TomFormDateTimePicker` | Hybrid: date + time dialogs | `firstDate`, `lastDate` |
+| | `TomFormCupertinoDateTimePicker` | Cupertino wheel (dateAndTime) | — |
+| `TomFormDateRangeField` | `TomFormDateRangePicker` | `showDateRangePicker` dialog | `firstDate`, `lastDate` |
+| | `TomFormDateRangeInput` | Two date text fields | — |
+| `TomFormTimeRangeField` | `TomFormTimeRangePicker` | Two time picker dialogs | — |
+| `TomFormDateTimeRangeField` | `TomFormDateTimeRangePicker` | Two datetime picker pairs | — |
+| `TomFormDurationField` | `TomFormDurationInput` | Hours:Minutes:Seconds spinners | — |
+| | `TomFormDurationSlider` | Slider mapped to duration | `min`, `max` (observable) |
+| | `TomFormCupertinoTimer` | Cupertino timer wheel | — |
+
+### Selection Implementations — Single Value
+
+Concrete selection classes extend the per-type abstract field and take a `TomSelectableSource<T>` for their options. Internally, they share generic rendering logic through `SelectableItem<T>`:
+
+```dart
+class SelectableItem<T> {
+  final T value;
+  final String label;
+  final String? description;
+  final bool enabled;
+
+  const SelectableItem({
+    required this.value,
+    required this.label,
+    this.description,
+    this.enabled = true,
+  });
+}
+```
+
+`SelectableItem<T>` is a concrete data class (not a record type) that carries the selectable value, a display label, an optional description for richer item rendering, and an `enabled` flag for disabling individual options in dropdowns, radio groups, etc.
+
+#### String Selection
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormStringField` | `TomFormStringDropdown` | Material `DropdownButton` | `source` (`TomSelectableSource<String>`) |
+| | `TomFormStringSegmented` | `SegmentedButton` (≤5 options) | `source` |
+| | `TomFormStringRadioGroup` | Vertical radio button list | `source` |
+| | `TomFormStringChoiceChips` | Horizontal single-select chips | `source` |
+
+#### Int Selection
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormIntField` | `TomFormIntDropdown` | Material `DropdownButton` | `source` (`TomSelectableSource<int>`) |
+| | `TomFormIntSegmented` | `SegmentedButton` (≤5 options) | `source` |
+| | `TomFormIntRadioGroup` | Vertical radio button list | `source` |
+
+#### Double Selection
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormDoubleField` | `TomFormDoubleDropdown` | Material `DropdownButton` | `source` (`TomSelectableSource<double>`) |
+| | `TomFormDoubleSegmented` | `SegmentedButton` (≤5 options) | `source` |
+
+#### Enum\<T\> Selection
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormEnumField<T>` | `TomFormEnumDropdown<T>` | Material `DropdownButton` | `source` (`TomSelectableSource<T>`) |
+| | `TomFormEnumSegmented<T>` | `SegmentedButton` (≤5) | `source` |
+| | `TomFormEnumRadioGroup<T>` | Vertical radio button list | `source` |
+| | `TomFormEnumChoiceChips<T>` | Horizontal chips | `source` |
+| | `TomFormEnumCupertinoPicker<T>` | Cupertino scroll wheel | `source` |
+
+#### Custom Object\<T\> Selection
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormObjectField<T>` | `TomFormObjectDropdown<T>` | Material `DropdownButton` | `source` (`TomSelectableSource<T>`) |
+| | `TomFormObjectChoiceChips<T>` | Horizontal chips | `source` |
+| | `TomFormObjectRadioGroup<T>` | Vertical radio list | `source` |
+
+#### Search & Lookup
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormSearchField<T>` | `TomFormSearchInput<T>` | Type-ahead autocomplete | `source` (`AsyncSelectableSource<T>`) |
+| | `TomFormSearchAnchor<T>` | Full-screen search overlay | `source` |
+| `TomFormLookupField<T>` | `TomFormLookupDialog<T>` | Dialog/bottom sheet lookup | `source` |
+
+### Selection Implementations — Multi-Value
+
+Multi-value concrete classes extend the per-type list field and bind to `TomList<T>`:
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormStringListField` | `TomFormStringFilterChips` | Multi-select filter chips | `source` (`TomSelectableSource<String>`) |
+| | `TomFormStringMultiCheckbox` | Vertical checkbox list | `source` |
+| | `TomFormStringMultiSegmented` | `SegmentedButton` multi (≤5) | `source` |
+| `TomFormIntListField` | `TomFormIntFilterChips` | Multi-select filter chips | `source` (`TomSelectableSource<int>`) |
+| | `TomFormIntMultiCheckbox` | Vertical checkbox list | `source` |
+| `TomFormEnumListField<T>` | `TomFormEnumFilterChips<T>` | Multi-select filter chips | `source` (`TomSelectableSource<T>`) |
+| | `TomFormEnumMultiCheckbox<T>` | Vertical checkbox list | `source` |
+| | `TomFormEnumMultiSegmented<T>` | `SegmentedButton` multi (≤5) | `source` |
+| `TomFormObjectListField<T>` | `TomFormObjectFilterChips<T>` | Multi-select filter chips | `source` (`TomSelectableSource<T>`) |
+| | `TomFormObjectMultiCheckbox<T>` | Vertical checkbox list | `source` |
+
+### File Implementations
+
+| Abstract Type | Concrete Implementation | Description | Additional Bindings |
+|-------------|----------------------|-------------|-------------------|
+| `TomFormFileField` | `TomFormFileUpload` | Drop zone + browse button | `allowedExtensions`, `maxSize` |
+
+### TomSelectableSource\<T\> Adapters
+
+`TomSelectableSource<T>` is an abstract class that extends `TomObservable` and provides `List<SelectableItem<T>>` to selection implementations. Adapters decouple "where options come from" from rendering:
+
+| Adapter | Source | Reactivity |
+|---------|--------|-----------|
+| `StaticSelectableSource<T>` | `List<SelectableItem<T>>` at construction | None — fixed list |
+| `EnumSelectableSource<T>` | `Enum.values` + label resolver (i18n) | None — labels may change with locale |
+| `ObservableSelectableSource<T>` | `TomList<E extends TomObject>` + mapper | Reactive — updates when list changes |
+| `AsyncSelectableSource<T>` | `Future<List<SelectableItem<T>>> Function(String)` | Query-driven — re-fetches on input |
+
+```dart
+// Static source from enum values
+final prioritySource = EnumSelectableSource<Priority>(
+  Priority.values,
+  labelResolver: (p) => p.displayName,
+);
+
+// Observable source — updates when products change
+final productSource = ObservableSelectableSource<Product>(
+  appState.availableProducts,  // TomList<TomProductItem>
+  mapper: (item) => (label: item.name.value, value: item.toProduct()),
+);
+
+// Async source — type-ahead search
+final citySource = AsyncSelectableSource<City>(
+  fetcher: (query) async {
+    final results = await api.searchCities(query, limit: 20);
+    return results.map((c) => (label: '${c.name}, ${c.country}', value: c)).toList();
+  },
+);
+```
+
+### Selection Source Change Convention
+
+When a `TomSelectableSource<T>` updates its items (e.g., `ObservableSelectableSource` reacts to a `TomList` change), selection fields must handle the case where the currently selected value is no longer in the new items list:
+
+1. **Dropdown / single-select fields:** If the current value is not in the new items, **reset to the first available option**. If the items list is empty, set the field value to its default (null for nullable fields, or keep the stale value and show a validation error for non-nullable fields).
+2. **Multi-select fields:** Remove any selected values that are no longer in the new items list. Keep selected values that are still available.
+3. **Search fields:** Clear the search text and selection if the source changes fundamentally (e.g., switching from one API endpoint to another).
+
+This convention prevents stale/orphaned values that don't match any available option. The field fires a `FieldValueChangedEvent` when the reset occurs.
+
+---
+
+Each concrete implementation bridges a Tom observable field to a Flutter widget. This section defines the binding categories and documents exactly how each Flutter widget parameter maps to a Tom concept.
+
+### 8.1. Binding Categories
+
+Every Flutter widget parameter falls into one of these categories:
+
+| Category | Description | Managed By | Examples |
+|----------|-------------|-----------|----------|
+| **Value binding** | Primary field value — always bidirectional | Concrete field class | `Slider.value`, `Checkbox.value`, `DropdownButton.value` |
+| **Write-back callback** | Flutter callback that writes user input back to the observable | Concrete field class | `onChanged`, `onSelected`, `onSelectionChanged`, `onDateChanged` |
+| **Observable config** | Configuration parameters that can change reactively | Constructor params (`TomObject<T>`) | `min`, `max`, `firstDate`, `lastDate`, `absoluteMin`, `absoluteMax` |
+| **Data source** | Options/items provided to selection widgets | `TomSelectableSource<T>` | `items`, `dropdownMenuEntries`, `segments`, `suggestionsBuilder` |
+| **Internal controller** | Controllers created and owned by the concrete class | Concrete field class | `TextEditingController`, `SearchController`, `FocusNode` |
+| **Auth-driven state** | Enabled/disabled/read-only based on authorization | `TomPolicyNodeBase` (auth system) | `enabled`, `readOnly`, null `onChanged` |
+| **Resource-driven text** | Labels, hints, errors resolved from scoped resources | Tom resource system | `labelText`, `hintText`, `helperText`, `errorText`, `cancelText` |
+| **Theme-driven style** | Colors, shapes, typography from the Tom theme | Tom theme resolution | `activeColor`, `fillColor`, `shape`, `textStyle` |
+| **User callbacks** | Optional pass-through callbacks for form authors | Scope-wrapped (`InScopeBuilder`) | `onSubmitted`, `onChangeStart`, `onChangeEnd`, `onTap` |
+| **Static config** | Non-reactive configuration set once at construction | Constructor params (plain values) | `divisions`, `obscureText`, `tristate`, `minuteInterval` |
+
+### 8.2. Binding Pattern — Observable → Flutter Widget
+
+The core binding pattern for all concrete implementations:
+
+```dart
+class TomFormIntSlider extends TomFormIntField {
+  final TomObject<int> min;
+  final TomObject<int> max;
+  final int? divisions;
+  final ValueChanged<int>? onChangeStart;
+  final ValueChanged<int>? onChangeEnd;
+
+  TomFormIntSlider(super.tomId, super.initialValue, {
+    required this.min,
+    required this.max,
+    this.divisions,
+    this.onChangeStart,
+    this.onChangeEnd,
+  });
+
+  @override
+  Widget get widget => _TomFormIntSliderWidget(field: this);
+}
+
+class _TomFormIntSliderWidget extends StatelessWidget {
+  final TomFormIntSlider field;
+  const _TomFormIntSliderWidget({required this.field});
+
+  @override
+  Widget build(BuildContext context) {
+    // Rebuilds when field.value, field.min, or field.max change
+    return TomMultiObservableBuilder(
+      observables: [field, field.min, field.max],
+      builder: (context) {
+        final minVal = field.min.value.toDouble();
+        final maxVal = field.max.value.toDouble();
+
+        return Slider(
+          // VALUE BINDING — read from observable
+          value: field.value.toDouble().clamp(minVal, maxVal),
+
+          // WRITE-BACK — write to observable
+          onChanged: field.isEditable
+              ? (v) => field.setValue(v.round())
+              : null,  // null = disabled (auth-driven)
+
+          // OBSERVABLE CONFIG — reactive parameters
+          min: minVal,
+          max: maxVal,
+
+          // STATIC CONFIG
+          divisions: field.divisions,
+
+          // DERIVED — from value
+          label: field.value.toString(),
+
+          // USER CALLBACKS — scope-wrapped pass-through
+          onChangeStart: field.onChangeStart != null
+              ? (v) => field.onChangeStart!(v.round())
+              : null,
+          onChangeEnd: field.onChangeEnd != null
+              ? (v) => field.onChangeEnd!(v.round())
+              : null,
+
+          // THEME — resolved from Tom theme
+          activeColor: TomTheme.of(context).sliderActiveColor,
+        );
+      },
+    );
+  }
+}
+```
+
+### 8.3. Per-Widget Binding Maps
+
+#### TextField (text input types)
+
+Used by: `TomFormStringInput`, `TomFormMultilineStringInput`, `TomFormPasswordStringInput`, `TomFormEmailStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput`, `TomFormIntInput`, `TomFormDoubleInput`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `controller` | Internal controller | Created by field; syncs bidirectionally with `TomObject<T>` via converter pair | Field owns lifecycle |
+| `onChanged` | Write-back | `controller.addListener` → validate → write to observable | Not exposed; internal |
+| `decoration.labelText` | Resource text | `t('label')` → scoped resource lookup | |
+| `decoration.hintText` | Resource text | `t('hint')` → scoped resource lookup | |
+| `decoration.helperText` | Resource text | `t('description')` → scoped resource lookup | |
+| `decoration.errorText` | Resource text | `ValueNotifier<String?>` from validation | Reactive via `ValueListenableBuilder` |
+| `enabled` | Auth-driven | `TomAuthState != none/disabled` | null = hidden, false = disabled |
+| `readOnly` | Auth-driven | `TomAuthState == read` | Shows value but no editing |
+| `obscureText` | Static config | From field type (`TomFormPasswordStringInput` → true) | |
+| `keyboardType` | Static config | From field type: email → `TextInputType.emailAddress`, phone → `.phone`, int → `.number`, etc. | |
+| `inputFormatters` | Static config | From field type: `TomFormIntInput` → `FilteringTextInputFormatter.digitsOnly`, currency → `CurrencyInputFormatter` | |
+| `maxLength` | Observable config | `TomObject<int>?` — can change dynamically | Optional |
+| `maxLines` / `minLines` | Static config | From field type: `TomFormMultilineStringInput` sets these | |
+| `focusNode` | Internal controller | Created and owned by field | |
+| `onSubmitted` | User callback | Scope-wrapped pass-through | Optional |
+| `onEditingComplete` | User callback | Scope-wrapped pass-through | Optional |
+| `onTap` | User callback | Scope-wrapped pass-through | Optional |
+| All style params | Theme | Resolved via Tom theme system | Colors, cursor, text style |
+
+#### Slider
+
+Used by: `TomFormIntSlider`, `TomFormDoubleSlider`, `TomFormPercentDoubleSlider`, `TomFormDurationSlider`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `value` | Value binding | `TomObject<num>.value` (cast to `double`) | Read from observable |
+| `onChanged` | Write-back | `(v) => field.setValue(convert(v))` | null when not editable (auth) |
+| `min` | Observable config | `TomObject<num>.value` — reactive | Rebuilds when changed |
+| `max` | Observable config | `TomObject<num>.value` — reactive | Rebuilds when changed |
+| `divisions` | Static config | `int?` from constructor | |
+| `label` | Derived | `field.value.toString()` or semantic formatter | Auto-generated |
+| `onChangeStart` | User callback | Scope-wrapped pass-through | Optional |
+| `onChangeEnd` | User callback | Scope-wrapped pass-through | Optional |
+| `secondaryTrackValue` | Not used | — | Could be exposed as observable |
+| All color params | Theme | Tom theme resolution | |
+
+#### RangeSlider
+
+Used by: `TomFormIntRangeSlider`, `TomFormDoubleRangeSlider`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `values` | Value binding | `RangeValues(range.start.value, range.end.value)` | Read from `TomClass` (start/end members) |
+| `onChanged` | Write-back | `(v) { range.start.value = v.start; range.end.value = v.end; }` | null when not editable |
+| `min` | Observable config | `absoluteMin` (`TomObject<num>`) — reactive | |
+| `max` | Observable config | `absoluteMax` (`TomObject<num>`) — reactive | |
+| `divisions` | Static config | `int?` | |
+| `labels` | Derived | From start/end values | Auto-generated |
+| `onChangeStart` / `onChangeEnd` | User callback | Scope-wrapped | Optional |
+
+#### Checkbox
+
+Used by: `TomFormBoolCheckbox`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `value` | Value binding | `TomBool.value` | |
+| `onChanged` | Write-back | `(v) => field.setValue(v!)` | null when not editable |
+| `tristate` | Static config | `false` for `TomFormBoolField`, `true` for `TomFormNBoolField` | Nullable variant |
+| All color/shape params | Theme | Tom theme resolution | |
+
+#### Switch
+
+Used by: `TomFormBoolSwitch`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `value` | Value binding | `TomBool.value` | |
+| `onChanged` | Write-back | `(v) => field.setValue(v)` | null when not editable |
+| All color/thumb params | Theme | Tom theme resolution | |
+
+#### SegmentedButton\<T\>
+
+Used by: `TomForm{Type}Segmented`, `TomForm{Type}MultiSegmented`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `selected` (single) | Value binding | `{TomObject<T>.value}` | Wrapped in `Set` |
+| `selected` (multi) | Value binding | `TomList<T>.value` | Direct set |
+| `onSelectionChanged` (single) | Write-back | `(s) => field.setValue(s.first)` | |
+| `onSelectionChanged` (multi) | Write-back | `(s) => field.setValue(s)` | Writes entire set |
+| `segments` | Data source | Built from `TomSelectableSource<T>.items` → `List<ButtonSegment<T>>` | Reactive when source is observable |
+| `multiSelectionEnabled` | Static config | `true` for list/multi fields | |
+
+#### DropdownButton\<T\> / DropdownMenu\<T\>
+
+Used by: `TomForm{Type}Dropdown`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `value` / `initialSelection` | Value binding | `TomObject<T>.value` | |
+| `onChanged` / `onSelected` | Write-back | `(v) => field.setValue(v)` | null when not editable |
+| `items` / `dropdownMenuEntries` | Data source | Built from `TomSelectableSource<T>.items` → `List<DropdownMenuItem<T>>` or `List<DropdownMenuEntry<T>>` | Reactive when source is observable |
+| `enabled` | Auth-driven | From auth state | |
+| `label` / `hintText` / `helperText` / `errorText` | Resource text | Scoped resource lookup | `DropdownMenu` only |
+| `controller` | Internal controller | For `DropdownMenu` — managed internally | |
+
+#### RadioListTile\<T\> (group)
+
+Used by: `TomForm{Type}RadioGroup`
+
+Renders one `RadioListTile<T>` per `TomSelectableSource<T>` item:
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `value` (per tile) | Data source | `item.value` from `SelectableItem<T>` | One tile per option |
+| `groupValue` | Value binding | `TomObject<T>.value` | Shared across all tiles |
+| `onChanged` | Write-back | `(v) => field.setValue(v)` | null when not editable |
+| `title` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+
+#### FilterChip (group)
+
+Used by: `TomForm{Type}FilterChips` (multi-select)
+
+Renders one `FilterChip` per `TomSelectableSource<T>` item:
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `selected` (per chip) | Value binding | `TomList<T>.contains(item.value)` | Per-chip check |
+| `onSelected` | Write-back | `(sel) => sel ? set.add(item.value) : set.remove(item.value)` | Toggle per chip |
+| `label` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+
+#### ChoiceChip (group)
+
+Used by: `TomForm{Type}ChoiceChips` (single-select)
+
+Renders one `ChoiceChip` per `TomSelectableSource<T>` item:
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `selected` (per chip) | Value binding | `TomObject<T>.value == item.value` | Per-chip check |
+| `onSelected` | Write-back | `(sel) => field.setValue(item.value)` | Writes selected value |
+| `label` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+
+#### CheckboxListTile (group)
+
+Used by: `TomForm{Type}MultiCheckbox` (multi-select)
+
+Renders one `CheckboxListTile` per `TomSelectableSource<T>` item:
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `value` (per tile) | Value binding | `TomList<T>.contains(item.value)` | Per-tile check |
+| `onChanged` | Write-back | `(v) => v! ? set.add(item.value) : set.remove(item.value)` | Toggle per tile |
+| `title` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+
+#### Date Picker (hybrid text + dialog)
+
+Used by: `TomFormDatePicker`, `TomFormDateTimePicker`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| Text field `controller` | Internal controller | Displays formatted date; syncs with `TomOZonedDate` | |
+| `showDatePicker.initialDate` | Value binding | `TomOZonedDate.value` → `DateTime` | Read from observable |
+| Dialog result | Write-back | `DateTime` result → write to `TomOZonedDate.value` | Async dialog |
+| `firstDate` | Observable config | `TomObject<TomZonedDate>` — reactive | Rebuilds if changed |
+| `lastDate` | Observable config | `TomObject<TomZonedDate>` — reactive | Rebuilds if changed |
+| `selectableDayPredicate` | User callback | Optional predicate | |
+| `helpText`, `cancelText`, `confirmText` | Resource text | From scoped resources | |
+| `initialEntryMode` | Static config | `DatePickerEntryMode` | |
+
+#### CalendarDatePicker (inline)
+
+Used by: `TomFormDateCalendar`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `initialDate` | Value binding | `TomOZonedDate.value` → `DateTime` | |
+| `onDateChanged` | Write-back | `DateTime` → write to `TomOZonedDate.value` | |
+| `firstDate` | Observable config | Reactive | |
+| `lastDate` | Observable config | Reactive | |
+| `selectableDayPredicate` | User callback | Optional | |
+| `initialCalendarMode` | Static config | `DatePickerMode` | |
+
+#### Time Picker (dialog)
+
+Used by: `TomFormTimePicker`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `initialTime` | Value binding | `TomOZonedTime.value` → `TimeOfDay` | |
+| Dialog result | Write-back | `TimeOfDay` → write to `TomOZonedTime.value` | Async dialog |
+| `helpText`, `cancelText`, `confirmText` | Resource text | From scoped resources | |
+| `initialEntryMode` | Static config | `TimePickerEntryMode` | |
+
+#### Date Range Picker (dialog)
+
+Used by: `TomFormDateRangePicker`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `initialDateRange` | Value binding | `DateTimeRange(start: range.start.value, end: range.end.value)` | From `TomDateRange` |
+| Dialog result | Write-back | `DateTimeRange` → write to `TomDateRange` start/end | |
+| `firstDate` | Observable config | Reactive | |
+| `lastDate` | Observable config | Reactive | |
+| All help/label texts | Resource text | From scoped resources | |
+
+#### CupertinoDatePicker
+
+Used by: `TomFormCupertinoDatePicker`, `TomFormCupertinoDateTimePicker`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `initialDateTime` | Value binding | From observable → `DateTime` | |
+| `onDateTimeChanged` | Write-back | `DateTime` → write to observable | Continuous callback |
+| `minimumDate` | Observable config | Reactive | |
+| `maximumDate` | Observable config | Reactive | |
+| `mode` | Static config | `CupertinoDatePickerMode` (date / dateAndTime) | Based on field type |
+| `use24hFormat` | Static config | Locale-dependent | |
+| `minuteInterval` | Static config | `int` | |
+
+#### CupertinoTimerPicker
+
+Used by: `TomFormCupertinoTimer`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `initialTimerDuration` | Value binding | `TomDuration.value` | |
+| `onTimerDurationChanged` | Write-back | `Duration` → write to `TomDuration.value` | Continuous |
+| `mode` | Static config | `CupertinoTimerPickerMode` (hms / hm / ms) | |
+| `minuteInterval` / `secondInterval` | Static config | `int` | |
+
+#### SearchAnchor / Autocomplete
+
+Used by: `TomFormSearchInput<T>`, `TomFormSearchAnchor<T>`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `searchController` | Internal controller | Managed by concrete class | |
+| `suggestionsBuilder` | Data source | Delegates to `AsyncSelectableSource<T>.fetch(query)` → builds suggestion widgets | Async |
+| Selection result | Write-back | Selected `T` → write to `TomObject<T>.value` | |
+| `viewHintText` | Resource text | From scoped resources | |
+| `isFullScreen` | Static config | `bool` | `TomSearchAnchor` = true |
+| `builder` | Internal | Builds the search trigger widget | |
+
+#### CupertinoPicker
+
+Used by: `TomFormEnumCupertinoPicker<T>`
+
+| Flutter Parameter | Category | Tom Binding | Notes |
+|-------------------|----------|-------------|-------|
+| `scrollController` | Internal controller | Initial item from `TomObject<T>.value` index in source | |
+| `onSelectedItemChanged` | Write-back | Index → `field.setValue(source.items[index].value)` | |
+| `children` | Data source | Built from `TomSelectableSource<T>.items` → `List<Widget>` | |
+| `itemExtent` | Static config | `double` | |
+
+### 8.4. Data Source Adaptation Summary
+
+How `TomSelectableSource<T>` adapts to each Flutter widget's items parameter:
+
+| Flutter Widget | Items Parameter | Adapted From |
+|---------------|----------------|-------------|
+| `DropdownButton<T>` | `List<DropdownMenuItem<T>>` | `source.items.map((s) => DropdownMenuItem(value: s.value, child: Text(s.label)))` |
+| `DropdownMenu<T>` | `List<DropdownMenuEntry<T>>` | `source.items.map((s) => DropdownMenuEntry(value: s.value, label: s.label))` |
+| `SegmentedButton<T>` | `List<ButtonSegment<T>>` | `source.items.map((s) => ButtonSegment(value: s.value, label: Text(s.label)))` |
+| `RadioListTile<T>` (group) | One widget per item | `for (final s in source.items) RadioListTile(value: s.value, title: Text(s.label), ...)` |
+| `ChoiceChip` (group) | One chip per item | `for (final s in source.items) ChoiceChip(label: Text(s.label), selected: ..., ...)` |
+| `FilterChip` (group) | One chip per item | `for (final s in source.items) FilterChip(label: Text(s.label), selected: ..., ...)` |
+| `CheckboxListTile` (group) | One tile per item | `for (final s in source.items) CheckboxListTile(title: Text(s.label), value: ..., ...)` |
+| `CupertinoPicker` | `List<Widget>` children | `source.items.map((s) => Center(child: Text(s.label)))` |
+| `SearchAnchor` | `suggestionsBuilder` | `source.fetch(query).then((items) => items.map((s) => ListTile(title: Text(s.label), ...)))` |
+
+### 8.5. Observable Rebuild Strategy
+
+When observable config parameters change, the widget must rebuild. All rebuilds use `TomMultiObservableBuilder`, which observes one or more `TomObservable` instances and triggers a rebuild when any of them change.
+
+`TomMultiObservableBuilder` manages **clean registration and deregistration** of observable listeners. When the widget is created, it registers listeners on all provided observables. When the widget is disposed or when the observable list changes, it deregisters all previous listeners before registering new ones. This avoids listener leaks and ensures that widgets only rebuild when their current observables change.
+
+**Pattern A — Field observables** (preferred for custom widgets):
+```dart
+TomMultiObservableBuilder(
+  observables: [field, field.min, field.max],  // all observables
+  builder: (context) => Slider(
+    value: field.value.toDouble(),
+    min: field.min.value.toDouble(),
+    max: field.max.value.toDouble(),
+    onChanged: (v) => field.setValue(v.round()),
+  ),
+);
+```
+
+**Pattern B — Field + source observables** (for reactive option lists):
+```dart
+// ObservableSelectableSource rebuilds its consuming widget when
+// the underlying TomList changes. The source extends TomObservable,
+// so TomMultiObservableBuilder can observe it directly:
+TomMultiObservableBuilder(
+  observables: [field, source],
+  builder: (context) => DropdownButton<T>(
+    value: field.value,
+    items: source.items.map((s) => DropdownMenuItem(...)).toList(),
+    onChanged: (v) => field.setValue(v),
+  ),
+);
+```
+
+Both patterns are the same mechanism — `TomMultiObservableBuilder` with different observable lists. There is no need for `ValueListenableBuilder` or other listener patterns; the Tom observer system handles all reactive updates uniformly.
+
+### 8.6. Auth State Integration
+
+The `TomPolicyNodeBase` authorization model produces four states that affect widget rendering:
+
+| Auth State | `onChanged`/`onSelected` | Visual | Widget Behavior |
+|------------|--------------------------|--------|----------------|
+| `none` | — | Hidden | `SizedBox.shrink()` — field not rendered |
+| `disabled` | `null` | Greyed out | Widget shown but non-interactive |
+| `read` | `null` | Normal appearance | Value displayed, no editing; text fields get `readOnly: true` |
+| `full` | Active callback | Normal | Full interaction |
+
+Concrete fields expose an `isEditable` getter derived from the resolved auth state. This is used to conditionally pass `null` to write-back callbacks, which is Flutter's convention for disabling widgets.
+
+---
+
+## 9. Current Implementation Status
+
+The existing code in `tom_flutter_ui/lib/src/forms/tom_form.dart` provides:
+
+| Class | Status | Notes |
+|-------|--------|-------|
+| `TomForm` | **Implemented** | Base form with reflection discovery, scope, bind, validate, save |
+| `TomField<T>` | **Implemented** | Base field with scope and `getField()` |
+| `TomTextFormFieldBase<T>` | **Implemented** (→ rename to `TomFormStringField`) | Generic text-based field with converters, validators, TextEditingController |
+| `TomFormStringField` | **Implemented** (→ currently named `TomFormStringField`) | String text field — becomes the abstract type; current impl becomes `TomFormStringInputClassic` |
+| `TomFormPasswordField` | **Implemented** (→ rename to `TomFormPasswordStringInputClassic`) | Obscured string field; new name: `TomFormPasswordStringInput` |
+| `TomFormEmailField` | **Implemented** (→ rename to `TomFormEmailStringInputClassic`) | Email with RFC 5322 validation; new name: `TomFormEmailStringInput` |
+| `TomFormIntField` | **Implemented** (→ rename to `TomFormIntInputClassic`) | Integer with min/max |
+| `TomFormDoubleField` | **Implemented** (→ rename to `TomFormDoubleInputClassic`) | Decimal with min/max |
+| `TestForm` | **Implemented** | Example form (email, password, username, age, rating) |
+
+### Extensions Needed
+
+The following gaps must be addressed to reach the full specification:
+
+| Area | Gap | Priority |
+|------|-----|----------|
+| **Input abstraction** | Fields have a `getField()` method but no `.widget` getter with replaceable concrete implementation class | High |
+| **Logical/visual separation** | `getField()` is hardcoded to `TextField`; concrete implementation classes need to extend abstract field types | High |
+| **Multiline** | No multi-line text field | High |
+| **Boolean** | No checkbox/switch/toggle field | High |
+| **Date/Time** | No date, time, datetime, duration fields | High |
+| **Selection** | No dropdown, radio, segmented, chip-select fields | High |
+| **Search/Lookup** | No search-ahead or lookup dialog fields | Medium |
+| **Currency/Percent** | No specialized numeric formatting | Medium |
+| **Nullable variants** | Fields don't support null values | Medium |
+| **List forms** | No `TomListForm` for collections of sub-forms | High |
+| **Auth integration** | Fields don't check `TomAuthorization.resolveAuth()` | High |
+| **Resource integration** | `t()` method exists but uses old `TomTextResourceProvider` pattern | Medium |
+
+---
+
+## 10. Form Field Anatomy
+
+Every Tom form field follows a consistent visual structure:
+
+```
+┌────────────────────────────────────────────┐
+│  [label]                        [info] [?] │  Label row
+├────────────────────────────────────────────┤
+│  [error message above field]               │  Top error (optional)
+├────────────────────────────────────────────┤
+│  ┌─────────────────────────┐ [action-icon] │  Input row
+│  │  [placeholder / hint]   │ [action-icon] │
+│  └─────────────────────────┘               │
+├────────────────────────────────────────────┤
+│  [error message below field]               │  Bottom error (optional)
+├────────────────────────────────────────────┤
+│  [description / helper text]               │  Description row
+└────────────────────────────────────────────┘
+```
+
+### Resource Suffixes
+
+Resource lookup uses the field's basePath with these suffixes:
+
+| Suffix | Purpose | Example Key |
+|--------|---------|-------------|
+| `label` | Field label text | `order.billingAddress.email.label` |
+| `hint` | Placeholder/hint text | `order.billingAddress.email.hint` |
+| `description` | Helper text below | `order.billingAddress.email.description` |
+| `error.required` | Required validation error | `order.billingAddress.email.error.required` |
+| `error.format` | Format validation error | `order.billingAddress.email.error.format` |
+| `error.min` | Minimum value error | `order.quantity.error.min` |
+| `error.max` | Maximum value error | `order.quantity.error.max` |
+| `info.title` | Info popup title | `order.billingAddress.email.info.title` |
+| `info.body` | Info popup content | `order.billingAddress.email.info.body` |
+| `help.title` | Help panel title | `order.billingAddress.email.help.title` |
+| `help.body` | Help panel content | `order.billingAddress.email.help.body` |
+| `action.<name>.tooltip` | Action icon tooltip | `order.billingAddress.email.action.clear.tooltip` |
+
+The actual resource suffixes depend on the field type and its validation rules. Some composite fields have sub-elements that add subtrees (e.g., `dateRange.from.label`, `dateRange.to.label`).
+
+### Form Field Decoration Mixin
+
+The anatomy diagram above (label, hint, error, description, action icons) is consistent across all field types, but different Flutter widgets provide these elements in different ways:
+
+- **Text-based fields** (`TextField`, `TextFormField`) — Material's `InputDecoration` provides label, hint, error, helper text, prefix/suffix icons natively. The anatomy maps directly.
+- **Non-text fields** (Slider, Checkbox, Switch, DatePicker, SegmentedButton, etc.) — These widgets have **no built-in decoration**. A consistent frame must be added externally.
+
+To achieve uniform visual structure across all field types, concrete implementations use a **`TomFieldDecorationMixin`** that wraps the inner widget with the standard anatomy elements:
+
+```dart
+mixin TomFieldDecorationMixin on TomField {
+  /// Wraps the inner widget with the standard field anatomy (label, error, description, actions).
+  Widget decorateField(BuildContext context, Widget innerWidget) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label row with info/help icons
+        if (hasLabel) TomFieldLabelRow(field: this),
+        // Top error (if configured for above-field display)
+        if (showTopError) TomFieldError(field: this),
+        // Input row with action icons
+        Row(children: [
+          Expanded(child: innerWidget),
+          ...actionIcons,
+        ]),
+        // Bottom error (default position)
+        if (showBottomError) TomFieldError(field: this),
+        // Description / helper text
+        if (hasDescription) TomFieldDescription(field: this),
+      ],
+    );
+  }
+}
+```
+
+**All new field implementations** (including text-input fields like `TomFormStringInput`) **use `TomFieldDecorationMixin`** for consistent visual anatomy across every field type. Text-input fields use a plain `TextField` (without `InputDecoration` label, error, or helper text) as their inner widget, and the mixin wraps it with label row, error row, and description — identical to non-text fields.
+
+**Classic fields** (`*Classic` suffixed legacy implementations) continue to use `InputDecoration` for their native Material appearance. This is the only distinction: new spec fields use the mixin; classic fields use `InputDecoration`.
+
+The benefit is **uniform look and feel** across all field types. A `TomFormStringInput`, `TomFormBoolCheckbox`, and `TomFormStringDropdown` all share the same label/error/description structure, spacing, and style inheritance from `TomFormStyle`. This makes per-section and per-form theming consistent without special-casing text fields.
+
+> **Required indicator:** When a field has `Validators.required()` in its validators list, the decoration mixin appends a required symbol (default: red asterisk `*`) to the label text. The indicator style is configurable via `TomFormStyle.requiredIndicator`.
+
+### Anatomy Configuration Options
+
+Field anatomy elements can be configured per-field or globally via `TomFormStyle` (see §10a). The following options control placement and visibility:
+
+| Option | Type | Default | Values |
+|--------|------|---------|--------|
+| `labelPlacement` | `LabelPlacement` | `above` | `above` — label row above field; `below` — label row below field; `floating` — Material floating label inside field; `inline` — label to the left of the field; `hidden` — no label (e.g., for icon-only fields) |
+| `errorPlacement` | `ErrorPlacement` | `below` | `below` — error below field; `above` — error above field; `tooltip` — error in a tooltip on hover/focus; `both` — above and below; `replaceDescription` — error takes the description (helper-text) slot below the field, rendered in the error colour; if no description is set the slot still materialises so the error is visible. Unlike the retired `replaceHint` mode, the error stays visible while the user types. |
+| `requiredIndicator` | `RequiredIndicator` | `asterisk` | `asterisk` — red asterisk after label; `text` — "(required)" text; `none` — no indicator; `custom` — custom widget |
+| `requiredIndicatorOnHint` | `RequiredIndicator` | `none` | Same options, applied to the **placeholder** (Material's `InputDecoration.hintText`) — visible only while the field is empty. |
+| `requiredIndicatorOnDescription` | `RequiredIndicator` | `none` | Same options, applied to the **description** (helper text below the field). |
+| `descriptionPlacement` | `DescriptionPlacement` | `below` | `below` — below error; `above` — between label and field; `tooltip` — on info icon click |
+| `actionIconPlacement` | `ActionIconPlacement` | `trailing` | `trailing` — right side of input row; `leading` — left side; `above` — in label row |
+
+```dart
+enum LabelPlacement       { above, below, floating, inline, hidden }
+enum ErrorPlacement       { below, above, tooltip, both, replaceDescription }
+enum RequiredIndicator    { asterisk, text, none, custom }
+enum DescriptionPlacement { below, above, tooltip }
+enum ActionIconPlacement  { trailing, leading, above }
+```
+
+### Field Action Icons
+
+Every `TomField` accepts an optional **action icon** via three
+constructor parameters, inherited from the base class — no dedicated
+subclass is needed. The icon paints in the slot controlled by
+`actionIconPlacement` and is rendered consistently across every field
+type that mixes in `TomStringInputDecorationMixin` or
+`TomDropdownDecorationMixin`.
+
+| Param | Type | Purpose |
+|---|---|---|
+| `actionIcon` | `Widget?` | The visual. Typically a plain `Icon` (the anatomy wraps it in an `IconButton` when needed); a full `IconButton` / `InkWell` is also accepted when the caller wants custom ripple / semantics. |
+| `actionIconTooltip` | `String?` | Tooltip text. When set (or when `onActionIconPressed` is non-null) the anatomy wraps the `actionIcon` with an `IconButton` so tap targets and Semantics come for free. |
+| `onActionIconPressed` | `VoidCallback?` | Tap handler. The anatomy ignores taps when `!field.isEditable`, so the icon greys out with the rest of the field under `read`/`disabled` auth states. |
+
+```dart
+late final search = TomFormStringInput(
+  'search',
+  '',
+  form: this,
+  actionIcon: const Icon(Icons.search),
+  actionIconTooltip: 'Search customer database',
+  onActionIconPressed: () => showSearchSheet(context),
+);
+```
+
+**Slot sharing with async validation:** the action-icon slot is the
+same one that renders the spinner while a slow validator is in flight
+(see §20). Pending state visibly replaces the action icon so the user
+sees progress before seeing a (still valid) trigger; once validation
+settles the icon returns. No extra wiring is needed on the caller.
+
+**Authorization interaction:** the anatomy respects the field's
+resolved auth — `onActionIconPressed` is disabled under `read` /
+`disabled` states, the icon dims with the field, and it disappears
+entirely under `none` alongside the rest of the field.
+
+These options are typically set via `TomFormStyle` for the entire application, but can be overridden per field:
+
+```dart
+// Per-field override
+name = TomFormStringInput('name', '',
+  labelPlacement: LabelPlacement.floating,  // override global setting
+  errorPlacement: ErrorPlacement.tooltip,
+);
+```
+
+### Three Text Slots — Terminology
+
+Each field widget has three text slots, all independently stylable and all resource-loadable:
+
+| Slot        | Code name     | Material concept         | Visibility                                  |
+|-------------|---------------|--------------------------|---------------------------------------------|
+| label       | `label`       | label above / floating   | always (unless `LabelPlacement.hidden`)     |
+| placeholder | `hint`        | `InputDecoration.hintText` | only while the field value is empty      |
+| helper text | `description` | "helper text"             | always when non-empty                       |
+
+Resource keys reflect these names: `{fieldPath}.label`, `{fieldPath}.hint`, `{fieldPath}.description`. Each slot has its own required-indicator control (`requiredIndicator`, `requiredIndicatorOnHint`, `requiredIndicatorOnDescription`).
+
+### Required Field Indicator
+
+Fields with a `required` validator display a required indicator (default: red asterisk after the label). The indicator is rendered by the decoration mixin based on:
+
+1. Whether the field has `Validators.required()` in its validator list
+2. The `requiredIndicator` / `requiredIndicatorOnHint` / `requiredIndicatorOnDescription` settings (from field or `TomFormStyle`)
+3. Whether the field is editable (hidden when auth state is `read` or `disabled`)
+
+### Uniform Field Heights
+
+The description slot is **always rendered** (as transparent space when `description` is empty or unset) and **clipped to one line** with ellipsis overflow. This keeps every field's total height identical regardless of whether a description is configured — so rows with mixed-content fields stay aligned and the vertical gap between rows remains uniform.
+
+Input widgets default `maxLines: 1`. Multi-line fields must set `maxLines` explicitly (e.g. `TomFormStringInput(..., maxLines: 4)`). This prevents the field from growing unpredictably in narrow columns.
+
+---
+
+## 10a. Form Theming — TomFormStyle
+
+### Design Philosophy
+
+Tom forms theming does **not** replace Flutter's `ThemeData`. It adds a **form-specific style layer** that controls:
+
+1. **Form field anatomy** — label / placeholder / description placement, error placement, required-indicator kind per slot.
+2. **Form field decoration** — border styles, corner radii, content padding.
+3. **Typography per slot** — label, input text, placeholder (hint), description, error.
+4. **Authorization visuals** — how `disabled` and `read` states look.
+
+Flutter's `ThemeData` continues to control colours, typography defaults, and Material component themes. `TomFormStyle` sits on top and layers form-specific concerns. **Layout** concerns (spacing *between* fields, row alignment, section containers) live on the ACL (§12) and on whatever widget wraps a group — not on the style class.
+
+### Shape — Umbrella + Per-Widget Overrides
+
+`TomFormStyle` is an **umbrella** class carrying:
+
+- `defaults: TomFieldStyle` — a fully-populated base (never null) with every property set.
+- One nullable per-widget sub-style: `stringInputStyle`, `dropdownStyle`, `sliderStyle`, `checkboxStyle`, `switchStyle`, `segmentedStyle`, `radioGroupStyle`, `datePickerStyle`, `timePickerStyle`, `filePickerStyle`, `chipsStyle`, `multilineInputStyle`. Each carries the same property shape as `TomFieldStyle` but with every field nullable, plus widget-specific extras (`TomSliderStyle.trackColor`, `TomStringInputStyle.variant`, etc.).
+
+```text
+TomFormStyle                           (umbrella — one per scope)
+├─ defaults            : TomFieldStyle (non-nullable; full values)
+├─ stringInputStyle    : TomStringInputStyle?   (partial override)
+├─ dropdownStyle       : TomDropdownStyle?
+├─ sliderStyle         : TomSliderStyle?
+├─ checkboxStyle       : TomCheckboxStyle?
+├─ switchStyle         : TomSwitchStyle?
+├─ segmentedStyle      : TomSegmentedStyle?
+├─ radioGroupStyle     : TomRadioGroupStyle?
+├─ datePickerStyle     : TomDatePickerStyle?
+├─ timePickerStyle     : TomTimePickerStyle?
+├─ filePickerStyle     : TomFilePickerStyle?
+├─ chipsStyle          : TomChipsStyle?
+└─ multilineInputStyle : TomMultilineInputStyle?
+```
+
+**Per-pair atomic resolution.** For any breakpointable property `p` on a field of widget type `T` with sub-style field `<t>Style`:
+
+1. If `formStyle.<t>Style?.p` is non-null, take the whole pair `(<t>Style.p, <t>Style.pBpOverrides)` from the sub-style.
+2. Otherwise take the whole pair `(defaults.p, defaults.pBpOverrides)` from `defaults`.
+
+The `(value, overrides)` duo is treated atomically — a sub-style cannot partially override only the list while inheriting the default. For non-breakpointable properties the same rule applies with the single value.
+
+### TomFieldStyle Properties
+
+Anatomy placements (none breakpointable by default except `labelPlacement`):
+
+| Property | Type | Default |
+|---|---|---|
+| `labelPlacement` | `LabelPlacement` | `above` |
+| `errorPlacement` | `ErrorPlacement` | `below` |
+| `requiredIndicator` | `RequiredIndicator` | `asterisk` |
+| `requiredIndicatorOnHint` | `RequiredIndicator` | `none` |
+| `requiredIndicatorOnDescription` | `RequiredIndicator` | `none` |
+| `descriptionPlacement` | `DescriptionPlacement` | `below` |
+| `actionIconPlacement` | `ActionIconPlacement` | `trailing` |
+
+Intra-field gaps (breakpointable — `<prop>BpOverrides: List<(double, double)>`):
+
+| Property | Type | Default |
+|---|---|---|
+| `labelFieldGap` | `double` | `4.0` — vertical distance between the label row and the input row |
+| `errorFieldGap` | `double` | `4.0` — vertical distance between the error row and the adjacent input / description row |
+| `descriptionFieldGap` | `double` | `4.0` — vertical distance between the description row and the input row. Independent of `errorFieldGap` so descriptions breathe differently from error copy, especially when an error sits between the input and the description (`errorPlacement.below` + `descriptionPlacement.below`) |
+
+Field-box shape:
+
+| Property | Type | Default |
+|---|---|---|
+| `fieldContentPadding` | `EdgeInsets` | `EdgeInsets.symmetric(horizontal: 12, vertical: 8)` |
+| `borderRadius` | `double` | `8.0` — reshapes `fieldBorder` / `focusedBorder` / `errorBorder` at render time via `applyBorderRadius` (used by the spec-aligned field widgets and by `applyErrorVisuals`); any `OutlineInputBorder` or `UnderlineInputBorder` the presets carry is rebuilt with this radius. Also consumed by `TomFormErrorBanner` for its outer container. |
+| `borderWidth` | `double` | `1.0` — line weight of `fieldBorder` / `errorBorder`. Reapplied to the presets' borders at render time via `applyBorderWidth` — for `UnderlineInputBorder` this IS the thickness of the underline, so the same token controls outlined and underlined variants uniformly. |
+| `focusedBorderWidth` | `double` | `2.0` — line weight of `focusedBorder`. Defaults match Material's emphasis step on focus (1→2 px). |
+| `fieldBorder` | `InputBorder?` | `null` |
+| `focusedBorder` | `InputBorder?` | `null` |
+| `errorBorder` | `InputBorder?` | `null` |
+
+Typography (breakpointable: `labelStyle`, `hintStyle`):
+
+| Property | Type | Default |
+|---|---|---|
+| `inputStyle` | `TextStyle?` | `null` — style of the typed value (TextField value, Dropdown selected label). |
+| `labelStyle` | `TextStyle?` | `null` |
+| `hintStyle` | `TextStyle?` | `null` |
+| `errorStyle` | `TextStyle?` | `null` |
+| `descriptionStyle` | `TextStyle?` | `null` |
+
+Hint tuning (layered on top of `hintStyle` at render time):
+
+| Property | Type | Default | Null means |
+|---|---|---|---|
+| `hintFontWeight` | `FontWeight?` | `FontWeight.w400` | Inherit the theme's weight (so a bold theme carries bold hints). |
+| `hintOpacity` | `double?` | `0.7` | Full opacity. |
+
+The defaults (`w400` + `0.7`) ensure the placeholder stays visually subordinate to the label even when the theme's `bodyMedium` is bold. `TomFieldStyle.copyWith` has matching `hintFontWeightSet` / `hintOpacitySet` flags so callers can **explicitly clear** either override (pass `null` with `*Set: true`).
+
+State visuals:
+
+| Property | Type | Default |
+|---|---|---|
+| `disabledOpacity` | `double` | `0.5` — Opacity wrapping applied when the effective auth is `disabled`. |
+| `readOnlyOpacity` | `double` | `0.8` — Opacity wrapping applied when the effective auth is `read`. Distinct from `disabledOpacity` so the two auth states read differently on fields that otherwise route through the same `enabled: false` path (text inputs, dropdowns). |
+| `readOnlyBackground` | `WidgetStateProperty<Color>?` | `null` — opt-in `ColoredBox` wrapping for read-only fields; **not** auto-derived from the theme. |
+| `focusedBackground` | `WidgetStateProperty<Color>?` | `null` |
+| `errorBorderEnabled` | `bool` | `false` (breakpointable) — when `true` and the field is in error, swap every state-border to `errorBorder`. |
+| `errorIconEnabled` | `bool` | `false` (breakpointable) — when `true` and in error, append a red circle-exclamation icon to the trailing slot. |
+
+### Breakpoints — Three Ways
+
+**Per-property breakpoint overrides** live on `TomFieldStyle` as pair-fields: a plain `prop` alongside `propBpOverrides: List<(double, T)>`. A minWidth ≤ the captured width wins; highest match wins. Currently breakpointable: `labelPlacement`, `labelStyle`, `hintStyle`, `labelFieldGap`, `errorFieldGap`, `errorBorderEnabled`, `errorIconEnabled`. Other properties promote to pair-fields only when a clear use-case arrives.
+
+**Scope-level whole-style overrides** live on `TomFormStyleScope.styleBpOverrides: List<(double, TomFormStyle)>` — for swapping the entire style wholesale when a width threshold is crossed.
+
+**Named breakpoint ladder** — see `TomBreakpoint` below — accepts `mobile`/`tablet`/`desktop` alongside raw numeric minWidths.
+
+### TomBreakpoint
+
+A tiny class with three **mutable** static fields — apps retune the ladder once at startup and every downstream reference follows:
+
+```dart
+class TomBreakpoint {
+  static double mobile  = 600;
+  static double tablet  = 900;
+  static double desktop = 1200;
+
+  static double? resolve(String name);     // 'mobile' | 'tablet' | 'desktop' → value
+  static const List<String> names;         // ['mobile', 'tablet', 'desktop']
+}
+```
+
+Both resources and programmatic code can refer to named breakpoints; the name resolves to the current value at query time, so runtime retuning flows through without cache invalidation (see §10a.Scope caching).
+
+### Presets
+
+```dart
+TomFormStyle.material3  // vanilla M3 defaults; null borders (Material underline).
+TomFormStyle.compact    // floatingLabel + labelFieldGap/errorFieldGap = 2.
+TomFormStyle.bordered   // floatingLabel + errorBorderEnabled/errorIconEnabled true +
+                        // OutlineInputBorder triad (field/focused/error).
+```
+
+### `withTheme(ThemeData)` — Theme Derivation
+
+`TomFormStyle.withTheme(theme)` walks `defaults` and, for every property that **still equals the canonical origin** (`TomFieldStyle()` untouched), substitutes a theme-derived value:
+
+- `inputStyle`, `labelStyle` ← `theme.textTheme.bodyMedium` **as-is** (the theme's `bodyMedium.color` wins; `null` stays `null` and the rendered `Text` inherits from `DefaultTextStyle`).
+- `hintStyle` ← `bodyMedium.copyWith(color: cs.onSurfaceVariant)` — weight is **not** pinned here; the dedicated `hintFontWeight` (default `w400`) handles weight subordination.
+- `errorStyle` ← `bodySmall.copyWith(color: cs.error)`.
+- `descriptionStyle` ← `bodySmall.copyWith(color: cs.onSurfaceVariant)`.
+- `focusedBackground` ← `WidgetStatePropertyAll(cs.surfaceContainerHighest)`.
+- `readOnlyBackground` is **not** auto-derived — readonly fields should not spontaneously grow a grey fill just because a theme is in play. Users who want the visual distinction set it explicitly via `style.readOnlyBackground` or the `readOnlyBackground` JSON property. `readOnlyOpacity` (default `0.8`) and `disabledOpacity` (default `0.6`) already differentiate the two auth states without a background.
+- Borders — **variant preserved, width preserved**: `null` stays `null` (so `material3`/`compact` keep their underlined look). Non-null borders keep their shape and their original stroke width; only the colour is re-tinted (`cs.outline` → `fieldBorder`, `cs.primary` → `focusedBorder`, `cs.error` → `errorBorder`). `withTheme` never inflates `null` into a concrete outline.
+
+User overrides set via `copyWith` or the resource overlay are preserved — only canonical-default values get themed.
+
+### Automatic `withTheme` in `TomFormStyleScope`
+
+`TomFormStyleScope.build()` calls `withTheme` **automatically** as the last step of style resolution, using whichever theme is active for the scope (the resolved `@bp.{key}.theme`, `themeSpec`, or the ambient `Theme.of(context)`):
+
+```
+resolved = programmaticStyle
+         → resource overlay applied   (JSON wins over programmatic)
+         → .withTheme(activeTheme)    (theme fills in remaining origin-defaults)
+```
+
+**The effect:**
+
+| Scenario | Result |
+|---|---|
+| Property **absent from JSON and programmatic** (origin value) | `withTheme` derives a theme-consistent value: `labelStyle` gets the theme's `bodyMedium`, borders get retinted from `cs.primary`/`cs.outline`/`cs.error`, etc. |
+| Property **set in JSON** (e.g. `"labelStyle": { "fontSize": 13 }`) | JSON value survives; `withTheme` does not overwrite it because it is no longer the canonical origin. |
+| Property **set programmatically** via `style.copyWith(...)` | Same preservation rule — the user's value wins. |
+| Property set to `null` via `hintFontWeightSet: true` (explicit-null copyWith) | `null` is stored as "intentional user choice"; `withTheme` treats it as user-set and does not replace it. |
+
+**Practical consequence — minimal config for a themed form:**
+
+```dart
+TomFormStyleScope(
+  style: TomFormStyle(),      // all origins → withTheme derives everything
+  tomId: 'app.forms',         // JSON fills in the properties you want explicit
+  child: app,
+)
+```
+
+With `style: TomFormStyle()` and a minimal or empty JSON block, the form automatically adopts the app's Material theme: `bodyMedium` font for labels, `bodyMedium+onSurfaceVariant` for hints, `cs.primary` for focused borders (if the preset has non-null borders), error colours from `cs.error`. **No hex hardcoding is needed for standard theme colours** — either leave the property absent (and `withTheme` derives it) or use a `cs.*` token in the JSON (and the token is resolved against the active `ColorScheme` before `withTheme` runs).
+
+**Interaction with per-breakpoint themes:**
+
+When `@bp.tablet.theme` or a `themeSpecBpOverrides` entry changes the Material theme for a given width, that theme is used both for:
+1. Wrapping the child in `Theme(data: activeTheme, child: ...)`.
+2. Supplying the `ColorScheme` for `cs.*` token resolution.
+3. The `withTheme(activeTheme)` pass.
+
+So a resource block like:
+
+```jsonc
+"@bp.tablet": {
+  "theme": { "seed": "#00897B" },
+  "labelStyle": { "fontSize": 15 }
+}
+```
+
+produces a form whose labels are **15pt with the teal theme's `bodyMedium` colour** — the explicit `fontSize` survives `withTheme`, and the colour is derived from the teal theme because `labelStyle.color` was not set (stays at origin) and `withTheme` fills it in from `bodyMedium`.
+
+**Disabling automatic `withTheme`:**
+
+If you want to opt out and manage all styling explicitly, you can call `withTheme` yourself before passing to the scope:
+
+```dart
+TomFormStyleScope(
+  // Explicitly pre-theme the style — the scope's automatic withTheme
+  // call is a no-op because no fields will still be at origin after this.
+  style: TomFormStyle.material3.withTheme(Theme.of(context)),
+  child: ...,
+)
+```
+
+Alternatively, any property you set explicitly (programmatically or via JSON) is never touched by the automatic `withTheme` — so you only need to specify the fields you want to differ from the theme.
+
+### TomThemeSpec — Structured Theme Resource
+
+`TomThemeSpec` is a small serialisable view of `ThemeData` covering the subset apps typically configure at their root: `brightness`, `seed` (used via `ColorScheme.fromSeed`), `primary`/`secondary`/`error` direct overrides, `fontFamily` (applied across the whole textTheme via `TextTheme.apply`), `bodySize`, `bodyWeight`/`labelWeight`, `density`. Every field is **nullable** — `null` means "inherit from the base ThemeData".
+
+```dart
+final spec = TomThemeSpec(
+  seed: const Color(0xFF5E35B1),
+  fontFamily: 'Inter',
+  bodySize: 14,
+);
+
+// Preserves every component theme, extension, and other base setting:
+final themeData = spec.toThemeData(ambientOrSpecifiedBase);
+```
+
+**Critical — `toThemeData([ThemeData? base])` derives from `base`**, not from scratch. Anything the spec doesn't set (card themes, app-bar themes, theme extensions, etc.) is inherited through `ThemeData.copyWith`. When `base` is null, a vanilla M3 light theme is used.
+
+Resource schema for a spec — keys are all optional:
+
+```jsonc
+"app.theme": {
+  "brightness":  "light",         // light | dark
+  "seed":        "#5E35B1",
+  "primary":     "#5E35B1",
+  "secondary":   "#F57C00",
+  "error":       "#B00020",
+  "fontFamily":  "Inter",
+  "bodySize":    14,
+  "weights": { "body": "w400", "label": "w500" },
+  "density":     "standard"       // compact | standard | comfortable
+}
+```
+
+### TomFormStyleScope
+
+```dart
+class TomFormStyleScope extends StatelessWidget {
+  final String?        tomId;                 // resource overlay root
+  final TomScope?      scope;
+  final TomFormStyle?  style;                 // programmatic base (optional)
+  final List<(double, TomFormStyle)> styleBpOverrides;
+
+  // Theme injection (all optional)
+  final ThemeData?                   theme;
+  final List<(double, ThemeData)>    themeBpOverrides;
+  final TomThemeSpec?                themeSpec;
+  final List<(double, TomThemeSpec)> themeSpecBpOverrides;
+  final ThemeData?                   themeSpecTheme;  // base for .toThemeData(base)
+
+  final Widget child;
+}
+```
+
+`style` is **optional**. When `null`, the scope does NOT introduce its
+own form-style layer — form-style resolution falls through to the
+nearest enclosing `TomFormStyleScope` (or to `TomFormStyle.material3`
+if none exists). That's the intended way to drop this widget into the
+tree purely as a breakpoint-aware theme / `themeSpec` injector: declare
+the breakpoints you care about, skip `style`, and every form field
+downstream keeps the ambient form style while picking up the theme
+swap:
+
+```dart
+TomFormStyleScope(
+  themeSpecBpOverrides: [
+    (0.0,   const TomThemeSpec(brightness: Brightness.light)),
+    (900.0, const TomThemeSpec(brightness: Brightness.dark)),
+  ],
+  child: ListView(children: [
+    customerForm.billing.widget,
+    customerForm.shipping.widget,
+  ]),
+)
+```
+
+The scope wraps its child in a `LayoutBuilder` so breakpoints resolve against the *captured* width of the scope's subtree (not the screen). Descendants read:
+
+- `TomFormStyleScope.of(context)` → the resolved `TomFormStyle`.
+- `TomFormStyleScope.widthOf(context)` → the captured width, used by per-property `pickPair` resolution inside decoration mixins.
+
+**Style resolution — five stages (applied in order):**
+
+1. Programmatic `style` (the base).
+2. Programmatic `styleBpOverrides` — highest `minWidth ≤ width` wins.
+3. Resource overlay base (`{path}.*`) when `tomId` is set.
+4. Resource overlay breakpoint (`{path}.@bp.{key}.*`) matching the captured width.
+5. **`withTheme(activeTheme)`** — fills in every property that is still at its canonical origin with a value derived from the active `ColorScheme` and `TextTheme`. Properties explicitly set in any earlier stage survive unchanged.
+
+**Theme resolution precedence (low → high):**
+
+1. Programmatic `theme`.
+2. Programmatic `themeBpOverrides`.
+3. `themeSpec.toThemeData(themeSpecTheme ?? Theme.of(context))`.
+4. `themeSpecBpOverrides` — matching entry, materialised with the same base.
+5. Resource `{path}.theme.*` → `toThemeData(themeSpecTheme ?? Theme.of(context))`.
+6. Resource `{path}.@bp.{key}.theme.*` → same.
+
+If nothing yields a `ThemeData`, the child is returned without a `Theme` wrapper — ambient wins. When a theme resolves, the scope wraps its subtree in `Theme(data: resolved, child: ...)` **inside** the inherited-widget boundary, so the inner tree sees both the form style and the themed context.
+
+**`themeSpecTheme`** is the explicit base for every spec (programmatic, BP variant, or resource). When null, the scope falls back to `Theme.of(context)` — so by default a spec patches the app's ambient theme rather than reinventing one.
+
+### Resource Overlay — Full Property Coverage
+
+When `tomId` is set, every style property readable by `TomCtr` helpers is picked up from resources. Keys under `{path}.*`:
+
+#### ColorScheme tokens
+
+Anywhere a `"color"` sub-key appears in the JSON (for text styles and borders), you can write either:
+
+- a hex string — `"#5E35B1"`, `"#RRGGBBAA"`
+- a named color — `"mRed"`, `"cSystemBlue"` (via `TomUIColors`)
+- a **`cs.*` token** — resolved against the *active `ColorScheme`* at build time
+
+Token names are **case-insensitive** and normalise hyphens/underscores, so `"cs.onSurface"`, `"cs.on_surface"`, and `"CS.ONSURFACE"` are all equivalent.
+
+Supported tokens:
+
+| Token | Resolves to |
+|---|---|
+| `cs.primary` | `colorScheme.primary` |
+| `cs.onPrimary` | `colorScheme.onPrimary` |
+| `cs.primaryContainer` | `colorScheme.primaryContainer` |
+| `cs.onPrimaryContainer` | `colorScheme.onPrimaryContainer` |
+| `cs.secondary` | `colorScheme.secondary` |
+| `cs.onSecondary` | `colorScheme.onSecondary` |
+| `cs.secondaryContainer` | `colorScheme.secondaryContainer` |
+| `cs.onSecondaryContainer` | `colorScheme.onSecondaryContainer` |
+| `cs.tertiary` | `colorScheme.tertiary` |
+| `cs.onTertiary` | `colorScheme.onTertiary` |
+| `cs.tertiaryContainer` | `colorScheme.tertiaryContainer` |
+| `cs.onTertiaryContainer` | `colorScheme.onTertiaryContainer` |
+| `cs.error` | `colorScheme.error` |
+| `cs.onError` | `colorScheme.onError` |
+| `cs.errorContainer` | `colorScheme.errorContainer` |
+| `cs.onErrorContainer` | `colorScheme.onErrorContainer` |
+| `cs.surface` | `colorScheme.surface` |
+| `cs.onSurface` | `colorScheme.onSurface` |
+| `cs.onSurfaceVariant` | `colorScheme.onSurfaceVariant` |
+| `cs.surfaceTint` | `colorScheme.surfaceTint` |
+| `cs.surfaceContainerHighest` | `colorScheme.surfaceContainerHighest` |
+| `cs.surfaceContainerHigh` | `colorScheme.surfaceContainerHigh` |
+| `cs.surfaceContainer` | `colorScheme.surfaceContainer` |
+| `cs.surfaceContainerLow` | `colorScheme.surfaceContainerLow` |
+| `cs.surfaceContainerLowest` | `colorScheme.surfaceContainerLowest` |
+| `cs.inverseSurface` | `colorScheme.inverseSurface` |
+| `cs.onInverseSurface` | `colorScheme.onInverseSurface` |
+| `cs.inversePrimary` | `colorScheme.inversePrimary` |
+| `cs.outline` | `colorScheme.outline` |
+| `cs.outlineVariant` | `colorScheme.outlineVariant` |
+| `cs.scrim` | `colorScheme.scrim` |
+| `cs.shadow` | `colorScheme.shadow` |
+| `cs.primaryFixed` … `cs.onTertiaryFixedVariant` | Fixed-scheme tokens (M3 extended palette) |
+
+The active `ColorScheme` is whichever theme the scope is currently wrapped in — i.e., the resolved `@bp.{key}.theme` spec, or `themeSpecTheme`, or the ambient `Theme.of(context)`. This means a `"color": "cs.primary"` in an `@bp.tablet` block resolves against the tablet breakpoint's theme seed, automatically picking up the right colour without any hardcoded hex.
+
+Because tokens are resolved at **build time** (not parse/cache time), changing the theme mid-session (locale switch, dark-mode toggle, `@bp.{name}.theme` swap) automatically re-derives all token-bearing colours.
+
+#### Style keys
+
+| Resource key | Parsed via | Applied to |
+|---|---|---|
+| `labelPlacement`, `errorPlacement`, `descriptionPlacement`, `actionIconPlacement`, `requiredIndicator`, `requiredIndicatorOnHint`, `requiredIndicatorOnDescription` | enum name (case-insensitive) | corresponding placement/indicator |
+| `labelFieldGap`, `errorFieldGap`, `descriptionFieldGap`, `borderRadius`, `borderWidth`, `focusedBorderWidth`, `hintOpacity` | `TomCtr.doubleVal` | numeric style fields |
+| `fieldContentPadding.{left,top,right,bottom}` | `TomCtr.edgeInsets` | `fieldContentPadding` |
+| `errorBorderEnabled`, `errorIconEnabled` | `TomCtr.boolVal` | toggle bools |
+| `fieldBorder`, `focusedBorder`, `errorBorder` | `TomCtr.inputBorder` — `{kind: outline\|underline\|none, width, color, radius}` | border slots |
+| `inputStyle`, `labelStyle`, `hintStyle`, `errorStyle`, `descriptionStyle` | `TomCtr.textStyle` — `{fontSize, fontWeight, fontFamily, color, letterSpacing, fontStyle}` | text styles |
+| `hintFontWeight` | string (`w100`…`w900`, `bold`, `normal`, `medium`, …) | `hintFontWeight` |
+| `theme.{…}` | `TomThemeSpec.fromResources` | theme spec (nested under `theme`) |
+
+**Breakpoint overlays** live under `{path}.@bp.{key}.*` where `{key}` is either a numeric minWidth (`500`, `1024`, …) or a named breakpoint (`mobile`, `tablet`, `desktop`). Within each block the same keys work, including a nested `theme.*` for per-breakpoint theme swaps.
+
+Numeric and named keys compete in the same pool after name resolution (named → current `TomBreakpoint` value). Highest matching `minWidth ≤ width` wins and is applied on top of the base block. Multiple `@bp` blocks can coexist.
+
+```jsonc
+"myForm": {
+  "labelPlacement":   "above",
+  "labelFieldGap":    4,
+  "fieldBorder":      { "kind": "outline", "width": 1, "color": "#9E9E9E" },
+  "labelStyle":       { "fontSize": 13, "fontWeight": "w500" },
+  "hintFontWeight":   "w400",
+  "hintOpacity":      0.7,
+  "theme": { "seed": "#5E35B1", "fontFamily": "Inter", "bodySize": 14 },
+
+  "@bp": {
+    "mobile":  { "labelFieldGap": 6, "inputStyle": { "fontSize": 15 } },
+    "tablet":  { "labelFieldGap": 8, "theme": { "seed": "#00897B", "bodySize": 15 } },
+    "desktop": { "labelPlacement": "inline",
+                 "theme": { "seed": "#EF6C00", "bodySize": 16 } },
+    "1600":    { "labelFieldGap": 12 }   // literal breakpoint
+  }
+}
+```
+
+A **single root-level** `TomFormStyleScope(tomId: 'myForm', style: TomFormStyle(), child: app)` is enough to drive every field's style and the Material theme from this one JSON block — no Dart-level styling below the scope.
+
+**JSON key validity.** JSON object keys are always strings, so `"500"` is legal; `@bp` (leading `@`) is legal too; nested numeric-looking keys (`"@bp": { "500": {...} }`) are all fine.
+
+### Caching
+
+Resource parsing happens **once per `(resource-provider, resolved-path)`** via a static cache inside `TomFormStyleScope`. The outer key is a `Expando`-wrapped reference to the resource provider, so replacing the provider (e.g. locale switch installing a fresh `TomTextResourceProvider`) gives the new provider its own empty cache slot naturally without leaking the old one.
+
+`build()` does no resource I/O — just a few `copyWith` calls against the cached overlay. Sibling scopes with the same `tomId` share the parse, so an app with many `TomFormStyleScope` instances pointing at one config parses it exactly once.
+
+**Cache invalidation.** A new provider instance is automatically separated from the old cache. Apps that **mutate the provider's underlying map in place** (rare) can call:
+
+```dart
+TomFormStyleScope.invalidateResourceCache();
+```
+
+This clears the cache slot for the current provider; the next scope that resolves against it re-parses.
+
+### Scope usage patterns
+
+**Application-wide form style + theme driven from one resource block:**
+
+```dart
+TomFormStyleScope(
+  tomId: 'app.forms',              // resolves to app.forms.* in JSON
+  style: const TomFormStyle(),     // vanilla base — resources fill it in
+  child: MaterialApp.router(/* ... */),
+)
+```
+
+**Per-section override nested under the app-wide scope:**
+
+```dart
+TomFormStyleScope(
+  tomId: 'checkout.forms',
+  style: TomFormStyle.compact,     // programmatic base for this subtree
+  child: CheckoutScreen(),
+)
+```
+
+**Programmatic whole-style breakpoints (no resources):**
+
+```dart
+TomFormStyleScope(
+  style: TomFormStyle.material3,
+  styleBpOverrides: [
+    (TomBreakpoint.tablet, TomFormStyle.compact),
+    (TomBreakpoint.desktop, TomFormStyle.bordered),
+  ],
+  child: /* ... */,
+)
+```
+
+### Material vs. Cupertino
+
+`TomFormStyle` is designed for **Material widgets** — the decoration mixins hand `style.fieldBorder`, `style.inputStyle`, etc. straight to Material's `TextField` / `DropdownButtonFormField`. A separate `TomFormCupertinoStyle` could mirror the shape for Cupertino widgets; deferred until the Cupertino field implementations exist.
+
+### User Preferences Integration
+
+```dart
+class UserStylePreferences {
+  final double fontSize;          // feeds TomThemeSpec.bodySize
+  final bool   compactMode;       // picks TomFormStyle.compact vs .material3
+  final String colorScheme;       // feeds TomThemeSpec.seed
+  final bool   highContrast;
+}
+
+final style = prefs.compactMode ? TomFormStyle.compact : TomFormStyle.material3;
+final spec  = TomThemeSpec(
+  seed: Color(int.parse(prefs.colorScheme)),
+  bodySize: prefs.fontSize,
+);
+
+return TomFormStyleScope(
+  style: style,
+  themeSpec: spec,                 // spec patches the ambient MaterialApp theme
+  child: child,
+);
+```
+
+Preferences can also be stored in `TomCtr` resources and flow through the resource overlay directly — no Dart-level preference wiring required.
+
+---
+
+# Part 4 — Nested and Reusable Forms
+
+## 11. Nested Forms
+
+Forms can be nested to create complex editing structures. This is essential for domain objects that contain other domain objects.
+
+### Basic Nesting
+
+Since `TomForm` extends `TomClass`, and `TomClass` supports nesting, nested forms work seamlessly. Each child form takes its **parent form** as the `form: this` argument — the parent's `basePath` is then used as the child's scope prefix, so every field in the subtree ends up with the right resource / authorization path without the caller having to repeat `formId` strings:
+
+```dart
+@tomReflector
+class OrderForm extends TomForm<TomClass> {
+  OrderForm({String tomId = 'order'}) : super(formId: tomId);
+
+  late final orderNumber = TomFormStringInput('orderNumber', '', form: this);
+  late final notes       = TomFormStringInput('notes',       '', form: this);
+
+  // Sub-forms — nested TomForm instances. `form: this` wires the child
+  // form's scope into the parent's basePath, so `billing.street`
+  // resolves to `order.billing.street` automatically.
+  late final billing  = AddressForm(tomId: 'billing',  form: this);
+  late final shipping = AddressForm(tomId: 'shipping', form: this);
+}
+```
+
+### Nesting and Identity Paths
+
+When forms are nested, the identity path extends through the hierarchy:
+
+```
+order                           — parent form
+order.billing                   — nested billing form
+order.billing.street            — street field in billing
+order.billing.city              — city field in billing
+order.shipping                  — nested shipping form
+order.shipping.street           — street field in shipping
+```
+
+Forms are always scope providers. When a form receives `form: parent` on its constructor, the child derives its `scope` from the parent's `basePath`, so every field inside the child sees the full path in its `basePath`.
+
+This enables:
+- **Distinct resources** — billing address can have different labels than shipping address
+- **Distinct authorization** — billing details might be restricted while shipping is editable
+- **Scoped validation** — validate billing address independently from shipping
+
+### Nesting Depth
+
+There's no limit to nesting depth. A form tree can be arbitrarily deep — every child form still only needs `form: <enclosing-form>`:
+
+```dart
+@tomReflector
+class CompanyForm extends TomForm<TomClass> {
+  CompanyForm({String tomId = 'company'}) : super(formId: tomId);
+
+  late final headquarters = AddressForm(tomId: 'headquarters', form: this);
+  late final ceo          = PersonForm(tomId: 'ceo', form: this);
+}
+
+@tomReflector
+class PersonForm extends TomForm<TomClass> {
+  PersonForm({required String tomId, super.form}) : super(formId: tomId);
+
+  late final name        = TomFormStringInput('name', '', form: this);
+  late final homeAddress = AddressForm(tomId: 'homeAddress', form: this);
+  late final workAddress = AddressForm(tomId: 'workAddress', form: this);
+}
+```
+
+Path: `company.ceo.homeAddress.city`
+
+### Value Propagation
+
+When state structure matches form structure, `setValues()` / `getValues()` propagate through the hierarchy:
+
+```dart
+// Load entire order including nested addresses
+orderForm.bind(appState.selectedOrder);
+// Internally: orderForm.setValues(appState.selectedOrder.getValues())
+// Which recursively calls billing.setValues(...), shipping.setValues(...)
+
+// Save entire order
+if (orderForm.isValid()) {
+  appState.selectedOrder.setValues(orderForm.getValues());
+}
+```
+
+### Dirty Tracking in Nested Forms
+
+The `isDirty` property considers the entire form tree:
+
+```dart
+bool get isDirty {
+  if (fields.values.any((f) => f.isDirty)) return true;
+  return _nestedForms.any((nf) => nf.isDirty);
+}
+```
+
+### Nested Forms vs Subforms
+
+The Tom forms framework distinguishes between two patterns for composing forms:
+
+**Nested Forms** — share validation state and always update together:
+- Nested forms are part of the parent form's tree — they bind to a subtree of the parent's `TomClass` state
+- Validation is shared: the parent form's `validate()` recursively validates all nested forms
+- Dirty tracking is shared: parent `isDirty` includes all nested forms
+- `setValues()` / `getValues()` propagate through the entire tree automatically
+- Save/discard affects the entire tree atomically
+- **Use case:** AddressForm inside OrderForm — billing and shipping are parts of the order
+
+**Subforms** (deferred to Phase 3+) — independent flow, validate independently:
+- Subforms have their own lifecycle: they `bind()`, `validate()`, and `save()` independently
+- They modify state directly on their own `TomClass` binding, separate from the parent form
+- Validation is independent: a subform's errors do not block the parent form's save
+- **Use case:** A settings panel opened from within a form that writes to a different data object
+
+### Naming Convention — Form Tree Matches State Tree
+
+**CRITICAL:** The form tree structure must match the `TomClass` state tree structure for `setValues()` / `getValues()` propagation to work correctly. The `formId` of each nested form must match the member name in the parent `TomClass`:
+
+```dart
+// State tree:
+class Order extends TomClass {
+  late final billingAddress = AddressState(name: 'billingAddress');
+  late final shippingAddress = AddressState(name: 'shippingAddress');
+}
+
+// Form tree (must match):
+class OrderForm extends TomForm<Order> {
+  OrderForm() : super(formId: 'order');
+  late final billing = AddressForm(formId: 'billingAddress');   // ← matches state name
+  late final shipping = AddressForm(formId: 'shippingAddress'); // ← matches state name
+}
+```
+
+The `formId` is the key used by `setValues()` and `getValues()` to traverse the tree. If the form tree names don't match the state tree names, data binding will silently fail to propagate values to the nested form. No further bind propagation code is needed — `TomClass.setValues()` / `getValues()` handles it automatically given matching names.
+
+---
+
+## 12. Form Templates and Reuse
+
+A key requirement is reusing the same form definition multiple times — for example, using `AddressForm` for both billing and shipping, or for a list of addresses.
+
+### Form Instances vs. Form Definitions
+
+**Form Definition** — the class:
+
+```dart
+class AddressForm extends TomForm<Address> {
+  AddressForm({required super.formId});
+  late final street = TomFormStringInput('street', '');
+  late final city = TomFormStringInput('city', '');
+  late final zip = TomFormStringInput('zip', '');
+  late final country = TomFormEnumDropdown<Country>('country', Country.usa, source: countrySource);
+}
+```
+
+**Form Instances** — each with a unique `formId`:
+
+```dart
+final billingAddress = AddressForm(formId: 'billingAddress');
+final shippingAddress = AddressForm(formId: 'shippingAddress');
+```
+
+### Instance Identity
+
+| Instance | Nested in OrderForm |
+|----------|---------------------|
+| `billingAddress` | `order.billingAddress` |
+| `shippingAddress` | `order.shippingAddress` |
+
+Resources resolve from instance-specific paths:
+
+```yaml
+order:
+  billingAddress:
+    street:
+      label: "Billing Street"
+  shippingAddress:
+    street:
+      label: "Shipping Street"
+```
+
+---
+
+## 13. List Forms
+
+Many business objects contain lists of sub-objects — orders have line items, contacts have addresses. List forms manage collections of sub-form instances.
+
+### TomFormChildContainer
+
+`TomFormChildContainer` is an abstract interface that lets `TomForm` fan its lifecycle into non-`TomForm` children (like `TomListForm`) that `getMembers()` cannot discover via reflection. Any object implementing this interface can be registered with a parent form and will receive `validate / save / discard / unbind` fan-outs:
+
+```dart
+abstract interface class TomFormChildContainer {
+  Future<List<FormValidationError>> validate();
+  Future<bool> save();
+  void discard();
+  void unbind();
+  bool get isDirty;
+  bool get isValid;
+}
+```
+
+### TomListForm
+
+`TomListForm` is a concrete class (not abstract) that extends `TomObservable` and implements both `TomFormEventSource` and `TomFormChildContainer`. It owns an ordered list of sub-form instances, mirrors all mutations into the bound `TomList<TItem>`, and fans the form lifecycle across every sub-form.
+
+```dart
+class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
+    extends TomObservable
+    implements TomFormEventSource, TomFormChildContainer {
+
+  TomListForm({
+    required this.listId,
+    required TForm Function(int index) formFactory,
+    TomForm? parentForm,         // when set, auto-registers with parent
+  });
+
+  final String listId;
+  TomForm? get parentForm;
+
+  // --- Read-only views ---
+  List<TForm> get forms;         // unmodifiable
+  int get length;
+  bool get isEmpty;
+  bool get isNotEmpty;
+  TForm operator [](int index);
+
+  // --- Mutation (mirrored into the bound TomList) ---
+  TForm add();                   // append + fire ListItemAddedEvent
+  TForm insert(int index);       // insert at index + fire ListItemAddedEvent
+  void removeAt(int index);      // remove + fire ListItemRemovedEvent
+  bool remove(TForm form);       // convenience: remove by instance
+  void move(int from, int to);   // reorder + fire ListItemReorderedEvent
+  void reorder(int from, int to); // spec-canonical alias of move()
+
+  // --- Binding ---
+  void bind(TomList<TItem> items);   // rebuild sub-forms from bound list
+  @override void unbind();           // detach + dispose all sub-forms
+
+  // --- Lifecycle (TomFormChildContainer) ---
+  @override Future<List<FormValidationError>> validate();
+  // Fans into every sub-form, runs validateList(), then fires
+  // FormValidatedEvent(source: listId) through the event bus.
+
+  @override Future<bool> save();
+  // Validates first; updates snapshot on success so isDirty / hasStructuralChanges reset.
+
+  @override void discard();
+  // Restores original membership + order captured at bind / last save.
+
+  // --- Aggregate state ---
+  @override bool get isDirty;          // any sub-form dirty OR structural change
+  bool get hasStructuralChanges;       // add / remove / reorder since bind/save
+  @override bool get isValid;          // every sub-form isValid
+
+  // --- Subclass extension points ---
+  Future<List<String>> validateList(); // override for list-level rules
+  TItem createItem();                  // override when add/insert against bound list
+
+  // --- TomFormEventSource ---
+  @override void addListener(TomFormEventListener listener);
+  @override void removeListener(TomFormEventListener listener);
+  @override void fireEvent(TomFormEvent event);
+
+  void dispose();
+}
+```
+
+**`reorder` vs `move`:** Both forward to the same implementation and fire `ListItemReorderedEvent`. `reorder` is the spec-canonical name used by drag-handle UIs (§16); `move` is kept for backward compatibility and directional button code.
+
+**`hasStructuralChanges`:** Compares the current bound list identity to the snapshot captured at `bind` / `save` time. Returns `true` if any item was added, removed, or moved. `isDirty` includes `hasStructuralChanges` so the parent form's dirty state is correctly propagated even when every individual sub-form field is untouched.
+
+**`createItem()`:** Only required when `add()` / `insert()` is called against a bound list. Override to return a fresh `TItem` instance. Default throws `UnsupportedError`.
+
+### Parent Form Fan-Out
+
+When a `TomListForm` is constructed with `parentForm: this` (or passed `parentForm` explicitly), it automatically calls `parentForm.registerChildContainer(this)`. This causes the parent `TomForm` to fan every lifecycle operation into the list:
+
+| `TomForm` operation | Fan-out into `TomListForm` |
+|---|---|
+| `isDirty` | includes `listForm.isDirty` (`hasStructuralChanges` + any sub-form dirty) |
+| `isValid` | includes `listForm.isValid` (every sub-form is valid) |
+| `validate()` | calls `listForm.validate()`, merges errors into parent `FormValidatedEvent` |
+| `save()` | calls `listForm.save()` after own `_applySave` |
+| `discard()` | calls `listForm.discard()` |
+| `unbind()` | calls `listForm.unbind()` |
+
+The relevant `TomForm` API:
+
+```dart
+class TomForm<T> {
+  /// All explicitly-registered child containers (e.g. TomListForm instances).
+  List<TomFormChildContainer> get childContainers;
+
+  /// Called automatically by TomListForm's constructor when parentForm is set.
+  void registerChildContainer(TomFormChildContainer container);
+}
+```
+
+### List Form Identity Paths
+
+List items share a single form/field path (no indexed paths):
+
+```
+order.items              — the list form
+order.items.quantity     — quantity field (shared by all items)
+```
+
+Resources and authorization apply uniformly to all list items. Per-item authorization must be handled via business logic if needed.
+
+### Using List Forms
+
+Pass `parentForm: this` so lifecycle fan-out is wired automatically. The `formFactory` receives the insertion index; convention is that every sub-form uses the same `formId` as the `listId` so resource look-ups are shared across all rows:
+
+```dart
+class OrderForm extends TomForm<Order> {
+  OrderForm() : super(formId: 'order');
+
+  late final orderNumber = TomFormStringInput('orderNumber', '', form: this);
+  late final customer = TomFormStringInput('customer', '', form: this);
+
+  // parentForm: this → auto-registers with this form's childContainers list
+  late final items = TomListForm<OrderItem, OrderItemForm>(
+    listId: 'items',
+    formFactory: (i) => OrderItemForm(),
+    parentForm: this,
+  );
+
+  @override
+  void onBound() {
+    items.bind((_binding! as Order).items);
+  }
+
+  @override
+  void onUnbinding() {
+    items.unbind();
+  }
+}
+
+class OrderItemForm extends TomForm<OrderItem> {
+  OrderItemForm() : super(formId: 'items'); // same id as listId — shared resources
+
+  late final productName = TomFormStringInput('productName', '', form: this);
+  late final quantity    = TomFormStringInput('quantity',    '1', form: this);
+  late final unitPrice   = TomFormStringInput('unitPrice',   '0', form: this);
+}
+```
+
+### List-Level Validation
+
+Override `validateList()` to enforce cross-row rules. Returned strings are treated as resource keys and are included in the `FormValidatedEvent` fired by `validate()` through the parent bus — so a `TomErrorView(form: parentForm)` sees them without any extra wiring:
+
+```dart
+class OrderItemForm extends TomForm<OrderItem>
+    with /* ... */ {
+  @override
+  Future<List<String>> validateList() async {
+    if (length == 0) return ['error.items.minRequired'];
+    return [];
+  }
+}
+```
+
+### List Events
+
+Every structural mutation fires a typed event through the form bus. When `parentForm` is set the event bubbles up through the parent's bus, so a single `parent.addListener(inspector)` captures both field-level and list-level events:
+
+| Event | Fired by | Key fields |
+|---|---|---|
+| `ListItemAddedEvent` | `add()`, `insert()` | `source` (listId), `index`, `itemFormId` |
+| `ListItemRemovedEvent` | `removeAt()` | `source`, `index`, `itemFormId` |
+| `ListItemReorderedEvent` | `move()`, `reorder()` | `source`, `fromIndex`, `toIndex`, `itemFormId` |
+| `FormValidatedEvent` | `validate()` | `source` (listId), `errors` (combined per-row + list-level) |
+
+---
+
+# Part 5 — Form Layout Patterns
+
+## 14. Logical vs Visual Separation in Practice
+
+### Mixing Form Fields with Other Content
+
+```dart
+Widget build(BuildContext context) {
+  return Column(children: [
+    // Section header (not part of the form)
+    Text('Personal Information', style: Theme.of(context).textTheme.titleMedium),
+    customerForm.name.widget,
+    customerForm.email.widget,
+
+    // Divider (not part of the form)
+    Divider(),
+
+    // Another section
+    Text('Preferences'),
+    customerForm.newsletter.widget,  // TomFormBoolCheckbox
+    customerForm.language.widget,    // TomFormEnumDropdown
+
+    // Image (not part of the form)
+    Image.asset('assets/promo_banner.png'),
+
+    // Actions
+    Row(children: [
+      TomElevatedButton(onPressed: customerForm.saveAction.trigger, child: Text('Save')),
+    ]),
+  ]);
+}
+```
+
+### ACL-Based Layout
+
+For ACL-based layouts, forms provide widgets via `getMembers()`. Fields already carry their correct id and scope from the form field declaration — no manual `.setId()` is needed:
+
+```dart
+Widget build(BuildContext context) {
+  return TomAclBuilder(id: 'customerEdit', elementProvider: customerForm)
+    .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
+    .append((_) => customerForm.name.widget).expandX()
+    .append((_) => customerForm.email.widget).expandX()
+    .newRow(dist: 8)
+    .append((_) => customerForm.phone.widget).expandX()
+    .build();
+}
+```
+
+#### Row sizing rules that matter for form layouts
+
+The ACL workspace-level default for row cross alignment is
+`AclRowCrossAlignment.top` (anchored label top + tall input makes the
+label look centered-ish against the label text only). Label/field
+rows typically look better with `.setAclDefaultRowVerticalAlignment(
+AclRowCrossAlignment.center)` so short labels sit vertically centered
+against their taller input — the opt-in is one line per builder.
+
+Component widths follow these rules (horizontal axis only; vertical
+growth still requires `expandY`):
+
+- A component with **both** `setMSize(w, _)` and `setPSize(w, _)` set,
+  where min < pref, participates in horizontal growth. Its weight is
+  `(P / M − 1)` — the caller's declared growth ratio between minimum
+  and preferred. Components without an explicit minimum stay pinned at
+  preferred.
+- In a row **without** any expandX, non-expandX components share the
+  surplus above the sum of their preferred widths. Each is clamped at
+  `maximumSize` if set; any unused growth from clamped components
+  redistributes to the rest.
+- In a row **with** an expandX component, non-expandX components stay
+  at their preferred widths and expandX absorbs the surplus —
+  distributed by the same `(P / M − 1)` weight when multiple expandX
+  are present.
+- **Shrinking** (row narrower than the sum of preferred widths) is
+  proportional over every non-alignX component, expandX included.
+  Each component stops at its `minimumSize`; once every component has
+  reached minimum, any remaining deficit shows up as a RenderFlex
+  overflow (expected — nothing can shrink further).
+- `alignX*` components (cross-row alignment like `.alignRightToRight
+  (anchor)`) are positioned by the alignment rule, not sequentially.
+  Their preferred width + the gap before them is still reserved from
+  the grow-phase budget so the other (growable) components don't
+  over-grow and push the row past its container.
+
+---
+
+## 15. Master-Detail Forms
+
+Master-detail patterns: a list of items (master) with an editor panel (detail) showing the selected item's form.
+
+### Pattern Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Screen                               │
+├───────────────────────┬─────────────────────────────────────┤
+│    Master List        │           Detail Form               │
+│  ┌─────────────────┐  │  ┌───────────────────────────────┐  │
+│  │ ○ Item 1        │  │  │  Name: [_______________]      │  │
+│  │ ● Item 2 (sel)  │──┼──│  Email: [_______________]     │  │
+│  │ ○ Item 3        │  │  │  Status: [Dropdown ▼]         │  │
+│  │ ○ Item 4        │  │  │                               │  │
+│  └─────────────────┘  │  │  [Save]  [Discard]            │  │
+│  [+ Add New]          │  └───────────────────────────────┘  │
+└───────────────────────┴─────────────────────────────────────┘
+```
+
+### Selection and Binding
+
+```dart
+class CustomerMasterDetail {
+  final TomList<Customer> customers;
+  final TomNInt selectedIndex = TomNInt(null);
+
+  Customer? get selectedCustomer {
+    final idx = ~selectedIndex;
+    if (idx == null || idx < 0 || idx >= customers.length) return null;
+    return customers[idx];
+  }
+}
+
+class CustomerScreenState extends State<CustomerScreen> {
+  final customerForm = CustomerForm(formId: 'customerDetail');
+
+  @override
+  void initState() {
+    super.initState();
+    masterDetail.selectedIndex >> (_) => _onSelectionChanged();
+  }
+
+  void _onSelectionChanged() {
+    final customer = masterDetail.selectedCustomer;
+    if (customer != null) {
+      customerForm.bind(customer);
+    } else {
+      customerForm.clear();
+    }
+    setState(() {});
+  }
+}
+```
+
+### Dirty State and Navigation
+
+Before changing selection, check for unsaved changes:
+
+```dart
+Future<void> _selectItem(int index) async {
+  if (customerForm.isDirty) {
+    final result = await showDialog<SaveDiscardCancel>(...);
+    switch (result) {
+      case SaveDiscardCancel.save:
+        if (!customerForm.save()) return;
+        break;
+      case SaveDiscardCancel.discard:
+        customerForm.discard();
+        break;
+      case SaveDiscardCancel.cancel:
+        return;
+    }
+  }
+  masterDetail.selectedIndex | index;
+}
+```
+
+### Form Identity in Master-Detail
+
+The detail form maintains a stable identity regardless of which item is selected:
+
+```
+customerDetail.name    — always the same path
+customerDetail.email   — regardless of which customer is selected
+```
+
+The **data binding** changes, but the **form identity** stays constant. This ensures stable authorization, resources, and undo/redo.
+
+### Creating New Items
+
+```dart
+void _addNewCustomer() {
+  if (customerForm.isDirty && !customerForm.save()) return;
+  final newCustomer = Customer();
+  masterDetail.customers.add(newCustomer);
+  masterDetail.selectedIndex | (masterDetail.customers.length - 1);
+  customerForm.bind(newCustomer);
+}
+```
+
+---
+
+## 16. Inline Forms in Lists
+
+Forms can appear inline within list items rather than in a separate detail panel.
+
+### Single-Field Inline Edit
+
+```dart
+class InlineEditableItem extends StatelessWidget {
+  final Customer customer;
+  final TomFormStringInput nameField;
+
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: TomObservingWidget<TomFormStringInput>(
+        subState: nameField,
+        child: (field) => field.isEditing
+            ? nameField.widget
+            : Text(~nameField),
+      ),
+      onTap: () => nameField.startEditing(),
+    );
+  }
+}
+```
+
+### Expandable Row Forms
+
+```dart
+class ExpandableRowForm extends StatelessWidget {
+  final OrderItemForm form;
+  final bool isExpanded;
+
+  Widget build(BuildContext context) {
+    return Column(children: [
+      ListTile(
+        title: Text(~form.productName),
+        subtitle: Text('Qty: ${~form.quantity}'),
+        trailing: Text('\$${~form.totalPrice}'),
+      ),
+      if (isExpanded)
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(children: [
+            form.quantity.widget,
+            form.unitPrice.widget,
+            form.discount.widget,
+          ]),
+        ),
+    ]);
+  }
+}
+```
+
+### Editable Tables
+
+```dart
+class EditableOrderItemsTable extends StatelessWidget {
+  final TomListForm<OrderItem, OrderItemForm> items;
+
+  Widget build(BuildContext context) {
+    return Table(children: [
+      TableRow(children: [Text('Product'), Text('Qty'), Text('Price'), Text('Total'), Text('')]),
+      for (final form in items.forms)
+        TableRow(children: [
+          form.productId.widget,
+          form.quantity.widget,
+          form.unitPrice.widget,
+          Text('\$${form.computedTotal}'),
+          IconButton(icon: Icon(Icons.delete), onPressed: () => items.remove(form)),
+        ]),
+    ]);
+  }
+}
+```
+
+---
+
+# Part 6 — Authorization, Resources, and Groups
+
+## 17. Form Identity and Resource Resolution
+
+Forms participate in the Tom identity system through Zone-based scope inheritance. Every form and field has a `basePath` used for resource lookup and authorization.
+
+### Path Structure
+
+```
+$default.$zone.$form.$nestedform...$field.suffix
+```
+
+| Segment | Example |
+|---------|---------|
+| Default | `shoppingApp` |
+| Zone | `checkout` |
+| Form | `addressForm` |
+| Nested Form | `billingAddress` |
+| Field | `email` |
+| Suffix | `label` |
+
+Full path: `shoppingApp.checkout.addressForm.billingAddress.email.label`
+
+### basePath Resolution
+
+Forms and fields resolve their basePath at construction time. Forms always
+read the ambient `TomScope.current`; fields prefer the owning form's
+basePath when `form:` is passed:
+
+```dart
+// TomForm
+final parentPath = scope.getScopePath();
+basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
+
+// TomField — when form: is passed, anchor on form.basePath so the field
+// can be declared at its class-level `late final x = TomFormStringInput(
+//   'x', '', form: this, ...)` without relying on TomScope.current to
+// carry the form's formId at lazy-init time.
+scope = form != null
+    ? form!.basePath
+    : TomScope.current.getScopePath();
+basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
+```
+
+This is the same pattern used by `TomNodeBase._resolveBasePath()`. No `BuildContext` needed.
+
+### Path Structure Flexibility
+
+The path structure shown above is the **typical** default. However, the actual path can be influenced by several mechanisms:
+
+- **`ScreenElementProvider`** — provides alternative element IDs that override the default path segments
+- **`TomScope.withScope`** — creates nested zone scopes that insert additional path segments
+- **Explicit `basePath` override** — forms and fields can receive a custom basePath at construction time
+
+These mechanisms allow the same form class to participate in different resource and authorization hierarchies depending on where it is used in the application.
+
+### Nested Form Resource Paths
+
+```yaml
+shoppingApp.checkout.orderForm.billingAddress.street.label: "Billing Street"
+shoppingApp.checkout.orderForm.shippingAddress.street.label: "Shipping Street"
+```
+
+### List Form Resource Paths
+
+List items share a single path — no indexed paths:
+
+```yaml
+shoppingApp.checkout.orderForm.items.quantity.label: "Quantity"
+shoppingApp.checkout.orderForm.items.unitPrice.label: "Unit Price"
+```
+
+---
+
+## 18. Form Authorization
+
+Forms and fields participate in the four-state authorization system (`TomAuthState`). Authorization is resolved at construction time via `basePath`.
+
+### Authorization Values for Forms
+
+| TomAuthState | Form Behavior | Field Behavior | Button Behavior |
+|-------------|---------------|----------------|-----------------|
+| `none` | Hidden | Hidden | Hidden |
+| `disabled` | Visible, greyed out, no content | Visible, greyed out | Disabled |
+| `read` | Visible, non-editable | Visible, non-editable | Disabled |
+| `full` | Visible, editable | Visible, editable | Enabled |
+
+Default (no rule) = `full`.
+
+### Auth Resolution Pattern
+
+```dart
+// In TomForm constructor:
+auth = TomAuthorization.resolveAuth(basePath);
+
+// In TomField constructor:
+auth = TomAuthorization.resolveAuth(basePath);
+```
+
+### Authorization Inheritance
+
+Fields inherit the form's auth state through the full resolution chain (see Resolution Order below). The simplified view: the form narrows all fields:
+
+- Form is `read` → all fields are at most `read` (even if field is `full`)
+- Form is `disabled` → all fields are at most `disabled`
+- Form is `none` → entire form and all fields are hidden
+- Form is `full` → fields use their individual authorization
+
+The simple case (no groups, no authorizers, no uiStateController) reduces to:
+
+```dart
+TomAuthState get effectiveAuth => form.auth.narrow(auth);
+```
+
+For the full multi-layered resolution with resource-based auth, groups, authorizers, and UI state controllers, see `resolveEffectiveAuth()` in the Resolution Order section below.
+
+### Authorization for Nested Forms
+
+Each nested form has its own authorization:
+
+```yaml
+shoppingApp.checkout.orderForm: full
+shoppingApp.checkout.orderForm.billingAddress: read    # billing readonly
+shoppingApp.checkout.orderForm.shippingAddress: full   # shipping editable
+```
+
+### Authorization for List Items
+
+List items share authorization:
+
+```yaml
+shoppingApp.checkout.orderForm.items: full
+shoppingApp.checkout.orderForm.items.quantity: read    # quantity readonly in ALL items
+```
+
+### Conditional Authorization
+
+Authorization can be dynamic via `TomAuthorizer`:
+
+```dart
+// Per-widget authorizer — applied after resource + group auth.
+// `actionAuth` is a nullary closure: it captures whatever inputs the
+// decision needs via lexical scope (a TomAction, a sibling field, a
+// state object) and returns a TomAuthState. The ACL / form widget
+// must rebuild when any captured observable changes so the closure
+// re-runs — see tom_flutter_ui/doc/form_authorizers.md for the full
+// rebuild story.
+final orderAuthorizer = TomAuthorizer.fromAction(
+  actionAuth: () {
+    if (currentOrder.status.isFinalized) {
+      return TomAuthState.read;
+    }
+    return TomAuthState.full;
+  },
+);
+```
+
+The `TomAuthorizer.fromAction` factory takes a closure that returns the
+action's authorization state. Per-item permission (for list rows whose
+auth depends on the row's own data) is expressed by closing over the
+row's data in the enclosing scope rather than by threading a `data`
+argument through `actionAuth` — the data parameter on
+`TomUIStateController.apply({Object? data})` is reserved for a
+planned row-level extension but is not currently threaded in by any
+caller.
+
+---
+
+## 19. TomAuthorizationGroup and Forms
+
+### Forms as Implicit Authorization Groups
+
+Every `TomForm` acts as an **implicit authorization group** for its fields. The form's own auth state is a ceiling — no field can be more permissive than its parent form:
+
+- Form is `read` → all fields are at most `read`
+- Form is `disabled` → all fields are at most `disabled`
+- Form is `none` → entire form hidden
+- Form is `full` → fields use their individual authorization
+
+This behavior is built into the form itself and does not require an explicit `TomAuthorizationGroup`.
+
+### Explicit TomAuthorizationGroup — For Field Subsets
+
+When you need to control a **subset** of fields within a form independently, use an explicit `TomAuthorizationGroup`. For example, a form with personal data fields and financial data fields where financial fields should be readonly for certain roles:
+
+```dart
+@tomReflector
+class CustomerForm extends TomForm<Customer> {
+  CustomerForm() : super(formId: 'customer');
+
+  late final name = TomFormStringInput('name', '');
+  late final email = TomFormEmailStringInput('email', '');
+
+  // Financial fields controlled as a group
+  late final financialGroup = TomAuthorizationGroup(
+    groupId: 'financial',
+    mode: AuthGroupMode.controlsAll,
+  );
+  late final salary = TomFormCurrencyDoubleInput('salary', 0.0, group: financialGroup);
+  late final bonus = TomFormCurrencyDoubleInput('bonus', 0.0, group: financialGroup);
+}
+```
+
+### Authorization Group Modes
+
+Groups support three modes that determine how the group's auth state applies to its members:
+
+| Mode | Name | Behavior |
+|------|------|----------|
+| `controlsAll` | Group controls all | The group's auth state overrides all member states. Every member gets the group's state (narrowed by the form's state). |
+| `controlsWidest` | Group controls widest allowed | The group's auth state is the maximum any member can have. Members may be narrower individually. Same as form-level narrowing. |
+| `controlsNarrowest` | Group controls narrowest | The group's auth state is the minimum for all members. Members that would individually be more restrictive are elevated to the group's state. Useful for "all or nothing" groups. |
+
+```dart
+enum AuthGroupMode {
+  /// Group state replaces all member states (after form-level narrowing).
+  controlsAll,
+
+  /// Group state is the ceiling — members can be narrower but not wider.
+  controlsWidest,
+
+  /// Group state is the floor — members that would be more restrictive are elevated.
+  controlsNarrowest,
+}
+```
+
+### Resolution Order
+
+Auth resolution for a field considers all layers in order. **CRITICAL: All four layers must be evaluated.** Skipping any layer (especially group auth) is a severe bug that causes authorization groups to be silently ignored.
+
+```dart
+TomAuthState resolveEffectiveAuth() {
+  // 1. Resource-based authorization via basePath + group (mode-dependent)
+  //    The resource lookup and group are evaluated together because
+  //    the group mode determines how resource auth and group auth combine.
+  //    CRITICAL: The group auth MUST be applied here. If tomGroup is non-null,
+  //    applyMode() must be called — otherwise authorization groups have no effect.
+  var state = basePath != null
+      ? TomAuthorization.resolveAuth(basePath!)
+      : TomAuthState.full;
+
+  if (tomGroup != null) {
+    state = tomGroup!.applyMode(state);
+  }
+
+  // 2. Form authorization (form acts as implicit group — always narrows)
+  state = state.narrow(form.auth);
+
+  // 3. Per-widget authorizer (overridable, based on authorizer mode)
+  if (authorizer != null) {
+    state = authorizer!.effectiveAuth(state);
+  }
+
+  // 4. Build-time UI state controller (can only narrow).
+  if (uiStateController != null) {
+    state = uiStateController!.apply(state);
+  }
+
+  return state;
+}
+```
+
+The resolution order is: **(resource + group, based on group mode) → form → authorizer (based on authorizer mode) → uiStateController**.
+
+### UIStateController and Data Inspection
+
+`TomUIStateController.apply(state, {Object? data})` carries an optional
+`data` parameter intended for row-level decisions in list forms. In the
+current implementation no caller threads a value through `data` — the
+controller closure captures whatever it needs (form field values,
+selection state, an owning item) from its enclosing lexical scope and
+returns a narrowed `TomAuthState`. For list-scoped decisions (e.g. a
+row that's read-only once its item is shipped), close over the
+item within the controller's factory:
+
+```dart
+TomUIStateController shippedRowController(OrderItem item) =>
+    TomUIStateController(
+      resolve: (current, _) {
+        if (item.isShipped) {
+          return current.narrow(TomAuthState.read);
+        }
+        return current;
+      },
+    );
+```
+
+The `data:` parameter stays on the API surface for a future extension
+where the ACL plumbs per-row data through during build, but today the
+closure-capture pattern is the authoritative way to access row state.
+
+### TomAuthorizable Must Expose Effective Auth State
+
+The `TomAuthorizable` interface exposes the member's resolved auth state so that groups and external code can query it:
+
+```dart
+abstract interface class TomAuthorizable {
+  String? get tomId;
+  TomAuthorizationGroup? get tomGroup;
+
+  /// The current effective authorization state of this element.
+  TomAuthState get effectiveAuthState;
+}
+```
+
+### Group-Level Queries
+
+With `effectiveAuthState` on members, the group provides useful queries:
+
+```dart
+class TomAuthorizationGroup {
+  final String groupId;
+  final AuthGroupMode mode;
+  final List<TomAuthorizable> _members = [];
+
+  /// The group's own auth state (from resource lookup).
+  TomAuthState get authState => TomAuthorization.resolveAuth(basePath);
+
+  /// Apply the group's mode to a member's current state.
+  TomAuthState applyMode(TomAuthState memberState) {
+    switch (mode) {
+      case AuthGroupMode.controlsAll:
+        return authState;
+      case AuthGroupMode.controlsWidest:
+        return memberState.narrow(authState);
+      case AuthGroupMode.controlsNarrowest:
+        return memberState.widen(authState);
+    }
+  }
+
+  /// Whether all visible members share the same effective state.
+  bool get isUniform {
+    TomAuthState? first;
+    for (final member in _members) {
+      final state = member.effectiveAuthState;
+      if (!state.isVisible) continue;
+      first ??= state;
+      if (state != first) return false;
+    }
+    return true;
+  }
+
+  /// The most restrictive state across all visible members.
+  TomAuthState get mostRestrictive {
+    var result = TomAuthState.full;
+    for (final member in _members) {
+      result = result.narrow(member.effectiveAuthState);
+    }
+    return result;
+  }
+}
+```
+
+---
+
+# Part 7 — Validation and Lifecycle
+
+## 20. Validation System
+
+### Design Principle: All Validation is Async
+
+Validation is **always asynchronous** in the Tom forms framework, even when individual validators are synchronous. This provides a uniform API and avoids special-casing:
+
+1. **Validate all fields** — each field runs its validators (sync and async) in parallel
+2. **Wait for all results** — collect all field-level results
+3. **Run form cross-validation** — only after all fields have resolved
+4. **Return result** — either success or a structured error list
+
+This means the form never returns validation results synchronously. The caller always `await`s.
+
+### Validation Result Types
+
+```dart
+sealed class ValidationResult {
+  const ValidationResult();
+}
+
+class ValidationPristine extends ValidationResult {
+  const ValidationPristine();
+}
+
+class ValidationSuccess extends ValidationResult {
+  const ValidationSuccess();
+}
+
+class ValidationError extends ValidationResult {
+  final String errorKey;
+  final Map<String, dynamic>? params;
+  const ValidationError(this.errorKey, {this.params});
+}
+
+class ValidationPending extends ValidationResult {
+  const ValidationPending();
+}
+```
+
+**`ValidationPristine`** is the **initial state** of every field before the user has interacted with it. While pristine:
+- The field does **not** display validation errors, even if the value is technically invalid (e.g., a required field that is empty)
+- The form's `isValid` returns `false` (pristine ≠ valid) but no errors are shown in the UI
+- This prevents showing a wall of red errors on a fresh, untouched form
+
+A field transitions out of pristine when:
+- The user modifies the field value (triggers debounced validation → `ValidationSuccess` or `ValidationError`)
+- The user attempts to save the form (form-level `validate()` forces all pristine fields to validate, showing errors)
+- `autoValidate` is `true` on the field (immediately validates on `bind()` without waiting for user interaction)
+
+The `autoValidate` setting is useful for **auto-save forms** where validation must happen immediately without user-triggered save actions.
+
+**`ValidationPending`** indicates that a **slow** async validation is in progress. While pending:
+- The field displays a loading indicator (spinner on the trailing edge) — **only for slow validators**
+- The form's save action is disabled
+- The form's `isValid` returns `false` (pending ≠ valid)
+- Other fields may continue editing — pending does not block the UI, only submission
+
+Fast validators (local checks like `required`, `email`, `minLength`) do **not** transition through `ValidationPending` and never show a spinner. Only validators explicitly marked as slow (e.g., remote API calls) trigger the pending state.
+
+Once the async validator resolves, the field transitions to either `ValidationSuccess` or `ValidationError`.
+
+**State transitions:**
+```
+pristine → (user edits) → success (fast validators only) → success/error
+pristine → (user edits, has slow validators) → success (fast) → pending (slow) → success/error
+pristine → (save attempt) → pending → success/error
+pristine → (autoValidate + bind) → pending → success/error
+success/error → (commit/reset/discard/bind) → pristine
+```
+
+### Field Validators
+
+Fields declare validators as a list. Sync validators return immediately; async validators return `Future<ValidationResult>`:
+
+```dart
+typedef Validator<T> = FutureOr<ValidationResult> Function(T value);
+
+abstract class TomField<T> extends TomObject<T> {
+  final List<Validator<T>> validators;
+  final bool autoValidate;
+  ValidationResult _validationState = const ValidationPristine();
+
+  /// Current validation state — may be pristine, pending, success, or error.
+  ValidationResult get validationState => _validationState;
+
+  /// Validate the current value. Always async.
+  Future<ValidationResult> validate() async {
+    _validationState = const ValidationPending();
+    // Field updates its widget via its own reactive state — no manual notify needed
+    _validationNotifier.value = _validationState;
+
+    for (final validator in validators) {
+      final result = await validator(value);
+      if (result is ValidationError) {
+        _validationState = result;
+        _validationNotifier.value = _validationState;
+        return result;
+      }
+    }
+
+    _validationState = const ValidationSuccess();
+    _validationNotifier.value = _validationState;
+    return _validationState;
+  }
+}
+```
+
+The field communicates validation state changes through a `ValueNotifier<ValidationResult>` that the widget observes via `ValueListenableBuilder`. There is no `notifyObservers()` call during validation — validation state is a separate reactive channel from the field's value.
+
+### Built-in Validators
+
+```dart
+class Validators {
+  static Validator<String> required() => (v) =>
+      v.isEmpty ? const ValidationError('error.required') : const ValidationSuccess();
+
+  static Validator<String> pattern(RegExp regex) => (v) =>
+      !regex.hasMatch(v) ? const ValidationError('error.format') : const ValidationSuccess();
+
+  static Validator<String> email() =>
+      pattern(RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$'));
+
+  static Validator<String> minLength(int min) => (v) =>
+      v.length < min ? ValidationError('error.minLength', params: {'min': min}) : const ValidationSuccess();
+
+  static Validator<num> min(num minValue) => (v) =>
+      v < minValue ? ValidationError('error.min', params: {'min': minValue}) : const ValidationSuccess();
+
+  static Validator<num> max(num maxValue) => (v) =>
+      v > maxValue ? ValidationError('error.max', params: {'max': maxValue}) : const ValidationSuccess();
+
+  /// Compose multiple validators into one. Runs sequentially, stops on first error.
+  static Validator<T> compose<T>(List<Validator<T>> validators) => (value) async {
+    for (final validator in validators) {
+      final result = await validator(value);
+      if (result is! ValidationSuccess) return result;
+    }
+    return const ValidationSuccess();
+  };
+}
+```
+
+### Error Resource Key Namespace
+
+Validation error keys are **relative to the field's `basePath`**. The field resolves the full resource path by combining its basePath with the error key:
+
+```dart
+// Field basePath: "orderForm.email"
+// Validator returns: ValidationError('error.format')
+// Resolved resource key: "orderForm.email.error.format"
+final message = t(errorKey);  // looks up "{basePath}.{errorKey}" in resource system
+```
+
+Parameter interpolation uses `params` from `ValidationError`:
+
+```dart
+// Validator: ValidationError('error.minLength', params: {'min': 5})
+// Resource: "orderForm.name.error.minLength" → "Must be at least {min} characters"
+// Resolved: "Must be at least 5 characters"
+```
+
+The resource system performs `{key}` substitution with the params map. If no resource is found, the raw `errorKey` is displayed as fallback.
+
+### Form-Level Validation (Always Async)
+
+The form validates all fields first, then runs cross-field validation:
+
+```dart
+abstract class TomForm<T extends TomClass> extends TomClass {
+  /// Validate all fields and then run cross-field validation.
+  /// Returns an empty list on success, or a list of FormValidationError.
+  Future<List<FormValidationError>> validate() async {
+    // 1. Validate all fields in parallel
+    final fieldResults = await Future.wait(
+      fields.values.map((f) => f.validate()),
+    );
+
+    // 2. Collect field-level errors
+    final errors = <FormValidationError>[];
+    for (var i = 0; i < fields.values.length; i++) {
+      final result = fieldResults.elementAt(i);
+      if (result is ValidationError) {
+        final field = fields.values.elementAt(i);
+        errors.add(FormValidationError(
+          errorKey: result.errorKey,
+          params: result.params,
+          fields: [field],
+        ));
+      }
+    }
+
+    // 3. Run cross-field validation only if all fields passed
+    if (errors.isEmpty) {
+      errors.addAll(await validateForm());
+    }
+
+    return errors;
+  }
+
+  /// Override for cross-field validation. Always async.
+  Future<List<FormValidationError>> validateForm() async => [];
+
+  bool get isValid => fields.values.every(
+    (f) => f.validationState is ValidationSuccess,
+  );
+}
+```
+
+### Cross-Field Validation and Error Display
+
+Cross-field validation can produce errors that link to **multiple fields** with **field-specific messages**:
+
+```dart
+class FormValidationError {
+  /// The primary error key (for the form-level error message).
+  final String errorKey;
+
+  /// Optional parameters for message interpolation.
+  final Map<String, dynamic>? params;
+
+  /// Fields involved in this cross-field error.
+  /// Each entry maps a field to its specific error key.
+  final List<TomField> fields;
+
+  /// Per-field error keys (optional; use different resource keys per field).
+  /// If null, all fields show the same errorKey.
+  final Map<TomField, String>? fieldErrorKeys;
+
+  FormValidationError({
+    required this.errorKey,
+    this.params,
+    required this.fields,
+    this.fieldErrorKeys,
+  });
+
+  /// Field IDs involved in this error (convenience getter for display).
+  List<String> get tomIds => fields.map((f) => f.tomId).toList();
+}
+```
+
+Example — date range cross-validation with per-field messages:
+
+```dart
+@override
+Future<List<FormValidationError>> validateForm() async {
+  final errors = <FormValidationError>[];
+
+  if (~endDate < ~startDate) {
+    errors.add(FormValidationError(
+      errorKey: 'error.dateRange.invalid',
+      fields: [startDate, endDate],
+      fieldErrorKeys: {
+        startDate: 'error.dateRange.startAfterEnd',  // "Start date must be before end date"
+        endDate: 'error.dateRange.endBeforeStart',    // "End date must be after start date"
+      },
+    ));
+  }
+
+  return errors;
+}
+```
+
+### Form Error Display Widget
+
+Cross-field errors and form-level errors are displayed by a **`TomFormErrorDisplay`** widget placed in the form's layout. Multiple display implementations are available:
+
+| Widget | Description | Placement |
+|--------|-------------|-----------|
+| `TomFormErrorBanner` | Material banner at top of form | Above form fields |
+| `TomErrorView` | Form-wide error list — placement-flexible, shows wherever it's mounted | Above / below / beside the form |
+| `TomFormErrorSnackbar` | Snackbar overlay (auto-dismiss) | Screen bottom |
+| `TomFormErrorInline` | Inline text (compact) | Between field groups |
+
+```dart
+Widget build(BuildContext context) {
+  return Column(children: [
+    // Form-level error display
+    TomFormErrorBanner(form: orderForm),
+
+    // Fields
+    orderForm.startDate.widget,
+    orderForm.endDate.widget,
+
+    // Save button
+    TomElevatedButton(
+      onPressed: () async {
+        final errors = await orderForm.validate();
+        if (errors.isEmpty) orderForm.save();
+      },
+      child: Text('Save'),
+    ),
+  ]);
+}
+```
+
+The error display widget observes the form's validation state and shows/hides automatically when errors change.
+
+### Debouncing for Field-Change Validation
+
+Field-change validation is **debounced** to avoid excessive validation calls, especially for validators that make server requests (e.g., checking username availability).
+
+#### Fast vs Slow Validators
+
+Validators are categorized as **fast** (local, synchronous or near-synchronous) or **slow** (remote, potentially high-latency):
+
+- **Fast validators** (default): Run after the standard debounce (`validationDebounce`, default 300ms). They do **not** show a pending spinner. Examples: `required()`, `email()`, `minLength()`, `pattern()`.
+- **Slow validators**: Wrapped in `SlowValidator<T>`. Run after a longer debounce (`slowValidationDebounce`, default 600ms). They **do** show a pending spinner (`ValidationPending`). Examples: API availability checks, server-side validation.
+
+```dart
+/// Wraps a validator to mark it as "slow" (e.g., remote API call).
+class SlowValidator<T> {
+  final Validator<T> validate;
+  const SlowValidator(this.validate);
+}
+```
+
+Usage:
+```dart
+TomFormStringInput('email', '',
+  validators: [
+    Validators.required(),              // fast — no spinner
+    Validators.email(),                 // fast — no spinner
+    SlowValidator(checkEmailAvailable), // slow — spinner shown after 600ms
+  ],
+)
+```
+
+#### Debounce Behavior
+
+```dart
+abstract class TomField<T> extends TomObject<T> {
+  /// Debounce duration for fast validation. Default: 300ms.
+  Duration get validationDebounce => const Duration(milliseconds: 300);
+
+  /// Debounce duration for slow validation. Default: 600ms.
+  Duration get slowValidationDebounce => const Duration(milliseconds: 600);
+
+  Timer? _debounceTimer;
+  Timer? _slowDebounceTimer;
+
+  /// Called when the field value changes (from user input).
+  void setValue(T newValue) {
+    // ... update value, fire event ...
+
+    // Schedule fast validation after short debounce
+    _debounceTimer?.cancel();
+    _slowDebounceTimer?.cancel();
+    _debounceTimer = Timer(validationDebounce, () => _validateFast());
+
+    // Schedule slow validation after longer debounce
+    if (hasSlowValidators) {
+      _slowDebounceTimer = Timer(slowValidationDebounce, () => _validateSlow());
+    }
+  }
+}
+```
+
+**Debounce behavior:**
+- Each keystroke resets both timers
+- Fast validators run after `validationDebounce` (300ms default) — no spinner
+- Slow validators run after `slowValidationDebounce` (600ms default) — with spinner
+- If fast validation fails, slow validation is cancelled (no need for remote check)
+- Blur validation is immediate (no debounce) — provides feedback when the user leaves the field
+- The `validate()` method (called by save/manual trigger) runs all validators: fast first, then slow
+
+### Validation Timing Summary
+
+| Trigger | Debounced | Validation Scope | Spinner | Behavior |
+|---------|-----------|-----------------|---------|----------|
+| Field value change (fast) | Yes (300ms default) | Single field fast validators | No | Debounced fast validate after typing pause |
+| Field value change (slow) | Yes (600ms default) | Single field slow validators | Yes | Debounced slow validate after longer typing pause |
+| Field blur | No | Single field (all validators) | Yes (if slow) | Immediate validate when focus leaves |
+| Save action | No | All fields + cross-field | Yes (if slow) | Full async validation pipeline |
+| Manual `form.validate()` | No | All fields + cross-field | Yes (if slow) | Explicit trigger |
+
+### Validation Error Reset Timing
+
+After a validation error is displayed, the error must be cleared at the right moment to provide good UX. Clearing too early (before the user has a chance to read the error) or too late (error lingers after the user has corrected the problem) are both poor experiences.
+
+**Field-level errors** are reset according to these rules:
+
+| Event | Reset Behavior | Rationale |
+|-------|----------------|-----------|
+| User types in the field | Error cleared immediately on first keystroke | The user is actively correcting; stale error should not distract |
+| Field re-validated (debounced) | Error replaced by new result | New validation result supersedes the old one |
+| `field.reset()` / `form.discard()` | Error cleared | Resetting to initial value clears all validation state |
+| `form.bind(newData)` | All errors cleared | New data binding starts fresh |
+
+**Cross-field / form-level errors** are reset when:
+
+| Event | Reset Behavior | Rationale |
+|-------|----------------|-----------|
+| Any involved field value changes | Form-level error cleared from display | User is editing one of the fields involved; error may no longer apply |
+| `form.validate()` called again | Replaced by new result | Full re-validation supersedes previous errors |
+| `form.discard()` | All errors cleared | Form returns to initial state |
+
+```dart
+/// In TomField — clear error on value change
+void _onValueChanged(T newValue) {
+  // Immediately clear any displayed error (user is correcting)
+  if (_validationState is ValidationError) {
+    _validationState = const ValidationSuccess();
+    _validationNotifier.value = _validationState;
+  }
+
+  setValue(newValue);
+
+  // Schedule debounced re-validation
+  _debounceTimer?.cancel();
+  _debounceTimer = Timer(validationDebounce, () => validate());
+}
+```
+
+> **Design note:** Immediate error clearing on keystroke provides responsive feedback. The debounced re-validation will show a new error if the correction is still invalid, but the brief "clean" state between clearing and re-validation avoids visual noise during active typing.
+
+### Async Validation Example (Username Availability)
+
+```dart
+@tomReflector
+class RegistrationForm extends TomForm<Registration> {
+  RegistrationForm() : super(formId: 'registration');
+
+  late final username = TomFormStringInput('username', '',
+    validators: [
+      Validators.required(),
+      Validators.minLength(3),
+      _checkUsernameAvailability,
+    ],
+  );
+
+  @override
+  Duration get validationDebounce => const Duration(milliseconds: 600);
+
+  Future<ValidationResult> _checkUsernameAvailability(String value) async {
+    final available = await _userService.isUsernameAvailable(value);
+    return available
+        ? const ValidationSuccess()
+        : const ValidationError('error.usernameTaken');
+  }
+}
+```
+
+---
+
+## 21. Form Lifecycle
+
+### Lifecycle States
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: new TomForm()
+    Created --> Bound: bind(state)
+    Bound --> Editing: user edits
+    Editing --> Editing: more edits
+    Editing --> Validating: validate()
+    Validating --> Saving: save() [valid]
+    Validating --> Editing: [invalid]
+    Saving --> Bound: commit()
+    Editing --> Bound: discard()
+    Bound --> Rebound: bind(newState)
+    Bound --> Unbound: unbind()
+    Rebound --> Bound
+    Unbound --> [*]
+```
+
+### Lifecycle Methods
+
+```dart
+abstract class TomForm<T extends TomClass> extends TomClass {
+  T? _binding;
+
+  /// The initial values at the time of binding (snapshot).
+  Map<String, dynamic>? _initialSnapshot;
+
+  void bind(T target) {
+    _binding = target;
+    final values = target.getValues();
+    _initialSnapshot = Map.unmodifiable(values);
+    setValues(values);
+    for (final field in fields.values) field.commit();
+    onBound();
+  }
+
+  void unbind() {
+    onUnbinding();
+    _binding = null;
+    _initialSnapshot = null;
+  }
+
+  Future<bool> save() async {
+    final errors = await validate();
+    if (errors.isNotEmpty) return false;
+    onSaving();
+    _binding?.setValues(getValues());
+    for (final field in fields.values) field.commit();
+    _initialSnapshot = Map.unmodifiable(getValues());
+    onSaved();
+    return true;
+  }
+
+  void discard() {
+    onDiscarding();
+    for (final field in fields.values) field.reset();
+    onDiscarded();
+  }
+
+  // Lifecycle hooks for subclass customization
+  @protected void onBound() {}
+  @protected void onUnbinding() {}
+  @protected void onSaving() {}
+  @protected void onSaved() {}
+  @protected void onDiscarding() {}
+  @protected void onDiscarded() {}
+}
+```
+
+### initialValue vs currentValue
+
+Each field tracks two values:
+
+| Property | Meaning | Set When |
+|----------|---------|----------|
+| `initialValue` | The value at bind time (or after last save) | `bind()`, `save()`, `commit()` |
+| `value` (currentValue) | The live editing value | User edits, `set()`, `reset()` |
+
+**`isDirty`** = `value != initialValue`. After `save()`, both align. After `discard()`, `value` reverts to `initialValue`.
+
+### When Underlying Data Changes
+
+The form's edit buffer is **detached** from the bound state. After `bind()`, the form owns its own copy. If the underlying `TomClass` changes externally (e.g., from a server push, another user's edit, or a background sync), the form does **not** automatically update.
+
+To handle external data changes:
+
+```dart
+// Option 1: Re-bind (replaces all edits — use when user hasn't started editing)
+myForm.bind(updatedDataObject);
+
+// Option 2: Check for conflicts (preserve user edits)
+void onExternalDataChanged(MyData newData) {
+  if (!myForm.isDirty) {
+    // No user edits — safe to re-bind
+    myForm.bind(newData);
+  } else {
+    // User has unsaved edits — prompt for conflict resolution
+    showConflictDialog(
+      localValues: myForm.getValues(),
+      remoteValues: newData.getValues(),
+      onAcceptRemote: () => myForm.bind(newData),
+      onKeepLocal: () {}, // user continues editing
+    );
+  }
+}
+```
+
+### Form Lifecycle and Page/Route Lifecycle
+
+The page or route is responsible for **linking** the form to its state via `bind()`. After binding, the form accesses the state object directly — the page does not mediate between form and state. The page's role is limited to:
+
+1. **Creating** the form (in `initState()` or a provider)
+2. **Binding** the form to state when data becomes available (`form.bind(data)`)
+3. **Intercepting navigation** to check for unsaved changes (`form.isDirty`)
+4. **Unbinding** the form when the page is disposed
+
+The form itself handles all data flow (reading from and writing to the bound state) without going through the page:
+
+```mermaid
+sequenceDiagram
+    participant Route as Page/Route
+    participant Form as TomForm
+    participant State as AppState
+
+    Route->>Form: new TomForm(formId: 'order')
+    Route->>State: Load data
+    State-->>Route: Order object
+    Route->>Form: bind(order)
+
+    Note over Form,State: Form now accesses state directly via _binding
+
+    alt Save
+        Form->>State: setValues() — form writes directly to bound state
+    else Discard
+        Route->>Form: discard()
+    else Navigate Away
+        Route->>Form: isDirty?
+        alt Has unsaved changes
+            Route->>Route: Show "Save/Discard/Cancel" dialog
+        end
+        Route->>Form: unbind()
+    end
+```
+
+**Key patterns:**
+
+| Route Event | Form Action | Notes |
+|-------------|-------------|-------|
+| `initState()` | Create form | Form is empty until `bind()` |
+| Data loaded | `bind(data)` | Populates form, resets dirty state |
+| User navigates away | Check `isDirty`, prompt if needed | Prevent accidental data loss |
+| Route disposed | `unbind()` and dispose form | Clean up resources |
+| Route re-entered | Re-create or re-bind | Forms can be re-bound to new data |
+
+**Master-detail pattern:** The form is created once and re-bound when the selected item changes (see §15). The form persists across item selections — only the binding changes.
+
+**Tab/page navigation with unsaved state:** Use `WillPopScope` (or `PopScope` in newer Flutter) or `RouteAware` to intercept navigation:
+
+```dart
+PopScope(
+  canPop: !orderForm.isDirty,
+  onPopInvokedWithResult: (didPop, result) async {
+    if (didPop) return;
+    final action = await showSaveDiscardCancelDialog(context);
+    switch (action) {
+      case SaveDiscardCancel.save:
+        final errors = await orderForm.validate();
+        if (errors.isEmpty && orderForm.save()) Navigator.pop(context);
+        break;
+      case SaveDiscardCancel.discard:
+        orderForm.discard();
+        Navigator.pop(context);
+        break;
+      case SaveDiscardCancel.cancel:
+        break; // stay on page
+    }
+  },
+  child: buildFormContent(),
+)
+```
+
+---
+
+## 22. Form Actions
+
+Forms are action controllers. They provide standard actions that can be triggered from anywhere.
+
+### Standard Form Actions
+
+| Action Path | Description | Undoable |
+|-------------|-------------|----------|
+| `<form.basePath>.save` | Validates and commits | Yes |
+| `<form.basePath>.discard` | Resets to initial values | No |
+| `<form.basePath>.validate` | Validates without saving | No |
+| `<form.basePath>.clear` | Clears all fields | No |
+
+### Action Implementation
+
+```dart
+abstract class TomForm<T> extends TomClass implements TomActionController {
+  @override
+  String get controllerId => basePath;
+
+  late final saveAction = TomAction(
+    actionId: 'save',
+    execute: (_) => save(),
+    canExecute: (_) => isDirty,
+  );
+
+  late final discardAction = TomAction(
+    actionId: 'discard',
+    execute: (_) => discard(),
+    canExecute: (_) => isDirty,
+  );
+
+  late final validateAction = TomAction(
+    actionId: 'validate',
+    execute: (_) => validate(),
+    canExecute: (_) => true,
+  );
+
+  @override
+  Iterable<TomAction> get actions => [saveAction, discardAction, validateAction];
+}
+```
+
+### Wiring Actions to Buttons
+
+```dart
+TomElevatedButton(
+  tomId: 'saveBtn',
+  // TomAction exposes `.authorizer` which wraps fromAction(() => authState)
+  // for you — no need to construct the factory by hand.
+  authorizer: form.saveAction.authorizer,
+  onPressed: form.saveAction.trigger,
+  label: form.saveAction.label,
+)
+```
+
+### Custom Actions
+
+```dart
+class OrderForm extends TomForm<Order> {
+  late final submitForApproval = TomAction(
+    actionId: 'submitForApproval',
+    execute: (ctx) async {
+      if (!save()) return false;
+      await _orderService.submitForApproval(~orderNumber);
+      return true;
+    },
+    canExecute: (_) => !isDirty && ~status == OrderStatus.draft,
+  );
+
+  @override
+  Iterable<TomAction> get actions => [...super.actions, submitForApproval];
+}
+```
+
+---
+
+# Part 8 — Non-Form Custom Widgets
+
+## 23. Custom Tom Widgets (Non-Form)
+
+Custom widgets that don't wrap Flutter SDK classes. Purpose-built for Tom's authorization, resource, and state binding systems.
+
+| Widget | Implemented | Description |
+|--------|-------------|-------------|
+| `TomRadioGroup` | No | Radio group container with auth on entire selection group |
+| `TomTreeView` | No | Hierarchical tree view with per-node auth |
+| `TomTreeNode` | No | Data model for tree nodes |
+| `TomAuthGuard` | No | Wrapper that hides/disables content based on authorization |
+| `TomLoadingOverlay` | No | Overlay with loading indicator and optional message |
+| `TomErrorBoundary` | No | Catches widget errors, shows fallback UI |
+| `TomEmptyState` | No | Placeholder for empty data views |
+| `TomSkeletonLoader` | No | Shimmer/skeleton loading placeholders |
+| `TomInfiniteScroll` | No | List/grid wrapper with pagination |
+
+---
+
+# Part 9 — Implementation Guide
+
+## 24. Package Structure
+
+All form code lives in `tom_flutter_ui/lib/src/forms/`:
+
+```
+forms/
+├── tom_form.dart                    # TomForm, TomField base classes
+├── fields/
+│   ├── tom_form_string_field.dart   # TomFormStringField
+│   ├── tom_form_int_field.dart      # TomFormIntField
+│   ├── tom_form_double_field.dart   # TomFormDoubleField
+│   ├── tom_form_bool_field.dart     # TomFormBoolField
+│   ├── tom_form_date_field.dart     # TomFormDateField, ...DateTimeField, etc.
+│   ├── tom_form_duration_field.dart # TomFormDurationField
+│   ├── tom_form_enum_field.dart     # TomFormEnumField<T>
+│   ├── tom_form_object_field.dart   # TomFormObjectField<T>
+│   ├── tom_form_search_field.dart   # TomFormSearchField<T>
+│   ├── tom_form_lookup_field.dart   # TomFormLookupField<T>
+│   ├── tom_form_list_fields.dart    # TomFormStringListField, TomFormIntListField, etc.
+│   └── tom_form_file_field.dart     # TomFormFileField
+├── implementations/
+│   ├── tom_form_string_input.dart
+│   ├── tom_form_multiline_string_input.dart
+│   ├── tom_form_password_string_input.dart
+│   ├── tom_form_email_string_input.dart
+│   ├── tom_form_int_input.dart
+│   ├── tom_form_double_input.dart
+│   ├── tom_form_currency_double_input.dart
+│   ├── tom_form_bool_checkbox.dart
+│   ├── tom_form_bool_switch.dart
+│   ├── tom_form_bool_toggle.dart
+│   ├── tom_form_date_picker.dart
+│   ├── tom_form_time_picker.dart
+│   ├── tom_form_datetime_picker.dart
+│   ├── tom_form_duration_input.dart
+│   ├── tom_form_enum_dropdown.dart
+│   ├── tom_form_string_dropdown.dart
+│   ├── tom_form_string_segmented.dart
+│   ├── tom_form_string_radio_group.dart
+│   ├── tom_form_search_input.dart
+│   ├── tom_form_lookup_dialog.dart
+│   ├── tom_form_int_slider.dart
+│   ├── tom_form_int_stepper.dart
+│   ├── tom_form_file_upload.dart
+│   └── tom_form_string_filter_chips.dart
+├── tom_form_child_container.dart    # TomFormChildContainer interface
+├── lists/
+│   └── tom_list_form.dart           # TomListForm
+├── validation/
+│   ├── validation_result.dart
+│   └── validators.dart              # Built-in validators
+└── tom_forms.dart                   # Barrel export
+```
+
+---
+
+## 24a. Inspection and Event Callbacks
+
+### Design Goal
+
+Forms and fields must be **inspectable at runtime** — for debugging, logging, demo panels, and tooling. The API provides two layers:
+
+1. **Inspection getters** — synchronous access to current state (already added to `TomField` in §4 and `TomForm` in §5)
+2. **Event callbacks** — a listener interface that receives structured events as they occur
+
+### TomFormEvent
+
+All form events extend a base class:
+
+```dart
+abstract class TomFormEvent {
+  final DateTime timestamp;
+  final String source;      // field ID or form ID
+  final String description; // human-readable summary
+
+  const TomFormEvent({
+    required this.timestamp,
+    required this.source,
+    required this.description,
+  });
+}
+
+class FieldValueChangedEvent extends TomFormEvent {
+  final String tomId;
+  final dynamic oldValue;
+  final dynamic newValue;
+}
+
+class FieldValidatedEvent extends TomFormEvent {
+  final String tomId;
+  final ValidationResult result;  // ValidationSuccess, ValidationError, or ValidationPending
+  final List<FormValidationError> errors;
+}
+
+class FieldAuthChangedEvent extends TomFormEvent {
+  final String tomId;
+  final TomAuthState oldAuth;
+  final TomAuthState newAuth;
+}
+
+class FormBoundEvent extends TomFormEvent {
+  final Map<String, dynamic> values;
+}
+
+class FormSavedEvent extends TomFormEvent {
+  final Map<String, dynamic> values;
+}
+
+class FormDiscardedEvent extends TomFormEvent {
+  final Map<String, dynamic> restoredValues;
+}
+
+class FieldBoundEvent extends TomFormEvent {
+  final String tomId;
+  final dynamic initialValue;
+}
+
+class FieldCommittedEvent extends TomFormEvent {
+  final String tomId;
+  final dynamic committedValue;
+}
+```
+
+### TomFormEventListener
+
+```dart
+/// Callback interface for form events.
+/// Implement selectively — all methods have default no-op implementations.
+mixin TomFormEventListener {
+  void onFieldValueChanged(FieldValueChangedEvent event) {}
+  void onFieldValidated(FieldValidatedEvent event) {}
+  void onFieldAuthChanged(FieldAuthChangedEvent event) {}
+  void onFieldBound(FieldBoundEvent event) {}
+  void onFieldCommitted(FieldCommittedEvent event) {}
+  void onFormBound(FormBoundEvent event) {}
+  void onFormSaved(FormSavedEvent event) {}
+  void onFormDiscarded(FormDiscardedEvent event) {}
+}
+```
+
+### Attaching Listeners
+
+```dart
+class TomForm<T> {
+  final List<TomFormEventListener> _listeners = [];
+
+  void addListener(TomFormEventListener listener) => _listeners.add(listener);
+  void removeListener(TomFormEventListener listener) => _listeners.remove(listener);
+
+  // Internal: fire events
+  void _fireEvent(TomFormEvent event) {
+    for (final listener in _listeners) {
+      if (event is FieldValueChangedEvent) listener.onFieldValueChanged(event);
+      if (event is FieldValidatedEvent) listener.onFieldValidated(event);
+      // ... etc.
+    }
+  }
+}
+```
+
+### TomFormInspector — Convenience Collector
+
+For debugging and demo panels, `TomFormInspector` collects events into a buffer:
+
+```dart
+class TomFormInspector with TomFormEventListener {
+  final List<TomFormEvent> events = [];
+  final int maxEvents;
+
+  TomFormInspector({this.maxEvents = 500});
+
+  @override
+  void onFieldValueChanged(FieldValueChangedEvent event) => _add(event);
+  @override
+  void onFieldValidated(FieldValidatedEvent event) => _add(event);
+  // ... all event types
+
+  void _add(TomFormEvent event) {
+    events.add(event);
+    if (events.length > maxEvents) events.removeAt(0);
+  }
+
+  /// Clear all collected events.
+  void clear() => events.clear();
+
+  /// Get events filtered by type.
+  List<T> eventsOfType<T extends TomFormEvent>() =>
+      events.whereType<T>().toList();
+
+  /// Get events for a specific field.
+  List<TomFormEvent> eventsForField(String tomId) =>
+      events.where((e) => e.source == tomId).toList();
+}
+```
+
+### Usage in Demo / Debug Panel
+
+```dart
+final inspector = TomFormInspector();
+form.addListener(inspector);
+
+// In a debug panel widget:
+ListView.builder(
+  itemCount: inspector.events.length,
+  itemBuilder: (context, index) {
+    final event = inspector.events[index];
+    return ListTile(
+      leading: Icon(_iconForEvent(event)),
+      title: Text(event.description),
+      subtitle: Text('${event.source} — ${event.timestamp}'),
+    );
+  },
+)
+```
+
+---
+
+## 24b. Demo Application Specification
+
+### Location
+
+`tom_ai/core/tom_flutter_form_test/` — currently a bare `flutter create` scaffold.
+
+### Structure
+
+The demo app follows **the same structure as `tom_flutter_ui_test`**: a tabbed navigation shell with numbered demo pages. The Phase 1 demos are split into three focused pages (A, B, C). Future phases add additional demo pages.
+
+```
+tom_flutter_form_test/
+├── lib/
+│   ├── main.dart                    # App entry with TabBar navigation
+│   ├── forms/                       # Form model classes
+│   │   ├── customer_form.dart       # CustomerForm with nested billing/shipping
+│   │   ├── address_form.dart        # AddressForm (reused in customer_form)
+│   │   ├── validation_form.dart     # Form with complex validation scenarios
+│   │   └── preferences_form.dart    # Preferences form (booleans, selections — Phase 2+)
+│   ├── demos/
+│   │   ├── demo_a_lifecycle.dart             # Phase 1: Lifecycle & Validation
+│   │   ├── demo_b_authorization.dart         # Phase 1: Authorization & Events
+│   │   ├── demo_c_nested_theming.dart        # Phase 1: Nested Forms & Theming
+│   │   ├── demo_04_complex_form.dart         # Phase 2+: Split-pane comprehensive demo
+│   │   ├── demo_05_list_forms.dart           # Phase 2+: TomListForm with add/remove/reorder
+│   │   └── demo_06_extended_fields.dart      # Phase 2+: Bool, multi-select, etc.
+│   └── panels/
+│       ├── info_panel.dart           # Right-side info/control panel
+│       ├── event_log_panel.dart      # Event log using TomFormInspector
+│       ├── field_state_table.dart    # Table of all fields with current state
+│       └── auth_control_panel.dart   # Authorization state controls
+```
+
+### Demo A — Lifecycle & Validation (Phase 1)
+
+Demonstrates form lifecycle (`bind` / `save` / `discard`) and the full validation system including pristine state.
+
+**Layout:** Two-column — form on left, info panel on right showing field state table and event log.
+
+**Features exercised:**
+- `setValue(T)` usage (programmatic and user-driven)
+- Form `bind()` with data object, `save()` writes back, `discard()` resets
+- Sync validation (`required()`, `email()`, `minLength()`)
+- Async validation (simulated server-side uniqueness check)
+- Cross-field validation (confirm field matches original)
+- Debounced validation (typing delay before validation fires)
+- `ValidationPristine` behavior — errors not shown on initial load; only after user edits or save attempt
+- `commit()` resets fields to pristine — no errors shown after successful save
+- `TomFormErrorBanner` for cross-field errors
+- Resource resolution (labels, hints, errors from `TomCtr` resources)
+- Form actions (`saveAction`, `discardAction`, custom clear action)
+
+### Demo B — Authorization & Events (Phase 1)
+
+Demonstrates the four-state authorization model, groups, authorizers, and event logging.
+
+**Layout:** Two-column — form with auth-controlled fields on left; auth control panel + event log on right.
+
+**Features exercised:**
+- Authorization four states (full, read, disabled, none) — toggle per field
+- `TomAuthorizationGroup` with all three modes (`controlsAll`, `controlsWidest`, `controlsNarrowest`)
+- `TomAuthorizer` with authorizer modes (e.g., finalized orders → read-only)
+- `TomUIStateController` with data-dependent auth
+- ACL-based layout with `TomAclBuilder`
+- **Event log panel** — scrollable log of all `TomFormEvent` entries, including:
+  - `FieldAuthChangedEvent` — visible when auth state changes via controls
+  - `FieldValueChangedEvent`, `FieldValidatedEvent`, etc.
+  - Filter buttons by event type; clear button; auto-scroll toggle
+- **Auth state display** — table showing each field's current effective auth state
+- Form-level auth ceiling demonstration (form set to `read` → all fields become at most `read`)
+
+### Demo C — Nested Forms & Theming (Phase 1)
+
+Demonstrates nested form composition, dirty tracking, and live theming.
+
+**Layout:** Two-column — nested form on left; theming controls + form inspection on right.
+
+**Features exercised:**
+- Nested forms: `OrderForm` containing `AddressForm` for billing and shipping
+- Form tree matches state tree (naming convention validation)
+- Dirty tracking across nested forms (`isDirty` propagates to parent)
+- `bind()` / `save()` / `discard()` across entire nested tree
+- `TomFormStyle` live switching:
+  - Label placement radio buttons: above / below / floating / inline / hidden
+  - Error placement radio buttons: below / above / tooltip / both / replaceDescription
+  - Required-indicator radio buttons for label, placeholder (hint), and description slots
+  - Spacing sliders: `labelFieldGap`, `errorFieldGap`, `borderRadius`
+  - Hint tuning sliders: `hintFontWeight`, `hintOpacity`
+  - Pre-set style buttons: `material3`, `compact`, `bordered`, plus `.withTheme(Theme.of(context))` toggle
+- Per-section styling via nested `TomFormStyleScope` (billing section has different style than shipping)
+- Breakpoint-driven style: `styleBpOverrides` lets the shipping section use the `compact` preset under tablet width and `bordered` under desktop width, without touching the widget tree
+- Classic + new fields mixed in the same form (demonstrates coexistence)
+- Form inspection panel: `getValues()` as JSON, dirty fields list, current vs initial diff
+
+### Shared Panel Components
+
+The right-side panels are reusable across demos:
+
+1. **Authorization Controls** (Demo B)
+   - Form-level auth state dropdown (`full`, `read`, `disabled`, `none`)
+   - Group selector dropdown (select which `TomAuthorizationGroup` to control)
+   - Group mode toggle (`controlsAll`, `controlsWidest`, `controlsNarrowest`)
+   - Per-field auth override buttons
+   - `TomAuthorizer` enable/disable toggle
+   - `TomUIStateController` enable/disable toggle
+
+2. **Field State Table** (Demo A, B)
+   - All fields listed with columns: Field ID, Current Value, Auth State, Validation State, Dirty
+   - Color-coded: green = valid, red = error, grey = disabled, yellow = pending, white = pristine
+   - Updates in real-time via `TomFormInspector` events
+
+3. **Event Log** (Demo A, B)
+   - Scrollable list of all `TomFormEvent` entries from `TomFormInspector`
+   - Each entry shows timestamp, event type icon, source field, and description
+   - Filter buttons by event type (value change, validation, auth, lifecycle)
+   - Clear button to reset the log
+   - Auto-scroll to latest with toggle
+
+4. **Form Inspection** (Demo C)
+   - `form.getValues()` displayed as formatted JSON
+   - `form.initialSnapshot` vs current values diff
+   - `form.dirtyFields` list
+   - `form.fieldsWithErrors` list
+   - `form.isValid` / `form.isDirty` status indicators
+
+### Features Exercised Per Demo (Phase 1)
+
+| Feature | Demo A | Demo B | Demo C |
+|---------|--------|--------|--------|
+| Observable binding | ✓ | ✓ | ✓ |
+| setValue(T) | ✓ | | |
+| bind/save/discard | ✓ | | ✓ |
+| Sync validation | ✓ | | |
+| Async validation | ✓ | | |
+| Cross-field validation | ✓ | | |
+| ValidationPristine | ✓ | | |
+| Auth 4 states | | ✓ | |
+| Auth groups + modes | | ✓ | |
+| TomAuthorizer | | ✓ | |
+| TomUIStateController | | ✓ | |
+| FieldAuthChangedEvent | | ✓ | |
+| Nested forms | | | ✓ |
+| TomFormStyle | | | ✓ |
+| Per-section styling | | | ✓ |
+| Resource resolution | ✓ | | |
+| Form actions | ✓ | | |
+| TomFormInspector | ✓ | ✓ | |
+| TomAclBuilder | | ✓ | |
+| Classic + new coexistence | | | ✓ |
+| Form inspection | | | ✓ |
+
+---
+
+## 25. Implementation Plan
+
+**Migration policy:** The existing `TomField` and `TomForm` classes in `tom_flutter_ui` are **modified in-place** to match this specification. There is no backward-compatibility constraint — old APIs (method names, parameter names, signatures) are replaced, not preserved alongside new ones. Every phase may rename, restructure, or delete existing code to align with the spec.
+
+**Legacy naming convention — IMPORTANT:** All existing concrete field implementations that predate this specification must be renamed to follow the new naming convention with a `*Classic` suffix. The naming must be consistent:
+
+| Old Name | New Name (Classic) | Reason |
+|----------|-------------------|--------|
+| `TomStringFormField` | `TomFormStringInputClassic` | Follows `TomForm{Type}{Widget}Classic` pattern |
+| `TomPasswordFormField` | `TomFormPasswordStringInputClassic` | Type is `String`, widget is password input |
+| `TomEmailFormField` | `TomFormEmailStringInputClassic` | Type is `String`, widget is email input |
+| `TomIntFormField` | `TomFormIntInputClassic` | Type is `int`, widget is text input |
+| `TomDoubleFormField` | `TomFormDoubleInputClassic` | Type is `double`, widget is text input |
+
+**`TomTextFormFieldBase`** — This is an **abstract base class** for all text-based Classic field implementations. It must NOT be renamed or deprecated — it is not a field implementation itself. It provides shared behavior (TextEditingController management, InputDecoration rendering) for Classic text fields.
+
+**Widget-layer `TomForm`** — The existing `TomForm` widget class in `tom_inputs.dart` (the Flutter widget that builds a form UI from a `TomForm` data model) must be renamed to `TomFormClassic`. This avoids name collision with the data-model `TomForm<T extends TomClass>` class. After renaming, both Classic and new fields must be usable together in the same form — a `TomFormClassic` widget should be able to render both `*Classic` fields and new spec-conforming fields.
+
+**Classic fields and new spec features:** Classic fields should implement new spec features (validation, authorization, events, dirty tracking) **as far as possible** given their existing architecture. They use `InputDecoration` for their visual anatomy (not `TomFieldDecorationMixin`), but should participate in the form lifecycle, fire events, and respect authorization.
+
+### Phase 0a — Data Model and Logic
+
+**Goal:** Implement all pure-Dart infrastructure: validation, selection sources, events, and the extended `TomField`/`TomForm` base classes. Everything in this phase is unit-testable without Flutter widget rendering.
+
+**Prerequisite:** None — builds on existing `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`, `TomUIStateController`, `TomActionController` (all already implemented).
+
+**Scope note:** Upstream packages may be extended during this phase. If the authorization model in `tom_core_kernel` needs changes (e.g., new auth states, additional interfaces, or modified resolution logic), those changes are made, tested, and published there first. Likewise, existing base classes and utilities in `tom_flutter_ui` may be adapted as needed. Per the migration policy, existing `TomField`/`TomForm` APIs are modified in-place with no backward-compatibility constraint.
+
+**Already implemented** (no action needed):
+
+| Class | Location | Notes |
+|-------|----------|-------|
+| `TomAuthState` | `tom_core_kernel` | Enum with `.narrow()` and `.widen()` — complete |
+| `TomAuthorizable` | `tom_core_kernel` | Interface with `tomId` and `tomGroup` |
+| `TomAuthorizationGroup` | `tom_core_kernel` | Full implementation with weak-reference tracking |
+| `TomAuthorizer` | `tom_core_kernel` | Strategy pattern with authorizer modes |
+| `TomUIStateController` | `tom_core_kernel` | `apply()` method for data-dependent auth narrowing |
+| `TomActionController` | `tom_flutter_ui` | Interface for form action provision |
+
+**Step 0.1 — Validation system** (`tom_flutter_ui/lib/src/forms/validation/`)
+
+| Deliverable | Description |
+|-------------|-------------|
+| `ValidationResult` | Sealed class: `ValidationPristine` (initial, no errors shown), `ValidationSuccess`, `ValidationError(errorKey, params?)`, `ValidationPending` |
+| `FormValidationError` | Cross-field error: `errorKey`, `params?`, `fields` list, `fieldErrorKeys?` map (see §20) |
+| `Validator<T>` | Typedef: `FutureOr<ValidationResult> Function(T value)` — covers both sync and async validators |
+| `Validators` | Static utility with built-in validators: `required()`, `email()`, `minLength(n)`, `maxLength(n)`, `pattern(regex)`, `min(n)`, `max(n)`, `compose(list)` |
+
+Each validator returns a `ValidationResult`. `Validators.compose([...])` runs validators sequentially, stopping on first non-success result.
+
+**Step 0.2 — Selection source interface** (`tom_flutter_ui/lib/src/forms/selection/`)
+
+| Deliverable | Description |
+|-------------|-------------|
+| `TomSelectableSource<T>` | Abstract interface: `Future<List<SelectableItem<T>>> getItems()`, `Stream<List<SelectableItem<T>>>? get itemsStream` |
+| `SelectableItem<T>` | Data class: `T value`, `String label`, `String? description`, `bool enabled` |
+| `StaticSelectableSource<T>` | Implementation: fixed list of items |
+
+Only `StaticSelectableSource` is needed for Phase 1. `EnumSelectableSource`, `ObservableSelectableSource`, `AsyncSelectableSource` are deferred to Phase 2+.
+
+**Step 0.3 — Event system** (`tom_flutter_ui/lib/src/forms/events/`)
+
+| Deliverable | Description |
+|-------------|-------------|
+| `TomFormEvent` | Base class: `timestamp`, `source`, `description` |
+| 8 event subclasses | `FieldValueChangedEvent`, `FieldValidatedEvent`, `FieldAuthChangedEvent`, `FieldBoundEvent`, `FieldCommittedEvent`, `FormBoundEvent`, `FormSavedEvent`, `FormDiscardedEvent` |
+| `TomFormEventListener` | Mixin with default no-op methods for each event type |
+| `TomFormInspector` | Convenience collector: buffered event list with filtering and clear |
+
+**Step 0.4 — Extend TomField base class** (modify `tom_flutter_ui/lib/src/forms/tom_form.dart`)
+
+Extend the existing `TomField<T>` per §4:
+
+| Addition | Description |
+|----------|-------------|
+| `implements TomAuthorizable` | Auth integration |
+| `validators` list | `List<Validator<T>>` with sync/async support |
+| `validationState` / `_validationState` | Current validation state tracking |
+| `validationDebounce` / `_debounceTimer` | Configurable debounce for validation on change |
+| `isDirty` | Tracks whether value differs from initial |
+| `basePath`, `tomGroup`, `authorizer`, `uiStateController` | Optional auth params in constructor |
+| `effectiveAuthState` → `resolveEffectiveAuth()` | Full auth resolution chain |
+| `isEditable`, `isVisible` | Auth convenience getters |
+| `validate()` → `Future<ValidationResult>` | Run all validators |
+| `dispose()` | Cancel debounce timer, clean up |
+| Abstract `.widget` getter | Returns concrete Flutter widget |
+
+**Step 0.5 — Extend TomForm base class** (modify `tom_flutter_ui/lib/src/forms/tom_form.dart`)
+
+Extend the existing `TomForm<T>` per §5:
+
+| Addition | Description |
+|----------|-------------|
+| `implements TomActionController` | Action integration for save/discard/custom |
+| `bind(T target)` | Takes a `TomClass` instance. Calls `target.getValues()` → `setValues(values)` (inherited from `TomClass`) → `commit()` all fields → `onBound()` hook. Stores `_initialSnapshot`. |
+| `save()` → `bool` | Returns `false` if `!isValid`. Otherwise: `onSaving()` → `_binding.setValues(getValues())` → `commit()` all fields → `onSaved()` → returns `true` |
+| `discard()` | `onDiscarding()` → `reset()` all fields → `onDiscarded()` |
+| `validate()` → `Future<List<FormValidationError>>` | Validates all fields in parallel, then runs `validateForm()` cross-field validation only if all fields passed. Returns aggregated errors (empty list = success). |
+| `validateForm()` → `Future<List<FormValidationError>>` | Override hook for cross-field validation. Default: returns empty list. |
+| `onBound()`, `onSaving()`, `onSaved()`, `onDiscarding()`, `onDiscarded()` | User-overridable lifecycle hooks (all no-op by default) |
+| `isValid` getter | `fields.values.every((f) => f.validationState is ValidationSuccess)` |
+| `isDirty` getter | `fields.values.any((f) => f.isDirty)` |
+| Inspection: `getField(id)`, `getValues()`, `initialSnapshot`, `dirtyFields`, `fieldsWithErrors` | Runtime inspection APIs |
+| `addListener()` / `removeListener()` | Event listener management |
+| `_fireEvent()` | Internal event dispatch to all `TomFormEventListener` instances |
+| `dispose()` | Dispose all fields, remove listeners |
+
+**Validation criteria for Phase 0a:**
+
+1. All classes compile with `dart analyze` — zero errors
+2. Unit tests for `Validators` (all built-in validators, including `compose`)
+3. Unit tests for `ValidationResult` sealed class (pattern matching, equality)
+4. Unit tests for `TomSelectableSource` / `StaticSelectableSource`
+5. Unit tests for `TomFormInspector` event collection, filtering, clear
+6. Unit tests for extended `TomField` (validation lifecycle, auth resolution, dirty tracking, dispose)
+7. Unit tests for extended `TomForm` (bind/save/discard lifecycle, event firing, inspection APIs, validate with cross-field)
+
+**Review gate:** Phase 0a must be reviewed before starting Phase 0b. This ensures the data model is solid before building widgets on top of it.
+
+**File structure after Phase 0a:**
+
+```
+tom_flutter_ui/lib/src/forms/
+├── tom_form.dart                     # Extended TomForm + TomField
+├── validation/
+│   ├── form_validation_error.dart
+│   ├── validation_result.dart
+│   └── validators.dart               # Built-in validators + Validator<T> typedef
+├── selection/
+│   ├── tom_selectable_source.dart    # Interface + SelectableItem
+│   └── static_selectable_source.dart
+├── events/
+│   ├── tom_form_event.dart           # Base + all subclasses
+│   ├── tom_form_event_listener.dart
+│   └── tom_form_inspector.dart
+└── tom_forms.dart                    # Barrel export (Phase 0a classes only)
+```
+
+---
+
+### Phase 0b — Widget Infrastructure
+
+**Goal:** Implement the Flutter widget layer that consumes the Phase 0a data model: styling system, field decoration mixin, and error display widgets. These require widget tests with `WidgetTester`.
+
+**Prerequisite:** Phase 0a complete, reviewed, and all unit tests passing.
+
+**Scope note:** Upstream packages may be extended during this phase. If `tom_core_kernel` authorization classes need adaptation for widget-level auth rendering, those changes are made, tested, and published there first. Existing widgets and utilities in `tom_flutter_ui` (e.g., `TomCtr`, `TomTheme`, `TomConfigProvider`) may also be adapted as needed. Per the migration policy, existing APIs are modified in-place with no backward-compatibility constraint.
+
+**Step 0.6 — Styling system** (`tom_flutter_ui/lib/src/forms/style/`)
+
+| Deliverable | Description |
+|-------------|-------------|
+| `LabelPlacement` | Enum: `above`, `floating`, `inline`, `hidden` |
+| `ErrorPlacement` | Enum: `below`, `above`, `tooltip`, `both`, `replaceDescription` (replaces the description slot with the error message in error colour; renders the slot even when `description` is empty). |
+| `RequiredIndicator` | Enum: `asterisk`, `text`, `none`, `custom` |
+| `DescriptionPlacement` | Enum: `below`, `above`, `tooltip` |
+| `ActionIconPlacement` | Enum: `trailing`, `leading`, `above` |
+| `TomBreakpoint` | Static class with mutable `mobile`/`tablet`/`desktop` (default 600/900/1200) and `resolve(name)`. Apps retune once at startup; names work in resources (`@bp.mobile.*`) alongside numeric keys. |
+| `TomThemeSpec` | Small serialisable view of `ThemeData` (brightness, seed, primary/secondary/error, fontFamily, bodySize, bodyWeight/labelWeight, density). `toThemeData([ThemeData? base])` materialises a theme by `copyWith`-ing the spec's set fields onto `base` — so component themes, theme extensions, and everything the spec doesn't set are inherited. `TomThemeSpec.fromResources(path, subKey: 'theme')` reads the spec from a resource block. |
+| `TomFormStyle` | Umbrella style class: `defaults` (a fully-populated `TomFieldStyle`) plus one nullable per-widget-type override (`stringInputStyle`, `dropdownStyle`, `sliderStyle`, `checkboxStyle`, `switchStyle`, `segmentedStyle`, `radioGroupStyle`, `datePickerStyle`, `timePickerStyle`, `filePickerStyle`, `chipsStyle`, `multilineInputStyle`). `TomFieldStyle` carries anatomy defaults (incl. `requiredIndicatorOnHint`, `requiredIndicatorOnDescription`), intra-field gaps with breakpoint overrides (`labelFieldGap`, `errorFieldGap`, `fieldContentPadding`), borders (`fieldBorder`, `focusedBorder`, `errorBorder`, `borderRadius`), typography (`inputStyle`, `labelStyle`, `hintStyle`, `errorStyle`, `descriptionStyle`), hint tuning (`hintFontWeight` default `w400`, `hintOpacity` default `0.7` — layered at render time), state visuals (`disabledOpacity`, `readOnlyBackground`, `focusedBackground`), and error visuals (`errorBorderEnabled`, `errorIconEnabled` — both breakpointable). Includes `copyWith()` (with `hintFontWeightSet`/`hintOpacitySet` for explicit-null semantics), `withTheme(ThemeData)` (preserves user overrides, preserves border variant, applies theme colours), and presets `material3`, `compact`, `bordered`. |
+| `TomFormStyleScope` | `StatelessWidget` — provides `TomFormStyle` to the widget tree via `TomFormStyleScope.of(context)`. Wraps child in a `LayoutBuilder` and publishes the captured width through `TomFormStyleScope.widthOf(context)` so per-property `pickPair` resolution runs against subtree width. Additional params: `styleBpOverrides: List<(double, TomFormStyle)>` (whole-style breakpoint swaps), `theme`/`themeBpOverrides: ThemeData` (direct theme injection), `themeSpec`/`themeSpecBpOverrides: TomThemeSpec` (spec-driven themes), `themeSpecTheme: ThemeData?` (explicit base for every `.toThemeData(base)` call; falls back to ambient `Theme.of(context)`). When `tomId` is set, a full-property resource overlay reads `{path}.*` and `{path}.@bp.{key}.*` blocks, resolving `cs.*` color tokens against the active `ColorScheme`. After all overlays, the scope calls `resolved.withTheme(activeTheme)` automatically so origin-default properties inherit from the theme — no hex hardcoding needed for standard colours. Resource parsing is cached once per `(provider, path)` via `Expando`; `TomFormStyleScope.invalidateResourceCache()` flushes the slot. |
+
+**Step 0.7 — Field decoration mixin** (`tom_flutter_ui/lib/src/forms/decoration/`)
+
+| Deliverable | Description |
+|-------------|-------------|
+| Per-widget decoration mixins | One mixin per concrete field type (`TomStringInputDecorationMixin`, `TomDropdownDecorationMixin`, plus stubs for slider/checkbox/switch/segmented/radio/date/time/file/chips/multiline). Each wraps its inner widget with the standard anatomy (label row, field row, error row, description row), reads its per-width resolved `TomFieldStyle` by merging `TomFormStyle.defaults` with its own `<widget>Style` override via `resolveFieldStyle` + `pickPair`, and renders the required indicator, disabled/readonly visuals, and pending-validation spinner. Style is changeable per-section via nested `TomFormStyleScope`. |
+
+**Step 0.8 — Error display widgets** (`tom_flutter_ui/lib/src/forms/widgets/`)
+
+| Deliverable | Description |
+|-------------|-------------|
+| `TomFormErrorBanner` | Material-style banner that shows **form-level (cross-field) errors only**. Field-level errors are displayed by each field's anatomy (via `TomFieldDecorationMixin`). Subscribes to form's `FieldValidatedEvent` and `FormSavedEvent` to show/hide automatically. Shows when `form.validate()` returns non-empty errors; hides when all errors are resolved. Reads border radius, text style from `TomFormStyle`. Auto-dismisses when form becomes valid; not user-dismissible (errors must be fixed). |
+| `TomErrorView` | Placement-flexible form-wide error view (Phase 2a). Shows wherever it's mounted — above, below, or beside the form it watches — with optional header, empty state, and per-error focus affordance. See Phase 2a deliverables for the full description. |
+
+The pending validation spinner is rendered by the **field widget itself** via the per-widget decoration mixins (trailing spinner in the field row). The banner does not show pending state.
+
+**Validation criteria for Phase 0b:**
+
+1. All classes compile with `dart analyze` — zero errors
+2. Unit tests for `TomFormStyle` / `TomFieldStyle` defaults, `copyWith`, `withTheme`, `resolveFieldStyle` + breakpoint resolution, and the presets (`material3`, `compact`, `bordered`)
+3. Widget test for `TomFormStyleScope` — verify `of(context)` returns correct style, `widthOf(context)` reports layout width, nested scopes override parent
+4. Widget test for each per-widget decoration mixin — verify anatomy renders label/error/description rows in correct positions based on placement enums and that its `<widget>Style` override wins over `defaults`
+5. Widget test for `TomFormErrorBanner` — verify shows on form errors, hides on resolution, reads styling
+
+**File structure after Phase 0b** (additions to Phase 0a):
+
+```
+tom_flutter_ui/lib/src/forms/
+├── ...                               # All Phase 0a files
+├── style/
+│   ├── tom_form_style.dart           # TomFormStyle class
+│   ├── tom_form_style_scope.dart     # InheritedWidget
+│   └── form_style_enums.dart         # LabelPlacement, ErrorPlacement, etc.
+├── decoration/
+│   └── tom_field_decoration_mixin.dart
+├── widgets/
+│   └── tom_form_error_banner.dart
+└── tom_forms.dart                    # Barrel export (updated with Phase 0b)
+```
+
+---
+
+### Phase 1 — Validation Round (String Field + 2 Implementations)
+
+**Goal:** Prove the entire forms architecture end-to-end with the smallest possible scope. All infrastructure from Phase 0a+0b is in place — this phase builds the first concrete fields on top of it and validates everything works together.
+
+**Prerequisite:** Phase 0b complete and all tests passing.
+
+**Scope note:** Upstream packages may be extended during this phase. If `tom_core_kernel` needs changes to support field-level authorization or data binding, those changes are made, tested, and published first. Existing infrastructure in `tom_flutter_ui` (base classes, theming, resource resolution) may also be adapted when integration reveals gaps. Per the migration policy, existing APIs are modified in-place with no backward-compatibility constraint.
+
+**Steps:**
+
+1. Implement `TomFormStringField` (abstract) extending the Phase 0 `TomField<T>` with string-specific behavior
+2. Implement `TomFormStringInput` (concrete) — text input using plain `TextField` as inner widget + `TomFieldDecorationMixin` for label/error/description (no `InputDecoration` label/error)
+3. Implement `TomFormStringDropdown` (concrete) — dropdown selection with `TomSelectableSource<String>` + `TomFieldDecorationMixin`
+4. Rename all **existing** concrete field implementations to the `*Classic` suffix following the naming table in the migration policy above. Rename the widget-layer `TomForm` in `tom_inputs.dart` to `TomFormClassic`. Keep `TomTextFormFieldBase` as-is (it is abstract, not a field implementation). Ensure Classic and new fields can coexist in the same form.
+5. Wire up `.widget` getter, `@tomReflector` integration, and auth resolution in the concrete implementations
+6. **Create the demo application** (§24b) that exercises all framework features using only these two widgets
+
+**Concrete field integration checklist — every aspect a field implementation must handle:**
+
+Each concrete field (e.g., `TomFormStringInput`) must integrate ALL of the following concerns from Phase 0 infrastructure. This checklist ensures no framework aspect is overlooked during implementation.
+
+**A. State & Observable Binding (§3, §4, §6, §8)**
+
+| # | Requirement |
+|---|-------------|
+| A1 | Extend abstract field type (e.g., `TomFormStringField` extends `TomField<String>`) |
+| A2 | Bind to `TomObject<T>` observable (e.g., `TomString`) — all reads via `.value`, all writes via `setValue(T)` |
+| A3 | Track `initialValue` vs current `value` for dirty detection |
+| A4 | Support `commit()` (set `initialValue = value` after save) and `reset()` (restore `value = initialValue` on discard) |
+| A5 | Register all observable dependencies with `TomMultiObservableBuilder(observables: [...])` for reactive rebuilds |
+| A6 | Map observable config parameters reactively (min, max, obscureText, etc.) when applicable |
+
+**B. Widget Implementation (§8, §9)**
+
+| # | Requirement |
+|---|-------------|
+| B1 | Override `Widget get widget` to return the concrete Flutter widget |
+| B2 | Create internal `StatelessWidget` (or `StatefulWidget` if controllers needed) taking the field as constructor param |
+| B3 | Create and own internal controllers (`TextEditingController`, `FocusNode`) in widget state; dispose in `dispose()` |
+| B4 | Map value binding: read from `field.value`, write back via `field.setValue(newValue)` |
+| B5 | Map write-back callbacks: connect Flutter's `onChanged`/`onSelected` to `setValue(T)` |
+| B6 | Pass `null` to callbacks when `!field.isEditable` (Flutter convention for disabled) |
+| B7 | Render `SizedBox.shrink()` when `!field.isVisible` (auth state `none`) |
+| B8 | For text-based inputs: implement String → T and T → String converters |
+
+**C. Field Anatomy & Styling (§10, §10a)**
+
+| # | Requirement |
+|---|-------------|
+| C1 | All new fields (including text inputs): use `TomFieldDecorationMixin` for standard anatomy. Text inputs use a plain `TextField` as inner widget (no `InputDecoration` label/hint/error). |
+| C2 | Classic fields only: use `InputDecoration` for native Material label/hint/error |
+| C3 | Read `TomFormStyle` from `TomFormStyleScope.of(context)` for defaults |
+| C4 | Honor placement settings: `labelPlacement`, `errorPlacement`, `requiredIndicator`, `descriptionPlacement`, `actionIconPlacement` |
+| C5 | Display required indicator when field has `Validators.required()` |
+| C6 | Support per-field anatomy overrides via constructor parameters |
+| C7 | Respect `disabledOpacity` and `readOnlyBackground` for auth-driven visual states |
+| C8 | Use `TomFormStyle` spacing, border, and typography defaults |
+
+**D. Resource Resolution (§10, §17)**
+
+| # | Requirement |
+|---|-------------|
+| D1 | Resolve `basePath` at construction via `TomScope.current.getScopePath()` |
+| D2 | Look up label, hint, description via resource suffixes: `{basePath}.label`, `{basePath}.hint`, `{basePath}.description` |
+| D3 | Look up error messages: `{basePath}.error.required`, `{basePath}.error.format`, etc. |
+| D4 | For composite fields (e.g., date ranges): construct sub-element paths (`{basePath}.from.label`, `{basePath}.to.label`) |
+
+**E. Authorization (§18, §19)**
+
+| # | Requirement |
+|---|-------------|
+| E1 | Store optional `basePath`, `tomGroup`, `authorizer`, `uiStateController` from constructor |
+| E2 | Implement `resolveEffectiveAuth()`: **(resource + group by mode) → form → authorizer by mode → uiStateController** |
+| E3 | Expose `effectiveAuthState`, `isEditable` (`== full`), `isVisible` (`!= none`) |
+| E4 | Inherit form's auth as narrowing ceiling — no field can exceed form's auth |
+| E5 | Map auth to widget: disable input when `!isEditable`, hide when `!isVisible` |
+
+**F. Validation (§4, §20)**
+
+| # | Requirement |
+|---|-------------|
+| F1 | Accept `validators` list in constructor (`List<Validator<T>>`) |
+| F2 | Track `_validationState` (starts as `ValidationPristine`). Do not show errors while pristine — only after user interaction or explicit `validate()` call. Support `autoValidate` field setting for auto-save scenarios where validation happens immediately on bind. |
+| F3 | Implement async `validate()` — run validators in sequence, stop on first failure |
+| F4 | Support both sync and async validators |
+| F5 | On value change: clear error state immediately, schedule debounced re-validation (`validationDebounce`, default 300ms) |
+| F6 | On `commit()` / `reset()` / `discard()` / `bind()`: force validation state back to `ValidationPristine`. After commit, the form is "clean" — no errors shown until user edits again. |
+| F7 | Expose `validationState` for widget to observe (drives error display and form's `isValid`) |
+| F8 | Show loading indicator during pending async validation |
+
+**G. Events & Inspection (§24a)**
+
+| # | Requirement |
+|---|-------------|
+| G1 | Fire `FieldValueChangedEvent` on `setValue(T)` (with old and new value) |
+| G2 | Fire `FieldValidatedEvent` on validation completion |
+| G3 | Fire `FieldAuthChangedEvent` on auth state change |
+| G4 | Fire `FieldBoundEvent` when form binds initial value |
+| G5 | Fire `FieldCommittedEvent` on `commit()` |
+| G6 | Fire all events through form's `_fireEvent()` → `TomFormEventListener` chain |
+| G7 | Expose inspection getters: `validationState`, `effectiveAuthState`, `isEditable`, `isVisible`, `isDirty`, `initialValue`, `value` |
+
+**H. Lifecycle & Integration (§5, §21, §22)**
+
+| # | Requirement |
+|---|-------------|
+| H1 | Declared as `late final` member on the form with `form: this`; or in `createFormElements()` when a field constructor needs to reference another field |
+| H2 | Annotate form class with `@tomReflector` for reflection discovery |
+| H3 | `form: this` wiring derives basePath from the parent form; no explicit `TomScope.withScope(formId, ...)` is needed for the common case |
+| H4 | Participates in form's `bind()` / `save()` / `discard()` lifecycle (form calls field methods) |
+| H5 | Form's `isDirty` aggregates all field `isDirty` states |
+| H6 | Form's `isValid` aggregates all field validation states |
+| H7 | Override `dispose()` — cancel debounce timer, dispose controllers, clean up listeners |
+| H8 | Carry `basePath` for `TomAclBuilder` layout integration |
+
+**I. Selection Fields Only (§6, §7, §8)**
+
+| # | Requirement |
+|---|-------------|
+| I1 | Accept `TomSelectableSource<T>` for options (dropdown, radio, chips) |
+| I2 | Read items from `source.getItems()` or observe `source.itemsStream` |
+| I3 | Render one widget per item (DropdownMenuItem, RadioListTile, FilterChip, etc.) |
+| I4 | For multi-select: bind to `TomList<TomObject<T>>` instead of `TomObject<T>` |
+
+**Demo application** — Split into three focused demos for reasonable detail. All demos use only `TomFormStringInput` + `TomFormStringDropdown` + Classic fields.
+
+**Demo A — Lifecycle & Validation:**
+   - `setValue(T)` usage
+   - Form `bind()` / `save()` / `discard()` lifecycle
+   - Validation: sync, async, cross-field, debounced
+   - `ValidationPristine` behavior: errors not shown until user interaction or save attempt
+   - `commit()` resets to pristine — verify no errors shown after save
+   - `TomFormErrorBanner` display for cross-field errors
+   - Form actions (`saveAction`, `discardAction`, custom actions)
+   - Resource resolution (labels, hints, errors from resources)
+
+**Demo B — Authorization & Events:**
+   - Authorization four states (full, read, disabled, none)
+   - `TomAuthorizationGroup` with all three group modes
+   - `TomAuthorizer` with authorizer modes
+   - `TomUIStateController` with data-dependent auth
+   - ACL-based layout with `TomAclBuilder`
+   - **Event log panel** showing all events including `FieldAuthChangedEvent` — display events in scrollable log with auth state changes visible
+   - Auth state display per field (table with field ID, current auth state)
+
+**Demo C — Nested Forms & Theming:**
+   - Nested forms: `OrderForm` with `AddressForm` billing/shipping
+   - Dirty tracking across nested forms
+   - Form tree matching state tree (naming convention)
+   - `TomFormStyle` live switching (placements incl. `replaceDescription`, per-slot required indicators, spacing, hint tuning, presets, `withTheme` toggle)
+   - Per-section styling via nested `TomFormStyleScope` (incl. `styleBpOverrides` / JSON `@bp` resource blocks for breakpoint-driven style swaps)
+   - Classic + new fields mixed in the same form
+
+**Validation criteria:** Demo runs and all features work. No further phases until reviewed.
+
+### Phase 2 — Extended Validation (Lists + Selection + Bool)
+
+**Goal:** Extend to multi-value fields, selection variants, and boolean — covering all interaction patterns without implementing every type.
+
+**Scope note:** Upstream packages may be extended during this phase. If `tom_core_kernel` authorization or `tom_flutter_ui` base infrastructure needs changes to support multi-value fields, selection sources, or new interaction patterns, those changes are made, tested, and published in the respective upstream package first. Per the migration policy, existing APIs are modified in-place with no backward-compatibility constraint.
+
+**New widgets (8 concrete):**
+
+| # | Abstract Type | Concrete Implementation | Notes |
+|---|--------------|------------------------|-------|
+| 1 | `TomFormStringListField` | `TomFormStringFilterChips` | Multi-select with filter chips |
+| 2 | `TomFormStringListField` | `TomFormStringMultiCheckbox` | Multi-select with checkbox list |
+| 3 | `TomFormStringField` | `TomFormStringSegmented` | Single-select segmented button |
+| 4 | `TomFormStringField` | `TomFormStringRadioGroup` | Single-select radio group |
+| 5 | `TomFormStringField` | `TomFormStringChoiceChips` | Single-select choice chips |
+| 6 | `TomFormBoolField` | `TomFormBoolCheckbox` | Boolean checkbox |
+| 7 | `TomFormBoolField` | `TomFormBoolSwitch` | Boolean switch |
+| 8 | `TomFormBoolField` | `TomFormBoolToggle` | Boolean toggle button |
+
+**Widget count:** 3 abstract types (`TomFormStringField` already exists, `TomFormStringListField`, `TomFormBoolField`) + 8 concrete implementations = **8 new concrete widgets**.
+
+**Steps:**
+
+1. Implement `TomFormStringListField` binding to `TomList<TomString>`
+2. Implement `TomFormBoolField` binding to `TomBool`
+3. Implement all 8 concrete implementations with `TomFieldDecorationMixin`
+4. Extend the demo app with all new widgets
+5. Verify all selection patterns work with `TomSelectableSource<T>`
+
+**Demo application for Phase 2** — the tabbed demo app gains four new pages on top of Demos A/B/C/D from Phase 1. Each page focuses on one concern so nothing is over-loaded. All four pages use only fields from §Field Types table above plus the Phase 1 string fields.
+
+**Demo E — Selection Variants**
+
+- Each of the 5 single-select / multi-select concrete implementations (FilterChips / MultiCheckbox / Segmented / RadioGroup / ChoiceChips) rendered side-by-side against the same `TomSelectableSource<String>`.
+- A small `TomFormInspector` panel showing the bound values live as the user toggles — makes it obvious that all five flavours write back the same shape (`TomString` for single, `TomList<TomString>` for multi).
+- One source switched at runtime between `StaticSelectableSource` and a filtered view, so the observability of selection sources is visible.
+
+**Demo F — Boolean Variants**
+
+- The 3 concrete boolean implementations (Checkbox / Switch / Toggle) side-by-side, sharing one `TomBool` each and another set sharing a single bound state so the Checkbox / Switch / Toggle for the same field all flip together.
+- A "settings" layout mixing booleans with string inputs and a dropdown — shows that `TomFieldDecorationMixin` gives every bool the same label / error / description anatomy as string fields.
+
+**Demo G — Complex Breakpoint Scenarios** *(new in Phase 2)*
+
+Exercises `TomFormStyleScope` at multiple nesting levels with layout **and** style swapping by width. The demo has an enclosing `TomFormStyleScope` with `styleBpOverrides` and `themeSpecBpOverrides`, plus two **nested** `TomFormStyleScope(style: null, …)` blocks that override theme without redeclaring the base style — so the Phase 2 change ((d) above) is visible here.
+
+| Sub-panel | What it demonstrates |
+|---|---|
+| Outer-scope breakpoints | 3-band `styleBpOverrides` (compact / comfortable / spacious) — fields change gap/padding/border as the window crosses the thresholds. |
+| Per-section theme-only scope | A nested `TomFormStyleScope(style: null, themeSpec: …)` around one form panel recolours it without re-declaring the form style. Sibling panels are unaffected. |
+| Resource-driven override | A form with `tomId` set, driving labels, hints AND the new `descriptionFieldGap` / `borderWidth` / `focusedBorderWidth` keys from JSON resources. The same demo's `@bp.mobile` block swaps `borderWidth` to show that the resource path covers the new keys. |
+| ACL layout breakpoints | A two-column form that collapses to one column at a width threshold via `TomAclBuilder.setBpMinWidth` + `setAclDefaultRowVerticalAlignment(center)`. Resizing the panel triggers both the ACL layout breakpoint AND the form-style breakpoint so the interaction is visible. |
+
+**Demo H — Complex Authorization Scenarios** *(new in Phase 2)*
+
+Every form-level authorization feature pushed into one page so the interactions are visible without hunting through earlier demos.
+
+| Sub-panel | What it demonstrates |
+|---|---|
+| Action-icon trigger gated by auth | A field with `actionIcon: Icon(Icons.search) + onActionIconPressed: …` where a checkbox toggles the field's `read` / `full` state — the icon greys/ungreys, tap is suppressed under `read`. |
+| `UIStateController` closures | Three fields, each with a `UIStateController` that reads another field's value (email → disables if domain is wrong; phone → read-only once verified; notes → hidden when `draft` bool is false). Edits in one field flip the auth of another live. |
+| Group controls with all three modes | Three `TomAuthorizationGroup` instances (`controlsAll`, `controlsWidest`, `controlsNarrowest`) each attached to three fields. Dropdown in the right panel sets each group's state; the field colour code confirms which mode is active. |
+| Subform auth as ceiling | A nested `AddressForm` whose auth is set by the parent form; flipping the parent to `read` greys every child field even though the child fields' own resource auth stays at `full`. |
+| ActionAuth hide-unauthorized | The hide-unauthorized demo (Phase 1 Demo D) re-used here with a row of auth-group toggles — verifies that Phase 2 multi-select / bool fields collapse the same way strings do. |
+
+**Validation criteria:** Demos E–H run, all eight new field implementations render, and both the breakpoint-heavy and auth-heavy scenarios behave as described. Review before Phase 2a.
+
+### Phase 2a — Collections, Master-Detail, and Inline List Editing
+
+**Goal:** Ship `TomListForm` (§11), the master-detail pattern (§15), and the inline-list / expandable-row / editable-table patterns (§16). These are documented in the spec and flagged as *High* priority in the §9 gap table but were never scheduled in Phase 1 or Phase 2. Phase 2a closes that hole before the field catalog grows further — every list-of-objects editor downstream (orders, invoices, assignments, …) needs this foundation.
+
+**Scope note:** Upstream packages may be extended. `tom_core_kernel` already ships `TomList`, so the core data binding is in place; the gap is the Flutter-side form container and the editing patterns that build on it. Same migration policy as previous phases — no compatibility shims.
+
+**Prerequisite:** Phase 2 complete. String, bool, and selection fields must be live so the nested sub-forms rendered inside a `TomListForm` have widgets to compose.
+
+**Core deliverables:**
+
+| # | Deliverable | Description |
+|---|---|---|
+| 1 | `TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>` | Collection-of-sub-forms container (§13). Owns an ordered list of instantiated sub-forms, tracks add / remove / reorder, fans `bind` / `save` / `discard` / validation / dirty-tracking through to each sub-form. Fires `ListItemAddedEvent`, `ListItemRemovedEvent`, `ListItemReorderedEvent`, and `FormValidatedEvent` through the form bus. |
+| 2 | `TomFormChildContainer` interface | Abstract interface enabling `TomForm` to fan lifecycle operations (`validate / save / discard / unbind / isDirty / isValid`) into non-`TomForm` children like `TomListForm`. `TomListForm` auto-registers via the `parentForm` constructor parameter, making fan-out transparent. |
+| 3 | `TomUnsavedChangesGuard` helper | Reactive `PopScope`-based widget that wraps a route or selection-change target. Subscribes to `form.changes` (live reactive — updates whenever the form's `isDirty` state changes) and prompts Save / Discard / Cancel when the bound form is dirty. Used by master-detail selection (H-A) and route navigation. |
+| 4 | `TomErrorView` widget | Form-wide error display that renders wherever it's placed — above, below, or beside the form it watches. Shows the current set of field-level and cross-field validation errors (including list-level errors from `validateList()`) with resource-resolved messages; optional header, empty-state, and per-error affordance. Supersedes the `TomFormErrorList` placeholder mentioned in §20. |
+| 5 | Documentation alignment | Updated §13 examples to compile against the real API: `parentForm: this` constructor param, `form: this` on field constructors, `reorder()` alias, `createItem()` override point, `hasStructuralChanges`, fan-out table. |
+
+**Master-detail and inline patterns:** These are compositions on top of `TomListForm` + existing fields — no new abstract field types. Phase 2a delivers them as demos + a small set of helper widgets / mixins where the pattern is copy-pasted verbatim across real apps.
+
+| Pattern | Deliverable |
+|---|---|
+| Master-Detail (list + editor panel) | `TomMasterDetailScaffold` — two-pane layout that owns the "selected index" observable, wires it to a re-bound detail form, and runs the unsaved-changes guard on selection change. |
+| Single-field inline edit | Example only. Uses `TomFormStringInput` + a read-mode `Text` swap; no new class. |
+| Expandable row form | Example only. `ExpansionTile` wrapping a sub-form, owned by a parent `TomListForm`. |
+| Editable table | Example only. `DataTable` / `TomAclBuilder` row-per-item pattern driven by a `TomListForm<OrderItem, OrderItemForm>`, with in-place field widgets per cell. |
+
+**Demo application for Phase 2a** — adds three demos. Letter codes slot into the Phase 2 block so they stay close to the other list-heavy demos; Phase 3 demos remain `I` / `J` so the roadmap table doesn't shift.
+
+**Demo H-A — Master-Detail Customer Editor**
+
+- Left pane: `TomListForm<Customer, CustomerDetailForm>` with add / remove / reorder buttons.
+- Right pane: the current detail form, re-bound when selection changes.
+- Selection guarded by `TomUnsavedChangesGuard` — switching items while the detail is dirty pops Save / Discard / Cancel.
+- Event log at the bottom shows every list event plus the detail form's value / validation events, proving the two streams interleave cleanly.
+
+**Demo H-B — Expandable Rows (Order Items)**
+
+- `TomListForm<OrderItem, OrderItemForm>` rendered as an `ExpansionTile` per row.
+- Collapsed state shows read-only summary (`~form.productName`, computed total); expanded state shows the editable sub-form inline.
+- Parent form's `isDirty` / `isValid` aggregate correctly across all expanded and collapsed children.
+
+**Demo H-C — Editable Order-Items Table**
+
+- `DataTable` variant: one row per list entry with live field widgets in cells; ▲/▼ icon buttons call `TomListForm.move()`.
+- `TomAclBuilder` variant (toggle via `SegmentedButton`): each row is a `TomAclBuilder<OrderItemForm>` inside a `ReorderableListView`; drag-handle reorder calls `TomListForm.reorder(from, adjusted)` (normalised from `ReorderableListView`'s `to > from ? to - 1 : to` convention).
+- Column for computed total per row + a form-level total that observes the list.
+- Add / remove all buttons drive `TomListForm.add` / `.removeAt`.
+- Cross-field validation on the list (e.g. "at least one item required") surfaced through `TomErrorView` mounted beside the table; `TomForm.validate()` fan-out ensures the list-level error appears in the parent `FormValidatedEvent`.
+
+**Validation criteria:** Demos H-A, H-B, H-C run with all Phase 1 + 2 + 2a features. `TomListForm` add / remove / reorder cleanly interleave with `bind` / `save` / `discard` across the whole tree. Review before Phase 3.
+
+### Phase 3 — Numeric + Date/Time Field Types
+
+**Goal:** Implement the numeric and date/time abstract field types and their concrete implementations. Split out from the catch-all "complete implementation" phase because these two families alone already add ~15 widgets.
+
+**Scope note:** Upstream packages may be extended during this phase. Same rules as Phases 1–2.
+
+**Abstract types introduced:**
+
+- `TomFormIntField`, `TomFormDoubleField`, `TomFormIntRangeField`, `TomFormDoubleRangeField`
+- `TomFormDateField`, `TomFormTimeField`, `TomFormDateTimeField`
+- `TomFormDateRangeField`, `TomFormTimeRangeField`, `TomFormDateTimeRangeField`
+- `TomFormDurationField`
+
+**Concrete implementations (target — not every row is required to ship):**
+
+| # | Concrete Implementation | Abstract Type | Notes |
+|---|---|---|---|
+| 1 | `TomFormIntInput` | `TomFormIntField` | Text input with integer keyboard |
+| 2 | `TomFormIntSlider` | `TomFormIntField` | Slider with min/max observables |
+| 3 | `TomFormIntStepper` | `TomFormIntField` | +/- stepper |
+| 4 | `TomFormDoubleInput` | `TomFormDoubleField` | Text input with decimal keyboard |
+| 5 | `TomFormCurrencyDoubleInput` | `TomFormDoubleField` | Currency format + locale |
+| 6 | `TomFormPercentDoubleInput` | `TomFormDoubleField` | 0–100 display, 0.0–1.0 value |
+| 7 | `TomFormDoubleSlider` | `TomFormDoubleField` | Slider with divisions |
+| 8 | `TomFormIntRangeSlider` | `TomFormIntRangeField` | Range slider for ints |
+| 9 | `TomFormDoubleRangeSlider` | `TomFormDoubleRangeField` | Range slider for doubles |
+| 10 | `TomFormDatePicker` | `TomFormDateField` | Opens a Material date picker |
+| 11 | `TomFormDateCalendar` | `TomFormDateField` | Inline calendar widget |
+| 12 | `TomFormTimePicker` | `TomFormTimeField` | Clock-face picker |
+| 13 | `TomFormDateTimePicker` | `TomFormDateTimeField` | Combined date + time picker |
+| 14 | `TomFormDateRangePicker` | `TomFormDateRangeField` | Range picker |
+| 15 | `TomFormDurationInput` | `TomFormDurationField` | h:mm or segmented entry |
+
+**Demo application for Phase 3** — adds two new pages:
+
+**Demo I — Numeric Forms**
+
+- Every numeric field (int, double, ranges) rendered in one grid.
+- One row with an `IntInput` + `IntSlider` sharing a `TomInt` — typing updates the slider and vice versa.
+- A currency row with locale switcher (EUR / USD / JPY) so locale-aware formatting is visible.
+- Range sliders with live preview of `(low, high)`.
+
+**Demo J — Date/Time/Duration Forms**
+
+- Separate rows for date-only, time-only, and date-time pickers against a single `ZonedDateTime` so timezone handling is visible.
+- A duration row with `DurationInput` vs. an equivalent `RangeSlider`-driven minute count for comparison.
+- Breakpoint swap: at narrow widths the pickers collapse to inline calendars; at wide widths they open as dialogs.
+
+**Validation criteria:** Phase 1 + 2 + 3 demos all run. Review before Phase 4.
+
+### Phase 4 — Enum, Search, Lookup, File, Nullable
+
+**Goal:** Close the remaining Material-side field catalog — enum-driven pickers, search/lookup for large sources, file upload, and the nullable variants for every previously-shipped field type.
+
+**Abstract types introduced:**
+
+- `TomFormEnumField<T>`, `TomFormEnumListField<T>`
+- `TomFormObjectField<T>`, `TomFormObjectListField<T>`
+- `TomFormIntListField` — documented in the §26 API summary table but never scheduled; Phase 4 lands it alongside the other list-of-primitive fields for completeness.
+- `TomFormSearchField<T>`, `TomFormLookupField<T>`
+- `TomFormFileField`
+- `TomFormNString…` / `TomFormNInt…` / `TomFormNDouble…` / `TomFormNDate…` nullable wrappers
+
+**Concrete implementations (target — approximately 12):**
+
+| # | Concrete Implementation | Abstract Type |
+|---|---|---|
+| 1 | `TomFormEnumDropdown<T>` | `TomFormEnumField<T>` |
+| 2 | `TomFormEnumSegmented<T>` | `TomFormEnumField<T>` |
+| 3 | `TomFormEnumRadioGroup<T>` | `TomFormEnumField<T>` |
+| 4 | `TomFormEnumFilterChips<T>` | `TomFormEnumListField<T>` |
+| 5 | `TomFormObjectDropdown<T>` | `TomFormObjectField<T>` |
+| 6 | `TomFormObjectFilterChips<T>` | `TomFormObjectListField<T>` |
+| 7 | `TomFormSearchInput<T>` | `TomFormSearchField<T>` |
+| 8 | `TomFormLookupDialog<T>` | `TomFormLookupField<T>` |
+| 9 | `TomFormFileUpload` | `TomFormFileField` |
+| 10 | `TomFormFileDropzone` | `TomFormFileField` |
+| 11 | Nullable wrappers (`TomFormNStringInput`, …) | matching non-null variants |
+
+**Demo application for Phase 4** — adds two pages:
+
+**Demo K — Enum, Object, and Lookup**
+
+- Every enum / object implementation on a single page, driven by the same `TomSelectableSource`-backed catalog.
+- A large-source example (5k items) with `TomFormSearchInput` — verifies virtualisation.
+- A dialog-based lookup (`TomFormLookupDialog`) wired to a nested dataset.
+
+**Demo L — Files and Nullable Variants**
+
+- `TomFormFileUpload` + `TomFormFileDropzone` side-by-side.
+- A subform with every nullable variant — pristine vs. set vs. explicitly-null states distinguished in the `TomFormInspector` panel.
+
+**Validation criteria:** Every Phase-1-to-4 concrete implementation runs across Demos A–L. This closes the Material-side rollout.
+
+### Phase 5 — Cupertino Field Implementations (Split by Family)
+
+**Goal:** Every abstract field type that shipped in Phases 1–4 gets a parallel Cupertino concrete implementation driven by `TomCupertinoFormStyle`. Split into three sub-phases so the reviewer doesn't have to digest a ~30-widget pull at once.
+
+**Scope note:** `TomCupertinoFormStyle` is already defined in the forms framework as the Cupertino counterpart of `TomFormStyle` (same property set, Cupertino-derived defaults). Phase 5 implements the concrete fields and wires `TomFormStyleScope(style: TomCupertinoFormStyle.cupertino, …)` paths through the demo app so breakpoint-driven theme *and* style swaps exercise the Cupertino side the same way Phase 2 Demo G exercises the Material side.
+
+**Migration policy:** Same as earlier phases — change APIs in-place, no compatibility shims.
+
+#### Phase 5a — Cupertino String + Bool + Selection
+
+Mirrors Phase 1 + Phase 2 on the Cupertino side.
+
+| # | Concrete Implementation | Abstract Type | Notes |
+|---|---|---|---|
+| 1 | `TomCupertinoFormStringInput` | `TomFormStringField` | `CupertinoTextField` + action icon + pending spinner |
+| 2 | `TomCupertinoFormStringSearchInput` | `TomFormStringField` | `CupertinoSearchTextField` |
+| 3 | `TomCupertinoFormStringPicker` | `TomFormStringField` | `CupertinoPicker` sheet |
+| 4 | `TomCupertinoFormStringSegmented` | `TomFormStringField` | `CupertinoSlidingSegmentedControl` |
+| 5 | `TomCupertinoFormBoolSwitch` | `TomFormBoolField` | `CupertinoSwitch` |
+| 6 | `TomCupertinoFormBoolToggle` | `TomFormBoolField` | `CupertinoSegmentedControl<bool>` |
+| 7 | `TomCupertinoFormStringListCheckedPicker` | `TomFormStringListField` | Multi-select inside a Cupertino action sheet |
+
+**Demo M — Cupertino string + selection + bool**
+
+- Side-by-side panels: one with Material implementations, one with Cupertino, bound to the same state object — flips identically when the user edits either side.
+- A `TomFormStyleScope` at the page root that swaps `style` between `TomFormStyle.material3` and `TomCupertinoFormStyle.cupertino` via a radio toggle in the demo app — one demo covers both families.
+
+#### Phase 5b — Cupertino Numeric + Date/Time
+
+Mirrors Phase 3 on the Cupertino side.
+
+| # | Concrete Implementation | Abstract Type | Notes |
+|---|---|---|---|
+| 1 | `TomCupertinoFormIntInput` | `TomFormIntField` | |
+| 2 | `TomCupertinoFormIntPicker` | `TomFormIntField` | `CupertinoPicker` |
+| 3 | `TomCupertinoFormDoubleInput` | `TomFormDoubleField` | |
+| 4 | `TomCupertinoFormCurrencyDoubleInput` | `TomFormDoubleField` | Locale-aware |
+| 5 | `TomCupertinoFormDatePicker` | `TomFormDateField` | `CupertinoDatePicker` (date mode) |
+| 6 | `TomCupertinoFormTimePicker` | `TomFormTimeField` | `CupertinoDatePicker` (time mode) |
+| 7 | `TomCupertinoFormDateTimePicker` | `TomFormDateTimeField` | `CupertinoDatePicker` (dateAndTime mode) |
+| 8 | `TomCupertinoFormDurationPicker` | `TomFormDurationField` | `CupertinoTimerPicker` |
+| 9 | `TomCupertinoFormDateRangePicker` | `TomFormDateRangeField` | Two Cupertino date pickers in a sheet |
+
+**Demo N — Cupertino numeric + date/time with breakpoint theme swap**
+
+- Nested `TomFormStyleScope(style: null, themeSpecBpOverrides: [...])` around one panel — at wide widths the Cupertino pickers present as popovers, at narrow widths as full-height modal sheets (CupertinoPopupSurface breakpoint rule). Exercises the optional-`style` scope feature explicitly.
+- A "date range" row that uses the Cupertino date-range picker with a resource-driven label to show resource discovery still works on the Cupertino side.
+
+#### Phase 5c — Cupertino Enum / Search / File + breakpoint-driven family swap
+
+Mirrors Phase 4 on the Cupertino side. Closes the complete spec.
+
+| # | Concrete Implementation | Abstract Type | Notes |
+|---|---|---|---|
+| 1 | `TomCupertinoFormEnumPicker<T>` | `TomFormEnumField<T>` | |
+| 2 | `TomCupertinoFormEnumSegmented<T>` | `TomFormEnumField<T>` | |
+| 3 | `TomCupertinoFormObjectPicker<T>` | `TomFormObjectField<T>` | |
+| 4 | `TomCupertinoFormSearchInput<T>` | `TomFormSearchField<T>` | `CupertinoSearchTextField` + popover list |
+| 5 | `TomCupertinoFormLookupSheet<T>` | `TomFormLookupField<T>` | Cupertino modal sheet |
+| 6 | `TomCupertinoFormFileUpload` | `TomFormFileField` | |
+| 7 | Nullable variants for all Cupertino implementations | — | Match the Material nullable set |
+
+**Demo O — Cupertino search, lookup, file**
+
+- The Phase 4 search/lookup demos re-rendered with Cupertino implementations. Same bound state, same resource keys.
+
+**Demo P — Family swap by breakpoint**
+
+- A single form that renders Material at desktop widths and Cupertino at narrow widths — the top-level `TomFormStyleScope(styleBpOverrides: [...])` swaps between `TomFormStyle.material3` and `TomCupertinoFormStyle.cupertino` at a 700 px threshold. Field implementations resolve from a factory-style `FormFieldFamily` so a single declaration works with both styles.
+- Breakpoint-driven theme swap is active at the same time (dark mode at narrow widths, light at wide), verifying that style-family swap and theme swap compose cleanly.
+
+**Validation criteria for Phase 5:** Phase 5a / 5b / 5c each gate on review. Once 5c is green every field type has a Cupertino implementation and Demo P proves family-swap-by-breakpoint works end-to-end.
+
+### Phase 6 — Non-Form Custom Widgets
+
+**Goal:** Ship the custom Tom widgets catalogued in §23 that exist on paper but have never been scheduled. None are fields, so they sit outside the Phase 1–5 field rollout, but they are documented as first-class framework pieces and several of the form demos (and downstream apps) want them — especially `TomLoadingOverlay`, `TomEmptyState`, and `TomAuthGuard`.
+
+**Scope note:** These widgets consume the same authorization, resource, and state-binding systems used by fields. No new upstream changes are expected.
+
+**Deliverables:**
+
+| # | Widget | Description |
+|---|---|---|
+| 1 | `TomRadioGroup` | Radio-group container that applies authorization to the entire selection group — field-level auth works, but a stand-alone "grouped radio" layout with per-group auth does not. |
+| 2 | `TomTreeView` / `TomTreeNode` | Hierarchical tree with per-node auth. Needed for nav / permissions UIs that ride alongside forms. |
+| 3 | `TomAuthGuard` | Inline wrapper that hides or disables its child based on an auth path. Cuts the boilerplate currently hand-rolled per callsite. |
+| 4 | `TomLoadingOverlay` | Full-surface loading indicator with optional message — used during `SlowValidator` / save action roundtrips in the demo app. |
+| 5 | `TomErrorBoundary` | Catches widget-build errors and renders a fallback; today every demo re-implements a version of this. |
+| 6 | `TomEmptyState` | Standard placeholder for empty data views — used by `TomListForm` when its bound list is empty. |
+| 7 | `TomSkeletonLoader` | Shimmer / skeleton placeholder for async-loading surfaces. |
+| 8 | `TomInfiniteScroll` | List / grid wrapper with pagination, observable page fetcher, and empty / error / loading-state hooks that reuse the widgets above. |
+
+**Demo application for Phase 6** — one page per cluster:
+
+**Demo Q — Auth / Empty / Overlay**
+
+- `TomAuthGuard` toggling content visibility as an auth rule flips.
+- `TomEmptyState` bound to an empty `TomListForm` until an item is added.
+- `TomLoadingOverlay` shown while an async `SlowValidator` is pending.
+
+**Demo R — Tree, Radio Group, Infinite Scroll**
+
+- `TomTreeView` with per-node auth (some nodes read-only, some hidden).
+- `TomRadioGroup` with a group-level auth override.
+- `TomInfiniteScroll` paging through a synthetic 10k-row source, with `TomSkeletonLoader` for the in-flight page and `TomErrorBoundary` around the tile builder.
+
+**Validation criteria:** Demos Q and R run; every §23 widget is consumed by at least one demo. Closes the documented spec.
+
+**Roadmap summary**
+
+| Phase | Goal | New abstract types | New concretes | New demos |
+|---|---|---|---|---|
+| 1 | String field + 2 impls | 1 | 2 | A, B, C (+ D hide-unauth) |
+| 2 | Lists / Selection / Bool | 2 | 8 | E, F, G (breakpoint), H (auth) |
+| 2a | Collections + Master-Detail + Inline editing | 0 (core class `TomListForm`) | 1 scaffold + `TomUnsavedChangesGuard` + `TomErrorView` | H-A, H-B, H-C |
+| 3 | Numeric + Date/Time | 11 | 15 | I, J |
+| 4 | Enum / Search / File / Nullable (+ `TomFormIntListField`) | 7 | ~12 + nullable wrappers | K, L |
+| 5a | Cupertino string/bool/select | 0 | 7 | M |
+| 5b | Cupertino numeric/datetime | 0 | 9 | N |
+| 5c | Cupertino enum/search/file + family swap | 0 | ~7 + nullable | O, P |
+| 6 | Non-form custom widgets (§23) | 0 | 8 | Q, R |
+
+---
+
+## 26. API Summary
+
+### Core Classes
+
+| Class | Extends / Implements | Description |
+|-------|----------------------|-------------|
+| `TomField<T>` | `TomObject<T>` | Abstract base for all form fields |
+| `TomForm<T>` | `TomClass` | Abstract form container with field discovery and child-container fan-out |
+| `TomListForm<TItem, TForm>` | `TomObservable`, `TomFormChildContainer`, `TomFormEventSource` | Collection of sub-forms with full lifecycle fan-out |
+| `TomFormChildContainer` | (interface) | Contract for non-`TomForm` children that participate in parent lifecycle fan-out |
+
+### Abstract Field Types
+
+| Class | Observable Type | Value Type | Example Implementation |
+|-------|----------------|-----------|----------------------|
+| `TomFormStringField` | `TomString` | `String` | `TomFormStringInput`, `TomFormEmailStringInput`, `TomFormPasswordStringInput` |
+| `TomFormIntField` | `TomInt` | `int` | `TomFormIntInput`, `TomFormIntSlider` |
+| `TomFormDoubleField` | `TomDouble` | `double` | `TomFormDoubleInput`, `TomFormCurrencyDoubleInput` |
+| `TomFormBoolField` | `TomBool` | `bool` | `TomFormBoolCheckbox`, `TomFormBoolSwitch` |
+| `TomFormDateField` | `TomOZonedDate` | `ZonedDate` | `TomFormDatePicker`, `TomFormDateCalendar` |
+| `TomFormTimeField` | `TomOZonedTime` | `ZonedTime` | `TomFormTimePicker` |
+| `TomFormDateTimeField` | `TomOZonedDateTime` | `ZonedDateTime` | `TomFormDateTimePicker` |
+| `TomFormDateRangeField` | `TomDateRange` | `TomDateRange` | `TomFormDateRangePicker` |
+| `TomFormTimeRangeField` | `TomTimeRange` | `TomTimeRange` | `TomFormTimeRangePicker` |
+| `TomFormDateTimeRangeField` | `TomDateTimeRange` | `TomDateTimeRange` | `TomFormDateTimeRangePicker` |
+| `TomFormDurationField` | `TomDuration` | `Duration` | `TomFormDurationInput` |
+| `TomFormEnumField<T>` | `TomObject<T>` | `T` | `TomFormEnumDropdown<T>`, `TomFormEnumSegmented<T>` |
+| `TomFormObjectField<T>` | `TomObject<T>` | `T` | `TomFormObjectDropdown<T>` |
+| `TomFormSearchField<T>` | `TomObject<T>` | `T` | `TomFormSearchInput<T>` |
+| `TomFormLookupField<T>` | `TomObject<T>` | `T` | `TomFormLookupDialog<T>` |
+| `TomFormStringListField` | `TomList<TomString>` | `List<String>` | `TomFormStringFilterChips` |
+| `TomFormIntListField` | `TomList<TomInt>` | `List<int>` | `TomFormIntFilterChips` |
+| `TomFormEnumListField<T>` | `TomList<TomObject<T>>` | `List<T>` | `TomFormEnumFilterChips<T>` |
+| `TomFormObjectListField<T>` | `TomList<TomObject<T>>` | `List<T>` | `TomFormObjectFilterChips<T>` |
+| `TomFormFileField` | `FileRef?` | `TomFormFileUpload` |
+
+### Key Methods
+
+| Method | On | Description |
+|--------|----|-------------|
+| `bind(T target)` | TomForm | Load state into form; fans out to all child containers |
+| `save()` | TomForm | Validate + save to bound state; fans out to all child containers |
+| `discard()` | TomForm | Reset all fields; fans out to all child containers |
+| `unbind()` | TomForm | Detach from bound object; fans out to all child containers |
+| `validate()` | TomForm | Return list of errors; fans out to all child containers and merges results |
+| `isValid` | TomForm | `true` if all fields and all child containers are valid |
+| `isDirty` | TomForm/TomField/TomListForm | Whether value differs from initial (includes `hasStructuralChanges` for list forms) |
+| `registerChildContainer(c)` | TomForm | Register a `TomFormChildContainer` for lifecycle fan-out (called automatically by `TomListForm`) |
+| `childContainers` | TomForm | List of all registered child containers |
+| `add()` | TomListForm | Append a blank sub-form; mirrors to bound `TomList` |
+| `insert(index)` | TomListForm | Insert a blank sub-form at index |
+| `removeAt(index)` | TomListForm | Remove sub-form at index |
+| `move(from, to)` | TomListForm | Reorder sub-form |
+| `reorder(from, to)` | TomListForm | Spec-canonical alias of `move()` (used by drag-handle UIs) |
+| `hasStructuralChanges` | TomListForm | `true` if list membership / order changed since `bind` / `save` |
+| `validateList()` | TomListForm | Override for cross-row rules; return resource-key strings |
+| `createItem()` | TomListForm | Override to produce fresh `TItem` for `add` / `insert` against bound list |
+| `commit()` | TomField | Mark current value as initial |
+| `reset()` | TomField | Revert to initial value |
+| `widget` | TomField | Returns the implementation widget |
+| `useImplementation()` | TomField | Replace the default widget |
+| `effectiveAuth` | TomField | Auth narrowed by form + group |
+
+---
+
+# Appendix A — Data Type Coverage Analysis
+
+This appendix catalogs candidate data types from the Dart SDK, Flutter SDK, and Tom Core that form fields should cover. The goal is to ensure the logical field type catalog (§6) has good coverage of the types developers actually need to edit in forms.
+
+> **Action required:** Review the tables below and mark which data types should be covered by the forms framework. The checked types will drive implementation priorities.
+
+## A.1. Dart SDK Primitive and Core Types
+
+| Value Type | Category | Form Use Case | Currently in §6 |
+|-----------|----------|---------------|:---:|
+| `String` | Primitive | Short text, long text, email, URL, phone, password, formatted text | ✅ |
+| `int` | Primitive | Counters, quantities, IDs, age, year, port numbers | ✅ |
+| `double` | Primitive | Measurements, ratings, percentages, currency | ✅ |
+| `bool` | Primitive | Toggles, checkboxes, yes/no, agree/disagree | ✅ |
+| `num` | Primitive | Abstract numeric (int or double — for fields that accept either) | ❌ |
+| `DateTime` | Temporal | Date, time, timestamp (non-timezone-aware) | via Tom types |
+| `Duration` | Temporal | Time spans, intervals, timeouts, delays, periods | ✅ |
+| `Uri` | Network | URL/URI entry with parsing and validation | ❌ |
+| `BigInt` | Numeric | Large numbers beyond int range (financial, scientific) | ❌ |
+| `Enum` | Type | Selection from enum values (single or multi) | ✅ |
+| `RegExp` | Pattern | Regex/pattern entry (admin/developer forms) | ❌ |
+| `Set<T>` | Collection | Multi-select result type (unordered, unique) | ❌ |
+| `List<T>` | Collection | Ordered multi-select via `TomList<T>`, tag lists, reorderable items | ✅ |
+| `Map<K,V>` | Collection | Key-value pair editing (headers, metadata, settings) | ❌ |
+
+## A.2. Flutter SDK Value Types
+
+| Value Type | Source | Form Use Case | Currently in §6 |
+|-----------|--------|---------------|:---:|
+| `Color` | `dart:ui` | Color picker, theme color, background color | ❌ |
+| `TimeOfDay` | `material` | Time-only input (no date, no timezone) — Flutter native | ❌ |
+| `DateTimeRange` | `material` | Date range selection — Flutter native pair | ❌ |
+| `RangeValues` | `material` | Min/max pair via range slider (price range, age range) | ❌ |
+| `Locale` | `dart:ui` | Language/region selection | ❌ |
+| `Offset` | `dart:ui` | 2D position (x, y) — niche, design tools | ❌ |
+| `Size` | `dart:ui` | Width/height pair — niche, design tools | ❌ |
+| `EdgeInsets` | `painting` | Padding/margin editor — niche, design tools | ❌ |
+| `Alignment` | `painting` | Alignment picker — niche, design tools | ❌ |
+| `TextAlign` | `dart:ui` | Text alignment (left/center/right/justify) — small enum | ❌ |
+
+## A.3. Tom Core Kernel Types
+
+These types are defined in `tom_core_kernel` and are the Tom-native value types for timezone-aware dates, times, and ranges.
+
+| Value Type | Observable Wrapper | Form Use Case | Currently in §6 |
+|-----------|-------------------|---------------|:---:|
+| `TomZonedDate` | `TomOZonedDate` / `TomNOZonedDate` | Date with IANA timezone | ✅ (as `ZonedDate`) |
+| `TomZonedTime` | `TomOZonedTime` / `TomNOZonedTime` | Time with IANA timezone | ✅ (as `ZonedTime`) |
+| `TomZonedDateTime` | `TomOZonedDateTime` / `TomNOZonedDateTime` | Full datetime with timezone | ✅ (as `ZonedDateTime`) |
+| `TomTimezone` | — | Timezone selector (IANA timezone ID) | ❌ |
+| `TomDateRange` | — | Date range (nullable endpoints) | ✅ (as `DateRange`) |
+| `TomTimeRange` | — | Time range (nullable endpoints) | ✅ (as `TimeRange`) |
+| `TomDateTimeRange` | — | DateTime range (nullable endpoints) | ✅ (as `DateTimeRange`) |
+
+### Observable Primitive Wrappers (bind targets)
+
+These are the types that `TomForm.bind()` reads from and writes to:
+
+| Observable Type | Wraps | Nullable Variant |
+|----------------|-------|-----------------|
+| `TomString` | `String` | `TomNString` |
+| `TomInt` | `int` | `TomNInt` |
+| `TomDouble` | `double` | `TomNDouble` |
+| `TomBool` | `bool` | `TomNBool` |
+| `TomDateTime` | `DateTime` | `TomNDateTime` |
+| `TomOZonedDate` | `TomZonedDate` | `TomNOZonedDate` |
+| `TomOZonedTime` | `TomZonedTime` | `TomNOZonedTime` |
+| `TomOZonedDateTime` | `TomZonedDateTime` | `TomNOZonedDateTime` |
+| `TomList<E>` | `List<E>` | — |
+| `TomMap<K,V>` | `Map<K,V>` | — |
+
+## A.4. Candidate Types NOT in Tom Core (need custom implementation)
+
+| Value Type | Category | Form Use Case | Proposed Implementation |
+|-----------|----------|---------------|------------------------|
+| Money / Currency amount | Financial | Price, cost, payment, salary | `double` + currency code (`String`) as composite field |
+| Quantity with unit | Measurement | Weight, length, volume, temperature | `double` + unit enum as composite field |
+| IP address | Network | Server config, network settings | `String` with IP validation |
+| CIDR / subnet | Network | Network config | `String` with CIDR validation |
+| Cron expression | Scheduling | Scheduled tasks, periodic jobs | `String` with cron validation |
+| Semantic version | Versioning | Package version, API version | `String` with semver validation |
+| Markdown text | Content | Rich text editing, notes, descriptions | `String` with markdown-aware multiline editor |
+
+---
+
+# Appendix B — Form Widget Cross-Reference
+
+This appendix maps every logical field type from §6 to all Tom-wrapped Flutter widgets (from [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md)) that can serve as implementation widgets. The **default** column marks the recommended default; alternatives can be selected via `useImplementation()`.
+
+> **Reference:** The full Flutter widget catalog (326 entries, 20 families) is in [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md). This appendix focuses only on the subset usable as form field implementations.
+
+## B.1. Text Field Types → Widgets
+
+All text-based form fields use the single abstract type `TomFormStringField`. Implementations differentiate by format (email, password, multiline, etc.):
+
+| Logical Field | Implementation | Alt. Material | Alt. Cupertino | Underlying Flutter Widget(s) |
+|--------------|---------------|---------------|----------------|------------------------------|
+| `TomFormStringField` | `TomFormStringInput` | `TomFormStringOutlinedInput` | `TomCupertinoTextInput` | `TextField`, `CupertinoTextField` |
+| | `TomFormMultilineStringInput` | — | `TomCupertinoTextInput` (multiline) | `TextField` (maxLines > 1), `EditableText` |
+| | `TomFormPasswordStringInput` | — | `TomCupertinoTextInput` (obscured) | `TextField` (obscureText: true) |
+| | `TomFormEmailStringInput` | — | `TomCupertinoTextInput` | `TextField` (keyboardType: emailAddress) |
+| | `TomFormUrlStringInput` | — | `TomCupertinoTextInput` | `TextField` (keyboardType: url) |
+| | `TomFormPhoneStringInput` | — | `TomCupertinoTextInput` | `TextField` (keyboardType: phone) |
+
+**Keyboard type selection** is automatic based on the logical field type — no developer action needed.
+
+## B.2. Numeric Field Types → Widgets
+
+All numeric fields use `TomFormIntField` or `TomFormDoubleField`. Currency and percent are format variants of `TomFormDoubleField`:
+
+| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
+|--------------|---------------|-------------|------------------------------|
+| `TomFormIntField` | `TomFormIntInput` | `TomFormIntSlider`, `TomFormIntStepper` | `TextField` (number filter), `Slider` (divisions), custom +/- |
+| `TomFormDoubleField` | `TomFormDoubleInput` | `TomFormDoubleSlider` | `TextField` (decimal filter), `Slider`, `CupertinoSlider` |
+| | `TomFormCurrencyDoubleInput` | — | `TextField` (formatted mask) |
+| | `TomFormPercentDoubleInput` | `TomFormPercentDoubleSlider` | `TextField` (% suffix), `Slider` (0–100) |
+
+**`TomFormIntSlider` / `TomFormDoubleSlider`** can be used as alternatives for *any* numeric field where the range is known. Set via `useImplementation()`.
+
+**`TomFormIntStepper`** (+/- buttons) is useful for small integer ranges (quantity, count 1–10).
+
+## B.3. Numeric Range Field Types → Widgets
+
+| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
+|--------------|---------------|-------------|------------------------------|
+| `TomFormIntRangeField` | `TomFormIntRangeSlider` | `TomFormIntRangeInput` | `RangeSlider` (int divisions), two `TextField`s |
+| `TomFormDoubleRangeField` | `TomFormDoubleRangeSlider` | `TomFormDoubleRangeInput` | `RangeSlider`, two `TextField`s |
+
+**Binding note:** Range fields bind to **two** separate state objects (start/end) — see §6 "Range Field Binding" section.
+
+## B.4. Boolean Field Type → Widgets
+
+| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
+|--------------|---------------|-------------|------------------------------|
+| `TomFormBoolField` | `TomFormBoolCheckbox` | `TomFormBoolSwitch`, `TomFormBoolToggle` | `Checkbox`, `CheckboxListTile`, `Switch`, `SwitchListTile`, `CupertinoSwitch`, `SegmentedButton` (Yes/No), `ToggleButtons` |
+
+**Widget choice guidance:**
+- **Checkbox** — agreement, feature toggle, multi-option lists
+- **Switch** — on/off settings, enable/disable, immediate effect
+- **SegmentedButton (Yes/No)** — explicit binary choice visible at a glance
+
+Cupertino variants (`CupertinoSwitch`, `CupertinoCheckbox`) are selected automatically based on platform.
+
+## B.5. Date and Time Field Types → Widgets
+
+| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
+|--------------|---------------|-------------|------------------------------|
+| `TomFormDateField` | `TomFormDatePicker` | `TomFormDateCalendar`, `TomFormCupertinoDatePicker`, `TomFormDateInput` | `showDatePicker()`, `CalendarDatePicker`, `CupertinoDatePicker` (mode: date), `InputDatePickerFormField` |
+| `TomFormTimeField` | `TomFormTimePicker` | `TomFormCupertinoTimePicker` | `showTimePicker()`, `CupertinoDatePicker` (mode: time) |
+| `TomFormDateTimeField` | `TomFormDateTimePicker` | `TomFormCupertinoDateTimePicker` | `showDatePicker()` + `showTimePicker()`, `CupertinoDatePicker` (mode: dateAndTime) |
+| `TomFormDateRangeField` | `TomFormDateRangePicker` | `TomFormDateRangeInput` | `showDateRangePicker()`, two `CalendarDatePicker`s |
+| `TomFormTimeRangeField` | `TomFormTimeRangePicker` | — | Two `showTimePicker()` calls |
+| `TomFormDateTimeRangeField` | `TomFormDateTimeRangePicker` | — | Two datetime picker pairs |
+| `TomFormDurationField` | `TomFormDurationInput` | `TomFormDurationSlider`, `TomFormCupertinoTimer` | Custom HH:MM:SS spinners, `Slider`, `CupertinoTimerPicker` |
+
+**Timezone handling:** All date/time widgets produce Tom's `TomZonedDate`/`TomZonedTime`/`TomZonedDateTime` types. The timezone is taken from the form's context — Flutter's native pickers return raw `DateTime`/`TimeOfDay` which the implementation widget wraps with the timezone.
+
+**`TomCalendarDateWidget`** renders an inline calendar (no dialog) — useful for always-visible date selection in larger forms.
+
+**`TomDateInputWidget`** renders a text field with date parsing (format from locale) — useful for keyboard-heavy workflows.
+
+## B.6. Selection Field Types (Single) → Widgets
+
+Selection implementations are per-type — the abstract field defines the value type, and the concrete implementation chooses the widget style:
+
+| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
+|--------------|---------------|-------------|------------------------------|
+| `TomFormStringField` | `TomFormStringDropdown` | `TomFormStringSegmented`, `TomFormStringRadioGroup`, `TomFormStringChoiceChips` | `DropdownButton`, `DropdownMenu`, `SegmentedButton`, `Radio`/`RadioListTile`, `ChoiceChip` |
+| `TomFormIntField` | `TomFormIntDropdown` | `TomFormIntSegmented`, `TomFormIntRadioGroup` | `DropdownButton`, `SegmentedButton`, `Radio`/`RadioListTile` |
+| `TomFormDoubleField` | `TomFormDoubleDropdown` | `TomFormDoubleSegmented` | `DropdownButton`, `SegmentedButton` |
+| `TomFormEnumField<T>` | `TomFormEnumDropdown<T>` | `TomFormEnumSegmented<T>`, `TomFormEnumRadioGroup<T>`, `TomFormEnumChoiceChips<T>`, `TomFormEnumCupertinoPicker<T>` | `DropdownButton`, `DropdownMenu`, `SegmentedButton`, `Radio`/`RadioListTile`, `ChoiceChip`, `CupertinoPicker`, `CupertinoSlidingSegmentedControl` |
+| `TomFormObjectField<T>` | `TomFormObjectDropdown<T>` | `TomFormObjectChoiceChips<T>`, `TomFormObjectRadioGroup<T>` | `DropdownButton`, `ChoiceChip`, `Radio`/`RadioListTile` |
+| `TomFormSearchField<T>` | `TomFormSearchInput<T>` | `TomFormSearchAnchor<T>` | `Autocomplete`, `SearchAnchor`, `SearchBar`, `RawAutocomplete`, `DropdownMenu` (enableFilter) |
+| `TomFormLookupField<T>` | `TomFormLookupDialog<T>` | — | Text field + button → custom dialog/bottom sheet |
+
+**Widget choice guidance by option count:**
+
+| Options | Recommended Widget | Why |
+|---------|-------------------|-----|
+| 2–5 | `TomFormEnumSegmented` | All options visible, one tap |
+| 3–7 (need labels) | `TomFormEnumRadioGroup` | All visible with descriptions |
+| 5–20 | `TomFormEnumDropdown` | Dropdown, scrollable list |
+| 20–100 | `TomFormEnumDropdown` (filterable via `DropdownMenu`) | Type-ahead narrows list |
+| 100+ or remote | `TomFormSearchInput` / `TomFormSearchAnchor` | Async search, paginated |
+
+**Cupertino:** `CupertinoPicker` and `CupertinoSlidingSegmentedControl` are the Cupertino equivalents and are selected automatically on iOS.
+
+## B.7. Selection Field Types (Multiple) → Widgets
+
+| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
+|--------------|---------------|-------------|------------------------------|
+| `TomFormStringListField` | `TomFormStringFilterChips` | `TomFormStringMultiCheckbox`, `TomFormStringMultiSegmented` | `FilterChip`, `CheckboxListTile`, `SegmentedButton` (multiSelectionEnabled) |
+| `TomFormIntListField` | `TomFormIntFilterChips` | `TomFormIntMultiCheckbox` | `FilterChip`, `CheckboxListTile` |
+| `TomFormEnumListField<T>` | `TomFormEnumFilterChips<T>` | `TomFormEnumMultiCheckbox<T>`, `TomFormEnumMultiSegmented<T>` | `FilterChip`, `CheckboxListTile`, `SegmentedButton` (multiSelectionEnabled) |
+| `TomFormObjectListField<T>` | `TomFormObjectFilterChips<T>` | `TomFormObjectMultiCheckbox<T>` | `FilterChip`, `CheckboxListTile` |
+
+**Widget choice guidance:**
+
+| Options | Recommended Widget | Why |
+|---------|-------------------|-----|
+| 2–5 | `TomFormEnumMultiSegmented` | All visible, toggle on/off |
+| 3–10 | `TomFormStringFilterChips` / `TomFormEnumFilterChips` | Compact horizontal chip layout |
+| 5+ (need descriptions) | `TomFormEnumMultiCheckbox` | Vertical list with labels/subtitles |
+
+## B.8. File Field Type → Widgets
+
+| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
+|--------------|---------------|-------------|------------------------------|
+| `TomFormFileField` | `TomFormFileUpload` | — | Third-party: `file_picker`, `image_picker` |
+
+## B.9. Complete Widget Inventory
+
+All Tom-wrapped Flutter widgets from [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md) that can serve as form field implementations, with the data types they can edit:
+
+### Material Input Widgets
+
+| Tom Widget | Flutter Widget | Edits | Used By |
+|-----------|---------------|-------|---------|
+| `TomTextField` | `TextField` | `String` | Text, Email, URL, Phone, Password, Int, Double, Currency, Percent |
+| `TomTextFormField` | `TextFormField` | `String` | Same as TextField (Flutter Form integration) |
+| `TomEditableText` | `EditableText` | `String` | Low-level text (Multiline) |
+| `TomAutocomplete` | `Autocomplete` | `T` | SearchField, LookupField |
+| `TomSearchBar` | `SearchBar` | `String` | SearchField |
+| `TomSearchAnchor` | `SearchAnchor` | `T` | SearchField (full-screen) |
+| `TomDropdownButton` | `DropdownButton` | `T` | EnumField, Dropdown |
+| `TomDropdownButtonFormField` | `DropdownButtonFormField` | `T` | EnumField, Dropdown (Flutter Form) |
+| `TomDropdownMenu` | `DropdownMenu` | `T` | EnumField, Dropdown, SearchField (filterable) |
+| `TomSegmentedButton` | `SegmentedButton` | `T` / `Set<T>` | EnumField, BoolField (Yes/No), MultiSelect |
+| `TomCheckbox` | `Checkbox` | `bool` | BoolField |
+| `TomCheckboxListTile` | `CheckboxListTile` | `bool` | BoolField, MultiSelect (per item) |
+| `TomSwitch` | `Switch` | `bool` | BoolField |
+| `TomSwitchListTile` | `SwitchListTile` | `bool` | BoolField |
+| `TomRadio` | `Radio` | `T` | EnumField |
+| `TomRadioListTile` | `RadioListTile` | `T` | EnumField |
+| `TomToggleButtons` | `ToggleButtons` | `T` / `bool` | BoolField, EnumField (≤5) |
+| `TomSlider` | `Slider` | `double` | DoubleField, IntField, PercentField, DurationField |
+| `TomRangeSlider` | `RangeSlider` | `(double, double)` | DoubleRangeField, IntRangeField |
+| `TomFilterChip` | `FilterChip` | `bool` (per chip) | MultiSelect |
+| `TomChoiceChip` | `ChoiceChip` | `bool` (selected) | EnumField, Dropdown (chip style) |
+| `TomInputChip` | `InputChip` | `String` | Tag input, MultiSelect (deletable) |
+| `TomCalendarDatePicker` | `CalendarDatePicker` | `DateTime` → `TomZonedDate` | DateField (inline) |
+| `TomInputDatePickerFormField` | `InputDatePickerFormField` | `DateTime` → `TomZonedDate` | DateField (text entry) |
+| `TomYearPicker` | `YearPicker` | `int` (year) | DateField (year-only selection) |
+
+### Material Dialog Pickers (invoked from form fields)
+
+| Picker Function | Flutter Function | Edits | Used By |
+|----------------|-----------------|-------|---------|
+| `showDatePicker()` | `showDatePicker()` | `DateTime` → `TomZonedDate` | DateField, DateTimeField |
+| `showTimePicker()` | `showTimePicker()` | `TimeOfDay` → `TomZonedTime` | TimeField, DateTimeField |
+| `showDateRangePicker()` | `showDateRangePicker()` | `DateTimeRange` → `TomDateRange` | DateRangeField |
+
+### Cupertino Input Widgets
+
+| Tom Widget | Flutter Widget | Edits | Used By |
+|-----------|---------------|-------|---------|
+| `TomCupertinoTextField` | `CupertinoTextField` | `String` | Text, Email, URL, Phone, Password |
+| `TomCupertinoSearchTextField` | `CupertinoSearchTextField` | `String` | SearchField |
+| `TomCupertinoTextFormFieldRow` | `CupertinoTextFormFieldRow` | `String` | Text (Cupertino form row) |
+| `TomCupertinoSwitch` | `CupertinoSwitch` | `bool` | BoolField |
+| `TomCupertinoCheckbox` | `CupertinoCheckbox` | `bool` | BoolField |
+| `TomCupertinoRadio` | `CupertinoRadio` | `T` | EnumField |
+| `TomCupertinoSlider` | `CupertinoSlider` | `double` | DoubleField, IntField |
+| `TomCupertinoDatePicker` | `CupertinoDatePicker` | `DateTime` → Tom types | DateField, TimeField, DateTimeField |
+| `TomCupertinoTimerPicker` | `CupertinoTimerPicker` | `Duration` | DurationField |
+| `TomCupertinoPicker` | `CupertinoPicker` | `T` (via index) | EnumField, Dropdown |
+| `TomCupertinoSlidingSegmentedControl` | `CupertinoSlidingSegmentedControl` | `T` | EnumField (≤5) |
+| `TomCupertinoSegmentedControl` | `CupertinoSegmentedControl` | `T` | EnumField (≤5) |
+
+### Widgets Requiring Third-Party Packages
+
+| Concept | Value Type | Used By | Typical Package |
+|---------|-----------|---------|-----------------|
+| Color picker | `Color` | (future ColorField) | `flex_color_picker` |
+| File picker | `File` / `Uint8List` | FileField | `file_picker`, `image_picker` |
+| Rich text editor | `String` (HTML) | (future) | `flutter_quill`, `super_editor` |
+| Rating bar | `double` | DoubleField (star rating) | `flutter_rating_bar` |
+
+---
+
+# Appendix C — Form Class Hierarchy Inventory
+
+Master inventory of all abstract field types and their concrete implementations. Each concrete class extends the abstract type and IS the instantiated object in `createFormElements()`.
+
+**Status legend:**
+
+- No marker = class exists in code
+- **(TBD)** = class needs to be created
+
+**Nullable variants** follow a consistent pattern: every abstract field type `TomFormXxxField` has a nullable counterpart `TomFormNXxxField`. Concrete implementations follow the same pattern. These are not listed separately.
+
+**Architecture principles:**
+
+1. **Abstract field types** — Not instantiated directly. Declare field intent in FormSpec classes (`late TomFormStringField name`)
+2. **Concrete implementations** — Extend abstract types. Instantiated in `createFormElements()` (`name = TomFormStringInput(...)`)
+3. **Additional observable bindings** — Concrete classes may require extra parameters (e.g., `min`/`max` for sliders, `source` for selection), which can be observable for reactive behavior
+4. **SelectableItem\<T\>** — Data class with `T value`, `String label`, optional `description` and `enabled`. All selection implementations render `SelectableItem<T>` items via `TomSelectableSource<T>` adapters
+5. **FormSpec / Form separation** — Optional but important: spec declares abstract types, form instantiates concrete implementations
+
+**Columns:**
+
+| Column | Meaning |
+|--------|---------|
+| Abstract Type | `TomField<T>` subclass — not instantiated |
+| Concrete Implementation | Class extending the abstract type — instantiated in forms |
+| Data Type | Underlying Dart/Tom value type |
+| Observable | `TomObject<T>` subclass for state binding |
+| Additional Bindings | Extra parameters beyond field value (may be observable) |
+| Notes | Default/alternative, key characteristics |
+
+## C.1. Text & Display
+
+All text-based fields use the single abstract type `TomFormStringField`:
+
+| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
+|-------------|----------------------|-----------|-----------|-------------------|-------|
+| `TomFormStringField` | `TomFormStringInput` **(TBD)** | `String` | `TomString` | `keyboard`, `maxLength` | Standard Material TextField |
+| | `TomFormStringOutlinedInput` **(TBD)** | `String` | `TomString` | `keyboard`, `maxLength` | Outlined border variant |
+| | `TomFormMultilineStringInput` **(TBD)** | `String` | `TomString` | `minLines`, `maxLines` | Multi-line text area |
+| | `TomFormPasswordStringInput` **(TBD)** | `String` | `TomString` | — | Obscured with visibility toggle |
+| | `TomFormEmailStringInput` **(TBD)** | `String` | `TomString` | — | Email keyboard; RFC 5322 |
+| | `TomFormUrlStringInput` **(TBD)** | `String` | `TomString` | — | URL keyboard |
+| | `TomFormPhoneStringInput` **(TBD)** | `String` | `TomString` | — | Phone keyboard |
+
+## C.2. Numeric
+
+Currency and percent are format variants of `TomFormDoubleField`:
+
+| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
+|-------------|----------------------|-----------|-----------|-------------------|-------|
+| `TomFormIntField` | `TomFormIntInput` **(TBD)** | `int` | `TomInt` | — | Integer-only filter |
+| | `TomFormIntSlider` **(TBD)** | `int` | `TomInt` | `min`, `max` (observable `TomObject<int>`), `divisions` | Slider with integer divisions |
+| | `TomFormIntStepper` **(TBD)** | `int` | `TomInt` | `min`, `max` (observable), `step` | +/− stepper buttons |
+| `TomFormDoubleField` | `TomFormDoubleInput` **(TBD)** | `double` | `TomDouble` | — | Decimal input |
+| | `TomFormDoubleSlider` **(TBD)** | `double` | `TomDouble` | `min`, `max` (observable `TomObject<double>`), `divisions` | Continuous/stepped slider |
+| | `TomFormCurrencyDoubleInput` **(TBD)** | `double` | `TomDouble` | `currencySymbol`, `decimalDigits` | 2-decimal currency mask |
+| | `TomFormPercentDoubleInput` **(TBD)** | `double` | `TomDouble` | — | % suffix |
+| | `TomFormPercentDoubleSlider` **(TBD)** | `double` | `TomDouble` | — | 0–100 range slider |
+
+## C.3. Numeric Range
+
+| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
+|-------------|----------------------|-----------|-----------|-------------------|-------|
+| `TomFormIntRangeField` | `TomFormIntRangeSlider` **(TBD)** | `TomIntRange` | `TomIntRange` **(TBD)** | `absoluteMin`, `absoluteMax` (observable), `divisions` | RangeSlider |
+| | `TomFormIntRangeInput` **(TBD)** | `TomIntRange` | `TomIntRange` **(TBD)** | — | Two text fields (min/max) |
+| `TomFormDoubleRangeField` | `TomFormDoubleRangeSlider` **(TBD)** | `TomDoubleRange` | `TomDoubleRange` **(TBD)** | `absoluteMin`, `absoluteMax` (observable), `divisions` | RangeSlider |
+| | `TomFormDoubleRangeInput` **(TBD)** | `TomDoubleRange` | `TomDoubleRange` **(TBD)** | — | Two decimal text fields |
+
+`TomIntRange` and `TomDoubleRange` extend `TomClass` with `TomNInt`/`TomNDouble` start and end members. Single-binding (one TomClass).
+
+## C.4. Boolean
+
+| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
+|-------------|----------------------|-----------|-----------|-------------------|-------|
+| `TomFormBoolField` | `TomFormBoolCheckbox` **(TBD)** | `bool` | `TomBool` | — | Checkbox |
+| | `TomFormBoolSwitch` **(TBD)** | `bool` | `TomBool` | — | Toggle switch |
+| | `TomFormBoolToggle` **(TBD)** | `bool` | `TomBool` | `trueLabel`, `falseLabel` | Segmented Yes/No |
+
+## C.5. Date & Time
+
+| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
+|-------------|----------------------|-----------|-----------|-------------------|-------|
+| `TomFormDateField` | `TomFormDatePicker` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | `firstDate`, `lastDate` (observable) | Hybrid text + picker |
+| | `TomFormDateCalendar` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | `firstDate`, `lastDate` | Inline calendar |
+| | `TomFormDateInput` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | — | Text-only with parsing |
+| | `TomFormCupertinoDatePicker` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | `firstDate`, `lastDate` | Cupertino wheel |
+| `TomFormTimeField` | `TomFormTimePicker` **(TBD)** | `TomZonedTime` | `TomOZonedTime` | — | Hybrid text + picker |
+| | `TomFormCupertinoTimePicker` **(TBD)** | `TomZonedTime` | `TomOZonedTime` | — | Cupertino wheel |
+| `TomFormDateTimeField` | `TomFormDateTimePicker` **(TBD)** | `TomZonedDateTime` | `TomOZonedDateTime` | `firstDate`, `lastDate` | Hybrid |
+| | `TomFormCupertinoDateTimePicker` **(TBD)** | `TomZonedDateTime` | `TomOZonedDateTime` | — | Cupertino wheel |
+| `TomFormDurationField` | `TomFormDurationInput` **(TBD)** | `Duration` | `TomDuration` **(TBD)** | — | HH:MM:SS spinners |
+| | `TomFormDurationSlider` **(TBD)** | `Duration` | `TomDuration` **(TBD)** | `min`, `max` (observable) | Duration mapped to slider |
+| | `TomFormCupertinoTimer` **(TBD)** | `Duration` | `TomDuration` **(TBD)** | — | Cupertino timer wheel |
+
+## C.6. Date & Time Range
+
+| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
+|-------------|----------------------|-----------|-----------|-------------------|-------|
+| `TomFormDateRangeField` | `TomFormDateRangePicker` **(TBD)** | `TomDateRange` | `TomDateRange` | `firstDate`, `lastDate` | showDateRangePicker |
+| | `TomFormDateRangeInput` **(TBD)** | `TomDateRange` | `TomDateRange` | — | Two date text fields |
+| `TomFormTimeRangeField` | `TomFormTimeRangePicker` **(TBD)** | `TomTimeRange` | `TomTimeRange` | — | Two time pickers |
+| `TomFormDateTimeRangeField` | `TomFormDateTimeRangePicker` **(TBD)** | `TomDateTimeRange` | `TomDateTimeRange` | — | Two datetime pickers |
+
+## C.7. Single-Select (per type)
+
+Concrete selection classes extend the per-type abstract field and take a `TomSelectableSource<T>`. Rendering is shared via `SelectableItem<T>` data class (with `value`, `label`, optional `description`, `enabled`).
+
+### C.7.1. String Selection
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormStringField` | `TomFormStringDropdown` **(TBD)** | `source` (`TomSelectableSource<String>`) | Dropdown |
+| | `TomFormStringSegmented` **(TBD)** | `source` | Segmented (≤5) |
+| | `TomFormStringRadioGroup` **(TBD)** | `source` | Radio list |
+| | `TomFormStringChoiceChips` **(TBD)** | `source` | Single-select chips |
+
+### C.7.2. Int Selection
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormIntField` | `TomFormIntDropdown` **(TBD)** | `source` (`TomSelectableSource<int>`) | Dropdown |
+| | `TomFormIntSegmented` **(TBD)** | `source` | Segmented (≤5) |
+| | `TomFormIntRadioGroup` **(TBD)** | `source` | Radio list |
+
+### C.7.3. Double Selection
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormDoubleField` | `TomFormDoubleDropdown` **(TBD)** | `source` (`TomSelectableSource<double>`) | Dropdown |
+| | `TomFormDoubleSegmented` **(TBD)** | `source` | Segmented (≤5) |
+
+### C.7.4. Enum\<T\> Selection
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormEnumField<T>` | `TomFormEnumDropdown<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Dropdown |
+| | `TomFormEnumSegmented<T>` **(TBD)** | `source` | Segmented (≤5) |
+| | `TomFormEnumRadioGroup<T>` **(TBD)** | `source` | Radio list |
+| | `TomFormEnumChoiceChips<T>` **(TBD)** | `source` | Single-select chips |
+| | `TomFormEnumCupertinoPicker<T>` **(TBD)** | `source` | Cupertino wheel |
+
+### C.7.5. Custom Object\<T\> Selection
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormObjectField<T>` | `TomFormObjectDropdown<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Dropdown |
+| | `TomFormObjectChoiceChips<T>` **(TBD)** | `source` | Single-select chips |
+| | `TomFormObjectRadioGroup<T>` **(TBD)** | `source` | Radio list |
+
+### C.7.6. Search & Lookup
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormSearchField<T>` | `TomFormSearchInput<T>` **(TBD)** | `source` (`AsyncSelectableSource<T>`) | Type-ahead autocomplete |
+| | `TomFormSearchAnchor<T>` **(TBD)** | `source` | Full-screen search |
+| `TomFormLookupField<T>` | `TomFormLookupDialog<T>` **(TBD)** | `source` | Dialog/bottom sheet |
+
+### C.7.7. Usage Example
+
+```dart
+abstract class OrderFormSpec extends TomForm<Order> {
+  OrderFormSpec({required super.formId});
+  late TomFormStringField country;
+  late TomFormIntField priority;
+  late TomFormEnumField<Status> status;
+  late TomFormDoubleField price;
+  late TomFormSearchField<City> city;
+}
+
+class OrderForm extends OrderFormSpec {
+  OrderForm() : super(formId: 'order');
+
+  @override
+  void createFormElements() {
+    country = TomFormStringDropdown('country', null, source: countrySource);
+    priority = TomFormIntSegmented('priority', 1, source: prioritySource);
+    status = TomFormEnumRadioGroup<Status>('status', Status.pending, source: statusSource);
+    price = TomFormDoubleSlider('price', 0.0,
+      min: appState.pricing.minPrice,  // observable — reactive
+      max: appState.pricing.maxPrice,  // observable — reactive
+    );
+    city = TomFormSearchInput<City>('city', null, source: citySource);
+  }
+}
+```
+
+## C.8. Multi-Select (per type)
+
+Multi-value concrete classes extend the per-type list field and bind to `TomList<T>`:
+
+### C.8.1. String Multi-Select
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormStringListField` | `TomFormStringFilterChips` **(TBD)** | `source` (`TomSelectableSource<String>`) | Chips |
+| | `TomFormStringMultiCheckbox` **(TBD)** | `source` | Checkbox list |
+| | `TomFormStringMultiSegmented` **(TBD)** | `source` | Segmented (≤5) |
+
+### C.8.2. Int Multi-Select
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormIntListField` | `TomFormIntFilterChips` **(TBD)** | `source` (`TomSelectableSource<int>`) | Chips |
+| | `TomFormIntMultiCheckbox` **(TBD)** | `source` | Checkbox list |
+
+### C.8.3. Enum\<T\> Multi-Select
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormEnumListField<T>` | `TomFormEnumFilterChips<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Chips |
+| | `TomFormEnumMultiCheckbox<T>` **(TBD)** | `source` | Checkbox list |
+| | `TomFormEnumMultiSegmented<T>` **(TBD)** | `source` | Segmented (≤5) |
+
+### C.8.4. Custom Object\<T\> Multi-Select
+
+| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
+|-------------|----------------------|-------------------|-------|
+| `TomFormObjectListField<T>` | `TomFormObjectFilterChips<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Chips |
+| | `TomFormObjectMultiCheckbox<T>` **(TBD)** | `source` | Checkbox list |
+
+## C.9. File
+
+| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
+|-------------|----------------------|-----------|-----------|-------------------|-------|
+| `TomFormFileField` | `TomFormFileUpload` **(TBD)** | `FileRef` | `TomNFileRef` **(TBD)** | `allowedExtensions`, `maxSize` | Drop zone + browse |
+
+## C.10. TomSelectableSource\<T\> Adapters
+
+`TomSelectableSource<T>` extends `TomObservable` and provides `List<SelectableItem<T>>` to selection implementations:
+
+```dart
+class SelectableItem<T> {
+  final T value;
+  final String label;
+  final String? description;
+  final bool enabled;
+  const SelectableItem({required this.value, required this.label, this.description, this.enabled = true});
+}
+```
+
+| Adapter | Source | Reactivity |
+|---------|--------|-----------|
+| `StaticSelectableSource<T>` **(TBD)** | `List<SelectableItem<T>>` at construction | None — fixed list |
+| `EnumSelectableSource<T>` **(TBD)** | `Enum.values` + label resolver (i18n) | None — labels may change with locale |
+| `ObservableSelectableSource<T>` **(TBD)** | `TomList<E extends TomObject>` + mapper | Reactive — updates when list changes |
+| `AsyncSelectableSource<T>` **(TBD)** | `Future<List<SelectableItem<T>>> Function(String)` | Query-driven — re-fetches on input |
+
+## C.11. New Observable Types Required
+
+| Type | Extends | Members / Wraps | Nullable Variant | Notes |
+|------|---------|----------------|------------------|-------|
+| `TomDuration` **(TBD)** | `TomObject<Duration>` | Wraps `Duration` | `TomNDuration` **(TBD)** | Same pattern as `TomDateTime` |
+| `TomIntRange` **(TBD)** | `TomClass` | `TomNInt start`, `TomNInt end` | — | Same pattern as `TomDateRange` |
+| `TomDoubleRange` **(TBD)** | `TomClass` | `TomNDouble start`, `TomNDouble end` | — | Same pattern as `TomDateRange` |
+| `TomFileRef` **(TBD)** | `TomObject<FileRef>` | Wraps `FileRef` | `TomNFileRef` **(TBD)** | Dedicated observable |
+
+**Multi-select binding** uses `TomList<T>` (already exists) — no new `TomSet<T>` needed.
+
+## C.12. Summary
+
+### Class Counts
+
+| Category | Abstract Types | Concrete Implementations | Notes |
+|----------|---------------|------------------------|-------|
+| Text | 1 | 7 | All extend `TomFormStringField` |
+| Numeric | 2 | 8 | `TomFormIntField`, `TomFormDoubleField`; currency/percent are Double variants |
+| Numeric Range | 2 | 4 | Sliders add observable `absoluteMin`/`absoluteMax` |
+| Boolean | 1 | 3 | |
+| Date & Time | 4 | 11 | Includes Duration; pickers add `firstDate`/`lastDate` |
+| Date & Time Range | 3 | 4 | |
+| Selection (single) | 4 (Enum, Object, Search, Lookup) | 20 | String/Int/Double reuse their base abstract types |
+| Selection (multi) | 4 (StringList, IntList, EnumList, ObjectList) | 10 | Bind to `TomList<T>` |
+| File | 1 | 1 | |
+| **Total** | **22** (+ nullable variants) | **68** | |
+
+### TomSelectableSource Adapters
+
+| Adapter | Count |
+|---------|-------|
+| `StaticSelectableSource<T>` | 1 |
+| `EnumSelectableSource<T>` | 1 |
+| `ObservableSelectableSource<T>` | 1 |
+| `AsyncSelectableSource<T>` | 1 |
+| **Total adapters** | **4** |
+
+### Observable Types To Create
+
+| New Type | Count |
+|----------|-------|
+| `TomDuration` + `TomNDuration` | 2 |
+| `TomIntRange`, `TomDoubleRange` | 2 |
+| `TomFileRef` + `TomNFileRef` | 2 |
+| **Total new observables** | **6** |
+
+### Existing vs TBD
+
+| Status | Count |
+|--------|-------|
+| Abstract field types in code | 5 |
+| Abstract field types TBD | 17 |
+| Concrete implementations in code | 0 |
+| Concrete implementations TBD | 68 |
+| Observable types in code | 19 |
+| Observable types TBD | 6 |
+| TomSelectableSource adapters TBD | 4 |
+
+---
+
+## Related Documents
+
+- [tom_ui_design_architecture.md](tom_ui_design_architecture.md) — Full UI architecture
+- [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md) — Flutter widget reference
+- [tom_observable_state_management.md](tom_observable_state_management.md) — Observable state system
+- [container_widget_resources_authorization.md](container_widget_resources_authorization.md) — Resource and auth system
