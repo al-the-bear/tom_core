@@ -68,3 +68,4 @@ surface.
 | --- | --- |
 | [formstyle_migration.md](formstyle_migration.md) | `FormStyle` migration notes. |
 | [flutter_alignments_improvements.md](flutter_alignments_improvements.md) | Flutter alignment gaps and improvement areas. |
+| [flutter_dart_listener_patterns.md](flutter_dart_listener_patterns.md) | Background reference: all Flutter/Dart observer/observable/listener patterns and their trade-offs — context for the Tom observable-state layer. |
