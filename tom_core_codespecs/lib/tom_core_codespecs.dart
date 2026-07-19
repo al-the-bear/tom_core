@@ -21,8 +21,17 @@
 /// land here as concrete classes: [TomClientApplication] (CE-CL),
 /// [TomClientConfiguration] (CE-CC), and [TomUserSettings] with
 /// [TomUserSettingsPersistence] (CE-UP, the `local`/`roaming` split, §11).
+///
+/// **csm210-4-1 (wave-2 W10) — CE-EN domain enum.** The csm4 code-basis survey
+/// (`codespecs_code_basis.md` §3) flagged CE-EN as a *gap*: `tom_core` has only
+/// mechanical enums, no domain-enum framework. [TomDomainEnum] (+
+/// [TomDomainEnumValue]) is that thin holder — the class a `@CsEnum` CodeSpec is
+/// built on. CE-DB stays a *reuse* verdict: `@CsTable`/`@CsColumn`/`@CsRepository`
+/// are built directly on `tom_core_server` persistence classes, so CE-DB needs no
+/// gap class here.
 library;
 
 export 'src/client_application.dart';
 export 'src/client_configuration.dart';
+export 'src/domain_enum.dart';
 export 'src/user_settings.dart';
