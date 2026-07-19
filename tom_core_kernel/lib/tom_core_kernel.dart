@@ -26,6 +26,7 @@ export 'src/tombase/logging/remote_logoutput.dart';
 export 'src/tombase/logging/file_log_replay_store.dart';
 export 'src/tombase/logging/remote_logserver.dart';
 export 'src/tombase/resources/tom_resource_provider.dart';
+export 'src/tombase/result/result.dart';
 export 'src/tombase/scope_ids/scope_ids.dart';
 export 'src/tombase/security/access_controls.dart';
 export 'src/tombase/security/authentication_authorization.dart';
