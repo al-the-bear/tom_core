@@ -3,6 +3,12 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
+> **⚠️ Work in progress — pre-1.0.** The Tom Core packages are under active
+> development and not yet stable. They are versioned from `0.1.0` and the patch
+> number is bumped on every change — **including breaking changes** — until the
+> API settles enough for a `1.0.0` release. Expect the public surface to shift
+> without notice before then. Not recommended for production use yet.
+
 Flutter integration layer for the Tom Framework — re-exports
 [`tom_core_kernel`](../tom_core_kernel/README.md) and adds Flutter widgets and
 client utilities.
