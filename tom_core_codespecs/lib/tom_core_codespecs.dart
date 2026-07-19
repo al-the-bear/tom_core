@@ -9,9 +9,20 @@
 /// (the framework carries annotations only, §0) — keeping `tom_core` clean of
 /// CodeSpecs-only concerns.
 ///
-/// This package is an intentional **empty stub** at scaffold time (csm3). The
-/// gap classes are authored by later CodeSpecs waves: csm4 surveys `tom_core`
+/// The gap classes are authored by the CodeSpecs waves: csm4 surveys `tom_core`
 /// per part (reuse / extend / new-in-codespecs) and the genuine gaps land here.
 /// Dependencies on the relevant `tom_core_*` packages are added when the first
 /// gap class that needs them is authored.
+///
+/// **csm2r7 — the four new parts (`codespecs_new_parts_basis.md`).** CE-AU
+/// (Authentication) reuses `tom_core_server` `TomAuthenticationService`* and
+/// CE-CF (ServerConfiguration) reuses `TomBaseServerConfiguration`, so neither
+/// needs a gap class. The three remaining new parts had no `tom_core` holder and
+/// land here as concrete classes: [TomClientApplication] (CE-CL),
+/// [TomClientConfiguration] (CE-CC), and [TomUserSettings] with
+/// [TomUserSettingsPersistence] (CE-UP, the `local`/`roaming` split, §11).
 library;
+
+export 'src/client_application.dart';
+export 'src/client_configuration.dart';
+export 'src/user_settings.dart';
