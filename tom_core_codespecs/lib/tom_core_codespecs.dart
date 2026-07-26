@@ -14,7 +14,7 @@
 /// Dependencies on the relevant `tom_core_*` packages are added when the first
 /// gap class that needs them is authored.
 ///
-/// **csm2r7 — the four new parts (`codespecs_new_parts_basis.md`).** CE-AU
+/// **csm2r7 — the four new parts (`codespecs_mapping.md` §1.1b).** CE-AU
 /// (Authentication) reuses `tom_core_server` `TomAuthenticationService`* and
 /// CE-CF (ServerConfiguration) reuses `TomBaseServerConfiguration`, so neither
 /// needs a gap class. The three remaining new parts had no `tom_core` holder and
@@ -23,7 +23,7 @@
 /// [TomUserSettingsPersistence] (CE-UP, the `local`/`roaming` split, §11).
 ///
 /// **csm210-4-1 (wave-2 W10) — CE-EN domain enum.** The csm4 code-basis survey
-/// (`codespecs_code_basis.md` §3) flagged CE-EN as a *gap*: `tom_core` has only
+/// (`codespecs_mapping.md` §5) flagged CE-EN as a *gap*: `tom_core` has only
 /// mechanical enums, no domain-enum framework. [TomDomainEnum] (+
 /// [TomDomainEnumValue]) is that thin holder — the class a `@CsEnum` CodeSpec is
 /// built on. CE-DB stays a *reuse* verdict: `@CsTable`/`@CsColumn`/`@CsRepository`

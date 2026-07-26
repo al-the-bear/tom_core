@@ -1,7 +1,7 @@
 /// The per-machine client-configuration holder a CodeSpec's `@CsClientConfig`
 /// (CE-CC) is built on.
 ///
-/// **Why this is a gap (csm2r7 survey `codespecs_new_parts_basis.md` §3).**
+/// **Why this is a gap (csm2r7 survey `codespecs_mapping.md` §1.1b).**
 /// The *values* reuse the `tom_core_flutter` `TomProperty`* family (each field
 /// reads one client-side config key at construction). What `tom_core` lacks is a
 /// **holder** that groups those values as the deployment/per-machine

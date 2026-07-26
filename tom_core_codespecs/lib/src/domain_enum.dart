@@ -27,7 +27,7 @@ class TomDomainEnumValue {
 
 /// The domain-enum holder a CodeSpec's `@CsEnum` (CE-EN) is built on.
 ///
-/// **Why this is a gap (csm4 survey `codespecs_code_basis.md` §3, verdict
+/// **Why this is a gap (csm4 survey `codespecs_mapping.md` §5, verdict
 /// *gap*).** `tom_core_kernel` carries only *mechanical* enums — `TomHttpMethod`,
 /// `TomMimeType` and similar transport/plumbing sets — and no **domain-enum /
 /// value-object framework** that names a business-domain closed value set as a

@@ -15,7 +15,7 @@ enum TomUserSettingsPersistence {
 
 /// The user-settings holder a CodeSpec's `@CsUserSetting` (CE-UP) is built on.
 ///
-/// **Why this is a gap (csm2r7 survey `codespecs_new_parts_basis.md` §3).**
+/// **Why this is a gap (csm2r7 survey `codespecs_mapping.md` §1.1b).**
 /// The roaming *transport* reuses the kernel `TomGetSettingsResult` (server →
 /// client settings payload) and the local reads reuse `TomProperty`, but
 /// `tom_core` has no **user-settings holder** that (a) names a setting as a
