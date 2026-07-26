@@ -2,7 +2,7 @@
 
 CodeSpecs-only **gap-filler** for `tom_core`.
 
-**Core principle** (csm1 / `_ai/quests/tom_specs/codespecs_mapping.md` §1.1):
+**Core principle** (csm1 / `../../ai_build/tom_specs_model/doc/codespecs_mapping.md` §1.1):
 every actual class a CodeSpec instantiates must be a `tom_core`-family class —
 one of the five packages `tom_core_kernel`, `tom_core_flutter`,
 `tom_core_server`, `tom_core_d4rt`, and `tom_flutter_ui` (the fifth basis,
@@ -18,7 +18,7 @@ part (reuse / extend / new-in-codespecs) and the genuine gaps land in this
 package as concrete classes.
 
 **csm2r7 — the four new parts** (survey:
-`_ai/quests/tom_specs/codespecs_mapping.md`). CE-AU (Authentication) and
+`../../ai_build/tom_specs_model/doc/codespecs_mapping.md`). CE-AU (Authentication) and
 CE-CF (ServerConfiguration) reuse existing `tom_core` classes, so they need no
 gap class. The three remaining new parts had no `tom_core` holder:
 
@@ -29,7 +29,7 @@ gap class. The three remaining new parts had no `tom_core` holder:
 | `TomUserSettings` + `TomUserSettingsPersistence` | CE-UP UserSettings | User-settings holder with the `local` (machine-bound) / `roaming` (server-persisted, follows the user) split (§11). |
 
 **csm210-4-1 (wave-2 W10) — CE-DB / CE-EN** (survey:
-`_ai/quests/tom_specs/codespecs_mapping.md` §3). CE-DB is a *reuse* verdict —
+`../../ai_build/tom_specs_model/doc/codespecs_mapping.md` §3). CE-DB is a *reuse* verdict —
 `@CsTable`/`@CsColumn`/`@CsRepository` are built directly on `tom_core_server`
 persistence classes (`@TomDbTable`, `@TomDbColumn`, `@TomEntityId`, `@TomDbScope`,
 `TomRepository<T,K>`, `TomSqlDatasourceRepository`, `query_builder`,
