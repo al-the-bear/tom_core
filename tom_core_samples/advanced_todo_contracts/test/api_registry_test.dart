@@ -40,15 +40,23 @@ void main() {
           for (final endpoint in api.endpoints.values)
             if (endpoint.access is TomPublicAccess) endpoint.id,
       ];
-      expect(public,
-          unorderedEquals(['authLogin', 'authLoginResources', 'appHealth']));
+      expect(
+          public,
+          unorderedEquals([
+            'authLogin',
+            // Public because its caller is mid-login and holds no bearer yet;
+            // the interim challenge token travels in the body instead.
+            'authSecondFactor',
+            'authLoginResources',
+            'appHealth',
+          ]));
     });
 
     test('public endpoints skip bearer authentication', () {
-      expect(authApi.endpoints['authLogin']!.includeBearerAuthentication,
-          isFalse);
-      expect(authApi.endpoints['authLoginResources']!.includeBearerAuthentication,
-          isFalse);
+      for (final id in ['authLogin', 'authSecondFactor', 'authLoginResources']) {
+        expect(authApi.endpoints[id]!.includeBearerAuthentication, isFalse,
+            reason: '$id is public and must not be bearer-gated');
+      }
       expect(
           appApi.endpoints['appHealth']!.includeBearerAuthentication, isFalse);
     });

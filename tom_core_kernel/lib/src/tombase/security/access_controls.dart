@@ -36,7 +36,10 @@ library;
 // IMPORTS
 // =============================================================================
 
+import 'package:meta/meta.dart';
+
 import '../little_things/little_things.dart';
+import 'server_principal.dart';
 import 'tom_authorization.dart';
 import 'user_principal_aci.dart';
 
@@ -168,7 +171,7 @@ bool tomProtected(String resourceKey) {
 /// Abstract base class for all access control types.
 ///
 /// Extend this class to implement custom access control logic.
-/// All access control implementations must override [checkAccessibility]
+/// All access control implementations must override [checkPrincipalAccess]
 /// to determine if a [TomPrincipal] should have access.
 ///
 /// ## Built-in Implementations
@@ -182,25 +185,113 @@ bool tomProtected(String resourceKey) {
 /// - [TomEntitlementAccess]: Requires specific entitlements
 /// - [TomResourceKeyAccess]: Checks resource key protection
 /// - [TomCustomAccess]: Delegates to custom handler
+///
+/// ## Two operands: the user and the deployment
+///
+/// Evaluation has **two** operands, not one. A user's grant is met with the
+/// grant of the deployment the code is running in — the *ambient server
+/// principal* ([TomServerPrincipal]) — and the effective answer is the more
+/// restrictive of the two: `min(user, server)` over the four-state ladder,
+/// binary AND for two-state controls. A user's [TomAuthState.full] on a feature
+/// this deployment is not entitled to evaluates to [TomAuthState.none]. The
+/// deployment's grants cap every user's grants; they never widen them.
+///
+/// ## What subclasses implement
+///
+/// The public entry points [checkAccessibility] and [resolveAuthState] compute
+/// that meet and are **not overridable** — a cap that any subclass could
+/// sidestep by overriding the method everybody already calls would not be a cap
+/// at all. Subclasses instead implement the two hooks:
+///
+/// - [checkPrincipalAccess] / [resolvePrincipalAuthState] — the *user* operand:
+///   what this control demands of the calling principal. This is the rule that
+///   used to live in `checkAccessibility`; the logic is unchanged, only the
+///   method it belongs in.
+/// - [resolveServerAuthState] — the *deployment* operand: what grade this
+///   control's subject is granted to the deployment. It defaults to
+///   [TomAuthState.full] (uncapped), because most controls name a *user*
+///   requirement (a role, a group, a resource key) and say nothing about
+///   deployment features. [TomEntitlementAccess] is the grant carrier that
+///   actually answers it.
 abstract class TomAccessControl {
   const TomAccessControl();
 
-  /// Checks if the given [principal] has access.
-  ///
-  /// Returns `true` if access is granted, `false` otherwise.
-  /// A `null` principal typically represents an unauthenticated user.
-  bool checkAccessibility(TomPrincipal? principal) => false;
+  // ---------------------------------------------------------------------------
+  // Hooks — implemented by subclasses, never called directly by consumers.
+  // ---------------------------------------------------------------------------
 
-  /// Resolves this access control to a four-state [TomAuthState].
+  /// The **user** operand: whether [principal] satisfies this control.
   ///
-  /// The default bridges the binary [checkAccessibility] onto two states —
+  /// Returns `true` if the principal's own grants suffice, `false` otherwise.
+  /// A `null` principal typically represents an unauthenticated user.
+  ///
+  /// This answer is deliberately *un*capped — it is one half of the meet the
+  /// public [checkAccessibility] computes. Consumers want that public method;
+  /// this one exists for subclasses to implement and for composite controls
+  /// (like [TomGradedAccess]) to interrogate their children without the cap
+  /// being applied once per nesting level.
+  bool checkPrincipalAccess(TomPrincipal? principal) => false;
+
+  /// The **user** operand resolved to a four-state [TomAuthState].
+  ///
+  /// The default bridges the binary [checkPrincipalAccess] onto two states —
   /// granted → [TomAuthState.full], denied → [TomAuthState.none] — so every
-  /// existing binary access control (role/group/entitlement/etc.) keeps its
-  /// meaning unchanged while gaining a four-state outcome. Controls that need
-  /// to express [TomAuthState.read] (read-only) or [TomAuthState.disabled]
-  /// (visible but locked) override this method; see [TomGradedAccess].
-  TomAuthState resolveAuthState(TomPrincipal? principal) =>
-      checkAccessibility(principal) ? TomAuthState.full : TomAuthState.none;
+  /// binary access control (role/group/entitlement/etc.) keeps its meaning
+  /// while gaining a four-state outcome. Controls that need to express
+  /// [TomAuthState.read] (read-only) or [TomAuthState.disabled] (visible but
+  /// locked) override this; see [TomGradedAccess].
+  TomAuthState resolvePrincipalAuthState(TomPrincipal? principal) =>
+      checkPrincipalAccess(principal) ? TomAuthState.full : TomAuthState.none;
+
+  /// The **deployment** operand: the highest grade this control's subject is
+  /// granted to the deployment identified by [serverPrincipal].
+  ///
+  /// Defaults to [TomAuthState.full] — *uncapped*. That default is the correct
+  /// one rather than a lenient shortcut: a control that names a user role, a
+  /// group or a resource key expresses nothing about which **features** a
+  /// deployment licenses, so it has no opinion to contribute to the meet, and a
+  /// participant with no opinion must return the identity element. Returning
+  /// anything lower would make an unrelated deployment grant silently veto a
+  /// role check.
+  ///
+  /// [TomEntitlementAccess] overrides this — entitlement patterns *are* the
+  /// grant carrier — and [TomGradedAccess] composes its children's answers into
+  /// the ladder.
+  TomAuthState resolveServerAuthState(TomPrincipal serverPrincipal) =>
+      TomAuthState.full;
+
+  // ---------------------------------------------------------------------------
+  // Public evaluation — the meet. Not overridable.
+  // ---------------------------------------------------------------------------
+
+  /// Resolves the **effective** four-state authorization for [principal]: the
+  /// user's grade met with the deployment's.
+  ///
+  /// When no server principal is installed the deployment has no identity to
+  /// cap with, and the result is the user's grade alone — byte-for-byte the
+  /// behaviour of every deployment built before server-as-principal existed.
+  /// This is why the guard tests [TomServerPrincipal.current] for `null` rather
+  /// than evaluating against an empty principal: an empty entitlement set means
+  /// "entitled to nothing" and would deny everything.
+  @nonVirtual
+  TomAuthState resolveAuthState(TomPrincipal? principal) {
+    final userState = resolvePrincipalAuthState(principal);
+    final server = TomServerPrincipal.current;
+    if (server == null) return userState;
+    return userState.narrow(resolveServerAuthState(server));
+  }
+
+  /// Whether [principal] may see this control's content, deployment cap
+  /// included.
+  ///
+  /// Defined as [TomAuthState.showsContent] over [resolveAuthState], so the
+  /// binary and graded views can never disagree. For a two-state control this
+  /// is exactly the plain AND of the user's grant and the deployment's, which
+  /// is what the meet degenerates to when neither operand can express the
+  /// middle states.
+  @nonVirtual
+  bool checkAccessibility(TomPrincipal? principal) =>
+      resolveAuthState(principal).showsContent;
 }
 
 // =============================================================================
@@ -261,16 +352,43 @@ class TomGradedAccess extends TomAccessControl {
         disabled = disabled ?? read ?? full;
 
   @override
-  TomAuthState resolveAuthState(TomPrincipal? principal) {
-    if (full.checkAccessibility(principal)) return TomAuthState.full;
-    if (read.checkAccessibility(principal)) return TomAuthState.read;
-    if (disabled.checkAccessibility(principal)) return TomAuthState.disabled;
+  TomAuthState resolvePrincipalAuthState(TomPrincipal? principal) {
+    // The children are asked for their *uncapped* verdict. Applying the
+    // deployment cap here as well as at the top would apply it once per nesting
+    // level, and a cap that composes with itself down a tree stops being
+    // `min(user, server)` — it becomes an arbitrary function of the tree shape.
+    if (full.checkPrincipalAccess(principal)) return TomAuthState.full;
+    if (read.checkPrincipalAccess(principal)) return TomAuthState.read;
+    if (disabled.checkPrincipalAccess(principal)) return TomAuthState.disabled;
     return TomAuthState.none;
   }
 
+  /// The deployment's grade for this graded control: the same ladder, walked
+  /// against the *server's* grants instead of the user's.
+  ///
+  /// A tier counts as granted to the deployment when its child reports itself
+  /// fully granted. So a deployment entitled to a feature's view tier but not
+  /// its edit tier yields [TomAuthState.read], which caps even an editing user
+  /// down to read — the §5.26 example, falling straight out of the structure
+  /// rather than out of a special case.
+  ///
+  /// Note the asymmetry with [resolvePrincipalAuthState]: children that express
+  /// no deployment opinion answer [TomAuthState.full] (the identity element),
+  /// so a graded tree of pure role checks resolves to `full` here and caps
+  /// nothing.
   @override
-  bool checkAccessibility(TomPrincipal? principal) =>
-      resolveAuthState(principal).showsContent;
+  TomAuthState resolveServerAuthState(TomPrincipal serverPrincipal) {
+    if (full.resolveServerAuthState(serverPrincipal) == TomAuthState.full) {
+      return TomAuthState.full;
+    }
+    if (read.resolveServerAuthState(serverPrincipal) == TomAuthState.full) {
+      return TomAuthState.read;
+    }
+    if (disabled.resolveServerAuthState(serverPrincipal) == TomAuthState.full) {
+      return TomAuthState.disabled;
+    }
+    return TomAuthState.none;
+  }
 }
 
 // =============================================================================
@@ -290,7 +408,7 @@ class TomNoAccess extends TomAccessControl {
   const TomNoAccess();
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) => false;
+  bool checkPrincipalAccess(TomPrincipal? principal) => false;
 }
 
 /// Allows access to all users, including unauthenticated ones.
@@ -305,7 +423,7 @@ class TomPublicAccess extends TomAccessControl {
   const TomPublicAccess();
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) => true;
+  bool checkPrincipalAccess(TomPrincipal? principal) => true;
 }
 
 /// Requires a fully authenticated user (not a guest).
@@ -321,7 +439,7 @@ class TomAuthenticatedAccess extends TomAccessControl {
   const TomAuthenticatedAccess();
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) =>
+  bool checkPrincipalAccess(TomPrincipal? principal) =>
       principal != null &&
       principal.authenticated &&
       principal.username != TomUser.guestUsername;
@@ -341,7 +459,7 @@ class TomGuestAccess extends TomAccessControl {
   const TomGuestAccess();
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) =>
+  bool checkPrincipalAccess(TomPrincipal? principal) =>
       principal != null &&
       (principal.authenticated || principal.username == TomUser.guestUsername);
 }
@@ -423,7 +541,7 @@ class TomCustomAccess extends TomAccessControl {
   const TomCustomAccess({required this.handler, required this.resourceId});
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) =>
+  bool checkPrincipalAccess(TomPrincipal? principal) =>
       getHandler(handler)(principal, resourceId);
 
   /// Verifies that the handler for this access control exists.
@@ -456,6 +574,16 @@ class TomCustomAccess extends TomAccessControl {
 /// // Match multiple patterns (OR logic)
 /// @TomEntitlementAccess(['admin.*', 'feature.reports.edit'])
 /// ```
+///
+/// ## Also the deployment's grant carrier
+///
+/// Entitlements are the one requirement kind that means the same thing on both
+/// sides of the meet. Asked about a *user* they answer "may this person use the
+/// feature"; asked about the *ambient server principal* they answer "is this
+/// deployment licensed for the feature at all". That is why §5.26 needs no new
+/// class for server-level grants — the same pattern set, matched against the
+/// other principal. A deployment whose entitlements do not match caps the
+/// feature to [TomAuthState.none] no matter what the user holds.
 class TomEntitlementAccess extends TomAccessControl {
   /// List of regex patterns to match against user entitlements.
   final List<String> patterns;
@@ -466,7 +594,7 @@ class TomEntitlementAccess extends TomAccessControl {
   const TomEntitlementAccess(this.patterns);
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) {
+  bool checkPrincipalAccess(TomPrincipal? principal) {
     if (principal != null && principal.aci.entitlements.isNotEmpty) {
       for (var p in patterns) {
         String entitlement = principal.aci.entitlements.firstWhere(
@@ -478,6 +606,18 @@ class TomEntitlementAccess extends TomAccessControl {
     }
     return false;
   }
+
+  /// The deployment operand: the very same pattern match, run against the
+  /// server's entitlement set.
+  ///
+  /// This is the whole of §5.26's "grant carrier" — a feature is granted to
+  /// this deployment iff the server principal's entitlements match the
+  /// feature's pattern.
+  @override
+  TomAuthState resolveServerAuthState(TomPrincipal serverPrincipal) =>
+      checkPrincipalAccess(serverPrincipal)
+          ? TomAuthState.full
+          : TomAuthState.none;
 }
 
 // =============================================================================
@@ -534,7 +674,7 @@ class TomRoleAccess extends TomAccessControl {
   const TomRoleAccess(this.roles);
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) =>
+  bool checkPrincipalAccess(TomPrincipal? principal) =>
       _principalAciContainsAny(principal, roles, (aci) => aci.roles);
 }
 
@@ -567,7 +707,7 @@ class TomGroupAccess extends TomAccessControl {
   const TomGroupAccess(this.groups);
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) =>
+  bool checkPrincipalAccess(TomPrincipal? principal) =>
       _principalAciContainsAny(principal, groups, (aci) => aci.groups);
 }
 
@@ -594,6 +734,6 @@ class TomResourceKeyAccess extends TomAccessControl {
   const TomResourceKeyAccess(this.key);
 
   @override
-  bool checkAccessibility(TomPrincipal? principal) =>
+  bool checkPrincipalAccess(TomPrincipal? principal) =>
       !TomResourceKeyProtection.isProtected(key);
 }

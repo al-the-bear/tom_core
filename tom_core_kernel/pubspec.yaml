@@ -21,6 +21,11 @@ dependencies:
   # which both tiers need: the server to verify a code, an enrolment tool or an
   # authenticator to produce one.
   crypto: ^3.0.0
+  # `@nonVirtual` on the access-control evaluation entry points. The annotation
+  # is load-bearing rather than decorative: it is what stops a subclass from
+  # overriding the method every consumer calls and thereby skipping the
+  # deployment cap (the min(user, server) meet).
+  meta: ^1.9.0
   stack_trace:
   http:
   typed_data:

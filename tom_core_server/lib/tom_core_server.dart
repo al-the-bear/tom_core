@@ -4,6 +4,7 @@
 library;
 
 export 'src/tomserver/authentication/authentication_server.dart';
+export 'src/tomserver/authentication/server_self_login.dart';
 export 'src/tomserver/authentication/two_factor.dart';
 export 'src/tomserver/authorization/authorization_cache.dart';
 export 'src/tomserver/authorization/graded_authorization.dart';

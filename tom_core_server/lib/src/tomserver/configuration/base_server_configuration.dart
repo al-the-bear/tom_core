@@ -214,6 +214,62 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   // currently not in use...
   String? jwtSharedSecretKey = "config-secret-passphrase";
 
+  // ---------------------------------------------------------------------------
+  // Server self-login (server-as-principal)
+  //
+  // A deployed server is itself a principal: it logs in against the auth server
+  // with a service credential and the token it gets back carries *this
+  // deployment's* feature grants, which cap every user's grants (the
+  // `min(user, server)` meet in `TomAccessControl`). These fields say who the
+  // deployment is and where it presents that identity.
+  //
+  // All of them are optional and default to `null`. A deployment that leaves
+  // them unset never logs itself in and runs uncapped — exactly as every server
+  // built before server-as-principal existed. See
+  // `authentication/server_self_login.dart`.
+  // ---------------------------------------------------------------------------
+
+  /// Absolute URI of the auth server's login endpoint, e.g.
+  /// `https://auth.example.com/auth/login`.
+  ///
+  /// Not secret, but deployment-specific: it belongs in the deployed config
+  /// tree / environment, not in a spec (`codespecs_mapping.md` §5.16, CE-CF).
+  /// `null` or blank disables server self-login.
+  String? authServerLoginUri;
+
+  /// The login name of this deployment's service account.
+  ///
+  /// `null` or blank disables server self-login.
+  String? serviceAccountName;
+
+  /// The service account's secret — **secret-bearing** per §5.16.
+  ///
+  /// Its *declaration* lives here (so the shape and the source key are known);
+  /// its **value is never authored**. It is supplied out-of-band at deploy time
+  /// through the ordinary CE-CF precedence chain — OS environment, `.env`, or
+  /// command line — and must never be written into a spec or a checked-in
+  /// configuration tree, the same rule that governs [privateKey] and the JWT
+  /// keys above.
+  ///
+  /// `null` or blank disables server self-login.
+  String? serviceAccountCredential;
+
+  /// Organization presented with the deployment's own login; `null` for a
+  /// single-tenant deployment.
+  String? serviceAccountOrganization;
+
+  /// Application the deployment logs into; `null` when the auth server does not
+  /// scope service logins by application.
+  String? serviceAccountApplication;
+
+  /// Process (sub-context of [serviceAccountApplication]) the deployment logs
+  /// into; `null` when unscoped.
+  String? serviceAccountProcess;
+
+  /// Client identifier the deployment's own login originates from; `null` when
+  /// the auth server does not scope service logins by client.
+  String? serviceAccountClient;
+
   /// The bind host. Empty (the default) makes [TomServer.start] listen on
   /// [InternetAddress.anyIPv4]; set a concrete host to bind a specific address.
   /// (The previous `"t"`/`"0"` defaults were invalid addresses — bug §63.)

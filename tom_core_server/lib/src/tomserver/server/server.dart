@@ -7,6 +7,7 @@ import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:uuid/v4.dart';
+import '../authentication/server_self_login.dart';
 import '../little_things/server_exception.dart';
 import '../configuration/base_server_configuration.dart';
 import '../endpoints/endpoint_pipeline.dart';
@@ -317,7 +318,12 @@ class TomServer {
   /// then serves the assembled pipeline on the configured port (with `shared`
   /// sockets when running multiple isolates). Fire-and-forget: it starts
   /// listening and logs the bound address; it does not return the [HttpServer].
+  ///
+  /// When the configuration carries a service credential, the deployment first
+  /// logs *itself* in and installs its own principal — see [_installServerPrincipal].
   void start() async {
+    await _installServerPrincipal();
+
     SecurityContext? securityContext;
 
     if (!configuration.noSsl) {
@@ -416,5 +422,29 @@ class TomServer {
     tomLog.info(
       'Server listening on port ${server.port} ${server.address} ${securityContext != null ? "SSL" : "no SSL"} at ${DateTime.now()}',
     );
+  }
+
+  /// Logs the deployment in as itself, before the socket is bound.
+  ///
+  /// The ordering is load-bearing. The server principal caps every user's
+  /// grants (`min(user, server)`), so binding the socket first would open a
+  /// window in which requests are served *uncapped* — the one direction in which
+  /// getting it wrong grants access rather than denying it.
+  ///
+  /// Does nothing when the deployment configured no service credential, which is
+  /// the default and keeps every pre-existing server behaving exactly as before.
+  /// A *configured* deployment that cannot log in aborts the start: the error is
+  /// logged and rethrown, so the socket is never bound. Starting anyway would
+  /// mean running uncapped after explicitly asking to be capped.
+  Future<void> _installServerPrincipal() async {
+    try {
+      await TomServerSelfLogin.loginAndInstall(configuration);
+    } on TomServerSelfLoginException catch (e) {
+      tomLog.error(
+        'Server self-login failed — refusing to bind the socket: '
+        '${e.defaultUserMessage}',
+      );
+      rethrow;
+    }
   }
 }
