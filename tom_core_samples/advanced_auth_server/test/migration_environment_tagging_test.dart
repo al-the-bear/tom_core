@@ -43,8 +43,16 @@ void main() {
     setUpAll(() => migrations = _migrations(_authSchemaDir));
 
     test('versions are numbered consecutively from 0 with no gaps', () {
-      expect(migrations.map((m) => m.version), [0, 1, 2, 3],
-          reason: 'auth_db migrations must be [000],[001],[002],[003]');
+      // Stated as the property rather than as a literal inventory: adding a
+      // migration is routine, and a list that has to be edited each time would
+      // fail for the wrong reason and teach the reader to just bump it.
+      expect(migrations, isNotEmpty);
+      expect(
+        migrations.map((m) => m.version),
+        List.generate(migrations.length, (index) => index),
+        reason: 'auth_db migrations must run [000], [001], … with no gaps and '
+            'no duplicates',
+      );
     });
 
     test('schema + admin seed are untagged; the demo seed is @dev,test', () {
@@ -58,13 +66,21 @@ void main() {
         'auth_core_schema',
         'auth_authz_grants',
         'auth_admin_seed',
+        // The 2FA *columns* are schema and must reach production; only the demo
+        // account that fills them is dev/test. Splitting them is the whole
+        // reason this is two migrations.
+        'auth_two_factor_columns',
       ]) {
         expect(byDesc[desc]!.environments, isEmpty,
             reason: '$desc must be untagged (applies in every environment)');
       }
 
-      // The demo seed is restricted to dev/test.
+      // The demo seeds are restricted to dev/test. The two-factor seed is one
+      // of them: it ships a *known* TOTP secret, so a production apply that
+      // picked it up would hand anyone who can read the repository a working
+      // second factor.
       expect(byDesc['auth_demo_seed']!.environments, ['dev', 'test']);
+      expect(byDesc['auth_two_factor_seed']!.environments, ['dev', 'test']);
     });
 
     test('a production apply seeds admin without demo users (done-bar)', () {
@@ -77,10 +93,17 @@ void main() {
       expect(appliesIn('production', 'auth_core_schema'), isTrue);
       expect(appliesIn('production', 'auth_admin_seed'), isTrue);
       expect(appliesIn('production', 'auth_demo_seed'), isFalse);
+      // Production gets the 2FA columns but not the pre-enrolled demo account:
+      // a deployment can enable a factor, without inheriting a published secret.
+      expect(appliesIn('production', 'auth_two_factor_columns'), isTrue);
+      expect(appliesIn('production', 'auth_two_factor_seed'), isFalse);
 
-      // Under dev/test: the demo seed applies too.
+      // Under dev/test: the demo seeds apply too, so the two-pass login path is
+      // exercised out of the box rather than merely available.
       expect(appliesIn('dev', 'auth_demo_seed'), isTrue);
       expect(appliesIn('test', 'auth_demo_seed'), isTrue);
+      expect(appliesIn('dev', 'auth_two_factor_seed'), isTrue);
+      expect(appliesIn('test', 'auth_two_factor_seed'), isTrue);
     });
   });
 }

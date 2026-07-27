@@ -17,6 +17,10 @@ dependencies:
   # runner). 1.0.1 was the TomLogger push/pop log-level stack fix.
   tom_basics: ">=1.0.3"
   tom_crypto: ">=1.0.0"
+  # HMAC-SHA1 for the RFC 4226 / 6238 one-time-password primitives (TomTotp),
+  # which both tiers need: the server to verify a code, an enrolment tool or an
+  # authenticator to produce one.
+  crypto: ^3.0.0
   stack_trace:
   http:
   typed_data:

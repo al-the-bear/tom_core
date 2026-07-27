@@ -33,6 +33,7 @@ export 'src/tombase/security/authentication_authorization.dart';
 export 'src/tombase/security/bearer_authentication.dart';
 export 'src/tombase/security/resource_role_authorization.dart';
 export 'src/tombase/security/tom_authorization.dart';
+export 'src/tombase/security/two_factor.dart';
 export 'src/tombase/security/user_principal_aci.dart';
 export 'src/tombase/settings/settings_client_authorization.dart';
 export 'src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart';

@@ -100,8 +100,18 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
     final roleKeys = await store.roleKeysForUser(record.id!);
     final groupNames = await store.groupNamesForUser(record.id!);
 
+    final twoFactorType = record.twoFactorType ?? '';
+    final requires2FA = twoFactorType.isNotEmpty;
+
     final principal = TomPrincipal(
-      authenticated: true,
+      // Passing the password check is not yet being authenticated: an account
+      // that owes a second factor is authenticated only once pass 2 clears it.
+      // Stated the same way the kernel restores it from a token
+      // (`authenticated = username != GUEST && !requires2FA`), so the in-memory
+      // principal and the token-restored one never disagree.
+      authenticated: !requires2FA,
+      requires2FA: requires2FA,
+      twoFactorType: requires2FA ? twoFactorType : null,
       context: {},
       organization: authData.organization,
       application: authData.application,
@@ -136,6 +146,29 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
 
     return TomAuthenticationInfo(principal, acd);
   }
+}
+
+/// Points the framework's built-in TOTP adaptor at the `two_factor_secret`
+/// column, read through [store].
+///
+/// `TomTotp2FAService` deliberately ships without a secret source — where a
+/// deployment keeps enrolment secrets is its own business, and guessing would
+/// mean the framework reading a store it has no business knowing about. This is
+/// the auth server's answer: the secret lives next to the account it belongs to,
+/// and is fetched per verification rather than cached, so revoking an enrolment
+/// takes effect on the next login and not at some cache horizon.
+///
+/// Call once at boot (and in a test's `setUp`); it is idempotent, so a re-boot
+/// simply replaces the resolver with an equivalent one.
+void installTotpSecretResolver(AuthUserStore store) {
+  TomTotp2FAService.globalSettingSecretResolver = (context) async {
+    final record = await store.findByUsername(context.principal.username);
+    final secret = record?.twoFactorSecret ?? '';
+    // Null, not empty: the adaptor reads `null` as "not enrolled" and fails the
+    // login with `login.error.2fa.not-enrolled` rather than showing a prompt
+    // that could never be satisfied.
+    return secret.isEmpty ? null : secret;
+  };
 }
 
 /// The query-backed [AuthUserStore] wired at boot (step 13).

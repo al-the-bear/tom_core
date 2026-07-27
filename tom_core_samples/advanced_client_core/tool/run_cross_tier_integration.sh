@@ -179,22 +179,44 @@ log "Starting app server"
 SERVER_PIDS+=($!)
 wait_app_health
 
-# 4. Run the scripted cross-tier scenario against the live stack. The test
-#    *skips* (rather than fails) when it cannot reach the servers, so a unit run
-#    of the package stays green. Under this runner the servers are guaranteed
-#    up, so a skip means something died after the health checks — treat it as a
-#    failure and surface the server logs.
-log "Running the cross-tier integration test"
-set +e
-test_output="$(cd "$CLIENT_CORE" && dart test test/cross_tier_integration_test.dart 2>&1)"
-result=$?
-set -e
-printf '%s\n' "$test_output"
+# 4. Run the scripted live scenarios against the stack. Each *skips* (rather
+#    than fails) when it cannot reach the servers, so a unit run of the package
+#    stays green. Under this runner the servers are guaranteed up, so a skip
+#    means something died after the health checks — treat it as a failure and
+#    surface the server logs.
+#
+#    Two suites, because they prove different things and either can break alone:
+#      - cross_tier_integration_test  — the admin→end-user authorization loop
+#        (step 37): a grant edit reaching the field matrix, a share revealing a
+#        project to a second user.
+#      - auth_client_integration_test — the login paths themselves (step 22 +
+#        csex3), including dave's two-pass TOTP login. It is the only run in
+#        which the real client, the real server and a secret read from the
+#        database all take part, so it is the only one that can catch the two
+#        halves of the 2FA flow disagreeing on the wire.
+run_live_suite() {
+  local label="$1" path="$2" output status
+  log "Running $label"
+  set +e
+  output="$(cd "$CLIENT_CORE" && dart test "$path" 2>&1)"
+  status=$?
+  set -e
+  printf '%s\n' "$output"
 
-if [ "$result" -eq 0 ] && printf '%s' "$test_output" | grep -q 'All tests skipped'; then
-  echo "Scenario was SKIPPED (servers unreachable at test time) — treating as failure." >&2
-  result=1
-fi
+  if [ "$status" -eq 0 ] && printf '%s' "$output" | grep -q 'All tests skipped'; then
+    echo "$label was SKIPPED (servers unreachable at test time) — treating as failure." >&2
+    status=1
+  fi
+  return "$status"
+}
+
+result=0
+run_live_suite "the cross-tier integration test" \
+  test/cross_tier_integration_test.dart || result=1
+# Run regardless of the previous outcome: when a change breaks both, seeing both
+# failures in one run beats fixing them one boot at a time.
+run_live_suite "the live auth-client suite (incl. the two-pass 2FA login)" \
+  test/auth_client_integration_test.dart || result=1
 
 # Server logs are dumped by the EXIT trap (cleanup) whenever the run exits
 # non-zero, so a test failure here surfaces them without an explicit dump.

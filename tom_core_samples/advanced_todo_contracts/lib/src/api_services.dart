@@ -31,6 +31,12 @@ abstract class AuthApiService {
   /// signed token pair and the resolved principal.
   Future<LoginResult> login(LoginRequest request);
 
+  /// `authSecondFactor` — `POST /auth/second-factor` (public). Completes a
+  /// login that came back with `LoginResult.requires2FA`, exchanging the interim
+  /// token plus the submitted factor for the final token pair — the same pair a
+  /// 2FA-free login would have produced.
+  Future<LoginResult> submitSecondFactor(SecondFactorRequest request);
+
   /// `authLoginResources` — `GET /auth/resources/login` (public). The small,
   /// genuinely-public set of login-screen texts (`login.*` / `adminLogin.*`
   /// keys) a client installs *before* anyone signs in, so the login form needs

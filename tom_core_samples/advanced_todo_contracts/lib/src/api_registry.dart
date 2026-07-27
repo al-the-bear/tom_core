@@ -56,6 +56,18 @@ final TomApi authApi = TomApi(
       includeBearerAuthentication: false,
       access: TomPublicAccess(),
     ),
+    // Public, and *not* bearer-authenticated, on purpose: the interim token it
+    // consumes encodes an unauthenticated principal (that is what stops a
+    // half-finished login from opening anything), so a bearer gate would reject
+    // exactly the caller this endpoint exists for. The token travels in the
+    // body instead — see [SecondFactorRequest.challengeToken].
+    TomApiEndpoint<LoginResult, SecondFactorRequest>(
+      id: 'authSecondFactor',
+      uri: '/second-factor',
+      method: TomHttpMethod.post,
+      includeBearerAuthentication: false,
+      access: TomPublicAccess(),
+    ),
     TomApiEndpoint<ResourceBundleDto, Object?>(
       id: 'authLoginResources',
       uri: '/resources/login',

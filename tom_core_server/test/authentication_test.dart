@@ -214,13 +214,17 @@ void main() {
       );
     });
 
-    test('authenticatePass2 is unimplemented (throws UnsupportedError)', () {
-      expect(
-        () => TomAuthenticationServer().authenticatePass2(
-          TomAuthenticationMessage(),
-        ),
-        throwsA(isA<UnsupportedError>()),
+    // Replaces the former "authenticatePass2 is unimplemented" assertion: the
+    // second pass now exists, so the contract under test is its *rejection* of
+    // a call that presents no challenge, not an UnsupportedError. The pass
+    // itself is covered in two_factor_test.dart.
+    test('authenticatePass2 without a presented challenge fails cleanly',
+        () async {
+      final result = await TomAuthenticationServer().authenticatePass2(
+        TomAuthenticationMessage(),
       );
+      expect(result.error, 'login.error.2fa.no-challenge');
+      expect(result.authenticationToken, isEmpty);
     });
   });
 

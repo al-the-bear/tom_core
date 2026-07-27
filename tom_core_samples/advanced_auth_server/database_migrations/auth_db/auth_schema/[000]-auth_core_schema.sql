@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS auth_users (
   status        VARCHAR(32)  NOT NULL DEFAULT 'active',
   password_hash VARCHAR(512) NULL,
   hash_type     VARCHAR(128) NULL,
+  -- Second-factor enrolment. NULL on both = password-only login, which is why
+  -- enabling 2FA for an account is a data change and not a code change.
+  -- two_factor_secret is server-only: it is never projected onto the principal
+  -- and so never reaches a token claim.
+  two_factor_type   VARCHAR(64)  NULL,
+  two_factor_secret VARCHAR(255) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_auth_users_username (username),
   UNIQUE KEY uq_auth_users_email (email)

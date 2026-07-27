@@ -49,6 +49,7 @@ library;
 import 'package:tom_crypto/tom_crypto.dart';
 
 import 'access_controls.dart';
+import 'two_factor.dart';
 import 'user_principal_aci.dart';
 
 // =============================================================================
@@ -165,6 +166,36 @@ class TomBearerAuthentication {
     bearerAuthentication._principal = p;
   }
 
+  /// Discards the stored token pair and the cached principal.
+  ///
+  /// Use on logout, or when a login was answered with an interim 2FA token the
+  /// client is abandoning. Leaves the singleton in the same state as a freshly
+  /// constructed one, so a following [getPrincipal] throws rather than handing
+  /// back a stale identity.
+  static void clearTokens() {
+    var b = bearerAuthentication;
+    b._token = null;
+    b._authorizationToken = null;
+    b._clientJwtToken = null;
+    b._clientAuthorizationJwtToken = null;
+    b._principal = null;
+  }
+
+  /// The second-factor challenge the stored token is still waiting on, or
+  /// `null` when the session needs no second factor (the ordinary case).
+  ///
+  /// A client drives its 2FA screen from this: after a pass-1 login it reads
+  /// the challenge to learn which mechanism is in play, what to display, and
+  /// how many attempts remain — without having to decode the token itself.
+  /// Returns `null` once pass 2 has stored the completed token pair, which is
+  /// exactly the signal that the login is done.
+  static Tom2FAChallenge? get pendingTwoFactorChallenge {
+    var t =
+        bearerAuthentication._clientAuthorizationJwtToken ??
+        bearerAuthentication._clientJwtToken;
+    return t == null ? null : Tom2FAChallenge.fromClaims(t.payload);
+  }
+
   /// Converts JWT token payloads to a [TomPrincipal] object.
   ///
   /// Extracts user information, context, and access control data from
@@ -232,11 +263,20 @@ class TomBearerAuthentication {
       return result;
     }
 
+    // A token that still owes a second factor is an *interim* token: it names
+    // the user and carries the access-control payload the completed session
+    // will get, but the login is not finished. Deriving `authenticated` here —
+    // at the single point where every principal is reconstructed — means every
+    // existing access check rejects such a token automatically, instead of each
+    // call site having to remember to test `requires2FA` as well.
+    final requires2FA = payload[Tom2FAClaims.requires2FA] == "true";
+
     return TomPrincipal(
-      authenticated: (str("username") ?? TomUser.guestUsername) !=
-          TomUser.guestUsername,
-      requires2FA: payload["requires2FA"] == "true",
-      twoFactorType: str("twoFactorType"),
+      authenticated:
+          (str("username") ?? TomUser.guestUsername) != TomUser.guestUsername &&
+              !requires2FA,
+      requires2FA: requires2FA,
+      twoFactorType: str(Tom2FAClaims.type),
       context: mapFrom(secret, "context"),
       organization: str("organization"),
       application: str("application"),
@@ -250,7 +290,7 @@ class TomBearerAuthentication {
       timezone: str("timeZone"),
       clientCountry: str("clientCountry"),
       clientLanguage: str("clientLanguage"),
-      clientTimezone: str("clientTimeZone"),
+      clientTimezone: str("clientTimezone"),
       user: TomUser(
         id: intOr("userId", -1),
         username: str("username") ?? TomUser.guestUsername,
@@ -315,8 +355,10 @@ class TomBearerAuthentication {
         "Can't construct principal from a token without payload or secret data",
       );
     }
+    // Only one of the two tokens is guaranteed to be present (the guard above
+    // merely rules out *both* being absent), so derive from whichever we have.
     bearerAuthentication._principal = convertTokenPayloadToPrincipal(
-      bearerAuthentication._clientJwtToken!,
+      bearerAuthentication._clientJwtToken ?? t,
       bearerAuthentication._clientAuthorizationJwtToken,
     );
     return bearerAuthentication._principal!;
@@ -363,6 +405,22 @@ class TomBearerAuthentication {
   /// - [definition]: Optional ACI definition for resolving full permissions
   /// - [clientCountry]: Client's country for localization
   /// - [clientLanguage]: Client's language for localization
+  /// - [challenge]: A pending second-factor challenge to carry in the token,
+  ///   making this an *interim* token rather than a completed session
+  /// - [twoFactorVerification]: The mechanism's server-only verification
+  ///   payload, placed in the encrypted section (only meaningful with
+  ///   [challenge])
+  /// - [twoFactorSatisfied]: Set on the second pass, once the factor has been
+  ///   verified, to clear the requirement the principal still carries
+  ///
+  /// ## The `requires2FA` claim
+  ///
+  /// The claim is **fail-safe**: it is true whenever a [challenge] is being
+  /// issued *or* the principal declares it needs a second factor, and only
+  /// [twoFactorSatisfied] clears it. So a caller that mints tokens without
+  /// going through the two-pass flow cannot accidentally hand a 2FA user a
+  /// fully-authenticated token by forgetting a parameter — the omission
+  /// produces an unusable interim token, not an over-privileged one.
   ///
   /// Returns a tuple of (publicPayload, privatePayload):
   /// - Public payload: User info visible in the JWT
@@ -383,8 +441,11 @@ class TomBearerAuthentication {
     TomPrincipal principal,
     TomAccessControlDefinition? definition,
     String? clientCountry,
-    String? clientLanguage,
-  ) {
+    String? clientLanguage, {
+    Tom2FAChallenge? challenge,
+    Map<String, Object?>? twoFactorVerification,
+    bool twoFactorSatisfied = false,
+  }) {
     // TODO: consider adding access rights-based filtering or sorting in public/private
     Map<String, Object?> publicInfo = {
       "username": principal.username,
@@ -436,8 +497,6 @@ class TomBearerAuthentication {
         "tom.user.stateRegion",
       ),
       "userTimeZone": principal.user.timeZone,
-      "requires2FA": principal.requires2FA ? "true" : "false",
-      "twoFactorType": principal.twoFactorType,
       "organization": principal.organization,
       "application": principal.application,
       "process": principal.process,
@@ -460,6 +519,17 @@ class TomBearerAuthentication {
       "subscription_quotas": principal.cli.quotas,
     };
 
+    if (challenge != null) {
+      publicInfo.addAll(challenge.toClaims());
+    } else {
+      // No challenge in flight: the token still owes a factor only if the
+      // principal says so and nobody has reported it satisfied.
+      final stillOwed = principal.requires2FA && !twoFactorSatisfied;
+      publicInfo[Tom2FAClaims.requires2FA] = stillOwed ? "true" : "false";
+      publicInfo[Tom2FAClaims.type] =
+          stillOwed ? principal.twoFactorType : null;
+    }
+
     TomAccessControlInformation aci = definition != null
         ? definition.completeFromDefinition(principal.aci)
         : principal.aci;
@@ -472,6 +542,13 @@ class TomBearerAuthentication {
       "resourceKeys": aci.resourceKeys,
       "resourceRoles": aci.resourceRoles,
     };
+
+    // Only ever present on an interim token: once the factor is verified the
+    // re-issued pair carries no verification payload at all, so a mechanism
+    // secret cannot outlive the challenge it was minted for.
+    if (challenge != null && twoFactorVerification != null) {
+      privateInfo[Tom2FAClaims.verificationData] = twoFactorVerification;
+    }
 
     return (publicInfo, privateInfo);
   }

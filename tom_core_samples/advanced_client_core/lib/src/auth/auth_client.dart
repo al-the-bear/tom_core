@@ -26,12 +26,25 @@ class AuthClientException extends TomException {
   /// e.g. refresh without a stored token).
   final int statusCode;
 
+  /// Whether the server is still willing to accept another attempt at the same
+  /// pending second-factor challenge.
+  ///
+  /// When true, [AuthClient] has already stored the re-issued interim token, so
+  /// the caller simply asks the user for another code and calls
+  /// [AuthClient.submitSecondFactor] again — and
+  /// `TomBearerAuthentication.pendingTwoFactorChallenge` reports how many
+  /// attempts are left. When false the challenge is spent (wrong too often,
+  /// lapsed, or never existed) and the caller must start again at [
+  /// AuthClient.login].
+  final bool canRetrySecondFactor;
+
   /// Builds the exception from the stable [key], a human [defaultUserMessage]
   /// and the originating [statusCode].
   AuthClientException(
     super.key,
     super.defaultUserMessage, {
     required this.statusCode,
+    this.canRetrySecondFactor = false,
   });
 }
 
@@ -63,6 +76,11 @@ class AuthClient {
   /// Exchanges [request] credentials for the token pair, stores it, and returns
   /// the resolved [LoginResult]. Throws [AuthClientException] on a rejected
   /// login (401) or any other non-success status.
+  ///
+  /// When the account owes a second factor the returned result carries
+  /// [LoginResult.requires2FA] and the stored pair is the *interim* one: it
+  /// authenticates nothing, and [pendingChallenge] then describes what to ask
+  /// the user for. Complete the login with [submitSecondFactor].
   Future<LoginResult> login(LoginRequest request) async {
     final response = await _transport.send(
       method: 'POST',
@@ -72,6 +90,67 @@ class AuthClient {
     final result = _requireLogin(response, 'auth.login.failed');
     _store(result);
     return result;
+  }
+
+  /// The challenge the stored interim token is waiting on, or `null` when there
+  /// is no half-finished login.
+  ///
+  /// Read straight out of the token's public claims by the kernel, so the
+  /// mechanism key, the displayable hint, the remaining attempts, the expiry and
+  /// the mechanism's own `clientData` all come from one place — the client never
+  /// tracks challenge state of its own that could drift from the server's.
+  Tom2FAChallenge? get pendingChallenge =>
+      TomBearerAuthentication.pendingTwoFactorChallenge;
+
+  /// Answers [pendingChallenge] with [code] and, on success, stores and returns
+  /// the completed token pair — the same one a 2FA-free login would have given.
+  ///
+  /// A refused code throws [AuthClientException]; when
+  /// [AuthClientException.canRetrySecondFactor] is set, the re-issued interim
+  /// token has *already been stored*, so retrying is just another call to this
+  /// method with a new code.
+  Future<LoginResult> submitSecondFactor(String code) async {
+    final challengeToken = TomBearerAuthentication.authorizationToken;
+    if (challengeToken == null) {
+      throw AuthClientException(
+        'auth.no_token',
+        'No pending two-factor challenge — log in first.',
+        statusCode: 0,
+      );
+    }
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri('/auth/second-factor'),
+      body: dtoToJsonString(
+        SecondFactorRequest(code: code, challengeToken: challengeToken),
+      ),
+    );
+    if (!response.isSuccess) throw _secondFactorFailure(response);
+    final result = dtoFromJson<LoginResult>(response.jsonObject);
+    _store(result);
+    return result;
+  }
+
+  /// Builds the exception for a refused second factor, first storing the
+  /// re-issued interim token when the server offered one.
+  ///
+  /// Storing it is not a nicety: the attempt counter lives inside the token, so
+  /// a client that kept retrying against its previous copy would never exhaust
+  /// the challenge and would show the user the same "3 tries left" forever.
+  /// Overwriting the stored token is how an honest client spends its attempts.
+  /// (It is not a brute-force defence — a stateless server cannot detect the
+  /// replay; the challenge expiry is what bounds that.)
+  AuthClientException _secondFactorFailure(HttpJsonResponse response) {
+    final retryToken = _stringField(response, 'challengeToken');
+    if (retryToken != null && retryToken.isNotEmpty) {
+      TomBearerAuthentication.setTokens(retryToken, retryToken, _decryptTokens);
+    }
+    return AuthClientException(
+      _errorKey(response) ?? 'auth.second_factor.failed',
+      'Second factor rejected (HTTP ${response.statusCode}).',
+      statusCode: response.statusCode,
+      canRetrySecondFactor: retryToken != null && retryToken.isNotEmpty,
+    );
   }
 
   /// Fetches the public login resource bundle (`GET /auth/resources/login`),
@@ -121,8 +200,10 @@ class AuthClient {
         );
       }
     } finally {
-      // Replace the singleton to clear the cached principal + token pair.
-      TomBearerAuthentication.bearerAuthentication = TomBearerAuthentication();
+      // Drops the token pair *and* the cached principal — including a
+      // half-finished 2FA login, so an abandoned challenge is not left lying
+      // around for the next attempt to pick up.
+      TomBearerAuthentication.clearTokens();
     }
   }
 
@@ -161,10 +242,15 @@ class AuthClient {
   }
 
   /// The server's stable error key from a `{"error": "..."}` body, or null.
-  String? _errorKey(HttpJsonResponse response) {
+  String? _errorKey(HttpJsonResponse response) =>
+      _stringField(response, 'error');
+
+  /// Reads a string [field] from the response body, or null when the body is not
+  /// JSON or the field is absent or not a string.
+  String? _stringField(HttpJsonResponse response, String field) {
     try {
-      final key = response.jsonObject['error'];
-      return key is String ? key : null;
+      final value = response.jsonObject[field];
+      return value is String ? value : null;
     } on FormatException {
       return null;
     }

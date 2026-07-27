@@ -30,40 +30,85 @@ import 'package:tom_core_server/tom_core_server.dart';
 import '../auth/authentication_service.dart';
 import '../resources/auth_resource_bundles.dart';
 
-/// Builds the signed token pair and the wire DTOs from a verified login.
+/// Builds the signed token pair and the wire DTOs from a verified login,
+/// including the two-pass second-factor flow.
 ///
 /// Pure over its two inputs — the [AdvancedAuthenticationService] that verifies
 /// credentials and the JWT [issuer] — so it runs in a unit test with a seeded
-/// in-memory store and no live server. Mirrors the issuance
-/// `TomAuthenticationServer.authenticateUser` performs (a public
-/// authentication token plus an authorization token carrying the encrypted
-/// access-control payload), but returns the principal-derived [LoginResult] the
-/// contract's clients consume.
+/// in-memory store and no live server.
+///
+/// [login] and [submitSecondFactor] delegate to the framework's
+/// [TomAuthenticationServer] rather than minting tokens themselves. That is what
+/// buys the sample the second pass for free: challenge issuance, the attempt
+/// counter, expiry, adaptor dispatch and — crucially — the guarantee that a
+/// completed pass 2 yields exactly the token a 2FA-free login would have, all
+/// live in the framework's single issuance point. [refresh] still encodes
+/// directly, because re-issuing for an already-authenticated principal is not a
+/// login and must not re-run the credential check.
 class AuthTokenService {
   /// How long an issued token pair stays valid; also the [LoginResult.expiresAt]
-  /// horizon. Matches `TomServerJwtToken`'s own default expiry.
+  /// horizon. Matches `TomServerJwtToken`'s own default expiry, which is what
+  /// the framework's issuance path uses.
   static const Duration tokenLifetime = Duration(hours: 2);
 
   final AdvancedAuthenticationService _authentication;
   final String _issuer;
+  final TomAuthenticationServer _server = TomAuthenticationServer();
 
   /// Builds the token service over the credential-checking [authentication]
   /// service. [issuer] defaults to the server-wide JWT organization
   /// (`TomAuthenticationServer.globalSettingJwtOrganization`).
+  ///
+  /// The framework selects both the credential service and the issuer through
+  /// statics, so the constructor installs them. Doing it here rather than
+  /// leaving it to each caller is deliberate: the default
+  /// `TomDummyAuthenticationService` *accepts every login*, so forgetting the
+  /// wiring would not fail loudly — it would authenticate everyone.
   AuthTokenService(this._authentication, {String? issuer})
-      : _issuer = issuer ?? TomAuthenticationServer.globalSettingJwtOrganization;
+      : _issuer =
+            issuer ?? TomAuthenticationServer.globalSettingJwtOrganization {
+    TomAuthenticationServer.globalSettingUserAuthenticationService =
+        _authentication;
+    TomAuthenticationServer.globalSettingJwtOrganization = _issuer;
+    installTotpSecretResolver(_authentication.store);
+  }
 
   /// Verifies [request] and issues the signed token pair, or throws
   /// [LoginException] when the login is rejected (unknown user, wrong password,
   /// suspended account).
-  Future<LoginResult> login(LoginRequest request) async {
-    final authData = _authDataFor(request);
-    final info = await _authentication.authenticateUser(authData);
-    return _issueFor(
-      info.principal,
-      info.acd,
-      clientCountry: authData.country,
-      clientLanguage: authData.language,
+  ///
+  /// When the account is enrolled in a second factor the login is only half
+  /// done: the returned [LoginResult] carries `requires2FA`, the mechanism key,
+  /// and the *interim* token pair holding the challenge. That pair authenticates
+  /// nothing; complete the login with [submitSecondFactor].
+  Future<LoginResult> login(LoginRequest request) async =>
+      _resultFor(await _server.authenticatePass1(_messageFor(request)));
+
+  /// Answers a pending challenge and, on success, returns the completed token
+  /// pair — the same one a 2FA-free login for this user would have produced.
+  ///
+  /// Throws [LoginException] carrying the framework's stable key when the
+  /// submission is refused: `login.error.2fa.invalid-code` (retryable — the
+  /// client re-submits against the token from the *failed* attempt, whose
+  /// counter has advanced), `login.error.2fa.attempts-exhausted`,
+  /// `login.error.2fa.expired`, or `login.error.2fa.no-challenge`.
+  Future<LoginResult> submitSecondFactor(SecondFactorRequest request) async {
+    if (request.challengeToken.isEmpty) {
+      throw LoginException(
+        'login.error.2fa.no-challenge',
+        'No pending two-factor challenge was presented',
+      );
+    }
+    // The interim *authorization* token: decrypting it is what recovers the
+    // access-control payload pass 1 resolved and the adaptor's private
+    // verification blob, so pass 2 needs no second trip to the user store and
+    // the principal cannot be swapped between the passes.
+    final challengeToken = TomClientJwtToken(request.challengeToken);
+    final message = _messageFor(
+      LoginRequest(username: '', password: request.code),
+    );
+    return _resultFor(
+      await _server.authenticatePass2(message, challengeToken: challengeToken),
     );
   }
 
@@ -120,21 +165,83 @@ class AuthTokenService {
     );
   }
 
-  /// Maps a [LoginRequest] onto the framework's [TomAuthenticationData]. The
-  /// single-tenant sample fixes the locale/client fields the multi-tenant UAM
-  /// server resolves per request (see step-10 decision 2).
-  TomAuthenticationData _authDataFor(LoginRequest request) =>
-      TomAuthenticationData(
-        username: request.username,
-        key: request.password,
-        organization: request.org,
-        application: request.app,
-        process: 'default',
-        language: 'en',
-        country: 'US',
-        timezone: 'UTC',
-        client: 'web',
+  /// Maps a [LoginRequest] onto the framework's wire message. The single-tenant
+  /// sample fixes the locale/client fields the multi-tenant UAM server resolves
+  /// per request (see step-10 decision 2).
+  TomAuthenticationMessage _messageFor(LoginRequest request) =>
+      TomAuthenticationMessage()
+        ..userName = request.username
+        ..password = request.password
+        ..organization = request.org
+        ..application = request.app
+        ..process = 'default'
+        ..clientLanguage = 'en'
+        ..clientCountry = 'US'
+        ..clientTimezone = 'UTC'
+        ..client = 'web';
+
+  /// Projects a framework [result] onto the wire [LoginResult], or throws the
+  /// [LoginException] its stable error key describes.
+  ///
+  /// The principal is read back out of the issued token rather than kept aside
+  /// from the credential check, so both passes project from the same place —
+  /// and the DTO can only ever describe what the token actually says.
+  LoginResult _resultFor(TomAuthenticationResult result) {
+    if (result.error.isNotEmpty) throw _failureFor(result);
+
+    final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+      TomClientJwtToken(result.authenticationToken, decrypt: false),
+    );
+    return LoginResult(
+      user: userDtoOf(principal),
+      authToken: result.authenticationToken,
+      authzToken: result.authorizationToken,
+      expiresAt: DateTime.now().toUtc().add(tokenLifetime),
+      requires2FA: result.requires2FA,
+      twoFactorType: result.twoFactorType,
+    );
+  }
+
+  /// Turns a failed framework [result] into the exception the endpoint answers
+  /// with — preserving the re-issued challenge token when the framework offered
+  /// a retry.
+  LoginException _failureFor(TomAuthenticationResult result) {
+    if (result.authorizationToken.isNotEmpty) {
+      return SecondFactorRetryException(
+        result.error,
+        'The submitted second factor was not accepted',
+        challengeToken: result.authorizationToken,
       );
+    }
+    return LoginException(result.error, 'Login failed (${result.error})');
+  }
+}
+
+/// A refused second factor that the framework is still willing to be asked
+/// about — carrying the *re-issued* interim token.
+///
+/// The distinction matters for more than convenience. The attempt counter lives
+/// in the token, so a client that kept retrying against the copy it already held
+/// would never advance it and would see "3 tries left" forever. Handing the
+/// re-issued token back with the refusal is what lets an honest client — and the
+/// UI counting down for the user — actually spend the challenge.
+///
+/// It is not, and cannot be, a brute-force defence: a stateless server keeps no
+/// record of the tokens it has answered, so nothing stops a *hostile* client
+/// replaying the pass-1 token for a fresh attempt. What bounds that is the
+/// challenge's short expiry — see `TomAuthenticationServer.authenticatePass2`,
+/// which documents the trade-off and what a deployment needing a hard cap has to
+/// add.
+class SecondFactorRetryException extends LoginException {
+  /// The re-issued interim authorization token, with the spent attempt recorded.
+  final String challengeToken;
+
+  /// Creates a retryable second-factor refusal.
+  SecondFactorRetryException(
+    super.key,
+    super.defaultUserMessage, {
+    required this.challengeToken,
+  });
 }
 
 /// Returns HTTP 401 for a rejected login and falls back to the opaque 500 for
@@ -145,6 +252,10 @@ class AuthTokenService {
 /// key — never which of username/password failed (no account-existence leak,
 /// per step-10 decision 3). Any other error is a genuine fault and is masked
 /// behind the default handler's generic 500.
+///
+/// A [SecondFactorRetryException] additionally carries the re-issued challenge
+/// token in the body: the refusal is still a 401, but the client needs that
+/// token to make its next attempt count (see the exception's own note).
 class LoginUnauthorizedErrorHandler extends TomErrorHandler {
   /// Const so it can be referenced from the endpoint annotation.
   const LoginUnauthorizedErrorHandler();
@@ -158,7 +269,11 @@ class LoginUnauthorizedErrorHandler extends TomErrorHandler {
   ) {
     if (error is LoginException) {
       return Response.unauthorized(
-        jsonEncode({'error': error.key}),
+        jsonEncode({
+          'error': error.key,
+          if (error is SecondFactorRetryException)
+            'challengeToken': error.challengeToken,
+        }),
         headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
         encoding: Encoding.getByName('UTF-8'),
       );
@@ -205,6 +320,19 @@ class AdvancedAuthApiService implements AuthApiService {
   )
   @override
   Future<LoginResult> login(LoginRequest request) => _tokens.login(request);
+
+  // Public like `authLogin`, and for the same reason: the caller has no usable
+  // token yet. The interim token it presents in the body is by construction
+  // unauthenticated, so a bearer gate would reject the very request this
+  // endpoint exists to serve.
+  @TomApiEndpointImplementation(
+    apiId: 'auth',
+    endpointId: 'authSecondFactor',
+    errorHandler: _loginErrorHandler,
+  )
+  @override
+  Future<LoginResult> submitSecondFactor(SecondFactorRequest request) =>
+      _tokens.submitSecondFactor(request);
 
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authRefresh')
   @override

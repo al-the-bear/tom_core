@@ -68,6 +68,24 @@ class UserRecord {
   /// Hash algorithm tag stored alongside [passwordHash].
   @TomDbColumn(columnName: 'hash_type')
   String? hashType;
+
+  /// The second-factor mechanism this account is enrolled in (a
+  /// `@Tom2FAAdaptor` key such as `totp`), or `null`/empty when the account logs
+  /// in on its password alone. Enrolling a user is therefore a data change, not
+  /// a code change.
+  @TomDbColumn(columnName: 'two_factor_type')
+  String? twoFactorType;
+
+  /// The mechanism's per-user enrolment secret — for `totp`, the base32 string
+  /// the authenticator app was provisioned with.
+  ///
+  /// Server-only, and deliberately **not** projected onto the principal: token
+  /// claims are readable by whoever holds the token, so a secret parked there
+  /// would travel to the client. The TOTP adaptor reaches it through
+  /// `TomTotp2FAService.globalSettingSecretResolver`, wired to this column in
+  /// `authentication_service.dart`.
+  @TomDbColumn(columnName: 'two_factor_secret')
+  String? twoFactorSecret;
 }
 
 /// Repository for [UserRecord].

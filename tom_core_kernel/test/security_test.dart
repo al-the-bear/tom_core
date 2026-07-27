@@ -2231,6 +2231,370 @@ void main() {
         expect(aci.entitlements, equals(['feature.x']));
         expect(aci.resourceKeys, equals(['key.y']));
       });
+
+      test('clearTokens leaves the singleton with no identity to hand back', () {
+        final jwt = _makeJwt({'username': 'frank'});
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+        expect(TomBearerAuthentication.getPrincipal().username, equals('frank'));
+
+        TomBearerAuthentication.clearTokens();
+
+        expect(TomBearerAuthentication.token, isNull);
+        expect(TomBearerAuthentication.authorizationToken, isNull);
+        expect(TomBearerAuthentication.clientJwtToken, isNull);
+        expect(TomBearerAuthentication.clientAuthorizationJwtToken, isNull);
+        expect(
+          () => TomBearerAuthentication.getPrincipal(),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('clientTimezone survives the round trip', () {
+        // Written as "clientTimezone" and read back under the same name: the
+        // two sides used to disagree on the spelling, which silently dropped
+        // the value.
+        final principal = createTestPrincipal();
+        principal.clientTimezone = 'Europe/Berlin';
+
+        final (publicInfo, privateInfo) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          principal,
+          null,
+          'DE',
+          'de',
+        );
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
+        );
+
+        expect(restored.clientTimezone, equals('Europe/Berlin'));
+      });
+    });
+
+    // The claim contract a pending second factor travels under. It is written
+    // by the server when it issues the interim token and read by the client to
+    // drive the second-factor UI, so both sides live here, in the kernel.
+    group('two-factor claims', () {
+      Tom2FAChallenge challenge({
+        int attempt = 0,
+        int attemptsAllowed = 3,
+        Duration validIn = const Duration(minutes: 5),
+      }) =>
+          Tom2FAChallenge(
+            type: 'totp',
+            hint: 'device',
+            attempt: attempt,
+            attemptsAllowed: attemptsAllowed,
+            expiresAt: DateTime.now().toUtc().add(validIn),
+            clientData: const {'digits': 6},
+          );
+
+      test('a challenge round-trips through the public claims', () {
+        final original = challenge(attempt: 1);
+        final restored = Tom2FAChallenge.fromClaims(
+          original.toClaims().cast<String, dynamic>(),
+        );
+
+        expect(restored, isNotNull);
+        expect(restored!.type, equals('totp'));
+        expect(restored.hint, equals('device'));
+        expect(restored.attempt, equals(1));
+        expect(restored.attemptsAllowed, equals(3));
+        expect(restored.clientData['digits'], equals(6));
+        expect(
+          restored.expiresAt.millisecondsSinceEpoch,
+          equals(original.expiresAt.millisecondsSinceEpoch),
+        );
+      });
+
+      test('toClaims always declares the token still owes a factor', () {
+        expect(
+          challenge().toClaims()[Tom2FAClaims.requires2FA],
+          equals('true'),
+        );
+      });
+
+      test('attempts count down to exhaustion and never go negative', () {
+        var c = challenge(attemptsAllowed: 2);
+        expect(c.attemptsRemaining, equals(2));
+        expect(c.isExhausted, isFalse);
+
+        c = c.withConsumedAttempt();
+        expect(c.attempt, equals(1));
+        expect(c.attemptsRemaining, equals(1));
+
+        c = c.withConsumedAttempt();
+        expect(c.isExhausted, isTrue);
+        expect(c.withConsumedAttempt().attemptsRemaining, equals(0));
+      });
+
+      test('withConsumedAttempt leaves the original untouched', () {
+        final original = challenge();
+        original.withConsumedAttempt();
+        expect(original.attempt, equals(0));
+      });
+
+      test('expiry is evaluated against the given instant', () {
+        final c = challenge();
+        expect(c.isExpired(), isFalse);
+        expect(
+          c.isExpired(DateTime.now().toUtc().add(const Duration(minutes: 6))),
+          isTrue,
+        );
+      });
+
+      // A token is an outside input, so a payload that claims a challenge but
+      // cannot describe one must read as "no challenge" rather than as a
+      // half-built one whose gaps an attacker gets to choose.
+      test('fromClaims rejects payloads it cannot trust', () {
+        expect(Tom2FAChallenge.fromClaims(null), isNull);
+        expect(Tom2FAChallenge.fromClaims(<String, dynamic>{}), isNull);
+        expect(
+          Tom2FAChallenge.fromClaims({Tom2FAClaims.requires2FA: 'false'}),
+          isNull,
+        );
+        expect(
+          Tom2FAChallenge.fromClaims({
+            Tom2FAClaims.requires2FA: 'true',
+            Tom2FAClaims.type: '',
+            Tom2FAClaims.expiresAt: DateTime.now().toIso8601String(),
+          }),
+          isNull,
+          reason: 'requires a factor but names no mechanism',
+        );
+        expect(
+          Tom2FAChallenge.fromClaims({
+            Tom2FAClaims.requires2FA: 'true',
+            Tom2FAClaims.type: 'totp',
+            Tom2FAClaims.expiresAt: 'not-a-date',
+          }),
+          isNull,
+          reason: 'names a mechanism but carries an unparseable expiry',
+        );
+      });
+
+      test('a challenge is projected into the token payload', () {
+        final (publicInfo, privateInfo) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          createTestPrincipal(requires2FA: true, twoFactorType: 'totp'),
+          null,
+          'US',
+          'en',
+          challenge: challenge(),
+          twoFactorVerification: const {'nonce': 'n-1'},
+        );
+
+        expect(publicInfo[Tom2FAClaims.requires2FA], equals('true'));
+        expect(publicInfo[Tom2FAClaims.type], equals('totp'));
+        expect(publicInfo[Tom2FAClaims.hint], equals('device'));
+        expect(publicInfo[Tom2FAClaims.attemptsAllowed], equals(3));
+        // The verification blob is server-only: encrypted section, never public.
+        expect(privateInfo[Tom2FAClaims.verificationData],
+            equals({'nonce': 'n-1'}));
+        expect(publicInfo, isNot(contains(Tom2FAClaims.verificationData)));
+      });
+
+      // The safety property the whole interim-token design rests on: the token
+      // carries the real ACI, so what must stop it from authorizing anything is
+      // the single `authenticated` flag every access check consults.
+      test('a principal owing a factor is not authenticated', () {
+        final (publicInfo, privateInfo) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          createTestPrincipal(
+            username: 'alice',
+            roles: ['admin'],
+            requires2FA: true,
+            twoFactorType: 'totp',
+          ),
+          null,
+          'US',
+          'en',
+          challenge: challenge(),
+        );
+
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
+        );
+
+        expect(restored.username, equals('alice'));
+        expect(restored.aci.roles, contains('admin'));
+        expect(restored.requires2FA, isTrue);
+        expect(restored.twoFactorType, equals('totp'));
+        expect(restored.authenticated, isFalse);
+      });
+
+      test('reporting the factor satisfied clears the claims and the blob', () {
+        final (publicInfo, privateInfo) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          createTestPrincipal(requires2FA: true, twoFactorType: 'totp'),
+          null,
+          'US',
+          'en',
+          twoFactorVerification: const {'nonce': 'n-1'},
+          twoFactorSatisfied: true,
+        );
+
+        expect(publicInfo[Tom2FAClaims.requires2FA], equals('false'));
+        expect(publicInfo[Tom2FAClaims.type], isNull);
+        expect(Tom2FAChallenge.fromClaims(publicInfo.cast()), isNull);
+        // Without a challenge in flight there is nothing to verify, so the blob
+        // is dropped and a mechanism secret cannot outlive its challenge.
+        expect(privateInfo, isNot(contains(Tom2FAClaims.verificationData)));
+
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
+        );
+        expect(restored.authenticated, isTrue);
+        expect(restored.requires2FA, isFalse);
+      });
+
+      // Fail-safe by construction: omitting `twoFactorSatisfied` produces an
+      // unusable interim token, never an over-privileged one.
+      test('forgetting to report satisfaction keeps the factor owed', () {
+        final (publicInfo, _) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          createTestPrincipal(requires2FA: true, twoFactorType: 'totp'),
+          null,
+          'US',
+          'en',
+        );
+
+        expect(publicInfo[Tom2FAClaims.requires2FA], equals('true'));
+        expect(publicInfo[Tom2FAClaims.type], equals('totp'));
+      });
+
+      test('pendingTwoFactorChallenge reads the stored interim token', () {
+        expect(TomBearerAuthentication.pendingTwoFactorChallenge, isNull);
+
+        final interim = _makeJwt(
+          challenge().toClaims().cast<String, dynamic>()
+            ..['username'] = 'alice',
+        );
+        TomBearerAuthentication.setTokens(interim, interim, false);
+
+        final pending = TomBearerAuthentication.pendingTwoFactorChallenge;
+        expect(pending, isNotNull);
+        expect(pending!.type, equals('totp'));
+        expect(pending.attemptsRemaining, equals(3));
+      });
+
+      test('a completed session has no pending challenge', () {
+        final jwt = _makeJwt({
+          'username': 'alice',
+          Tom2FAClaims.requires2FA: 'false',
+        });
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+
+        expect(TomBearerAuthentication.pendingTwoFactorChallenge, isNull);
+      });
+    });
+  });
+
+  // The one-time-password primitives every tier shares. Anchored on the RFC's
+  // own published vectors rather than on values this implementation produced:
+  // a self-consistent HOTP is worthless — the whole point is agreeing with an
+  // off-the-shelf authenticator app that was never compiled against this code.
+  group('TomTotp', () {
+    /// The RFC 4226 / RFC 6238 reference secret, as its ASCII bytes.
+    final rfcKey = '12345678901234567890'.codeUnits;
+
+    /// The same reference secret in the base32 form an authenticator is
+    /// provisioned with.
+    const rfcSecretBase32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+
+    test('reproduces the RFC 4226 HOTP vectors', () {
+      const expected = [
+        '755224', '287082', '359152', '969429', '338314',
+        '254676', '287922', '162583', '399871', '520489',
+      ];
+      for (var counter = 0; counter < expected.length; counter++) {
+        expect(
+          TomTotp.generateCode(rfcKey, counter, 6),
+          expected[counter],
+          reason: 'HOTP counter $counter',
+        );
+      }
+    });
+
+    test('reproduces the RFC 6238 TOTP vectors (SHA-1)', () {
+      // T = 59 s / 30 s = counter 1; T = 1111111109 s → counter 37037036.
+      expect(TomTotp.generateCode(rfcKey, 1, 8), '94287082');
+      expect(TomTotp.generateCode(rfcKey, 37037036, 8), '07081804');
+    });
+
+    test('pads a short code to the requested width', () {
+      final code = TomTotp.generateCode(rfcKey, 37037036, 6);
+      expect(code, '081804');
+      expect(code.length, 6);
+    });
+
+    test('defaults to the RFC digit width', () {
+      expect(TomTotp.generateCode(rfcKey, 0), equals('755224'));
+      expect(TomTotp.defaultDigits, equals(6));
+    });
+
+    // The counter is where two sides of a TOTP exchange most easily disagree,
+    // so pin it against the RFC's own worked instants rather than trusting the
+    // arithmetic to be obvious.
+    test('counts UTC seconds into RFC 6238 time steps', () {
+      expect(
+        TomTotp.counterFor(
+            at: DateTime.utc(1970, 1, 1, 0, 0, 59)),
+        equals(1),
+      );
+      expect(
+        TomTotp.counterFor(
+            at: DateTime.fromMillisecondsSinceEpoch(1111111109 * 1000,
+                isUtc: true)),
+        equals(37037036),
+      );
+    });
+
+    test('counting is indifferent to the zone the instant is expressed in', () {
+      final utc = DateTime.utc(2026, 7, 28, 12, 0, 0);
+      expect(
+        TomTotp.counterFor(at: utc.toLocal()),
+        equals(TomTotp.counterFor(at: utc)),
+      );
+    });
+
+    test('rejects a period that would divide by zero', () {
+      expect(
+        () => TomTotp.counterFor(period: Duration.zero),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('codeFor derives the code for an instant from the base32 secret', () {
+      final at = DateTime.fromMillisecondsSinceEpoch(1111111109 * 1000,
+          isUtc: true);
+      expect(
+        TomTotp.codeFor(rfcSecretBase32, at: at, digits: 8),
+        equals('07081804'),
+      );
+    });
+
+    test('codeFor reports an unusable secret as no code at all', () {
+      expect(TomTotp.codeFor('not-base32!'), isEmpty);
+    });
+
+    test('base32 round-trips the reference secret', () {
+      expect(TomTotp.decodeBase32(rfcSecretBase32), rfcKey);
+      expect(TomTotp.encodeBase32(rfcKey), rfcSecretBase32);
+    });
+
+    test('base32 tolerates the shapes secrets are shown to users in', () {
+      expect(
+        TomTotp.decodeBase32('gezd gnbv gy3t qojq-gezdgnbvgy3tqojq='),
+        rfcKey,
+      );
+    });
+
+    test('base32 reports an unusable secret as empty rather than guessing', () {
+      expect(TomTotp.decodeBase32('not-base32!'), isEmpty);
     });
   });
 }
