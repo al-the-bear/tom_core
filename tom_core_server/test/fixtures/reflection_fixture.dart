@@ -237,6 +237,56 @@ class FixtureDocumentRecord {
 class FixtureDocumentRepository
     extends TomSqlDatasourceRepository<FixtureDocumentRecord, int> {}
 
+/// A reflected entity whose file columns cover the three exposure cases the
+/// HTTP file endpoint has to tell apart (CSFSB1).
+///
+/// Separate from [FixtureDocumentRecord] rather than folded into it, for two
+/// reasons. It has no table in `test_database.dart` and needs none — the
+/// endpoint suite drives an in-memory repository, so only the *annotations* are
+/// read — and leaving the older entity untouched is itself the assertion that
+/// `exposed:` defaults closed: an entity written before HTTP exposure existed
+/// must not have become reachable when the field was added.
+///
+/// - [poster] is plainly exposed: the slot `fixture_file_slot/<id>/poster`;
+/// - [gradedPoster] is exposed *and* carries an `authKey`, so it is the column
+///   that proves exposure decides only *which* column a slot names — the C-4
+///   grade still decides whether the caller may have it;
+/// - [internalNotes] is exposed to nobody, and is unreachable by name.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_file_slot',
+  primaryKeyField: 'id',
+)
+class FixtureFileSlotRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// An ordinary column, so the entity is more than its files.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+
+  /// The plainly exposed file column.
+  @TomDbColumn(columnName: 'poster')
+  @TomFileReference(keyPrefix: 'fixture/poster', exposed: true)
+  String? poster;
+
+  /// An exposed file column that is also C-4 graded.
+  @TomDbColumn(
+    columnName: 'graded_poster',
+    authKey: 'fixture.file_slot.graded_poster',
+  )
+  @TomFileReference(keyPrefix: 'fixture/graded', exposed: true)
+  String? gradedPoster;
+
+  /// A file column that is *not* exposed, and so has no slot at all.
+  @TomDbColumn(columnName: 'internal_notes')
+  @TomFileReference(keyPrefix: 'fixture/internal')
+  String? internalNotes;
+}
+
 /// A reflected entity that has **declared itself out** of the audit trail.
 ///
 /// The escape hatch for high-volume machine-written tables (sessions, job runs)

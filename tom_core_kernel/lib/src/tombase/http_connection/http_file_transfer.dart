@@ -137,7 +137,7 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
       _requestHeaders({
         TomHeader.contentType: source.mediaType,
         TomHeader.contentDisposition:
-            'attachment; filename="${_escapeFileName(source.fileName)}"',
+            'attachment; filename="${tomEscapeFileNameForDisposition(source.fileName)}"',
       }),
     );
     if (source.hasKnownSize) request.contentLength = source.byteCount;
@@ -304,7 +304,7 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
           responseHeaders['content-type'] ??
           TomMimeType.octetStream.toHeaderValue(),
       byteCount: length,
-      fileName: _fileNameFromDisposition(
+      fileName: tomFileNameFromDisposition(
         responseHeaders['content-disposition'],
       ),
       storedAt: DateTime.tryParse(responseHeaders['x-tom-file-stored-at'] ?? ''),
@@ -350,30 +350,6 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
   static int _portOf(Uri uri) =>
       uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
 
-  /// Escapes a file name for a quoted `Content-Disposition` parameter.
-  ///
-  /// Only the two characters that can terminate or escape the quoted string are
-  /// touched; anything more aggressive would mangle legitimate names.
-  static String _escapeFileName(String fileName) =>
-      fileName.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
-
-  /// Extracts `filename="…"` from a `Content-Disposition` header.
-  static String? _fileNameFromDisposition(String? disposition) {
-    if (disposition == null) return null;
-    final match = RegExp(
-      r'filename\*?=(?:"((?:[^"\\]|\\.)*)"|([^;]+))',
-    ).firstMatch(disposition);
-    if (match == null) return null;
-    final quoted = match.group(1);
-    if (quoted != null) {
-      return quoted.replaceAll(r'\"', '"').replaceAll(r'\\', r'\');
-    }
-    final bare = match.group(2)?.trim();
-    if (bare == null || bare.isEmpty) return null;
-    // RFC 5987 form: `filename*=UTF-8''name.pdf`.
-    final encoded = bare.split("''").last;
-    return Uri.decodeFull(encoded);
-  }
 }
 
 /// Writes the descriptor header a `HEAD` response needs so
@@ -389,5 +365,38 @@ Map<String, String> tomFileDescriptorHeaders(TomFileMetadata metadata) => {
   'content-length': '${metadata.byteCount}',
   if (metadata.fileName != null)
     TomHeader.contentDisposition:
-        'attachment; filename="${TomHttpFileTransferClient._escapeFileName(metadata.fileName!)}"',
+        'attachment; filename="${tomEscapeFileNameForDisposition(metadata.fileName!)}"',
 };
+
+/// Escapes a file name for a quoted `Content-Disposition` parameter.
+///
+/// Only the two characters that can terminate or escape the quoted string are
+/// touched; anything more aggressive would mangle legitimate names.
+String tomEscapeFileNameForDisposition(String fileName) =>
+    fileName.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+
+/// Extracts `filename="…"` from a `Content-Disposition` header, or `null` when
+/// the header is absent or names no file.
+///
+/// Public, and here beside [tomFileDescriptorHeaders], for the same reason that
+/// helper is: the file name travels in both directions — the client writes it on
+/// an upload, the server writes it back on a download — so the code that writes
+/// it and the code that reads it have to be one piece. A server that hand-rolled
+/// its own parser would drift the moment either side learned a new form (the
+/// RFC 5987 `filename*=` case below is exactly such a form).
+String? tomFileNameFromDisposition(String? disposition) {
+  if (disposition == null) return null;
+  final match = RegExp(
+    r'filename\*?=(?:"((?:[^"\\]|\\.)*)"|([^;]+))',
+  ).firstMatch(disposition);
+  if (match == null) return null;
+  final quoted = match.group(1);
+  if (quoted != null) {
+    return quoted.replaceAll(r'\"', '"').replaceAll(r'\\', r'\');
+  }
+  final bare = match.group(2)?.trim();
+  if (bare == null || bare.isEmpty) return null;
+  // RFC 5987 form: `filename*=UTF-8''name.pdf`.
+  final encoded = bare.split("''").last;
+  return Uri.decodeFull(encoded);
+}

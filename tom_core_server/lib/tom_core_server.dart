@@ -38,6 +38,7 @@ export 'src/tomserver/db_migration/schema_ddl_reader.dart';
 export 'src/tomserver/db_migration/schema_model.dart';
 export 'src/tomserver/endpoints/endpoint_annotation.dart';
 export 'src/tomserver/endpoints/endpoint_pipeline.dart';
+export 'src/tomserver/endpoints/file_endpoint.dart';
 export 'src/tomserver/export/blob_export_store.dart';
 export 'src/tomserver/export/csv_renderer.dart';
 export 'src/tomserver/export/export_service.dart';

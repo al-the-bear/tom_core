@@ -15,6 +15,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Parameter Binding](#parameter-binding)
 - [Access Control](#access-control)
 - [Transactions](#transactions)
+- [Taking Over the Request and the Response](#taking-over-the-request-and-the-response)
 - [Error Handling](#error-handling)
 - [Building the Router](#building-the-router)
 - [Core Components](#core-components)
@@ -67,7 +68,19 @@ For each scanned service class, `initializeRouter` finds the instance to invoke:
 1. a `@TomComponentReference` on the class (resolve the named/typed bean);
 2. for API implementations, the bean for the class's own type;
 3. for interface services, a component class that extends/implements the
-   interface (its bean).
+   interface (its bean);
+4. failing that, the component class's **default constructor**, with the result
+   registered as its bean.
+
+Step 4 is what lets the framework ship a service of its own. An endpoint that
+arrives in the library barrel — the [file endpoint](file_storage.md#serving-a-file-over-http)
+is the first — would otherwise break every existing `initializeRouter()` call
+until each application registered a bean for a component it did not write. A
+component with a no-argument constructor needs no application involvement, and
+one that genuinely needs construction arguments still gets a bean the ordinary
+way. A service that resolves to nothing at all now raises
+`endpoint_pipeline.initialize_router.no_service_instance` naming the service,
+rather than failing a null check.
 
 ## The Request Pipeline
 
@@ -110,6 +123,34 @@ When a method carries `@TomTransactional`, the handler starts a transaction
 through `TomTransactionManager` before invoking it, commits on success, and
 rolls back if the method throws.
 
+## Taking Over the Request and the Response
+
+Most endpoint methods take bound parameters and return a value the pipeline
+serialises. Two escape hatches exist for the cases where that is the wrong
+shape — a method that declares a shelf `Request` parameter receives the request
+itself, and a method that returns a shelf `Response` has it used verbatim
+instead of being serialised.
+
+Together they are what makes streaming possible without a second pipeline: the
+body is never read, so it is still a stream to pipe into storage, and the
+response body is a stream the framework does not buffer. Declaring
+`consumes: TomMimeType.octetStream` is the part that matters for the request
+direction — the JSON body read only happens for a JSON `consumes`, so anything
+else leaves the request stream intact for the method to consume.
+
+```dart
+@TomEndpoint(
+  methods: [TomHttpMethod.post, TomHttpMethod.get],
+  uri: '/files/{entity}/{id}/{column}',
+  consumes: TomMimeType.octetStream,
+  produces: TomMimeType.json,
+)
+Future<Response> file(Request request);
+```
+
+This is exactly how the [file endpoint](file_storage.md#serving-a-file-over-http)
+is built; it is not a private arrangement.
+
 ## Error Handling
 
 Each endpoint has a `TomErrorHandler`. The pipeline calls
@@ -134,8 +175,10 @@ abort the build with `TomEndpointPipelineException`.
 The annotation surface anticipates features the pipeline does not yet
 implement; these are tracked in the quest completion steps:
 
-- `TomEndpoint.formFields`, file-upload binding, and redirect directives;
-- streaming / file responses to the client;
+- `TomEndpoint.formFields`, multipart form binding, and redirect directives —
+  note that single-file upload and download *are* shipped, by the
+  [file endpoint](file_storage.md#serving-a-file-over-http) over a raw body;
+  what is missing is binding a file that arrives as one part of a form;
 - WebSocket transport;
 - richer role/group/entitlement authorization beyond resource-key protection.
 
@@ -149,6 +192,9 @@ implement; these are tracked in the quest completion steps:
 - **Pipeline** (`endpoint_pipeline.dart`) — `TomEndpointRouting` (scan + build),
   `TomEndpointHandler` (per-request serving), `TomMethodMetadata`,
   `TomClassScanResult`, `TomEndpointRoutingInfo`, and the two exception types.
+- **File endpoint** (`file_endpoint.dart`) — `TomFileService` / `TomFileServer`,
+  `TomFileEndpoint`, and the `TomFileSlots` registry; documented in
+  [File Storage](file_storage.md#serving-a-file-over-http).
 
 ## Dependencies
 

@@ -27,7 +27,11 @@ without the second; the second is built entirely on the first.
 - [Where the Key Comes From](#where-the-key-comes-from)
 - [Authorization Is the Column's, Not a Second Copy](#authorization-is-the-columns-not-a-second-copy)
 - [What Happens to the Bytes When the Row Changes](#what-happens-to-the-bytes-when-the-row-changes)
-- [Serving a File From an Endpoint](#serving-a-file-from-an-endpoint)
+- [Serving a File Over HTTP](#serving-a-file-over-http)
+  - [Slots Are Derived, Not Declared](#slots-are-derived-not-declared)
+  - [Exposure Is Default-Closed](#exposure-is-default-closed)
+  - [The Wire Contract](#the-wire-contract)
+  - [Serving a File by Hand](#serving-a-file-by-hand)
 - [Exports Ride the Same API](#exports-ride-the-same-api)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -52,6 +56,11 @@ without the second; the second is built entirely on the first.
 | `TomFileReference` | annotation | Marks a column as holding a storage key |
 | `TomFileReferenceKeys` | class | Key generation and store resolution for that annotation |
 | `TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` / `.clearFile` | methods | The entity-level file API |
+| `TomFileRepository` | abstract class | The four-method file contract, independent of SQL |
+| `TomFileSlots` / `TomFileSlot` | class | Reflection-derived `<table>/<column>` slot registry |
+| `TomFileEndpoint` | class | The HTTP handler: POST / GET / HEAD / DELETE over a slot |
+| `TomFileService` / `TomFileServer` | service / component | Mounts the handler at `/files/{entity}/{id}/{column}` |
+| `TomFileSlotException` | class | Slot registration and resolution errors |
 | `TomBlobExportStore` | class | The export module's store, over any blob backend |
 
 ## The Shape of the Design
@@ -338,10 +347,108 @@ behind, which is a housekeeping problem; raising would report a completed
 operation as failed, which is a correctness problem. The key is logged so a
 sweep can find what was left.
 
-## Serving a File From an Endpoint
+## Serving a File Over HTTP
 
-`describeFile` is the metadata read that precedes a download — a caller needs
-`Content-Type` and `Content-Length` before it starts streaming:
+The four repository methods are the server half of file transfer; the kernel's
+`TomHttpFileTransferClient` is the client half. The endpoint between them is
+shipped, because it is the same endpoint in every application: map a URL to an
+entity and a file column, stream the request body into `saveFile`, stream
+`openFile` back out, answer `HEAD` from `describeFile`, `DELETE` with
+`clearFile`. Written by hand once per application, it is four chances per
+application to get a status code or a header name subtly wrong.
+
+Wiring it up is one line per entity:
+
+```dart
+TomFileSlots.register(documentRepository);
+```
+
+That is the whole application-side surface. `TomFileService` mounts itself with
+the rest of the reflected endpoint pipeline — it is a `@tomService` like any
+other, and `initializeRouter()` constructs its `@tomComponent` implementation
+without a bean registration.
+
+### Slots Are Derived, Not Declared
+
+A slot is `<table>/<id>/<column>`, under the endpoint's `/files` base:
+
+```
+POST /files/document/4711/attachment
+```
+
+`document` is the `@TomDbTable(table: …)` name and `attachment` the
+`@TomDbColumn(columnName: …)` name — both read from the entity by reflection.
+There is no mapping table, which matters more than it sounds: a mapping table is
+a second place the column name lives, and a rename that updates one and not the
+other is a runtime 404 rather than a compile error. Here a renamed column
+changes the slot with it. Registration also refuses an entity whose file columns
+are ambiguous — two columns where one's Dart field name equals another's mapped
+column name — because the repository accepts both spellings, and an ambiguous
+slot could otherwise reach a column its URL does not name.
+
+The `id` segment is coerced to the entity's key type; a value that is not one
+(`/files/document/not-a-number/attachment`) is `400`, not a lookup with a
+mangled key.
+
+### Exposure Is Default-Closed
+
+Reflection can see every file column, and must publish none of them by
+accident. Exposure is a field on the annotation, next to the column it exposes:
+
+```dart
+@TomDbColumn(columnName: 'attachment')
+@TomFileReference(keyPrefix: 'documents/attachment', exposed: true)
+String? attachment;
+
+@TomDbColumn(columnName: 'internal_scan')
+@TomFileReference(keyPrefix: 'documents/internal')
+String? internalScan;          // no slot: not addressable over HTTP at all
+```
+
+`exposed` decides **which** column a slot names. It never decides **whether** a
+caller may have it — that stays with the row scope (C-3) and the column grade
+(C-4) the repository already enforces, and the endpoint translates their
+refusals rather than re-deciding them. A column that is exposed *and* graded is
+still refused with `403`; the endpoint does not soften that into `404`, because
+the caller is addressing a slot that exists and they may not have, and a
+repository that says so explicitly should not be second-guessed.
+
+### The Wire Contract
+
+The endpoint answers exactly what `TomHttpFileTransferClient` expects, using the
+kernel's own `tomFileDescriptorHeaders` to write the descriptor — the two halves
+cannot drift, because they share the code that defines the shape.
+
+| Method | Body | Success | Empty slot |
+| ------ | ---- | ------- | ---------- |
+| `POST` / `PUT` | the bytes, with `Content-Type` and optional `Content-Disposition: attachment; filename="…"` | `201` + descriptor JSON | — |
+| `GET` | — | `200` + bytes + descriptor headers | `404` |
+| `HEAD` | — | `200` + descriptor headers | `404` |
+| `DELETE` | — | `204` | `404` |
+
+The descriptor is `{"key", "mediaType", "byteCount", "fileName"?, "storedAt"?}`.
+Note that the client never names a key: the server mints it from the column's
+`keyPrefix`, so a caller cannot address, guess or collide with a storage
+location. `404` on `GET`/`HEAD` deliberately means *both* "the slot holds no
+file" and "there is no such slot" — telling them apart would tell an
+unauthorised caller that the column is there.
+
+Because the upload response carries the descriptor, and the descriptor carries
+the storage key, an HTTP-exposed column must be readable by anyone permitted to
+upload to it. This is intentional: handing the key to a principal who may not
+read the column would be a disclosure. A write-only file column is expressible
+in the repository, and simply is not exposable over HTTP.
+
+Errors are reported as `{"key", "message"}` with the same key the repository
+threw — `storage.file_reference.row_not_found`,
+`column_authorization.read.field_forbidden`, and so on — so a client can
+distinguish causes without parsing prose.
+
+### Serving a File by Hand
+
+Nothing about the four methods requires the shipped endpoint; an application
+that needs a different URL shape, a signed redirect or an inline
+`Content-Disposition` writes its own:
 
 ```dart
 final meta = await repo.describeFile(id, 'attachment');
@@ -357,8 +464,10 @@ return Response.ok(
 );
 ```
 
-Both calls are gated identically, so the metadata read cannot become a side
-channel around the download refusal.
+`describeFile` is the metadata read that precedes a download — a caller needs
+`Content-Type` and `Content-Length` before it starts streaming. Both calls are
+gated identically, so the metadata read cannot become a side channel around the
+download refusal.
 
 ## Exports Ride the Same API
 
@@ -392,6 +501,15 @@ be passed back to `open` would be a trap.
   key scheme, and store resolution.
 - **`TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` /
   `.clearFile`** — the entity-level file API and its cascade.
+- **`TomFileRepository`** — the four-method contract those methods satisfy,
+  named separately so the HTTP endpoint depends on the capability rather than on
+  the SQL implementation.
+- **`TomFileSlots` / `TomFileSlot`** — the reflection-derived slot registry:
+  `register(repository)` publishes an entity's `exposed` file columns as
+  `<table>/<column>`, and `resolve` finds one.
+- **`TomFileEndpoint` / `TomFileService` / `TomFileServer`** — the shipped HTTP
+  handler and the reflected service that mounts it at
+  `/files/{entity}/{id}/{column}`.
 - **`TomBlobExportStore`** — the export module's adaptor.
 
 ## Not Yet Implemented

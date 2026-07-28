@@ -120,6 +120,41 @@ abstract class TomRepository<T extends Object, K> {
   );
 }
 
+/// The subset of a repository the file surfaces need: load a row, and move the
+/// bytes of one of its `@TomFileReference` columns.
+///
+/// Split out of [TomRepository] rather than folded into it because it is what
+/// the HTTP file endpoint depends on, and an endpoint that depended on the full
+/// SQL repository could only ever be exercised against a database. Every method
+/// here is already implemented by [TomSqlDatasourceRepository]; naming them as a
+/// contract costs nothing and makes the endpoint's requirement explicit — five
+/// methods, not a persistence stack.
+abstract class TomFileRepository<T extends Object, K> {
+  /// Loads the entity with the given [id], or `null` if absent (or not visible
+  /// to the current principal under the entity's row scope).
+  Future<T?> findById(K id);
+
+  /// Uploads [bytes] into the file column [fieldName] of [entity] and saves the
+  /// row, returning the stored entity.
+  Future<T> saveFile(
+    T entity,
+    String fieldName,
+    Stream<List<int>> bytes, {
+    String? mediaType,
+    String? fileName,
+  });
+
+  /// Streams the file held by the file column [fieldName] of row [id].
+  Stream<List<int>> openFile(K id, String fieldName);
+
+  /// The descriptor of the file held by [fieldName] on row [id], or `null` when
+  /// the row (or its column) holds nothing.
+  Future<TomStoredBlob?> describeFile(K id, String fieldName);
+
+  /// Clears the file column [fieldName] on [entity], deleting the blob.
+  Future<T> clearFile(T entity, String fieldName);
+}
+
 /// SQL-datasource implementation of [TomRepository].
 ///
 /// On construction it resolves the entity's persistence metadata via
@@ -131,7 +166,8 @@ abstract class TomRepository<T extends Object, K> {
 /// subclass this and override [sqlDialect].
 abstract class TomSqlDatasourceRepository<T extends Object, K>
     extends TomRepository<T, K>
-    with TomQueryBuilder {
+    with TomQueryBuilder
+    implements TomFileRepository<T, K> {
   /// Resolved metadata for the primary-key column.
   late TomColumnInformation primaryKeyColumnInfo;
 

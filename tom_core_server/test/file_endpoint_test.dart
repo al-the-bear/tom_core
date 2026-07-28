@@ -1,0 +1,524 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' show Client;
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
+import 'package:test/test.dart';
+import 'package:tom_core_server/tom_core_server.dart';
+
+import 'fixtures/reflection_fixture.dart'
+    show FixtureApiServer, FixtureDocumentRecord, FixtureFileSlotRecord;
+import 'fixtures/reflection_fixture.reflection.dart';
+
+/// CSFSB1 / CSEXC4 — the framework's HTTP file endpoint, end to end.
+///
+/// The point of the suite is that the two halves of file storage meet: a *real*
+/// [TomHttpFileTransferClient] from the kernel talks to a *real* HTTP server
+/// running the reflected endpoint pipeline, over the wire contract, with no test
+/// double on either side of the socket. If the descriptor shape, the header
+/// names or the status codes ever drift apart, these tests stop passing —
+/// which is the only reason to run a socket in a unit-test suite.
+///
+/// The repository below is in memory on purpose. What the endpoint owes the
+/// system is that it *translates* the repository contract into HTTP: a refused
+/// column becomes 403, an absent row becomes 404, a stream stays a stream. That
+/// the repository enforces C-3/C-4 correctly in the first place is
+/// `file_reference_test.dart`'s job, against MariaDB; asserting it twice would
+/// only mean the endpoint suite could not run without a database.
+
+/// An in-memory [TomFileRepository] over a real [TomBlobStore].
+///
+/// Mirrors the gates `TomSqlDatasourceRepository` applies — the write grade
+/// before an upload, the read grade before a download, `row_not_found` for a row
+/// that is not there (or not visible), `no_file` for a column that holds no key
+/// — because those are exactly the outcomes the endpoint has to map, and a fake
+/// that never refused anything would let a broken mapping pass.
+class _MemoryFileRepository
+    implements TomFileRepository<FixtureFileSlotRecord, int> {
+  _MemoryFileRepository({this.grades = const {}});
+
+  /// Column grades by resource key; an unlisted key is unrestricted.
+  final Map<String, TomAuthState> grades;
+
+  /// The rows, by primary key.
+  final Map<int, FixtureFileSlotRecord> rows = {};
+
+  TomColumnInformation _column(String fieldName) {
+    for (final column in TomAnnotationAnalyzer.findFileColumns(
+      FixtureFileSlotRecord,
+    )) {
+      if (column.declaredName == fieldName ||
+          column.getQueryFieldName() == fieldName) {
+        return column;
+      }
+    }
+    throw TomStorageException(
+      'storage.file_reference.unknown_column',
+      'That field is not a stored-file column of this entity.',
+      parameters: {'field': fieldName},
+    );
+  }
+
+  TomAuthState _grade(TomColumnInformation column) =>
+      TomColumnAuthorization.stateForKey(
+        column.column?.authKey,
+        resolver: (key) => grades[key] ?? TomAuthState.full,
+      );
+
+  TomBlobStore _store(TomColumnInformation column) =>
+      TomFileReferenceKeys.storeFor(column.fileReference!);
+
+  @override
+  Future<FixtureFileSlotRecord?> findById(int id) async => rows[id];
+
+  @override
+  Future<FixtureFileSlotRecord> saveFile(
+    FixtureFileSlotRecord entity,
+    String fieldName,
+    Stream<List<int>> bytes, {
+    String? mediaType,
+    String? fileName,
+  }) async {
+    final column = _column(fieldName);
+    if (!_grade(column).isInteractive) {
+      throw TomColumnAuthorizationException(
+        'column_authorization.write.field_forbidden',
+        'Column "${column.declaredName}" is not writable at your access level.',
+      );
+    }
+    final reference = column.fileReference!;
+    final key = TomFileReferenceKeys.generate(reference, fileName: fileName);
+    await _store(column).put(
+      key: key,
+      bytes: bytes,
+      mediaType: mediaType ?? reference.mediaType,
+      fileName: fileName,
+    );
+    column.setVariableValue(entity, key);
+    return entity;
+  }
+
+  @override
+  Stream<List<int>> openFile(int id, String fieldName) async* {
+    final column = _column(fieldName);
+    final row = rows[id];
+    if (row == null) {
+      throw TomStorageException(
+        'storage.file_reference.row_not_found',
+        'No such record exists, or it is not visible to you.',
+        parameters: {'id': '$id'},
+      );
+    }
+    if (!_grade(column).showsContent) {
+      throw TomColumnAuthorizationException(
+        'column_authorization.read.field_forbidden',
+        'Column "${column.declaredName}" is not readable at your access level.',
+      );
+    }
+    final key = column.getVariableValue(row);
+    if (key is! String || key.isEmpty) {
+      throw TomStorageException(
+        'storage.file_reference.no_file',
+        'That record has no file attached.',
+        parameters: {'id': '$id', 'field': fieldName},
+      );
+    }
+    yield* _store(column).get(key);
+  }
+
+  @override
+  Future<TomStoredBlob?> describeFile(int id, String fieldName) async {
+    final column = _column(fieldName);
+    final row = rows[id];
+    if (row == null) return null;
+    if (!_grade(column).showsContent) {
+      throw TomColumnAuthorizationException(
+        'column_authorization.read.field_forbidden',
+        'Column "${column.declaredName}" is not readable at your access level.',
+      );
+    }
+    final key = column.getVariableValue(row);
+    if (key is! String || key.isEmpty) return null;
+    return _store(column).describe(key);
+  }
+
+  @override
+  Future<FixtureFileSlotRecord> clearFile(
+    FixtureFileSlotRecord entity,
+    String fieldName,
+  ) async {
+    final column = _column(fieldName);
+    final key = column.getVariableValue(entity);
+    column.setVariableValue(entity, null);
+    if (key is String && key.isNotEmpty && column.fileReference!.cascadeDelete) {
+      await _store(column).delete(key);
+    }
+    return entity;
+  }
+}
+
+/// Supplies a plain `dart:io` HTTP client to the kernel's transfer client.
+///
+/// The kernel's default factory delegates to `TomPlatformUtils.current`, whose
+/// fallback implementation has no client — a Flutter or server host installs a
+/// real one. A test is its own host, so it installs one too. (The kernel's own
+/// `file_transfer_test.dart` does exactly this.)
+class _TestClientFactory extends TomHttpClientFactory {
+  @override
+  Client getClient() => Client();
+}
+
+/// A repository that exists only to be *read for its annotations*.
+///
+/// [TomFileSlots.register] resolves the entity's table and file columns by
+/// mirror and never calls a single repository method, so a type that cannot
+/// serve a request is still a perfectly good argument. It has to be a fake
+/// rather than the real `FixtureDocumentRepository`, because constructing that
+/// one resolves its data source and there is no database in this suite.
+class _UnusedDocumentRepository
+    implements TomFileRepository<FixtureDocumentRecord, int> {
+  @override
+  Never noSuchMethod(Invocation invocation) => throw UnimplementedError(
+    'This repository is registered for its annotations only.',
+  );
+}
+
+void main() {
+  setUpAll(() {
+    initializeReflection();
+    TomHttpClientFactory.setGlobalHttpClientFactory(_TestClientFactory());
+  });
+
+  group('TomFileSlots.register (reflection-derived slots)', () {
+    setUp(TomFileSlots.reset);
+    tearDown(TomFileSlots.reset);
+
+    test('derives one slot per exposed column, named by table and column', () {
+      TomFileSlots.register(_MemoryFileRepository());
+      // `internal_notes` is a file column too, and is deliberately absent: the
+      // slot name comes from the mapped column name, and exposure is opt-in.
+      expect(
+        TomFileSlots.slots,
+        unorderedEquals([
+          'fixture_file_slot/poster',
+          'fixture_file_slot/graded_poster',
+        ]),
+      );
+    });
+
+    test('an entity written before exposure existed publishes nothing', () {
+      // FixtureDocumentRecord (CSFS1) has two @TomFileReference columns and
+      // marks neither exposed. Default-closed means adding the endpoint did not
+      // silently put its files on the network.
+      expect(
+        () => TomFileSlots.register(_UnusedDocumentRepository()),
+        throwsA(
+          isA<TomFileSlotException>().having(
+            (e) => e.key,
+            'key',
+            'file_endpoint.no_exposed_column',
+          ),
+        ),
+      );
+    });
+
+    test('registering the same table twice is refused', () {
+      TomFileSlots.register(_MemoryFileRepository());
+      expect(
+        () => TomFileSlots.register(_MemoryFileRepository()),
+        throwsA(
+          isA<TomFileSlotException>().having(
+            (e) => e.key,
+            'key',
+            'file_endpoint.duplicate_slot',
+          ),
+        ),
+      );
+    });
+
+    test('a non-exposed column resolves to no slot', () {
+      TomFileSlots.register(_MemoryFileRepository());
+      expect(
+        TomFileSlots.resolve('fixture_file_slot', 'internal_notes'),
+        isNull,
+      );
+      // …and neither does its Dart field name, which the repository would also
+      // have accepted.
+      expect(
+        TomFileSlots.resolve('fixture_file_slot', 'internalNotes'),
+        isNull,
+      );
+    });
+  });
+
+  group('the endpoint over a real socket', () {
+    late _MemoryFileRepository repository;
+    late HttpServer server;
+    late TomHttpFileTransferClient client;
+
+    /// Boots the reflected router behind a real HTTP server and points a real
+    /// client at it. [grades] seeds the C-4 resolver the fake repository reads.
+    Future<void> start({Map<String, TomAuthState> grades = const {}}) async {
+      TomBean.resetBeanContext();
+      TomFileSlots.reset();
+      TomBlobStoreInfo.stores.clear();
+      TomBlobStoreInfo.register('files', TomMemoryBlobStore(), asDefault: true);
+
+      repository = _MemoryFileRepository(grades: grades);
+      repository.rows[1] = FixtureFileSlotRecord()
+        ..id = 1
+        ..title = 'a row that exists';
+      TomFileSlots.register(repository);
+
+      // The fixture service needs its bean; TomFileServer deliberately does not
+      // get one, because a framework-shipped component with a no-argument
+      // constructor must not force every application to register it.
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      final router = TomEndpointRouting().initializeRouter();
+      final handler = Pipeline()
+          .addMiddleware(
+            contextSetupMiddleware('file endpoint test', {
+              TomRequestLogInfo.contextName: TomRequestLogInfo(),
+            }),
+          )
+          .addHandler(router.call);
+      server = await shelf_io.serve(handler, InternetAddress.loopbackIPv4, 0);
+      client = TomHttpFileTransferClient(
+        baseUri: Uri.parse('http://127.0.0.1:${server.port}/files'),
+        includeBearerAuthentication: false,
+      );
+    }
+
+    tearDown(() async {
+      client.close();
+      await server.close(force: true);
+      TomBean.resetBeanContext();
+      TomFileSlots.reset();
+      TomBlobStoreInfo.stores.clear();
+    });
+
+    test('upload, describe, download and delete round-trip over HTTP', () async {
+      await start();
+      const slot = 'fixture_file_slot/1/poster';
+      final payload = utf8.encode('the bytes that crossed the socket');
+
+      final uploaded = await client.upload(
+        slot: slot,
+        source: TomFileSource.bytes(
+          'poster.txt',
+          payload,
+          mediaType: 'text/plain',
+        ),
+      );
+      expect(uploaded.byteCount, payload.length);
+      expect(uploaded.mediaType, startsWith('text/plain'));
+      expect(uploaded.fileName, 'poster.txt');
+      // The server minted the key; the client never named one.
+      expect(uploaded.key, startsWith('fixture/poster/'));
+      expect(repository.rows[1]!.poster, uploaded.key);
+
+      final described = await client.describe(slot);
+      expect(described, isNotNull);
+      expect(described!.key, uploaded.key);
+      expect(described.byteCount, payload.length);
+      expect(described.fileName, 'poster.txt');
+
+      final downloaded = <int>[];
+      await for (final chunk in client.download(slot)) {
+        downloaded.addAll(chunk);
+      }
+      expect(utf8.decode(downloaded), 'the bytes that crossed the socket');
+
+      expect(await client.remove(slot), isTrue);
+      expect(repository.rows[1]!.poster, isNull);
+      expect(await client.describe(slot), isNull);
+    });
+
+    test('a re-upload replaces the file and mints a new key', () async {
+      await start();
+      const slot = 'fixture_file_slot/1/poster';
+      final first = await client.upload(
+        slot: slot,
+        source: TomFileSource.bytes('a.txt', utf8.encode('first')),
+      );
+      final second = await client.upload(
+        slot: slot,
+        source: TomFileSource.bytes('b.txt', utf8.encode('second version')),
+      );
+      expect(second.key, isNot(first.key));
+      expect(second.byteCount, 'second version'.length);
+      expect(repository.rows[1]!.poster, second.key);
+    });
+
+    test('a non-exposed column is unreachable', () async {
+      await start();
+      const slot = 'fixture_file_slot/1/internal_notes';
+      // The column exists, holds files, and is addressable by the repository —
+      // it is simply not published, and the endpoint will not admit it exists.
+      //
+      // A *read* is indistinguishable from an empty slot on purpose: the wire
+      // contract makes 404 mean "no file", so `describe` reports null rather
+      // than raising. That is the right answer to give a caller — telling them
+      // apart would be telling them the column is there. The raw response below
+      // is what proves the server never resolved a slot at all.
+      expect(await client.describe(slot), isNull);
+      final head = await _raw(server.port, 'HEAD', '/files/$slot');
+      expect(head.statusCode, 404);
+
+      // A *write* has no such ambiguity: there is nothing to write to, and the
+      // client surfaces it.
+      await expectLater(
+        client.upload(
+          slot: slot,
+          source: TomFileSource.bytes('leak.txt', utf8.encode('nope')),
+        ),
+        throwsA(isA<TomFileTransferException>()),
+      );
+      final response = await _raw(server.port, 'GET', '/files/$slot');
+      expect(response.statusCode, 404);
+      expect(
+        jsonDecode(await response.transform(utf8.decoder).join())['key'],
+        'file_endpoint.unknown_slot',
+      );
+      // …and nothing was stored under it.
+      expect(repository.rows[1]!.internalNotes, isNull);
+    });
+
+    test('an exposed but C-4 refused column answers 403, not 404', () async {
+      await start(
+        grades: {'fixture.file_slot.graded_poster': TomAuthState.none},
+      );
+      final response = await _raw(
+        server.port,
+        'GET',
+        '/files/fixture_file_slot/1/graded_poster',
+      );
+      expect(response.statusCode, 403);
+      expect(
+        jsonDecode(await response.transform(utf8.decoder).join())['key'],
+        'column_authorization.read.field_forbidden',
+      );
+    });
+
+    test('an exposed column the caller may read but not write refuses the '
+        'upload with 403', () async {
+      await start(
+        grades: {'fixture.file_slot.graded_poster': TomAuthState.read},
+      );
+      final response = await _raw(
+        server.port,
+        'POST',
+        '/files/fixture_file_slot/1/graded_poster',
+        body: utf8.encode('denied'),
+      );
+      expect(response.statusCode, 403);
+      expect(
+        jsonDecode(await response.transform(utf8.decoder).join())['key'],
+        'column_authorization.write.field_forbidden',
+      );
+    });
+
+    test('a row that does not exist answers 404', () async {
+      await start();
+      final response = await _raw(
+        server.port,
+        'GET',
+        '/files/fixture_file_slot/99/poster',
+      );
+      expect(response.statusCode, 404);
+    });
+
+    test('a key that is not the entity key answers 400', () async {
+      await start();
+      final response = await _raw(
+        server.port,
+        'GET',
+        '/files/fixture_file_slot/not-a-number/poster',
+      );
+      expect(response.statusCode, 400);
+      expect(
+        jsonDecode(await response.transform(utf8.decoder).join())['key'],
+        'file_endpoint.invalid_id',
+      );
+    });
+
+    test('HEAD answers from the descriptor without a body', () async {
+      await start();
+      const slot = 'fixture_file_slot/1/poster';
+      await client.upload(
+        slot: slot,
+        source: TomFileSource.bytes(
+          'h.txt',
+          utf8.encode('head me'),
+          mediaType: 'text/plain',
+        ),
+      );
+      final response = await _raw(
+        server.port,
+        'HEAD',
+        '/files/fixture_file_slot/1/poster',
+      );
+      expect(response.statusCode, 200);
+      // The descriptor travels whole in x-tom-file, which is what makes the
+      // content-length a HEAD cannot carry unnecessary.
+      final descriptor = jsonDecode(response.headers.value('x-tom-file')!);
+      expect(descriptor['byteCount'], 'head me'.length);
+      expect(descriptor['fileName'], 'h.txt');
+    });
+
+    test('deleting a slot that holds no file answers 404', () async {
+      await start();
+      final response = await _raw(
+        server.port,
+        'DELETE',
+        '/files/fixture_file_slot/1/poster',
+      );
+      expect(response.statusCode, 404);
+    });
+
+    test('a large upload streams through without being buffered whole',
+        () async {
+      await start();
+      const slot = 'fixture_file_slot/1/poster';
+      // Comfortably more than one socket chunk, so the body genuinely arrives
+      // in pieces and the endpoint has to hand a stream on rather than a list.
+      final payload = List<int>.generate(512 * 1024, (i) => i % 251);
+      final uploaded = await client.upload(
+        slot: slot,
+        source: TomFileSource.bytes('big.bin', payload),
+      );
+      expect(uploaded.byteCount, payload.length);
+
+      var downloadedLength = 0;
+      var chunks = 0;
+      await for (final chunk in client.download(slot)) {
+        downloadedLength += chunk.length;
+        chunks++;
+      }
+      expect(downloadedLength, payload.length);
+      expect(chunks, greaterThan(0));
+    });
+  });
+}
+
+/// Issues a raw request, bypassing the client, so a status code the client
+/// turns into an exception can be asserted directly.
+Future<HttpClientResponse> _raw(
+  int port,
+  String method,
+  String path, {
+  List<int>? body,
+}) async {
+  final http = HttpClient();
+  try {
+    final request = await http.open(method, '127.0.0.1', port, path);
+    if (body != null) {
+      request.headers.contentType = ContentType('application', 'octet-stream');
+      request.add(body);
+    }
+    return await request.close();
+  } finally {
+    http.close();
+  }
+}

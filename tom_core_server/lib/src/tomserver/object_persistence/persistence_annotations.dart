@@ -170,6 +170,13 @@ class TomDbScope {
 /// a tenant), [mediaType] is the type assumed when an upload names none, and
 /// [cascadeDelete] governs whether deleting the row deletes the blob — set it
 /// `false` for a key the application shares between rows or manages itself.
+///
+/// [exposed] opts the column into the framework's HTTP file endpoint
+/// (`TomFileService`). It defaults to `false`, and that default is the point:
+/// whether a file may be fetched over HTTP is an authorization decision, so it
+/// is declared here — next to the column it exposes — rather than in a separate
+/// table that can drift away from it. Reflection must never publish a column by
+/// accident.
 class TomFileReference {
   /// The named blob store to use, or `null` for the default store.
   final String? store;
@@ -186,12 +193,21 @@ class TomFileReference {
   /// annotation library does not depend on the storage module.
   final String mediaType;
 
+  /// Whether this column is reachable over the framework's HTTP file endpoint.
+  ///
+  /// Default-closed. Setting it `true` makes the column addressable as the slot
+  /// `<table>/<id>/<column>`; it does **not** decide *whether* a caller may have
+  /// it, which stays with the row scope (C-3) and column grade (C-4) the
+  /// repository already enforces.
+  final bool exposed;
+
   /// Declares that the annotated column holds a blob storage key.
   const TomFileReference({
     this.store,
     this.keyPrefix = '',
     this.cascadeDelete = true,
     this.mediaType = 'application/octet-stream',
+    this.exposed = false,
   });
 }
 

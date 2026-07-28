@@ -526,6 +526,22 @@ class TomEndpointHandler {
     // transaction that has already committed.
     await _recordInvocationAudit(TomAuditOutcome.succeeded);
     try {
+      // A handler that returns a shelf Response has already decided everything
+      // this block would decide — status, headers, and a body that may be an
+      // un-materialised stream. Answered first, before the conversion chain,
+      // because that chain's fall-through is `convertToJsonString(result)`: a
+      // Response is not a reflected DTO, so converting it throws and the
+      // handler's own answer is lost to a 500. This is the escape hatch that
+      // makes streaming endpoints (see `TomFileService`) possible at all.
+      if (result is Response) {
+        if (metadata.endpoint.logRequests == true) {
+          tomLog.info(
+            "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${result.statusCode} [handler-supplied response]",
+          );
+          logInfo.hasBeenLogged = true;
+        }
+        return result;
+      }
       String? resultString = result == null
           ? null
           : result is String
@@ -559,9 +575,6 @@ class TomEndpointHandler {
           headers: headers,
           encoding: Encoding.getByName(metadata.endpoint.produces.charset),
         );
-      }
-      if (result is Response) {
-        response = result;
       }
       if (result == null) {
         response = Response.ok("");
@@ -789,7 +802,14 @@ class TomEndpointRouting {
     );
     var methodMetadata = getClassMethodMetadata(serviceType);
     if (methodMetadata.isNotEmpty) {
-      var instanceMirror = tomReflector.reflect(serviceInstance!);
+      if (serviceInstance == null) {
+        throw TomEndpointPipelineException(
+          "endpoint_pipeline.initialize_router.no_service_instance",
+          "No implementation instance could be resolved for service ${serviceType.qualifiedName}: register a bean for its @tomComponent implementation.",
+          parameters: {'service': serviceType.qualifiedName},
+        );
+      }
+      var instanceMirror = tomReflector.reflect(serviceInstance);
       var instanceClassMirror =
           tomReflector.reflectType(serviceInstance.runtimeType)
               as ClassMirror;
@@ -1025,12 +1045,17 @@ class TomEndpointRouting {
   /// Fallback resolution for an interface-based service: finds a component
   /// class that extends or implements [serviceType] and returns its bean,
   /// otherwise returns the passed-in [serviceInstance].
+  ///
+  /// A component with no registered bean is constructed here (see
+  /// [instantiateComponent]) rather than left unresolved, and a resolved
+  /// instance is never overwritten by a later, unresolvable candidate.
   Object? findServiceInstance(
     List<ClassMirror> componentClasses,
     ClassMirror serviceType,
     Object? serviceInstance,
   ) {
     for (var instanceType in componentClasses) {
+      if (serviceInstance != null) break;
       if (((instanceType.superclass != null &&
               instanceType.superclass!.qualifiedName ==
                   serviceType.qualifiedName) ||
@@ -1043,9 +1068,41 @@ class TomEndpointRouting {
         serviceInstance = TomBean.getBeanByType(
           instanceType.dynamicReflectedType,
         );
+        serviceInstance ??= instantiateComponent(instanceType);
       }
     }
     return serviceInstance;
+  }
+
+  /// Constructs [componentType] through its no-argument constructor and
+  /// registers it as the bean for its type, or returns `null` when it cannot be
+  /// built that way.
+  ///
+  /// The framework ships services of its own — the health check, the file
+  /// endpoint — and a library that adds one must not force every existing
+  /// application to register a bean it has never heard of. A `@tomComponent`
+  /// that needs no arguments is fully described by its own declaration, so
+  /// building it is not a guess. Anything with a real constructor still belongs
+  /// to the application, and stays unresolved here.
+  ///
+  /// The instance is registered so that the router and any later
+  /// `TomBean.getBeanByType` see the same object; an application that registers
+  /// its own bean first is never overridden, because this only runs when the
+  /// lookup came back empty.
+  Object? instantiateComponent(ClassMirror componentType) {
+    try {
+      final instance = componentType.newInstance('', const []);
+      TomBean.withType(componentType.dynamicReflectedType, instance);
+      tomLog.trace(
+        "No bean registered for ${componentType.qualifiedName}; constructed the default instance.",
+      );
+      return instance;
+    } on Object catch (error) {
+      tomLog.trace(
+        "Cannot construct a default instance of ${componentType.qualifiedName}: $error",
+      );
+      return null;
+    }
   }
 }
 
