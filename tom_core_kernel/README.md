@@ -136,8 +136,7 @@ every change.
 
 Modules ship runnable sample folders under [`example/`](example/), and the
 top-level [`run_all_samples.dart`](example/run_all_samples.dart) runs the set in
-[`example/samples/`](example/samples/) in sequence. `scheduling` has no sample
-folder.
+[`example/samples/`](example/samples/) in sequence.
 
 | Sample | Demonstrates |
 | ------ | ------------ |
@@ -152,6 +151,7 @@ folder.
 | [`example/logging/`](example/logging/) | Structured / isolate / remote logging |
 | [`example/resources/`](example/resources/) | Text & config resource providers |
 | [`example/samples/result/`](example/samples/result/) | The success-or-error envelope, error details, and its wire form |
+| [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, and what at-least-once asks of a job body |
 | [`example/json/`](example/json/) · [`example/timezoned/`](example/timezoned/) · [`example/settings/`](example/settings/) · [`example/shutdown_cleanup/`](example/shutdown_cleanup/) · [`example/http_connection/`](example/http_connection/) · [`example/little_things/`](example/little_things/) · [`example/reflection/`](example/reflection/) | The remaining utility modules |
 
 Run the whole set:

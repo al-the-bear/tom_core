@@ -9,6 +9,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
+  - [Runnable examples](#runnable-examples)
 - [The Execution Guarantee](#the-execution-guarantee)
 - [Schedules](#schedules)
 - [Declaring a Job](#declaring-a-job)
@@ -88,6 +89,25 @@ the day it happens to run.
 See [Declaring a Job](#declaring-a-job) for the full annotation, and
 [Job Definitions](#job-definitions) for the hand-written form, which stays
 available for the jobs an annotation cannot express.
+
+### Runnable examples
+
+Everything in this guide is demonstrated, and asserted, in
+[`example/samples/scheduling/`](../../example/samples/scheduling/). It needs no
+database and no containers: an in-memory store, an in-memory lease lock and a
+clock the examples move by hand, so every outcome is an equality rather than a
+timing.
+
+| File | What it shows |
+| ---- | ------------- |
+| [`01_memory_substrate_example.dart`](../../example/samples/scheduling/01_memory_substrate_example.dart) | One window from registration to a completed row; what a `TomJobRun` records; what the lease is taken on |
+| [`02_declared_job_example.dart`](../../example/samples/scheduling/02_declared_job_example.dart) | `@TomScheduledJob` discovery, a malformed declaration failing the scan by name, and declared jobs coexisting with hand-written ones |
+| [`03_schedule_kinds_example.dart`](../../example/samples/scheduling/03_schedule_kinds_example.dart) | What each schedule kind answers, an event job in motion, and every missed-window policy across one outage — including a one-shot deadline that survives it |
+| [`04_execution_guarantee_example.dart`](../../example/samples/scheduling/04_execution_guarantee_example.dart) | The duplicate a retry produces, the two abandonment cases, and a fencing token making a displaced node harmless |
+
+```bash
+dart run example/samples/scheduling/00_run_all_examples.dart
+```
 
 ## The Execution Guarantee
 
