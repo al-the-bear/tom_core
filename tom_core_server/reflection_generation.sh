@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-# Regenerate test/fixtures/reflection_fixture.reflection.dart — the reflection
-# metadata the test suite needs so ClassMirror/InstanceMirror construction stops
-# throwing "Reflection has not been initialized". The reflection root is
-# test/fixtures/reflection_fixture.dart, configured in build.yaml.
+# Regenerate this project's reflection metadata — without it,
+# ClassMirror/InstanceMirror construction throws "Reflection has not been
+# initialized". Two roots, both configured in build.yaml:
+#
+#   test/fixtures/reflection_fixture.dart
+#     → test/fixtures/reflection_fixture.reflection.dart, for the test suite.
+#   example/scheduling/cluster/cluster_reflection.dart
+#     → example/scheduling/cluster/cluster_reflection.reflection.dart, for the
+#       two-node cluster demonstration, which runs as standalone processes and
+#       so cannot borrow the test fixture's.
 #
 # Runs flag-free: the generator scans the current project only (framework
 # default scan '.', non-recursive), so no --nested and no workspace registry

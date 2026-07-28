@@ -10,5 +10,15 @@ targets:
           # test/fixtures/reflection_fixture.reflection.dart, whose
           # initializeReflection() the test suite calls in setUpAll.
           - test/fixtures/reflection_fixture.dart
+          # The cluster demonstration's reflection root. It needs its own,
+          # separate from the test fixture's, because it is not a test: the demo
+          # runs as standalone processes under
+          # example/scheduling/cluster/run_cluster_demo.sh and cannot reach into
+          # test/. Every read the SQL scheduler stores perform goes through
+          # executeQuery<T>, which resolves T through the reflector, so without
+          # this the demo fails at its first query with "Reflection has not been
+          # initialized". Emits
+          # example/scheduling/cluster/cluster_reflection.reflection.dart.
+          - example/scheduling/cluster/cluster_reflection.dart
         options:
           formatted: true
