@@ -270,6 +270,83 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// the auth server does not scope service logins by client.
   String? serviceAccountClient;
 
+  // ---------------------------------------------------------------------------
+  // Outbound mail (SMTP)
+  //
+  // The declarations behind `TomSmtpSettings.fromConfiguration`. Every field is
+  // optional: [smtpHost] unset is how a deployment says "this server does not
+  // send mail", and the messaging module answers it by registering a no-op
+  // transport rather than failing to start. That default matters — a test run,
+  // a local build and a CI job all want a server that composes messages and
+  // never delivers them.
+  //
+  // See `messaging/smtp_transport.dart` and `doc/messaging.md`.
+  // ---------------------------------------------------------------------------
+
+  /// The mail server's host name; `null` or blank means this deployment sends
+  /// no mail.
+  ///
+  /// Deployment-specific but not secret, like [authServerLoginUri]
+  /// (`codespecs_mapping.md` §5.16, CE-CF).
+  String? smtpHost;
+
+  /// The mail server's port. `0` is the "unconfigured" sentinel — the same
+  /// convention as [port] — and lets the transport pick the default that goes
+  /// with [smtpSecurity] (25, 587 or 465) rather than forcing every deployment
+  /// to restate a number the protocol already implies.
+  int smtpPort = 0;
+
+  /// How the connection is secured: `none`, `startTls` or `implicitTls`.
+  ///
+  /// Defaults to `startTls`, which is both the common case on port 587 and the
+  /// safe one: an unrecognised value falls back to it too, because failing
+  /// *closed* on a typo is the only acceptable direction for a setting that
+  /// decides whether a password crosses the network in the clear.
+  String smtpSecurity = 'startTls';
+
+  /// The login name presented to the mail server; `null` or blank for an
+  /// unauthenticated relay.
+  String? smtpUsername;
+
+  /// The mail server password — **secret-bearing** per §5.16.
+  ///
+  /// Its *declaration* lives here (so the shape and the source key are known);
+  /// its **value is never authored**. It is supplied out-of-band at deploy time
+  /// through the ordinary CE-CF precedence chain — OS environment, `.env`, or
+  /// command line — and must never be written into a spec or a checked-in
+  /// configuration tree, the same rule that governs [serviceAccountCredential],
+  /// [privateKey] and the JWT keys above.
+  ///
+  /// Supplying [smtpUsername] without this value is rejected when the settings
+  /// are built, so the omission surfaces at startup naming the setting rather
+  /// than as a `535` on the first notification.
+  String? smtpPassword;
+
+  /// The address mail is sent from when a message does not name its own.
+  ///
+  /// Most relays require the envelope sender to be an address they are
+  /// authorised to send for, so this is effectively mandatory for any
+  /// deployment that actually sends.
+  String? smtpFromAddress;
+
+  /// The display name shown beside [smtpFromAddress]; `null` to send the bare
+  /// address.
+  String? smtpFromName;
+
+  /// The name announced in `EHLO`.
+  ///
+  /// Some relays check that it resolves. `localhost` is accepted by most and is
+  /// the honest answer for a server that has no public name.
+  String smtpClientName = 'localhost';
+
+  /// Whether to accept a mail server certificate that does not validate.
+  ///
+  /// `false`, and it should stay that way in any deployment. It exists because
+  /// self-signed certificates are common on internal relays, and a developer
+  /// who cannot turn this on will set [smtpSecurity] to `none` instead — which
+  /// is strictly worse, since it sends [smtpPassword] in the clear.
+  bool smtpAllowInsecureCertificate = false;
+
   /// The bind host. Empty (the default) makes [TomServer.start] listen on
   /// [InternetAddress.anyIPv4]; set a concrete host to bind a specific address.
   /// (The previous `"t"`/`"0"` defaults were invalid addresses — bug §63.)

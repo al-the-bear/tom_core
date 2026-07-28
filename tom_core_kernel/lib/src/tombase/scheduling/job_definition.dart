@@ -130,6 +130,53 @@ class TomRetryPolicy {
 }
 
 // =============================================================================
+// PERMANENT FAILURE
+// =============================================================================
+
+/// Marks an error as one that retrying cannot fix.
+///
+/// A [TomRetryPolicy] answers "how many times", but some failures should not be
+/// attempted a second time at all: a malformed address, a rejected credential,
+/// a request the far side answered with "never". Retrying those burns the whole
+/// budget on an outcome that was decided at the first attempt, and — worse —
+/// delays the *report* of a failure the caller could have acted on immediately.
+///
+/// The scheduler already draws this line once: a body factory that throws is
+/// failed outright rather than retried, because it would throw identically next
+/// time. This mixin extends the same judgement to the body itself, which is the
+/// only party that can tell a refusal from an outage.
+///
+/// Mix it into an existing exception to classify it, or throw
+/// [TomPermanentJobFailure] when there is no type to reuse:
+///
+/// ```dart
+/// class MailRejected extends TomException with TomPermanentFailure { … }
+/// ```
+///
+/// The default remains *transient*. An unrecognised error is retried, because
+/// retrying a permanent failure costs a few wasted attempts whereas dropping a
+/// transient one loses the work.
+mixin TomPermanentFailure {}
+
+/// A ready-made [TomPermanentFailure] for bodies with no exception type of
+/// their own.
+class TomPermanentJobFailure implements Exception, TomPermanentFailure {
+  /// Why the work can never succeed.
+  final String message;
+
+  /// The error this conclusion was drawn from, when there was one.
+  final Object? cause;
+
+  /// Creates a permanent failure.
+  const TomPermanentJobFailure(this.message, {this.cause});
+
+  @override
+  String toString() => cause == null
+      ? 'TomPermanentJobFailure: $message'
+      : 'TomPermanentJobFailure: $message ($cause)';
+}
+
+// =============================================================================
 // ALERTING
 // =============================================================================
 

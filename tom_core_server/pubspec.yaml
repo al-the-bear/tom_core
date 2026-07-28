@@ -20,6 +20,9 @@ dependencies:
   # Used directly by the audit trail's hash chain (audit/audit_sink.dart);
   # declared explicitly rather than relied on as a transitive dependency.
   crypto: ^3.0.0
+  # StreamQueue drives the SMTP line protocol (messaging/smtp_transport.dart);
+  # declared explicitly for the same reason as crypto above.
+  async: ^2.11.0
 
   http: any
   uuid: any

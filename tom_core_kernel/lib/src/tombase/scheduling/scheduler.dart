@@ -710,6 +710,11 @@ class TomScheduler implements TomClosable {
   }
 
   /// Fails one attempt, scheduling a retry when the policy allows one.
+  ///
+  /// Two things can cut the retry budget short: exhausting it, and an error the
+  /// body classified as [TomPermanentFailure]. The second is checked first
+  /// because it is the stronger statement — "no attempt will ever succeed"
+  /// makes "you have two attempts left" irrelevant.
   Future<void> _failAttempt(
     TomJobDefinition job,
     TomJobRun run,
@@ -717,7 +722,8 @@ class TomScheduler implements TomClosable {
     StackTrace stack,
   ) async {
     final now = clock();
-    if (!job.retryPolicy.allowsRetryAfter(run.attempt)) {
+    if (error is TomPermanentFailure ||
+        !job.retryPolicy.allowsRetryAfter(run.attempt)) {
       await _failFinally(job, run, error, stack);
       return;
     }

@@ -93,6 +93,7 @@ abstract, so other backends can be added.
 | `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor` | Authentication service + adaptor annotations |
 | `authorization` | `TomAuthorizationCache` | Isolate-backed authorization cache |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints |
+| `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `HealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException` | Server exception base (extends kernel `TomException`) |
@@ -137,6 +138,7 @@ annotated entities and are documented in [`doc/`](doc/).
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
 | [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Auth service + authorization cache |
 | [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain |
+| [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox |
 | [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
 
 Run a single example:

@@ -40,6 +40,13 @@ class BoomCommand extends TomCommand {
   Future<Object?> execute() async => throw StateError(message);
 }
 
+/// A command whose failure the body has classified as unfixable by retrying.
+class PermanentlyBoomCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async =>
+      throw const TomPermanentJobFailure('the address does not exist');
+}
+
 /// A command that outlives a short job timeout.
 class SlowCommand extends TomCommand {
   final Duration delay;
@@ -1581,6 +1588,55 @@ void main() {
         expect(run.attempt, 1);
         expect(alerts.where((a) => a.kind == TomJobAlertKind.runFailed),
             hasLength(1));
+      });
+
+      test('a permanent failure is not retried even with budget left',
+          () async {
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob(
+          body: (_) => PermanentlyBoomCommand(),
+          retry: const TomRetryPolicy(maxAttempts: 5),
+        ));
+
+        final past = clock.now.subtract(const Duration(hours: 1));
+        await store.enqueue(TomJobRun(
+            id: 'a', jobName: 'daily', scheduledFor: past, runAt: past));
+
+        await scheduler.tick();
+        await pumpEventQueue();
+
+        final run = (await store.all()).firstWhere((r) => r.id == 'a');
+        // Four attempts were still available; the classification overrides
+        // them, because "no attempt can succeed" makes the budget irrelevant.
+        expect(run.state, TomJobRunState.failed);
+        expect(run.attempt, 1);
+        expect(alerts.where((a) => a.kind == TomJobAlertKind.attemptFailed),
+            isEmpty);
+        expect(alerts.where((a) => a.kind == TomJobAlertKind.runFailed),
+            hasLength(1));
+      });
+
+      test('an unclassified failure is still retried', () async {
+        // The default must stay transient: retrying a permanent failure wastes
+        // attempts, but dropping a transient one loses the work.
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob(
+          body: (_) => BoomCommand(),
+          retry: const TomRetryPolicy(maxAttempts: 5, jitter: 0),
+        ));
+
+        final past = clock.now.subtract(const Duration(hours: 1));
+        await store.enqueue(TomJobRun(
+            id: 'a', jobName: 'daily', scheduledFor: past, runAt: past));
+
+        await scheduler.tick();
+        await pumpEventQueue();
+
+        final run = (await store.all()).firstWhere((r) => r.id == 'a');
+        expect(run.state, TomJobRunState.pending);
+        expect(run.attempt, 2);
       });
 
       test('an attempt that overruns the timeout is failed and retried',
