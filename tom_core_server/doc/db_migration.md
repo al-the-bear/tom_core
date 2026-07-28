@@ -138,7 +138,7 @@ needs a database to do it.
 
 ### The Application's Entities
 
-`TomSchemaConvergenceCheck` (`ce-db.schema-convergence`) takes the **expected**
+`TomSchemaConvergenceCheck` (`ce-mg.schema-convergence`) takes the **expected**
 schema from the reflected `@TomDbTable` / `@TomDbColumn` declarations on the
 application's entities, and the **actual** schema by replaying the migration
 chain's DDL text through `TomSchemaDdlReader`. A column an entity declares and

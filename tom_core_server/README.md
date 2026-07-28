@@ -24,7 +24,13 @@ observable state, security, resources) and adds everything a service needs:
 - an **ORM-style persistence layer** — repositories with type-safe queries
   built from expression operators, persistence annotations, and a query
   builder, over pluggable **datasources** (MariaDB/MySQL driver included);
-- **versioned schema migrations** and **local/XA transaction** coordination;
+- **versioned schema migrations** — with a convergence check that the entities,
+  the migration chain and the live database still agree — and **local/XA
+  transaction** coordination;
+- an **audit trail** that is attributable and tamper-evident, **outbound
+  messaging** with a durable outbox, **tabular export** to CSV/XLSX/PDF,
+  **streaming blob storage** behind one contract, and relational **job
+  scheduling** for a cluster that shares no filesystem;
 - server **configuration** (typed config + YAML resources), an isolate-backed
   **cache**, **authentication/authorization** services, and **health** endpoints.
 
@@ -64,34 +70,40 @@ abstract, so other backends can be added.
 | ---- | -------------- |
 | `TomServer` | The shelf-based HTTP host and its middleware pipeline |
 | `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` | Endpoint declaration and the request-handling pipeline |
-| `TomService` / `TomApiImplementation` | Annotations that turn a class into a routed API |
+| `TomService` / `TomApiImplementation` / `TomTransactional` | Annotations that turn a class into a routed API, and mark a handler transactional |
+| `TomFileEndpoint` / `TomFileSlots` / `TomFileSlot` | Upload/download/probe/delete over a `<table>/<id>/<column>` slot derived from the entity's own annotations — registered per repository, exposed only where `@TomFileReference` says so |
+| `TomErrorHandler` / `TomDefaultErrorHandler` | Maps a thrown exception onto the response the caller sees |
 
 ### Persistence (`object_persistence`, `datasources`)
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomRepository` / `TomSqlDatasourceRepository` | CRUD + type-safe query repository |
-| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` / `TomFileReference` | Entity-mapping annotations |
+| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` / `TomFileReference` / `TomDbScope` | Entity-mapping annotations |
 | `TomQueryBuilder` + `Eq` / `And` / `Like` / `In` / `Gte` … | Type-safe query expressions |
+| `TomAggregate` + `countAll` / `sum` / `avg` / `min` / `max`, `TomGroupedSelect`, `TomGroupedRow` | Grouping and aggregation — results come back as group keys plus aggregate values, not entities |
+| `TomQuerySentenceCompiler` | Compiles a readable query sentence (`find by name = :name order by age desc`) into the same query objects the builder produces |
+| `TomDataScope` / `TomDataScopeRegistry` / `TomColumnAuthorization` | Row scoping ANDed into every query, and per-column read/write rights enforced by the repository |
 | `TomDataSource` / `MariaDbDatasource` / `MariaDbXADatasource` | Connection drivers (MariaDB/MySQL) |
 | `TomDbType` family / `TomStandardSqlDialect` | Typed columns and SQL rendering |
-| `TomSelect` / `TomCount` / `TomDelete` | Generated query objects |
+| `TomSelect` / `TomCount` / `TomDelete` / `TomGroupedSelect` / `TomLiteralSelect` | Generated query objects, plus the raw-SQL escape hatch |
 
 ### Schema & transactions (`db_migration`, `transactions`)
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomDbMigrator` / `TomDbMigrations` / `TomDbVersion` | Versioned schema migrations (MariaDB adapter) |
+| `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `file_storage`, `scheduling`, `healthcheck`, `cmdline`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `file_storage`, `scheduling`, `healthcheck`, `cmdline`, `little_things`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
 | `configuration` | `TomBaseServerConfiguration`, `TomServerConfigResourceProvider`, `TomConfig<T>`, `TomYaml` | Typed config + YAML resources |
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
-| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor` | Authentication service + adaptor annotations |
-| `authorization` | `TomAuthorizationCache` | Isolate-backed authorization cache |
+| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin` | Authentication service and adaptor annotations; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; and a server's own login when it calls another service as itself |
+| `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; and delegation of those roles by explicit share, out-of-office window, or revocable hand-over |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
 | `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
@@ -99,7 +111,7 @@ abstract, so other backends can be added.
 | `scheduling` | `TomSqlJobStore`, `TomSqlLeaseLock` | The kernel's job-store and lease-lock contracts over a shared database, so a cluster whose nodes share no filesystem still runs each window exactly once |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `HealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
-| `little_things` | `TomServerException` | Server exception base (extends kernel `TomException`) |
+| `little_things` | `TomServerException`, `LoginException` | Server exception base (extends kernel `TomException`) and the login failure it raises |
 
 ## Quick start
 
@@ -139,7 +151,7 @@ annotated entities and are documented in [`doc/`](doc/).
 | [`example/transactions/`](example/transactions/) | Local/XA transaction coordination |
 | [`example/configuration/`](example/configuration/) | Typed config + YAML resources |
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
-| [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Auth service + authorization cache |
+| [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Login and second factors; the authorization cache, graded grants, resource roles and delegation |
 | [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain, the relational trail's schema and its write-once check, and signed anchors published outside the server |
 | [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox |
 | [`example/export/`](example/export/) | The streaming tabular shape, CSV/XLSX/PDF renderers, the format registry, export storage and the two delivery channels |
@@ -187,6 +199,16 @@ final one  = await repository.findById(42);
 final some = await repository.findByQuery(query, params);
 ```
 
+A grouped query is the one whose rows are not entities — its shape is decided by
+the query, so it comes back as group keys plus aggregate values:
+
+```dart
+final rows = await repository.findGroupedByQuery(groupedQuery, params);
+for (final row in rows) {
+  print('${row.stringValue('status')}: ${row.intValue('n')}');
+}
+```
+
 ### Rendering SQL through the dialect
 
 The dialect renders literals and bound-parameter placeholders, keeping untrusted
@@ -202,9 +224,13 @@ print(dialect.p('userId'));     // :userId
 ### Authentication, authorization, and health
 
 `TomAuthenticationService` (with `TomAuthenticationAdaptor` / `Tom2FAAdaptor`
-annotations) drives login; `TomAuthorizationCache` caches authorization
-decisions on an isolate; `TomHealthService` / `TomHealthServer` expose health
-endpoints backed by `HealthAnalyzer`s.
+annotations) drives login, and `Tom2FARegistry` picks the second factor for a
+principal — `TomTotp2FAService` ships as one. `TomAuthorizationCache` caches
+authorization decisions on an isolate, over grants that are graded per key
+(`TomResourceGrant`), held per resource (`TomPrincipalResourceGrant`), and
+lendable to another principal (`TomPrincipalDelegation`).
+`TomHealthService` / `TomHealthServer` expose health endpoints backed by
+`HealthAnalyzer`s.
 
 ## Architecture
 
@@ -266,9 +292,8 @@ apps get the full kernel API through one dependency. See the
 
 ## Status
 
-- **Version:** 1.1.2
-- **Tests:** 443 test cases across the module suites (run with `testkit :test`
-  or `dart test`).
+- **Version:** 1.1.4
+- **Tests:** 1367 test cases across 46 module suites (run with `testkit :test`
+  or `dart test`). 198 are tagged `db` and skip unless a live MySQL is
+  reachable — bring one up with `tool/run_db_tests.sh`.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
-</content>
-</invoke>
