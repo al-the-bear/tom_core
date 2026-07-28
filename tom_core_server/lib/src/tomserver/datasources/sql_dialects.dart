@@ -32,6 +32,46 @@ enum TomAggregateFunction {
   String get sqlName => name.toUpperCase();
 }
 
+/// The coarse type classes a stored column can belong to.
+///
+/// Named here, beside [TomAggregateFunction], for the same reason: it is a SQL
+/// vocabulary a dialect switches on ([TomStandardSqlDialect.typeFamily]), so a
+/// database whose type names differ overrides one method and the compiler tells
+/// it when a member is added.
+///
+/// Deliberately coarse — it exists so that a Dart type and a SQL type name can
+/// be compared at all (the schema-convergence check reduces both sides to it).
+/// Widths, precisions, signedness and defaults are not represented, because the
+/// Dart side never states them.
+enum TomSqlTypeFamily {
+  /// Whole numbers — `INT`, `BIGINT`, `SMALLINT`, `SERIAL`, …
+  integer,
+
+  /// Approximate and exact fractional numbers — `DOUBLE`, `DECIMAL`, `FLOAT`, …
+  decimal,
+
+  /// Character data — `VARCHAR`, `TEXT`, `ENUM`, `JSON`, …
+  text,
+
+  /// Truth values — `BOOLEAN`, and on MariaDB `TINYINT(1)`.
+  boolean,
+
+  /// A date *and* a time of day — `DATETIME`, `TIMESTAMP`.
+  dateTime,
+
+  /// A calendar date with no time — `DATE`.
+  date,
+
+  /// A time of day with no date — `TIME`.
+  time,
+
+  /// Raw bytes — `BLOB`, `VARBINARY`, …
+  binary,
+
+  /// A type the active dialect does not classify.
+  unknown,
+}
+
 /// Generates standard-SQL fragments for the [TomOperator] expression tree.
 ///
 /// Every method renders one piece of SQL — a predicate (`IS NULL`, `LIKE`,
@@ -48,6 +88,98 @@ enum TomAggregateFunction {
 /// still prefer the parameterised form ([p]) so the driver binds the value and
 /// nothing is embedded in the SQL text at all.
 class TomStandardSqlDialect {
+  /// Classifies a column type as written in DDL — `VARCHAR(255)`, `BIGINT
+  /// UNSIGNED`, `DECIMAL(10,2)` — into the family it stores.
+  ///
+  /// The base word decides; the parenthesised arguments and any trailing
+  /// attributes are ignored, since no width or precision is expressible on the
+  /// Dart side and so none can be compared. An unrecognised type yields
+  /// [TomSqlTypeFamily.unknown] rather than a guess — the convergence check
+  /// treats that as "no opinion" instead of reporting a divergence it cannot
+  /// justify.
+  ///
+  /// A dialect with different type names overrides this and falls back to
+  /// `super.typeFamily` for the standard ones (see [MariadbSqlDialect]).
+  TomSqlTypeFamily typeFamily(String sqlType) {
+    final base = baseTypeName(sqlType);
+    return switch (base) {
+      'INT' ||
+      'INTEGER' ||
+      'BIGINT' ||
+      'SMALLINT' ||
+      'MEDIUMINT' ||
+      'TINYINT' ||
+      'SERIAL' ||
+      'BIT' => TomSqlTypeFamily.integer,
+      'DECIMAL' ||
+      'DEC' ||
+      'NUMERIC' ||
+      'FIXED' ||
+      'FLOAT' ||
+      'DOUBLE' ||
+      'REAL' => TomSqlTypeFamily.decimal,
+      'CHAR' ||
+      'CHARACTER' ||
+      'VARCHAR' ||
+      'NCHAR' ||
+      'NVARCHAR' ||
+      'TINYTEXT' ||
+      'TEXT' ||
+      'MEDIUMTEXT' ||
+      'LONGTEXT' ||
+      'CLOB' ||
+      'ENUM' ||
+      'SET' ||
+      'JSON' ||
+      'UUID' => TomSqlTypeFamily.text,
+      'BOOL' || 'BOOLEAN' => TomSqlTypeFamily.boolean,
+      'DATETIME' || 'TIMESTAMP' => TomSqlTypeFamily.dateTime,
+      'DATE' || 'YEAR' => TomSqlTypeFamily.date,
+      'TIME' => TomSqlTypeFamily.time,
+      'BINARY' ||
+      'VARBINARY' ||
+      'TINYBLOB' ||
+      'BLOB' ||
+      'MEDIUMBLOB' ||
+      'LONGBLOB' => TomSqlTypeFamily.binary,
+      _ => TomSqlTypeFamily.unknown,
+    };
+  }
+
+  /// The upper-cased leading word of a DDL type — `VARCHAR(255)` → `VARCHAR`,
+  /// `DOUBLE PRECISION` → `DOUBLE`, `` `int` `` → `INT`.
+  ///
+  /// Exposed so an overriding [typeFamily] can reuse the same normalisation
+  /// instead of restating it.
+  String baseTypeName(String sqlType) {
+    final trimmed = sqlType.trim();
+    var end = 0;
+    while (end < trimmed.length) {
+      final c = trimmed[end];
+      if (c == '(' || c == ' ' || c == '\t' || c == '\n') break;
+      end++;
+    }
+    return trimmed.substring(0, end).replaceAll('`', '').toUpperCase();
+  }
+
+  /// The comma-separated arguments of a DDL type's parenthesis, or an empty
+  /// list when it has none — `VARCHAR(255)` → `['255']`, `DECIMAL(10, 2)` →
+  /// `['10', '2']`.
+  ///
+  /// Exposed for the same reason as [baseTypeName]: a dialect whose type
+  /// classification depends on the argument (`TINYINT(1)` is MariaDB's boolean)
+  /// should not have to re-tokenise the type itself.
+  List<String> typeArguments(String sqlType) {
+    final open = sqlType.indexOf('(');
+    if (open < 0) return const [];
+    final close = sqlType.indexOf(')', open);
+    if (close < 0) return const [];
+    return [
+      for (final argument in sqlType.substring(open + 1, close).split(','))
+        argument.trim(),
+    ];
+  }
+
   /// Renders `<what> IS NULL`.
   SqlString isNull<T>(TomOperator<T> what) {
     return "${what.generate(this)} IS NULL";
