@@ -84,7 +84,7 @@ abstract, so other backends can be added.
 | `TomDbMigrator` / `TomDbMigrations` / `TomDbVersion` | Versioned schema migrations (MariaDB adapter) |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `healthcheck`, `cmdline`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `healthcheck`, `cmdline`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -94,6 +94,7 @@ abstract, so other backends can be added.
 | `authorization` | `TomAuthorizationCache` | Isolate-backed authorization cache |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
+| `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `HealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException` | Server exception base (extends kernel `TomException`) |
@@ -139,6 +140,7 @@ annotated entities and are documented in [`doc/`](doc/).
 | [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Auth service + authorization cache |
 | [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain |
 | [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox |
+| [`example/export/`](example/export/) | The streaming tabular shape, CSV/XLSX/PDF renderers, the format registry, export storage and the two delivery channels |
 | [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
 
 Run a single example:
