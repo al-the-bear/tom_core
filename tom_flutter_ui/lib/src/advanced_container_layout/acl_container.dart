@@ -219,6 +219,67 @@ class AclComponent {
     this.hideUnauthorized,
   });
 
+  /// Returns a copy with the named fields replaced; omitted arguments keep
+  /// their current value.
+  ///
+  /// Because every argument uses `?? this.x`, a nullable field cannot be
+  /// *cleared* through this method — passing `null` means "leave it alone".
+  /// No caller needs clearing, and the alternative (a sentinel per nullable
+  /// field) would cost more than it buys on a 24-field class.
+  AclComponent copyWith({
+    Widget? child,
+    int? flags,
+    double? gapBefore,
+    bool? gapBeforeIsDefault,
+    double? gapWeight,
+    Size? preferredSize,
+    Size? minimumSize,
+    Size? maximumSize,
+    Key? referenceKey,
+    Key? alignXToKey,
+    AclAxisPointX? alignXFrom,
+    AclAxisPointX? alignXTo,
+    double? alignXGap,
+    Key? alignYToKey,
+    AclAxisPointY? alignYFrom,
+    AclAxisPointY? alignYTo,
+    double? alignYGap,
+    AclRowCrossAlignment? rowCrossAlignment,
+    Key? componentKey,
+    String? id,
+    String? group,
+    bool? inlineVariant,
+    AclVariantDetector? variantDetector,
+    bool? hideUnauthorized,
+  }) {
+    return AclComponent(
+      child: child ?? this.child,
+      flags: flags ?? this.flags,
+      gapBefore: gapBefore ?? this.gapBefore,
+      gapBeforeIsDefault: gapBeforeIsDefault ?? this.gapBeforeIsDefault,
+      gapWeight: gapWeight ?? this.gapWeight,
+      preferredSize: preferredSize ?? this.preferredSize,
+      minimumSize: minimumSize ?? this.minimumSize,
+      maximumSize: maximumSize ?? this.maximumSize,
+      referenceKey: referenceKey ?? this.referenceKey,
+      alignXToKey: alignXToKey ?? this.alignXToKey,
+      alignXFrom: alignXFrom ?? this.alignXFrom,
+      alignXTo: alignXTo ?? this.alignXTo,
+      alignXGap: alignXGap ?? this.alignXGap,
+      alignYToKey: alignYToKey ?? this.alignYToKey,
+      alignYFrom: alignYFrom ?? this.alignYFrom,
+      alignYTo: alignYTo ?? this.alignYTo,
+      alignYGap: alignYGap ?? this.alignYGap,
+      rowCrossAlignment: rowCrossAlignment ?? this.rowCrossAlignment,
+      componentKey: componentKey ?? this.componentKey,
+      id: id ?? this.id,
+      group: group ?? this.group,
+      inlineVariant: inlineVariant ?? this.inlineVariant,
+      variantDetector: variantDetector ?? this.variantDetector,
+      hideUnauthorized: hideUnauthorized ?? this.hideUnauthorized,
+    );
+  }
+
   /// Returns a copy with `gapBefore` / `gapBeforeIsDefault` replaced. Used
   /// by the hide-unauthorized pass when it carries a hidden component's
   /// effective gap onto the next visible component — the default-flag
@@ -228,31 +289,9 @@ class AclComponent {
     double newGap, {
     bool gapBeforeIsDefault = false,
   }) {
-    return AclComponent(
-      child: child,
-      flags: flags,
+    return copyWith(
       gapBefore: newGap,
       gapBeforeIsDefault: gapBeforeIsDefault,
-      gapWeight: gapWeight,
-      preferredSize: preferredSize,
-      minimumSize: minimumSize,
-      maximumSize: maximumSize,
-      referenceKey: referenceKey,
-      alignXToKey: alignXToKey,
-      alignXFrom: alignXFrom,
-      alignXTo: alignXTo,
-      alignXGap: alignXGap,
-      alignYToKey: alignYToKey,
-      alignYFrom: alignYFrom,
-      alignYTo: alignYTo,
-      alignYGap: alignYGap,
-      rowCrossAlignment: rowCrossAlignment,
-      componentKey: componentKey,
-      id: id,
-      group: group,
-      inlineVariant: inlineVariant,
-      variantDetector: variantDetector,
-      hideUnauthorized: hideUnauthorized,
     );
   }
 
@@ -372,6 +411,31 @@ class AclRow {
   }
 }
 
+/// Resolves a value carrying `(minWidth, value)` breakpoint overrides.
+///
+/// The override with the **largest** `minWidth` that is still `<=`
+/// [availableWidth] wins; [base] applies when no override qualifies, when
+/// there are none, or when the width is not yet known.
+///
+/// Shared by the row gap, row height and grid column resolvers so the
+/// "widest matching breakpoint wins" rule is stated once.
+T aclResolveBreakpointed<T>(
+  T base,
+  List<(double, T)> overrides,
+  double? availableWidth,
+) {
+  if (overrides.isEmpty || availableWidth == null) return base;
+  var current = base;
+  var best = double.negativeInfinity;
+  for (final (minWidth, value) in overrides) {
+    if (minWidth <= availableWidth && minWidth >= best) {
+      best = minWidth;
+      current = value;
+    }
+  }
+  return current;
+}
+
 /// Returns the effective gapBefore for [comp] inside [row] at the given
 /// [availableWidth], honouring the row's breakpointed default when the
 /// component did not carry an explicit distance.
@@ -381,36 +445,20 @@ double aclEffectiveGapBefore(
   double? availableWidth,
 ) {
   if (!comp.gapBeforeIsDefault) return comp.gapBefore;
-  final base = row.defaultAppendGap;
-  final overrides = row.defaultAppendGapBpOverrides;
-  if (availableWidth == null || overrides.isEmpty) return base;
-  double current = base;
-  double best = double.negativeInfinity;
-  for (final entry in overrides) {
-    final minW = entry.$1;
-    if (minW <= availableWidth && minW >= best) {
-      best = minW;
-      current = entry.$2;
-    }
-  }
-  return current;
+  return aclResolveBreakpointed(
+    row.defaultAppendGap,
+    row.defaultAppendGapBpOverrides,
+    availableWidth,
+  );
 }
 
 /// Resolves a breakpointed row height. Returns null if no height is set.
-double? aclResolveRowHeight(AclRow row, double? availableWidth) {
-  if (row.height == null && row.heightBpOverrides.isEmpty) return null;
-  if (availableWidth == null || row.heightBpOverrides.isEmpty) return row.height;
-  double? current = row.height;
-  double best = double.negativeInfinity;
-  for (final entry in row.heightBpOverrides) {
-    final minW = entry.$1;
-    if (minW <= availableWidth && minW >= best) {
-      best = minW;
-      current = entry.$2;
-    }
-  }
-  return current;
-}
+double? aclResolveRowHeight(AclRow row, double? availableWidth) =>
+    aclResolveBreakpointed(
+      row.height,
+      row.heightBpOverrides,
+      availableWidth,
+    );
 
 // ── Pre-calculation data structures ──────────────────────────────────────────
 
