@@ -36,13 +36,42 @@ import 'fixtures/reflection_fixture.reflection.dart';
 /// that never refused anything would let a broken mapping pass.
 class _MemoryFileRepository
     implements TomFileRepository<FixtureFileSlotRecord, int> {
-  _MemoryFileRepository({this.grades = const {}});
+  _MemoryFileRepository({
+    this.grades = const {},
+    this.outOfScope = const {},
+    this.writeScopeRefused = const {},
+  });
 
   /// Column grades by resource key; an unlisted key is unrestricted.
   final Map<String, TomAuthState> grades;
 
+  /// Row ids the current principal's data scope (C-3) excludes.
+  ///
+  /// Modelled exactly as `TomSqlDatasourceRepository` behaves: the scope
+  /// predicate is ANDed into the read's `WHERE`, so an excluded row is not
+  /// *refused*, it is not *found* — reads answer as they do for an id that never
+  /// existed, and only a write names the refusal. Getting this wrong in the fake
+  /// would let a wrong mapping pass, which is the whole reason the fake mirrors
+  /// the gates rather than waving them through.
+  final Set<int> outOfScope;
+
+  /// Row ids whose *write* the scope refuses even though the read admits them.
+  ///
+  /// Not a state `TomSqlDatasourceRepository` can be in — its write guard reuses
+  /// the read predicate — but [TomFileRepository] is an interface, and
+  /// `TomDataScopeAuthorizationException` is part of its `saveFile` contract. The
+  /// endpoint's job is to translate that contract into HTTP for *any*
+  /// implementation of it, so the translation has to be exercised on its own,
+  /// not only through the read gate that happens to fire first.
+  final Set<int> writeScopeRefused;
+
   /// The rows, by primary key.
   final Map<int, FixtureFileSlotRecord> rows = {};
+
+  /// The row [id] as the scope lets the caller see it: `null` when excluded,
+  /// which is the same answer an absent id gets.
+  FixtureFileSlotRecord? _visible(int id) =>
+      outOfScope.contains(id) ? null : rows[id];
 
   TomColumnInformation _column(String fieldName) {
     for (final column in TomAnnotationAnalyzer.findFileColumns(
@@ -70,7 +99,7 @@ class _MemoryFileRepository
       TomFileReferenceKeys.storeFor(column.fileReference!);
 
   @override
-  Future<FixtureFileSlotRecord?> findById(int id) async => rows[id];
+  Future<FixtureFileSlotRecord?> findById(int id) async => _visible(id);
 
   @override
   Future<FixtureFileSlotRecord> saveFile(
@@ -85,6 +114,13 @@ class _MemoryFileRepository
       throw TomColumnAuthorizationException(
         'column_authorization.write.field_forbidden',
         'Column "${column.declaredName}" is not writable at your access level.',
+      );
+    }
+    final id = entity.id;
+    if (id != null && (outOfScope.contains(id) || writeScopeRefused.contains(id))) {
+      throw TomDataScopeAuthorizationException(
+        'data_scope.write.out_of_scope',
+        'The requested row is not within your data scope.',
       );
     }
     final reference = column.fileReference!;
@@ -102,7 +138,7 @@ class _MemoryFileRepository
   @override
   Stream<List<int>> openFile(int id, String fieldName) async* {
     final column = _column(fieldName);
-    final row = rows[id];
+    final row = _visible(id);
     if (row == null) {
       throw TomStorageException(
         'storage.file_reference.row_not_found',
@@ -130,7 +166,7 @@ class _MemoryFileRepository
   @override
   Future<TomStoredBlob?> describeFile(int id, String fieldName) async {
     final column = _column(fieldName);
-    final row = rows[id];
+    final row = _visible(id);
     if (row == null) return null;
     if (!_grade(column).showsContent) {
       throw TomColumnAuthorizationException(
@@ -258,17 +294,33 @@ void main() {
     late TomHttpFileTransferClient client;
 
     /// Boots the reflected router behind a real HTTP server and points a real
-    /// client at it. [grades] seeds the C-4 resolver the fake repository reads.
-    Future<void> start({Map<String, TomAuthState> grades = const {}}) async {
+    /// client at it. [grades] seeds the C-4 resolver the fake repository reads;
+    /// [outOfScope] and [writeScopeRefused] seed its C-3 row scope.
+    ///
+    /// Row 2 is seeded alongside row 1 so a scope test has a row to *exclude*
+    /// while row 1 stays reachable — without it, "excluded" and "the repository
+    /// is empty" would be the same experiment.
+    Future<void> start({
+      Map<String, TomAuthState> grades = const {},
+      Set<int> outOfScope = const {},
+      Set<int> writeScopeRefused = const {},
+    }) async {
       TomBean.resetBeanContext();
       TomFileSlots.reset();
       TomBlobStoreInfo.stores.clear();
       TomBlobStoreInfo.register('files', TomMemoryBlobStore(), asDefault: true);
 
-      repository = _MemoryFileRepository(grades: grades);
+      repository = _MemoryFileRepository(
+        grades: grades,
+        outOfScope: outOfScope,
+        writeScopeRefused: writeScopeRefused,
+      );
       repository.rows[1] = FixtureFileSlotRecord()
         ..id = 1
         ..title = 'a row that exists';
+      repository.rows[2] = FixtureFileSlotRecord()
+        ..id = 2
+        ..title = 'a row that belongs to someone else';
       TomFileSlots.register(repository);
 
       // The fixture service needs its bean; TomFileServer deliberately does not
@@ -427,6 +479,113 @@ void main() {
         '/files/fixture_file_slot/99/poster',
       );
       expect(response.statusCode, 404);
+    });
+
+    group('a row outside the caller\'s data scope (C-3)', () {
+      // The counterpart of the C-4 group's "403, not 404". Here the answer must
+      // go the *other* way, and the reason is the addressing scheme: a slot is
+      // `<table>/<id>/<column>` with the id supplied by the caller. A 403 would
+      // confirm that a guessed id names a real row owned by someone else — the
+      // existence of the row is itself the disclosure. So the endpoint must
+      // answer an out-of-scope row exactly as it answers an absent one.
+
+      /// Row 2 exists in the repository but the scope excludes it.
+      const hidden = '/files/fixture_file_slot/2/poster';
+
+      /// An id no row has, reachable by nobody.
+      const absent = '/files/fixture_file_slot/99/poster';
+
+      test('a download answers 404, not 403', () async {
+        await start(outOfScope: {2});
+        final response = await _raw(server.port, 'GET', hidden);
+        expect(response.statusCode, 404, reason: '403 would confirm the row');
+        // `file_endpoint.no_file`, not the repository's `row_not_found`: a
+        // download resolves the descriptor first, and a hidden row describes as
+        // `null` exactly as a row holding no file does. The endpoint therefore
+        // conflates the two even harder than the repository does — which is the
+        // direction to err in, since the wire contract already defines 404 as
+        // "no file here" and says nothing about why.
+        expect(
+          jsonDecode(await response.transform(utf8.decoder).join())['key'],
+          'file_endpoint.no_file',
+        );
+      });
+
+      test('an upload answers 404, not 403', () async {
+        await start(outOfScope: {2});
+        final response = await _raw(
+          server.port,
+          'POST',
+          hidden,
+          body: utf8.encode('written to a row that is not mine'),
+        );
+        expect(response.statusCode, 404);
+        // And the write did not happen: the row the caller could not see is
+        // exactly as it was.
+        expect(repository.rows[2]!.poster, isNull);
+      });
+
+      test('a HEAD and a DELETE answer 404 too', () async {
+        await start(outOfScope: {2});
+        expect((await _raw(server.port, 'HEAD', hidden)).statusCode, 404);
+        expect((await _raw(server.port, 'DELETE', hidden)).statusCode, 404);
+      });
+
+      test('every method answers a hidden row exactly as it answers an absent '
+          'one', () async {
+        // The property that makes the status codes above load-bearing. If any
+        // method distinguished the two, a caller could enumerate other
+        // principals' row ids by probing — which is the breach, whatever status
+        // code the distinguishing answer happens to carry.
+        await start(outOfScope: {2});
+        for (final method in ['GET', 'HEAD', 'DELETE']) {
+          final onHidden = await _raw(server.port, method, hidden);
+          final onAbsent = await _raw(server.port, method, absent);
+          expect(
+            onHidden.statusCode,
+            onAbsent.statusCode,
+            reason: '$method distinguishes a hidden row from an absent one',
+          );
+        }
+        final uploadHidden = await _raw(
+          server.port,
+          'POST',
+          hidden,
+          body: utf8.encode('probe'),
+        );
+        final uploadAbsent = await _raw(
+          server.port,
+          'POST',
+          absent,
+          body: utf8.encode('probe'),
+        );
+        expect(uploadHidden.statusCode, uploadAbsent.statusCode);
+      });
+
+      test('a repository that names the write refusal is mapped to 404, not '
+          'left to the generic handler', () async {
+        // The write half of the `TomFileRepository` contract. A scoped read
+        // filters the row away, so the refusal above arrived as `row_not_found`
+        // and the endpoint never saw a scope exception at all. An
+        // implementation whose write gate is stricter than its read gate raises
+        // `TomDataScopeAuthorizationException` instead — and without a clause
+        // for it that escapes to the pipeline's generic handler as a 500, which
+        // is distinguishable from a 404 and so is itself the leak this whole
+        // group exists to close.
+        await start(writeScopeRefused: {2});
+        final response = await _raw(
+          server.port,
+          'POST',
+          hidden,
+          body: utf8.encode('refused at the write gate'),
+        );
+        expect(response.statusCode, 404);
+        expect(
+          jsonDecode(await response.transform(utf8.decoder).join())['key'],
+          'data_scope.write.out_of_scope',
+        );
+        expect(repository.rows[2]!.poster, isNull);
+      });
     });
 
     test('a key that is not the entity key answers 400', () async {

@@ -237,6 +237,55 @@ class FixtureDocumentRecord {
 class FixtureDocumentRepository
     extends TomSqlDatasourceRepository<FixtureDocumentRecord, int> {}
 
+/// A reflected entity with a file-reference column on a **row-scoped** table
+/// (CSEXD2).
+///
+/// [FixtureDocumentRecord] declares no `@TomDbScope`, so every file test written
+/// against it exercises C-4 (may this principal see this *column*) with C-3 (may
+/// this principal see this *row*) switched off. This entity is the other half.
+/// It is separate rather than an added annotation on the document fixture,
+/// because an unscoped entity is the case the existing suite needs: adding a
+/// scope there would make every one of those tests depend on a principal being
+/// in the zone, and would delete the coverage that a file column works when no
+/// scope is declared at all.
+///
+/// The scope is `owner` on [ownerId], the simplest resolver that discriminates:
+/// `principal.id` must equal the row's `owner_id`. A file slot is addressed as
+/// `<table>/<id>/<column>` with the id supplied by the caller, so this scope is
+/// the only thing between a guessed id and another principal's document.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_scoped_document',
+  primaryKeyField: 'id',
+)
+@TomDbScope(field: 'owner_id', scope: 'owner')
+class FixtureScopedDocumentRecord {
+  /// Surrogate primary key, assigned by the database on insert.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The scope field: the principal id that may see this row.
+  @TomDbColumn(columnName: 'owner_id')
+  int? ownerId;
+
+  /// An ordinary column, so a scoped row is more than its file.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+
+  /// The file column under scope. Exposed, so the same row is reachable through
+  /// the HTTP file endpoint and the endpoint's status mapping can be asserted
+  /// against it.
+  @TomDbColumn(columnName: 'attachment')
+  @TomFileReference(keyPrefix: 'fixture/scoped', exposed: true)
+  String? attachment;
+}
+
+/// The MariaDB-backed repository for [FixtureScopedDocumentRecord].
+class FixtureScopedDocumentRepository
+    extends TomSqlDatasourceRepository<FixtureScopedDocumentRecord, int> {}
+
 /// A reflected entity whose file columns cover the three exposure cases the
 /// HTTP file endpoint has to tell apart (CSFSB1).
 ///

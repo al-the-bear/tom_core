@@ -24,6 +24,7 @@
 @Tags(['db'])
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -31,7 +32,11 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import 'fixtures/reflection_fixture.dart'
-    show FixtureDocumentRecord, FixtureDocumentRepository;
+    show
+        FixtureDocumentRecord,
+        FixtureDocumentRepository,
+        FixtureScopedDocumentRecord,
+        FixtureScopedDocumentRepository;
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
@@ -73,6 +78,27 @@ class _GradeAdapter implements TomAuthorizationAdapter {
 
 FixtureDocumentRecord _document(String title) =>
     FixtureDocumentRecord()..title = title;
+
+FixtureScopedDocumentRecord _scopedDocument(String title, int ownerId) =>
+    FixtureScopedDocumentRecord()
+      ..title = title
+      ..ownerId = ownerId;
+
+/// The principal the `owner` data-scope resolver reads: its `id` is the value
+/// matched against the row's `owner_id`.
+TomPrincipal _principal(int id) => TomPrincipal(
+      user: TomUser(id: id, username: 'user$id'),
+      aci: TomAccessControlInformation(),
+      authenticated: true,
+    );
+
+/// Runs [body] as the principal with id [userId].
+///
+/// The repository reads the principal from the *zone*
+/// (`getFromCurrentZone<TomPrincipal>()`), so acting as someone is expressed by
+/// running inside a zone that carries them — there is no per-call seam.
+Future<T> _as<T>(int userId, Future<T> Function() body) =>
+    runZoned(body, zoneValues: {TomPrincipal: _principal(userId)});
 
 void main() async {
   final reachable = await TestDatabase.isReachable();
@@ -641,6 +667,216 @@ void main() async {
           'ordinary',
         );
       });
+    });
+  }, skip: skipReason);
+
+  /// Blob access under a **row scope** (C-3) — the other half of the CSFS1
+  /// requirement that file access honour the same gates as the owning entity
+  /// (CSEXD2).
+  ///
+  /// The C-4 group above answers *may this principal see this column*; a breach
+  /// there leaks one field. These answer *may this principal see this row at
+  /// all*; a breach leaks another principal's document whole. A file slot is
+  /// addressed as `<table>/<id>/<column>` with the **id supplied by the
+  /// caller**, so the row scope is the only thing between a guessed id and
+  /// someone else's file.
+  ///
+  /// Reads and writes report a violation differently, and that asymmetry is the
+  /// design, not an accident:
+  ///
+  ///  * a **read** ANDs the scope predicate into the `WHERE`, so an out-of-scope
+  ///    row is simply *not found* — `openFile` raises `row_not_found` and
+  ///    `describeFile` returns `null`, exactly as for an id that never existed.
+  ///    Reporting "forbidden" would confirm the row exists, which is itself the
+  ///    disclosure the scope is there to prevent;
+  ///  * a **write** names a specific row, so silence would be a lie about what
+  ///    happened. `saveFile` raises [TomDataScopeAuthorizationException].
+  ///
+  /// So the read tests assert *indistinguishability from an absent row*, which
+  /// is a stronger claim than "it refuses", and the write test asserts the
+  /// explicit refusal.
+  group('blob access under a row scope', () {
+    late TomDataSourceInfo dsi;
+    late FixtureScopedDocumentRepository repo;
+    late TomMemoryBlobStore blobs;
+
+    /// The id of a row owned by principal 1, holding an attachment.
+    late int ownedId;
+
+    /// The key of that row's blob, so a test can prove the bytes never moved.
+    late String ownedKey;
+
+    /// An id no row has ever had — the control every "not found" is compared
+    /// against.
+    const absentId = 987654;
+
+    setUpAll(() async {
+      initializeReflection();
+      dsi = await TestDatabase.register();
+      await TestDatabase.ensureFixtureScopedDocumentTable(dsi);
+    });
+
+    setUp(() async {
+      await TestDatabase.truncateFixtureScopedDocument(dsi);
+      repo = FixtureScopedDocumentRepository();
+      blobs = TomMemoryBlobStore();
+      TomBlobStoreInfo.register('fixture', blobs, asDefault: true);
+
+      final seeded = await _as(1, () async {
+        return repo.saveFile(
+          _scopedDocument('owned by one', 1),
+          'attachment',
+          _text('private to one'),
+          mediaType: 'text/plain',
+          fileName: 'private.txt',
+        );
+      });
+      ownedId = seeded.id!;
+      ownedKey = seeded.attachment!;
+    });
+
+    tearDown(() async {
+      await TomBlobStoreInfo.closeAll();
+    });
+
+    tearDownAll(TestDatabase.reset);
+
+    test('the owner reads their own file through all three paths', () async {
+      // The positive control. Without it every assertion below would also pass
+      // against a repository that refused everyone.
+      await _as(1, () async {
+        expect(
+          utf8.decode(
+            await repo.openFile(ownedId, 'attachment').expand((c) => c).toList(),
+          ),
+          'private to one',
+        );
+        final described = await repo.describeFile(ownedId, 'attachment');
+        expect(described, isNotNull);
+        expect(described!.fileName, 'private.txt');
+
+        final row = await repo.findById(ownedId);
+        final replaced =
+            await repo.saveFile(row!, 'attachment', _text('replaced by one'));
+        expect(blobs.textOf(replaced.attachment!), 'replaced by one');
+      });
+    });
+
+    test('openFile refuses an out-of-scope row as not found', () async {
+      await _as(2, () async {
+        await expectLater(
+          repo.openFile(ownedId, 'attachment').toList(),
+          throwsA(isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.file_reference.row_not_found',
+          )),
+          reason: 'principal 2 must not reach a row owned by principal 1, and '
+              'the refusal must not be a column-authorization error — that '
+              'would say the row is there and only the field is withheld',
+        );
+      });
+      // The bytes are untouched and still readable by their owner: the scope
+      // denied the *reader*, it did not disturb the file.
+      expect(blobs.textOf(ownedKey), 'private to one');
+    });
+
+    test('describeFile returns null for an out-of-scope row', () async {
+      await _as(2, () async {
+        expect(await repo.describeFile(ownedId, 'attachment'), isNull);
+      });
+    });
+
+    test('an out-of-scope row is indistinguishable from an absent one',
+        () async {
+      // The property that actually protects the row, and the reason the two
+      // read paths above do not raise an authorization error: if a caller can
+      // tell "yours but hidden" from "no such row", they can enumerate other
+      // principals' ids by probing. Both answers must be byte-identical.
+      await _as(2, () async {
+        expect(await repo.describeFile(ownedId, 'attachment'), isNull);
+        expect(await repo.describeFile(absentId, 'attachment'), isNull);
+
+        final outOfScope = await repo
+            .openFile(ownedId, 'attachment')
+            .toList()
+            .then<TomStorageException?>((_) => null)
+            .onError<TomStorageException>((e, _) => e);
+        final absent = await repo
+            .openFile(absentId, 'attachment')
+            .toList()
+            .then<TomStorageException?>((_) => null)
+            .onError<TomStorageException>((e, _) => e);
+
+        expect(outOfScope, isNotNull);
+        expect(absent, isNotNull);
+        expect(outOfScope!.key, absent!.key);
+        expect(outOfScope.defaultUserMessage, absent.defaultUserMessage);
+      });
+    });
+
+    test('an unauthenticated caller reaches no scoped file at all', () async {
+      // No principal in the zone: the built-in `owner` resolver yields no
+      // allowed values, which renders a FALSE predicate rather than an absent
+      // one. The secure default has to be asserted, because "no scope values"
+      // and "no scoping" are one keystroke apart in the resolver.
+      await expectLater(
+        repo.openFile(ownedId, 'attachment').toList(),
+        throwsA(isA<TomStorageException>().having(
+          (e) => e.key,
+          'key',
+          'storage.file_reference.row_not_found',
+        )),
+      );
+      expect(await repo.describeFile(ownedId, 'attachment'), isNull);
+    });
+
+    test('saveFile refuses to write an out-of-scope row, and moves no bytes',
+        () async {
+      // The breach in the other direction: overwriting a file on a row you
+      // cannot read. Principal 2 cannot *load* the row, so it forges the
+      // reference — which is precisely what an attacker holding a guessed id
+      // would do.
+      final forged = _scopedDocument('hijacked', 2)..id = ownedId;
+
+      await _as(2, () async {
+        await expectLater(
+          repo.saveFile(forged, 'attachment', _text('overwritten by two')),
+          throwsA(isA<TomDataScopeAuthorizationException>().having(
+            (e) => e.key,
+            'key',
+            'data_scope.write.out_of_scope',
+          )),
+          reason: 'a write names one specific row, so unlike a read it cannot '
+              'be answered by filtering it away — it has to be refused',
+        );
+      });
+
+      // Refused before the transfer: the store still holds exactly the one
+      // blob the owner put there, with its original content.
+      expect(blobs.keys, [ownedKey]);
+      expect(blobs.textOf(ownedKey), 'private to one');
+    });
+
+    test('saveFile refuses to create a row scoped to another principal',
+        () async {
+      await _as(2, () async {
+        await expectLater(
+          repo.saveFile(
+            _scopedDocument('planted', 1),
+            'attachment',
+            _text('planted by two'),
+          ),
+          throwsA(isA<TomDataScopeAuthorizationException>().having(
+            (e) => e.key,
+            'key',
+            'data_scope.write.insert_out_of_scope',
+          )),
+          reason: 'without the insert gate a principal could seed a row it '
+              'cannot itself read, and reach its file only through the owner',
+        );
+      });
+      expect(blobs.keys, [ownedKey]);
     });
   }, skip: skipReason);
 }

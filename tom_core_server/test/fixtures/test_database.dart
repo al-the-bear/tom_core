@@ -181,6 +181,36 @@ CREATE TABLE IF NOT EXISTS fixture_document (
     await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_document');
   }
 
+  /// The DDL for `FixtureScopedDocumentRecord`, the row-scoped counterpart of
+  /// `fixture_document` (CSEXD2). `owner_id` is the `@TomDbScope` field, so it
+  /// is the column the repository ANDs into every read's `WHERE`.
+  static const String _fixtureScopedDocumentDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_scoped_document (
+  id         BIGINT       NOT NULL AUTO_INCREMENT,
+  owner_id   BIGINT       NULL,
+  title      VARCHAR(255) NULL,
+  attachment VARCHAR(512) NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_scoped_document` table if it does not already exist.
+  static Future<void> ensureFixtureScopedDocumentTable(
+    TomDataSourceInfo dsi,
+  ) async {
+    await dsi.datasource.executeCommand(_fixtureScopedDocumentDdl);
+  }
+
+  /// Empties the `fixture_scoped_document` table so each test starts from a
+  /// known state.
+  static Future<void> truncateFixtureScopedDocument(
+    TomDataSourceInfo dsi,
+  ) async {
+    await dsi.datasource.executeCommand(
+      'TRUNCATE TABLE fixture_scoped_document',
+    );
+  }
+
   /// Drops the blob store's two tables, so a `TomDatabaseBlobStore` test starts
   /// from an empty store regardless of what an earlier run left behind.
   ///

@@ -65,6 +65,7 @@ import '../little_things/server_exception.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/column_authorization.dart';
 import '../object_persistence/crud_repository.dart';
+import '../object_persistence/data_scope.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'endpoint_annotation.dart';
 import 'endpoint_pipeline.dart';
@@ -405,6 +406,24 @@ class TomFileEndpoint {
       // addressing a slot that exists and they may not have, and a repository
       // that says so explicitly should not be softened into "no such thing".
       return _error(403, error.key, error.defaultUserMessage);
+    } on TomDataScopeAuthorizationException catch (error) {
+      // C-3 refused the row — and unlike the column above this is a 404, not a
+      // 403. The two gates answer different questions. A column refusal says
+      // "this field of this row is closed to you", which presumes the row; a
+      // row refusal must not presume anything, because a slot is addressed as
+      // `<table>/<id>/<column>` with the id supplied by the caller. A 403 here
+      // would confirm that the guessed id names a real row belonging to someone
+      // else, which is the disclosure the scope exists to prevent. So an
+      // out-of-scope row answers exactly as an absent one does.
+      //
+      // The read paths reach that answer on their own — a scoped read filters
+      // the row away and reports `row_not_found`. This clause covers the write
+      // side of the contract, where the repository *names* the refusal rather
+      // than filtering it, and without it a `TomFileRepository` whose write gate
+      // is stricter than its read gate would escape to the pipeline's generic
+      // handler as a 500 — itself distinguishable from a 404, and so itself the
+      // leak.
+      return _error(404, error.key, error.defaultUserMessage);
     } on TomStorageException catch (error) {
       final status = switch (error.key) {
         'storage.file_reference.row_not_found' => 404,
