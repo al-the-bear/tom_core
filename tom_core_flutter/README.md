@@ -28,6 +28,9 @@ What it adds on top of the kernel is deliberately small:
 - **Observing widgets** that rebuild when a kernel `TomObservable` notifies.
 - **UI-bound properties** — typed `TomProperty<T>` accessors over the kernel
   resource tree.
+- **Client configuration** — a machine-scoped settings holder that resolves
+  from the shipped config resources, persists this install's overrides, and is
+  observable per field and as a whole.
 - **Client platform detection** — the Flutter/web/IO variant selector for the
   kernel's `TomPlatformUtils`.
 - **Client security** — the `TomClient2FAAdaptor` annotation for two-factor
@@ -90,6 +93,20 @@ import 'package:tom_core_flutter/tom_core_flutter.dart';
 | `TomProperty<T>` | Typed accessor over the kernel resource/config tree, with `.withDefault` fallback |
 | `TomStringProperty` / `TomIntProperty` / `TomDoubleProperty` / `TomBoolProperty` | Concrete typed property variants |
 
+### Client configuration (`configuration`)
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomBaseClientConfiguration` | Base class for a client app's **machine-scoped** settings holder — declare, load, observe, persist |
+| `TomSetting<T>` | One observable setting: a `TomObject<T>` plus its dotted key and its baseline |
+| `TomClientConfigurationStore` | Two-method interface (`read` / `write`) for where overrides are persisted |
+| `TomMemoryClientConfigurationStore` / `TomFileClientConfigurationStore` | Process-lifetime and JSON-file stores |
+| `TomClientConfigurationException` | Module failures, with stable dotted keys |
+
+Only the install's **overrides** are persisted, so shipping a new default in an
+app update still reaches installs that never touched that key. See
+[`doc/configuration.md`](doc/configuration.md).
+
 ### Runtime (`runtime`)
 
 | Type | What it is |
@@ -136,6 +153,7 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | ------- | ------------ |
 | [`example/observing/`](example/observing/observing_example.dart) | `ValueListenableObserver` bridging a `TomObservable` to a Flutter listener |
 | [`example/resources/`](example/resources/resources_example.dart) | Resolving typed config via `TomProperty` subclasses and `.withDefault` |
+| [`example/configuration/`](example/configuration/configuration_example.dart) | Declaring a client settings holder, loading overrides, observing, and persisting only what changed |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils` and querying its predicates |
 | [`example/security/`](example/security/security_example.dart) | Applying the `TomClient2FAAdaptor` marker annotation and reading back its `type` |
 | [`example/little_things/`](example/little_things/little_things_example.dart) | The two client exception types and the type-based discrimination pattern |
@@ -169,6 +187,26 @@ final timeout = TomIntProperty('http.timeoutSeconds');
 final seconds = timeout.withDefault(30); // falls back when unset
 ```
 
+### Holding this install's settings
+
+```dart
+class AppConfiguration extends TomBaseClientConfiguration {
+  AppConfiguration({super.store});
+
+  late final TomSetting<bool> darkMode;
+
+  @override
+  void declareSettings() {
+    darkMode = boolSetting('client.ui.darkMode', false);
+  }
+}
+
+final config = AppConfiguration(store: TomFileClientConfigurationStore(path));
+await config.load();     // adopt this install's persisted overrides
+config.darkMode | true;  // observers fire, per field and holder-wide
+await config.save();     // persist the overrides — and only those
+```
+
 ### Selecting the client platform utils
 
 ```dart
@@ -183,9 +221,9 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
              │
    import 'package:tom_core_flutter/tom_core_flutter.dart'
              │  (re-exports the kernel + tom_reflection)
-   ┌─────────┼───────────┬───────────┐
- observing  resources   runtime     security
- (rebuild) (TomProperty) (platform) (2FA marker)
+   ┌─────────┼───────────┬───────────┬──────────────┐
+ observing  resources   runtime     security   configuration
+ (rebuild) (TomProperty) (platform) (2FA marker) (install settings)
              │
        tom_core_kernel  (TomObservable, TomObject, TomPlatformUtils, …)
 ```
@@ -195,6 +233,9 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
 | `TomObservingWidget` | Rebuilds a subtree when its observable notifies |
 | `ValueListenableObserver` | Adapts a `TomObservable` to a Flutter listener |
 | `TomProperty<T>` | Typed accessor over the kernel resource tree |
+| `TomBaseClientConfiguration` | Owns the machine-scoped settings of one install |
+| `TomSetting<T>` | One observable, persistable setting |
+| `TomClientConfigurationStore` | Persists the install's overrides |
 | `clientPlatformUtils` | Selects the concrete `TomPlatformUtils` for Flutter |
 | `TomClient2FAAdaptor` | Marks a client two-factor adaptor class |
 | `TomClientException` | Base client-side exception type |
@@ -221,8 +262,8 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 ## Further documentation
 
 - Per-module guides under [`doc/`](doc/) — one markdown file per module
-  (`doc/observing.md`, `doc/resources.md`, `doc/runtime.md`,
-  `doc/security.md`, `doc/little_things.md`).
+  (`doc/observing.md`, `doc/resources.md`, `doc/configuration.md`,
+  `doc/runtime.md`, `doc/security.md`, `doc/little_things.md`).
 - Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
   start at
   [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md)
@@ -236,5 +277,5 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 ## Status
 
 - **Version:** 1.2.1
-- **Tests:** 47 tests across 5 module suites (run with `flutter test`).
+- **Tests:** 82 tests across 6 module suites (run with `flutter test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

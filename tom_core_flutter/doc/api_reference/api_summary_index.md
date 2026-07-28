@@ -11,6 +11,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
+| Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Machine-scoped client settings (`TomBaseClientConfiguration`, `TomSetting`, stores). |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Client-side exception types (`TomClientException`, `TomClientUIException`). |
 | Observing | [api_summary_observing.md](api_summary_observing.md) | Kernel-observable → Flutter bridges (`TomObservingWidget`, `ValueListenableObserver`). |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Typed config properties (`TomProperty` and typed subclasses). |
@@ -18,6 +19,18 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | Security | [api_summary_security.md](api_summary_security.md) | Client 2FA annotation (`TomClient2FAAdaptor`). |
 
 ## Modules
+
+### Configuration (`lib/src/tomclient/configuration/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomBaseClientConfiguration` | class | Abstract holder of one install's machine-scoped settings. |
+| `TomSetting<T>` | class | One observable, addressable setting (`TomObject<T>` + key + baseline). |
+| `TomClientConfigurationStore` | class | Two-method (`read`/`write`) interface for persisting overrides. |
+| `TomMemoryClientConfigurationStore` | class | Process-lifetime override store. |
+| `TomFileClientConfigurationStore` | class | JSON file store (io variant; neutral variant throws). |
+| `TomClientConfigurationException` | class | Module failures, keyed by stable dotted codes. |
+| `coerceSettingValue` | function | Reads a loosely-typed external value as the declared type. |
 
 ### Little Things (`lib/src/tomclient/little_things/`)
 
@@ -64,15 +77,22 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | ---- | ------ |
 | `allowsBadCertificateForHost` | Runtime |
 | `clientPlatformUtils` | Runtime |
+| `coerceSettingValue` | Configuration |
+| `TomBaseClientConfiguration` | Configuration |
 | `TomBoolProperty` | Resources |
 | `TomClient2FAAdaptor` | Security |
+| `TomClientConfigurationException` | Configuration |
+| `TomClientConfigurationStore` | Configuration |
 | `TomClientException` | Little Things |
 | `TomClientUIException` | Little Things |
 | `TomDoubleProperty` | Resources |
+| `TomFileClientConfigurationStore` | Configuration |
 | `TomFlutterPlatformUtils` | Runtime |
 | `TomIntProperty` | Resources |
+| `TomMemoryClientConfigurationStore` | Configuration |
 | `TomObservingWidget<T>` | Observing |
 | `TomObservingWidgetState<T>` | Observing |
 | `TomProperty<T>` | Resources |
+| `TomSetting<T>` | Configuration |
 | `TomStringProperty` | Resources |
 | `ValueListenableObserver<T>` | Observing |
