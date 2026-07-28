@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.7.0
+
+- csra8: add the CE-RP report model — `TomReportDefinition` with
+  `TomReportDimension`, `TomReportMeasure`, `TomReportColumn`,
+  `TomReportParameter` and `TomReportChart`, plus the shared `TomReportResult`
+  / `TomReportResultSection` envelope and the `TomReportValueKind` /
+  `TomReportMeasureFunction` / `TomReportDeliveryChannel` /
+  `TomReportChartKind` closed sets. CE-RP was promoted out of §4.3 on the
+  finding that a **grouped projection** — dimensions and measures — has no
+  authoring home in any active part: `tom_core_server`'s `TomGroupedSelect`
+  supplies the runtime grammar, but CE-DB's spec-authorable surface is
+  row-shaped.
+- The envelope deliberately does **not** extend `tom_core_server`'s
+  `TomTabularResult`. Its locus is *shared* — the client renders a report too —
+  and a shared type cannot depend on a server type, so the server adapts it one
+  way onto the tabular shape when exporting. That is the CE-DB entity
+  placement decision applied again. The adaptation is honoured in one inherited
+  constraint: rows stay a `Stream`, because a report exists for results too
+  large to hold inline.
+- `TomReportMeasureFunction` is 1:1 with `TomAggregateFunction`, and
+  `COUNT(*)` / `COUNT(DISTINCT c)` are fields (`columnName`, `distinct`) rather
+  than members — a measure the query layer cannot compile is a measure that
+  cannot run, so the authorable set is exactly the compilable set.
+- Three checks run at construction, because each is a specification defect a
+  generator cannot repair: a column whose `sourceKey` names neither a dimension
+  nor a measure, one key claimed by both, and a chart plotting a column the
+  report does not project.
+
 ## 0.6.0
 
 - csra7: add the CE-NT notification model — `TomNotificationType`,

@@ -738,4 +738,422 @@ void main() {
       expect(catalog().deliveryChannelsFor('nope', null), isEmpty);
     });
   });
+
+  group('csra8: CE-RP dimensions and measures', () {
+    test('a dimension carries its projected key and grouped column', () {
+      final d = TomReportDimension(
+        key: 'region',
+        columnName: 'customer_region',
+        valueKind: TomReportValueKind.string,
+      );
+      expect(d.key, 'region');
+      expect(d.columnName, 'customer_region');
+    });
+
+    test('a bare row count may omit its column', () {
+      final m = TomReportMeasure(
+        key: 'orders',
+        function: TomReportMeasureFunction.count,
+      );
+      expect(m.columnName, isNull);
+      expect(m.toString(), contains('count(*)'));
+    });
+
+    // A SUM with no operand cannot be compiled; the generator has no way to
+    // repair it, so it is rejected where it is authored.
+    test('every other aggregate must name a column', () {
+      expect(
+        () => TomReportMeasure(
+          key: 'total',
+          function: TomReportMeasureFunction.sum,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('distinct is a modifier on the measure, not a function of its own', () {
+      final m = TomReportMeasure(
+        key: 'customers',
+        function: TomReportMeasureFunction.count,
+        columnName: 'customer_id',
+        distinct: true,
+      );
+      expect(m.distinct, isTrue);
+      expect(m.function, TomReportMeasureFunction.count);
+    });
+  });
+
+  group('csra8: CE-RP parameters', () {
+    test('an enumeration parameter must name its domain enum', () {
+      expect(
+        () => TomReportParameter(
+          name: 'status',
+          valueKind: TomReportValueKind.enumeration,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        TomReportParameter(
+          name: 'status',
+          valueKind: TomReportValueKind.enumeration,
+          enumId: 'order_status',
+        ).enumId,
+        'order_status',
+      );
+    });
+
+    test('an entityRef parameter must name its entity', () {
+      expect(
+        () => TomReportParameter(
+          name: 'customer',
+          valueKind: TomReportValueKind.entityRef,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        TomReportParameter(
+          name: 'customer',
+          valueKind: TomReportValueKind.entityRef,
+          entityId: 'Customer',
+        ).entityId,
+        'Customer',
+      );
+    });
+
+    test('a plain parameter needs neither', () {
+      final p = TomReportParameter(
+        name: 'from',
+        valueKind: TomReportValueKind.date,
+        required: true,
+      );
+      expect(p.required, isTrue);
+      expect(p.enumId, isNull);
+    });
+  });
+
+  group('csra8: CE-RP definition consistency', () {
+    TomReportDefinition build({
+      List<TomReportDimension>? dimensions,
+      List<TomReportMeasure>? measures,
+      List<TomReportColumn>? columns,
+      List<TomReportChart> charts = const [],
+    }) =>
+        TomReportDefinition(
+          reportId: 'sales_by_region',
+          sourceEntityId: 'Order',
+          dimensions: dimensions ??
+              [
+                TomReportDimension(
+                  key: 'region',
+                  columnName: 'customer_region',
+                  valueKind: TomReportValueKind.string,
+                ),
+              ],
+          measures: measures ??
+              [
+                TomReportMeasure(
+                  key: 'revenue',
+                  function: TomReportMeasureFunction.sum,
+                  columnName: 'total',
+                  valueKind: TomReportValueKind.currency,
+                ),
+              ],
+          columns: columns ??
+              [
+                TomReportColumn(
+                  name: 'region',
+                  sourceKey: 'region',
+                  valueKind: TomReportValueKind.string,
+                ),
+                TomReportColumn(
+                  name: 'revenue',
+                  sourceKey: 'revenue',
+                  valueKind: TomReportValueKind.currency,
+                ),
+              ],
+          charts: charts,
+        );
+
+    test('a consistent grouped projection is accepted', () {
+      final report = build();
+      expect(report.isAggregated, isTrue);
+      expect(report.deliveryChannels,
+          [TomReportDeliveryChannel.apiResponse]);
+    });
+
+    // The load-bearing invariant: a column displays a dimension or a measure,
+    // it never introduces data of its own.
+    test('a column displaying an undeclared key is rejected', () {
+      expect(
+        () => build(columns: [
+          TomReportColumn(
+            name: 'margin',
+            sourceKey: 'margin',
+            valueKind: TomReportValueKind.decimal,
+          ),
+        ]),
+        throwsArgumentError,
+      );
+    });
+
+    test('a key used by both a dimension and a measure is rejected', () {
+      expect(
+        () => build(
+          measures: [
+            TomReportMeasure(
+              key: 'region',
+              function: TomReportMeasureFunction.count,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('a chart plotting an unprojected column is rejected', () {
+      expect(
+        () => build(charts: [
+          TomReportChart(
+            chartId: 'trend',
+            kind: TomReportChartKind.line,
+            categoryColumn: 'quarter',
+            valueColumns: ['revenue'],
+          ),
+        ]),
+        throwsArgumentError,
+      );
+    });
+
+    test('a chart over projected columns is accepted and lists its refs', () {
+      final chart = TomReportChart(
+        chartId: 'by_region',
+        kind: TomReportChartKind.bar,
+        categoryColumn: 'region',
+        valueColumns: ['revenue'],
+      );
+      expect(build(charts: [chart]).charts, [chart]);
+      expect(chart.referencedColumns, ['region', 'revenue']);
+    });
+
+    test('a chart must plot at least one value column', () {
+      expect(
+        () => TomReportChart(
+          chartId: 'empty',
+          kind: TomReportChartKind.pie,
+          categoryColumn: 'region',
+          valueColumns: const [],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('duplicate column names are rejected', () {
+      expect(
+        () => build(columns: [
+          TomReportColumn(
+            name: 'region',
+            sourceKey: 'region',
+            valueKind: TomReportValueKind.string,
+          ),
+          TomReportColumn(
+            name: 'region',
+            sourceKey: 'revenue',
+            valueKind: TomReportValueKind.currency,
+          ),
+        ]),
+        throwsArgumentError,
+      );
+    });
+
+    // An empty dimension list aggregates over the whole filtered set — the
+    // same meaning an empty groupBy has in the query substrate.
+    test('a report with no dimensions is a valid single-row aggregate', () {
+      final report = TomReportDefinition(
+        reportId: 'totals',
+        sourceEntityId: 'Order',
+        measures: [
+          TomReportMeasure(
+            key: 'orders',
+            function: TomReportMeasureFunction.count,
+          ),
+        ],
+        columns: [
+          TomReportColumn(
+            name: 'orders',
+            sourceKey: 'orders',
+            valueKind: TomReportValueKind.integer,
+          ),
+        ],
+      );
+      expect(report.dimensions, isEmpty);
+      expect(report.isAggregated, isTrue);
+    });
+
+    test('a report with no measures is a plain listing', () {
+      final report = TomReportDefinition(
+        reportId: 'order_list',
+        sourceEntityId: 'Order',
+        dimensions: [
+          TomReportDimension(
+            key: 'number',
+            columnName: 'order_number',
+            valueKind: TomReportValueKind.string,
+          ),
+        ],
+        columns: [
+          TomReportColumn(
+            name: 'number',
+            sourceKey: 'number',
+            valueKind: TomReportValueKind.string,
+          ),
+        ],
+      );
+      expect(report.isAggregated, isFalse);
+    });
+
+    test('a report must project at least one column', () {
+      expect(
+        () => TomReportDefinition(
+          reportId: 'nothing',
+          sourceEntityId: 'Order',
+          columns: const [],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('requiredParameters selects only the parameters that need a value',
+        () {
+      final report = TomReportDefinition(
+        reportId: 'r',
+        sourceEntityId: 'Order',
+        dimensions: [
+          TomReportDimension(
+            key: 'k',
+            columnName: 'c',
+            valueKind: TomReportValueKind.string,
+          ),
+        ],
+        columns: [
+          TomReportColumn(
+            name: 'k',
+            sourceKey: 'k',
+            valueKind: TomReportValueKind.string,
+          ),
+        ],
+        parameters: [
+          TomReportParameter(
+            name: 'from',
+            valueKind: TomReportValueKind.date,
+            required: true,
+          ),
+          TomReportParameter(
+            name: 'detail',
+            valueKind: TomReportValueKind.boolean,
+          ),
+        ],
+      );
+      expect(report.requiredParameters.map((p) => p.name), ['from']);
+    });
+  });
+
+  group('csra8: CE-RP result envelope', () {
+    TomReportResultSection section() => TomReportResultSection(
+          columns: [
+            TomReportColumn(
+              name: 'region',
+              sourceKey: 'region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+          rows: Stream.fromIterable([
+            ['north'],
+            ['south'],
+          ]),
+        );
+
+    test('rows stay streamable rather than materialised', () async {
+      expect(await section().rows.toList(), [
+        ['north'],
+        ['south'],
+      ]);
+    });
+
+    test('a section must declare at least one column', () {
+      expect(
+        () => TomReportResultSection(
+          columns: const [],
+          rows: const Stream.empty(),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('a section may not name a column twice', () {
+      final column = TomReportColumn(
+        name: 'region',
+        sourceKey: 'region',
+        valueKind: TomReportValueKind.string,
+      );
+      expect(
+        () => TomReportResultSection(
+          columns: [column, column],
+          rows: const Stream.empty(),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('the single-section factory produces a one-section result', () {
+      final result = TomReportResult.single(
+        reportId: 'sales_by_region',
+        title: 'Sales by region',
+        section: section(),
+        metadata: {'asOf': '2026-07-28'},
+      );
+      expect(result.sections, hasLength(1));
+      expect(result.metadata['asOf'], '2026-07-28');
+    });
+
+    test('metadata is unmodifiable so a renderer cannot rewrite provenance',
+        () {
+      final result = TomReportResult.single(
+        reportId: 'r',
+        title: 't',
+        section: section(),
+        metadata: {'ranBy': 'alexis'},
+      );
+      expect(() => result.metadata['ranBy'] = 'someone else',
+          throwsUnsupportedError);
+    });
+
+    test('a result with no sections is rejected', () {
+      expect(
+        () => TomReportResult(
+          reportId: 'r',
+          title: 't',
+          sections: const [],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    // Charts travel on the envelope so a client can draw them; an exporter
+    // that cannot express one omits it rather than failing.
+    test('the envelope carries the declared charts', () {
+      final chart = TomReportChart(
+        chartId: 'by_region',
+        kind: TomReportChartKind.bar,
+        categoryColumn: 'region',
+        valueColumns: ['revenue'],
+      );
+      final result = TomReportResult.single(
+        reportId: 'r',
+        title: 't',
+        section: section(),
+        charts: [chart],
+      );
+      expect(result.charts, [chart]);
+    });
+  });
 }

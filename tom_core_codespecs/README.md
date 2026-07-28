@@ -107,10 +107,37 @@ survives a blanket opt-out whole. Silencing is therefore all-or-nothing per type
 and can only ever reach a non-essential one — never a per-channel narrowing of
 an essential type.
 
+**csra8 — CE-RP, promoted out of §4.3.** A report is a *grouped projection over
+the domain model, delivered as a rendered artifact*. The composition hypothesis
+(CE-API + CE-DB + CE-FM) fails on its first term: `tom_core_server`'s
+`TomGroupedSelect` / `TomAggregate` supply the runtime grammar, but CE-DB's
+**spec-authorable** surface is row-shaped, so a dimension and a measure have
+nowhere to be authored. That gap is what these classes hold.
+
+| Class | Part | Purpose | Why the substrate does not cover it |
+|-------|------|---------|-------------------------------------|
+| `TomReportDefinition` (+ `TomReportDimension`, `TomReportMeasure`, `TomReportColumn`, `TomReportParameter`, `TomReportChart`, `TomReportValueKind`, `TomReportMeasureFunction`, `TomReportDeliveryChannel`, `TomReportChartKind`) | CE-RP Reporting (§5.28) | The grouped projection a specification authors — dimension by dimension, measure by measure — plus the output columns that display them, the per-execution parameters, and the charts declared over the projection. | `TomGroupedSelect` is a *query*, compiled from an already-decided grouping. Nothing in `tom_core` holds the decision itself, nor the report's identity, delivery channels or authorization key. |
+| `TomReportResult` (+ `TomReportResultSection`) | CE-RP Reporting (§5.28) | The **shared** result envelope: sections of columns over a `Stream` of rows, plus the chart declarations and run metadata. | `tom_core_server`'s `TomTabularResult` is server-side, and the envelope's locus is *shared* — the client renders a report too. See below. |
+
+`TomReportResult` deliberately does **not** extend `TomTabularResult`. A shared
+type cannot depend on a server type, so the server adapts one way onto the
+tabular shape when exporting — the CE-DB entity-placement decision applied again.
+The adaptation is honoured in one inherited constraint: rows stay a `Stream`,
+because a report exists for results too large to hold inline.
+
+`TomReportMeasureFunction` is 1:1 with `tom_core_server`'s `TomAggregateFunction`
+— a measure the query layer cannot compile is a measure that cannot run — and
+`COUNT(*)` / `COUNT(DISTINCT c)` are expressed as fields (`columnName`,
+`distinct`) rather than as extra members. Three checks run at construction,
+because each is a specification defect no generator can repair: a column whose
+`sourceKey` names neither a dimension nor a measure, one key claimed by both,
+and a chart plotting a column the report does not project.
+
 ## Status
 
-csra7. CE-NT's notification model added on its promotion out of §4.3 (CE-LG,
-promoted in the same pass, is reuse and needs no class). Earlier: csra3 CE-UP
+csra8. CE-RP's report model added on its promotion out of §4.3, leaving CE-WF as
+the sole deferred candidate. Earlier: csra7 CE-NT's notification model (CE-LG,
+promoted in the same pass, is reuse and needs no class); csra3 CE-UP
 single-moded and its persistence seam added; csra2 the four remaining catalogued
 gap classes (CE-LO / CE-TX / CE-NV / CE-JB) with CE-AC confirmed reuse;
 csm210-4-1 the CE-EN domain enum with CE-DB confirmed reuse and the entity-model

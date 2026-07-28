@@ -51,6 +51,19 @@
 /// [TomNotificationPreferences] and [TomNotificationCatalog]. CE-LG is **not** a
 /// gap alongside it: `tom_core_server`'s `audit` module already carries the
 /// declaration (`TomAudited`) and the trail, so CE-LG is pure reuse.
+///
+/// **CE-RP's promotion out of the deferred candidates.** A report is a grouped
+/// projection over the domain model — dimensions, measures and the output
+/// columns that display them — and no active part has an authoring home for
+/// that shape: `tom_core_server`'s `TomGroupedSelect` supplies the runtime
+/// grammar, but CE-DB's *authorable* surface is row-shaped. [TomReportDefinition]
+/// (with [TomReportDimension], [TomReportMeasure], [TomReportColumn],
+/// [TomReportParameter] and [TomReportChart]) is that holder, and
+/// [TomReportResult] is the **shared** result envelope its two consumers need.
+/// The envelope deliberately does **not** extend `tom_core_server`'s
+/// `TomTabularResult`: the envelope's locus is *shared* (the client reads it
+/// too) and this package is dependency-free, so the server adapts one way onto
+/// the tabular shape — the same placement decision CE-DB records for entities.
 library;
 
 export 'src/client_application.dart';
@@ -60,5 +73,6 @@ export 'src/job_declaration.dart';
 export 'src/layout_node.dart';
 export 'src/message_key.dart';
 export 'src/notification_model.dart';
+export 'src/report_model.dart';
 export 'src/route_flow.dart';
 export 'src/user_settings.dart';
