@@ -201,6 +201,7 @@ class TomSqlAuditSink implements TomAuditSink {
   final bool requireWriteOnce;
 
   String _headHash = tomAuditGenesisHash;
+  int _entryCount = 0;
   bool _closed = false;
   Future<void>? _opening;
   TomAuditWriteOnceCheck? _writeOnceCheck;
@@ -217,15 +218,19 @@ class TomSqlAuditSink implements TomAuditSink {
 
   /// The columns an insert names, in bind order.
   static const String _insertColumns =
-      'writer, entry_id, recorded_at, actor, action, target, target_key, '
-      'outcome, request_id, previous_hash, hash, record';
+      'writer, entry_index, entry_id, recorded_at, actor, action, target, '
+      'target_key, outcome, request_id, previous_hash, hash, record';
 
   /// The columns a read projects. `seq` is not among them: it orders the read
   /// but is not part of the entry.
-  static const String _selectColumns = 'previous_hash, hash, record';
+  static const String _selectColumns =
+      'entry_index, previous_hash, hash, record';
 
   @override
   String get headHash => _headHash;
+
+  @override
+  int get entryCount => _entryCount;
 
   /// What the last [verifyWriteOnce] found, or `null` before [open].
   TomAuditWriteOnceCheck? get writeOnceCheck => _writeOnceCheck;
@@ -275,21 +280,27 @@ class TomSqlAuditSink implements TomAuditSink {
         'story in the audit documentation.',
       );
     }
-    _headHash = await _recoverHeadHash();
+    final head = await _recoverHead();
+    _headHash = head.hash;
+    _entryCount = head.entryCount;
   }
 
-  /// Reads the last chain hash for [writer] from the table.
+  /// Reads the last chain hash and position for [writer] from the table.
   ///
   /// A restart that began a fresh chain would present every pre-restart entry
   /// as unverifiable, which is indistinguishable from tampering — so the head
-  /// is recovered rather than reset.
-  Future<String> _recoverHeadHash() async {
+  /// is recovered rather than reset. Both values come from the *same* row, in
+  /// one statement: read separately they could straddle a concurrent insert and
+  /// yield a count that belongs to a different head.
+  Future<({String hash, int entryCount})> _recoverHead() async {
     final rows = await datasource.executeQuery<TomAuditHeadRow>(
-      'SELECT hash FROM $table WHERE writer = :writer ORDER BY seq DESC '
-      'LIMIT 1',
+      'SELECT hash, entry_index FROM $table WHERE writer = :writer '
+      'ORDER BY seq DESC LIMIT 1',
       {'writer': writer},
     );
-    return rows.isEmpty ? tomAuditGenesisHash : rows.first.hash;
+    return rows.isEmpty
+        ? (hash: tomAuditGenesisHash, entryCount: 0)
+        : (hash: rows.first.hash, entryCount: rows.first.entryIndex + 1);
   }
 
   @override
@@ -309,12 +320,13 @@ class TomSqlAuditSink implements TomAuditSink {
 
   Future<TomAuditEntry> _writeSerialised(TomAuditRecord record) async {
     await open();
-    final entry = TomAuditEntry.chain(record, _headHash);
+    final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     try {
       await datasource.executeCommand(
         'INSERT INTO $table ($_insertColumns) VALUES '
-        '(:writer, :entryId, :recordedAt, :actor, :action, :target, '
-        ':targetKey, :outcome, :requestId, :previousHash, :hash, :record)',
+        '(:writer, :entryIndex, :entryId, :recordedAt, :actor, :action, '
+        ':target, :targetKey, :outcome, :requestId, :previousHash, :hash, '
+        ':record)',
         _bindOf(entry),
       );
     } catch (e, stack) {
@@ -327,6 +339,7 @@ class TomSqlAuditSink implements TomAuditSink {
       );
     }
     _headHash = entry.hash;
+    _entryCount++;
     return entry;
   }
 
@@ -478,6 +491,7 @@ class TomSqlAuditSink implements TomAuditSink {
     final record = entry.record;
     return {
       'writer': writer,
+      'entryIndex': entry.index,
       'entryId': _fit(record.id, 191),
       'recordedAt': sqlInstant(record.timestamp),
       'actor': _fit(record.actor.username, 160),
@@ -502,6 +516,7 @@ class TomSqlAuditSink implements TomAuditSink {
         ),
         previousHash: row.previousHash,
         hash: row.hash,
+        index: row.entryIndex,
       );
     } catch (e, stack) {
       // A row whose record text will not parse is itself a finding, exactly as
@@ -558,6 +573,10 @@ class TomSqlAuditSink implements TomAuditSink {
   primaryKeyField: "irrelevant",
 )
 class TomAuditTrailRow {
+  /// The entry's position in its writer's chain, counted from genesis.
+  @TomDbColumn(columnName: "entry_index")
+  int entryIndex = 0;
+
   /// The hash of the preceding entry.
   @TomDbColumn(columnName: "previous_hash")
   String previousHash = "";
@@ -582,6 +601,10 @@ class TomAuditHeadRow {
   /// The newest entry's hash.
   @TomDbColumn(columnName: "hash")
   String hash = "";
+
+  /// The newest entry's position, from which the chain's length follows.
+  @TomDbColumn(columnName: "entry_index")
+  int entryIndex = 0;
 }
 
 /// A projected sequence number — nullable, because the aggregate that resolves

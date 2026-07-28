@@ -28,6 +28,9 @@ class _FailingSink implements TomAuditSink {
   String get headHash => tomAuditGenesisHash;
 
   @override
+  int get entryCount => 0;
+
+  @override
   Future<TomAuditEntry> write(TomAuditRecord record) async {
     attempts++;
     throw TomAuditException('test.sink.always_fails', 'storage is unavailable');
@@ -357,7 +360,11 @@ void main() {
 
   group('TomAuditEntry and the hash chain', () {
     test('an entry hashes its record and its link together', () {
-      final entry = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final entry = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
       expect(entry.previousHash, tomAuditGenesisHash);
       expect(entry.hash.length, 64);
       expect(entry.isSelfConsistent, isTrue);
@@ -365,15 +372,23 @@ void main() {
 
     test('the same record on a different link gets a different hash', () {
       final record = _record('r1');
-      final a = TomAuditEntry.chain(record, tomAuditGenesisHash);
-      final b = TomAuditEntry.chain(record, a.hash);
+      final a = TomAuditEntry.chain(record, tomAuditGenesisHash, index: 0);
+      final b = TomAuditEntry.chain(record, a.hash, index: 1);
       expect(a.hash, isNot(b.hash));
     });
 
+    test('the index is outside the hash, so numbering cannot forge one', () {
+      final record = _record('r1');
+      final a = TomAuditEntry.chain(record, tomAuditGenesisHash, index: 0);
+      final b = TomAuditEntry.chain(record, tomAuditGenesisHash, index: 77);
+      expect(a.hash, b.hash);
+      expect(b.isSelfConsistent, isTrue);
+    });
+
     test('an unbroken chain verifies', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
-      final b = TomAuditEntry.chain(_record('r2'), a.hash);
-      final c = TomAuditEntry.chain(_record('r3'), b.hash);
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
+      final c = TomAuditEntry.chain(_record('r3'), b.hash, index: 2);
       final result = verifyAuditChain([a, b, c]);
       expect(result.isValid, isTrue);
       expect(result.entryCount, 3);
@@ -381,13 +396,18 @@ void main() {
     });
 
     test('editing an entry after the fact is detected as a content change', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
-      final b = TomAuditEntry.chain(_record('r2', after: {'x': 1}), a.hash);
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final b = TomAuditEntry.chain(
+        _record('r2', after: {'x': 1}),
+        a.hash,
+        index: 1,
+      );
       // Rewrite b's record, keeping its claimed hashes — a targeted forgery.
       final forged = TomAuditEntry(
         record: _record('r2', after: {'x': 999}),
         previousHash: b.previousHash,
         hash: b.hash,
+        index: b.index,
       );
       final result = verifyAuditChain([a, forged]);
       expect(result.isValid, isFalse);
@@ -396,9 +416,9 @@ void main() {
     });
 
     test('removing an entry is detected as a broken link', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
-      final b = TomAuditEntry.chain(_record('r2'), a.hash);
-      final c = TomAuditEntry.chain(_record('r3'), b.hash);
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
+      final c = TomAuditEntry.chain(_record('r3'), b.hash, index: 2);
       // Drop b and hope nobody notices.
       final result = verifyAuditChain([a, c]);
       expect(result.isValid, isFalse);
@@ -406,14 +426,36 @@ void main() {
       expect(result.detail, contains('link mismatch'));
     });
 
+    test('renumbering an otherwise intact chain is detected', () {
+      // The index is not hashed, so it is the one field that can be rewritten
+      // without breaking a digest. Left unchecked it would slide the window an
+      // anchor is compared against.
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
+      final renumbered = TomAuditEntry(
+        record: b.record,
+        previousHash: b.previousHash,
+        hash: b.hash,
+        index: 9,
+      );
+      final result = verifyAuditChain([a, renumbered]);
+      expect(result.isValid, isFalse);
+      expect(result.brokenAtIndex, 1);
+      expect(result.detail, contains('renumbered'));
+    });
+
     test('reordering two entries is detected', () {
-      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
-      final b = TomAuditEntry.chain(_record('r2'), a.hash);
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 0);
+      final b = TomAuditEntry.chain(_record('r2'), a.hash, index: 1);
       expect(verifyAuditChain([b, a]).isValid, isFalse);
     });
 
     test('entries round-trip through their JSON line', () {
-      final entry = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final entry = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 4,
+      );
       final line = entry.toJsonLine();
       expect(line, isNot(contains('\n')));
       final back = TomAuditEntry.fromJson(
@@ -421,12 +463,17 @@ void main() {
       );
       expect(back.hash, entry.hash);
       expect(back.previousHash, entry.previousHash);
+      expect(back.index, 4);
       expect(back.record.id, 'r1');
       expect(back.isSelfConsistent, isTrue);
     });
 
     test('parseAuditLines skips blanks and rejects damage', () {
-      final entry = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final entry = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      );
       expect(parseAuditLines([entry.toJsonLine(), '', '  ']), hasLength(1));
       // A malformed line is itself a finding; swallowing it would hide the
       // damage the chain exists to reveal.

@@ -24,6 +24,13 @@ const String defaultAuditTrailTable = 'tom_audit_trail';
 ///    table each continue their own head, so without this column their entries
 ///    would interleave into a sequence that verifies as broken. Splitting by
 ///    writer makes a multi-node deployment correct rather than forbidden.
+///  * `entry_index` is the entry's position in its writer's chain, counted from
+///    genesis. It is **not** `seq`: `seq` is a table-wide surrogate shared by
+///    every writer and consumed by rolled-back inserts, whereas the index is
+///    per-chain and gapless, which is what an anchor's `entryCount` is a claim
+///    about. Unique per writer, so a replayed insert cannot land twice at one
+///    position — the same argument as the link key, applied to position instead
+///    of linkage.
 ///  * the **unique key on `(writer, previous_hash)`** is what makes chain
 ///    linearity a database invariant. Two entries claiming the same predecessor
 ///    is a *fork* — the shape a replayed or duplicated write produces — and as a
@@ -45,6 +52,7 @@ String auditTrailTableDdl(String table) => '''
 CREATE TABLE IF NOT EXISTS $table (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
   writer        VARCHAR(64)  NOT NULL,
+  entry_index   BIGINT       NOT NULL,
   entry_id      VARCHAR(191) NOT NULL,
   recorded_at   DATETIME(6)  NOT NULL,
   actor         VARCHAR(160) NOT NULL,
@@ -59,6 +67,7 @@ CREATE TABLE IF NOT EXISTS $table (
   PRIMARY KEY (seq),
   UNIQUE KEY uq_${table}_link (writer, previous_hash),
   UNIQUE KEY uq_${table}_hash (writer, hash),
+  UNIQUE KEY uq_${table}_index (writer, entry_index),
   KEY ix_${table}_time (writer, recorded_at),
   KEY ix_${table}_target (target, action),
   KEY ix_${table}_actor (actor)

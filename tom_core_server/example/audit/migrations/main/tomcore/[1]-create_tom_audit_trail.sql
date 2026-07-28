@@ -10,7 +10,7 @@
 -- else. That grant, not this file, is what makes the table write-once; see
 -- `doc/audit.md` § "The Write-Once Story".
 --
--- Three things carry the design:
+-- Four things carry the design:
 --
 --  * `seq` is the primary key. Nothing addresses an audit row by anything else
 --    — the trail is never updated and never joined — while insertion order is
@@ -19,6 +19,11 @@
 --  * `writer` names the chain a row belongs to, so several nodes may append to
 --    one table without their entries interleaving into a sequence that fails
 --    its own verification.
+--  * `entry_index` is the row's position in its writer's chain, counted from
+--    genesis. It is not `seq`: `seq` is table-wide, shared by every writer and
+--    consumed by rolled-back inserts, whereas the index is per-chain and
+--    gapless — which is what an anchor's entry count is a claim about, and what
+--    lets a pruned prefix be told apart from a rewritten one.
 --  * UNIQUE (writer, previous_hash) makes chain linearity a database
 --    invariant. Two entries claiming the same predecessor is a fork, and as a
 --    constraint it surfaces at insert time instead of as silent corruption
@@ -28,6 +33,7 @@
 CREATE TABLE IF NOT EXISTS tom_audit_trail (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
   writer        VARCHAR(64)  NOT NULL,
+  entry_index   BIGINT       NOT NULL,
   entry_id      VARCHAR(191) NOT NULL,
   recorded_at   DATETIME(6)  NOT NULL,
   actor         VARCHAR(160) NOT NULL,
@@ -42,6 +48,7 @@ CREATE TABLE IF NOT EXISTS tom_audit_trail (
   PRIMARY KEY (seq),
   UNIQUE KEY uq_tom_audit_trail_link (writer, previous_hash),
   UNIQUE KEY uq_tom_audit_trail_hash (writer, hash),
+  UNIQUE KEY uq_tom_audit_trail_index (writer, entry_index),
   KEY ix_tom_audit_trail_time (writer, recorded_at),
   KEY ix_tom_audit_trail_target (target, action),
   KEY ix_tom_audit_trail_actor (actor)

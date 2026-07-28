@@ -4,7 +4,8 @@
 /// sink, the shape of a [TomAuditRecord], attribution from the ambient zone,
 /// the declared-versus-automatic split expressed by [TomAudited], redaction,
 /// the tamper-evident hash chain, the append-only file sink with its whole-file
-/// retention, and the relational sink's schema and write-once check.
+/// retention, the relational sink's schema and write-once check, and the
+/// anchors that catch the one attack the chain alone cannot see.
 ///
 /// The two *chokepoints* — the endpoint pipeline and the repository write path
 /// — are what make this automatic in a running server; they are exercised by
@@ -103,9 +104,10 @@ Future<void> run() async {
   assert(!masked.values.contains('hunter2'));
 
   // 6. Each entry hashes the previous one, so editing, removing or reordering a
-  //    single entry invalidates every hash after it. This is evidence, not
-  //    proof — an attacker who can rewrite the whole file can recompute it —
-  //    but it defeats the realistic attack of doctoring one record.
+  //    single entry invalidates every hash after it. On its own that is
+  //    evidence, not proof — an attacker who can rewrite the whole file
+  //    recomputes it — but it defeats the realistic attack of doctoring one
+  //    record. Step 10 closes the remaining gap.
   sink.clear();
   for (final target in ['Order', 'Invoice', 'Shipment']) {
     await TomAuditTrail.recordAction(
@@ -206,6 +208,79 @@ Future<void> run() async {
   );
   print('   unprotected               : ${open.summary}');
   assert(!open.isAppendOnly);
+
+  // 10. The chain says nobody edited *an* entry. An anchor says nobody rewrote
+  //     *all* of them: it publishes the head hash and the entry count somewhere
+  //     the audited server cannot reach back into, so a forged trail that
+  //     verifies perfectly still fails to match what was published.
+  sink.clear();
+  TomAuditTrail.install(sink);
+  for (final target in ['Grant', 'Revoke', 'Grant']) {
+    await TomAuditTrail.recordAction(
+      action: TomAuditAction.update,
+      target: target,
+      outcome: TomAuditOutcome.succeeded,
+    );
+  }
+
+  // A memory store keeps the example connection-free, and is explicitly not an
+  // anchor: it dies with the process it is anchoring. A deployment points
+  // `store` at something outside the server's reach — a WORM mount, a versioned
+  // object store, another organisation's inbox — and passes a
+  // `signer: TomRsaAuditAnchorSigner(...)` so the store cannot forge one
+  // either. See `doc/audit.md` § "Anchoring the Chain Head".
+  final anchors = TomMemoryAuditAnchorStore();
+  final publisher = TomAuditAnchorPublisher(
+    sink: sink,
+    store: anchors,
+    writer: 'node-a',
+  );
+  final anchor = await publisher.publishNow();
+  print('10. anchored                 : ${anchor.entryCount} entries @ '
+      '${anchor.headHash.substring(0, 12)}…');
+
+  // The wholesale rewrite: one record swapped, then every hash from there on
+  // recomputed. This is the attack the chain alone cannot see.
+  final forged = <TomAuditEntry>[];
+  var previousHash = tomAuditGenesisHash;
+  for (final entry in sink.entries) {
+    final record = entry.index != 1
+        ? entry.record
+        : TomAuditRecord(
+            id: entry.record.id,
+            timestamp: entry.record.timestamp,
+            actor: entry.record.actor,
+            action: entry.record.action,
+            target: 'Revoke (never happened)',
+            outcome: entry.record.outcome,
+          );
+    final replacement = TomAuditEntry.chain(
+      record,
+      previousHash,
+      index: entry.index,
+    );
+    forged.add(replacement);
+    previousHash = replacement.hash;
+  }
+  print('    forged chain verifies    : ${verifyAuditChain(forged).isValid}');
+  assert(verifyAuditChain(forged).isValid);
+
+  final checked = verifyAgainstAnchor(forged, anchor, writer: 'node-a');
+  print('    against the anchor       : ${checked.status.name}');
+  assert(checked.status == TomAuditAnchorStatus.diverged);
+  assert(checked.indicatesTampering);
+
+  // Retention is the case that must *not* raise the alarm. An entry keeps the
+  // index it was written with, so what survives a sweep reads as a suffix of
+  // the anchored chain rather than as a break in it.
+  final suffix = sink.entries.skip(2).toList();
+  final retained = verifyAgainstAnchor(suffix, anchor, writer: 'node-a');
+  print('    retained suffix          : ${retained.status.name}');
+  assert(retained.isMatch && !retained.indicatesTampering);
+
+  publisher.close();
+  anchors.close();
+  TomAuditTrail.uninstall();
 }
 
 Future<void> main() async {

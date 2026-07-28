@@ -20,6 +20,8 @@
 @Tags(['db'])
 library;
 
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -434,6 +436,148 @@ void main() async {
           ),
         );
         sink.close();
+      });
+    });
+
+    group('an anchor catches what the chain cannot', () {
+      test('a wholesale rewrite still verifies but fails its anchor', () async {
+        final sink = sinkFor('node-a');
+        for (var i = 1; i <= 4; i++) {
+          await sink.write(_record(i));
+        }
+        final store = TomMemoryAuditAnchorStore();
+        final publisher = TomAuditAnchorPublisher(
+          sink: sink,
+          store: store,
+          writer: 'node-a',
+        );
+        final anchor = await publisher.publishNow();
+        expect(anchor.entryCount, 4);
+
+        // The attacker holds UPDATE. They edit entry-2 and — unlike the test in
+        // the group above — do the work properly, recomputing every hash from
+        // there on. Re-chaining is done in Dart because that is precisely what
+        // an attacker with the algorithm would do.
+        final original = await sink.readAll();
+        var previous = original.first.previousHash;
+        for (final entry in original) {
+          final record = entry.record.id == 'entry-2'
+              ? _record(2, target: 'Receipt')
+              : entry.record;
+          final forged = TomAuditEntry.chain(
+            record,
+            previous,
+            index: entry.index,
+          );
+          await dsi.datasource.executeCommand(
+            'UPDATE $defaultAuditTrailTable SET record = :record, '
+            'previous_hash = :previousHash, hash = :hash '
+            'WHERE writer = :writer AND entry_index = :index',
+            {
+              'record': jsonEncode(forged.record.toJson()),
+              'previousHash': forged.previousHash,
+              'hash': forged.hash,
+              'writer': 'node-a',
+              'index': forged.index,
+            },
+          );
+          previous = forged.hash;
+        }
+
+        // The trail is internally perfect — this is the whole problem.
+        expect((await sink.verify()).isValid, isTrue);
+
+        final result = verifyAgainstAnchor(
+          await sink.readAll(),
+          anchor,
+          writer: 'node-a',
+        );
+        expect(result.status, TomAuditAnchorStatus.diverged);
+        expect(result.indicatesTampering, isTrue);
+        publisher.stop();
+        sink.close();
+      });
+
+      test('deleting the newest rows reads as a truncation', () async {
+        final sink = sinkFor('node-a');
+        for (var i = 1; i <= 5; i++) {
+          await sink.write(_record(i));
+        }
+        final store = TomMemoryAuditAnchorStore();
+        final publisher = TomAuditAnchorPublisher(
+          sink: sink,
+          store: store,
+          writer: 'node-a',
+        );
+        await publisher.publishNow();
+
+        // Lopping entries off the end leaves a chain that verifies. Only the
+        // anchor's count sees it.
+        await dsi.datasource.executeCommand(
+          'DELETE FROM $defaultAuditTrailTable WHERE entry_index >= :from',
+          {'from': 3},
+        );
+        expect((await sink.verify()).isValid, isTrue);
+
+        final result = verifyAgainstAnchor(
+          await sink.readAll(),
+          (await store.latest('node-a'))!,
+          writer: 'node-a',
+        );
+        expect(result.status, TomAuditAnchorStatus.truncated);
+        publisher.stop();
+        sink.close();
+      });
+
+      test('retention leaves a suffix that still matches the anchor', () async {
+        final sink = sinkFor('node-a');
+        for (var i = 1; i <= 8; i++) {
+          await sink.write(_record(i));
+        }
+        final store = TomMemoryAuditAnchorStore();
+        final publisher = TomAuditAnchorPublisher(
+          sink: sink,
+          store: store,
+          writer: 'node-a',
+        );
+        await publisher.publishNow();
+
+        expect(await sink.purgeToMaxEntries(3), 5);
+
+        // The stored index is what makes this work: the surviving rows still
+        // know they are entries 5..7, so the anchored position is inside the
+        // retained window and reads clean instead of as a rewrite.
+        final result = verifyAgainstAnchor(
+          await sink.readAll(),
+          (await store.latest('node-a'))!,
+          writer: 'node-a',
+        );
+        expect(result.status, TomAuditAnchorStatus.matched);
+        expect(result.indicatesTampering, isFalse);
+        publisher.stop();
+        sink.close();
+      });
+
+      test('a reopened sink continues the count, so anchors keep lining up',
+          () async {
+        final first = sinkFor('node-a');
+        for (var i = 1; i <= 3; i++) {
+          await first.write(_record(i));
+        }
+        first.close();
+
+        final second = sinkFor('node-a');
+        await second.write(_record(4));
+        expect(second.entryCount, 4);
+
+        final anchor = TomAuditAnchor.of(second, writer: 'node-a');
+        final result = verifyAgainstAnchor(
+          await second.readAll(),
+          anchor,
+          writer: 'node-a',
+        );
+        expect(result.status, TomAuditAnchorStatus.matched);
+        second.close();
       });
     });
 

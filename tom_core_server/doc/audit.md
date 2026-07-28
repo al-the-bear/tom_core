@@ -19,6 +19,7 @@ remembering to ask.
 - [The Relational Sink](#the-relational-sink)
 - [The Write-Once Story](#the-write-once-story)
 - [Tamper Evidence](#tamper-evidence)
+- [Anchoring the Chain Head](#anchoring-the-chain-head)
 - [Failure Behaviour](#failure-behaviour)
 - [Suppressing the Trail](#suppressing-the-trail)
 - [Core Components](#core-components)
@@ -213,6 +214,11 @@ chain. `TomFileAuditSink` deletes **whole files** — entries older than
 the chain, which still verifies; removing an interior entry would break it and
 be indistinguishable from tampering.
 
+Retention never moves an entry's `index` or a sink's `entryCount`: both are
+counted from genesis, so a pruned trail still knows *where* its survivors sat.
+That is what lets [anchor verification](#anchoring-the-chain-head) tell a
+retention sweep apart from a rewrite.
+
 Rotation sequence numbers are monotonic and never reused, including after
 retention has deleted the file that held one — a reused number would let a new
 file take an older file's name, and read-back order would stop matching write
@@ -283,6 +289,11 @@ mechanism for the second:
 | **Database-side guard** | `BEFORE UPDATE` / `BEFORE DELETE` triggers that `SIGNAL SQLSTATE '45000'` | A deployment that cannot separate credentials: one application user, one schema, `UPDATE` already granted across it |
 | **Explicit acceptance** | Nothing. The trail is tamper-*evident* only | Development and test, where operational convenience genuinely outweighs tamper-resistance — and stated as such, never assumed |
 
+None of the three detects a rewrite performed *with* the credential that is
+permitted to write. That is what [anchoring](#anchoring-the-chain-head) is for,
+and the two are complementary: the grant makes the rewrite hard, the anchor
+makes it visible.
+
 **The separate credential is the primary mechanism.** Apply the migration with a
 privileged credential, then serve the trail with a restricted one:
 
@@ -344,14 +355,150 @@ exists to catch.
 
 Each entry stores the previous entry's hash, and its own
 `sha256('$previousHash|${jsonEncode(record.toJson())}')`. The chain starts at
-`tomAuditGenesisHash` (64 zeros). `verifyAuditChain` / `sink.verify()` return a
-`TomAuditChainVerification` naming the index at which a chain first breaks.
+`tomAuditGenesisHash` (64 zeros). Each entry also carries its `index`: its
+position in the chain counted from genesis, which is *not* the same number as
+its offset in whatever a reader happens to hold once retention has pruned a
+prefix.
 
-This is **evidence, not proof**. An attacker who can rewrite the whole file can
-recompute every hash. What the chain makes impossible is the realistic attack —
-editing, removing or reordering *one* entry — because doing so invalidates every
-hash after it. Cryptographic proof would need the head hash published somewhere
-the attacker does not control; the chain is the part the framework can provide.
+`verifyAuditChain` / `sink.verify()` return a `TomAuditChainVerification` naming
+the offset at which a chain first breaks, and distinguishing three failures
+because they mean different things:
+
+| Detail | What happened |
+| --- | --- |
+| `content changed` | an entry's record no longer matches its own hash — it was edited in place |
+| `link mismatch` | an entry was removed, inserted or reordered here |
+| `chain renumbered` | the indexes jump — someone rewrote positions |
+
+The index check is not redundant. The index deliberately sits **outside** the
+hashed payload, so that adding it did not invalidate every digest already
+written — which makes it the one field an attacker can change without breaking a
+hash. Left unchecked, renumbering would slide the window an anchor is compared
+against.
+
+### What the chain alone cannot see
+
+Two attacks survive a perfect chain, and it is worth naming them precisely
+rather than describing the chain as "tamper-evident" and leaving it there:
+
+- **A wholesale rewrite.** Edit an entry, then recompute every hash from that
+  point on. The result verifies. Internal consistency is a property a forger can
+  restore.
+- **A truncation.** Delete entries from the *end*. What remains is a valid
+  chain, shorter. Nothing inside the trail records how long it was supposed to
+  be.
+
+Both are closed by anchoring.
+
+## Anchoring the Chain Head
+
+An anchor is a claim — *chain `writer` had `entryCount` entries whose head was
+`headHash`, at `createdAt`* — published somewhere the audited server does not
+control. `TomAuditAnchorPublisher` writes one on a schedule; `verifyAgainstAnchor`
+later checks the trail against it.
+
+```dart
+final sink = TomSqlAuditSink(auditDatasource, writer: 'node-a');
+TomAuditTrail.install(sink);
+
+final publisher = TomAuditAnchorPublisher(
+  sink: sink,
+  store: TomFileAuditAnchorStore(directory: Directory('/mnt/worm/anchors')),
+  writer: 'node-a',
+  signer: TomRsaAuditAnchorSigner(privateKey: anchorKey, keyId: 'audit-2026'),
+  interval: const Duration(hours: 1),
+);
+await publisher.start();
+```
+
+Checking, later and ideally from somewhere else:
+
+```dart
+final result = verifyAgainstAnchor(
+  await sink.readAll(),
+  (await store.latest('node-a'))!,
+  writer: 'node-a',
+  verifier: TomRsaAuditAnchorVerifier({'audit-2026': anchorPublicKey}),
+);
+if (result.indicatesTampering) alert(result.detail);
+```
+
+### What the result distinguishes
+
+`TomAuditAnchorVerification.status` is the substance of the check. The three
+groups it falls into — `isMatch`, `indicatesTampering`, `isInconclusive` — are
+what an operator alert should key on, not the enum directly.
+
+| Status | Group | Meaning |
+| --- | --- | --- |
+| `matched` | match | intact and ends exactly where the anchor says |
+| `extended` | match | intact, agrees at the anchored position, has grown since — the ordinary live state |
+| `diverged` | **tampering** | intact but the anchored position hashes differently: **the wholesale-rewrite signal** |
+| `truncated` | **tampering** | intact but stops short of the anchored position: entries removed from the end |
+| `chainBroken` | **tampering** | the chain fails its own verification, so the anchor was not consulted |
+| `signatureInvalid` | **tampering** | the anchor is unsigned, or signed by an unknown or wrong key |
+| `beforeRetention` | inconclusive | the anchored position was pruned; nothing left to compare |
+| `writerMismatch` | inconclusive | the anchor describes a different chain |
+
+`signatureInvalid` counts as tampering because a forged anchor and a
+misconfigured key are indistinguishable from the verifier's side, and treating
+the ambiguity as "fine" means the check has silently stopped checking.
+
+`beforeRetention` is the one that needs a policy decision. **If your deployment
+does not prune, treat it as a finding** — it means the entries an anchor
+counted are gone.
+
+### Retention does not raise a false alarm
+
+This is what the stored `index` buys. After `purgeToMaxEntries(3)` on an
+eight-entry chain the survivors still know they are entries 5–7, so an anchor
+taken at entry 8 lands inside the retained window and reads `matched`. If the
+anchored entry itself was pruned but the oldest survivor still *links* to it,
+that link is checked — the one position retention leaves checkable is not
+written off. Only when the anchor sits further back than that does the result
+become `beforeRetention`.
+
+### What anchoring actually guarantees
+
+Signing and publication defend against **different** adversaries, and conflating
+them is how a scheme ends up being ceremony:
+
+- **Publication** — writing the anchor where the server cannot reach it
+  afterwards — is what stops the server from revising its own history. Without
+  it, an attacker who owns the server owns the anchors and rewrites both.
+- **A signature** is what stops whoever holds the *store* from inventing an
+  anchor the server never issued, or laundering a real divergence away.
+
+So a signing key held on the machine it attests to adds nothing against
+compromise of that machine — it defends the store, not the chain. The guarantee
+is exactly: **given an anchor that reached a store the attacker cannot rewrite,
+a wholesale rewrite or a truncation of the trail is detectable.**
+
+Where that store lives is the deployment's decision and the framework does not
+pretend to make it. `TomFileAuditAnchorStore` writes JSON Lines to a directory;
+whether that directory is a WORM mount, an append-only share, or the
+application's own scratch space is what determines whether anything has been
+anchored at all. `TomMemoryAuditAnchorStore` is for tests and anchors nothing —
+it dies with the process it was attesting to.
+
+There is deliberately **no SQL anchor store**. Anchoring the trail into the same
+database that holds it is one credential and one blast radius: ceremony without
+a guarantee.
+
+### Why the publisher is not a scheduled job
+
+`TomScheduler` runs a job once *across the cluster*, which is exactly wrong
+here. The chain is per `writer` precisely so several nodes may append to one
+table, so each node must anchor its own head. A cluster-single-fire publisher
+would anchor one node, leave the rest unanchored, and report that everything was
+covered.
+
+Every tick publishes, even when nothing was written: an anchor over an unchanged
+head says *the head was still this at time T*, which bounds when a later
+divergence must have happened. At a couple of hundred bytes an hourly publisher
+costs about two megabytes a year. `close()` publishes a final anchor, so the
+entries written since the last tick are not left unanchored by a graceful
+shutdown.
 
 ## Failure Behaviour
 
@@ -395,19 +542,29 @@ and therefore auditable in its own right.
   relational trail's schema and its write-once probe.
 - **`TomAuditEntry` / `verifyAuditChain` / `parseAuditLines` /
   `TomAuditChainVerification`** — the hash chain and its verification.
+- **`TomAuditAnchor` / `verifyAgainstAnchor` / `TomAuditAnchorStatus` /
+  `TomAuditAnchorVerification`** — the external anchor and what it proves.
+- **`TomAuditAnchorSigner` / `TomAuditAnchorVerifier` /
+  `TomRsaAuditAnchorSigner` / `TomRsaAuditAnchorVerifier`** — anchor signing.
+- **`TomAuditAnchorStore` / `TomMemoryAuditAnchorStore` /
+  `TomFileAuditAnchorStore` / `TomAuditAnchorPublisher`** — anchor publication.
 - **`TomAuditException`** — a sink that could not store a record.
 
 ## Not Yet Implemented
 
 - Query/export of the trail (overlaps CE-RP reporting — see `csex11`).
-- Signed or externally anchored chain heads, which is what would turn the
-  tamper-*evidence* above into tamper-*proof*.
+- Anchor stores for specific external services (object storage with a
+  deny-delete policy, a countersigning service). The `TomAuditAnchorStore` seam
+  is here; the implementations are deployment-specific by nature.
 
 ## Dependencies
 
 - `tom_core_kernel` — `TomPrincipal`, `TomUser`, `getFromCurrentZone`,
-  `TomClosable`, `tomReflector` (policy resolution by mirror).
+  `TomClosable`, `tomReflector` (policy resolution by mirror), and — through its
+  `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures.
 - `crypto` — SHA-256 for the hash chain.
+- `pointycastle` — the `RSAPrivateKey` / `RSAPublicKey` types anchor signing
+  takes.
 - The endpoints module — `TomEndpointHandler` calls the trail at the denial and
   declared-invocation points.
 - The object-persistence module — `TomSqlDatasourceRepository` calls the trail

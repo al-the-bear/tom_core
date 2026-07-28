@@ -3,6 +3,8 @@
 /// More dartdocs go here.
 library;
 
+export 'src/tomserver/audit/audit_anchor.dart';
+export 'src/tomserver/audit/audit_anchor_store.dart';
 export 'src/tomserver/audit/audit_record.dart';
 export 'src/tomserver/audit/audit_sink.dart';
 export 'src/tomserver/audit/audit_trail.dart';

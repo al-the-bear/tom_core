@@ -83,20 +83,41 @@ class TomAuditEntry {
   /// JSON.
   final String hash;
 
+  /// This entry's zero-based position in the chain, counted from genesis.
+  ///
+  /// Stored rather than inferred from the entry's offset in whatever the reader
+  /// happens to hold, because retention makes those two different numbers. Once
+  /// a prefix has been pruned, an offset says where an entry sits in the
+  /// *surviving suffix*; the index still says where it sat in the chain. Anchor
+  /// verification is a claim about a position ([TomAuditAnchor.entryCount]), so
+  /// without this a pruned prefix and a rewritten one look alike — and a check
+  /// that reports tampering on every retention pass is one operators learn to
+  /// ignore.
+  ///
+  /// Deliberately outside the hashed payload: [hashOf] covers the link and the
+  /// record, so adding the index neither changes existing digests nor lets a
+  /// renumbering forge one.
+  final int index;
+
   /// Creates an entry from its parts. Prefer [TomAuditEntry.chain].
   const TomAuditEntry({
     required this.record,
     required this.previousHash,
     required this.hash,
+    required this.index,
   });
 
-  /// Links [record] onto a chain whose head is [previousHash].
-  factory TomAuditEntry.chain(TomAuditRecord record, String previousHash) =>
-      TomAuditEntry(
-        record: record,
-        previousHash: previousHash,
-        hash: hashOf(record, previousHash),
-      );
+  /// Links [record] onto a chain whose head is [previousHash], at [index].
+  factory TomAuditEntry.chain(
+    TomAuditRecord record,
+    String previousHash, {
+    required int index,
+  }) => TomAuditEntry(
+    record: record,
+    previousHash: previousHash,
+    hash: hashOf(record, previousHash),
+    index: index,
+  );
 
   /// The hash of [record] linked onto [previousHash].
   ///
@@ -110,21 +131,37 @@ class TomAuditEntry {
   /// Whether [hash] actually matches the record and link this entry claims.
   bool get isSelfConsistent => hash == hashOf(record, previousHash);
 
-  /// The entry as a JSON map: the chain link, then the record.
+  /// The entry as a JSON map: the position, the chain link, then the record.
   Map<String, Object?> toJson() => {
+    'index': index,
     'previousHash': previousHash,
     'hash': hash,
     'record': record.toJson(),
   };
 
   /// Rebuilds an entry from [json] as written by [toJson].
-  factory TomAuditEntry.fromJson(Map<String, Object?> json) => TomAuditEntry(
-    record: TomAuditRecord.fromJson(
-      (json['record'] as Map).cast<String, Object?>(),
-    ),
-    previousHash: json['previousHash'] as String? ?? tomAuditGenesisHash,
-    hash: json['hash'] as String? ?? '',
-  );
+  ///
+  /// A missing `index` is rejected rather than defaulted. Guessing it would
+  /// mean guessing the entry's position in the chain, and a guessed position is
+  /// exactly what anchor verification must not be built on: the wrong default
+  /// would turn a truncated trail into a merely short one.
+  factory TomAuditEntry.fromJson(Map<String, Object?> json) {
+    final index = json['index'];
+    if (index is! int) {
+      throw TomAuditException(
+        'audit.entry.missing_index',
+        'Audit entry has no chain index, so its position cannot be known.',
+      );
+    }
+    return TomAuditEntry(
+      record: TomAuditRecord.fromJson(
+        (json['record'] as Map).cast<String, Object?>(),
+      ),
+      previousHash: json['previousHash'] as String? ?? tomAuditGenesisHash,
+      hash: json['hash'] as String? ?? '',
+      index: index,
+    );
+  }
 
   /// The entry as one line of JSON, with no embedded newline.
   ///
@@ -166,21 +203,30 @@ class TomAuditChainVerification {
 
 /// Checks that [entries] form an unbroken chain from [startHash].
 ///
-/// Two distinct failures are reported, because they mean different things:
-/// a self-inconsistent entry says *this record was edited*, whereas a broken
-/// link says *an entry was removed, inserted or reordered here*.
+/// Three distinct failures are reported, because they mean different things:
+/// a self-inconsistent entry says *this record was edited*; a broken link says
+/// *an entry was removed, inserted or reordered here*; and a jump in
+/// [TomAuditEntry.index] says *the chain was renumbered*.
+///
+/// The index check is not redundant. The index sits outside the hashed payload
+/// — deliberately, so that adding it did not invalidate every existing digest —
+/// which means it is the one field an attacker can rewrite without breaking a
+/// single hash. Left unchecked, renumbering would silently slide the window
+/// that [verifyAgainstAnchor] compares against, and an anchored position could
+/// be made to point at a different entry.
 TomAuditChainVerification verifyAuditChain(
   Iterable<TomAuditEntry> entries, {
   String startHash = tomAuditGenesisHash,
 }) {
   var expectedPrevious = startHash;
-  var index = 0;
+  var offset = 0;
+  int? expectedIndex;
   for (final entry in entries) {
     if (entry.previousHash != expectedPrevious) {
       return TomAuditChainVerification(
         isValid: false,
-        entryCount: index + 1,
-        brokenAtIndex: index,
+        entryCount: offset + 1,
+        brokenAtIndex: offset,
         detail:
             'link mismatch: expected previousHash $expectedPrevious, '
             'found ${entry.previousHash}',
@@ -189,15 +235,26 @@ TomAuditChainVerification verifyAuditChain(
     if (!entry.isSelfConsistent) {
       return TomAuditChainVerification(
         isValid: false,
-        entryCount: index + 1,
-        brokenAtIndex: index,
+        entryCount: offset + 1,
+        brokenAtIndex: offset,
         detail: 'content changed after writing: hash does not match record',
       );
     }
+    if (expectedIndex != null && entry.index != expectedIndex) {
+      return TomAuditChainVerification(
+        isValid: false,
+        entryCount: offset + 1,
+        brokenAtIndex: offset,
+        detail:
+            'chain renumbered: expected index $expectedIndex, '
+            'found ${entry.index}',
+      );
+    }
     expectedPrevious = entry.hash;
-    index++;
+    expectedIndex = entry.index + 1;
+    offset++;
   }
-  return TomAuditChainVerification(isValid: true, entryCount: index);
+  return TomAuditChainVerification(isValid: true, entryCount: offset);
 }
 
 /// Parses JSON-Lines audit storage, skipping blank lines.
@@ -242,8 +299,18 @@ abstract class TomAuditSink implements TomClosable {
   ///
   /// Publishing this head hash somewhere outside the sink's own storage is how
   /// a deployment turns tamper-*evidence* into something an attacker with file
-  /// access cannot quietly repair.
+  /// access cannot quietly repair — see [TomAuditAnchor].
   String get headHash;
+
+  /// How many entries have been written to this chain since genesis.
+  ///
+  /// Counted from the stored [TomAuditEntry.index] rather than from how many
+  /// entries the sink currently holds, so retention does not move it. Together
+  /// with [headHash] this is the pair an anchor records, which is why the two
+  /// must be read as one: an anchor claiming a count that belongs to a
+  /// different head is worse than no anchor, because it reports a divergence
+  /// that never happened.
+  int get entryCount;
 
   @override
   void close();
@@ -262,6 +329,7 @@ class TomMemoryAuditSink implements TomAuditSink {
   final List<TomAuditEntry> _entries = [];
   String _headHash = tomAuditGenesisHash;
   int _droppedCount = 0;
+  int _entryCount = 0;
 
   /// Creates a memory sink retaining at most [maxEntries] entries.
   TomMemoryAuditSink({this.maxEntries = 1000});
@@ -284,10 +352,14 @@ class TomMemoryAuditSink implements TomAuditSink {
   String get headHash => _headHash;
 
   @override
+  int get entryCount => _entryCount;
+
+  @override
   Future<TomAuditEntry> write(TomAuditRecord record) async {
-    final entry = TomAuditEntry.chain(record, _headHash);
+    final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     _entries.add(entry);
     _headHash = entry.hash;
+    _entryCount++;
     while (_entries.length > maxEntries) {
       _entries.removeAt(0);
       _droppedCount++;
@@ -312,6 +384,7 @@ class TomMemoryAuditSink implements TomAuditSink {
   void clear() {
     _entries.clear();
     _droppedCount = 0;
+    _entryCount = 0;
     _headHash = tomAuditGenesisHash;
   }
 
@@ -358,6 +431,7 @@ class TomFileAuditSink implements TomAuditSink {
   File? _currentFile;
   int _currentBytes = 0;
   String _headHash = tomAuditGenesisHash;
+  int _entryCount = 0;
   bool _closed = false;
 
   /// The last rotation sequence number handed out. Only ever increases.
@@ -386,11 +460,16 @@ class TomFileAuditSink implements TomAuditSink {
       directory.createSync(recursive: true);
     }
     _rotationSequence = _highestRotationSequence();
-    _headHash = _recoverHeadHash();
+    final recovered = _recoverHead();
+    _headHash = recovered.hash;
+    _entryCount = recovered.entryCount;
   }
 
   @override
   String get headHash => _headHash;
+
+  @override
+  int get entryCount => _entryCount;
 
   /// The audit files in [directory], oldest first.
   ///
@@ -492,7 +571,7 @@ class TomFileAuditSink implements TomAuditSink {
   }
 
   Future<TomAuditEntry> _writeSerialised(TomAuditRecord record) async {
-    final entry = TomAuditEntry.chain(record, _headHash);
+    final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     final line = '${entry.toJsonLine()}\n';
     final bytes = utf8.encode(line).length;
     try {
@@ -509,6 +588,7 @@ class TomFileAuditSink implements TomAuditSink {
     }
     _currentBytes += bytes;
     _headHash = entry.hash;
+    _entryCount++;
     return entry;
   }
 
@@ -588,20 +668,23 @@ class TomFileAuditSink implements TomAuditSink {
     }
   }
 
-  /// Reads the last chain hash from the newest existing file.
+  /// Reads the last chain hash and position from the newest existing file.
   ///
   /// A restart that began a fresh chain would present every pre-restart entry
   /// as unverifiable, which is indistinguishable from tampering — so the head
-  /// is recovered rather than reset.
-  String _recoverHeadHash() {
+  /// is recovered rather than reset. The count is recovered from the same entry
+  /// for the same reason: restarting the numbering would make every anchor
+  /// taken before the restart point at the wrong entry.
+  ({String hash, int entryCount}) _recoverHead() {
     final all = files;
     for (final file in all.reversed) {
       final lines = file.readAsLinesSync().where((l) => l.trim().isNotEmpty);
       if (lines.isEmpty) continue;
       try {
-        return TomAuditEntry.fromJson(
+        final last = TomAuditEntry.fromJson(
           (jsonDecode(lines.last) as Map).cast<String, Object?>(),
-        ).hash;
+        );
+        return (hash: last.hash, entryCount: last.index + 1);
       } catch (_) {
         // A truncated final line (a crash mid-write) is the one damage the
         // chain cannot repair by itself. Continue to the previous file rather
@@ -609,7 +692,7 @@ class TomFileAuditSink implements TomAuditSink {
         continue;
       }
     }
-    return tomAuditGenesisHash;
+    return (hash: tomAuditGenesisHash, entryCount: 0);
   }
 
   String _today() {
