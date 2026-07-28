@@ -12,6 +12,7 @@ principal into an authentication token and an authorization token.
 - [Implementing a Service](#implementing-a-service)
 - [Wiring the Server](#wiring-the-server)
 - [Two-Factor Authentication](#two-factor-authentication)
+- [Server Self-Login](#server-self-login)
 - [Core Components](#core-components)
 - [Status and Limitations](#status-and-limitations)
 - [Dependencies](#dependencies)
@@ -37,6 +38,12 @@ principal into an authentication token and an authorization token.
 | `Tom2FASubmission` | class | What an adaptor is handed on `verifySubmission` — the submitted factor plus its challenge |
 | `TomTotp2FAService` | class (`@Tom2FAAdaptor('totp')`) | The shipped authenticator-app (RFC 6238 TOTP) mechanism |
 | `Tom2FAException` | exception | A mis-wired 2FA deployment; never client-facing |
+| `TomServerSelfLogin` | class (statics only) | Logs the deployment in as itself and installs its principal |
+| `TomServiceCredential` | class | The deployment's own credential and where to present it |
+| `TomServiceLoginTransport` | abstract | The one JSON POST behind the self-login, so it is swappable and testable |
+| `TomHttpServiceLoginTransport` | class | The default transport, over `TomServerChannel` without bearer auth |
+| `TomServiceLoginResponse` | class | A raw status + body from that transport |
+| `TomServerSelfLoginException` | exception | A *configured* deployment that could not log itself in; never client-facing |
 
 ## The Login Flow
 
@@ -342,6 +349,132 @@ per-challenge cap must add the server-side state this flow deliberately omits
 (a spent-token denylist or a per-user counter), or rely on the mechanism's own
 rate limiting.
 
+## Server Self-Login
+
+Everything above is about authenticating a *user*. A deployment authenticates
+too — as **itself**, once, at startup.
+
+### Why a server logs in
+
+A deployed server is a principal like any other client. It presents a service
+credential, receives a token pair, and that token reconstructs a `TomPrincipal`
+whose entitlements are **the feature grants of this deployment**. Those grants
+then cap every user's grants: every access decision in the framework resolves to
+`min(user grade, deployment grade)`, so a feature this deployment is not
+licensed for is refused no matter what the user holds.
+
+That is the whole point of the exercise — a per-deployment feature ceiling that
+no user grant, and no bug in a user grant, can exceed. The kernel side of it is
+`TomServerPrincipal` and the meet; see `tom_core_kernel`'s
+`doc/security/security.md` §"The Server Principal and the Meet" for how the two
+operands combine.
+
+### The credential
+
+`TomServiceCredential` is what the deployment presents. It is built from the
+server configuration by `TomServiceCredential.fromConfiguration`:
+
+| Configuration field | Required | Purpose |
+| ------------------- | -------- | ------- |
+| `authServerLoginUri` | **yes** | Absolute URI of the auth server's login endpoint, e.g. `https://auth.example.com/auth/login` |
+| `serviceAccountName` | **yes** | The service account's login name |
+| `serviceAccountCredential` | **yes** | The service account's secret |
+| `serviceAccountOrganization` | no | Multi-tenant context; omit when single-tenant |
+| `serviceAccountApplication` | no | Application the deployment logs into |
+| `serviceAccountProcess` | no | Process (sub-context of the application) |
+| `serviceAccountClient` | no | Client identifier the login originates from |
+
+`serviceAccountCredential` is **secret-bearing**. Its *declaration* lives in the
+configuration class so the shape and source key are known; its **value is never
+authored**. Supply it out-of-band at deploy time through the ordinary
+configuration precedence chain — OS environment, `.env`, or command line — and
+never write it into a spec or a checked-in configuration tree. The same rule
+governs the JWT keys. `TomServiceCredential.toString()` redacts it, and the
+request body is built by hand rather than through reflection so the secret never
+passes through a general-purpose serialiser that might log or cache it.
+
+### Lifecycle
+
+```dart
+// During application startup, before TomServer.start() binds the socket:
+final installed = await TomServerSelfLogin.loginAndInstall(configuration);
+```
+
+`TomServer` already does this for you in `_installServerPrincipal`, and the
+**ordering is load-bearing**: the login runs *before* the socket is bound.
+Binding first would open a window in which requests are served uncapped — the
+one direction in which getting it wrong grants access rather than denying it.
+
+The three outcomes are deliberately not symmetric:
+
+| Situation | Result | Rationale |
+| --------- | ------ | --------- |
+| Not configured (any required field absent, blank, or an unparseable URI) | Returns `false`, installs nothing, logs at **info** | The supported default. Every server built before server self-login existed keeps working byte-for-byte, running uncapped. |
+| Configured, login succeeds | Returns `true`, installs the principal, logs at **info** | Deployment grants now cap user grants. |
+| Configured, login fails | Throws `TomServerSelfLoginException`; `TomServer` logs it and **refuses to bind the socket** | An operator asked to be capped. Degrading to uncapped would silently *widen* access — so a misconfiguration must be seen, not absorbed. |
+
+A *partially* configured deployment counts as unconfigured, on purpose: half a
+credential cannot authenticate, and failing startup over a value the operator
+may be mid-way through rolling out is worse than running uncapped. The info-level
+log is what makes the state visible.
+
+A long-running deployment re-authenticates before its service token expires and
+calls `TomServerPrincipal.install` again — that is intended. Note the direction
+of `TomServerPrincipal.clear()`: it *widens* access, so it is never the right
+response to an expired token.
+
+### Failure keys
+
+`TomServerSelfLoginException` carries `clientThrow: false` — it is an operator
+signal, never surfaced to a client.
+
+| Key | Meaning |
+| --- | ------- |
+| `server.selflogin.unreachable` | The auth server could not be reached. |
+| `server.selflogin.rejected` | The auth server refused the credential. Only the HTTP status is reported — the body may echo the credential back. |
+| `server.selflogin.bad_response` | The response was not JSON, or was JSON that is not an object. |
+| `server.selflogin.no_token` | The response carried no token under any accepted name. |
+| `server.selflogin.bad_token` | The token could not be turned into a principal. |
+
+The response is read for `authenticationToken`/`authToken` and
+`authorizationToken`/`authzToken` — both spellings, because both are in the
+field: the kernel's `TomAuthenticationResult` serialises the long names while
+application login DTOs commonly shorten them. When only one token is present it
+serves both roles. Nothing is guessed; the names are unambiguous.
+
+### Swapping the transport
+
+The login is one JSON POST, held behind `TomServiceLoginTransport`:
+
+```dart
+class MyLoginTransport extends TomServiceLoginTransport {
+  const MyLoginTransport();
+
+  @override
+  Future<TomServiceLoginResponse> postJson(Uri uri, String body) async {
+    // ... your call ...
+    return const TomServiceLoginResponse(200, '{"authToken": "..."}');
+  }
+}
+
+await TomServerSelfLogin.loginAndInstall(
+  configuration,
+  transport: const MyLoginTransport(),
+);
+```
+
+Two things this buys: the credential handling, response parsing and principal
+reconstruction are testable without a live auth server, and a deployment whose
+auth server speaks a different dialect swaps one HTTP call instead of
+reimplementing the flow. The default `TomHttpServiceLoginTransport` posts
+through `TomServerChannel` with bearer authentication explicitly disabled —
+there is no token yet to present.
+
+`decryptTokens` (default `true`) controls whether the authorization token's
+encrypted section is unwrapped locally. It must stay `true` for a deployment
+whose entitlements travel in the encrypted claims, which is the normal case for
+a server holding the RSA private key.
+
 ## Core Components
 
 ### `TomAuthenticationServer`
@@ -383,6 +516,14 @@ base32 secret lives.
 logins; `Tom2FARegistry` is the consumer of the latter. Changing their shape
 requires regenerating reflection.
 
+### `TomServerSelfLogin` / `TomServiceCredential`
+
+The deployment's own login. `logIn` performs it and returns the principal;
+`loginAndInstall` reads the credential from the server configuration, performs
+it, and installs the result into the kernel's `TomServerPrincipal` — returning
+`false` when the deployment configured no credential. See
+[Server Self-Login](#server-self-login).
+
 ## Status and Limitations
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
@@ -400,7 +541,12 @@ requires regenerating reflection.
 
 - **`tom_core_kernel`**: `TomPrincipal`, `TomAccessControlDefinition`,
   `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types
-  `Tom2FAChallenge` / `Tom2FAClaims`, the `TomTotp` derivation primitives, and
-  the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`.
+  `Tom2FAChallenge` / `Tom2FAClaims`, the `TomTotp` derivation primitives,
+  `TomServerPrincipal` (the holder server self-login installs into), and the
+  wire types `TomAuthenticationMessage` / `TomAuthenticationResult`.
+- **Configuration** (this package): `TomBaseServerConfiguration` supplies the
+  service-account fields `TomServiceCredential.fromConfiguration` reads.
+- **Server** (this package): `TomServerChannel` carries the default self-login
+  transport, and `TomServer` calls `loginAndInstall` before binding its socket.
 - **Little Things** (this package): `TomServerException`, the base of
-  `LoginException` and `Tom2FAException`.
+  `LoginException`, `Tom2FAException` and `TomServerSelfLoginException`.

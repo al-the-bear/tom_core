@@ -50,6 +50,19 @@ The authorization layer that resolves a principal calls
 `TomAuthorizationCache.storePrincipal(token, principal)` once, so subsequent
 requests bearing the same token short-circuit straight to the cached value.
 
+### This module does not decide access
+
+Despite the name, nothing here grants or refuses anything. This is a **cache of
+resolved principals** — it makes the *user* operand cheap to obtain, and stops
+there. The access decision itself is `TomAccessControl` in `tom_core_kernel`,
+and it has a second operand this module never sees: the deployment's own grants,
+which cap the user's.
+
+If you are here because a permission that is clearly present was refused
+anyway, this is the wrong document. Read `tom_core_kernel`'s
+`doc/security/security.md` §"The Server Principal and the Meet", and check
+`TomServerPrincipal.current` before you check the cache.
+
 ## Isolate Model
 
 The cache is a single map that lives in the **main isolate**, keyed by the JWT

@@ -44,6 +44,7 @@ per-principal-per-resource role resolution.
   - [Tom2FAClaims](#tom2faclaims)
   - [Tom2FAChallenge](#tom2fachallenge)
   - [TomTotp](#tomtotp)
+  - [TomServerPrincipal](#tomserverprincipal)
 - [Enums](#enums)
   - [TomAuthState](#tomauthstate)
   - [AuthGroupMode](#authgroupmode)
@@ -55,7 +56,7 @@ per-principal-per-resource role resolution.
 Sources: `lib/src/tombase/security/user_principal_aci.dart`,
 `tom_authorization.dart`, `access_controls.dart`,
 `resource_role_authorization.dart`, `authentication_authorization.dart`,
-`bearer_authentication.dart`, `two_factor.dart`.
+`bearer_authentication.dart`, `two_factor.dart`, `server_principal.dart`.
 
 `user_principal_aci.dart` holds the identity/authorization data model:
 `TomUser` (identity), `TomPrincipal` (authenticated session + context),
@@ -76,6 +77,17 @@ singleton and its `TomAuthorizationAdapter` seam, plus the per-element
 `TomPublicAccess`, `TomAuthenticatedAccess`, `TomGuestAccess`, `TomCustomAccess`,
 `TomEntitlementAccess`, `TomRoleAccess`, `TomGroupAccess`, `TomResourceKeyAccess`)
 — plus `TomResourceKeyProtection` and the `tomProtect`/`tomProtected` helpers.
+
+Evaluation there takes **two** operands. A user's grant is met with the grant of
+the deployment the code runs in — the ambient `TomServerPrincipal` from
+`server_principal.dart` — and the effective answer is `min(user, server)` over
+the `TomAuthState` ladder. Deployment grants cap every user's grants and never
+widen them, so a control the user satisfies can still resolve to `none`. When no
+server principal is installed the meet is skipped entirely and the user's grade
+stands alone, which is how every deployment predating server-as-principal keeps
+behaving exactly as before. See `doc/security/security.md` §"The Server
+Principal and the Meet"; the server-side login that installs the principal is
+`tom_core_server`'s `TomServerSelfLogin`.
 
 `resource_role_authorization.dart` (C-5) resolves per-principal-per-resource
 roles: `TomResourceRoleRegistry` maps role names to a `TomAuthState`, and
@@ -118,6 +130,7 @@ Object
 ├── Tom2FAClaims                             (private constructor)
 ├── Tom2FAChallenge
 ├── TomTotp                                  (private constructor)
+├── TomServerPrincipal                       (private constructor)
 └── TomAccessControl                         (abstract)
     ├── TomGradedAccess
     ├── TomNoAccess
@@ -668,8 +681,14 @@ static.
 
 ### TomAccessControl
 
-Abstract base class for all access control types. Override [checkAccessibility]
-to determine if a [TomPrincipal] should have access.
+Abstract base class for all access control types.
+
+Evaluation has **two** operands: what this control demands of the *user*, and
+what the deployment identified by [TomServerPrincipal] is granted. The public
+entry points compute the meet — `min(user, server)` over the [TomAuthState]
+ladder — and are `@nonVirtual`, because a cap a subclass could sidestep by
+overriding the method everyone already calls would not be a cap at all.
+Subclasses implement the hooks instead.
 
 - **Abstract**
 
@@ -679,12 +698,20 @@ to determine if a [TomPrincipal] should have access.
 const TomAccessControl()
 ```
 
-#### Methods
+#### Methods — hooks (implemented by subclasses)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | Whether the given [principal] has access (default `false`). |
-| `resolveAuthState(TomPrincipal? principal)` | `TomAuthState` | Resolves this control to a four-state [TomAuthState]; default bridges the binary check (granted → full, denied → none). |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | The **user** operand: whether the principal's own grants satisfy this control (default `false`). Deliberately uncapped — it is one half of the meet. |
+| `resolvePrincipalAuthState(TomPrincipal? principal)` | `TomAuthState` | The user operand as four states; the default bridges the boolean above (granted → `full`, denied → `none`). Overridden by [TomGradedAccess]. |
+| `resolveServerAuthState(TomPrincipal serverPrincipal)` | `TomAuthState` | The **deployment** operand: the grade this control's subject is granted to the deployment. Defaults to `TomAuthState.full` — *uncapped* — because a control naming a role, group or resource key expresses no opinion about deployment features, and a participant with no opinion must return the identity element. Overridden by [TomEntitlementAccess] and [TomGradedAccess]. |
+
+#### Methods — public evaluation (`@nonVirtual`)
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `resolveAuthState(TomPrincipal? principal)` | `TomAuthState` | The **effective** grade: the user's met with the deployment's. Returns the user's grade alone when [TomServerPrincipal.current] is `null` — no installed principal means no cap applies, which is not the same as a principal granted nothing. |
+| `checkAccessibility(TomPrincipal? principal)` | `bool` | Defined as `resolveAuthState(...).showsContent`, so the binary and graded views can never disagree. |
 
 ### TomGradedAccess
 
@@ -716,8 +743,8 @@ TomGradedAccess({
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `resolveAuthState(TomPrincipal? principal)` | `TomAuthState` | *(override)* Resolves to full/read/disabled/none by testing the three composed controls in order. |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* Collapses to "can see content" (read or full). |
+| `resolvePrincipalAuthState(TomPrincipal? principal)` | `TomAuthState` | *(override)* Resolves the user operand to full/read/disabled/none by testing the three composed controls in order. |
+| `resolveServerAuthState(TomPrincipal serverPrincipal)` | `TomAuthState` | *(override)* Composes the children's deployment answers onto the same ladder, so a feature the deployment only partly licenses can still cap to `read`. |
 
 ### TomNoAccess
 
@@ -735,7 +762,7 @@ const TomNoAccess()
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* Always `false`. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* Always `false`. |
 
 ### TomPublicAccess
 
@@ -753,7 +780,7 @@ const TomPublicAccess()
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* Always `true`. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* Always `true`. |
 
 ### TomAuthenticatedAccess
 
@@ -771,7 +798,7 @@ const TomAuthenticatedAccess()
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* `true` only for a non-null, authenticated, non-guest principal. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` only for a non-null, authenticated, non-guest principal. |
 
 ### TomGuestAccess
 
@@ -789,7 +816,7 @@ const TomGuestAccess()
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* `true` for an authenticated user or a guest session. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` for an authenticated user or a guest session. |
 
 ### TomCustomAccess
 
@@ -823,12 +850,20 @@ const TomCustomAccess({required String handler, required String resourceId})
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* Delegates to the named handler with [resourceId]. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* Delegates to the named handler with [resourceId]. |
 | `verifyHandler()` | `bool` | Whether the handler for this access control is registered. |
 
 ### TomEntitlementAccess
 
 Grants access based on entitlement patterns (regex, OR logic).
+
+**Also the deployment's grant carrier.** Entitlements are the one requirement
+kind that means the same thing on both sides of the meet: asked about a *user*
+they answer "may this person use the feature", asked about the *server
+principal* "is this deployment licensed for the feature at all". Same pattern
+set, other principal — which is why server-level grants needed no new class. A
+deployment whose entitlements do not match caps the feature to
+`TomAuthState.none` no matter what the user holds.
 
 - **Extends:** `TomAccessControl`
 
@@ -848,7 +883,8 @@ const TomEntitlementAccess(List<String> patterns)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* `true` if any pattern matches one of the principal's entitlements. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` if any pattern matches one of the principal's entitlements. |
+| `resolveServerAuthState(TomPrincipal serverPrincipal)` | `TomAuthState` | *(override)* The same pattern match run against the deployment's entitlement set: `full` when it matches, `none` when it does not. |
 
 ### TomRoleAccess
 
@@ -872,7 +908,7 @@ const TomRoleAccess(List<String> roles)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* `true` if the principal has any of the listed roles. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` if the principal has any of the listed roles. |
 
 ### TomGroupAccess
 
@@ -896,7 +932,7 @@ const TomGroupAccess(List<String> groups)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* `true` if the principal is in any of the listed groups. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` if the principal is in any of the listed groups. |
 
 ### TomResourceKeyAccess
 
@@ -921,7 +957,7 @@ const TomResourceKeyAccess(String key)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkAccessibility(TomPrincipal? principal)` | `bool` | *(override)* `true` when [key] is not protected. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` when [key] is not protected. |
 
 ### TomAuthenticationMessage
 
@@ -1109,6 +1145,41 @@ agree on it exactly.
 | `codeFor(String secret, {DateTime? at, int digits = defaultDigits, Duration period = defaultPeriod})` | `String` | The TOTP code for a base32 secret at an instant. Returns an empty string for an undecodable secret, so a bad secret matches nothing rather than throwing into a UI. |
 | `decodeBase32(String secret)` | `List<int>` | Decodes an RFC 4648 base32 secret to bytes; case-insensitive, ignoring spaces, `-` and `=`. Returns an empty list for an out-of-alphabet character. |
 | `encodeBase32(List<int> bytes)` | `String` | Encodes bytes as an unpadded base32 secret, for enrolment. |
+
+### TomServerPrincipal
+
+The **ambient server principal** — the deployment's own identity, held for the
+lifetime of the process and readable from the access-evaluation path.
+
+A deployed server authenticates against the auth server with a service
+credential exactly like any other client, and the token it gets back
+reconstructs a [TomPrincipal] whose entitlements are the *feature grants of this
+deployment*. Those grants cap every user's grants; see [TomAccessControl] for
+the meet.
+
+It is a process-wide static rather than a zone value because the zone's
+[TomPrincipal] slot already holds the *user*, one per in-flight request, and the
+server principal must be readable from inside those same zones. It is also
+genuinely process-scoped: one deployment, one identity, resolved once at
+startup.
+
+#### Constructors
+
+*(private constructor — the class is a static holder)*
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `current` | `TomPrincipal?` | *(getter)* The deployment's principal, or `null` when this process never logged itself in. `null` means "no deployment cap applies" and is the **opposite** of a principal with an empty entitlement set, which means "entitled to nothing" and denies every feature. Never substitute one for the other. |
+| `isConfigured` | `bool` | *(getter)* Whether a server principal has been installed. |
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `install(TomPrincipal principal)` | `void` | Installs the deployment's identity for the rest of the process. Replacing an existing principal is intended — a long-running server re-authenticates as its service token nears expiry. |
+| `clear()` | `void` | Removes the principal, returning the process to the uncapped regime. For tests and orderly shutdown. Note the direction: clearing *widens* access, so it is never the right response to an expired token — `install` again instead. |
 
 ## Enums
 

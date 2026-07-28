@@ -214,12 +214,16 @@ declarations are omitted.
 | `TomUIStateController` | class | Build-time UI-state narrowing controller. |
 | `TomResourceRoleRegistry` | class | Maps role names to a `TomAuthState`. |
 | `TomResourceRoleAdapter` | abstract class | Adapter supplying resource-role mappings. |
-| `TomAccessControl` | abstract class | Base access-control policy. |
+| `TomAccessControl` | abstract class | Base access-control policy; computes the `min(user, deployment)` meet. |
 | `TomGradedAccess`, `TomNoAccess`, `TomPublicAccess`, `TomAuthenticatedAccess`, `TomGuestAccess`, `TomCustomAccess`, `TomEntitlementAccess`, `TomRoleAccess`, `TomGroupAccess`, `TomResourceKeyAccess` | class | Concrete access-control policies. |
+| `TomServerPrincipal` | class | The ambient server principal — the deployment's own identity, which caps every user's grants. |
 | `TomResourceKeyProtection` | class | Protects a value behind a resource key. |
 | `TomAuthenticationMessage` | class | Authentication request message. |
 | `TomAuthenticationResult` | class | Authentication response. |
 | `TomBearerAuthentication` | class | Bearer-token authentication helper. |
+| `Tom2FAChallenge` | class | A pending second factor, carried in an interim token's public claims. |
+| `Tom2FAClaims` | class | The claim names a pending 2FA challenge travels under. |
+| `TomTotp` | class | RFC 4226/6238 code derivation and the base32 codec. |
 | `tomProtect<T>`, `tomProtected` | function | Wrap/read a resource-key-protected value. |
 
 ### Settings (`lib/src/tombase/settings/`)

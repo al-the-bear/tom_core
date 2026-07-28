@@ -17,6 +17,7 @@ The security module provides a comprehensive authentication and authorization sy
   - [TomAuthorization (Global Singleton)](#tomauthorization-global-singleton)
   - [TomAuthorizer](#tomauthorizer)
   - [TomUIStateController](#tomuistatecontroller)
+- [The Server Principal and the Meet](#the-server-principal-and-the-meet)
 - [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
 
@@ -34,6 +35,7 @@ The security module consists of these main files:
 | `user_principal_aci.dart` | User, principal, and ACI types |
 | `tom_authorization.dart` | UI authorization primitives — the four-state model, groups, authorizers, and the global authorization singleton |
 | `two_factor.dart` | The shared half of the two-pass login — the challenge wire shape, its claim names, and the TOTP primitives |
+| `server_principal.dart` | The ambient server principal — the deployment's own identity, which caps every user's grants |
 
 ### Key Concepts
 
@@ -43,6 +45,9 @@ The security module consists of these main files:
 - **CLI (Client Limits Information)**: Quotas and feature flags
 - **2FA Challenge**: A pending second factor, carried in an interim token's
   public claims between pass 1 and pass 2 of a login
+- **Server Principal**: The *deployment's* own grants. Every decision is
+  `min(user, deployment)` — see [The Server Principal and the
+  Meet](#the-server-principal-and-the-meet)
 
 ---
 
@@ -191,6 +196,12 @@ var completeAci = definition.completeFromDefinition(userAci);
 | `TomEntitlementAccess` | Requires specific entitlements |
 | `TomResourceKeyAccess` | Checks resource key protection |
 | `TomCustomAccess` | Delegates to custom handler |
+
+Each of these states a requirement on the **user**. That is only half of an
+access decision: the result is met with what the *deployment* is granted, so a
+control the user satisfies can still resolve to `none`. See [The Server
+Principal and the Meet](#the-server-principal-and-the-meet) — read it before
+debugging a refusal you cannot explain.
 
 #### Resource Key Protection
 
@@ -352,6 +363,123 @@ TomUIStateController(
 );
 // apply() guarantees the result never widens currentAuth.
 ```
+
+---
+
+## The Server Principal and the Meet
+
+Every authorization decision in the framework has **two** operands, not one. A
+user's grant is met with the grant of the deployment the code is running in, and
+the effective answer is the more restrictive of the two:
+
+```text
+effective = min(user grade, deployment grade)
+```
+
+over the `none < disabled < read < full` ladder — which for a plain two-state
+control degenerates to a boolean AND. **The deployment's grants cap every user's
+grants; they never widen them.**
+
+### The symptom you probably arrived with
+
+> *"The role is assigned, the entitlement is in the token, the check still
+> refuses. The grant is right there."*
+
+It is, and it is still not enough:
+
+```dart
+final control = TomEntitlementAccess(['feature.reports.export']);
+
+// The user holds it.
+user.aci.entitlements;    // ['feature.reports.export', ...]
+control.checkPrincipalAccess(user);            // true  ← the user operand
+
+// The deployment does not.
+TomServerPrincipal.current!.aci.entitlements;  // ['feature.reports.view']
+control.resolveServerAuthState(server);        // TomAuthState.none
+
+control.resolveAuthState(user);                // TomAuthState.none  ← the meet
+control.checkAccessibility(user);               // false
+```
+
+Nothing is wrong with the user's grant. This deployment is not licensed for the
+feature, so no user of it can be — which is the point. If you are debugging a
+refusal that "should" have passed, print `TomServerPrincipal.current?.aci
+.entitlements` before you go looking at the user's.
+
+### What a server principal is
+
+A deployed server is a principal like any other client. It authenticates against
+the auth server with a service credential and gets back a token; that token
+reconstructs a `TomPrincipal` whose entitlements are **the feature grants of
+this deployment**. `TomServerPrincipal` is the process-wide holder for it:
+
+| Member | Purpose |
+| ------ | ------- |
+| `TomServerPrincipal.current` | The deployment's principal, or `null` when this process never logged itself in. |
+| `TomServerPrincipal.isConfigured` | Whether a principal has been installed. |
+| `TomServerPrincipal.install(principal)` | Installs it for the rest of the process. Re-installing is intended — a long-running server re-authenticates before its service token expires. |
+| `TomServerPrincipal.clear()` | Returns the process to the uncapped regime. For tests and orderly shutdown. |
+
+It is a process-wide static rather than a zone value on purpose. The kernel
+already carries the *user* principal in the current zone, one per in-flight
+request, and the server principal has to be readable from **inside** those same
+zones — where that slot is taken. It is also genuinely process-scoped: one
+deployment, one identity, resolved once at startup.
+
+The server side of the login is `tom_core_server`'s `TomServerSelfLogin`; see
+its `doc/authentication.md` §"Server Self-Login" for the credential and the
+lifecycle.
+
+### Unconfigured is a supported state, and `null` is not an empty principal
+
+A deployment that never logs itself in leaves `TomServerPrincipal` empty, and
+evaluation then returns the user's grade alone — byte-for-byte the behaviour of
+every deployment built before server-as-principal existed. That is the designed
+default, not a failure mode.
+
+This is why the evaluation path tests `TomServerPrincipal.current` for `null`
+rather than evaluating against a blank principal. The two are **opposites**:
+
+| State | Meaning | Effect |
+| ----- | ------- | ------ |
+| `null` | No deployment cap applies | Everything the user holds |
+| Principal with no entitlements | This deployment is entitled to nothing | Every entitlement check denies |
+
+Never substitute one for the other. And note the direction of `clear()`: it
+*widens* access, so it is never the right response to an expired service token —
+re-`install` instead.
+
+### Where each operand comes from
+
+`TomAccessControl` splits the two operands into separate hooks, and computes the
+meet in a public method that subclasses **cannot** override — a cap any subclass
+could sidestep by overriding the method everyone already calls would not be a
+cap at all.
+
+| Member | Operand | Notes |
+| ------ | ------- | ----- |
+| `checkPrincipalAccess(principal)` | User | What this control demands of the caller. Subclasses implement this. |
+| `resolvePrincipalAuthState(principal)` | User | The four-state view; defaults to bridging the boolean above onto `full`/`none`. |
+| `resolveServerAuthState(serverPrincipal)` | Deployment | What grade this control's subject is granted to the deployment. Defaults to `TomAuthState.full` — *uncapped*. |
+| `resolveAuthState(principal)` | **Both** | The meet. `@nonVirtual`. |
+| `checkAccessibility(principal)` | **Both** | `resolveAuthState(...).showsContent`. `@nonVirtual`. |
+
+The `full` default on `resolveServerAuthState` is the correct answer, not a
+lenient shortcut: a control naming a user role, a group or a resource key
+expresses nothing about which *features* a deployment licenses, so it has no
+opinion to contribute — and a participant with no opinion must return the
+identity element. Anything lower would let an unrelated deployment grant
+silently veto a role check.
+
+**`TomEntitlementAccess` is the grant carrier.** Entitlements are the one
+requirement kind that means the same thing on both sides of the meet: asked
+about a user, "may this person use the feature"; asked about the server
+principal, "is this deployment licensed for the feature at all". Same pattern
+set, other principal — which is why server-level grants needed no new class.
+`TomGradedAccess` composes its children's deployment answers into the same
+ladder, so a feature the deployment only partly licenses can still resolve to
+`read`.
 
 ---
 
