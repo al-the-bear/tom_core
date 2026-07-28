@@ -286,10 +286,18 @@ Quartz's answer to N nodes waking together.
 
 ## The Schema
 
-The DDL lives in `sql_scheduling_sql.dart` and is shipped verbatim as migration
-files under `example/scheduling/migrations/`. `test/scheduling_schema_test.dart`
-compares the two and fails if they drift, because a schema that exists in two
-places and is checked in one will eventually exist in two versions.
+Each of the three tables is declared **once**, as a `TomFrameworkTable`
+descriptor in `sql_scheduling_sql.dart` — a name, an ordered column list with
+types and nullability, and its keys. The `CREATE TABLE` the store issues, the
+column list of every `SELECT`, and every `REPLACE` / `INSERT` are all derived
+from that one declaration, so a column exists in the code in exactly one place.
+
+The hand-written reference migrations under `example/scheduling/migrations/`
+remain the DBA-facing artifact, and `test/framework_schema_test.dart` compares
+them against the descriptors, along with the reflected row types and every
+statement the stores issue. See
+[Schema Convergence](db_migration.md#schema-convergence) for what each of those
+comparisons rules out.
 
 Table names are constructor arguments, and the index names follow them — two
 queues in one schema would otherwise collide on `uq_…_window`.
@@ -480,8 +488,13 @@ shipped migrations building the schema on a dropped database.
 It is tagged `db` and skips when no server is reachable, so the default
 `testkit :test` run stays green without one.
 
-Two suites always run. `test/scheduling_schema_test.dart` covers DDL drift,
+Three suites always run. `test/scheduling_schema_test.dart` covers DDL drift,
 schema invariants and instant encoding.
+`test/framework_schema_test.dart` covers the wider guarantee that the three
+tables are declared once — descriptors against the shipped migrations, against
+the reflected row types, and against every statement the stores issue (see
+[Schema Convergence](db_migration.md#schema-convergence)); its `db`-tagged half
+adds the same comparison against a provisioned `information_schema`.
 `test/scheduling_cluster_test.dart` covers the three cluster questions that a
 real server cannot be asked to demonstrate on request: it drives the store
 through a scripted `TomDataSource` that can fail a claim *after* the write, which
@@ -496,7 +509,7 @@ opt-in states.
 | `lib/src/tomserver/scheduling/sql_job_store.dart` | `TomSqlJobStore` and its row types |
 | `lib/src/tomserver/scheduling/sql_lease_lock.dart` | `TomSqlLeaseLock` and its row type |
 | `lib/src/tomserver/scheduling/sql_scheduler_nodes.dart` | `TomSqlSchedulerNodes`, `TomSchedulerNode` and the failure formula |
-| `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | DDL, table-name defaults |
+| `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | The three table descriptors, their derived DDL, table-name defaults |
 | `lib/src/tomserver/datasources/sql_failure_mode.dart` | `classifySqlFailure` — definite or ambiguous |
 | `example/scheduling/scheduling_example.dart` | The connection-free surface, runnable |
 | `example/scheduling/migrations/main/tomcore/` | The shipped reference migrations |

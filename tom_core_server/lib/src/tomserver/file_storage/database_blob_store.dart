@@ -39,8 +39,10 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:uuid/uuid.dart';
 
 import '../datasources/datasource_initialization.dart';
+import '../datasources/framework_table.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'blob_store.dart';
+import 'database_blob_sql.dart';
 
 /// A blob store that keeps its content in two tables of a [TomDataSource].
 class TomDatabaseBlobStore extends TomBlobStore {
@@ -57,8 +59,8 @@ class TomDatabaseBlobStore extends TomBlobStore {
   /// application's database user is not allowed to run DDL.
   TomDatabaseBlobStore(
     this.datasource, {
-    this.manifestTable = 'tom_blob',
-    this.chunkTable = 'tom_blob_chunk',
+    this.manifestTable = defaultBlobManifestTable,
+    this.chunkTable = defaultBlobChunkTable,
     this.chunkSize = 256 * 1024,
     this.createSchema = true,
   });
@@ -70,8 +72,8 @@ class TomDatabaseBlobStore extends TomBlobStore {
   /// first upload.
   factory TomDatabaseBlobStore.named(
     String datasourceName, {
-    String manifestTable = 'tom_blob',
-    String chunkTable = 'tom_blob_chunk',
+    String manifestTable = defaultBlobManifestTable,
+    String chunkTable = defaultBlobChunkTable,
     int chunkSize = 256 * 1024,
     bool createSchema = true,
   }) {
@@ -110,6 +112,13 @@ class TomDatabaseBlobStore extends TomBlobStore {
   static const Uuid _uuid = Uuid();
   bool _schemaReady = false;
 
+  /// The manifest table's single column declaration — see
+  /// `file_storage/database_blob_sql.dart`.
+  late final TomFrameworkTable _manifest = blobManifestTable(manifestTable);
+
+  /// The chunk table's single column declaration.
+  late final TomFrameworkTable _chunks = blobChunkTable(chunkTable);
+
   /// Creates the two tables if they do not exist.
   ///
   /// Idempotent and called automatically by every operation; exposed so a
@@ -118,24 +127,8 @@ class TomDatabaseBlobStore extends TomBlobStore {
   Future<void> ensureSchema() async {
     if (_schemaReady) return;
     if (createSchema) {
-      await datasource.executeCommand('''
-CREATE TABLE IF NOT EXISTS $manifestTable (
-  storage_key VARCHAR(${TomBlobStore.maxKeyLength}) NOT NULL,
-  upload_id   VARCHAR(64)  NOT NULL,
-  media_type  VARCHAR(255) NOT NULL,
-  file_name   VARCHAR(255) NULL,
-  byte_count  BIGINT       NOT NULL,
-  chunk_count INT          NOT NULL,
-  stored_at   DATETIME     NOT NULL,
-  PRIMARY KEY (storage_key)
-)''');
-      await datasource.executeCommand('''
-CREATE TABLE IF NOT EXISTS $chunkTable (
-  upload_id   VARCHAR(64) NOT NULL,
-  chunk_index INT         NOT NULL,
-  chunk_data  LONGTEXT    NOT NULL,
-  PRIMARY KEY (upload_id, chunk_index)
-)''');
+      await datasource.executeCommand(_manifest.createTableDdl);
+      await datasource.executeCommand(_chunks.createTableDdl);
     }
     _schemaReady = true;
   }
@@ -159,8 +152,11 @@ CREATE TABLE IF NOT EXISTS $chunkTable (
     Future<void> flush() async {
       if (buffer.isEmpty) return;
       await datasource.executeCommand(
-        'INSERT INTO $chunkTable (upload_id, chunk_index, chunk_data) '
-        'VALUES (:uploadId, :chunkIndex, :chunkData)',
+        _chunks.insert('INSERT', const {
+          'upload_id': ':uploadId',
+          'chunk_index': ':chunkIndex',
+          'chunk_data': ':chunkData',
+        }),
         {
           'uploadId': uploadId,
           'chunkIndex': chunkIndex,
@@ -202,9 +198,15 @@ CREATE TABLE IF NOT EXISTS $chunkTable (
     // upload id or the new one and never a manifest that names chunks which
     // are still arriving.
     await datasource.executeCommand(
-      'REPLACE INTO $manifestTable '
-      '(storage_key, upload_id, media_type, file_name, byte_count, chunk_count, stored_at) '
-      'VALUES (:key, :uploadId, :mediaType, :fileName, :byteCount, :chunkCount, :storedAt)',
+      _manifest.insert('REPLACE', const {
+        'storage_key': ':key',
+        'upload_id': ':uploadId',
+        'media_type': ':mediaType',
+        'file_name': ':fileName',
+        'byte_count': ':byteCount',
+        'chunk_count': ':chunkCount',
+        'stored_at': ':storedAt',
+      }),
       {
         'key': key,
         'uploadId': uploadId,
@@ -246,7 +248,7 @@ CREATE TABLE IF NOT EXISTS $chunkTable (
       // One round trip per chunk, taken only when the consumer has asked for
       // the previous one — this is where the streaming actually happens.
       final rows = await datasource.executeQuery<TomBlobChunkRow>(
-        'SELECT chunk_data FROM $chunkTable '
+        'SELECT ${_chunks.columnsOf(const ['chunk_data'])} FROM $chunkTable '
         'WHERE upload_id = :uploadId AND chunk_index = :chunkIndex',
         {'uploadId': manifest.uploadId, 'chunkIndex': index},
       );
@@ -315,8 +317,8 @@ CREATE TABLE IF NOT EXISTS $chunkTable (
 
   Future<_BlobManifest?> _manifestOf(String key) async {
     final rows = await datasource.executeQuery<TomBlobManifestRow>(
-      'SELECT storage_key, upload_id, media_type, file_name, byte_count, '
-      'chunk_count, stored_at FROM $manifestTable WHERE storage_key = :key',
+      'SELECT ${_manifest.columnList} FROM $manifestTable '
+      'WHERE storage_key = :key',
       {'key': key},
     );
     if (rows.isEmpty) return null;

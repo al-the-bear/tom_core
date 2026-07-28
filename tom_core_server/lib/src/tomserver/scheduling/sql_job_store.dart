@@ -95,6 +95,7 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
+import '../datasources/framework_table.dart';
 import '../datasources/sql_failure_mode.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
@@ -175,9 +176,30 @@ class TomSqlJobStore implements TomJobStore {
 
   bool _schemaReady = false;
 
-  static const String _columns =
-      'id, job_name, scheduled_for, run_at, state, attempt, claimed_by, '
-      'claimed_at, started_at, last_error, completed_at, payload';
+  /// The queue table's single column declaration — see `sql_scheduling_sql.dart`.
+  late final TomFrameworkTable _queue = jobRunTable(table);
+
+  /// The columns [enqueue] writes, and the bind each takes.
+  ///
+  /// `seq` is absent deliberately: it is the `AUTO_INCREMENT` surrogate, so the
+  /// database owns its value and naming it here would be naming a value this
+  /// store does not have. Keyed by column name rather than given as a list, so
+  /// adding a column cannot shift every value one place along — a failure that
+  /// would type-check.
+  static const Map<String, String> _writeColumns = {
+    'id': ':id',
+    'job_name': ':jobName',
+    'scheduled_for': ':scheduledFor',
+    'run_at': ':runAt',
+    'state': ':state',
+    'attempt': ':attempt',
+    'claimed_by': ':claimedBy',
+    'claimed_at': ':claimedAt',
+    'started_at': ':startedAt',
+    'last_error': ':lastError',
+    'completed_at': ':completedAt',
+    'payload': ':payload',
+  };
 
   /// Creates the queue table if it does not exist.
   ///
@@ -186,7 +208,7 @@ class TomSqlJobStore implements TomJobStore {
   Future<void> ensureSchema() async {
     if (_schemaReady) return;
     if (createSchema) {
-      await datasource.executeCommand(jobRunTableDdl(table));
+      await datasource.executeCommand(_queue.createTableDdl);
     }
     _schemaReady = true;
   }
@@ -200,9 +222,7 @@ class TomSqlJobStore implements TomJobStore {
     // a database invariant rather than a convention, so a second row for the
     // same window cannot exist even if a peer races this one.
     await datasource.executeCommand(
-      'REPLACE INTO $table ($_columns) VALUES '
-      '(:id, :jobName, :scheduledFor, :runAt, :state, :attempt, :claimedBy, '
-      ':claimedAt, :startedAt, :lastError, :completedAt, :payload)',
+      _queue.insert('REPLACE', _writeColumns),
       _bindOf(run),
     );
   }
@@ -652,7 +672,7 @@ class TomSqlJobStore implements TomJobStore {
     Map<String, dynamic> params,
   ) async {
     final rows = await datasource.executeQuery<TomJobRunRow>(
-      'SELECT $_columns, seq FROM $table $suffix',
+      'SELECT ${_queue.columnList} FROM $table $suffix',
       params,
     );
     return rows.map(_runOf).toList();

@@ -1,11 +1,17 @@
 /// The schema and the instant encoding shared by the relational scheduling
 /// pair.
 ///
-/// The DDL lives here, in one place, rather than in each store: the shipped
-/// migration files under `example/scheduling/migrations/` carry the same text,
-/// and a test asserts they have not drifted apart. A schema that exists twice
-/// and is checked once is a schema that will eventually exist in two versions.
+/// Each table is declared **once**, as a [TomFrameworkTable]. The DDL the stores
+/// issue, the column lists their statements interpolate, and the schema model the
+/// convergence guard compares are all derived from that one declaration — see
+/// `datasources/framework_table.dart` for why, and
+/// `db_migration/framework_convergence.dart` for what the guard then proves. The
+/// shipped migration files under `example/scheduling/migrations/` stay
+/// hand-written, because a migration is what a DBA applies and must remain
+/// readable; a test asserts they have not drifted from the descriptors.
 library;
+
+import '../datasources/framework_table.dart';
 
 /// The default name of the job queue table.
 const String defaultJobRunTable = 'tom_job_run';
@@ -16,7 +22,7 @@ const String defaultLeaseTable = 'tom_lease';
 /// The default name of the scheduler roll-call table.
 const String defaultSchedulerNodeTable = 'tom_scheduler_node';
 
-/// The DDL for the job queue table [table].
+/// The job queue table [table], declared once.
 ///
 /// Notes on the shape, because each column earns its place:
 ///
@@ -40,29 +46,34 @@ const String defaultSchedulerNodeTable = 'tom_scheduler_node';
 ///  * `job_name` is `VARCHAR(160)` rather than 191 so the composite unique key
 ///    stays inside the 767-byte index limit of older InnoDB row formats
 ///    (160 × 4 bytes of utf8mb4 + 8 bytes of `DATETIME(6)`).
-String jobRunTableDdl(String table) => '''
-CREATE TABLE IF NOT EXISTS $table (
-  seq           BIGINT       NOT NULL AUTO_INCREMENT,
-  id            VARCHAR(191) NOT NULL,
-  job_name      VARCHAR(160) NOT NULL,
-  scheduled_for DATETIME(6)  NOT NULL,
-  run_at        DATETIME(6)  NOT NULL,
-  state         VARCHAR(16)  NOT NULL,
-  attempt       INT          NOT NULL DEFAULT 1,
-  claimed_by    VARCHAR(191) NULL,
-  claimed_at    DATETIME(6)  NULL,
-  started_at    DATETIME(6)  NULL,
-  last_error    TEXT         NULL,
-  completed_at  DATETIME(6)  NULL,
-  payload       LONGTEXT     NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_${table}_seq (seq),
-  UNIQUE KEY uq_${table}_window (job_name, scheduled_for),
-  KEY ix_${table}_due (state, run_at),
-  KEY ix_${table}_lease (state, claimed_at)
-)''';
+TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
+  name: table,
+  origin: 'jobRunTable',
+  columns: const [
+    TomFrameworkColumn('seq', 'BIGINT', autoIncrement: true),
+    TomFrameworkColumn('id', 'VARCHAR(191)'),
+    TomFrameworkColumn('job_name', 'VARCHAR(160)'),
+    TomFrameworkColumn('scheduled_for', 'DATETIME(6)'),
+    TomFrameworkColumn('run_at', 'DATETIME(6)'),
+    TomFrameworkColumn('state', 'VARCHAR(16)'),
+    TomFrameworkColumn('attempt', 'INT', defaultValue: '1'),
+    TomFrameworkColumn('claimed_by', 'VARCHAR(191)', nullable: true),
+    TomFrameworkColumn('claimed_at', 'DATETIME(6)', nullable: true),
+    TomFrameworkColumn('started_at', 'DATETIME(6)', nullable: true),
+    TomFrameworkColumn('last_error', 'TEXT', nullable: true),
+    TomFrameworkColumn('completed_at', 'DATETIME(6)', nullable: true),
+    TomFrameworkColumn('payload', 'LONGTEXT', nullable: true),
+  ],
+  primaryKey: const ['id'],
+  keys: const [
+    TomFrameworkKey.unique('seq', ['seq']),
+    TomFrameworkKey.unique('window', ['job_name', 'scheduled_for']),
+    TomFrameworkKey('due', ['state', 'run_at']),
+    TomFrameworkKey('lease', ['state', 'claimed_at']),
+  ],
+);
 
-/// The DDL for the lease table [table].
+/// The lease table [table], declared once.
 ///
 /// One row per resource, kept after release rather than deleted. That is not
 /// tidiness — the row *is* the fencing counter. Deleting it on release would
@@ -76,19 +87,22 @@ CREATE TABLE IF NOT EXISTS $table (
 /// self-fencing bug the kernel's contract suite caught during csex8.
 /// Incrementing `version` on every write makes a matching update always change
 /// the row, and doubles as the compare-and-set guard for takeover.
-String leaseTableDdl(String table) => '''
-CREATE TABLE IF NOT EXISTS $table (
-  resource    VARCHAR(191) NOT NULL,
-  owner       VARCHAR(191) NOT NULL,
-  token       BIGINT       NOT NULL,
-  acquired_at DATETIME(6)  NOT NULL,
-  expires_at  DATETIME(6)  NOT NULL,
-  released    TINYINT(1)   NOT NULL DEFAULT 0,
-  version     BIGINT       NOT NULL DEFAULT 1,
-  PRIMARY KEY (resource)
-)''';
+TomFrameworkTable leaseTable(String table) => TomFrameworkTable(
+  name: table,
+  origin: 'leaseTable',
+  columns: const [
+    TomFrameworkColumn('resource', 'VARCHAR(191)'),
+    TomFrameworkColumn('owner', 'VARCHAR(191)'),
+    TomFrameworkColumn('token', 'BIGINT'),
+    TomFrameworkColumn('acquired_at', 'DATETIME(6)'),
+    TomFrameworkColumn('expires_at', 'DATETIME(6)'),
+    TomFrameworkColumn('released', 'TINYINT(1)', defaultValue: '0'),
+    TomFrameworkColumn('version', 'BIGINT', defaultValue: '1'),
+  ],
+  primaryKey: const ['resource'],
+);
 
-/// The DDL for the scheduler roll-call table [table].
+/// The scheduler roll-call table [table], declared once.
 ///
 /// One row per node, rewritten on every pass. It has no index beyond its key and
 /// wants none: a cluster is read in full, and it is a handful of rows.
@@ -100,10 +114,23 @@ CREATE TABLE IF NOT EXISTS $table (
 ///
 /// `node_id` is the same string the node claims runs under, so a failed node's
 /// abandoned work can be attributed to it by an ordinary join.
-String schedulerNodeTableDdl(String table) => '''
-CREATE TABLE IF NOT EXISTS $table (
-  node_id          VARCHAR(191) NOT NULL,
-  checkin_at       DATETIME(6)  NOT NULL,
-  checkin_interval BIGINT       NOT NULL,
-  PRIMARY KEY (node_id)
-)''';
+TomFrameworkTable schedulerNodeTable(String table) => TomFrameworkTable(
+  name: table,
+  origin: 'schedulerNodeTable',
+  columns: const [
+    TomFrameworkColumn('node_id', 'VARCHAR(191)'),
+    TomFrameworkColumn('checkin_at', 'DATETIME(6)'),
+    TomFrameworkColumn('checkin_interval', 'BIGINT'),
+  ],
+  primaryKey: const ['node_id'],
+);
+
+/// The DDL for the job queue table [table].
+String jobRunTableDdl(String table) => jobRunTable(table).createTableDdl;
+
+/// The DDL for the lease table [table].
+String leaseTableDdl(String table) => leaseTable(table).createTableDdl;
+
+/// The DDL for the scheduler roll-call table [table].
+String schedulerNodeTableDdl(String table) =>
+    schedulerNodeTable(table).createTableDdl;

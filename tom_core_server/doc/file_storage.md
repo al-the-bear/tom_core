@@ -169,6 +169,19 @@ Three design points, each forced rather than chosen:
   `purgeOrphanedChunks()` collects the residue of a cleanup that itself failed —
   housekeeping for a schedule, not repair.
 
+Both tables are declared **once**, as `TomFrameworkTable` descriptors in
+`database_blob_sql.dart`. The `CREATE TABLE` `ensureSchema()` issues, the chunk
+`INSERT`, the manifest `REPLACE` and the column list of every read are all
+derived from those two declarations, so a column exists in the code in exactly
+one place. Hand-written reference migrations for a deployment whose database
+user may not run DDL ship under
+`example/file_storage/migrations/main/tomcore/`, and
+`test/framework_schema_test.dart` compares them against the descriptors, along
+with the reflected row types and every statement the store issues — see
+[Schema Convergence](db_migration.md#schema-convergence) for what each of those
+comparisons rules out, and for the `db`-tagged variant that makes the same
+comparison against a provisioned `information_schema`.
+
 ### S3
 
 `TomS3BlobStore` speaks the S3 REST API against AWS, MinIO, Ceph, Backblaze B2 —
@@ -497,6 +510,8 @@ be passed back to `open` would be a trap.
 - **`TomAwsV4Signer` / `TomAwsCredentials`** — SigV4 signing for the S3 backend.
 - **`TomBlobStoreInfo` / `TomBlobStoreFactory`** — the configured registry and
   the seam for an application's own backend.
+- **`blobManifestTable` / `blobChunkTable`** — the database backend's two table
+  descriptors, from which its DDL and its statements are derived.
 - **`TomFileReference` / `TomFileReferenceKeys`** — the column annotation, its
   key scheme, and store resolution.
 - **`TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` /

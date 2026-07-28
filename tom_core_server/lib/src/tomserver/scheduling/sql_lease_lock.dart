@@ -46,6 +46,7 @@ import 'dart:async';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
+import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
@@ -107,8 +108,24 @@ class TomSqlLeaseLock extends TomLeaseLock {
 
   bool _schemaReady = false;
 
-  static const String _columns =
-      'resource, owner, token, acquired_at, expires_at, released, version';
+  /// The lease table's single column declaration — see `sql_scheduling_sql.dart`.
+  late final TomFrameworkTable _leases = leaseTable(table);
+
+  /// The columns a first acquisition writes, and what each is given.
+  ///
+  /// Four are bound and three are literals — a first lease is always token 1,
+  /// unreleased, at version 1 — which is why this is a name-keyed map rather
+  /// than a column list beside a parallel value list. The two halves cannot
+  /// drift out of step when neither half exists separately.
+  static const Map<String, String> _acquireColumns = {
+    'resource': ':resource',
+    'owner': ':owner',
+    'token': '1',
+    'acquired_at': ':acquiredAt',
+    'expires_at': ':expiresAt',
+    'released': '0',
+    'version': '1',
+  };
 
   /// Creates the lease table if it does not exist.
   ///
@@ -117,7 +134,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
   Future<void> ensureSchema() async {
     if (_schemaReady) return;
     if (createSchema) {
-      await datasource.executeCommand(leaseTableDdl(table));
+      await datasource.executeCommand(_leases.createTableDdl);
     }
     _schemaReady = true;
   }
@@ -137,8 +154,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
     // exception, which is exactly the answer wanted: someone else owns the
     // resource row, go and look at it.
     final created = await datasource.executeCommand(
-      'INSERT IGNORE INTO $table ($_columns) VALUES '
-      '(:resource, :owner, 1, :acquiredAt, :expiresAt, 0, 1)',
+      _leases.insert('INSERT IGNORE', _acquireColumns),
       {
         'resource': resource,
         'owner': owner,
@@ -301,7 +317,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
 
   Future<_LeaseRecord?> _read(String resource) async {
     final rows = await datasource.executeQuery<TomLeaseRow>(
-      'SELECT $_columns FROM $table WHERE resource = :resource',
+      'SELECT ${_leases.columnList} FROM $table WHERE resource = :resource',
       {'resource': resource},
     );
     if (rows.isEmpty) return null;

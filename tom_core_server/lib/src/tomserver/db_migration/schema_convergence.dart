@@ -492,7 +492,7 @@ class TomSchemaConvergenceCheck {
     }
 
     divergences.addAll(
-      _diff(TomEntitySchemaReader.read(selected), replay.schema),
+      diff(TomEntitySchemaReader.read(selected), replay.schema),
     );
 
     return TomSchemaConvergenceReport(
@@ -503,8 +503,14 @@ class TomSchemaConvergenceCheck {
     );
   }
 
-  /// Diffs the [expected] entity-model schema against the [actual] replayed one.
-  List<TomSchemaDivergence> _diff(
+  /// Diffs the [expected] declared schema against the [actual] built one.
+  ///
+  /// Public because it is the comparison itself, and the framework-owned tables
+  /// are compared by the same rules through a different pair of sources — see
+  /// `framework_convergence.dart`. Two diffs over one vocabulary would be two
+  /// tolerance policies, and a schema that passes one and fails the other is a
+  /// schema nobody can act on.
+  List<TomSchemaDivergence> diff(
     TomSchemaModel expected,
     TomSchemaModel actual,
   ) {

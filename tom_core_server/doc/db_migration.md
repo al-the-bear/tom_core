@@ -15,6 +15,11 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Adaptor Discovery](#adaptor-discovery)
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
 - [Idempotency and Stability](#idempotency-and-stability)
+- [Schema Convergence](#schema-convergence)
+  - [The Application's Entities](#the-applications-entities)
+  - [The Framework's Own Tables](#the-frameworks-own-tables)
+  - [The Four Places a Column Name Could Have Been Spelled](#the-four-places-a-column-name-could-have-been-spelled)
+  - [What the Live Check Adds](#what-the-live-check-adds)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -119,6 +124,100 @@ hard error rather than a silent divergence between environments.
 > general literal-escaping follow-up tracked for the datasources module applies
 > here too.
 
+## Schema Convergence
+
+A migration chain is a *history*: it says how the schema was reached, never what
+it is now. Nothing in the chain relates its DDL back to the code that reads and
+writes those tables, so the two can part company silently — a column widened in
+one and not the other surfaces as a runtime failure, on whichever path happens to
+touch it first.
+
+The convergence checks close that gap. Both build a `TomSchemaModel` — a
+dialect-neutral table/column model — from each side and compare them, and neither
+needs a database to do it.
+
+### The Application's Entities
+
+`TomSchemaConvergenceCheck` (`ce-db.schema-convergence`) takes the **expected**
+schema from the reflected `@TomDbTable` / `@TomDbColumn` declarations on the
+application's entities, and the **actual** schema by replaying the migration
+chain's DDL text through `TomSchemaDdlReader`. A column an entity declares and
+the chain never creates is an error; so is a type family the chain cannot hold.
+
+### The Framework's Own Tables
+
+The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
+`tom_blob`, `tom_blob_chunk`, `tom_audit_trail` — are not application entities
+and deliberately stay that way: making them entities would pull them into the
+application's reflection build and have `discoverEntityTypes()` report them
+against every application schema. So they sit outside the guard above, and used
+to be the one part of the schema with no guard at all.
+
+Each is now declared exactly once, as a **`TomFrameworkTable`** descriptor
+(`datasources/framework_table.dart`) — a name, an ordered column list with types
+and nullability, and its keys. Everything else is derived from it:
+
+| Derived from the descriptor | By |
+| --------------------------- | -- |
+| The `CREATE TABLE IF NOT EXISTS` each store issues on first use | `createTableDdl` |
+| The column list of every `SELECT` the store issues | `columnList` / `columnsOf([…])` |
+| Every `INSERT` / `REPLACE` / `INSERT IGNORE` the store issues | `insert(verb, {column: bind})` |
+
+`insert` is keyed by **column name**, not position. A positional list would put
+the column list and the value list in lock-step, so adding a column would shift
+every value one place along — a worse failure than the one this design removes,
+because it type-checks.
+
+Table names stay per-instance constructor arguments, so the descriptor is a
+*factory* (`jobRunTable(name)`), and index names are derived from the table name
+so two queues in one schema cannot collide.
+
+`frameworkOwnedTables()` returns all six at their default names.
+
+### The Four Places a Column Name Could Have Been Spelled
+
+`TomFrameworkSchemaCheck` (`ce-fw.schema-convergence`) exists so that the single
+declaration is provably the *only* one. Each of the four ways a second spelling
+could survive is closed by a check, and each check has a negative test in
+`test/framework_schema_test.dart` that proves it can fail:
+
+1. **The shipped reference migration.** `verifyChain` compares the descriptors
+   against the hand-written SQL under `example/*/migrations/`. Those files stay
+   hand-written and reviewable on purpose — a migration is what a DBA applies and
+   must read like it. What is generated is the *comparison*, not the migration.
+   `modelOf` renders the descriptor's `CREATE TABLE` and feeds it through the same
+   `TomSchemaDdlReader` the migration side uses, so one parser cannot disagree
+   with itself about what `TINYINT(1)` means.
+2. **The reflected row type.** `verifyRowTypes` checks that every column the row
+   mapper maps is a column the descriptor declares (absent → error) and that its
+   Dart type can hold the declared SQL type (mismatch → error). A descriptor
+   column that no row type maps is a warning, not an error — a table may
+   legitimately carry a column the mapper does not need. `String` fields are
+   exempt from the type comparison: the MariaDB driver decodes every column value
+   to a Dart `String`, so a `String` field is the driver's raw form and claims
+   nothing, which is exactly why the scheduling row types read `DATETIME(6)` as
+   text and parse it with `parseSqlInstant`. A non-`String` field *is* a coercion
+   claim, and is checked.
+3. **The statements the stores issue.** `unknownFrameworkColumns(sql, tables)`
+   audits arbitrary SQL for identifiers that no descriptor declares. The suite
+   drives every statement-issuing method of every store through a recording data
+   source and puts each captured statement through it.
+4. **The provisioned database.** See below.
+
+### What the Live Check Adds
+
+The three checks above are readings of the *source tree*, so all three stay true
+of a deployment whose database was provisioned correctly once and then edited by
+hand: the drop of a "redundant" index, the widening of a column, the `ALTER`
+applied outside the chain.
+
+`verifyLive(datasource, tables)` reads `information_schema` and compares what is
+actually there with the descriptors. `test/framework_schema_db_test.dart` runs it
+against both provisioning routes — the stores' create-on-first-use and the
+shipped migration files, which must not diverge — and then hand-edits a column to
+prove the comparison reports something. It is tagged `db` and skips when no
+server is reachable; bring one up with `tool/run_db_tests.sh`.
+
 ## Core Components
 
 - **`TomDbMigrations`** — the orchestrator and reflection-based adaptor
@@ -128,6 +227,13 @@ hard error rather than a silent divergence between environments.
 - **`MariadbMigrationAdaptor`** and **`TomDbVersion`** — the MariaDB
   implementation and its versioning-row type.
 - **`TomDbMigrationException` / `MariadbMigrationException`** — the error types.
+- **`TomSchemaConvergenceCheck`** — the application-entity guard, plus
+  `TomSchemaModel` / `TomSchemaDdlReader`, the model and the DDL parser both
+  guards share.
+- **`TomFrameworkSchemaCheck`** — the framework-table guard: `verifyChain`,
+  `verifyRowTypes`, `verifyLive`, and `frameworkOwnedTables()`.
+- **`TomFrameworkTable`** (in the datasources module) — the single declaration
+  every framework table's DDL and statements are derived from.
 
 ## Dependencies
 

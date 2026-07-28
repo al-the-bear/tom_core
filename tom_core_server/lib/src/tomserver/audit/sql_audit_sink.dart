@@ -52,6 +52,7 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
+import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
@@ -216,15 +217,36 @@ class TomSqlAuditSink implements TomAuditSink {
   /// fails with it. Serialising here means the constraint never has to fire.
   Future<void> _queue = Future<void>.value();
 
-  /// The columns an insert names, in bind order.
-  static const String _insertColumns =
-      'writer, entry_index, entry_id, recorded_at, actor, action, target, '
-      'target_key, outcome, request_id, previous_hash, hash, record';
+  /// The trail table's single column declaration — see `audit/sql_audit_sql.dart`.
+  late final TomFrameworkTable _trail = auditTrailTable(table);
 
-  /// The columns a read projects. `seq` is not among them: it orders the read
-  /// but is not part of the entry.
-  static const String _selectColumns =
-      'entry_index, previous_hash, hash, record';
+  /// The columns an insert names, keyed so the value cannot drift out of
+  /// position when a column is added. `seq` is absent because the database
+  /// assigns it.
+  static const Map<String, String> _insertColumns = {
+    'writer': ':writer',
+    'entry_index': ':entryIndex',
+    'entry_id': ':entryId',
+    'recorded_at': ':recordedAt',
+    'actor': ':actor',
+    'action': ':action',
+    'target': ':target',
+    'target_key': ':targetKey',
+    'outcome': ':outcome',
+    'request_id': ':requestId',
+    'previous_hash': ':previousHash',
+    'hash': ':hash',
+    'record': ':record',
+  };
+
+  /// The columns a read projects — exactly the ones [TomAuditTrailRow] maps.
+  /// `seq` is not among them: it orders the read but is not part of the entry.
+  static const List<String> _selectColumns = [
+    'entry_index',
+    'previous_hash',
+    'hash',
+    'record',
+  ];
 
   @override
   String get headHash => _headHash;
@@ -255,7 +277,7 @@ class TomSqlAuditSink implements TomAuditSink {
 
   Future<void> _open() async {
     if (createSchema) {
-      await datasource.executeCommand(auditTrailTableDdl(table));
+      await datasource.executeCommand(_trail.createTableDdl);
     }
     final check = await verifyWriteOnce();
     _writeOnceCheck = check;
@@ -294,8 +316,8 @@ class TomSqlAuditSink implements TomAuditSink {
   /// yield a count that belongs to a different head.
   Future<({String hash, int entryCount})> _recoverHead() async {
     final rows = await datasource.executeQuery<TomAuditHeadRow>(
-      'SELECT hash, entry_index FROM $table WHERE writer = :writer '
-      'ORDER BY seq DESC LIMIT 1',
+      'SELECT ${_trail.columnsOf(const ['hash', 'entry_index'])} FROM $table '
+      'WHERE writer = :writer ORDER BY seq DESC LIMIT 1',
       {'writer': writer},
     );
     return rows.isEmpty
@@ -323,10 +345,7 @@ class TomSqlAuditSink implements TomAuditSink {
     final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     try {
       await datasource.executeCommand(
-        'INSERT INTO $table ($_insertColumns) VALUES '
-        '(:writer, :entryIndex, :entryId, :recordedAt, :actor, :action, '
-        ':target, :targetKey, :outcome, :requestId, :previousHash, :hash, '
-        ':record)',
+        _trail.insert('INSERT', _insertColumns),
         _bindOf(entry),
       );
     } catch (e, stack) {
@@ -347,7 +366,8 @@ class TomSqlAuditSink implements TomAuditSink {
   Future<List<TomAuditEntry>> readAll() async {
     await open();
     final rows = await datasource.executeQuery<TomAuditTrailRow>(
-      'SELECT $_selectColumns FROM $table WHERE writer = :writer ORDER BY seq',
+      'SELECT ${_trail.columnsOf(_selectColumns)} FROM $table '
+      'WHERE writer = :writer ORDER BY seq',
       {'writer': writer},
     );
     return rows.map(_entryOf).toList(growable: false);

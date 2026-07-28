@@ -170,6 +170,14 @@ two-phase commit across multiple resources.
   `TomDataSourceInfo`) — the data-source/driver abstraction and registry.
 - **`MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect`** — the
   MariaDB implementation.
+- **`TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey`** — the single
+  declaration of a table the *framework* owns (the scheduler's queue and lease,
+  the blob store's pair, the audit trail), from which its `CREATE TABLE`, its
+  projections and its inserts are all derived. It lives here rather than in
+  `db_migration` because `scheduling`, `file_storage` and `audit` already depend
+  on this module and must not be made to depend on the migration one — a
+  deployment can run the scheduler without ever loading a migration. See
+  [Schema Convergence](db_migration.md#schema-convergence).
 
 ## Dependencies
 

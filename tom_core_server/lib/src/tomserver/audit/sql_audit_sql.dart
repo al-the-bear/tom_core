@@ -1,17 +1,22 @@
 /// The schema of the relational audit trail, and the optional database-side
 /// guards that make its table write-once.
 ///
-/// The DDL lives here, in one place, rather than inside the sink: the shipped
-/// migration file under `example/audit/migrations/` carries the same text and a
-/// test asserts the two have not drifted apart. Same arrangement, and same
-/// reason, as `scheduling/sql_scheduling_sql.dart` — a schema that exists twice
-/// and is checked once eventually exists in two versions.
+/// The table is declared **once**, as a [TomFrameworkTable]: the DDL the sink
+/// issues, the column lists its statements interpolate, and the schema model the
+/// convergence guard compares are all derived from that one declaration. Same
+/// arrangement, and same reason, as `scheduling/sql_scheduling_sql.dart` — a
+/// schema that exists twice and is checked once eventually exists in two
+/// versions. The shipped migration file under `example/audit/migrations/` stays
+/// hand-written, because a migration is what a DBA applies and must remain
+/// readable; a test asserts it has not drifted from the descriptor.
 library;
+
+import '../datasources/framework_table.dart';
 
 /// The default name of the audit trail table.
 const String defaultAuditTrailTable = 'tom_audit_trail';
 
-/// The DDL for the audit trail table [table].
+/// The audit trail table [table], declared once.
 ///
 /// Notes on the shape, because each column and each key earns its place:
 ///
@@ -48,30 +53,38 @@ const String defaultAuditTrailTable = 'tom_audit_trail';
 ///    `(writer, previous_hash)` is 64×4 + 64×4 = 512 bytes, `(target, action)`
 ///    is 160×4 + 16×4 = 704. `target_key` is deliberately *not* indexed —
 ///    `(target, target_key)` would not fit.
-String auditTrailTableDdl(String table) => '''
-CREATE TABLE IF NOT EXISTS $table (
-  seq           BIGINT       NOT NULL AUTO_INCREMENT,
-  writer        VARCHAR(64)  NOT NULL,
-  entry_index   BIGINT       NOT NULL,
-  entry_id      VARCHAR(191) NOT NULL,
-  recorded_at   DATETIME(6)  NOT NULL,
-  actor         VARCHAR(160) NOT NULL,
-  action        VARCHAR(16)  NOT NULL,
-  target        VARCHAR(160) NOT NULL,
-  target_key    VARCHAR(191) NULL,
-  outcome       VARCHAR(16)  NOT NULL,
-  request_id    VARCHAR(191) NULL,
-  previous_hash CHAR(64)     NOT NULL,
-  hash          CHAR(64)     NOT NULL,
-  record        LONGTEXT     NOT NULL,
-  PRIMARY KEY (seq),
-  UNIQUE KEY uq_${table}_link (writer, previous_hash),
-  UNIQUE KEY uq_${table}_hash (writer, hash),
-  UNIQUE KEY uq_${table}_index (writer, entry_index),
-  KEY ix_${table}_time (writer, recorded_at),
-  KEY ix_${table}_target (target, action),
-  KEY ix_${table}_actor (actor)
-)''';
+TomFrameworkTable auditTrailTable(String table) => TomFrameworkTable(
+  name: table,
+  origin: 'auditTrailTable',
+  columns: const [
+    TomFrameworkColumn('seq', 'BIGINT', autoIncrement: true),
+    TomFrameworkColumn('writer', 'VARCHAR(64)'),
+    TomFrameworkColumn('entry_index', 'BIGINT'),
+    TomFrameworkColumn('entry_id', 'VARCHAR(191)'),
+    TomFrameworkColumn('recorded_at', 'DATETIME(6)'),
+    TomFrameworkColumn('actor', 'VARCHAR(160)'),
+    TomFrameworkColumn('action', 'VARCHAR(16)'),
+    TomFrameworkColumn('target', 'VARCHAR(160)'),
+    TomFrameworkColumn('target_key', 'VARCHAR(191)', nullable: true),
+    TomFrameworkColumn('outcome', 'VARCHAR(16)'),
+    TomFrameworkColumn('request_id', 'VARCHAR(191)', nullable: true),
+    TomFrameworkColumn('previous_hash', 'CHAR(64)'),
+    TomFrameworkColumn('hash', 'CHAR(64)'),
+    TomFrameworkColumn('record', 'LONGTEXT'),
+  ],
+  primaryKey: const ['seq'],
+  keys: const [
+    TomFrameworkKey.unique('link', ['writer', 'previous_hash']),
+    TomFrameworkKey.unique('hash', ['writer', 'hash']),
+    TomFrameworkKey.unique('index', ['writer', 'entry_index']),
+    TomFrameworkKey('time', ['writer', 'recorded_at']),
+    TomFrameworkKey('target', ['target', 'action']),
+    TomFrameworkKey('actor', ['actor']),
+  ],
+);
+
+/// The DDL for the audit trail table [table].
+String auditTrailTableDdl(String table) => auditTrailTable(table).createTableDdl;
 
 /// The name of the trigger that rejects `UPDATE` on [table].
 String auditTrailNoUpdateTriggerName(String table) => 'trg_${table}_no_update';

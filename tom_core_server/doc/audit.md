@@ -269,7 +269,15 @@ Three design points are worth stating outright:
   clock skew is enough to leave an older-stamped row after a newer-stamped one
   and deleting by timestamp would punch a hole.
 
-Reference migrations live in `example/audit/migrations/main/tomcore/`.
+Reference migrations live in `example/audit/migrations/main/tomcore/`. The table
+itself is declared **once**, as the `auditTrailTable(name)` descriptor in
+`sql_audit_sql.dart`: the `CREATE TABLE` the sink issues, its entry `INSERT` and
+the column list of every read are all derived from it, and
+`test/framework_schema_test.dart` compares that declaration against the shipped
+migration, the reflected row type and every statement the sink issues — see
+[Schema Convergence](db_migration.md#schema-convergence). The two trigger-DDL
+functions are separate on purpose: they are a *grant* posture, not a column
+declaration, and are what the write-once story below rests on.
 
 ## The Write-Once Story
 

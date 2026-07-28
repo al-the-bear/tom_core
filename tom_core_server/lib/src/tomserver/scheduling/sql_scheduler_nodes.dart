@@ -72,6 +72,7 @@ library;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
+import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
@@ -226,13 +227,21 @@ class TomSqlSchedulerNodes {
   /// When this node last checked in, or `null` before its first pass.
   DateTime? get lastCheckin => _lastCheckin;
 
-  static const String _columns = 'node_id, checkin_at, checkin_interval';
+  /// The roll call's single column declaration — see `sql_scheduling_sql.dart`.
+  late final TomFrameworkTable _roll = schedulerNodeTable(table);
+
+  /// The columns [checkIn] writes, and the bind each takes.
+  static const Map<String, String> _checkInColumns = {
+    'node_id': ':nodeId',
+    'checkin_at': ':checkinAt',
+    'checkin_interval': ':checkinInterval',
+  };
 
   /// Creates the roll-call table if it does not exist.
   Future<void> ensureSchema() async {
     if (_schemaReady) return;
     if (createSchema) {
-      await datasource.executeCommand(schedulerNodeTableDdl(table));
+      await datasource.executeCommand(_roll.createTableDdl);
     }
     _schemaReady = true;
   }
@@ -241,8 +250,7 @@ class TomSqlSchedulerNodes {
   Future<void> checkIn(DateTime now) async {
     await ensureSchema();
     await datasource.executeCommand(
-      'REPLACE INTO $table ($_columns) VALUES '
-      '(:nodeId, :checkinAt, :checkinInterval)',
+      _roll.insert('REPLACE', _checkInColumns),
       {
         'nodeId': nodeId,
         'checkinAt': sqlInstant(now),
@@ -256,7 +264,7 @@ class TomSqlSchedulerNodes {
   Future<List<TomSchedulerNode>> nodes() async {
     await ensureSchema();
     final rows = await datasource.executeQuery<TomSchedulerNodeRow>(
-      'SELECT $_columns FROM $table ORDER BY node_id',
+      'SELECT ${_roll.columnList} FROM $table ORDER BY node_id',
       const {},
     );
     return rows.map(_nodeOf).toList();
