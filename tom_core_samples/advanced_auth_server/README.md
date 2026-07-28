@@ -4,7 +4,8 @@ Auth server for the **advanced Tom Core full-stack sample** (see
 [`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 Two surfaces in one boot on `tom_core_server`: a JWT **authentication** issuer
-(`/auth/login`, `/auth/refresh`, `/auth/me`, `/auth/logout`) and a role-gated
+(`/auth/login`, `/auth/second-factor`, `/auth/refresh`, `/auth/me`,
+`/auth/logout` — with an optional TOTP second pass) and a role-gated
 **administration** API (`/admin/users|roles|groups|grants|assignments`). The
 admin endpoints that *mutate* roles and the grant matrix are a primary
 deliverable — they do not exist elsewhere in the framework yet.
@@ -26,8 +27,9 @@ Each surface is split into a pure, database-free logic class and a thin
 
 The adapters carry the production wiring (the repository-backed stores); the
 per-endpoint access policy is **declared on the contract** (`TomApiEndpoint.access`,
-G-API-3), not annotated on the handlers: `/auth/login` is `TomPublicAccess`,
-the rest of `/auth/*` is `TomAuthenticatedAccess`, and every `/admin/*`
+G-API-3), not annotated on the handlers: `/auth/login` and
+`/auth/second-factor` are `TomPublicAccess`, the rest of `/auth/*` is
+`TomAuthenticatedAccess`, and every `/admin/*`
 endpoint is `TomRoleAccess(['admin'])` (the shared `adminAccess` constant). The
 endpoint pipeline extracts that declaration on first call, reads the caller's
 principal from the bearer token via the default
@@ -51,12 +53,13 @@ framework `tom_resource_grant` table and seeding the §A.4 grant matrix), then
 hashes a **demo password** onto each seed account that has none. The seeded
 credentials are (sample only — never ship them):
 
-| Username | Password | Global role |
-| --- | --- | --- |
-| `admin` | `admin-pass` | `admin` |
-| `alice` | `alice-pass` | — |
-| `bob` | `bob-pass` | — |
-| `carol` | `carol-pass` | — |
+| Username | Password | Global role | Notes |
+| --- | --- | --- | --- |
+| `admin` | `admin-pass` | `admin` | Untagged `[002]` seed — present in **every** environment |
+| `alice` | `alice-pass` | — | `@dev,test` `[003]` demo seed |
+| `bob` | `bob-pass` | — | `@dev,test` `[003]` demo seed |
+| `carol` | `carol-pass` | — | `@dev,test` `[003]` demo seed |
+| `dave` | `dave-pass` | — | `@dev,test` `[005]` seed — **enrolled in TOTP**, so the password only gets him through pass 1 |
 
 ## Endpoints
 
@@ -70,7 +73,8 @@ request and exposes it through `GET /resource-roles`, which the client reads.
 
 | Method & path | Access | Purpose |
 | --- | --- | --- |
-| `POST /auth/login` | public | Exchange credentials for the token pair |
+| `POST /auth/login` | public | Exchange credentials for the token pair (or, for a 2FA account, an interim pair + `requires2FA`) |
+| `POST /auth/second-factor` | public | Answer a pending challenge (`code` + `challengeToken` in the **body**, not as a bearer) and complete the login |
 | `POST /auth/refresh` | authenticated | Re-issue a fresh token pair |
 | `GET /auth/me` | authenticated | The caller's `UserDto` |
 | `POST /auth/logout` | authenticated | No-op (stateless JWT) |
@@ -129,10 +133,43 @@ curl -s -o /dev/null -w '%{http_code}\n' \
   http://localhost:8081/admin/users -H "Authorization: Bearer $ALICE"
 ```
 
+### Two-factor login (`dave`)
+
+`dave` is enrolled in TOTP with the base32 secret **`JBSWY3DPEHPK3PXP`** (the
+RFC test vector — a sample credential, seeded only under `@dev,test`). His login
+comes back **pending**:
+
+```sh
+# Pass 1: the password is right, but no session is open yet.
+INTERIM=$(curl -s http://localhost:8081/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"dave","password":"dave-pass"}' \
+  | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d["requires2FA"],d["authzToken"])' \
+  | cut -d' ' -f2)          # requires2FA is True
+
+# Pass 2: the current 6-digit code, plus the interim token — in the *body*.
+curl -s -X POST http://localhost:8081/auth/second-factor \
+  -H 'Content-Type: application/json' \
+  -d "{\"code\":\"123456\",\"challengeToken\":\"$INTERIM\"}"
+```
+
+Add the secret to any authenticator app to get the code (or generate one with
+`TomTotp2FAService.expectedCode('JBSWY3DPEHPK3PXP')`, which applies this server's
+own digits/period). A wrong code returns **401** with
+`{"error":"login.error.2fa.invalid-code","challengeToken":"<re-issued>"}` — retry
+with *that* token; the third failure burns the challenge, as does its 5-minute
+expiry. On success you get exactly the pair a password-only login would have
+produced. Full walkthrough:
+[06 · Two-factor login](../README_advanced_06_authentication.md#two-factor-login-the-second-pass).
+
 ## JWT signing
 
 The server signs the token pair (HS256) and RSA-encrypts the authorization
-payload using the framework's bundled sample keypair, configured non-dummy in
-`initializeJwtSigning()`. The app server (advanced_app_server, step 21) applies
-the identical configuration so a token minted here verifies there. **Replace the
-keys with real ones before any real deployment.**
+payload using the framework's bundled sample keypair, installed by
+`initializeJwtSigning()`. That keypair is deliberately left marked as a
+**development ("dummy") certificate**, so the framework emits its development-key
+warning on every sign and verify and `warnIfDevelopmentSigningKey()` repeats it
+at boot — intentionally not suppressed (G-AUTH-2). The app server
+(advanced_app_server, step 21) applies the identical configuration so a token
+minted here verifies there. **Replace the keys with real ones — built into a
+`TomJwtConfiguration` with `isDummy: false` — before any real deployment.**

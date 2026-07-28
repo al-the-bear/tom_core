@@ -80,7 +80,7 @@ const Map<String, String> _demoPasswords = {
   'alice': 'alice-pass',
   'bob': 'bob-pass',
   'carol': 'carol-pass',
-  // Dave (from the `@dev,test` [004] seed) is enrolled in TOTP, so this password
+  // Dave (from the `@dev,test` [005] seed) is enrolled in TOTP, so this password
   // only gets him through pass 1: his login answers with a challenge that must
   // be completed at `POST /auth/second-factor` with a code derived from the
   // seeded secret. He exists so the two-pass path is exercised out of the box.

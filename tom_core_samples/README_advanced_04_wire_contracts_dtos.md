@@ -104,9 +104,9 @@ declared directly on each endpoint's `TomApiEndpoint.access` value (G-API-3 —
 the endpoint carries an `access` field; there is no companion map). The values
 are the kernel `TomAccessControl` types:
 
-- `authLogin` / `authLoginResources` → `TomPublicAccess()` (reachable
-  unauthenticated — you must be able to log in and fetch login texts before you
-  have a token);
+- `authLogin` / `authSecondFactor` / `authLoginResources` → `TomPublicAccess()`
+  (reachable unauthenticated — you must be able to log in, complete a pending
+  second factor, and fetch login texts before you have a usable token);
 - every other auth/app endpoint → `TomAuthenticatedAccess()`;
 - **every `/admin/*` endpoint → the shared `adminAccess`
   (`TomRoleAccess(['admin'])`) constant** — the single policy gating the whole
@@ -126,7 +126,8 @@ grant matrix — plus resources and login:
 | `GradedFieldDto` | `GET /admin/grants` (via `GrantMatrixDto`) | One `resourceKey` + its `access` (`TomAuthState.name` token). It is the per-cell grade of the admin grant matrix `GrantMatrixDto` (`GrantMatrixDto.gradesFor(role)`), served by the auth server's `/admin/grants` path and rendered in the admin console's grant editor. Carries only the kernel `TomAuthState`, so the contract stays dependency-clean. It **no longer travels on any app read** — the app client grades fields locally from the `resourceRoles` map. |
 | `GrantMatrixDto` | `GET/PUT /admin/grants` | The full `(role, resourceKey) → TomAuthState` grid the authadmin editor reads and writes. Held in one reflected `matrix` field as `{role: {resourceKey: token}}`; edits produce a new instance via `withAccess`; `accessFor` is closed-safe. The auth server materialises a PUT into `TomResourceGrant` rows. |
 | `ResourceBundleDto` | the `resources` / `loginResources` endpoints | A bundle of server-delivered UI texts keyed by `<basePath>.<suffix>` (`todo.item.title.label`, `login.username.hint`, …) — exactly the shape `TomTextResourceProvider.from` accepts. The keys agree with the form fields' `basePath`s because both follow the one domain scope/form/field convention. Part [08](README_advanced_08_resources_texts.md). |
-| `LoginRequest` / `LoginResult` / `UserDto` | `POST /auth/login`, `refresh`, `me` | `LoginResult` carries the `UserDto`, the `authToken` + `authzToken`, and `expiresAt`. The bearer story is part [06](README_advanced_06_authentication.md). |
+| `LoginRequest` / `LoginResult` / `UserDto` | `POST /auth/login`, `refresh`, `me` | `LoginResult` carries the `UserDto`, the `authToken` + `authzToken`, and `expiresAt`. It also carries `requires2FA` + `twoFactorType` — deliberately *only* the flag: the challenge's hint, attempt counter and expiry live in the interim token's claims and are read via `TomBearerAuthentication.pendingTwoFactorChallenge`, so no client mirrors challenge state. The bearer story is part [06](README_advanced_06_authentication.md). |
+| `SecondFactorRequest` | `POST /auth/second-factor` | The `code` the user submitted plus the pending login's `challengeToken`. The token is echoed **in the body**, not as a bearer, because the interim principal is by construction not authenticated — see part [06](README_advanced_06_authentication.md#two-factor-login-the-second-pass). |
 | `RoleDto` / `GroupDto` / `CreateUserRequest` / `AssignmentRequest` | `/admin/*` | The admin CRUD payloads. |
 
 ## The domain↔wire boundary

@@ -17,7 +17,7 @@ side of the authority seam gets its own server, database, and Flutter client.
 
 | Node | Role | Runtime |
 | --- | --- | --- |
-| [`advanced_auth_server`](advanced_auth_server/README.md) | Mints JWTs (`/auth/login\|refresh\|me\|logout`) and owns the **grant matrix** through a role-gated admin API (`/admin/users\|roles\|groups\|grants\|assignments`). | HTTP `:8081`, `auth_db` `:3307` |
+| [`advanced_auth_server`](advanced_auth_server/README.md) | Mints JWTs (`/auth/login\|second-factor\|refresh\|me\|logout`, with an optional TOTP second pass) and owns the **grant matrix** through a role-gated admin API (`/admin/users\|roles\|groups\|grants\|assignments`). | HTTP `:8081`, `auth_db` `:3307` |
 | [`advanced_app_server`](advanced_app_server/README.md) | The secured task API. Validates the bearer on every request, resolves ownership + shares + four-state field grades, persists tasks. | HTTP `:8080`, `app_db` `:3308` |
 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | Administrator console: users, roles, groups, assignments, and the `projectRole` × field grant matrix. | Flutter |
 | [`advanced_app_client`](advanced_app_client/README.md) | End-user app: login, a status-column board, a bound item editor with live per-field authorization, and cross-user sharing. | Flutter |

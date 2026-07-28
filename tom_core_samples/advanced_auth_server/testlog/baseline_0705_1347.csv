@@ -1,59 +1,74 @@
-ID,Groups,Description,Baseline [07-05 13:47],[07-06 17:54],[07-06 18:07]
-,user mapping (record -> wire DTO),createUserRequestToRecord seeds active with no hash yet,OK/OK,OK/OK,OK/OK
-,AdminService grants,an admin can edit a grant and the edit is persisted (the Done bar),OK/OK,OK/OK,OK/OK
-,AdminService grants,putGrants replaces only the roles present in the matrix,OK/OK,OK/OK,OK/OK
-,"login resource bundle (public, todo 7)",loginBundle carries the public login + adminLogin texts,OK/OK,OK/OK,OK/OK
-,"login resource bundle (public, todo 7)",the loginResources handler returns the login bundle,OK/OK,OK/OK,OK/OK
-,"login resource bundle (public, todo 7)",login resources are reachable unauthenticated,OK/OK,OK/OK,OK/OK
-,"admin console resource bundle (admin-gated, todo 7)",adminConsoleBundle carries the editor + grants texts,OK/OK,OK/OK,OK/OK
-,"admin console resource bundle (admin-gated, todo 7)",the adminResources handler returns the console bundle,OK/OK,OK/OK,OK/OK
-,"admin console resource bundle (admin-gated, todo 7)",admin resources require the admin role (reject anon + non-admin),OK/OK,OK/OK,OK/OK
-,group mapping (record + members <-> wire DTO),assembles a group with members in row order,OK/OK,OK/OK,OK/OK
-,grant-matrix key consistency (RC-26),"the matrix is full — one row per (ProjectRole, gradable key)",OK/OK,OK/OK,OK/OK
-,user mapping (domain entity <-> record),"round-trips a persisted user, preserving every domain field",OK/OK,OK/OK,OK/OK
-,user mapping (domain entity <-> record),an unpersisted user maps to a null primary key (INSERT),OK/OK,OK/OK,OK/OK
-,user mapping (domain entity <-> record),an absent stored status degrades to active,OK/OK,OK/OK,OK/OK
-,user mapping (domain entity <-> record),the domain mapping never carries the password hash,OK/OK,OK/OK,OK/OK
-,user mapping (record -> wire DTO),projects the password-free user view,OK/OK,OK/OK,OK/OK
-,user mapping (record -> wire DTO),applyUserDto updates the profile without clearing the hash,OK/OK,OK/OK,OK/OK
-,AdminService grants,getGrants projects the stored grants into the matrix,OK/OK,OK/OK,OK/OK
-,role mapping (record <-> wire DTO),round-trips key and name,OK/OK,OK/OK,OK/OK
-,AdminService user CRUD,updateUser edits the profile but preserves the stored password,OK/OK,OK/OK,OK/OK
-,group mapping (record + members <-> wire DTO),a group with no members maps to an empty member list,OK/OK,OK/OK,OK/OK
-,group mapping (record + members <-> wire DTO),groupDtoToRecord + groupMemberRecords split the DTO back apart,OK/OK,OK/OK,OK/OK
-,group mapping (record + members <-> wire DTO),non-numeric member ids are skipped when materialising rows,OK/OK,OK/OK,OK/OK
-,AdvancedAuthenticationService.authenticateUser,accepts the right password and builds the authenticated principal,OK/OK,OK/OK,OK/OK
-,AdminService user CRUD,createUser hashes the password and persists the account,OK/OK,OK/OK,OK/OK
-,AuthTokenService.login,accepts the right password and issues the signed token pair,OK/OK,OK/OK,OK/OK
-,hashPassword / verifyPassword (string form),verify accepts the right password and rejects the wrong one,OK/OK,OK/OK,OK/OK
-,AdvancedAuthenticationService.authenticateUser,the principal carries the user's expected roles and groups,OK/OK,OK/OK,OK/OK
-,forbiddenOnAccessDenied,maps the pipeline access-denied exception to HTTP 403,OK/OK,OK/OK,OK/OK
-,AdminService user CRUD,updateUser rejects an unknown id,OK/OK,OK/OK,OK/OK
-,AdminService user CRUD,deleteUser removes the account,OK/OK,OK/OK,OK/OK
-,AdminService role CRUD,"create, rename and delete a role by its stable key",OK/OK,OK/OK,OK/OK
-,AdminService group CRUD,createGroup persists the group with its ordered membership,OK/OK,OK/OK,OK/OK
-,AdminService assignments,assign records both the role and the group membership,OK/OK,OK/OK,OK/OK
-,admin role gate (the 403 contract),an admin principal passes the gate,OK/OK,OK/OK,OK/OK
-,applyPassword / verifyUserPassword (record form),a record with no stored hash can never authenticate,OK/OK,OK/OK,OK/OK
-,admin role gate (the 403 contract),an absent principal is rejected by the gate,OK/OK,OK/OK,OK/OK
-,AuthTokenService.refresh,re-issues a fresh token pair for an authenticated principal,OK/OK,OK/OK,OK/OK
-,forbiddenOnAccessDenied,passes any other error through to the default handler,OK/OK,OK/OK,OK/OK
-,AdvancedAuthenticationService.authenticateUser,rejects the wrong password with a LoginException,OK/OK,OK/OK,OK/OK
-,AdvancedAuthenticationService.authenticateUser,rejects an unknown user with a LoginException,OK/OK,OK/OK,OK/OK
-,hashPassword / verifyPassword (string form),the same plaintext hashes to a different value each time (salted),OK/OK,OK/OK,OK/OK
-,AdvancedAuthenticationService.authenticateUser,rejects a suspended account even with the right password,OK/OK,OK/OK,OK/OK
-,hashPassword / verifyPassword (string form),the stored hash is non-reversible — the plaintext never appears,OK/OK,OK/OK,OK/OK
-,AuthTokenService — /auth/me echoes the issued principal,the auth token decodes back to the login user (the /auth/me path),OK/OK,OK/OK,OK/OK
-,AdvancedAuthenticationService.authenticateUser,"rejects a credential-less row (freshly seeded, no password)",OK/OK,OK/OK,OK/OK
-,hashPassword / verifyPassword (string form),a hash from one password never verifies another,OK/OK,OK/OK,OK/OK
-,applyPassword / verifyUserPassword (record form),applyPassword populates both credential columns,OK/OK,OK/OK,OK/OK
-,auth_db migration environment tagging (Step 20 / G-MIG-1/2/3),a production apply seeds admin without demo users (done-bar),--/OK,OK/OK,OK/OK
-,LoginUnauthorizedErrorHandler,maps a LoginException to HTTP 401 carrying the stable error key,OK/OK,OK/OK,OK/OK
-,LoginUnauthorizedErrorHandler,masks any other error behind the opaque 500,OK/OK,OK/OK,OK/OK
-,AdvancedAuthenticationService.authenticateUser,unknown user and wrong password share the same generic key,OK/OK,OK/OK,OK/OK
-,applyPassword / verifyUserPassword (record form),verifyUserPassword round-trips a record credential,OK/OK,OK/OK,OK/OK
-,admin role gate (the 403 contract),a non-admin principal is rejected by the gate,OK/OK,OK/OK,OK/OK
-,auth_db migration environment tagging (Step 20 / G-MIG-1/2/3),versions are numbered consecutively from 0 with no gaps,--/OK,OK/OK,OK/OK
-,auth_db migration environment tagging (Step 20 / G-MIG-1/2/3),"schema + admin seed are untagged; the demo seed is @dev,test",--/OK,OK/OK,OK/OK
-,grant-matrix key consistency (RC-26),seeded resource keys equal the gradable item key set exactly,--/OK,OK/OK,OK/OK
-,grant-matrix key consistency (RC-26),seeded resource keys equal the domain gradable-key set exactly,OK/OK,--/OK,--/OK
+ID,Groups,Description,Baseline [07-05 13:47],[07-06 17:54],[07-06 18:07],[07-28 18:58]
+,AdminService user CRUD,createUser hashes the password and persists the account,OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService grants,an admin can edit a grant and the edit is persisted (the Done bar),OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService grants,putGrants replaces only the roles present in the matrix,OK/OK,OK/OK,OK/OK,OK/OK
+,"login resource bundle (public, todo 7)",loginBundle carries the public login + adminLogin texts,OK/OK,OK/OK,OK/OK,OK/OK
+,"login resource bundle (public, todo 7)",the loginResources handler returns the login bundle,OK/OK,OK/OK,OK/OK,OK/OK
+,"login resource bundle (public, todo 7)",login resources are reachable unauthenticated,OK/OK,OK/OK,OK/OK,OK/OK
+,"admin console resource bundle (admin-gated, todo 7)",adminConsoleBundle carries the editor + grants texts,OK/OK,OK/OK,OK/OK,OK/OK
+,"admin console resource bundle (admin-gated, todo 7)",the adminResources handler returns the console bundle,OK/OK,OK/OK,OK/OK,OK/OK
+,"admin console resource bundle (admin-gated, todo 7)",admin resources require the admin role (reject anon + non-admin),OK/OK,OK/OK,OK/OK,OK/OK
+,group mapping (record + members <-> wire DTO),assembles a group with members in row order,OK/OK,OK/OK,OK/OK,OK/OK
+,grant-matrix key consistency (RC-26),"the matrix is full — one row per (ProjectRole, gradable key)",OK/OK,OK/OK,OK/OK,OK/OK
+,user mapping (domain entity <-> record),"round-trips a persisted user, preserving every domain field",OK/OK,OK/OK,OK/OK,OK/OK
+,user mapping (domain entity <-> record),an unpersisted user maps to a null primary key (INSERT),OK/OK,OK/OK,OK/OK,OK/OK
+,user mapping (domain entity <-> record),an absent stored status degrades to active,OK/OK,OK/OK,OK/OK,OK/OK
+,user mapping (domain entity <-> record),the domain mapping never carries the password hash,OK/OK,OK/OK,OK/OK,OK/OK
+,user mapping (record -> wire DTO),projects the password-free user view,OK/OK,OK/OK,OK/OK,OK/OK
+,user mapping (record -> wire DTO),applyUserDto updates the profile without clearing the hash,OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService grants,getGrants projects the stored grants into the matrix,OK/OK,OK/OK,OK/OK,OK/OK
+,role mapping (record <-> wire DTO),round-trips key and name,OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService user CRUD,updateUser edits the profile but preserves the stored password,OK/OK,OK/OK,OK/OK,OK/OK
+,group mapping (record + members <-> wire DTO),a group with no members maps to an empty member list,OK/OK,OK/OK,OK/OK,OK/OK
+,group mapping (record + members <-> wire DTO),groupDtoToRecord + groupMemberRecords split the DTO back apart,OK/OK,OK/OK,OK/OK,OK/OK
+,group mapping (record + members <-> wire DTO),non-numeric member ids are skipped when materialising rows,OK/OK,OK/OK,OK/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,accepts the right password and builds the authenticated principal,OK/OK,OK/OK,OK/OK,OK/OK
+,user mapping (record -> wire DTO),createUserRequestToRecord seeds active with no hash yet,OK/OK,OK/OK,OK/OK,OK/OK
+,AuthTokenService.login,accepts the right password and issues the signed token pair,OK/OK,OK/OK,OK/OK,OK/OK
+,hashPassword / verifyPassword (string form),verify accepts the right password and rejects the wrong one,OK/OK,OK/OK,OK/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,the principal carries the user's expected roles and groups,OK/OK,OK/OK,OK/OK,OK/OK
+,forbiddenOnAccessDenied,maps the pipeline access-denied exception to HTTP 403,OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService user CRUD,updateUser rejects an unknown id,OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService user CRUD,deleteUser removes the account,OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService role CRUD,"create, rename and delete a role by its stable key",OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService group CRUD,createGroup persists the group with its ordered membership,OK/OK,OK/OK,OK/OK,OK/OK
+,AdminService assignments,assign records both the role and the group membership,OK/OK,OK/OK,OK/OK,OK/OK
+,admin role gate (the 403 contract),an admin principal passes the gate,OK/OK,OK/OK,OK/OK,OK/OK
+,applyPassword / verifyUserPassword (record form),a record with no stored hash can never authenticate,OK/OK,OK/OK,OK/OK,OK/OK
+,admin role gate (the 403 contract),an absent principal is rejected by the gate,OK/OK,OK/OK,OK/OK,OK/OK
+,AuthTokenService.refresh,re-issues a fresh token pair for an authenticated principal,OK/OK,OK/OK,OK/OK,OK/OK
+,forbiddenOnAccessDenied,passes any other error through to the default handler,OK/OK,OK/OK,OK/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,rejects the wrong password with a LoginException,OK/OK,OK/OK,OK/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,rejects an unknown user with a LoginException,OK/OK,OK/OK,OK/OK,OK/OK
+,hashPassword / verifyPassword (string form),the same plaintext hashes to a different value each time (salted),OK/OK,OK/OK,OK/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,rejects a suspended account even with the right password,OK/OK,OK/OK,OK/OK,OK/OK
+,hashPassword / verifyPassword (string form),the stored hash is non-reversible — the plaintext never appears,OK/OK,OK/OK,OK/OK,OK/OK
+,AuthTokenService — /auth/me echoes the issued principal,the auth token decodes back to the login user (the /auth/me path),OK/OK,OK/OK,OK/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,"rejects a credential-less row (freshly seeded, no password)",OK/OK,OK/OK,OK/OK,OK/OK
+,hashPassword / verifyPassword (string form),a hash from one password never verifies another,OK/OK,OK/OK,OK/OK,OK/OK
+,applyPassword / verifyUserPassword (record form),applyPassword populates both credential columns,OK/OK,OK/OK,OK/OK,OK/OK
+,LoginUnauthorizedErrorHandler — the retry token on the wire,a terminal refusal carries no token to retry with,--/OK,--/OK,--/OK,OK/OK
+,LoginUnauthorizedErrorHandler,maps a LoginException to HTTP 401 carrying the stable error key,OK/OK,OK/OK,OK/OK,OK/OK
+,LoginUnauthorizedErrorHandler,masks any other error behind the opaque 500,OK/OK,OK/OK,OK/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,unknown user and wrong password share the same generic key,OK/OK,OK/OK,OK/OK,OK/OK
+,applyPassword / verifyUserPassword (record form),verifyUserPassword round-trips a record credential,OK/OK,OK/OK,OK/OK,OK/OK
+,admin role gate (the 403 contract),a non-admin principal is rejected by the gate,OK/OK,OK/OK,OK/OK,OK/OK
+,auth_db migration environment tagging (Step 20 / G-MIG-1/2/3),versions are numbered consecutively from 0 with no gaps,--/OK,OK/OK,OK/OK,OK/OK
+,auth_db migration environment tagging (Step 20 / G-MIG-1/2/3),"schema + admin seed are untagged; the demo seed is @dev,test",--/OK,OK/OK,OK/OK,OK/OK
+,grant-matrix key consistency (RC-26),seeded resource keys equal the gradable item key set exactly,--/OK,OK/OK,OK/OK,OK/OK
+,LoginUnauthorizedErrorHandler — the retry token on the wire,a retryable refusal carries the re-issued token in the 401 body,--/OK,--/OK,--/OK,OK/OK
+,pass 1 — the challenge,an enrolled account gets an interim pair and the mechanism key,--/OK,--/OK,--/OK,OK/OK
+,pass 1 — the challenge,the interim token does not authenticate its bearer,--/OK,--/OK,--/OK,OK/OK
+,AdvancedAuthenticationService.authenticateUser,"the login does not fold effective per-resource roles into the token (RCD3, option b)",--/OK,--/OK,--/OK,OK/OK
+,pass 1 — the challenge,"the challenge detail travels in the token, not in the DTO",--/OK,--/OK,--/OK,OK/OK
+,pass 1 — the challenge,a non-enrolled account still logs in on pass 1 alone,--/OK,--/OK,--/OK,OK/OK
+,pass 1 — the challenge,wrong credentials are refused before any challenge is issued,--/OK,--/OK,--/OK,OK/OK
+,pass 2 — completing the login,a valid code yields the pair a 2FA-free login would have,--/OK,--/OK,--/OK,OK/OK
+,pass 2 — completing the login,a code from the adjacent time step is still accepted,--/OK,--/OK,--/OK,OK/OK
+,pass 2 — completing the login,a missing challenge token is refused outright,--/OK,--/OK,--/OK,OK/OK
+,pass 2 — refusal and retry,a wrong code hands back a re-issued token with one attempt spent,--/OK,--/OK,--/OK,OK/OK
+,pass 2 — refusal and retry,retrying with the right code against the re-issued token succeeds,--/OK,--/OK,--/OK,OK/OK
+,pass 2 — refusal and retry,"attempts are exhausted, and the last refusal offers no retry token",--/OK,--/OK,--/OK,OK/OK
+,pass 2 — refusal and retry,"replaying an earlier token wins a fresh attempt — expiry is the real bound, not the counter",--/OK,--/OK,--/OK,OK/OK
+,auth_db migration environment tagging (Step 20 / G-MIG-1/2/3),a production apply seeds admin without demo users (done-bar),--/OK,OK/OK,OK/OK,OK/OK
+,grant-matrix key consistency (RC-26),seeded resource keys equal the domain gradable-key set exactly,OK/OK,--/OK,--/OK,--/OK

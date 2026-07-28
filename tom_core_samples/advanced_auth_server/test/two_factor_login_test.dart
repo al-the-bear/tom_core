@@ -30,7 +30,7 @@ LoginRequest _login(String username, String password) =>
     LoginRequest(username: username, password: password, app: 'todo', org: 'acme');
 
 /// `dave` — active, password `dave-pass`, enrolled in TOTP against
-/// [_daveSecret]. The mirror of the [004] migration seed, as a plain row.
+/// [_daveSecret]. The mirror of the [005] migration seed, as a plain row.
 UserRecord _dave() => applyPassword(
       UserRecord()
         ..id = 5

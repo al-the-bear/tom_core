@@ -58,7 +58,7 @@ The three access policies the sample uses, all from the kernel's
 
 | Access policy | Meaning | Where declared |
 | ------------- | ------- | -------------- |
-| `TomPublicAccess()` | No token required | `authLogin`, `authLoginResources`, `appHealth` |
+| `TomPublicAccess()` | No token required | `authLogin`, `authSecondFactor`, `authLoginResources`, `appHealth` |
 | `TomAuthenticatedAccess()` | Any valid bearer principal | every other `/auth/*` and every `/app` endpoint |
 | `TomRoleAccess(['admin'])` | A principal carrying the `admin` role | every `/admin/*` endpoint |
 
@@ -77,10 +77,15 @@ G-API-3).
 
 The three surfaces gate at different granularities:
 
-- **`/auth/*` — mostly public-then-authenticated.** `authLogin` and
-  `authLoginResources` declare `TomPublicAccess()` (you cannot require a token to
-  log in, or to fetch the pre-login screen texts); `authRefresh`, `authLogout`,
-  `authMe` declare `TomAuthenticatedAccess()` (`api_registry.dart`, `authApi`).
+- **`/auth/*` — mostly public-then-authenticated.** `authLogin`,
+  `authSecondFactor` and `authLoginResources` declare `TomPublicAccess()` (you
+  cannot require a token to log in, or to fetch the pre-login screen texts);
+  `authRefresh`, `authLogout`, `authMe` declare `TomAuthenticatedAccess()`
+  (`api_registry.dart`, `authApi`). `authSecondFactor` additionally sets
+  `includeBearerAuthentication: false`: it completes a login whose interim
+  principal is by construction *not* authenticated, so it takes the challenge
+  token in its body — see part
+  [06](README_advanced_06_authentication.md#two-factor-login-the-second-pass).
 - **`/admin/*` — uniformly role-gated.** Every one of the sixteen admin endpoints
   declares the shared `adminAccess` (`TomRoleAccess(['admin'])`) constant
   (`api_registry.dart`, `adminApi`). A

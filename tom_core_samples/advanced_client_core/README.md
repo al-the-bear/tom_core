@@ -35,18 +35,41 @@ core unit-tests with no sockets.
   typed `AuthClientException` (carrying the server's stable error `key` when
   present), and on success stores the returned pair via
   `TomBearerAuthentication.setTokens` so every later request can attach the
-  bearer.
+  bearer. For an account enrolled in a second factor the result carries
+  `requires2FA` and the stored pair is *interim* — it authorizes nothing until
+  the challenge is answered.
+- `pendingChallenge` — the `Tom2FAChallenge` the stored interim token is waiting
+  on (mechanism, hint, attempts remaining, expiry, the mechanism's `clientData`),
+  or `null` when there is no half-finished login. Read straight out of the
+  token's claims, so the client never mirrors challenge state that could drift
+  from the server's.
+- `submitSecondFactor(code)` — POSTs `/auth/second-factor` with the code and the
+  interim token **in the body** (the endpoint is public: the interim principal is
+  not authenticated, so a bearer gate would reject the very request it exists to
+  serve). On success stores and returns the completed pair. A refused code throws
+  with `AuthClientException.canRetrySecondFactor` set, having already stored the
+  server's re-issued token — the attempt counter lives *inside* the token, so
+  retrying against a stale copy would never spend an attempt.
+- `loginResources()` — GETs the public `/auth/resources/login` bundle (no bearer,
+  no prior login) for the sign-in screen's texts.
 - `refresh()` — POSTs `/auth/refresh` with the stored authorization token as the
   bearer and re-stores the fresh pair. Throws `auth.no_token` if no session is
   stored.
 - `logout()` — best-effort `/auth/logout`, then **always** discards the local
-  token pair (even if the server call fails).
+  token pair (even if the server call fails), including a half-finished 2FA
+  challenge.
 
 ```dart
 final auth = AuthClient(Uri.parse('http://localhost:8081'));
 final result = await auth.login(
-    const LoginRequest(username: 'alice', password: 'alice-pass'));
+    LoginRequest(username: 'alice', password: 'alice-pass'));
 // result.user is the principal; the bearer is now stored for app/admin calls.
+
+// A 2FA account (`dave`) stops half-way and needs the second pass:
+if (result.requires2FA) {
+  final digits = auth.pendingChallenge?.clientData['digits']; // 6, for TOTP
+  await auth.submitSecondFactor(codeFromUser);
+}
 ```
 
 The client treats the authorization token as an **opaque bearer**

@@ -166,23 +166,38 @@ administrator account while omitting every demo user. The migrations are numbere
 `000, 001, 002, …` with no gaps; the demo seeds carry the `@dev,test` tag so the
 runner skips them outside `dev`/`test`:
 
-| Database | Schema (DDL, untagged) | Admin seed (untagged — all envs) | Demo seed (`@dev,test` — dev/test only) |
+| Database | Schema (DDL, untagged) | Admin seed (untagged — all envs) | Demo seeds (`@dev,test` — dev/test only) |
 | --- | --- | --- | --- |
 | `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) | — (no admin rows in `app_db`) | `[001]-app_demo_seed@dev,test.sql` |
-| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` |
+| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) · `[004]-auth_two_factor_columns.sql` (the two second-factor columns) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` · `[005]-auth_two_factor_seed@dev,test.sql` |
 
-Each seed sorts after every schema file, so every table exists before it is
-seeded — for `auth_db` this matters because the grant rows in `[003]` populate the
-`tom_resource_grant` table created back in `[001]`. The **admin seed** (`auth_db`
-`[002]`, untagged) is the one seed a production apply keeps: just the
-administrator account, the `admin` role, and the assignment the `/admin/*` gate
-resolves against. The **demo seeds** (`@dev,test`) are the sample cast, skipped in
-production: in `auth_db`, three end-users (`alice`, `bob`, `carol`), the four
-project roles, a group, and the **28-row grant matrix** (7 gradable
-`todo.item.*` fields × 4 project roles); in `app_db`, a starter workspace owned by
-alice with one project, two lists, three items, a comment, two subtasks, and two
-shares (alice shares the project with bob as `editor` and carol as `viewer`), so
-cross-user access is visible on first run without a single write.
+Each seed sorts after the schema it depends on, so every table and column exists
+before it is filled: the grant rows in `[003]` populate the `tom_resource_grant`
+table created back in `[001]`, and the enrolment in `[005]` fills the columns
+`[004]` adds. Note that `[004]` is schema *and* sorts after a demo seed —
+migrations run in the order features were added, not in two tidy blocks, so the
+dependency to check is per-file, not "all DDL first".
+
+`[004]` is worth a second look as the shape of a **late schema change**. The same
+two columns are also declared in `[000]`, which is what a fresh database gets;
+`[004]` repeats them as idempotent `ADD COLUMN IF NOT EXISTS` so a database
+created *before* 2FA existed — whose `[000]` is already recorded as applied and
+will never run again — picks them up too. It carries **no** environment tag,
+because schema must reach production even when the demo account that exercises it
+must not.
+
+The **admin seed** (`auth_db` `[002]`, untagged) is the one seed a production
+apply keeps: just the administrator account, the `admin` role, and the assignment
+the `/admin/*` gate resolves against. The **demo seeds** (`@dev,test`) are the
+sample cast, skipped in production: in `auth_db`, three end-users (`alice`,
+`bob`, `carol`), the four project roles, a group, and the **28-row grant matrix**
+(7 gradable `todo.item.*` fields × 4 project roles), plus `dave` from `[005]` —
+enrolled in TOTP so the two-pass login is exercised out of the box (part
+[06](README_advanced_06_authentication.md#two-factor-login-the-second-pass)); in
+`app_db`, a starter workspace owned by alice with one project, two lists, three
+items, a comment, two subtasks, and two shares (alice shares the project with bob
+as `editor` and carol as `viewer`), so cross-user access is visible on first run
+without a single write.
 
 Every seed `INSERT` uses **`ON DUPLICATE KEY UPDATE`**, so re-applying a migration
 is idempotent — the runtime migrator and the initdb hook can both run the same
@@ -193,10 +208,12 @@ format (part [06](README_advanced_06_authentication.md)).
 
 > **Verified.** Booting both databases from a fresh volume under `dev`/`test`
 > applies every migration in order and lands every seed row (app: 1 workspace / 1
-> project / 2 lists / 3 items / 1 comment / 2 subtasks / 2 shares; auth: 4 users /
-> 5 roles / 1 user-role / 1 group / 2 members / 28 grants), and the cross-tier
+> project / 2 lists / 3 items / 1 comment / 2 subtasks / 2 shares; auth: 5 users —
+> `admin`, `alice`, `bob`, `carol` and the TOTP-enrolled `dave` — / 5 roles / 1
+> user-role / 1 group / 2 members / 28 grants), and the cross-tier
 > scenario stays green. A **production** apply runs only the untagged migrations —
-> the schema plus `auth_db` `[002]` — so it lands **1 admin user / 1 role / 1
+> the schema (including `[004]`'s second-factor columns) plus `auth_db` `[002]` —
+> so it lands **1 admin user / 1 role / 1
 > user-role** and **no demo users, no grants, no app rows**.
 
 ## Primary sources
