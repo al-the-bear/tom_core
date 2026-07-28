@@ -84,7 +84,7 @@ abstract, so other backends can be added.
 | `TomDbMigrator` / `TomDbMigrations` / `TomDbVersion` | Versioned schema migrations (MariaDB adapter) |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `healthcheck`, `cmdline`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `healthcheck`, `cmdline`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -92,6 +92,7 @@ abstract, so other backends can be added.
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
 | `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor` | Authentication service + adaptor annotations |
 | `authorization` | `TomAuthorizationCache` | Isolate-backed authorization cache |
+| `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `HealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException` | Server exception base (extends kernel `TomException`) |
@@ -135,6 +136,7 @@ annotated entities and are documented in [`doc/`](doc/).
 | [`example/configuration/`](example/configuration/) | Typed config + YAML resources |
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
 | [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Auth service + authorization cache |
+| [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain |
 | [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
 
 Run a single example:

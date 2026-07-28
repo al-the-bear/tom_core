@@ -1,5 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../audit/audit_record.dart';
+import '../audit/audit_trail.dart';
 import '../datasources/queries.dart';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/sql_dialects.dart';
@@ -377,6 +379,55 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     return rows;
   }
 
+  /// The audit name of this repository's entity — what a record's
+  /// `target` says the action was performed on (CE-LG).
+  ///
+  /// The entity type name rather than the table name: an auditor reads a trail
+  /// alongside the domain, and the storage table is an implementation detail
+  /// that may be renamed without the audited thing changing.
+  String get _auditTarget => T.toString();
+
+  /// The entity's persisted state as a `column -> value` map, for a record's
+  /// `before`/`after` image.
+  ///
+  /// Keyed by declared field name, matching what a spec author and an auditor
+  /// both recognise; the database column name is a mapping detail.
+  Map<String, Object?> _auditValues(T? entity) {
+    if (entity == null) return const {};
+    final columns = TomAnnotationAnalyzer.getPersistentColumns(T) ?? const [];
+    return {
+      for (final col in columns) col.declaredName: col.getVariableValue(entity),
+    };
+  }
+
+  /// Whether [action] on this entity is audited right now.
+  ///
+  /// Consulted before doing any *work* for the trail (a before-image read, a
+  /// value map), so an unaudited entity pays nothing.
+  bool _audits(TomAuditAction action) =>
+      TomAuditTrail.isEnabled && TomAuditTrail.policyFor(T).audits(action);
+
+  /// Writes a mutation record for this entity (CE-LG).
+  ///
+  /// Called after the statement has succeeded, so the recorded outcome is
+  /// truthful. It is deliberately **awaited and not caught**: if the trail
+  /// cannot store the entry the mutation raises, which inside a transaction
+  /// rolls the change back, and outside one still refuses to report success
+  /// for an action that left no record.
+  Future<void> _audit(
+    TomAuditAction action, {
+    Object? key,
+    Map<String, Object?> before = const {},
+    Map<String, Object?> after = const {},
+  }) => TomAuditTrail.recordMutation(
+    entityType: T,
+    action: action,
+    target: _auditTarget,
+    targetKey: key?.toString(),
+    before: before,
+    after: after,
+  );
+
   TomPreparedStatement<T>? _deleteQuery;
 
   @override
@@ -385,6 +436,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     await _assertRowWritable(
       primaryKeyColumnInfo.getVariableValue(entity) as K,
     );
+    // The caller handed us the row, so the before-image costs no extra read.
+    final before = _audits(TomAuditAction.delete)
+        ? _auditValues(entity)
+        : const <String, Object?>{};
     _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
       _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
@@ -395,6 +450,11 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
       "id": primaryKeyColumnInfo.getVariableValue(entity),
     };
     await _deleteQuery!.execute(params);
+    await _audit(
+      TomAuditAction.delete,
+      key: primaryKeyColumnInfo.getVariableValue(entity),
+      before: before,
+    );
     return;
   }
 
@@ -440,6 +500,11 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     await _assertIdsWritable(ids);
     final (where, params) = await _idListPredicate(ids);
     await _runPrepared<T>(TomDelete(queryTypes, query: where), params);
+    // One record per row, not per call: an auditor asks what happened to a
+    // record, and an entry naming a batch cannot answer that.
+    for (final id in ids) {
+      await _audit(TomAuditAction.delete, key: id);
+    }
   }
 
   TomPreparedStatement<T>? _deleteByIdQuery;
@@ -455,6 +520,13 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     );
     Map<String, Object?> params = {"id": id};
     await _deleteByIdQuery!.execute(params);
+    // Key only, no before-image. Reading the row first would put an extra
+    // SELECT on every delete in every deployment, to recover data the trail is
+    // not there to restore — attribution ("who destroyed which record") is the
+    // question an audit trail answers, and the key answers it. A caller that
+    // needs the row's final state recorded has it in hand and calls
+    // [delete] with the entity.
+    await _audit(TomAuditAction.delete, key: id);
     return 1;
   }
 
@@ -713,10 +785,20 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // holds the baseline (db-converted) value to bind for each preserved column.
     final authColumns = TomAnnotationAnalyzer.findAuthColumns(T);
     final overrides = <String, Object?>{};
+
+    // The stored row before this save: the true, unmasked state, `null` for an
+    // insert (a fresh row starts empty, so any populated column is a change).
+    //
+    // Read **once** and shared by the two features that need it — C-4 write
+    // authorization, which compares against it to decide what changed, and the
+    // CE-LG audit before-image, which records it. They ask for the same row for
+    // different reasons; reading it twice would double the cost of every update
+    // on an entity that uses both.
+    final needsBaseline =
+        !insert && (authColumns.isNotEmpty || _audits(TomAuditAction.update));
+    final baseline = needsBaseline ? await _selectById(primaryKey as K) : null;
+
     if (authColumns.isNotEmpty) {
-      // Baseline: the true stored row (unmasked) for an update, all-null for an
-      // insert (a fresh row starts empty, so any populated column is a change).
-      final baseline = insert ? null : await _selectById(primaryKey as K);
       Object? baselineOf(TomColumnInformation col) =>
           baseline == null ? null : col.getVariableValue(baseline);
       final decision = TomColumnAuthorization.decideWrites<TomColumnInformation>(
@@ -762,6 +844,14 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
           : primaryKey as K;
       final newRow = await findById(rowKey);
       if (newRow != null) {
+        // A create has no before-image; the whole stored row is the change.
+        await _audit(
+          TomAuditAction.create,
+          key: rowKey,
+          after: _audits(TomAuditAction.create)
+              ? _auditValues(newRow)
+              : const {},
+        );
         return newRow;
       }
       throw Exception(
@@ -783,6 +873,20 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       // Reached only when `isUnsavedKey` is false, so the key is non-null.
       final newRow = await findById(primaryKey as K);
       if (newRow != null) {
+        // Only the fields that actually changed: a full row image on every
+        // update multiplies the trail by the row width and the unchanged
+        // columns tell an auditor nothing. `newRow` is read back through
+        // [findById], so a C-4 masked column reads as null on both sides of
+        // the diff and drops out rather than being recorded as a false change.
+        if (_audits(TomAuditAction.update)) {
+          final diff = auditDiff(_auditValues(baseline), _auditValues(newRow));
+          await _audit(
+            TomAuditAction.update,
+            key: primaryKey,
+            before: diff.before,
+            after: diff.after,
+          );
+        }
         return newRow;
       }
       throw Exception(

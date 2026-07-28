@@ -239,6 +239,78 @@ void main() {
       expect(config.verbose, isTrue);
     });
   });
+
+  // CE-LG: the endpoint pipeline is the second audit chokepoint. It covers the
+  // one auditable event the repository cannot see — a request refused before it
+  // reached any data — plus the invocations an endpoint has *declared*
+  // auditable. Both go through `handleMethodCall`, so no handler can opt out of
+  // the first or accidentally into the second.
+  group('audit at the endpoint chokepoint', () {
+    late Router router;
+    late TomMemoryAuditSink sink;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      router = TomEndpointRouting().initializeRouter();
+      sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+    });
+
+    tearDown(() {
+      TomAuditTrail.uninstall();
+      TomAuditTrail.resetPolicyCache();
+      TomBean.resetBeanContext();
+    });
+
+    test('a denial is recorded with no annotation and no opt-in', () async {
+      // Switching global protection on denies the unannotated endpoint.
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      addTearDown(() =>
+          TomResourceKeyProtection.globalSettingProtectionDefault = false);
+
+      // The pipeline signals the refusal by throwing; the assertion that
+      // matters is on the trail, which must hold the entry either way.
+      await expectLater(
+        router.call(_get('/fixture/unguarded')),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+
+      final record = sink.records.single;
+      expect(record.action, TomAuditAction.execute);
+      expect(record.outcome, TomAuditOutcome.denied);
+      expect(record.detail, contains('Access not granted'));
+      // No principal reached the endpoint, so the attempt is attributed to
+      // SYSTEM rather than left blank.
+      expect(record.actor.username, TomAuditActor.systemUsername);
+    });
+
+    test('an endpoint declared @TomAudited records its invocation', () async {
+      final response = await router.call(_get('/fixture/audited'));
+      expect(response.statusCode, 200);
+
+      final record = sink.records.single;
+      expect(record.action, TomAuditAction.execute);
+      expect(record.outcome, TomAuditOutcome.succeeded);
+      expect(record.target, isNotEmpty);
+    });
+
+    test('an undeclared endpoint invocation is not recorded', () async {
+      // Most endpoint calls are reads; auditing them all would produce a trail
+      // no auditor can read. Invocation auditing is therefore declared, and
+      // this endpoint declares nothing.
+      final response = await router.call(_get('/fixture/unguarded'));
+      expect(response.statusCode, 200);
+      expect(sink.records, isEmpty);
+    });
+
+    test('with no sink installed the pipeline still serves requests', () async {
+      TomAuditTrail.uninstall();
+      final response = await router.call(_get('/fixture/audited'));
+      expect(response.statusCode, 200);
+    });
+  });
 }
 
 /// A [HealthAnalyzer] returning a non-OK status, to prove the route reflects the

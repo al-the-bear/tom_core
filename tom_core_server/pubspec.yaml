@@ -17,6 +17,9 @@ dependencies:
   shelf_multipart:
   mysql_client:
   yaml:
+  # Used directly by the audit trail's hash chain (audit/audit_sink.dart);
+  # declared explicitly rather than relied on as a transitive dependency.
+  crypto: ^3.0.0
 
   http: any
   uuid: any

@@ -1,0 +1,734 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:test/test.dart';
+import 'package:tom_core_server/tom_core_server.dart';
+
+import 'fixtures/reflection_fixture.dart'
+    show FixtureSecretRecord, FixtureTaskRecord, FixtureUnauditedRecord;
+import 'fixtures/reflection_fixture.reflection.dart';
+
+/// CE-LG audit-trail tests, verified without a database or a server.
+///
+/// The audit module is deliberately layered so that everything except the two
+/// chokepoint call sites is pure or file-local: the record and its JSON form,
+/// the hash chain and its verification, the sinks, the policy resolution, and
+/// the `before`/`after` diff. That surface is what these tests exercise. The
+/// chokepoints themselves — repository mutations produce records with no
+/// per-caller opt-in — are covered against a live database in
+/// `audit_db_test.dart`.
+
+/// A sink that always fails, to assert the fail-closed contract: an action
+/// whose record cannot be stored must not be able to report success.
+class _FailingSink implements TomAuditSink {
+  int attempts = 0;
+
+  @override
+  String get headHash => tomAuditGenesisHash;
+
+  @override
+  Future<TomAuditEntry> write(TomAuditRecord record) async {
+    attempts++;
+    throw TomAuditException('test.sink.always_fails', 'storage is unavailable');
+  }
+
+  @override
+  void close() {}
+}
+
+TomAuditRecord _record(
+  String id, {
+  TomAuditAction action = TomAuditAction.update,
+  String target = 'Widget',
+  String? targetKey,
+  TomAuditOutcome outcome = TomAuditOutcome.succeeded,
+  TomAuditActor? actor,
+  Map<String, Object?> before = const {},
+  Map<String, Object?> after = const {},
+  String? requestId,
+  String? detail,
+}) => TomAuditRecord(
+  id: id,
+  timestamp: DateTime.utc(2026, 7, 28, 10, 30),
+  actor: actor ?? TomAuditActor.system,
+  action: action,
+  target: target,
+  targetKey: targetKey,
+  outcome: outcome,
+  requestId: requestId,
+  before: before,
+  after: after,
+  detail: detail,
+);
+
+void main() {
+  tearDown(() {
+    TomAuditTrail.uninstall();
+    TomAuditTrail.resetPolicyCache();
+  });
+
+  group('TomAuditActor (attribution)', () {
+    test('an absent principal is attributed to SYSTEM, never to null', () {
+      final actor = TomAuditActor.fromPrincipal(null);
+      expect(actor.username, TomAuditActor.systemUsername);
+      expect(actor.userId, isNull);
+      expect(actor.authenticated, isFalse);
+    });
+
+    test('a principal is carried across in full', () {
+      final principal = TomPrincipal(
+        user: TomUser(id: 42, username: 'ada'),
+        authenticated: true,
+        organizationId: 7,
+        applicationId: 3,
+      );
+      final actor = TomAuditActor.fromPrincipal(principal);
+      expect(actor.username, 'ada');
+      expect(actor.userId, 42);
+      expect(actor.authenticated, isTrue);
+      expect(actor.organizationId, 7);
+      expect(actor.applicationId, 3);
+      expect(actor.toString(), 'ada#42');
+    });
+
+    test("TomPrincipal's -1 'unset' sentinel becomes null, not user -1", () {
+      // A guest principal leaves all three ids at -1.
+      final actor = TomAuditActor.fromPrincipal(TomPrincipal());
+      expect(actor.userId, isNull);
+      expect(actor.organizationId, isNull);
+      expect(actor.applicationId, isNull);
+      expect(actor.toJson().containsKey('userId'), isFalse);
+    });
+
+    test('the zone principal is picked up without being passed in', () async {
+      final principal = TomPrincipal(
+        user: TomUser(id: 5, username: 'grace'),
+        authenticated: true,
+      );
+      final actor = await runZoned(
+        () async => TomAuditActor.fromCurrentZone(),
+        zoneValues: {TomPrincipal: principal},
+      );
+      expect(actor.username, 'grace');
+      expect(actor.userId, 5);
+    });
+
+    test('outside a zone the actor falls back to SYSTEM', () {
+      expect(
+        TomAuditActor.fromCurrentZone().username,
+        TomAuditActor.systemUsername,
+      );
+    });
+
+    test('round-trips through JSON', () {
+      const actor = TomAuditActor(
+        username: 'ada',
+        userId: 1,
+        authenticated: true,
+        organizationId: 2,
+        applicationId: 3,
+      );
+      final back = TomAuditActor.fromJson(actor.toJson());
+      expect(back.username, actor.username);
+      expect(back.userId, actor.userId);
+      expect(back.authenticated, actor.authenticated);
+      expect(back.organizationId, actor.organizationId);
+      expect(back.applicationId, actor.applicationId);
+    });
+  });
+
+  group('TomAuditRecord', () {
+    test('a local timestamp is coerced to UTC', () {
+      final record = TomAuditRecord(
+        id: 'r1',
+        timestamp: DateTime(2026, 7, 28, 10, 30),
+        actor: TomAuditActor.system,
+        action: TomAuditAction.create,
+        target: 'Widget',
+        outcome: TomAuditOutcome.succeeded,
+      );
+      expect(record.timestamp.isUtc, isTrue);
+    });
+
+    test('before/after are unmodifiable once recorded', () {
+      final record = _record('r1', before: {'a': 1});
+      expect(() => record.before['a'] = 2, throwsUnsupportedError);
+      expect(() => record.after['b'] = 2, throwsUnsupportedError);
+    });
+
+    test('toJson omits empty collections and null fields', () {
+      final json = _record('r1').toJson();
+      expect(json.containsKey('before'), isFalse);
+      expect(json.containsKey('after'), isFalse);
+      expect(json.containsKey('targetKey'), isFalse);
+      expect(json.containsKey('requestId'), isFalse);
+      expect(json.containsKey('detail'), isFalse);
+    });
+
+    test('toJson key order is canonical, so the hash is stable', () {
+      // The sink hashes this encoding; an order that varied between two
+      // encodings of the same record would break the chain for no reason.
+      final json = _record(
+        'r1',
+        targetKey: '7',
+        requestId: 'req-1',
+        before: {'a': 1},
+        after: {'a': 2},
+        detail: 'note',
+      ).toJson();
+      expect(json.keys.toList(), [
+        'id',
+        'timestamp',
+        'actor',
+        'action',
+        'target',
+        'targetKey',
+        'outcome',
+        'requestId',
+        'before',
+        'after',
+        'detail',
+      ]);
+    });
+
+    test('round-trips through JSON with every field populated', () {
+      final record = _record(
+        'r1',
+        action: TomAuditAction.delete,
+        targetKey: '7',
+        outcome: TomAuditOutcome.denied,
+        actor: const TomAuditActor(username: 'ada', userId: 1),
+        before: {'title': 'old'},
+        after: {'title': 'new'},
+        requestId: 'req-1',
+        detail: 'because',
+      );
+      final back = TomAuditRecord.fromJson(
+        (jsonDecode(jsonEncode(record.toJson())) as Map).cast<String, Object?>(),
+      );
+      expect(back.id, record.id);
+      expect(back.timestamp, record.timestamp);
+      expect(back.actor.username, 'ada');
+      expect(back.action, TomAuditAction.delete);
+      expect(back.target, 'Widget');
+      expect(back.targetKey, '7');
+      expect(back.outcome, TomAuditOutcome.denied);
+      expect(back.requestId, 'req-1');
+      expect(back.before, {'title': 'old'});
+      expect(back.after, {'title': 'new'});
+      expect(back.detail, 'because');
+    });
+
+    test('an unknown enum name does not make an old archive unreadable', () {
+      final json = _record('r1').toJson();
+      json['action'] = 'teleport';
+      json['outcome'] = 'exploded';
+      final back = TomAuditRecord.fromJson(json);
+      expect(back.action, TomAuditAction.execute);
+      expect(back.outcome, TomAuditOutcome.failed);
+    });
+  });
+
+  group('auditDiff', () {
+    test('keeps only the fields that actually changed', () {
+      final diff = auditDiff(
+        {'title': 'old', 'priority': 1, 'done': false},
+        {'title': 'new', 'priority': 1, 'done': false},
+      );
+      expect(diff.before, {'title': 'old'});
+      expect(diff.after, {'title': 'new'});
+    });
+
+    test('an identical pair produces no entry content at all', () {
+      final diff = auditDiff({'a': 1}, {'a': 1});
+      expect(diff.before, isEmpty);
+      expect(diff.after, isEmpty);
+    });
+
+    test('a key present on only one side counts as changed', () {
+      final diff = auditDiff({'gone': 1}, {'added': 2});
+      expect(diff.before, {'gone': 1});
+      expect(diff.after, {'added': 2});
+    });
+
+    test('null-to-value and value-to-null are both changes', () {
+      final diff = auditDiff({'a': null, 'b': 1}, {'a': 1, 'b': null});
+      expect(diff.before, {'a': null, 'b': 1});
+      expect(diff.after, {'a': 1, 'b': null});
+    });
+  });
+
+  group('TomAuditPolicy (the declared-versus-automatic split)', () {
+    test('the default policy audits mutations but not reads', () {
+      const policy = TomAuditPolicy.defaultPolicy;
+      expect(policy.audits(TomAuditAction.create), isTrue);
+      expect(policy.audits(TomAuditAction.update), isTrue);
+      expect(policy.audits(TomAuditAction.delete), isTrue);
+      expect(policy.audits(TomAuditAction.execute), isTrue);
+      expect(policy.audits(TomAuditAction.read), isFalse);
+    });
+
+    test('includeReads is the declared opt-in for reads', () {
+      final policy = TomAuditPolicy.from(
+        const TomAudited(includeReads: true),
+      );
+      expect(policy.audits(TomAuditAction.read), isTrue);
+      expect(policy.audits(TomAuditAction.update), isTrue);
+    });
+
+    test('enabled: false is the declared opt-out, and covers everything', () {
+      final policy = TomAuditPolicy.from(const TomAudited(enabled: false));
+      for (final action in TomAuditAction.values) {
+        expect(policy.audits(action), isFalse, reason: action.name);
+      }
+    });
+
+    test('redaction replaces values but keeps the field visible', () {
+      final policy = TomAuditPolicy.from(
+        const TomAudited(redact: ['password', 'token']),
+      );
+      final masked = policy.applyRedaction({
+        'password': 'hunter2',
+        'token': 'abc',
+        'title': 'ok',
+      });
+      // "changed, and you may not see to what" must stay distinguishable from
+      // "did not change", so the key survives.
+      expect(masked['password'], tomAuditRedactedPlaceholder);
+      expect(masked['token'], tomAuditRedactedPlaceholder);
+      expect(masked['title'], 'ok');
+    });
+
+    test('redacting nothing costs no copy', () {
+      const values = {'a': 1};
+      expect(
+        identical(TomAuditPolicy.defaultPolicy.applyRedaction(values), values),
+        isTrue,
+      );
+    });
+
+    test('a type with no annotation resolves to the default policy', () {
+      // String is reflectable-by-nothing; the lookup must not throw, and being
+      // unreflectable must not be a way out of the trail.
+      final policy = TomAuditTrail.policyFor(String);
+      expect(policy.enabled, isTrue);
+      expect(policy.includeReads, isFalse);
+    });
+  });
+
+  group('policyFor (resolution through the reflector)', () {
+    setUpAll(initializeReflection);
+
+    test('a reflected entity with no @TomAudited is audited anyway', () {
+      // The heart of "no per-entity opt-in": FixtureTaskRecord declares
+      // nothing about auditing and is audited for mutations regardless.
+      final policy = TomAuditTrail.policyFor(FixtureTaskRecord);
+      expect(policy.enabled, isTrue);
+      expect(policy.audits(TomAuditAction.update), isTrue);
+      expect(policy.audits(TomAuditAction.read), isFalse);
+      expect(policy.redact, isEmpty);
+    });
+
+    test('a declared redaction list is read off the annotation', () {
+      final policy = TomAuditTrail.policyFor(FixtureSecretRecord);
+      expect(policy.enabled, isTrue);
+      expect(policy.redact, {'secret'});
+      expect(
+        policy.applyRedaction({'label': 'x', 'secret': 'hunter2'}),
+        {'label': 'x', 'secret': tomAuditRedactedPlaceholder},
+      );
+    });
+
+    test('a declared opt-out is read off the annotation', () {
+      final policy = TomAuditTrail.policyFor(FixtureUnauditedRecord);
+      expect(policy.enabled, isFalse);
+      expect(policy.audits(TomAuditAction.delete), isFalse);
+    });
+
+    test('the resolved policy is cached per type', () {
+      final first = TomAuditTrail.policyFor(FixtureSecretRecord);
+      expect(identical(TomAuditTrail.policyFor(FixtureSecretRecord), first),
+          isTrue);
+      TomAuditTrail.resetPolicyCache();
+      expect(TomAuditTrail.policyFor(FixtureSecretRecord).redact, {'secret'});
+    });
+  });
+
+  group('TomAuditEntry and the hash chain', () {
+    test('an entry hashes its record and its link together', () {
+      final entry = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      expect(entry.previousHash, tomAuditGenesisHash);
+      expect(entry.hash.length, 64);
+      expect(entry.isSelfConsistent, isTrue);
+    });
+
+    test('the same record on a different link gets a different hash', () {
+      final record = _record('r1');
+      final a = TomAuditEntry.chain(record, tomAuditGenesisHash);
+      final b = TomAuditEntry.chain(record, a.hash);
+      expect(a.hash, isNot(b.hash));
+    });
+
+    test('an unbroken chain verifies', () {
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final b = TomAuditEntry.chain(_record('r2'), a.hash);
+      final c = TomAuditEntry.chain(_record('r3'), b.hash);
+      final result = verifyAuditChain([a, b, c]);
+      expect(result.isValid, isTrue);
+      expect(result.entryCount, 3);
+      expect(result.brokenAtIndex, isNull);
+    });
+
+    test('editing an entry after the fact is detected as a content change', () {
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final b = TomAuditEntry.chain(_record('r2', after: {'x': 1}), a.hash);
+      // Rewrite b's record, keeping its claimed hashes — a targeted forgery.
+      final forged = TomAuditEntry(
+        record: _record('r2', after: {'x': 999}),
+        previousHash: b.previousHash,
+        hash: b.hash,
+      );
+      final result = verifyAuditChain([a, forged]);
+      expect(result.isValid, isFalse);
+      expect(result.brokenAtIndex, 1);
+      expect(result.detail, contains('content changed'));
+    });
+
+    test('removing an entry is detected as a broken link', () {
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final b = TomAuditEntry.chain(_record('r2'), a.hash);
+      final c = TomAuditEntry.chain(_record('r3'), b.hash);
+      // Drop b and hope nobody notices.
+      final result = verifyAuditChain([a, c]);
+      expect(result.isValid, isFalse);
+      expect(result.brokenAtIndex, 1);
+      expect(result.detail, contains('link mismatch'));
+    });
+
+    test('reordering two entries is detected', () {
+      final a = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final b = TomAuditEntry.chain(_record('r2'), a.hash);
+      expect(verifyAuditChain([b, a]).isValid, isFalse);
+    });
+
+    test('entries round-trip through their JSON line', () {
+      final entry = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      final line = entry.toJsonLine();
+      expect(line, isNot(contains('\n')));
+      final back = TomAuditEntry.fromJson(
+        (jsonDecode(line) as Map).cast<String, Object?>(),
+      );
+      expect(back.hash, entry.hash);
+      expect(back.previousHash, entry.previousHash);
+      expect(back.record.id, 'r1');
+      expect(back.isSelfConsistent, isTrue);
+    });
+
+    test('parseAuditLines skips blanks and rejects damage', () {
+      final entry = TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash);
+      expect(parseAuditLines([entry.toJsonLine(), '', '  ']), hasLength(1));
+      // A malformed line is itself a finding; swallowing it would hide the
+      // damage the chain exists to reveal.
+      expect(
+        () => parseAuditLines(['{not json']),
+        throwsA(isA<TomAuditException>()),
+      );
+    });
+  });
+
+  group('TomMemoryAuditSink', () {
+    test('writes are chained in order and verify', () async {
+      final sink = TomMemoryAuditSink();
+      await sink.write(_record('r1'));
+      await sink.write(_record('r2'));
+      await sink.write(_record('r3'));
+      expect(sink.records.map((r) => r.id), ['r1', 'r2', 'r3']);
+      expect(sink.headHash, sink.entries.last.hash);
+      expect(sink.verify().isValid, isTrue);
+    });
+
+    test('bounded retention drops the oldest and says so', () async {
+      final sink = TomMemoryAuditSink(maxEntries: 2);
+      for (var i = 1; i <= 5; i++) {
+        await sink.write(_record('r$i'));
+      }
+      expect(sink.entries, hasLength(2));
+      expect(sink.records.map((r) => r.id), ['r4', 'r5']);
+      expect(sink.droppedCount, 3);
+      // A suffix cannot start from genesis, so verification starts from the
+      // oldest surviving link rather than reporting a false break.
+      expect(sink.verify().isValid, isTrue);
+    });
+
+    test('clear resets the chain back to genesis', () async {
+      final sink = TomMemoryAuditSink();
+      await sink.write(_record('r1'));
+      sink.clear();
+      expect(sink.entries, isEmpty);
+      expect(sink.headHash, tomAuditGenesisHash);
+      expect(sink.droppedCount, 0);
+    });
+  });
+
+  group('TomFileAuditSink', () {
+    late Directory dir;
+
+    setUp(() {
+      dir = Directory.systemTemp.createTempSync('tom_audit_test_');
+    });
+
+    tearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+
+    test('creates its directory and starts from genesis', () {
+      final nested = Directory('${dir.path}/a/b');
+      final sink = TomFileAuditSink(directory: nested);
+      addTearDown(sink.close);
+      expect(nested.existsSync(), isTrue);
+      expect(sink.headHash, tomAuditGenesisHash);
+    });
+
+    test('appends one JSON line per record', () async {
+      final sink = TomFileAuditSink(directory: dir);
+      addTearDown(sink.close);
+      await sink.write(_record('r1'));
+      await sink.write(_record('r2'));
+      expect(sink.files, hasLength(1));
+      expect(sink.files.single.readAsLinesSync(), hasLength(2));
+      expect(sink.readAll().map((e) => e.record.id), ['r1', 'r2']);
+      expect(sink.verify().isValid, isTrue);
+    });
+
+    test('rotation moves the file aside and continues the chain', () async {
+      // A tiny cap forces a rotation after the first record.
+      final sink = TomFileAuditSink(directory: dir, maxFileBytes: 300);
+      addTearDown(sink.close);
+      for (var i = 1; i <= 4; i++) {
+        await sink.write(_record('r$i'));
+      }
+      expect(sink.files.length, greaterThan(1));
+      // Nothing is lost or rewritten by rotation, and the chain spans files.
+      final all = sink.readAll();
+      expect(all.map((e) => e.record.id), ['r1', 'r2', 'r3', 'r4']);
+      expect(sink.verify().isValid, isTrue);
+    });
+
+    test('a reopened sink continues the chain instead of starting a new one', () async {
+      final first = TomFileAuditSink(directory: dir);
+      await first.write(_record('r1'));
+      final head = first.headHash;
+      first.close();
+
+      final second = TomFileAuditSink(directory: dir);
+      addTearDown(second.close);
+      expect(second.headHash, head);
+      await second.write(_record('r2'));
+      expect(second.readAll().map((e) => e.record.id), ['r1', 'r2']);
+      expect(second.verify().isValid, isTrue);
+    });
+
+    test('count-based retention deletes whole files, keeping a valid suffix', () async {
+      final sink = TomFileAuditSink(
+        directory: dir,
+        maxFileBytes: 300,
+        maxFiles: 2,
+      );
+      addTearDown(sink.close);
+      for (var i = 1; i <= 6; i++) {
+        await sink.write(_record('r$i'));
+      }
+      expect(sink.files.length, lessThanOrEqualTo(2));
+      final surviving = sink.readAll();
+      expect(surviving, isNotEmpty);
+      // The prefix is gone by policy; what remains still verifies, and the
+      // missing head is visible as a non-genesis starting link.
+      expect(sink.verify().isValid, isTrue);
+      expect(surviving.first.previousHash, isNot(tomAuditGenesisHash));
+      expect(surviving.last.record.id, 'r6');
+    });
+
+    test('age-based retention removes files older than the window', () async {
+      final sink = TomFileAuditSink(
+        directory: dir,
+        maxFileBytes: 300,
+        retention: const Duration(milliseconds: 1),
+      );
+      addTearDown(sink.close);
+      await sink.write(_record('r1'));
+      await sink.write(_record('r2'));
+      // Make the rotated file look old, then trigger another rotation pass.
+      for (final file in sink.files) {
+        file.setLastModifiedSync(DateTime.now().subtract(
+          const Duration(days: 2),
+        ));
+      }
+      await sink.write(_record('r3'));
+      await sink.write(_record('r4'));
+      expect(sink.readAll().map((e) => e.record.id), isNot(contains('r1')));
+    });
+
+    test('a closed sink refuses further records rather than dropping them', () async {
+      final sink = TomFileAuditSink(directory: dir);
+      await sink.write(_record('r1'));
+      sink.close();
+      expect(
+        () => sink.write(_record('r2')),
+        throwsA(isA<TomAuditException>()),
+      );
+    });
+
+    test('concurrent writes still produce a verifiable chain', () async {
+      final sink = TomFileAuditSink(directory: dir);
+      addTearDown(sink.close);
+      await Future.wait([
+        for (var i = 1; i <= 20; i++) sink.write(_record('r$i')),
+      ]);
+      expect(sink.readAll(), hasLength(20));
+      expect(sink.verify().isValid, isTrue);
+    });
+  });
+
+  group('TomAuditTrail', () {
+    test('with no sink installed, recording is a silent no-op', () async {
+      expect(TomAuditTrail.isEnabled, isFalse);
+      await TomAuditTrail.recordAction(
+        action: TomAuditAction.execute,
+        target: 'nowhere',
+        outcome: TomAuditOutcome.succeeded,
+      );
+      // No sink, no throw: pretending to audit into nowhere would be worse
+      // than plainly not auditing, but so would failing every action.
+      expect(TomAuditTrail.sink, isNull);
+    });
+
+    test('installing a sink turns auditing on', () {
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      expect(TomAuditTrail.isEnabled, isTrue);
+      expect(TomAuditTrail.sink, same(sink));
+      TomAuditTrail.uninstall();
+      expect(TomAuditTrail.isEnabled, isFalse);
+    });
+
+    test('recordAction writes an attributed record', () async {
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      final principal = TomPrincipal(
+        user: TomUser(id: 9, username: 'ada'),
+        authenticated: true,
+      );
+      await runZoned(
+        () => TomAuditTrail.recordAction(
+          action: TomAuditAction.execute,
+          target: 'PayrollService.export',
+          outcome: TomAuditOutcome.denied,
+          detail: 'no grant',
+        ),
+        zoneValues: {TomPrincipal: principal},
+      );
+      final record = sink.records.single;
+      expect(record.actor.username, 'ada');
+      expect(record.actor.userId, 9);
+      expect(record.action, TomAuditAction.execute);
+      expect(record.target, 'PayrollService.export');
+      expect(record.outcome, TomAuditOutcome.denied);
+      expect(record.detail, 'no grant');
+    });
+
+    test('recordMutation consults the type policy before writing', () async {
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      // String has no @TomAudited, so it gets the default policy: mutations
+      // are recorded, reads are not.
+      await TomAuditTrail.recordMutation(
+        entityType: String,
+        action: TomAuditAction.update,
+        target: 'Widget',
+        targetKey: '7',
+        before: {'title': 'old'},
+        after: {'title': 'new'},
+      );
+      await TomAuditTrail.recordMutation(
+        entityType: String,
+        action: TomAuditAction.read,
+        target: 'Widget',
+        targetKey: '7',
+      );
+      expect(sink.records, hasLength(1));
+      final record = sink.records.single;
+      expect(record.action, TomAuditAction.update);
+      expect(record.targetKey, '7');
+      expect(record.before, {'title': 'old'});
+      expect(record.after, {'title': 'new'});
+    });
+
+    test('runUnaudited suppresses records inside its body only', () async {
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      await TomAuditTrail.runUnaudited(() async {
+        expect(TomAuditTrail.isBypassed, isTrue);
+        expect(TomAuditTrail.isEnabled, isFalse);
+        await TomAuditTrail.recordAction(
+          action: TomAuditAction.execute,
+          target: 'trail-internal',
+          outcome: TomAuditOutcome.succeeded,
+        );
+      });
+      expect(sink.records, isEmpty);
+      expect(TomAuditTrail.isBypassed, isFalse);
+      await TomAuditTrail.recordAction(
+        action: TomAuditAction.execute,
+        target: 'ordinary',
+        outcome: TomAuditOutcome.succeeded,
+      );
+      expect(sink.records, hasLength(1));
+    });
+
+    test('fail-closed: a sink that cannot store propagates to the caller', () {
+      final sink = _FailingSink();
+      TomAuditTrail.install(sink);
+      expect(
+        () => TomAuditTrail.recordAction(
+          action: TomAuditAction.delete,
+          target: 'Widget',
+          outcome: TomAuditOutcome.succeeded,
+        ),
+        throwsA(isA<TomAuditException>()),
+      );
+    });
+
+    test('an audit failure is not client-visible', () {
+      final exception = TomAuditException('audit.test', 'internal detail');
+      expect(exception.clientThrow, isFalse);
+    });
+
+    test('record ids sort in write order', () {
+      final ids = [
+        for (var i = 0; i < 50; i++) TomAuditTrail.newAuditRecordId(),
+      ];
+      final sorted = [...ids]..sort();
+      expect(sorted, ids);
+      expect(ids.toSet(), hasLength(50));
+    });
+
+    test('the request id is picked up from the zone', () async {
+      expect(TomAuditTrail.currentRequestId(), isNull);
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      final requestId = TomRequestId();
+      await runZoned(
+        () => TomAuditTrail.recordAction(
+          action: TomAuditAction.execute,
+          target: 'Endpoint',
+          outcome: TomAuditOutcome.succeeded,
+        ),
+        zoneValues: {TomRequestId: requestId},
+      );
+      // This is what stitches an endpoint denial together with the repository
+      // writes of the same request.
+      expect(sink.records.single.requestId, requestId.uuid);
+    });
+  });
+}

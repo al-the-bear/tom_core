@@ -137,6 +137,27 @@ CREATE TABLE IF NOT EXISTS fixture_task (
     await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_task');
   }
 
+  /// The DDL for `FixtureSecretRecord`, the entity carrying a column that the
+  /// CE-LG audit trail redacts.
+  static const String _fixtureSecretDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_secret (
+  id     BIGINT       NOT NULL AUTO_INCREMENT,
+  label  VARCHAR(255) NULL,
+  secret VARCHAR(255) NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_secret` table if it does not already exist.
+  static Future<void> ensureFixtureSecretTable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(_fixtureSecretDdl);
+  }
+
+  /// Empties the `fixture_secret` table so each test starts from a known state.
+  static Future<void> truncateFixtureSecret(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_secret');
+  }
+
   /// Closes every registered data source and clears the process-wide registry,
   /// so a torn-down suite leaves no open connection or stale registration for
   /// the next one.

@@ -5,6 +5,8 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../audit/audit_record.dart';
+import '../audit/audit_trail.dart';
 import '../little_things/server_exception.dart';
 import '../server/server.dart';
 import '../transactions/transaction_manager.dart';
@@ -173,6 +175,28 @@ class TomEndpointHandler {
     );
   }
 
+  /// Records this endpoint's invocation in the audit trail, when the method
+  /// declared `@TomAudited` (CE-LG).
+  ///
+  /// Endpoint invocation auditing is *declared*, not automatic: the pipeline
+  /// cannot tell a read from a mutation, and auditing every call would bury the
+  /// entries that matter under routine traffic. What is automatic here is the
+  /// **denial** path — see [handleMethodCall] — and, at the other chokepoint,
+  /// every repository mutation.
+  Future<void> _recordInvocationAudit(
+    TomAuditOutcome outcome, {
+    String? detail,
+  }) async {
+    final audited = metadata.audited;
+    if (audited == null || !audited.enabled) return;
+    await TomAuditTrail.recordAction(
+      action: TomAuditAction.execute,
+      target: name,
+      outcome: outcome,
+      detail: detail,
+    );
+  }
+
   /// Runs the full request pipeline for this endpoint and returns the response.
   ///
   /// Handles preflight, access control, reflection-based parameter binding,
@@ -206,6 +230,18 @@ class TomEndpointHandler {
     }
 
     if (accessCheck == false) {
+      // CE-LG: a denial is audited unconditionally — no annotation, no opt-in.
+      // It is the one auditable event the repository chokepoint cannot see,
+      // because the request is refused before it reaches any data, and it is
+      // the entry an auditor looks for first. Awaited, so a trail that cannot
+      // store the denial fails the request rather than losing the record.
+      await TomAuditTrail.recordAction(
+        action: TomAuditAction.execute,
+        target: name,
+        outcome: TomAuditOutcome.denied,
+        detail:
+            "Access not granted and no resource key found for endpoint $name",
+      );
       throw TomEndpointHandlerException(
         "endpoint_handler.handle_method_call.access_denied",
         "Access denied to endpoint, access not granted and resource key not found: $name",
@@ -443,6 +479,11 @@ class TomEndpointHandler {
         tomLog.warn("$reqId-${req.url}: Rolling back transaction after exception $error");
         await transaction.rollbackTransaction();
       }
+      // CE-LG: an audited endpoint records its failures as well as its
+      // successes. A trail that only shows what worked cannot answer "was this
+      // attempted?", which is the question a failed privileged action raises.
+      // Recorded after the rollback, so the outcome the entry states is final.
+      await _recordInvocationAudit(TomAuditOutcome.failed, detail: "$error");
       if (metadata.endpoint.errorHandler != null) {
         Response? response;
         try {
@@ -480,6 +521,10 @@ class TomEndpointHandler {
       // will be converted to a structured error response in the pipeline
       rethrow;
     }
+    // Recorded outside the try/catch above: inside it, an audit failure would
+    // be caught as an invocation failure and trigger a rollback of a
+    // transaction that has already committed.
+    await _recordInvocationAudit(TomAuditOutcome.succeeded);
     try {
       String? resultString = result == null
           ? null
@@ -876,7 +921,17 @@ class TomEndpointRouting {
             TomApiImplementation? ai;
             TomApi? a;
             TomApiEndpoint? ae;
+            TomAudited? aud;
             for (var tag in decl.metadata) {
+              if (tag is TomAudited) {
+                if (aud != null) {
+                  throw TomEndpointPipelineException(
+                    "endpoint_pipeline.get_class_method_metadata.multiple_audited_tags",
+                    "More than one TomAudited specified for $decl",
+                  );
+                }
+                aud = tag;
+              }
               if (tag is TomAccessControl) {
                 if (tea != null) {
                   throw TomEndpointPipelineException(
@@ -952,6 +1007,7 @@ class TomEndpointRouting {
                 endpoint: tep,
                 access: resolvedAccess,
                 transactionInfo: ti,
+                audited: aud,
                 apiEndpointImplementation: aei,
                 apiEndpoint: ae,
                 api: a,
@@ -1009,6 +1065,15 @@ class TomMethodMetadata {
   /// The transaction directive, if the method declared one.
   TomTransactional? transactionInfo;
 
+  /// The `@TomAudited` declaration, if the method opted its invocation into the
+  /// audit trail (CE-LG).
+  ///
+  /// Null for the great majority of endpoints, and that is the intended state:
+  /// endpoint auditing is *declared*, because most endpoint calls are reads
+  /// whose auditing would drown the trail. Mutation auditing needs no
+  /// declaration — it happens at the repository.
+  TomAudited? audited;
+
   /// The `@TomApiEndpointImplementation` tag, for registry-based endpoints.
   TomApiEndpointImplementation? apiEndpointImplementation;
 
@@ -1027,6 +1092,7 @@ class TomMethodMetadata {
     required this.methodMirror,
     this.access,
     this.transactionInfo,
+    this.audited,
     this.apiEndpointImplementation,
     this.apiImplementation,
     this.api,

@@ -57,6 +57,22 @@ abstract class FixtureApiService {
     logRequests: false,
   )
   Future<Map<String, Object>> unguarded();
+
+  /// An endpoint whose *invocation* is itself the auditable act (CE-LG).
+  ///
+  /// Endpoint auditing is declared rather than automatic — most endpoint calls
+  /// are reads, and which of them matter is a domain judgement — so this is the
+  /// fixture that proves `@TomAudited` on a method reaches the trail. Its
+  /// unannotated sibling [unguarded] proves the converse.
+  @TomAudited()
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/audited',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> auditedAction();
 }
 
 /// Live implementation of [FixtureApiService]; the pipeline invokes these
@@ -71,6 +87,10 @@ class FixtureApiServer implements FixtureApiService {
   @override
   Future<Map<String, Object>> unguarded() async =>
       <String, Object>{'guarded': false};
+
+  @override
+  Future<Map<String, Object>> auditedAction() async =>
+      <String, Object>{'audited': true};
 }
 
 /// A reflected configuration object for exercising [TomArgs.fillFromArgs]: its
@@ -134,3 +154,51 @@ class FixtureTaskRecord {
 /// created only *after* `test_database.dart` has registered that data source.
 class FixtureTaskRepository
     extends TomSqlDatasourceRepository<FixtureTaskRecord, int> {}
+
+/// A reflected entity carrying a **redacted** column, for the CE-LG audit
+/// surface.
+///
+/// `@TomAudited(redact: ...)` is the declaration that keeps a value out of the
+/// audit trail entirely. The trail is privileged storage — a C-4 column grade
+/// hides a value from the caller, not from the auditor — so redaction exists
+/// for values that must not exist in a *second* place at all: password hashes,
+/// access tokens, keys. The record still shows that `secret` changed; only its
+/// values are withheld.
+@tomReflector
+@TomAudited(redact: ['secret'])
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_secret',
+  primaryKeyField: 'id',
+)
+class FixtureSecretRecord {
+  /// Surrogate primary key, assigned by the database on insert.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// An ordinary column, recorded in the clear.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+
+  /// The redacted column: audited as *changed*, never as a value.
+  @TomDbColumn(columnName: 'secret')
+  String? secret;
+}
+
+/// The MariaDB-backed repository for [FixtureSecretRecord].
+class FixtureSecretRepository
+    extends TomSqlDatasourceRepository<FixtureSecretRecord, int> {}
+
+/// A reflected entity that has **declared itself out** of the audit trail.
+///
+/// The escape hatch for high-volume machine-written tables (sessions, job runs)
+/// whose mutations are noise rather than history. It is a declaration rather
+/// than a call-site flag precisely so that its absence is auditable too — this
+/// fixture exists to prove the reflector resolves it.
+@tomReflector
+@TomAudited(enabled: false)
+class FixtureUnauditedRecord {
+  /// An ordinary field; the type is never persisted, only reflected.
+  String? note;
+}

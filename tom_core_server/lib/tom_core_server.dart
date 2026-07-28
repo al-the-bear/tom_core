@@ -3,6 +3,9 @@
 /// More dartdocs go here.
 library;
 
+export 'src/tomserver/audit/audit_record.dart';
+export 'src/tomserver/audit/audit_sink.dart';
+export 'src/tomserver/audit/audit_trail.dart';
 export 'src/tomserver/authentication/authentication_server.dart';
 export 'src/tomserver/authentication/server_self_login.dart';
 export 'src/tomserver/authentication/two_factor.dart';
