@@ -1,0 +1,41 @@
+ID,Groups,Description,Baseline [07-28 06:26],[07-28 06:26],[07-28 06:35],[07-28 06:35],[07-28 06:38]
+,csra2: CE-TX TomMessageKeyRegistry,the role and category sets are the closed §5.21 sets,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm2r7: CE-CL TomClientApplication,carries the spec-authorable client descriptor fields,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm2r7: CE-CC TomClientConfiguration,per-machine config holder defaults own their maps,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm2r7: CE-CC TomClientConfiguration,holds the deployment/per-installation fields,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra3: CE-UP server-side per-user persistence,"a write replaces that user's map, and empty clears it",--/OK,--/OK,OK/OK,OK/OK,OK/OK
+,csra3: CE-UP server-side per-user persistence,an unknown user reads empty rather than failing,--/OK,--/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-LO TomLayoutModel,the override-delta grammar is the closed §5.22 five,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm2r7: CE-UP TomUserSettings + persistence split,carries value and default independently,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm210-4-1: CE-EN TomDomainEnum,defaults own their values list (no shared mutable list),OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm210-4-1: CE-EN TomDomainEnum,names a domain closed value set with stable tokens vs labels,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm210-4-1: CE-EN TomDomainEnum,hasValue reports membership by valueId,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm210-4-1: CE-EN TomDomainEnum,defaultValueId is null when the enum has no default,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-LO TomLayoutModel,the container-kind set is the closed §5.22 nine,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm2r7: CE-CL TomClientApplication,constructs with defaults and no shared mutable list,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-LO TomLayoutModel,"a slot node references its element by id, never embedding it",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-LO TomLayoutModel,nodeIds are unique across the whole base tree,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-LO TomLayoutModel,"a delta targeting a vanished node is reported, not dropped",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-LO TomLayoutModel,an insert-container delta resolves against its parent id,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-LO TomLayoutModel,an empty model reports every delta as unresolved,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-NV TomRouteRegistry,the presentation and outcome sets are the closed §5.11 sets,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-TX TomMessageKeyRegistry,"a missing per-locale entry falls back to base copy, never the key",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-TX TomMessageKeyRegistry,"an unregistered key is a spec error, not a raw-key render",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-TX TomMessageKeyRegistry,registering the same key twice is rejected,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-TX TomMessageKeyRegistry,error copy is keyed by its CE-ER error code,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-TX TomMessageKeyRegistry,an error-copy entry without an error code is rejected,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra3: CE-UP server-side per-user persistence,read returns a copy — mutating it cannot corrupt the store,--/OK,--/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-NV TomRouteRegistry,route ids are unique — a duplicate is rejected,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-NV TomRouteRegistry,a form is assigned to a screen as replace or popup overlay,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-NV TomRouteRegistry,an action reaches different targets per outcome,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-NV TomRouteRegistry,edges and assignments naming an unregistered route are reported,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-JB TomJobDeclaration,carries only the fields the tom_core scheduler has no home for,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-JB TomJobDeclaration,a declared job is enabled by default,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-JB TomJobDeclaration,an empty environment list runs everywhere,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra3: CE-UP server-side per-user persistence,the store is keyed by user — two users never share values,--/OK,--/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-JB TomJobDeclaration,defaults own their lists (no shared mutable list),OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csra3: CE-UP TomUserSettings is single-moded,effectiveValue applies the §5.16 persisted-value → default order,--/OK,--/OK,OK/OK,OK/OK,OK/OK
+,csra2: CE-JB TomJobDeclaration,a disabled job runs nowhere,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,csm2r7: CE-UP TomUserSettings + persistence split,a local setting is machine-bound,OK/OK,OK/OK,--/OK,--/OK,--/OK
+,csm2r7: CE-UP TomUserSettings + persistence split,defaults to roaming (follows the user),OK/OK,OK/OK,--/OK,--/OK,--/OK
+,csm2r7: CE-UP TomUserSettings + persistence split,the persistence enum has exactly the local/roaming split,OK/OK,OK/OK,--/OK,--/OK,--/OK
