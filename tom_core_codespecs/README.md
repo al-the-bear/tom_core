@@ -22,13 +22,18 @@ package as concrete classes.
 **csm2r7 — the four new parts** (survey:
 `../../ai_build/tom_specs_model/doc/codespecs_mapping.md`). CE-AU
 (Authentication) and CE-CF (ServerConfiguration) reuse existing `tom_core`
-classes, so they need no gap class. The three remaining new parts had no
-`tom_core` holder:
+classes, so they need no gap class. Neither does **CE-CC**
+(ClientConfiguration): `tom_core_flutter`'s `TomBaseClientConfiguration` /
+`TomSetting<T>` / `TomClientConfigurationStore` is the (client app, machine)
+holder — typed declaration through `declareSettings()`, baselines resolved from
+`TomConfigResourceProvider`, overrides persisted and *only* overrides, and
+observation both per field and holder-wide — with no user in the key, which is
+the whole CE-CC discriminator (`codespecs_mapping.md` §4.1, §5.16, §11). The two
+parts that had no `tom_core` holder:
 
 | Class | Part | Purpose |
 |-------|------|---------|
 | `TomClientApplication` | CE-CL Client | Client-application descriptor (id, platforms, entry route, server URL). |
-| `TomClientConfiguration` | CE-CC ClientConfiguration | Per-machine client config holder — does **not** follow the user. |
 | `TomUserSettings` + `TomUserSettingsStore` | CE-UP UserSettings | The typed user-settings holder and the server-side per-user persistence seam — both halves of the gap `codespecs_mapping.md` §4.1 names. Single-moded: user-scoped and server-persisted, because `codespecs_mapping.md` §11 lets the scope key alone decide where a value lives (csra3, below). |
 
 **csm210-4-1 (wave-2 W10) — CE-DB / domain enums** (survey:

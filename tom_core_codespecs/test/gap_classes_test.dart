@@ -26,28 +26,6 @@ void main() {
     });
   });
 
-  group('csm2r7: CE-CC TomClientConfiguration', () {
-    test('per-machine config holder defaults own their maps', () {
-      final a = TomClientConfiguration();
-      final b = TomClientConfiguration();
-      a.featureToggles['beta'] = true;
-      a.deviceOptions['dpi'] = 144;
-      expect(b.featureToggles, isEmpty);
-      expect(b.deviceOptions, isEmpty);
-    });
-
-    test('holds the deployment/per-installation fields', () {
-      final cfg = TomClientConfiguration(
-        apiBaseUrl: 'https://api.example.com',
-        environment: 'prod',
-        updateChannel: 'stable',
-      );
-      expect(cfg.apiBaseUrl, 'https://api.example.com');
-      expect(cfg.environment, 'prod');
-      expect(cfg.updateChannel, 'stable');
-    });
-  });
-
   group('csra3: CE-UP TomUserSettings is single-moded', () {
     test('carries value and default independently', () {
       final s = TomUserSettings(

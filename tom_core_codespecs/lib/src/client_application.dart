@@ -31,7 +31,8 @@ class TomClientApplication {
   String entryRoute;
 
   /// The base URL of the server this client talks to. Empty until wired by the
-  /// client configuration (CE-CC, [TomClientConfiguration.apiBaseUrl]).
+  /// client configuration (CE-CC — a `TomSetting<String>` declared on the
+  /// client's `TomBaseClientConfiguration`, `tom_core_flutter`).
   String serverBaseUrl;
 
   /// Creates a client-application descriptor.

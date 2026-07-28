@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.8.0
+
+- **Breaking: remove `TomClientConfiguration` (CE-CC).** It was authored when
+  `tom_core` had no per-machine client-configuration holder. `tom_core_flutter`
+  now carries one — `TomBaseClientConfiguration` with `TomSetting<T>` and
+  `TomClientConfigurationStore` — so CE-CC is a **reuse** verdict
+  (`codespecs_mapping.md` §4.1, §5.16) and keeping a second holder would breach
+  the §1.1 pillar that a gap class exists only where `tom_core` genuinely lacks
+  one. Nothing is lost in the trade: the reused holder has typed declaration,
+  baseline resolution from `TomConfigResourceProvider`, override-only
+  persistence and per-field plus holder-wide observation, where this class had
+  three `String` fields and two untyped maps. A `@CsClientConfig` CodeSpec now
+  extends `TomBaseClientConfiguration` and declares each setting in
+  `declareSettings()`.
+- Add `test/gap_class_inventory_test.dart`, pinning the shipped gap-class files
+  to the parts that justify them. A gap class is a verdict about *another*
+  package, so it can go stale without anything here changing — which is exactly
+  how CE-CC came to have two holders. The inventory makes adding or removing one
+  an edit that has to be justified next to its part.
+
 ## 0.7.0
 
 - csra8: add the CE-RP report model — `TomReportDefinition` with

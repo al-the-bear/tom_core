@@ -67,9 +67,9 @@ class TomUserSettings {
 /// (`codespecs_mapping.md` §11, §5.16).
 ///
 /// The user key is in every method signature, because it *is* the scope: this is
-/// what separates CE-UP from [TomClientConfiguration]'s store, whose interface
-/// deliberately has no user parameter at all. A value written here follows the
-/// user onto any device they sign into.
+/// what separates CE-UP from CE-CC's `TomClientConfigurationStore`
+/// (`tom_core_flutter`), whose interface deliberately has no user parameter at
+/// all. A value written here follows the user onto any device they sign into.
 ///
 /// Deliberately the narrowest interface the holder needs — read a user's map
 /// back, write it. There is no `exists`, no per-key accessor and no `clear`:

@@ -18,9 +18,13 @@
 /// **csm2r7 — the four new parts (`codespecs_mapping.md` §1.1b).** CE-AU
 /// (Authentication) reuses `tom_core_server` `TomAuthenticationService`* and
 /// CE-CF (ServerConfiguration) reuses `TomBaseServerConfiguration`, so neither
-/// needs a gap class. The three remaining new parts had no `tom_core` holder
-/// and land here as concrete classes: [TomClientApplication] (CE-CL),
-/// [TomClientConfiguration] (CE-CC), and [TomUserSettings] (CE-UP).
+/// needs a gap class. CE-CC (ClientConfiguration) reuses `tom_core_flutter`'s
+/// `TomBaseClientConfiguration` / `TomSetting<T>` /
+/// `TomClientConfigurationStore` (`codespecs_mapping.md` §4.1/§5.16), which is
+/// the (client app, machine) holder with no user in the key — so it needs no
+/// gap class either. The two parts that had no `tom_core` holder land here as
+/// concrete classes: [TomClientApplication] (CE-CL) and [TomUserSettings]
+/// (CE-UP).
 ///
 /// **csm210-4-1 (wave-2 W10) — domain enums.** The csm4 code-basis survey
 /// (`codespecs_mapping.md` §5) flagged them as a *gap*: `tom_core` has only
@@ -70,7 +74,6 @@
 library;
 
 export 'src/client_application.dart';
-export 'src/client_configuration.dart';
 export 'src/domain_enum.dart';
 export 'src/job_declaration.dart';
 export 'src/layout_node.dart';
