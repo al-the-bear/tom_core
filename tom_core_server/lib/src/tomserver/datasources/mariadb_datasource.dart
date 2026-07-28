@@ -3,6 +3,7 @@ import 'package:mysql_client/mysql_client.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
+import '../object_persistence/grouped_query.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/query_sentence_compiler.dart';
 import '../object_persistence/annotation_analyzer.dart';
@@ -63,6 +64,14 @@ class MariadbPreparedStatement<T extends Object>
   /// The compiled SQL command (kept so the statement can be re-prepared).
   final String command;
 
+  /// For a grouped query, the Dart type of each projected result column keyed
+  /// by its alias; `null` for every other statement.
+  ///
+  /// A grouped row is not an entity — its shape comes from the query, not from
+  /// a class — so the projection types travel with the statement instead of
+  /// being read off reflected column metadata at mapping time.
+  final Map<String, Type>? groupedProjection;
+
   int? _lastGeneratedId;
 
   /// The auto-increment key the most recent [execute] generated, taken from the
@@ -78,8 +87,9 @@ class MariadbPreparedStatement<T extends Object>
     this.parameterList,
     this.datasource,
     this.resultType,
-    this.command,
-  );
+    this.command, {
+    this.groupedProjection,
+  });
 
   /// Records the generated key from an execute's [result].
   void _captureGeneratedId(IResultSet result) {
@@ -146,7 +156,11 @@ class MariadbPreparedStatement<T extends Object>
     try {
       IResultSet result = await _execute(parameters, params);
       _captureGeneratedId(result);
-      return datasource._processResult<T>(result, resultType);
+      return datasource._processResult<T>(
+        result,
+        resultType,
+        groupedProjection,
+      );
     } on MariadbPreparedStatementException {
       // One retry...
       if (!datasource.connected) {
@@ -155,7 +169,11 @@ class MariadbPreparedStatement<T extends Object>
       preparedStmt = await datasource.connection!.prepare(command);
       IResultSet result = await _execute(parameters, params);
       _captureGeneratedId(result);
-      return datasource._processResult<T>(result, resultType);
+      return datasource._processResult<T>(
+        result,
+        resultType,
+        groupedProjection,
+      );
     }
   }
 
@@ -290,6 +308,9 @@ class MariaDbDatasource implements TomDataSource {
       this,
       resultType,
       q,
+      groupedProjection: query is TomGroupedSelect
+          ? query.projectionTypes
+          : null,
     );
   }
 
@@ -308,6 +329,45 @@ class MariaDbDatasource implements TomDataSource {
   /// mistaken for a slot.
   static (String, List<String>) toPositionalStatement(String namedSql) =>
       SqlPlaceholderScan.toPositional(namedSql);
+
+  /// Maps one driver [row] of a grouped result into a [TomGroupedRow], reading
+  /// each alias in [projection] as the Dart type the query declared for it.
+  ///
+  /// The projection is the only type information available: a grouped row has
+  /// no entity class and no persistent-column metadata, so the query's own
+  /// declaration of "this alias is an `int`" is what makes the read typed.
+  static TomGroupedRow mapGroupedRow(
+    ResultSetRow row,
+    Map<String, Type> projection,
+  ) {
+    final values = <String, Object?>{};
+    for (final entry in projection.entries) {
+      final alias = entry.key;
+      switch (entry.value) {
+        case int:
+          values[alias] = row.typedColByName<int>(alias);
+        case double:
+          values[alias] = row.typedColByName<double>(alias);
+        case String:
+          values[alias] = row.typedColByName<String>(alias);
+        case bool:
+          values[alias] = row.typedColByName<bool>(alias);
+        case DateTime:
+          final stringForm = row.typedColByName<String>(alias);
+          values[alias] = stringForm == null
+              ? null
+              : DateTime.parse(stringForm);
+        default:
+          throw MariadbDatasourceException(
+            "error.result_processing_grouped.unknown_type",
+            "Unexpected and unsupported type for grouped result column "
+                "'$alias': ${entry.value}",
+            parameters: {"alias": alias, "fieldType": entry.value},
+          );
+      }
+    }
+    return TomGroupedRow(values);
+  }
 
   @override
   Future<List<T>> executeQuery<T extends Object>(
@@ -344,8 +404,20 @@ class MariaDbDatasource implements TomDataSource {
   Future<List<T>> _processResult<T extends Object>(
     IResultSet qResult, [
     Type? resultType,
+    Map<String, Type>? groupedProjection,
   ]) async {
     Type rType = resultType ?? T;
+    // A grouped query's rows carry group keys and aggregate values under the
+    // aliases the query projected them as. There is no class to reflect — the
+    // shape belongs to the query — so this path runs first, before any mirror
+    // is taken, and maps straight into a TomGroupedRow using the projection
+    // types the statement carries.
+    if (groupedProjection != null) {
+      return [
+        for (final row in qResult.rows)
+          mapGroupedRow(row, groupedProjection) as T,
+      ];
+    }
     ClassMirror classMirror =
         tomReflector.reflectType(resultType ?? T) as ClassMirror;
     List<T> result = [];

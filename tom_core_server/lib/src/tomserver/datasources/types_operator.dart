@@ -130,6 +130,27 @@ abstract class TomOperator<R> {
   /// The set of column/field names this operator references.
   Set<String> getFields(TomStandardSqlDialect t);
 
+  /// The direct sub-expressions of this node, left to right — the single
+  /// traversal every structural walk over the tree goes through.
+  ///
+  /// A leaf (a literal, a parameter, a column reference) has none; a container
+  /// yields its operands, flattening an operand that is itself a list (as
+  /// `AND`/`OR`/`IN` carry). [getParameters] and [getFields] are defined in
+  /// terms of this, and so are the walks that must *stop* at a node — the
+  /// grouped query checks a `HAVING` predicate by descending here while
+  /// treating an aggregate as opaque, because an aggregate collapses the rows
+  /// its operand references and so imposes no grouping obligation on it.
+  List<TomOperator> get children => const [];
+
+  /// Flattens an operand into the [children] contribution it represents: a
+  /// nested operator yields itself, a `List<TomOperator>` yields its elements,
+  /// and a leaf value (a `String` column name, a Dart literal) yields nothing.
+  static List<TomOperator> operandChildren(Object? operand) {
+    if (operand is TomOperator) return [operand];
+    if (operand is List<TomOperator>) return operand;
+    return const [];
+  }
+
   /// Captures [returnType] from the type parameter [R].
   TomOperator() {
     returnType = R;

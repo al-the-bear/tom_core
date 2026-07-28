@@ -6,6 +6,32 @@ import 'types_operator.dart';
 /// A SQL fragment. An alias for `String` that documents intent at call sites.
 typedef SqlString = String;
 
+/// The aggregate functions the typed query layer can express.
+///
+/// Naming the vocabulary here rather than in the expression tree keeps the set
+/// of functions a dialect must be able to render in one place: a driver that
+/// needs a different spelling overrides [TomStandardSqlDialect.aggregate] and
+/// switches on this enum, and the compiler tells it when a member is added.
+enum TomAggregateFunction {
+  /// `COUNT` — the number of rows (or of non-null operand values).
+  count,
+
+  /// `SUM` — the total of the operand across the group.
+  sum,
+
+  /// `AVG` — the mean of the operand across the group.
+  avg,
+
+  /// `MIN` — the smallest operand value in the group.
+  min,
+
+  /// `MAX` — the largest operand value in the group.
+  max;
+
+  /// The SQL function name this member renders as.
+  String get sqlName => name.toUpperCase();
+}
+
 /// Generates standard-SQL fragments for the [TomOperator] expression tree.
 ///
 /// Every method renders one piece of SQL — a predicate (`IS NULL`, `LIKE`,
@@ -209,6 +235,39 @@ class TomStandardSqlDialect {
   /// Renders a positional parameter placeholder `:<parameterName>` for a
   /// prepared statement (the driver binds the value, avoiding injection).
   SqlString p<T>(String parameterName) => ":$parameterName";
+
+  /// Renders an aggregate call — `COUNT(*)`, `SUM(t.c)`, `COUNT(DISTINCT t.c)`.
+  ///
+  /// [operand] is the already-rendered argument, or `null` for the one
+  /// argument-less form, `COUNT(*)`. [distinct] inserts the `DISTINCT`
+  /// qualifier; it is meaningless for `COUNT(*)` (there is no expression to
+  /// de-duplicate) and is ignored there.
+  SqlString aggregate(
+    TomAggregateFunction function,
+    SqlString? operand, {
+    bool distinct = false,
+  }) {
+    if (operand == null) return "${function.sqlName}(*)";
+    return "${function.sqlName}(${distinct ? 'DISTINCT ' : ''}$operand)";
+  }
+
+  /// Renders `<expression> AS <alias>` — the projection form that names a
+  /// grouped query's result column so the row mapper can find it.
+  SqlString aliased(SqlString expression, String alias) =>
+      "$expression AS $alias";
+
+  /// Renders ` GROUP BY <columns...>`, or the empty string when [columnExprs]
+  /// is empty (an aggregate over the whole result set groups by nothing).
+  SqlString groupByClause(List<SqlString> columnExprs) =>
+      columnExprs.isEmpty ? "" : " GROUP BY ${columnExprs.join(', ')}";
+
+  /// Renders ` HAVING <predicate>`, or the empty string when there is none.
+  ///
+  /// `HAVING` filters *groups* after aggregation, where `WHERE` filters rows
+  /// before it — which is why the two predicates stay separate all the way
+  /// down to here rather than being ANDed together upstream.
+  SqlString havingClause(SqlString? predicate) =>
+      predicate == null ? "" : " HAVING $predicate";
 
   /// Renders a qualified reference to a `String` [column] as `table.column`.
   SqlString textF(String fieldName, DbCol column, Type dbType) {

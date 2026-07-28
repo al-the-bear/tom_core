@@ -32,32 +32,17 @@ abstract class TomUnaryOperator<T, R> extends TomOperator<R> {
   TomUnaryOperator(this.operant1);
 
   @override
-  List<String> getParameters(TomStandardSqlDialect t) {
-    var r = <String>[];
-    if (operant1 is TomOperator && operant1 != null) {
-      r.addAll((operant1 as TomOperator).getParameters(t));
-    }
-    if (operant1 is List<TomOperator>) {
-      for (var op in (operant1 as List<TomOperator>)) {
-        r.addAll(op.getParameters(t));
-      }
-    }
-    return r;
-  }
+  List<TomOperator> get children => TomOperator.operandChildren(operant1);
 
   @override
-  Set<String> getFields(TomStandardSqlDialect t) {
-    var r = <String>{};
-    if (operant1 is TomOperator && operant1 != null) {
-      r.addAll((operant1 as TomOperator).getFields(t));
-    }
-    if (operant1 is List<TomOperator>) {
-      for (var op in (operant1 as List<TomOperator>)) {
-        r.addAll(op.getFields(t));
-      }
-    }
-    return r;
-  }
+  List<String> getParameters(TomStandardSqlDialect t) => [
+    for (final child in children) ...child.getParameters(t),
+  ];
+
+  @override
+  Set<String> getFields(TomStandardSqlDialect t) => {
+    for (final child in children) ...child.getFields(t),
+  };
 
   @override
   String analyze(int l) {
@@ -264,56 +249,20 @@ abstract class TomBinaryOperator<T1, T2, R> extends TomOperator<R> {
   TomBinaryOperator(this.operant1, this.operant2);
 
   @override
-  List<String> getParameters(TomStandardSqlDialect t) {
-    List<String> r = [];
-    r.addAll(
-      operant1 is TomOperator
-          ? (operant1 as TomOperator).getParameters(t)
-          : <String>[],
-    );
-    r.addAll(
-      operant2 is TomOperator
-          ? (operant2 as TomOperator).getParameters(t)
-          : <String>[],
-    );
-    if (operant1 is List<TomOperator>) {
-      for (var op in (operant1 as List<TomOperator>)) {
-        r.addAll(op.getParameters(t));
-      }
-    }
-    if (operant2 is List<TomOperator>) {
-      for (var op in (operant2 as List<TomOperator>)) {
-        r.addAll(op.getParameters(t));
-      }
-    }
-    return r;
-  }
+  List<TomOperator> get children => [
+    ...TomOperator.operandChildren(operant1),
+    ...TomOperator.operandChildren(operant2),
+  ];
 
   @override
-  Set<String> getFields(TomStandardSqlDialect t) {
-    Set<String> r = {};
-    r.addAll(
-      operant1 is TomOperator
-          ? (operant1 as TomOperator).getFields(t)
-          : <String>{},
-    );
-    r.addAll(
-      operant2 is TomOperator
-          ? (operant2 as TomOperator).getFields(t)
-          : <String>{},
-    );
-    if (operant1 is List<TomOperator>) {
-      for (var op in (operant1 as List<TomOperator>)) {
-        r.addAll(op.getFields(t));
-      }
-    }
-    if (operant2 is List<TomOperator>) {
-      for (var op in (operant2 as List<TomOperator>)) {
-        r.addAll(op.getFields(t));
-      }
-    }
-    return r;
-  }
+  List<String> getParameters(TomStandardSqlDialect t) => [
+    for (final child in children) ...child.getParameters(t),
+  ];
+
+  @override
+  Set<String> getFields(TomStandardSqlDialect t) => {
+    for (final child in children) ...child.getFields(t),
+  };
 
   @override
   String analyze(int l) {

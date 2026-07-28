@@ -6,6 +6,7 @@ import '../datasources/sql_dialects.dart';
 import '../datasources/sql_placeholder_scan.dart';
 import '../datasources/types_operator.dart';
 
+import 'grouped_query.dart';
 import 'persistence_annotations.dart';
 import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
@@ -96,6 +97,17 @@ abstract class TomRepository<T extends Object, K> {
 
   /// Runs a built [TomCount], binding [params].
   Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params);
+
+  /// Runs a built [TomGroupedSelect], binding [params], and returns one
+  /// [TomGroupedRow] per group.
+  ///
+  /// The result is deliberately not [T]: a grouped row holds the group keys and
+  /// the aggregate values the query asked for, a shape the entity class does
+  /// not have.
+  Future<List<TomGroupedRow>> findGroupedByQuery(
+    TomGroupedSelect query,
+    Map<String, Object?> params,
+  );
 
   /// Runs a raw SQL string [dbQuery], binding [params], and maps the rows to [T].
   Future<Iterable<T>> executeQueryString(
@@ -306,6 +318,30 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       ascending: base.ascending,
       top: base.top,
       ignoreFields: base.ignoreFields,
+    );
+  }
+
+  /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
+  /// the grouping, aggregates and `HAVING`), or [base] unchanged when [scope]
+  /// is `null`.
+  ///
+  /// The scope goes into the *row* predicate, never into `HAVING`: it decides
+  /// which rows the principal may see, and so must apply before aggregation —
+  /// filtering groups afterwards would still have counted the hidden rows.
+  TomGroupedSelect _scopedGrouped(
+    TomGroupedSelect base,
+    TomDataScopePredicate? scope,
+  ) {
+    if (scope == null) return base;
+    return TomGroupedSelect(
+      base.types,
+      query: and([base.query, scope.predicate]),
+      groupBy: base.groupBy,
+      aggregates: base.aggregates,
+      having: base.having,
+      orderBy: base.orderBy,
+      ascending: base.ascending,
+      top: base.top,
     );
   }
 
@@ -908,6 +944,54 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       );
     }
     return TomDbInt(result[0].count);
+  }
+
+  @override
+  Future<List<TomGroupedRow>> findGroupedByQuery(
+    TomGroupedSelect query,
+    Map<String, Object?> params,
+  ) async {
+    _assertGroupedColumnsReadable(query);
+    // C-3: the scope goes into the row predicate (see [_scopedGrouped]), so it
+    // filters the rows *before* they are aggregated.
+    final scope = await _resolveScope();
+    final effective = <String, Object?>{...params, ...?scope?.parameters};
+    return _runPrepared<TomGroupedRow>(
+      _scopedGrouped(query, scope),
+      effective,
+    );
+  }
+
+  /// Rejects a grouped query that touches a column the principal may not see
+  /// (C-4).
+  ///
+  /// The row-returning paths *mask* such a column — they null it out of each
+  /// returned entity. A grouped query cannot: by the time the rows exist the
+  /// column has already been collapsed into a group key or folded into an
+  /// aggregate, so nulling the result would not undo the leak (`COUNT(*)` per
+  /// masked group still discloses the masked values' distribution). The only
+  /// sound enforcement is therefore to refuse the query outright, and to do so
+  /// before it reaches the database.
+  void _assertGroupedColumnsReadable(TomGroupedSelect query) {
+    final authColumns = _authColumns;
+    if (authColumns.isEmpty) return;
+    final masked = TomColumnAuthorization.maskedColumns<TomColumnInformation>(
+      columns: authColumns,
+      keyOf: (column) => column.column?.authKey,
+    );
+    if (masked.isEmpty) return;
+    final maskedNames = {for (final column in masked) column.declaredName};
+    final offending = [
+      for (final column in query.referencedColumns)
+        if (maskedNames.contains(column.declaredName)) column.declaredName,
+    ];
+    if (offending.isEmpty) return;
+    throw TomColumnAuthorizationException(
+      "crud_repository.grouped.masked_column",
+      "The grouped query references column(s) you are not authorized to read: "
+          "${offending.join(', ')}",
+      parameters: {"columns": offending.join(', ')},
+    );
   }
 
   @override

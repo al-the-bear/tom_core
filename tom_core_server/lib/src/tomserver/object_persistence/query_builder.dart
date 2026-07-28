@@ -1,4 +1,5 @@
 import '../datasources/types_operator.dart';
+import 'grouped_query.dart';
 import 'persistence_annotations.dart';
 import 'operators_expressions.dart';
 
@@ -218,4 +219,82 @@ mixin TomQueryBuilder {
   ) {
     return DateCol(columnInformation.tableType, fieldName, columnInformation);
   }
+
+  // --- Aggregates -----------------------------------------------------------
+  //
+  // Each returns a `TomAggregate`, which *is* a `TomOperator`, so an aggregate
+  // composes with the predicate builders above: `gt(countAll('n'), intOp(3))`
+  // is the `HAVING COUNT(*) > 3` of a grouped select. Every aggregate carries
+  // the alias it is projected under, because a grouped result has no entity
+  // metadata to map its columns back by.
+  //
+  // `min`/`max` are split by type rather than left generic because they
+  // preserve the operand's type on both sides (SQL and Dart); `sum`/`avg`
+  // always widen to `double` and so need no such split.
+
+  /// `COUNT(*) AS <alias>` — the number of rows in each group.
+  CountAll countAll(String alias) => CountAll(alias);
+
+  /// `COUNT(<value>) AS <alias>` — the non-null [value]s in each group, or the
+  /// distinct such values when [distinct] is set.
+  ///
+  /// Named `countOf` rather than `count` because the repositories mix this
+  /// builder in beside `TomRepository.count()`, the CRUD row count.
+  Count<T> countOf<T>(
+    TomOperator<T> value,
+    String alias, {
+    bool distinct = false,
+  }) => Count<T>(value, alias, distinct: distinct);
+
+  /// `SUM(<value>) AS <alias>`, always a `double` (see [Sum]).
+  Sum<T> sum<T>(TomOperator<T> value, String alias, {bool distinct = false}) =>
+      Sum<T>(value, alias, distinct: distinct);
+
+  /// `AVG(<value>) AS <alias>`, always a `double`.
+  Avg<T> avg<T>(TomOperator<T> value, String alias, {bool distinct = false}) =>
+      Avg<T>(value, alias, distinct: distinct);
+
+  /// `MIN(<value>) AS <alias>` over an `int` expression.
+  Min<TomDbInt, int> minInt(TomOperator<TomDbInt> value, String alias) =>
+      Min<TomDbInt, int>(value, alias);
+
+  /// `MAX(<value>) AS <alias>` over an `int` expression.
+  Max<TomDbInt, int> maxInt(TomOperator<TomDbInt> value, String alias) =>
+      Max<TomDbInt, int>(value, alias);
+
+  /// `MIN(<value>) AS <alias>` over a `double` expression.
+  Min<TomDbDouble, double> minDouble(
+    TomOperator<TomDbDouble> value,
+    String alias,
+  ) => Min<TomDbDouble, double>(value, alias);
+
+  /// `MAX(<value>) AS <alias>` over a `double` expression.
+  Max<TomDbDouble, double> maxDouble(
+    TomOperator<TomDbDouble> value,
+    String alias,
+  ) => Max<TomDbDouble, double>(value, alias);
+
+  /// `MIN(<value>) AS <alias>` over a `String` expression.
+  Min<TomDbString, String> minText(
+    TomOperator<TomDbString> value,
+    String alias,
+  ) => Min<TomDbString, String>(value, alias);
+
+  /// `MAX(<value>) AS <alias>` over a `String` expression.
+  Max<TomDbString, String> maxText(
+    TomOperator<TomDbString> value,
+    String alias,
+  ) => Max<TomDbString, String>(value, alias);
+
+  /// `MIN(<value>) AS <alias>` over a timestamp expression.
+  Min<TomDbDateTime, DateTime> minDateTime(
+    TomOperator<TomDbDateTime> value,
+    String alias,
+  ) => Min<TomDbDateTime, DateTime>(value, alias);
+
+  /// `MAX(<value>) AS <alias>` over a timestamp expression.
+  Max<TomDbDateTime, DateTime> maxDateTime(
+    TomOperator<TomDbDateTime> value,
+    String alias,
+  ) => Max<TomDbDateTime, DateTime>(value, alias);
 }

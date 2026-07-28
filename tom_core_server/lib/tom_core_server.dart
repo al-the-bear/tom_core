@@ -33,6 +33,7 @@ export 'src/tomserver/object_persistence/annotation_analyzer.dart';
 export 'src/tomserver/object_persistence/column_authorization.dart';
 export 'src/tomserver/object_persistence/crud_repository.dart';
 export 'src/tomserver/object_persistence/data_scope.dart';
+export 'src/tomserver/object_persistence/grouped_query.dart';
 export 'src/tomserver/object_persistence/mariadb_repository.dart';
 export 'src/tomserver/object_persistence/operators_expressions.dart';
 export 'src/tomserver/object_persistence/persistence_annotations.dart';

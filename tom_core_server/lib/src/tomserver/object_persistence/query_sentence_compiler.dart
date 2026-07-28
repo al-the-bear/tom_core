@@ -3,6 +3,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../datasources/types_operator.dart';
 import '../datasources/queries.dart';
+import '../datasources/sql_dialects.dart';
+import 'grouped_query.dart';
 import 'operators_expressions.dart';
 import 'persistence_annotations.dart';
 import 'query_builder.dart';
@@ -12,12 +14,27 @@ import 'query_builder.dart';
 /// A query sentence is a whitespace-separated phrase such as
 /// `find by name = :name order by age desc`, `count by status IS IN ( :s )`, or
 /// `delete by id = $id`. The first word selects the query kind
-/// (`find` → [TomSelect], `count` → [TomCount], `delete` → [TomDelete]); the
-/// part before `by` carries options (`distinct`, `top`/`first` N); the part
-/// after `by` is the predicate, optionally followed by an
-/// `order by <fields> [asc|desc]` clause. The predicate is parsed against the
-/// entity's resolved columns (via [TomQueryBuilder] and [TomAnnotationAnalyzer])
-/// into a [TomOperator] tree.
+/// (`find` → [TomSelect], `count` → [TomCount], `delete` → [TomDelete],
+/// `group` → [TomGroupedSelect]); the part before `by` carries options
+/// (`distinct`, `top`/`first` N, and for `group` the projection); the part
+/// after `by` is the predicate, optionally followed by a `having <predicate>`
+/// clause and an `order by <fields> [asc|desc]` clause. The predicate is parsed
+/// against the entity's resolved columns (via [TomQueryBuilder] and
+/// [TomAnnotationAnalyzer]) into a [TomOperator] tree.
+///
+/// **The grouped sentence.** `group` projects aggregates instead of entities:
+///
+/// ```text
+/// group count ( * ) as total , sum ( amount ) as revenue over status
+///   by createdAt >= :from having total > :minCount order by total desc
+/// ```
+///
+/// The projection is a comma-separated list of `<fn> ( <arg> ) as <alias>`
+/// (`count`/`sum`/`avg`/`min`/`max`; `count ( * )` for the row count, and a
+/// leading `distinct` inside the parentheses for `count`/`sum`/`avg`). The
+/// optional `over <fields>` names the group key — omit it to aggregate the
+/// whole result set. `having` filters *groups* and so addresses the projection
+/// **by alias**, where the `by` predicate filters *rows* and addresses columns.
 ///
 /// Throws [TomQuerySyntaxException] for a malformed sentence (unknown kind,
 /// both `top` and `first`, a misplaced order direction, etc.).
@@ -59,6 +76,20 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     var ascending =
         !_find(whereClause, "DESC") && !_find(whereClause, "DESCENDING");
     var orderBy = _analyseOrderByClause(whereClause, qs);
+
+    // The grouped kind splits its `having` clause off the where clause before
+    // either predicate is built, so it branches ahead of the common build.
+    if (parts[0].toUpperCase() == "GROUP") {
+      return _compileGrouped(
+        queryOptions,
+        whereClause,
+        qs,
+        top: top,
+        ascending: ascending,
+        orderBy: orderBy,
+      );
+    }
+
     var query = _buildQuery(whereClause, qs).$1;
 
     if (parts[0].toUpperCase() == "FIND") {
@@ -93,6 +124,237 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         "query_sentence_compiler.compile.invalid_query_sentence_start",
         "The QuerySentence $qs cannot be compiled. It must start with find...By, delete...By or count...By",
       );
+    }
+  }
+
+  /// The aggregates a `having` clause may address, keyed by their projection
+  /// alias — non-empty only while that clause is being parsed.
+  ///
+  /// `HAVING` filters groups, so its operands are the *projected* aggregates
+  /// rather than the entity's columns. Publishing them here lets the one
+  /// expression parser serve both predicates: [_buildExpression] resolves a
+  /// token against this map before falling back to [determineColumn].
+  Map<String, TomAggregate> _aliasOperands = const {};
+
+  /// Compiles the `group` sentence kind into a [TomGroupedSelect].
+  ///
+  /// [queryOptions] is everything before `by` (the kind word, an optional
+  /// `top`/`first` N, the projection, and an optional `over <fields>`);
+  /// [whereClause] is everything after it with the `order by` clause already
+  /// stripped, so it is the row predicate optionally followed by `having`.
+  TomGroupedSelect _compileGrouped(
+    List<String> queryOptions,
+    List<String> whereClause,
+    String qs, {
+    required int top,
+    required bool ascending,
+    required List<String> orderBy,
+  }) {
+    int start = 1; // past the `group` keyword
+    if (start < queryOptions.length) {
+      final option = queryOptions[start].toUpperCase();
+      if (option == "TOP" || option == "FIRST") start += 2;
+    }
+    final overIndex = _index(queryOptions, "OVER", start);
+    final projectionTokens = queryOptions.sublist(
+      start,
+      overIndex == -1 ? queryOptions.length : overIndex,
+    );
+    final groupTokens = overIndex == -1
+        ? const <String>[]
+        : queryOptions.sublist(overIndex + 1);
+
+    final aggregates = _parseAggregates(projectionTokens, qs);
+    final groupBy = _parseGroupColumns(groupTokens, qs);
+
+    final havingIndex = _index(whereClause, "HAVING");
+    final rowTokens = havingIndex == -1
+        ? whereClause
+        : whereClause.sublist(0, havingIndex);
+    final query = _buildQuery(rowTokens, qs).$1;
+
+    TomOperator<TomDbBool>? having;
+    if (havingIndex > -1) {
+      final havingTokens = whereClause.sublist(havingIndex + 1);
+      if (havingTokens.isEmpty) {
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.compile_grouped.empty_having",
+          "The QuerySentence $qs cannot be compiled. HAVING must be followed by a predicate.",
+        );
+      }
+      _aliasOperands = {for (final a in aggregates) a.alias: a};
+      try {
+        having = _buildQuery(havingTokens, qs).$1;
+      } finally {
+        _aliasOperands = const {};
+      }
+    }
+
+    return TomGroupedSelect(
+      types,
+      query: query,
+      groupBy: groupBy,
+      aggregates: aggregates,
+      having: having,
+      orderBy: orderBy,
+      ascending: ascending,
+      top: top,
+    );
+  }
+
+  /// Parses the comma-separated `over` field list into group-key columns.
+  List<DbCol> _parseGroupColumns(List<String> tokens, String qs) {
+    final columns = <DbCol>[];
+    for (final token in tokens) {
+      if (token == ",") continue;
+      final column = determineColumn(token);
+      final operator = _createColumn(column, token);
+      columns.add(operator);
+    }
+    if (tokens.isNotEmpty && columns.isEmpty) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile_grouped.empty_over_clause",
+        "The QuerySentence $qs cannot be compiled. OVER must be followed by at least one field.",
+      );
+    }
+    return columns;
+  }
+
+  /// Parses the projection list — `<fn> ( <arg> ) as <alias>`, comma-separated
+  /// — into the aggregate nodes the grouped select projects.
+  List<TomAggregate> _parseAggregates(List<String> tokens, String qs) {
+    final aggregates = <TomAggregate>[];
+    int i = 0;
+    while (i < tokens.length) {
+      if (tokens[i] == ",") {
+        i++;
+        continue;
+      }
+      final function = _aggregateFunction(tokens[i], qs);
+      i++;
+      _expectToken(tokens, i, "(", qs);
+      i++;
+
+      bool distinct = false;
+      if (i < tokens.length && tokens[i].toUpperCase() == "DISTINCT") {
+        distinct = true;
+        i++;
+      }
+      if (i >= tokens.length) {
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.parse_aggregates.missing_argument",
+          "The QuerySentence $qs cannot be compiled. ${function.sqlName} is missing its argument.",
+        );
+      }
+      final argument = tokens[i];
+      i++;
+      _expectToken(tokens, i, ")", qs);
+      i++;
+      _expectToken(tokens, i, "AS", qs);
+      i++;
+      if (i >= tokens.length) {
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.parse_aggregates.missing_alias",
+          "The QuerySentence $qs cannot be compiled. ${function.sqlName} is missing the alias after AS.",
+        );
+      }
+      final alias = tokens[i];
+      i++;
+
+      aggregates.add(
+        argument == "*"
+            ? _createCountAll(function, distinct, alias, qs)
+            : _createAggregate(function, argument, distinct, alias, qs),
+      );
+    }
+    return aggregates;
+  }
+
+  TomAggregateFunction _aggregateFunction(String token, String qs) {
+    for (final function in TomAggregateFunction.values) {
+      if (function.sqlName == token.toUpperCase()) return function;
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.parse_aggregates.unknown_function",
+      "The QuerySentence $qs cannot be compiled. [$token] is not an aggregate function "
+          "(${TomAggregateFunction.values.map((f) => f.sqlName).join(', ')}).",
+    );
+  }
+
+  void _expectToken(List<String> tokens, int at, String expected, String qs) {
+    if (at < tokens.length && tokens[at].toUpperCase() == expected) return;
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.parse_aggregates.unexpected_token",
+      "The QuerySentence $qs cannot be compiled. Expected [$expected] in the aggregate "
+          "projection but found [${at < tokens.length ? tokens[at] : '<end of sentence>'}].",
+    );
+  }
+
+  TomAggregate _createCountAll(
+    TomAggregateFunction function,
+    bool distinct,
+    String alias,
+    String qs,
+  ) {
+    // `*` is not an expression, so there is nothing to sum, average, or order:
+    // only COUNT can take it, and DISTINCT has no operand to de-duplicate.
+    if (function != TomAggregateFunction.count || distinct) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.parse_aggregates.star_only_for_count",
+        "The QuerySentence $qs cannot be compiled. `*` is only valid as the argument of a plain COUNT.",
+      );
+    }
+    return countAll(alias);
+  }
+
+  TomAggregate _createAggregate(
+    TomAggregateFunction function,
+    String field,
+    bool distinct,
+    String alias,
+    String qs,
+  ) {
+    final operand = _createColumn(determineColumn(field), field);
+    switch (function) {
+      case TomAggregateFunction.count:
+        return countOf(operand, alias, distinct: distinct);
+      case TomAggregateFunction.sum:
+        return sum(operand, alias, distinct: distinct);
+      case TomAggregateFunction.avg:
+        return avg(operand, alias, distinct: distinct);
+      case TomAggregateFunction.min:
+      case TomAggregateFunction.max:
+        // MIN/MAX preserve the operand's type on both sides, so the node has to
+        // be picked by the column's type rather than by the function alone.
+        if (distinct) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.parse_aggregates.distinct_not_supported",
+            "The QuerySentence $qs cannot be compiled. DISTINCT is meaningless for "
+                "${function.sqlName} — the extreme of a set is the extreme of its distinct values.",
+          );
+        }
+        final isMin = function == TomAggregateFunction.min;
+        switch (operand) {
+          case IntCol():
+            return isMin ? minInt(operand, alias) : maxInt(operand, alias);
+          case DoubleCol():
+            return isMin ? minDouble(operand, alias) : maxDouble(operand, alias);
+          case StringCol():
+            return isMin ? minText(operand, alias) : maxText(operand, alias);
+          case DateTimeCol():
+            return isMin
+                ? minDateTime(operand, alias)
+                : maxDateTime(operand, alias);
+          case DateCol():
+            return isMin
+                ? Min<TomDbDate, DateTime>(operand, alias)
+                : Max<TomDbDate, DateTime>(operand, alias);
+        }
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.parse_aggregates.unsupported_min_max_column",
+          "The QuerySentence $qs cannot be compiled. ${function.sqlName} is not supported "
+              "for column [$field] of type ${operand.runtimeType}.",
+        );
     }
   }
 
@@ -882,6 +1144,21 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     return (currentOperation, index);
   }
 
+  /// Returns [current] as the left operand of a comparison, or throws.
+  ///
+  /// A valid operand is a column reference — or, inside a `having` clause, one
+  /// of the projected aggregates: `HAVING COUNT(*) > 3` compares a *group's*
+  /// value, so the operand there is an aggregate rather than a column. [key]
+  /// and [message] identify the operator so the failure names it.
+  TomOperator _requireComparisonOperand(
+    TomOperator? current,
+    String key,
+    String message,
+  ) {
+    if (current is DbCol || current is TomAggregate) return current!;
+    throw TomQuerySyntaxException(key, message);
+  }
+
   (TomOperator<QT>, int) _buildExpression<QT>(
     List<String> qp,
     String qs, [
@@ -897,13 +1174,18 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       if (qp[i].startsWith(r"$") ||
           qp[i].startsWith(r":") ||
           qp[i].startsWith(r"@")) {
-        if (column == null) {
+        if (column == null && current is! TomAggregate) {
           throw TomQuerySyntaxException(
             "query_sentence_compiler.build_expression.parameter_without_column",
             "Reached parameter before a column had been determined.",
           );
         }
-        currentOperation = _createParameter<QT>(column, qp[i].substring(1));
+        // Against an aggregate there is no column to take the type from — but
+        // the caller already dispatched on the aggregate's SQL type, so [QT]
+        // *is* the parameter's type (`HAVING n > :minCount` → `TomDbInt`).
+        currentOperation = column == null
+            ? Parameter<QT>(qp[i].substring(1))
+            : _createParameter<QT>(column, qp[i].substring(1));
         //i++;
         index = i;
         break;
@@ -1099,79 +1381,73 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         i = index;
         break;
       } else if (qp[i].toUpperCase() == "=") {
-        if (current == null || current is! DbCol) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.eq_without_column",
-            "= without a column",
-          );
-        }
+        final operand = _requireComparisonOperand(
+          current,
+          "query_sentence_compiler.build_expression.eq_without_column",
+          "= without a column",
+        );
         if (QT != TomDbBool) {
           throw TomQuerySyntaxException(
             "query_sentence_compiler.build_expression.eq_invalid_type_expected",
             "= is always for type bool, but the required type is $QT",
           );
         }
-        var (operator, indx) = _createEq(qp, qs, i + 1, column, current);
+        var (operator, indx) = _createEq(qp, qs, i + 1, column, operand);
         currentOperation = operator as TomOperator<QT>;
         i = indx;
         index = i;
         break;
       } else if (qp[i].toUpperCase() == "<>") {
-        if (current == null || current is! DbCol) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.neq_without_column",
-            "<> without a column",
-          );
-        }
-        var (operator, indx) = _createNeq(qp, qs, i + 1, column, current);
+        final operand = _requireComparisonOperand(
+          current,
+          "query_sentence_compiler.build_expression.neq_without_column",
+          "<> without a column",
+        );
+        var (operator, indx) = _createNeq(qp, qs, i + 1, column, operand);
         currentOperation = operator as TomOperator<QT>;
         i = indx;
         index = i;
         break;
       } else if (qp[i].toUpperCase() == "<=") {
-        if (current == null || current is! DbCol) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.lte_without_column",
-            "<= without a column",
-          );
-        }
-        var (operator, indx) = _createLte(qp, qs, i + 1, column, current);
+        final operand = _requireComparisonOperand(
+          current,
+          "query_sentence_compiler.build_expression.lte_without_column",
+          "<= without a column",
+        );
+        var (operator, indx) = _createLte(qp, qs, i + 1, column, operand);
         currentOperation = operator as TomOperator<QT>;
         i = indx;
         index = i;
         break;
       } else if (qp[i].toUpperCase() == "<") {
-        if (current == null || current is! DbCol) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.lt_without_column",
-            "< without a column",
-          );
-        }
-        var (operator, indx) = _createLt(qp, qs, i + 1, column, current);
+        final operand = _requireComparisonOperand(
+          current,
+          "query_sentence_compiler.build_expression.lt_without_column",
+          "< without a column",
+        );
+        var (operator, indx) = _createLt(qp, qs, i + 1, column, operand);
         currentOperation = operator as TomOperator<QT>;
         i = indx;
         index = i;
         break;
       } else if (qp[i].toUpperCase() == ">=") {
-        if (current == null || current is! DbCol) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.gte_without_column",
-            ">= without a column",
-          );
-        }
-        var (operator, indx) = _createGte(qp, qs, i + 1, column, current);
+        final operand = _requireComparisonOperand(
+          current,
+          "query_sentence_compiler.build_expression.gte_without_column",
+          ">= without a column",
+        );
+        var (operator, indx) = _createGte(qp, qs, i + 1, column, operand);
         currentOperation = operator as TomOperator<QT>;
         i = indx;
         index = i;
         break;
       } else if (qp[i].toUpperCase() == ">") {
-        if (current == null || current is! DbCol) {
-          throw TomQuerySyntaxException(
-            "query_sentence_compiler.build_expression.gt_without_column",
-            "> without a column",
-          );
-        }
-        var (operator, indx) = _createGt(qp, qs, i + 1, column, current);
+        final operand = _requireComparisonOperand(
+          current,
+          "query_sentence_compiler.build_expression.gt_without_column",
+          "> without a column",
+        );
+        var (operator, indx) = _createGt(qp, qs, i + 1, column, operand);
         currentOperation = operator as TomOperator<QT>;
         i = indx;
         index = i;
@@ -1286,6 +1562,26 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         // i++;
         index = i;
         break;
+      } else if (_aliasOperands.containsKey(qp[i])) {
+        // A `having` operand: the token names one of the projected aggregates,
+        // so the comparison that follows is built against that node instead of
+        // against a column — and carries no column, because a group's value
+        // has none.
+        final aggregate = _aliasOperands[qp[i]]!;
+        var (operator, indx) = _buildExpression<TomDbBool>(
+          qp,
+          qs,
+          i + 1,
+          null,
+          aggregate,
+        );
+        currentOperation = operator as TomOperator<QT>;
+        if (inNegationMode) {
+          currentOperation =
+              not(currentOperation as TomOperator<TomDbBool>)
+                  as TomOperator<QT>;
+        }
+        return (currentOperation, indx);
       } else {
         if (column == null) {
           column = determineColumn(qp[i]);
