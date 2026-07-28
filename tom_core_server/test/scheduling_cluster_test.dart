@@ -1,7 +1,7 @@
 /// Connection-free tests for the cluster hardening of the relational scheduler
 /// (CSEXC2).
 ///
-/// Three questions, none of which a live database can be made to ask reliably:
+/// Five questions, none of which a live database can be made to ask reliably:
 ///
 ///  * **the ambiguous commit** — what a node does when the answer to its claim
 ///    is lost rather than negative. Reproducing it against a real server means
@@ -13,7 +13,13 @@
 ///    peers of its own outage;
 ///  * **opt-in recovery** — which of two `UPDATE`s the store issues for an
 ///    interrupted run. The behaviour is in the choice, and the choice is
-///    visible in the statement.
+///    visible in the statement;
+///  * **the roll call as an accelerator** — that a roll call which is *itself*
+///    broken cannot break recovery. A live server can be stopped, but it cannot
+///    be asked to fail one of the four roll-call calls and answer the other
+///    three; a throwing collaborator can;
+///  * **the wiring guards** — the named-data-source lookups and the payload
+///    encoder, all of which refuse before any statement is issued.
 ///
 /// The round trips these decisions ride on — that `started_at` survives the
 /// column, that the roll-call table really is one row per node — are asserted
@@ -129,6 +135,54 @@ Object _serverFailure([int code = 1213]) => TomException(
       'ExecuteCommand failed',
       rootException: MySQLServerException('deadlock found', code),
     );
+
+/// A roll call whose chosen calls throw instead of answering.
+///
+/// Each of the three methods [TomSqlJobStore.recoverAbandoned] touches can be
+/// made to fail on its own, because the property under test is that *any single*
+/// broken call still leaves recovery working — a stub that failed all three at
+/// once would prove only that the first guard exists.
+class _BrokenNodes extends TomSqlSchedulerNodes {
+  _BrokenNodes({
+    required TomDataSource datasource,
+    this.onCheckIn = false,
+    this.onFailedNodes = false,
+    this.onForget = false,
+    this.failed = const [],
+  }) : super(datasource, nodeId: 'node-here', createSchema: false);
+
+  /// Whether the liveness announcement fails.
+  final bool onCheckIn;
+
+  /// Whether reading the roll call fails.
+  final bool onFailedNodes;
+
+  /// Whether dropping a recovered peer from the roll call fails.
+  final bool onForget;
+
+  /// What [failedNodes] reports when it is not made to throw.
+  final List<TomSchedulerNode> failed;
+
+  /// The peers [forget] was asked to drop, in order.
+  final List<String> forgotten = [];
+
+  @override
+  Future<void> checkIn(DateTime now) async {
+    if (onCheckIn) throw StateError('roll call unreachable');
+  }
+
+  @override
+  Future<List<TomSchedulerNode>> failedNodes(DateTime now) async {
+    if (onFailedNodes) throw StateError('roll call unreadable');
+    return failed;
+  }
+
+  @override
+  Future<void> forget(String nodeId) async {
+    forgotten.add(nodeId);
+    if (onForget) throw StateError('roll call not writable');
+  }
+}
 
 void main() {
   final at = DateTime.utc(2026, 5, 1, 12);
@@ -485,6 +539,193 @@ void main() {
         await store.recoverAbandoned(later, const Duration(minutes: 15)),
         isEmpty,
       );
+    });
+  });
+
+  // =========================================================================
+  // GAP 4 — a broken roll call must not break recovery
+  // =========================================================================
+
+  /// The roll call is an accelerator: it finds a departed node's work within a
+  /// poll interval instead of a lease timeout, and names the node. Every one of
+  /// its calls is therefore expendable, and the assertion each test below makes
+  /// is not "the exception was swallowed" but "the lease-expiry recovery that
+  /// would have happened without a roll call at all still happens".
+  group('a roll call that is itself broken', () {
+    late _ScriptedDataSource datasource;
+    final later = at.add(const Duration(minutes: 30));
+
+    setUp(() => datasource = _ScriptedDataSource());
+
+    /// The one stale run every test here expects back, found by lease expiry.
+    void scriptStaleRun() {
+      datasource.queryAnswers.add([
+        _row(
+          scheduledFor: at,
+          state: TomJobRunState.running,
+          claimedBy: 'node-that-died',
+          claimedAt: at,
+        ),
+      ]);
+    }
+
+    /// Runs recovery over a store wired to [nodes] and returns what came back.
+    Future<List<TomJobRun>> recoverWith(_BrokenNodes nodes) =>
+        TomSqlJobStore(datasource, createSchema: false, nodes: nodes)
+            .recoverAbandoned(later, const Duration(minutes: 15));
+
+    test('a check-in that throws still leaves the run recovered', () async {
+      // The first roll-call call on the pass, and the one whose failure is most
+      // tempting to let through: it is this node's own liveness, so a failure
+      // here says something true and alarming. It still may not propagate —
+      // the pass that announces liveness is the same pass that recovers work,
+      // and losing the second to the first is the outcome the roll call exists
+      // to avoid.
+      scriptStaleRun();
+
+      final recovered = await recoverWith(
+        _BrokenNodes(datasource: datasource, onCheckIn: true),
+      );
+
+      expect(recovered.single.id, 'run-1');
+      expect(recovered.single.state, TomJobRunState.pending);
+    });
+
+    test('a roll call that cannot be read still leaves the run recovered',
+        () async {
+      scriptStaleRun();
+
+      final recovered = await recoverWith(
+        _BrokenNodes(datasource: datasource, onFailedNodes: true),
+      );
+
+      expect(recovered.single.id, 'run-1');
+      expect(recovered.single.state, TomJobRunState.pending);
+      expect(datasource.queries, hasLength(1),
+          reason: 'an unreadable roll call names no peer, so no peer is read');
+    });
+
+    test('a peer whose work cannot be read is left to lease expiry', () async {
+      // The roll call named a failed peer, but the follow-up read of that
+      // peer's rows failed. The peer's *own* work is then unrecoverable on this
+      // pass — but the runs the lease timeout already found must still come
+      // back, and the next pass will try the peer again.
+      scriptStaleRun();
+      datasource.queryAnswers.add(StateError('peer read failed'));
+
+      final recovered = await recoverWith(
+        _BrokenNodes(
+          datasource: datasource,
+          failed: [
+            TomSchedulerNode(
+              nodeId: 'node-b',
+              checkinAt: at,
+              checkinInterval: const Duration(seconds: 30),
+            ),
+          ],
+        ),
+      );
+
+      expect(recovered.single.id, 'run-1');
+      expect(datasource.queries, hasLength(2),
+          reason: 'the peer was asked about before the read failed');
+    });
+
+    test('a peer that cannot be forgotten is still recovered from', () async {
+      // The last call on the pass, after the work is already in hand. Letting
+      // it through would discard a completed recovery over a bookkeeping
+      // failure whose only consequence is that the same peer is reported again
+      // next pass.
+      scriptStaleRun();
+      datasource.queryAnswers.add(<TomJobRunRow>[]);
+
+      final nodes = _BrokenNodes(
+        datasource: datasource,
+        onForget: true,
+        failed: [
+          TomSchedulerNode(
+            nodeId: 'node-b',
+            checkinAt: at,
+            checkinInterval: const Duration(seconds: 30),
+          ),
+        ],
+      );
+      final recovered = await recoverWith(nodes);
+
+      expect(recovered.single.id, 'run-1');
+      expect(nodes.forgotten, ['node-b']);
+    });
+  });
+
+  // =========================================================================
+  // GAP 5 — the wiring guards, which refuse before any statement
+  // =========================================================================
+
+  group('wiring that cannot work is refused up front', () {
+    /// Matches the exception a named-data-source lookup raises for [key].
+    Matcher refusesDatasource(String key) => throwsA(
+          isA<TomServerException>()
+              .having((e) => e.key, 'key', key)
+              .having(
+                (e) => e.parameters?['datasource'],
+                'datasource',
+                'no-such-datasource',
+              ),
+        );
+
+    test('the job store refuses an unregistered data source', () {
+      expect(
+        () => TomSqlJobStore.named('no-such-datasource'),
+        refusesDatasource('scheduling.store.unknown_datasource'),
+      );
+    });
+
+    test('the lease lock refuses an unregistered data source', () {
+      expect(
+        () => TomSqlLeaseLock.named('no-such-datasource'),
+        refusesDatasource('scheduling.lock.unknown_datasource'),
+      );
+    });
+
+    test('the roll call refuses an unregistered data source', () {
+      expect(
+        () => TomSqlSchedulerNodes.named('no-such-datasource', nodeId: 'node-a'),
+        refusesDatasource('scheduling.nodes.unknown_datasource'),
+      );
+    });
+
+    test('a payload that is not JSON-encodable is refused before any statement',
+        () async {
+      // The encode happens while the bind map is being built, which is before
+      // `executeCommand` is called — so the queue never sees a row it would
+      // have to read back as unparseable. The scripted source proves it: it
+      // records every statement, and records none.
+      final datasource = _ScriptedDataSource();
+      final store = TomSqlJobStore(datasource, createSchema: false);
+
+      await expectLater(
+        store.enqueue(
+          TomJobRun(
+            id: 'run-9',
+            jobName: 'export',
+            scheduledFor: at,
+            runAt: at,
+            payload: {'sink': Socket},
+          ),
+        ),
+        throwsA(
+          isA<TomServerException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'scheduling.store.unserialisable_payload',
+              )
+              .having((e) => e.parameters?['job'], 'job', 'export')
+              .having((e) => e.parameters?['run'], 'run', 'run-9'),
+        ),
+      );
+
+      expect(datasource.commands, isEmpty);
     });
   });
 }

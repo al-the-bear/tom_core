@@ -145,6 +145,47 @@ class _FakeAdaptor implements Tom2FAService {
   }
 }
 
+/// One candidate for the adaptor scan, standing in for a reflected class.
+///
+/// A hand-built mirror rather than a reflected fixture class, because the scan
+/// is automatic: a class annotated `@Tom2FAAdaptor` that cannot be used would
+/// be found by every other test in this process the first time it looked a
+/// mechanism up. Only [metadata], [newInstance] and the name the failure
+/// messages interpolate are needed; [noSuchMethod] makes anything else a loud
+/// test bug rather than a silent `null`.
+class _CandidateMirror implements ClassMirror<Object> {
+  _CandidateMirror(
+    this._name, {
+    required List<Object> metadata,
+    required Object Function() instantiate,
+  })  : _metadata = metadata,
+        _instantiate = instantiate;
+
+  final String _name;
+  final List<Object> _metadata;
+  final Object Function() _instantiate;
+
+  @override
+  List<Object> get metadata => _metadata;
+
+  @override
+  Object newInstance(
+    String constructorName,
+    List<dynamic> positionalArguments, [
+    Map<Symbol, dynamic> namedArguments = const {},
+  ]) =>
+      _instantiate();
+
+  @override
+  String toString() => _name;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
+        'The candidate mirror was asked for ${invocation.memberName}, which '
+        'the adaptor scan does not use. Implement it here if that changes.',
+      );
+}
+
 /// The JWT registered claims, the validity window and the encrypted blob — all
 /// of which differ between two tokens minted a moment apart for reasons that
 /// have nothing to do with 2FA.
@@ -240,6 +281,131 @@ void main() {
         isA<TomTotp2FAService>(),
       );
       expect(Tom2FARegistry.registeredTypes, contains('totp'));
+    });
+  });
+
+  // ===========================================================================
+  // WHAT THE SCAN REFUSES
+  // ===========================================================================
+
+  /// The scan validates each annotated class the moment it finds it, rather
+  /// than letting a bad adaptor become a login-time failure. What matters about
+  /// each refusal is not that it throws but that it *names the class* — the
+  /// scan runs at start-up with nothing else in the frame, so a message that
+  /// only said "an adaptor is unusable" would leave an operator grepping.
+  group('the adaptor scan', () {
+    setUp(Tom2FARegistry.reset);
+    tearDown(Tom2FARegistry.reset);
+
+    /// Asserts that scanning [candidate] alone fails with [key] and a message
+    /// that names the candidate.
+    void expectScanFailure(_CandidateMirror candidate, String key) {
+      expect(
+        () => Tom2FARegistry.registerAnnotated([candidate]),
+        throwsA(
+          isA<Tom2FAException>().having((e) => e.key, 'key', key).having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('$candidate'),
+              ),
+        ),
+      );
+    }
+
+    test('registers a well-formed candidate', () {
+      final adaptor = _FakeAdaptor();
+      Tom2FARegistry.registerAnnotated([
+        _CandidateMirror(
+          'GoodAdaptor',
+          metadata: const [Tom2FAAdaptor('carrier-pigeon')],
+          instantiate: () => adaptor,
+        ),
+      ]);
+      expect(identical(Tom2FARegistry.lookup('carrier-pigeon'), adaptor), isTrue);
+    });
+
+    test('ignores a class with no @Tom2FAAdaptor annotation', () {
+      // The candidate set is the whole reflected program, so most of it is not
+      // an adaptor and must be walked past without being constructed — the scan
+      // may not instantiate arbitrary classes to find out what they are.
+      expect(
+        () => Tom2FARegistry.registerAnnotated([
+          _CandidateMirror(
+            'OrdinaryClass',
+            metadata: const [],
+            instantiate: () => fail('an unannotated class must not be built'),
+          ),
+        ]),
+        returnsNormally,
+      );
+    });
+
+    test('refuses an adaptor that cannot be constructed', () {
+      expectScanFailure(
+        _CandidateMirror(
+          'NeedsCollaboratorsAdaptor',
+          metadata: const [Tom2FAAdaptor('sms')],
+          instantiate: () => throw StateError('no no-argument constructor'),
+        ),
+        'authentication.2fa.adaptor_instantiation_failed',
+      );
+    });
+
+    test('refuses an adaptor that does not implement the service', () {
+      expectScanFailure(
+        _CandidateMirror(
+          'NotAnAdaptor',
+          metadata: const [Tom2FAAdaptor('sms')],
+          instantiate: Object.new,
+        ),
+        'authentication.2fa.adaptor_does_not_implement_service',
+      );
+    });
+
+    test('the mechanism the bad adaptor claimed is named too', () {
+      // Both halves of the wiring are in the message: which class, and which
+      // mechanism it was going to answer for. The second is what tells an
+      // operator whether the login that stopped working is this one.
+      expect(
+        () => Tom2FARegistry.registerAnnotated([
+          _CandidateMirror(
+            'NotAnAdaptor',
+            metadata: const [Tom2FAAdaptor('sms')],
+            instantiate: Object.new,
+          ),
+        ]),
+        throwsA(
+          isA<Tom2FAException>()
+              .having((e) => e.defaultUserMessage, 'message', contains('"sms"')),
+        ),
+      );
+    });
+
+    test('the scan stops at the first unusable candidate', () {
+      // Carrying on past a broken adaptor is the tempting kindness that must
+      // not be offered: it would turn a start-up wiring error into a login-time
+      // one for whichever mechanism the operator did not test that day.
+      var reached = false;
+      expect(
+        () => Tom2FARegistry.registerAnnotated([
+          _CandidateMirror(
+            'NotAnAdaptor',
+            metadata: const [Tom2FAAdaptor('sms')],
+            instantiate: Object.new,
+          ),
+          _CandidateMirror(
+            'GoodAdaptor',
+            metadata: const [Tom2FAAdaptor('carrier-pigeon')],
+            instantiate: () {
+              reached = true;
+              return _FakeAdaptor();
+            },
+          ),
+        ]),
+        throwsA(isA<Tom2FAException>()),
+      );
+      expect(reached, isFalse);
+      expect(Tom2FARegistry.lookup('carrier-pigeon'), isNull);
     });
   });
 

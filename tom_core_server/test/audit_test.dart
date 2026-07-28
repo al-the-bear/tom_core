@@ -479,7 +479,69 @@ void main() {
       // damage the chain exists to reveal.
       expect(
         () => parseAuditLines(['{not json']),
-        throwsA(isA<TomAuditException>()),
+        throwsA(
+          isA<TomAuditException>()
+              .having((e) => e.key, 'key', 'audit.parse.malformed_line'),
+        ),
+      );
+    });
+
+    test('a damaged line is reported by its number in the file', () {
+      // Which line is the whole value of the message: the operator's next step
+      // is to look at the storage, and "somewhere in this trail" is not a
+      // starting point. Blanks are skipped but still counted, so the number
+      // matches what an editor shows.
+      final good = TomAuditEntry.chain(
+        _record('r1'),
+        tomAuditGenesisHash,
+        index: 0,
+      ).toJsonLine();
+      expect(
+        () => parseAuditLines([good, '', '{not json']),
+        throwsA(
+          isA<TomAuditException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            contains('line 3'),
+          ),
+        ),
+      );
+    });
+
+    test('an entry with no chain index is rejected rather than defaulted', () {
+      // Defaulting the index would mean guessing the entry's position, and a
+      // guessed position is exactly what anchor verification is built on: it
+      // would turn a truncated trail into a merely short one, which is the one
+      // damage the chain exists to make visible.
+      final complete = jsonDecode(
+        TomAuditEntry.chain(_record('r1'), tomAuditGenesisHash, index: 7)
+            .toJsonLine(),
+      ) as Map;
+
+      for (final broken in <Object?>[null, '7', 7.5]) {
+        final json = complete.cast<String, Object?>();
+        json['index'] = broken;
+        expect(
+          () => TomAuditEntry.fromJson(json),
+          throwsA(
+            isA<TomAuditException>()
+                .having((e) => e.key, 'key', 'audit.entry.missing_index'),
+          ),
+          reason: 'index: $broken',
+        );
+      }
+    });
+
+    test('a line whose entry has no index is a malformed line', () {
+      // The two guards compose: the entry-level refusal reaches the caller
+      // wrapped as the parse failure, so a trail read never has to distinguish
+      // "unreadable JSON" from "readable JSON that is not an entry".
+      expect(
+        () => parseAuditLines(['{"record":{},"hash":"h"}']),
+        throwsA(
+          isA<TomAuditException>()
+              .having((e) => e.key, 'key', 'audit.parse.malformed_line'),
+        ),
       );
     });
   });

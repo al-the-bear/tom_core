@@ -298,7 +298,25 @@ class Tom2FARegistry {
       // that the login turns into `login.error.2fa.unsupported-mechanism`.
       return;
     }
+    registerAnnotated(candidates);
+  }
 
+  /// Registers every class in [candidates] that carries a [Tom2FAAdaptor]
+  /// annotation.
+  ///
+  /// The automatic scan hands this the reflection registry's own class list.
+  /// It is separate from that scan because a candidate set is not always the
+  /// whole program: a deployment that composes its adaptors from a chosen set
+  /// of libraries supplies its own, and the tests for the two malformed cases
+  /// below must supply theirs — a class annotated `@Tom2FAAdaptor` but unusable
+  /// cannot live in a reflected library, because the automatic scan would then
+  /// reach it from every other test in the process.
+  ///
+  /// Throws [Tom2FAException] on the first unusable candidate, naming it. A
+  /// half-registered registry is not offered as an alternative: an adaptor set
+  /// that is wrong is wrong at start-up, not at the login that happens to need
+  /// the missing mechanism.
+  static void registerAnnotated(Iterable<ClassMirror> candidates) {
     for (var candidate in candidates) {
       final annotations = candidate.metadata.whereType<Tom2FAAdaptor>();
       if (annotations.isEmpty) continue;

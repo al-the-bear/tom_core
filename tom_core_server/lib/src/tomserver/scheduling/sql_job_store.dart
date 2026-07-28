@@ -504,8 +504,18 @@ class TomSqlJobStore implements TomJobStore {
     await ensureSchema();
     // This node's own liveness, announced on the same pass that judges everyone
     // else's — so a node that stops recovering also stops claiming to be alive,
-    // and the two facts cannot drift apart.
-    await nodes?.checkIn(now);
+    // and the two facts cannot drift apart. Failing to announce it is swallowed
+    // like every other roll-call failure: the invariant holds either way — a
+    // pass that could not check in also did not renew this node's claim to be
+    // alive — whereas propagating would let the accelerator abort the recovery
+    // it exists to speed up.
+    try {
+      await nodes?.checkIn(now);
+    } catch (error) {
+      tomLog.warn('TomSqlJobStore: could not announce this node in the '
+          'scheduler roll call; peers will judge it by its last check-in. '
+          'Cause: $error');
+    }
 
     final cutoff = now.subtract(leaseTimeout);
     // `claimed_at IS NULL` counts as abandoned: a `running` row with no lease

@@ -543,6 +543,70 @@ void main() {
       expect(abort.url.queryParameters['uploadId'], 'upload-9');
     });
 
+    // The two ways an object store can answer a multipart request with a 200
+    // and still not have done the job. Both are protocol violations rather than
+    // transport failures, so nothing below the store will catch them — and both
+    // are silently survivable if unchecked: an upload with no id would address
+    // its parts to `uploadId=null`, and a part with no ETag would be omitted
+    // from the completion manifest, truncating the object without an error.
+    test('an initiate response with no upload id is refused', () async {
+      final store = _s3((request) async {
+        if (request.method == 'POST' && request.url.query.contains('uploads')) {
+          // A well-formed envelope; the one element that matters is absent.
+          return http.Response(
+            '<InitiateMultipartUploadResult><Bucket>examplebucket</Bucket>'
+            '</InitiateMultipartUploadResult>',
+            200,
+          );
+        }
+        return http.Response('', 200, headers: {'etag': '"etag-x"'});
+      });
+
+      const mib = 1024 * 1024;
+      await expectLater(
+        store.put(
+          key: 'big.bin',
+          bytes: Stream.fromIterable([for (var i = 0; i < 6; i++) _bytes(mib)]),
+        ),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.s3.no_upload_id')
+              .having((e) => e.parameters?['key'], 'key parameter', 'big.bin'),
+        ),
+      );
+    });
+
+    test('a part the store did not acknowledge with an ETag is refused',
+        () async {
+      final requests = <http.Request>[];
+      final store = _s3((request) async {
+        requests.add(request);
+        if (request.method == 'POST' && request.url.query.contains('uploads')) {
+          return http.Response('<UploadId>upload-3</UploadId>', 200);
+        }
+        // 200, no `etag` header: accepted, unidentifiable, uncompletable.
+        return http.Response('', 200);
+      });
+
+      const mib = 1024 * 1024;
+      await expectLater(
+        store.put(
+          key: 'big.bin',
+          bytes: Stream.fromIterable([for (var i = 0; i < 6; i++) _bytes(mib)]),
+        ),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.s3.part_without_etag')
+              .having((e) => e.parameters?['partNumber'], 'partNumber', 1),
+        ),
+      );
+
+      // The failure travels the same abort path as any other mid-upload
+      // failure, so the bucket is not left paying for an orphaned upload.
+      expect(requests.last.method, 'DELETE');
+      expect(requests.last.url.queryParameters['uploadId'], 'upload-3');
+    });
+
     test('get streams the body and translates a 404', () async {
       final store = _s3((request) async {
         if (request.url.path.endsWith('missing.txt')) {

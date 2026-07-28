@@ -128,8 +128,59 @@ void main() {
     test('a malformed anchor is rejected rather than defaulted', () {
       expect(
         () => TomAuditAnchor.fromJson({'writer': 'node-a'}),
-        throwsA(isA<TomAuditException>()),
+        throwsA(
+          isA<TomAuditException>()
+              .having((e) => e.key, 'key', 'audit.anchor.malformed'),
+        ),
       );
+    });
+
+    test('every load-bearing anchor field is required, one at a time', () {
+      // An anchor is the external witness the trail is checked against, so a
+      // defaulted field here does not degrade a check — it fabricates one. Each
+      // field is dropped on its own, because a guard that only fires when the
+      // whole object is absent is not a guard on the field.
+      final complete = jsonDecode(
+        _anchorAt(_chain(2)).toJsonLine(),
+      ) as Map<String, Object?>;
+
+      for (final field in const [
+        'writer',
+        'entryCount',
+        'headHash',
+        'createdAt',
+      ]) {
+        expect(
+          () => TomAuditAnchor.fromJson(
+            Map<String, Object?>.from(complete)..remove(field),
+          ),
+          throwsA(
+            isA<TomAuditException>()
+                .having((e) => e.key, 'key', 'audit.anchor.malformed'),
+          ),
+          reason: 'without $field',
+        );
+      }
+    });
+
+    test('an entry count that is not a count is refused, not coerced', () {
+      // JSON has one number type, so a producer that wrote 2.0 — or the string
+      // "2" — is close enough to look right and wrong enough to make the
+      // comparison against a real chain length meaningless.
+      for (final wrong in <Object?>['2', 2.5]) {
+        expect(
+          () => TomAuditAnchor.fromJson(
+            Map<String, Object?>.from(
+              jsonDecode(_anchorAt(_chain(2)).toJsonLine()) as Map,
+            )..['entryCount'] = wrong,
+          ),
+          throwsA(
+            isA<TomAuditException>()
+                .having((e) => e.key, 'key', 'audit.anchor.malformed'),
+          ),
+          reason: 'entryCount: $wrong',
+        );
+      }
     });
 
     test('the key id is inside what the signature covers', () {
