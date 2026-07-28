@@ -33,7 +33,7 @@ Cupertino sibling changes the rendering without touching the model.
 | ------ | ---- | ------- |
 | `TomForm<T extends TomClass>` | abstract model | Owns fields and the bind/save/discard/validate lifecycle; is a `TomScreenElementsProvider`, `TomActionController`, and `TomFormEventSource`. |
 | `TomField<T>` | abstract model | A single value with dirty tracking (`get`/`set`/`commit`/`reset`), validation state, and 5-layer authorization; renders via its `widget` getter. |
-| `Validators` | static factory | Built-in `required`/`email`/`minLength`/`maxLength`/`pattern`/`min`/`max`/`compose` rules. |
+| `Validators` | static factory | Built-in `required`/`email`/`minLength`/`maxLength`/`pattern`/`min`/`max`/`minItems`/`maxItems`/`compose` rules. |
 | `ValidationResult` | sealed | `ValidationPristine` / `ValidationSuccess` / `ValidationError` / `ValidationPending`. |
 | `FormValidationError` | value | A cross-field error spanning several `TomField`s. |
 | `SelectableItem<T>` / `TomSelectableSource<T>` | value / interface | Items for selection fields; `StaticSelectableSource` is the fixed-list implementation. |
@@ -82,6 +82,22 @@ final rule = Validators.compose<String>([
 ]);
 final result = await rule('ab'); // ValidationError('error.minLength', {min: 3})
 ```
+
+`minItems` / `maxItems` bound the *size* of a collection rather than a value,
+which is how a multi-select field expresses its selection count — the rules are
+typed over `Iterable<Object?>` so they drop straight into a
+`TomField<List<String>>` or `TomField<List<int>>`:
+
+```dart
+final toppings = TomFormStringFilterChips('toppings', const [], source: …,
+    validators: [Validators.minItems(2), Validators.maxItems(3)]);
+```
+
+Rules can also be named rather than constructed: `TomValidatorRegistry`
+resolves a comma-separated declaration (`'required, minLength:8'`,
+`'minItems:2, maxItems:3'`) read from the field's `<basePath>.validators`
+resource, so a form's constraints are localisable and editable without a
+rebuild. Applications register their own rules by name with `register`.
 
 Results are a `sealed` family: `ValidationPristine` (never validated),
 `ValidationSuccess`, `ValidationError(errorKey, {params})`, and
@@ -153,6 +169,19 @@ Factory methods cover strings, numerics (int/double, nullable variants),
 boolean switches, date/time pickers, enum/object pickers, search/lookup, and
 file upload. `FormFieldFamily.material` / `.cupertino` are const singletons;
 `isCupertino` reports which side a family resolves to.
+
+### Tristate booleans
+
+`TomFormBoolField` binds a `bool`, so it cannot express "not answered" —
+that is a value-type limit, not a missing option. `TomFormNullableBoolField`
+is the nullable sibling (`TomField<bool?>`, where `null` *is* the third
+state), with `TomFormNullableBoolCheckbox` rendering an indeterminate
+Material `Checkbox` and `TomCupertinoFormNullableBoolToggle` — Cupertino
+having no such control — rendering a three-segment Off / — / On slider.
+`family.nullableBoolToggle(…)` builds either. Its `tristate` flag (explicit
+override → `<basePath>.tristate` resource → `true`) decides whether the user
+can *reach* the third state; setting it to `false` keeps the nullable value
+while making the control two-state.
 
 ## File fields
 

@@ -37,6 +37,7 @@ export 'fields/tom_form_string_field.dart';
 export 'fields/tom_form_string_selection.dart';
 export 'fields/tom_form_string_list_field.dart';
 export 'fields/tom_form_bool_field.dart';
+export 'fields/tom_form_nullable_bool_field.dart';
 
 // Phase 2a — collections, master-detail, inline list editing
 export 'list/tom_list_form.dart';

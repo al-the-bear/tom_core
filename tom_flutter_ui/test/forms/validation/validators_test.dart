@@ -180,6 +180,85 @@ void main() {
       });
     });
 
+    // -----------------------------------------------------------------
+    // CSEXB1 — the CE-EL MultiChoice kind's selection bounds. The element
+    // declares minSelections/maxSelections; they desugar to these rules
+    // exactly as a numeric field's minValue desugars to min().
+    // -----------------------------------------------------------------
+
+    group('minItems()', () {
+      final validator = Validators.minItems(2);
+
+      test('returns success when the selection meets the minimum', () async {
+        expect(await validator(['a', 'b']), isA<ValidationSuccess>());
+        expect(await validator(['a', 'b', 'c']), isA<ValidationSuccess>());
+      });
+
+      test('returns error when too few items are selected', () async {
+        final result = await validator(['a']);
+        expect(result, isA<ValidationError>());
+        final error = result as ValidationError;
+        expect(error.errorKey, 'error.minItems');
+        expect(error.params, {'min': 2});
+      });
+
+      test('returns error for an empty selection', () async {
+        expect(await validator(const <String>[]), isA<ValidationError>());
+      });
+
+      test('minItems(0) accepts an empty selection', () async {
+        expect(
+          await Validators.minItems(0)(const <String>[]),
+          isA<ValidationSuccess>(),
+        );
+      });
+
+      test('is assignable to a typed list field validator', () async {
+        // Function contravariance: a Validator<Iterable<Object?>> stands in
+        // wherever a Validator<List<String>> is expected, which is what lets
+        // a list field declare it directly.
+        final Validator<List<String>> typed = Validators.minItems(2);
+        expect(await typed(['only-one']), isA<ValidationError>());
+        expect(await typed(['a', 'b']), isA<ValidationSuccess>());
+
+        final Validator<List<int>> typedInts = Validators.minItems(2);
+        expect(await typedInts([1]), isA<ValidationError>());
+      });
+    });
+
+    group('maxItems()', () {
+      final validator = Validators.maxItems(2);
+
+      test('returns success when the selection is within the maximum',
+          () async {
+        expect(await validator(const <String>[]), isA<ValidationSuccess>());
+        expect(await validator(['a']), isA<ValidationSuccess>());
+        expect(await validator(['a', 'b']), isA<ValidationSuccess>());
+      });
+
+      test('returns error when too many items are selected', () async {
+        final result = await validator(['a', 'b', 'c']);
+        expect(result, isA<ValidationError>());
+        final error = result as ValidationError;
+        expect(error.errorKey, 'error.maxItems');
+        expect(error.params, {'max': 2});
+      });
+    });
+
+    group('minItems() + maxItems() together', () {
+      test('compose into a closed selection range', () async {
+        final validator = Validators.compose<List<String>>([
+          Validators.minItems(2),
+          Validators.maxItems(3),
+        ]);
+
+        expect(await validator(['a']), isA<ValidationError>());
+        expect(await validator(['a', 'b']), isA<ValidationSuccess>());
+        expect(await validator(['a', 'b', 'c']), isA<ValidationSuccess>());
+        expect(await validator(['a', 'b', 'c', 'd']), isA<ValidationError>());
+      });
+    });
+
     group('compose()', () {
       test('returns success when all validators pass', () async {
         final validator = Validators.compose<String>([

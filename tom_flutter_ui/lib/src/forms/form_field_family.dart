@@ -49,6 +49,7 @@ import 'fields/tom_form_double_field.dart';
 import 'fields/tom_form_enum_object_fields.dart';
 import 'fields/tom_form_file_field.dart';
 import 'fields/tom_form_int_field.dart';
+import 'fields/tom_form_nullable_bool_field.dart';
 import 'fields/tom_form_nullable_inputs.dart';
 import 'fields/tom_form_search_lookup_fields.dart';
 import 'fields/tom_form_string_field.dart';
@@ -272,6 +273,53 @@ class FormFieldFamily {
     return TomFormBoolSwitch(
       tomId,
       initialValue,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Tristate boolean. Material renders an indeterminate `Checkbox`; the
+  /// Cupertino family, which has no such control, renders a three-segment
+  /// Off / — / On slider. Pass `tristate: false` to keep the nullable value
+  /// type while making the control two-state.
+  TomFormNullableBoolField nullableBoolToggle(
+    String tomId,
+    bool? initialValue, {
+    bool? tristate,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormNullableBoolToggle(
+        tomId,
+        initialValue,
+        tristateOverride: tristate,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormNullableBoolCheckbox(
+      tomId,
+      initialValue,
+      tristateOverride: tristate,
       labelTextOverride: labelTextOverride,
       descriptionTextOverride: descriptionTextOverride,
       form: form,

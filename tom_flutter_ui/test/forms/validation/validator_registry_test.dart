@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
+import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_list_field.dart';
+import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
+import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validator_registry.dart';
 
@@ -64,6 +67,8 @@ void main() {
       expect(registry.has('pattern'), isTrue);
       expect(registry.has('min'), isTrue);
       expect(registry.has('max'), isTrue);
+      expect(registry.has('minItems'), isTrue);
+      expect(registry.has('maxItems'), isTrue);
     });
 
     test('register adds a custom validator by name', () {
@@ -121,6 +126,28 @@ void main() {
     test('minLength with a non-integer argument throws', () {
       expect(
         () => TomValidatorRegistry().resolveSpec('minLength:x'),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    // CSEXB1 — the MultiChoice selection bounds are declarable by name, so a
+    // spec's minSelections/maxSelections reach a field through its resource
+    // bundle without any per-field constructor argument.
+    test('minItems enforces its integer argument on a selection', () async {
+      final v = TomValidatorRegistry().resolveSpec('minItems:2');
+      expect(await v(['a']), isA<ValidationError>());
+      expect(await v(['a', 'b']), isA<ValidationSuccess>());
+    });
+
+    test('maxItems enforces its integer argument on a selection', () async {
+      final v = TomValidatorRegistry().resolveSpec('maxItems:2');
+      expect(await v(['a', 'b', 'c']), isA<ValidationError>());
+      expect(await v(['a', 'b']), isA<ValidationSuccess>());
+    });
+
+    test('minItems with a non-integer argument throws', () {
+      expect(
+        () => TomValidatorRegistry().resolveSpec('minItems:many'),
         throwsA(isA<ArgumentError>()),
       );
     });
@@ -224,6 +251,45 @@ void main() {
       expect(await field.validate(), isA<ValidationError>());
       field.setValue('alice');
       expect(await field.validate(), isA<ValidationSuccess>());
+    });
+
+    test('a multi-choice field enforces resource-declared selection bounds',
+        () async {
+      // CSEXB1 done-bar: a spec declaring minSelections: 2 / maxSelections: 3
+      // on a MultiChoice element lands here — as a validator declaration on
+      // the field's resource bundle, with no per-field constructor argument.
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({
+          'toppings.validators': 'minItems:2,maxItems:3',
+          'error.minItems': 'Pick at least 2.',
+        }),
+      );
+      final field = TomFormStringFilterChips(
+        'toppings',
+        const ['cheese'],
+        source: StaticSelectableSource<String>(const [
+          SelectableItem(value: 'cheese', label: 'Cheese'),
+          SelectableItem(value: 'basil', label: 'Basil'),
+          SelectableItem(value: 'olives', label: 'Olives'),
+          SelectableItem(value: 'chilli', label: 'Chilli'),
+        ]),
+      );
+
+      // Below the lower bound.
+      final tooFew = await field.validate();
+      expect(tooFew, isA<ValidationError>());
+      expect((tooFew as ValidationError).errorKey, 'error.minItems');
+      expect(field.resolvedErrorMessage, 'Pick at least 2.');
+
+      // Inside the range.
+      field.setValue(const ['cheese', 'basil']);
+      expect(await field.validate(), isA<ValidationSuccess>());
+
+      // Above the upper bound.
+      field.setValue(const ['cheese', 'basil', 'olives', 'chilli']);
+      final tooMany = await field.validate();
+      expect(tooMany, isA<ValidationError>());
+      expect((tooMany as ValidationError).errorKey, 'error.maxItems');
     });
 
     test('code validators and resource validators both apply', () async {

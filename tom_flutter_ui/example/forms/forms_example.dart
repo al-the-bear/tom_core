@@ -12,7 +12,8 @@
 /// 4. the `FormFieldFamily` factory building Material vs Cupertino fields and
 ///    the shared `TomField` value/dirty/commit/reset contract,
 /// 5. a cross-field `FormValidationError`,
-/// 6. the responsive `TomBreakpoint` ladder and the anatomy placement enums.
+/// 6. the responsive `TomBreakpoint` ladder and the anatomy placement enums,
+/// 7. the tristate boolean field and the collection-size rules.
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
 /// barrel, run it under the Flutter toolchain, e.g.
@@ -115,6 +116,32 @@ Future<void> run() async {
   print('label placements: ${LabelPlacement.values}');
 
   // ---------------------------------------------------------------------------
+  // 7. Tristate booleans + collection-size rules
+  // ---------------------------------------------------------------------------
+  // A `TomFormBoolField` binds a `bool` and so has no way to say "not
+  // answered". The nullable sibling binds `bool?`, where `null` *is* the
+  // third state; `tristate` decides whether the user can reach it.
+  final answered = material.nullableBoolToggle('survey.optIn', null);
+  final unsetToTrue = answered.get();
+  answered.set(true);
+  print('optIn: initial=$unsetToTrue now=${answered.get()} '
+      'dirty=${answered.isDirty} tristate=${answered.tristate} '
+      'type=${answered.runtimeType}');
+
+  // minItems/maxItems bound the *size* of a selection rather than a value —
+  // this is how a multi-select expresses its selection count.
+  final toppingsRule = Validators.compose<List<String>>([
+    Validators.minItems(2),
+    Validators.maxItems(3),
+  ]);
+  final tooFew = await toppingsRule(['cheese']);
+  final justRight = await toppingsRule(['cheese', 'basil']);
+  final tooMany = await toppingsRule(['cheese', 'basil', 'olives', 'chilli']);
+  print('toppings 1 -> $tooFew');
+  print('toppings 2 -> $justRight');
+  print('toppings 4 -> $tooMany');
+
+  // ---------------------------------------------------------------------------
   // Assertions
   // ---------------------------------------------------------------------------
   assert(tooShort is ValidationError);
@@ -147,6 +174,16 @@ Future<void> run() async {
   assert(TomBreakpoint.resolve('mobile') == TomBreakpoint.mobile);
   assert(TomBreakpoint.resolve('watch') == null);
   assert(LabelPlacement.values.contains(LabelPlacement.floating));
+
+  // The third state is a real value, not an absent one.
+  assert(unsetToTrue == null);
+  assert(answered.get() == true);
+  assert(answered.isDirty == true);
+  assert(answered.tristate == true);
+
+  assert((tooFew as ValidationError).errorKey == 'error.minItems');
+  assert(justRight is ValidationSuccess);
+  assert((tooMany as ValidationError).errorKey == 'error.maxItems');
 }
 
 void main() => run();

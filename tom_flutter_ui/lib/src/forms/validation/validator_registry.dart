@@ -125,6 +125,14 @@ class TomValidatorRegistry {
     });
     register('min', (args) => _wrapNum(Validators.min(_numArg(args, 'min'))));
     register('max', (args) => _wrapNum(Validators.max(_numArg(args, 'max'))));
+    register(
+        'minItems',
+        (args) =>
+            _wrapIterable(Validators.minItems(_intArg(args, 'minItems'))));
+    register(
+        'maxItems',
+        (args) =>
+            _wrapIterable(Validators.maxItems(_intArg(args, 'maxItems'))));
   }
 
   /// Adapts a `Validator<String>` to `Validator<Object?>` by narrowing the
@@ -136,6 +144,12 @@ class TomValidatorRegistry {
   /// Adapts a `Validator<num>` to `Validator<Object?>` by narrowing the value.
   static Validator<Object?> _wrapNum(Validator<num> inner) =>
       (Object? value) => inner(value as num);
+
+  /// Adapts a collection validator to `Validator<Object?>`. Fields declaring
+  /// selection-count rules hold list values, so the cast is safe at the call
+  /// site.
+  static Validator<Object?> _wrapIterable(Validator<Iterable<Object?>> inner) =>
+      (Object? value) => inner(value as Iterable<Object?>);
 
   static int _intArg(List<String> args, String validatorName) {
     if (args.isEmpty) {
