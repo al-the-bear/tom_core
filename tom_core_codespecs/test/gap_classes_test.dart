@@ -107,7 +107,7 @@ void main() {
     });
   });
 
-  group('csm210-4-1: CE-EN TomDomainEnum', () {
+  group('csm210-4-1: domainEnum TomDomainEnum', () {
     test('defaults own their values list (no shared mutable list)', () {
       final a = TomDomainEnum();
       final b = TomDomainEnum();

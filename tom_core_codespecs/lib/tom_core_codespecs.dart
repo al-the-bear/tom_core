@@ -21,8 +21,8 @@
 /// land here as concrete classes: [TomClientApplication] (CE-CL),
 /// [TomClientConfiguration] (CE-CC), and [TomUserSettings] (CE-UP).
 ///
-/// **csm210-4-1 (wave-2 W10) — CE-EN domain enum.** The csm4 code-basis survey
-/// (`codespecs_mapping.md` §5) flagged CE-EN as a *gap*: `tom_core` has only
+/// **csm210-4-1 (wave-2 W10) — domain enums.** The csm4 code-basis survey
+/// (`codespecs_mapping.md` §5) flagged them as a *gap*: `tom_core` has only
 /// mechanical enums, no domain-enum framework. [TomDomainEnum] (+
 /// [TomDomainEnumValue]) is that thin holder — the class a `@CsEnum` CodeSpec is
 /// built on. CE-DB stays a *reuse* verdict: `@CsTable`/`@CsColumn`/`@CsRepository`

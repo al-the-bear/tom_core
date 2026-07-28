@@ -25,7 +25,8 @@ class TomDomainEnumValue {
   });
 }
 
-/// The domain-enum holder a CodeSpec's `@CsEnum` (CE-EN) is built on.
+/// The domain-enum holder a CodeSpec's `@CsEnum` (the `domainEnum` member
+/// kind) is built on.
 ///
 /// **Why this is a gap (csm4 survey `codespecs_mapping.md` §5, verdict
 /// *gap*).** `tom_core_kernel` carries only *mechanical* enums — `TomHttpMethod`,
@@ -39,10 +40,12 @@ class TomDomainEnumValue {
 /// class — never an abstract `Cs*` base (the framework carries annotations only,
 /// §0).
 ///
-/// A CodeSpec `@CsEnum` class *is a* `TomDomainEnum`. CE-EN is a *shared* part
-/// (`contract_annotations.dart`), so the domain enum lives in the shared project
-/// of the three-project output trio (§4.2) and is visible to both client and
-/// server.
+/// A CodeSpec `@CsEnum` class *is a* `TomDomainEnum`. `domainEnum` is a
+/// **member kind, not a part** (`codespecs_mapping.md` §4.1) — `@CsEnum` lives
+/// with the shared contract markers (`contract_annotations.dart`), so a domain
+/// enum referenced by a shared contract type lives in the shared project of the
+/// three-project output trio (§4.2) and is visible to both client and server;
+/// otherwise it lives in the project of the part that introduces it.
 class TomDomainEnum {
   /// Stable identifier of the enumeration (e.g. `order_status`).
   String enumId;

@@ -67,7 +67,7 @@ enum TomReportValueKind {
   /// A truth value.
   boolean,
 
-  /// A member of a CE-EN domain enum.
+  /// A member of a `domainEnum` domain enum.
   enumeration,
 
   /// A reference to a CE-DB entity, carried as its identity.
@@ -321,7 +321,7 @@ class TomReportParameter {
       throw ArgumentError.value(
         enumId,
         'enumId',
-        'An enumeration parameter must name its CE-EN domain enum.',
+        'An enumeration parameter must name its domain enum.',
       );
     }
     if (valueKind == TomReportValueKind.entityRef && entityId == null) {
@@ -348,7 +348,7 @@ class TomReportParameter {
   /// The CE-TX message key for the input's label.
   final String? label;
 
-  /// The CE-EN domain enum whose values are offered, for an enumeration.
+  /// The `domainEnum` domain enum whose values are offered, for an enumeration.
   final String? enumId;
 
   /// The CE-DB entity whose instances are offered, for an entity reference.

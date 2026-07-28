@@ -28,16 +28,16 @@ gap class. The three remaining new parts had no `tom_core` holder:
 | `TomClientConfiguration` | CE-CC ClientConfiguration | Per-machine client config holder — does **not** follow the user. |
 | `TomUserSettings` + `TomUserSettingsStore` | CE-UP UserSettings | The typed user-settings holder and the server-side per-user persistence seam — both halves of the gap §4.1 names. Single-moded: user-scoped and server-persisted, because §11 lets the scope key alone decide where a value lives (csra3, below). |
 
-**csm210-4-1 (wave-2 W10) — CE-DB / CE-EN** (survey:
+**csm210-4-1 (wave-2 W10) — CE-DB / domain enums** (survey:
 `../../ai_build/tom_specs_model/doc/codespecs_mapping.md` §3). CE-DB is a *reuse* verdict —
 `@CsTable`/`@CsColumn`/`@CsRepository` are built directly on `tom_core_server`
 persistence classes (`@TomDbTable`, `@TomDbColumn`, `@TomEntityId`, `@TomDbScope`,
 `TomRepository<T,K>`, `TomSqlDatasourceRepository`, `query_builder`,
-`TomTransaction`), so CE-DB needs no gap class. CE-EN is a *gap*:
+`TomTransaction`), so CE-DB needs no gap class. Domain enums are a *gap*:
 
-| Class | Part | Purpose |
+| Class | Kind | Purpose |
 |-------|------|---------|
-| `TomDomainEnum` + `TomDomainEnumValue` | CE-EN Enumeration | Domain-enum holder (a business closed value set) a `@CsEnum` is built on — `tom_core_kernel` has only mechanical enums, no domain-enum framework. Stable `valueId` token separated from display `label`. |
+| `TomDomainEnum` + `TomDomainEnumValue` | `domainEnum` (member kind) | Domain-enum holder (a business closed value set) a `@CsEnum` is built on — `tom_core_kernel` has only mechanical enums, no domain-enum framework. Stable `valueId` token separated from display `label`. |
 
 ### Entity-model placement (CE-DB) — decided
 
@@ -140,7 +140,7 @@ the sole deferred candidate. Earlier: csra7 CE-NT's notification model (CE-LG,
 promoted in the same pass, is reuse and needs no class); csra3 CE-UP
 single-moded and its persistence seam added; csra2 the four remaining catalogued
 gap classes (CE-LO / CE-TX / CE-NV / CE-JB) with CE-AC confirmed reuse;
-csm210-4-1 the CE-EN domain enum with CE-DB confirmed reuse and the entity-model
+csm210-4-1 the `domainEnum` holder with CE-DB confirmed reuse and the entity-model
 placement decided (shared shape, server persistence projection); csm2r7 three
 gap classes for the four new parts (CE-CL / CE-CC / CE-UP; CE-AU and CE-CF
 reuse). Every part the §4.1 catalogue marks *gap* now has its class; later waves
