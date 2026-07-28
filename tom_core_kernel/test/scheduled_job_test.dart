@@ -466,6 +466,7 @@ void main() {
       await scheduler.tick();
       clock.advance(const Duration(hours: 2));
       await scheduler.tick();
+      await pumpEventQueue();
 
       expect(executions['configured'], isNotEmpty);
       expect(executions['NightlyReconciliation'], isNotEmpty);
@@ -518,6 +519,7 @@ void main() {
 
       clock.advance(const Duration(minutes: 2));
       await scheduler.tick();
+      await pumpEventQueue();
 
       final runs = executions['NightlyReconciliation']!;
       expect(runs, hasLength(1));
@@ -541,6 +543,7 @@ void main() {
       await scheduler.tick();
       clock.advance(const Duration(minutes: 2));
       await scheduler.tick();
+      await pumpEventQueue();
 
       expect(executions['PlainCommandJob'], hasLength(1));
     });
@@ -563,6 +566,7 @@ void main() {
       events.add('invoice-42');
       await pumpEventQueue();
       await scheduler.tick();
+      await pumpEventQueue();
 
       final runs = executions['OnInvoiceIssued']!;
       expect(runs, hasLength(1));

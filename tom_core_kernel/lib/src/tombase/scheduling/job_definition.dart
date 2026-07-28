@@ -195,6 +195,17 @@ enum TomJobAlertKind {
   /// held it died, or wedged for longer than the lease.
   runAbandoned,
 
+  /// A run that was interrupted mid-execution was **not** re-queued, because its
+  /// job does not set [TomJobDefinition.requestsRecovery].
+  ///
+  /// The counterpart to [runAbandoned], and separate from it on purpose: those
+  /// two outcomes look alike in a store — an expired lease either way — but they
+  /// mean opposite things to an operator. [runAbandoned] says "it will run
+  /// again"; this says "it will not, and if that work mattered somebody has to
+  /// decide what to do about it". The run is left terminally `failed` with
+  /// [TomJobStore.recoveryDeclinedError] recorded against it.
+  recoveryDeclined,
+
   /// A schedule produced windows that were skipped by its missed-window policy.
   windowsMissed,
 
@@ -301,6 +312,9 @@ class TomJobAlert {
         TomJobAlertKind.runAbandoned =>
           'Job "$jobName" run ${run?.id} was abandoned by its holder and '
               'returned to the queue.',
+        TomJobAlertKind.recoveryDeclined =>
+          'Job "$jobName" run ${run?.id} was interrupted mid-execution and '
+              'was NOT re-queued; the job does not set requestsRecovery.',
         TomJobAlertKind.windowsMissed =>
           'Job "$jobName" skipped $missedWindows missed window(s).',
         TomJobAlertKind.neverFires =>
@@ -445,6 +459,23 @@ class TomJobDefinition {
   /// only — it holds within one scheduler, not across a cluster.
   final bool allowOverlap;
 
+  /// Whether a run interrupted **mid-execution** may be re-queued.
+  ///
+  /// `false` by default, which is the safe reading: a body that died halfway
+  /// through may have written half its effects, and re-running it repeats them.
+  /// Set it to `true` only for a body that is idempotent, or whose work is
+  /// worthless unless completed — a report regenerated from scratch, a sync that
+  /// recomputes the whole delta.
+  ///
+  /// This governs *only* the interrupted case. A run that was claimed and never
+  /// started is always re-queued regardless, because nothing executed and
+  /// nothing can therefore repeat; [TomJobRun.startedAt] is what tells the two
+  /// apart.
+  ///
+  /// Quartz spells the same opt-in `REQUESTS_RECOVERY` and defaults it off for
+  /// the same reason.
+  final bool requestsRecovery;
+
   /// Creates a job definition.
   TomJobDefinition({
     required this.name,
@@ -455,6 +486,7 @@ class TomJobDefinition {
     this.missedWindowPolicy = TomMissedWindowPolicy.runOnce,
     this.catchUpLimit = 10,
     this.allowOverlap = false,
+    this.requestsRecovery = false,
   }) {
     if (name.trim().isEmpty) {
       throw TomScheduleException(

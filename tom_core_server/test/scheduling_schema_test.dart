@@ -1,5 +1,5 @@
 /// Connection-free tests for the relational scheduler's schema and its instant
-/// encoding (CSEXB3).
+/// encoding (CSEXB3, CSEXC2).
 ///
 /// Everything here can be asserted without a database, so it runs in the default
 /// `testkit :test` pass. The behavioural claims — that the stores actually
@@ -49,6 +49,13 @@ void main() {
       );
     });
 
+    test('the roll-call migration is the DDL the node table creates', () {
+      expect(
+        _normalise(_migration('[3]-create_tom_scheduler_node.sql')),
+        _normalise(schedulerNodeTableDdl(defaultSchedulerNodeTable)),
+      );
+    });
+
     test('the DDL follows the table name it is given', () {
       // The table name is a constructor argument, so index names have to move
       // with it — two stores over differently-named tables in one schema would
@@ -74,6 +81,16 @@ void main() {
     test('the claim scan and the recovery scan each have an index', () {
       expect(ddl, contains('KEY ix_tom_job_run_due (state, run_at)'));
       expect(ddl, contains('KEY ix_tom_job_run_lease (state, claimed_at)'));
+    });
+
+    test('when execution began is recorded separately from when it was claimed',
+        () {
+      // The two instants answer different questions, and recovery needs both:
+      // a row that was claimed and never started can be re-queued for any job,
+      // while one that was already executing may only be re-queued when the job
+      // opts in. One column carrying both would collapse that distinction.
+      expect(ddl, contains('claimed_at    DATETIME(6)  NULL'));
+      expect(ddl, contains('started_at    DATETIME(6)  NULL'));
     });
 
     test('the composite unique key fits the legacy InnoDB index limit', () {
@@ -102,6 +119,32 @@ void main() {
 
     test('one row per resource', () {
       expect(ddl, contains('PRIMARY KEY (resource)'));
+    });
+  });
+
+  group('the roll-call schema encodes what the failure formula needs', () {
+    final ddl = schedulerNodeTableDdl(defaultSchedulerNodeTable);
+
+    test('one row per node, rewritten rather than appended', () {
+      // The roll call is a current-state table, not a history: `REPLACE INTO`
+      // against this key is what keeps it one row per node however long the
+      // cluster runs.
+      expect(ddl, contains('PRIMARY KEY (node_id)'));
+    });
+
+    test('each node publishes its own check-in cadence', () {
+      // Stored per node rather than assumed globally, because the failure test
+      // judges a peer by the interval *it* keeps: a chatty node and a quiet one
+      // must not be given the same grace.
+      expect(ddl, contains('checkin_interval BIGINT       NOT NULL'));
+      expect(ddl, contains('checkin_at       DATETIME(6)  NOT NULL'));
+    });
+
+    test('the node id is wide enough for the owner strings claims use', () {
+      // `node_id` is joined against `tom_job_run.claimed_by`, so a failed node's
+      // work can be attributed to it. A narrower column here would silently
+      // truncate ids that claim fine.
+      expect(ddl, contains('node_id          VARCHAR(191) NOT NULL'));
     });
   });
 

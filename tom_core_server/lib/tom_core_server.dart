@@ -28,6 +28,7 @@ export 'src/tomserver/datasources/mariadb_datasource.dart';
 export 'src/tomserver/datasources/mariadb_sql_dialect.dart';
 export 'src/tomserver/datasources/queries.dart';
 export 'src/tomserver/datasources/sql_dialects.dart';
+export 'src/tomserver/datasources/sql_failure_mode.dart';
 export 'src/tomserver/datasources/sql_instant.dart';
 export 'src/tomserver/datasources/sql_placeholder_scan.dart';
 export 'src/tomserver/datasources/types_operator.dart';
@@ -73,10 +74,16 @@ export 'src/tomserver/object_persistence/query_builder.dart';
 export 'src/tomserver/object_persistence/query_sentence_compiler.dart';
 export 'src/tomserver/scheduling/sql_job_store.dart';
 export 'src/tomserver/scheduling/sql_lease_lock.dart';
+export 'src/tomserver/scheduling/sql_scheduler_nodes.dart';
 export 'src/tomserver/scheduling/sql_scheduling_sql.dart';
 export 'src/tomserver/server/server.dart';
 export 'src/tomserver/transactions/transaction_manager.dart';
 export 'package:mysql_client/mysql_client.dart';
+// The driver's own barrel omits its exception taxonomy, but
+// [classifySqlFailure] states its contract in terms of `MySQLServerException`
+// ("the server answered, so the failure is definite"). A caller that has to
+// reason about that answer must be able to name the type.
+export 'package:mysql_client/exception.dart';
 export 'package:tom_core_kernel/tom_core_kernel.dart';
 export 'package:tom_basics_console/tom_basics_console.dart';
 

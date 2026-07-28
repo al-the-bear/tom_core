@@ -16,9 +16,14 @@ covers only what changes when the substrate is a database.
 - [Why the Pair, and Why in One Database](#why-the-pair-and-why-in-one-database)
 - [How Exclusion Is Arbitrated](#how-exclusion-is-arbitrated)
 - [Why the Claim Is One Statement per Run](#why-the-claim-is-one-statement-per-run)
+- [When the Answer to a Claim Is Lost](#when-the-answer-to-a-claim-is-lost)
+- [The Roll Call](#the-roll-call)
+- [Recovering an Interrupted Run](#recovering-an-interrupted-run)
+- [What Was Taken from Quartz, and What Was Not](#what-was-taken-from-quartz-and-what-was-not)
 - [The Schema](#the-schema)
   - [tom_job_run](#tom_job_run)
   - [tom_lease](#tom_lease)
+  - [tom_scheduler_node](#tom_scheduler_node)
 - [Creating the Schema](#creating-the-schema)
 - [Time](#time)
 - [Wiring a Cluster Node](#wiring-a-cluster-node)
@@ -35,14 +40,21 @@ covers only what changes when the substrate is a database.
 | ---- | ---- | ------- |
 | `TomSqlJobStore` | class | `TomJobStore` over one row per scheduled run |
 | `TomSqlLeaseLock` | class | `TomLeaseLock` over one row per contended resource |
-| `jobRunTableDdl` / `leaseTableDdl` | function | The shipped DDL, parameterised by table name |
-| `defaultJobRunTable` / `defaultLeaseTable` | constant | `tom_job_run`, `tom_lease` |
-| `sqlInstant` / `parseSqlInstant` | function | The UTC `DATETIME(6)` encoding both stores use |
+| `TomSqlSchedulerNodes` | class | The cluster roll call: one row per node, so a *node* departing is noticed |
+| `TomSchedulerNode` | class | One node's published check-in instant and cadence |
+| `schedulerNodeFailedAfter` / `isSchedulerNodeFailed` | function | The failure test, as pure functions |
+| `classifySqlFailure` / `TomSqlFailureMode` | function / enum | Whether a failed write is definite or ambiguous |
+| `jobRunTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | function | The shipped DDL, parameterised by table name |
+| `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | constant | `tom_job_run`, `tom_lease`, `tom_scheduler_node` |
+| `sqlInstant` / `parseSqlInstant` | function | The UTC `DATETIME(6)` encoding the stores use |
 
-Both types are ordinary implementations of contracts declared in the kernel.
+The two stores are ordinary implementations of contracts declared in the kernel.
 Nothing here extends, narrows or reinterprets those contracts, and both are
 verified against the kernel's own parameterised contract suite rather than
-against tests written to fit them.
+against tests written to fit them. `TomSqlSchedulerNodes` implements no kernel
+contract: it is an optional accelerator that this module owns outright, because
+the thing it observes — nodes, as distinct from leases — exists only where there
+is a cluster.
 
 ## Why the Pair, and Why in One Database
 
@@ -113,6 +125,165 @@ though this node never ran it. That is conservative in the safe direction — th
 window is retried on the next tick, so a run is delayed by a tick, never executed
 twice.
 
+## When the Answer to a Claim Is Lost
+
+The affected-row count *is* the arbitration, which makes the claim the one
+statement in this module whose lost acknowledgement is genuinely ambiguous. If
+the `UPDATE` committed and the reply never arrived, the run is owned by a node
+that believes it does not own it — and stays that way until the lease expires,
+which for a one-minute TTL is a minute of a due run sitting idle while its owner
+does nothing.
+
+So a failed claim is classified rather than assumed:
+
+| The failure | Meaning | What the store does |
+| ----------- | ------- | ------------------- |
+| `MySQLServerException` (the server answered) | The server processed the statement and refused it | **Definite** — rethrow; nothing was claimed |
+| anything else | The statement's fate is unknown | **Ambiguous** — re-read the row and believe it |
+
+`classifySqlFailure` walks the exception's `rootException` chain (the data source
+wraps driver failures) and asks the *inverted* question: not "is this a transport
+failure" but "did the server answer". That inversion is the design decision. The
+set of transport failures is open — it grows with every driver, proxy, container
+runtime and platform — and each omission would be a silent correctness bug. The
+set of "the server answered" is closed and recognisable. The costs are also
+asymmetric: a false *ambiguous* costs one extra `SELECT`; a false *definite*
+costs an abandoned run.
+
+On the ambiguous path `_resolveAmbiguousClaim` re-reads the row and takes
+ownership only when it says `state = 'running'`, `claimed_by` is us **and**
+`claimed_at` is this claim's instant. The last condition is not decoration: a
+node whose own *earlier* claim of the same run is still in flight would otherwise
+read its own stale lease as proof and dispatch the run twice. If the re-read
+itself fails, the original failure is rethrown with its stack — still blind, so
+the honest answer is the failure that started it, and the lease timeout remains
+the backstop.
+
+This is Quartz's `TransactionValidator` in miniature, and like Quartz's it is
+scoped narrowly. **No other statement needs it**, and the reason is worth
+stating positively rather than left as an omission: a lost acknowledgement leaves
+the row `running` for `complete`, `fail`, `markStarted` and `renewClaim`, and
+`pending` for `release` — states the lease already recovers from, because none of
+those statements answers a question with its affected-row count.
+
+## The Roll Call
+
+Without it, nothing detects a dead *node* — only an expired *lease*. A node that
+is killed mid-run holds its claims for the whole lease timeout, and when they are
+finally recovered they are merely orphaned, not attributed to anything.
+
+`TomSqlSchedulerNodes` maintains one row per node in `tom_scheduler_node`,
+rewritten on every check-in. Passing it to the store as `nodes:` makes
+`recoverAbandoned` check in first and then recover the work of any peer the roll
+call declares failed — within a poll interval instead of a lease timeout, and
+naming the node that left.
+
+The failure test is Quartz's, unchanged:
+
+```text
+failedAfter = peer.checkin_at
+            + max(peer.checkin_interval, now - my_last_checkin)
+            + 7.5s
+```
+
+Both halves of that `max` are load-bearing:
+
+- **`peer.checkin_interval`** — the peer's *own* published cadence, so a chatty
+  node and a deliberately quiet one are each judged by the interval each actually
+  keeps rather than by whichever node happened to ask.
+- **`now - my_last_checkin`** — the accuser's own lateness. **A node that was
+  itself stalled must not accuse its peers of the outage it was having.** After a
+  two-minute GC pause every peer looks silent for two minutes; without this term
+  the recovering node would declare the entire cluster dead and recover work that
+  is still running.
+
+`schedulerNodeFailedAfter` and `isSchedulerNodeFailed` are pure top-level
+functions precisely so that guard can be asserted without a database.
+
+**It accelerates recovery; it does not replace the lease.** The lease TTL remains
+the correctness floor. A node that misses a check-in but is still executing is
+still protected by its lease at the claim level, and a node declared failed here
+has its runs recovered *earlier*, not by a different rule. Wiring `nodes:` is
+optional and every roll-call failure is caught and logged rather than propagated:
+lose the roll call and recovery falls back to lease expiry alone, exactly as
+before.
+
+**Cadence.** A node checks in from `recoverAbandoned`, which the scheduler calls
+once per tick — so the *actual* cadence is the scheduler's `tickInterval`, while
+`checkinInterval` is only what the node *publishes* as its cadence, and therefore
+what its peers judge it by. **Publish an interval no shorter than the scheduler's
+tick.** Set them equal and you have the intended configuration; set
+`checkinInterval` shorter and the node is late by its own published standard on
+every pass, so healthy peers will declare it failed while it is working
+perfectly.
+
+Deriving the published value from the observed gap was considered and rejected: a
+node that genuinely stalled would then simply publish a longer interval and
+excuse itself, which is precisely the outage the roll call exists to notice. The
+value stays a deliberate statement of intent — and the consequence of getting it
+wrong is churn, not double execution, because a wrongly recovered run is
+re-claimed by a peer that then concedes the job's lease to the node still holding
+it.
+
+**Clock skew.** The formula compares one node's clock against another's, so the
+cluster's clocks must agree to within about a second — the same requirement
+Quartz states, for the same reason. Run NTP. Claiming, leasing and lease expiry
+are *unaffected* by skew, because those instants are written and compared by the
+database; it is only the roll call that reads a peer's clock.
+
+## Recovering an Interrupted Run
+
+Re-queueing every abandoned run is not safe by default. A run that was claimed
+and never started can always be re-queued — nothing happened, so nothing can be
+repeated. A run that was *executing* when its node died may have sent the email,
+charged the card or written half the file.
+
+`tom_job_run` therefore records `started_at` separately from `claimed_at`, set by
+`markStarted` at the moment the dispatcher takes the run, and `recoverAbandoned`
+branches on it:
+
+| The row | Recovered as |
+| ------- | ------------ |
+| claimed, never started | `pending` — re-queued for any job, no opt-in needed |
+| started, job sets `requestsRecovery` | `pending` — re-queued, attempt count untouched |
+| started, job does not | `failed`, with `TomJobStore.recoveryDeclinedError` as `last_error` |
+
+The declined case is *written off explicitly* rather than left in place: an
+operator reading the row must see why it was not run again, not find a gap.
+
+The decision itself lives once, in the kernel (`TomJobStore.isRecoverable`), so
+the memory and SQL stores cannot drift apart on it; only the transition differs,
+being a field assignment in one and two different `UPDATE`s in the other. The
+opt-in is declared per job as `@TomScheduledJob(requestsRecovery: true)`, and the
+safe behaviour is the default.
+
+## What Was Taken from Quartz, and What Was Not
+
+Quartz's `JDBCJobStore` is the reference implementation of exactly this problem,
+and three of its mechanisms are adopted above. Three more were considered and
+**deliberately rejected**, which is worth recording so the question is not
+reopened as an oversight:
+
+- **The global `TRIGGER_ACCESS` mutex.** Quartz's default acquisition path
+  (`batchTriggerAcquisitionMaxCount = 1`, `acquireTriggersWithinLock = false`)
+  takes *no cluster lock at all* — it issues a conditional state update and skips
+  when no row changed, which is precisely what `claimDue` already does. The
+  single global lock is Quartz's documented scaling ceiling (degradation past
+  roughly three nodes). Never put a global mutex in front of claiming.
+- **Batch acquisition behind that lock.** It only makes sense as an amortisation
+  of the lock, and there is no lock to amortise. It would also break the `accept`
+  predicate for the reason given in
+  [Why the Claim Is One Statement per Run](#why-the-claim-is-one-statement-per-run).
+- **String-named job classes.** Quartz stores a class name and reflects on it at
+  fire time. `@TomScheduledJob` binds a reflected class directly, so the name is
+  never a string that can go stale against a rename.
+
+Two smaller Quartz behaviours *were* adopted, in the kernel scheduler rather than
+here: a cap on catch-up enqueues per pass (Quartz's
+`maxMisfiresToHandleAtATime`, default 20), so a backlog cannot starve live runs;
+and a randomised idle poll interval, because jitter — not partitioning — is
+Quartz's answer to N nodes waking together.
+
 ## The Schema
 
 The DDL lives in `sql_scheduling_sql.dart` and is shipped verbatim as migration
@@ -135,7 +306,14 @@ One row per scheduled run of a job, shared by every node.
 | `run_at` | `DATETIME(6)` | When this run should next be attempted |
 | `state`, `attempt` | `VARCHAR(16)`, `INT` | `pending` / `running` / `succeeded` / `failed`, and which attempt |
 | `claimed_by`, `claimed_at` | `VARCHAR(191)`, `DATETIME(6)` | The store's own lease on the run |
+| `started_at` | `DATETIME(6)` | When execution actually began, or `NULL` if it never did |
 | `last_error`, `completed_at`, `payload` | `TEXT`, `DATETIME(6)`, `LONGTEXT` | Outcome and carried data |
+
+`started_at` is separate from `claimed_at` on purpose: the two answer different
+questions, and recovery needs both (see
+[Recovering an Interrupted Run](#recovering-an-interrupted-run)). One column
+carrying both would collapse "claimed but never ran" into "was executing", and
+the safe default would have to become the unsafe one.
 
 Two indexes exist because two scans do: `ix_…_due (state, run_at)` for the claim
 and `ix_…_lease (state, claimed_at)` for recovery.
@@ -168,6 +346,25 @@ issued a new token). `version` makes a matching update always change the row, an
 doubles as the compare-and-set guard that lets exactly one of several racing
 takeovers win.
 
+### tom_scheduler_node
+
+One row per node, rewritten on every check-in — a current-state table, not a
+history, which is why `REPLACE INTO` against the primary key keeps it one row per
+node however long the cluster runs.
+
+| Column | Type | Role |
+| ------ | ---- | ---- |
+| `node_id` | `VARCHAR(191)` | Primary key; the same string the node claims runs under |
+| `checkin_at` | `DATETIME(6)` | When this node last announced itself, in UTC |
+| `checkin_interval` | `BIGINT` | Milliseconds; this node's *own* published cadence |
+
+`node_id` matching `tom_job_run.claimed_by` is what lets a failed node's work
+join straight back to it. `checkin_interval` is stored rather than assumed
+globally because the failure test judges each peer by the interval it keeps.
+
+The table is optional: it exists only if a deployment wires
+`TomSqlSchedulerNodes`.
+
 ## Creating the Schema
 
 Two supported routes, and the choice is about who is allowed to run DDL:
@@ -176,7 +373,7 @@ Two supported routes, and the choice is about who is allowed to run DDL:
   `CREATE TABLE IF NOT EXISTS` once, lazily, on first use. Right for tests and
   for a single-service deployment.
 - **`createSchema: false`** — the schema is owned by the migration module. Copy
-  the two files from `example/scheduling/migrations/main/tomcore/` into the
+  the three files from `example/scheduling/migrations/main/tomcore/` into the
   application's own migration tree and let `TomDbMigrations.migrateDatabases()`
   apply them. Right when the application's database user may not run DDL, which
   is the usual production posture.
@@ -206,26 +403,38 @@ fleet's worst clock skew**.
 ## Wiring a Cluster Node
 
 ```dart
-final store = TomSqlJobStore.named('main', createSchema: false);
+final nodeId = Platform.localHostname;   // must differ per node
+
+final roll = TomSqlSchedulerNodes.named('main', nodeId: nodeId,
+    createSchema: false);
+final store = TomSqlJobStore.named('main', createSchema: false, nodes: roll);
 final lock = TomSqlLeaseLock.named('main', createSchema: false);
 
 final scheduler = TomScheduler(
   store: store,
   dispatcher: const TomInlineJobDispatcher(),
-  ownerId: Platform.localHostname,   // must differ per node
+  ownerId: nodeId,
   lock: lock,
   leaseTtl: const Duration(minutes: 1),
 );
 ```
 
-`.named()` resolves a registered `TomDataSourceInfo` and raises
-`scheduling.store.unknown_datasource` / `scheduling.lock.unknown_datasource` when
-it is absent — a scheduler pointed at a data source that was never registered is
-a configuration error, not an empty queue. Pass the same data-source name to
-both.
+The roll call is optional — omit `nodes:` and everything still works, with
+recovery waiting out the lease instead. When it is wired, the node's check-in
+happens on the same pass that judges its peers, so a node that stops recovering
+also stops claiming to be alive.
 
-**`ownerId` must be distinct per node.** It is what the lock uses to tell holders
-apart; two nodes sharing one would each treat the other's lease as its own.
+`.named()` resolves a registered `TomDataSourceInfo` and raises
+`scheduling.store.unknown_datasource` / `scheduling.lock.unknown_datasource` /
+`scheduling.nodes.unknown_datasource` when it is absent — a scheduler pointed at
+a data source that was never registered is a configuration error, not an empty
+queue. Pass the same data-source name to all three.
+
+**`ownerId` must be distinct per node**, and the roll call's `nodeId` must be the
+same string. `ownerId` is what the lock uses to tell holders apart, so two nodes
+sharing one would each treat the other's lease as its own; and it is what
+`claimed_by` records, so a `nodeId` that differs from it would leave a departed
+node's work unattributable.
 
 ## Operating Notes
 
@@ -241,6 +450,19 @@ apart; two nodes sharing one would each treat the other's lease as its own.
 - **Both stores hold no connection state of their own.** They take a
   `TomDataSource` and issue statements; the connection lifecycle is the data
   source's.
+- **`tom_scheduler_node` is a live census.** `SELECT node_id, checkin_at FROM
+  tom_scheduler_node ORDER BY checkin_at` answers "who is in the cluster right
+  now"; a departed node's row is removed once its work has been reattributed.
+- **Set `checkinInterval` to the scheduler's `tickInterval`.** The check-in
+  happens once per tick, so a published interval shorter than the tick makes a
+  healthy node look late on every pass; see [The Roll Call](#the-roll-call).
+- **Run NTP.** The roll call is the one place a node reads a peer's clock; see
+  [The Roll Call](#the-roll-call). Skew beyond a second or so makes nodes accuse
+  each other or excuse each other, without affecting claiming or leasing.
+- **A warning naming a failed node is the signal to look at.**
+  `TomSqlJobStore` logs the node it declared failed and how many runs it
+  recovered from it — the difference between "a run was orphaned" and "that host
+  went away".
 
 ## Verification
 
@@ -250,13 +472,22 @@ copied — against both implementations, then adds what only a real database can
 substantiate: contended claims across independent connections resolving to
 exactly one winner, a rejected candidate remaining claimable by a peer, the
 window uniqueness constraint, holder death and recovery, eight-way lease races on
-both the free and the lapsed paths, the fencing counter surviving release, and
-the shipped migrations building the schema on a dropped database.
+both the free and the lapsed paths, the fencing counter surviving release,
+`started_at` being legible to a peer, recovery in both opt-in states, a departed
+node's work being recovered two minutes into a fifteen-minute lease, and the
+shipped migrations building the schema on a dropped database.
 
 It is tagged `db` and skips when no server is reachable, so the default
-`testkit :test` run stays green without one. `test/scheduling_schema_test.dart`
-covers the connection-free surface (DDL drift, schema invariants, instant
-encoding) and always runs.
+`testkit :test` run stays green without one.
+
+Two suites always run. `test/scheduling_schema_test.dart` covers DDL drift,
+schema invariants and instant encoding.
+`test/scheduling_cluster_test.dart` covers the three cluster questions that a
+real server cannot be asked to demonstrate on request: it drives the store
+through a scripted `TomDataSource` that can fail a claim *after* the write, which
+is how the ambiguous commit is reproduced; it asserts the failure formula
+directly, including the stalled-accuser guard; and it asserts recovery in both
+opt-in states.
 
 ## Core Components
 
@@ -264,7 +495,9 @@ encoding) and always runs.
 | ---- | -------- |
 | `lib/src/tomserver/scheduling/sql_job_store.dart` | `TomSqlJobStore` and its row types |
 | `lib/src/tomserver/scheduling/sql_lease_lock.dart` | `TomSqlLeaseLock` and its row type |
-| `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | DDL, table-name defaults, instant encoding |
+| `lib/src/tomserver/scheduling/sql_scheduler_nodes.dart` | `TomSqlSchedulerNodes`, `TomSchedulerNode` and the failure formula |
+| `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | DDL, table-name defaults |
+| `lib/src/tomserver/datasources/sql_failure_mode.dart` | `classifySqlFailure` — definite or ambiguous |
 | `example/scheduling/scheduling_example.dart` | The connection-free surface, runnable |
 | `example/scheduling/migrations/main/tomcore/` | The shipped reference migrations |
 

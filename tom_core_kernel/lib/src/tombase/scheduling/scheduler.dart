@@ -97,6 +97,34 @@ class TomScheduler implements TomClosable {
   /// The most runs claimed in one pass.
   final int maxRunsPerTick;
 
+  /// The most catch-up runs enqueued in one pass, across **all** jobs.
+  ///
+  /// [TomJobDefinition.catchUpLimit] bounds one job's backlog; this bounds the
+  /// whole registry's, and the difference matters after a long outage: fifty
+  /// jobs each within their own limit still add up to a planning pass that runs
+  /// for minutes and a queue in which nothing due *now* can be seen for the
+  /// backlog. Quartz caps the same thing with `maxMisfiresToHandleAtATime`, and
+  /// this default is its default.
+  ///
+  /// Clipping **defers**, it does not drop. A job whose catch-up was clipped
+  /// skips its look-ahead enqueue for that pass, which leaves the last window on
+  /// record behind the backlog so the next pass resumes exactly where this one
+  /// stopped. The work arrives a tick or two later; none of it is lost.
+  final int maxCatchUpPerTick;
+
+  /// How much of [tickInterval] may be shaved off at random, `0`-`1`.
+  ///
+  /// Jitter — not partitioning — is the answer to N nodes waking together. A
+  /// cluster started by the same deployment ticks in lockstep otherwise, and
+  /// every node then contends for the same claims in the same millisecond; the
+  /// contention is harmless but the wasted round-trips are not free, and they
+  /// grow with the node count.
+  ///
+  /// Applied **downward only**, so a tick never falls later than [tickInterval]
+  /// and the interval keeps its meaning as a maximum. Set it to `0` for an exact
+  /// period.
+  final double tickJitter;
+
   /// Cluster coordination, or `null` for a single-node scheduler.
   ///
   /// When present, no run is executed without first winning its lease, so two
@@ -151,6 +179,13 @@ class TomScheduler implements TomClosable {
   bool _closed = false;
   int _runCounter = 0;
 
+  /// Catch-up enqueues still allowed in the pass currently running.
+  ///
+  /// Reset to [maxCatchUpPerTick] at the top of every [tick], and shared across
+  /// jobs — a budget spent by one job's backlog is a budget the next job's
+  /// backlog does not get, which is the whole point.
+  int _catchUpBudget = 0;
+
   /// Creates a scheduler.
   ///
   /// [ownerId] defaults to a value derived from the process start time, which
@@ -172,6 +207,8 @@ class TomScheduler implements TomClosable {
     TomJobAlertSink? onAlert,
     Random? random,
     this.maxRunsPerTick = 16,
+    this.maxCatchUpPerTick = 20,
+    this.tickJitter = 0.1,
     this.lock,
     this.leaseTtl = const Duration(minutes: 1),
     Duration? leaseRenewInterval,
@@ -192,6 +229,22 @@ class TomScheduler implements TomClosable {
         },
       );
     }
+    if (maxCatchUpPerTick < 1) {
+      throw TomScheduleException(
+        'schedule.scheduler.catch_up_per_tick',
+        'maxCatchUpPerTick must be at least 1, or catch-up never progresses; '
+            'got $maxCatchUpPerTick.',
+        parameters: {'maxCatchUpPerTick': maxCatchUpPerTick},
+      );
+    }
+    if (tickJitter < 0 || tickJitter >= 1) {
+      throw TomScheduleException(
+        'schedule.scheduler.tick_jitter',
+        'tickJitter must be in [0, 1) — at 1 a tick could be scheduled for '
+            'immediately; got $tickJitter.',
+        parameters: {'tickJitter': tickJitter},
+      );
+    }
   }
 
   /// The default alert sink: everything goes to the framework log, with a
@@ -200,6 +253,7 @@ class TomScheduler implements TomClosable {
     switch (alert.kind) {
       case TomJobAlertKind.runFailed:
       case TomJobAlertKind.runAbandoned:
+      case TomJobAlertKind.recoveryDeclined:
       case TomJobAlertKind.leaseLost:
         tomLog.error(alert.describe());
       case TomJobAlertKind.attemptFailed:
@@ -279,15 +333,39 @@ class TomScheduler implements TomClosable {
     if (subscription != null) unawaited(subscription.cancel());
   }
 
-  /// Runs one [tick] immediately, then repeats every [tickInterval].
+  /// Runs one [tick] immediately, then repeats roughly every [tickInterval].
   ///
   /// The immediate pass matters on restart: it is what recovers abandoned
   /// leases and catches up missed windows without waiting out a full interval.
+  ///
+  /// "Roughly" is [tickJitter]: each interval is shortened by an independent
+  /// random fraction, so a cluster started together does not stay in lockstep.
   Future<void> start() async {
     _requireOpen();
     if (_timer != null) return;
-    _timer = Timer.periodic(tickInterval, (_) => unawaited(tick()));
+    _scheduleNextTick();
     await tick();
+  }
+
+  /// Arms a one-shot timer for the next pass and re-arms from its own callback.
+  ///
+  /// A one-shot chain rather than [Timer.periodic] because each interval is
+  /// drawn separately — a periodic timer can only have one period, and a jitter
+  /// applied once is a constant offset, not jitter.
+  void _scheduleNextTick() {
+    _timer = Timer(_nextTickDelay(), () {
+      if (_closed || _timer == null) return;
+      _scheduleNextTick();
+      unawaited(tick());
+    });
+  }
+
+  /// [tickInterval] less a random fraction of up to [tickJitter] of it.
+  Duration _nextTickDelay() {
+    if (tickJitter <= 0) return tickInterval;
+    final shaved =
+        (tickInterval.inMicroseconds * tickJitter * random.nextDouble()).round();
+    return Duration(microseconds: tickInterval.inMicroseconds - shaved);
   }
 
   /// Stops the periodic timer. In-flight runs are left to finish.
@@ -341,6 +419,7 @@ class TomScheduler implements TomClosable {
     _ticking = true;
     try {
       final now = clock();
+      _catchUpBudget = maxCatchUpPerTick;
       await _recoverAbandoned(now);
       for (final job in List.of(_jobs.values)) {
         if (!job.schedule.isClockDriven) continue;
@@ -353,15 +432,31 @@ class TomScheduler implements TomClosable {
   }
 
   /// Returns expired leases to the queue and alerts on each.
+  ///
+  /// The scheduler is the one caller that can see the job registry, so it is the
+  /// one caller that can answer [TomJobDefinition.requestsRecovery] — a store
+  /// asked in isolation would have to guess. A job the registry does not know
+  /// answers `false`, which is the safe reading: an unregistered job is one this
+  /// node cannot run anyway, and declining is reversible where a repeated side
+  /// effect is not.
   Future<void> _recoverAbandoned(DateTime now) async {
-    final recovered = await store.recoverAbandoned(now, leaseTimeout);
+    final recovered = await store.recoverAbandoned(
+      now,
+      leaseTimeout,
+      requestsRecovery: (name) => _jobs[name]?.requestsRecovery ?? false,
+    );
     for (final run in recovered) {
       _inFlight.remove(run.id);
       _leases.remove(run.id);
       onAlert(
         TomJobAlert(
           jobName: run.jobName,
-          kind: TomJobAlertKind.runAbandoned,
+          // The store has already applied the decision; the run's own state is
+          // what it decided. Re-deriving it here from `requestsRecovery` would
+          // be a second opinion that could disagree with the record.
+          kind: run.isFinished
+              ? TomJobAlertKind.recoveryDeclined
+              : TomJobAlertKind.runAbandoned,
           run: run,
         ),
       );
@@ -408,7 +503,15 @@ class TomScheduler implements TomClosable {
     }
 
     if (job.missedWindowPolicy != TomMissedWindowPolicy.skip) {
-      await _enqueueMissed(job, last, now);
+      if (!await _enqueueMissed(job, last, now)) {
+        // The pass's catch-up budget ran out mid-backlog. Returning here skips
+        // the look-ahead enqueue *deliberately*: look-ahead would push the last
+        // window on record into the future, and the next pass — which anchors
+        // catch-up on that record — would then see no backlog at all. Leaving
+        // the record behind the backlog is what makes the clip a deferral
+        // rather than a silent loss.
+        return;
+      }
     } else {
       final missed = _countMissed(job, last, now);
       if (missed > 0) {
@@ -428,7 +531,11 @@ class TomScheduler implements TomClosable {
 
   /// Enqueues the missed windows [job]'s policy asks for, dating each run to
   /// the window it belongs to but making it due immediately.
-  Future<void> _enqueueMissed(
+  ///
+  /// Returns whether the whole backlog was enqueued. `false` means the pass's
+  /// shared [maxCatchUpPerTick] budget ran out and the remainder is left for the
+  /// next pass — see the caller for why that requires skipping look-ahead.
+  Future<bool> _enqueueMissed(
     TomJobDefinition job,
     DateTime last,
     DateTime now,
@@ -467,10 +574,22 @@ class TomScheduler implements TomClosable {
         ),
       );
     }
+    // Oldest first, so a clipped pass leaves the *newer* windows behind and
+    // catch-up walks forward monotonically across passes.
     for (final missed in recent) {
+      if (_catchUpBudget <= 0) {
+        tomLog.info(
+          'TomScheduler: catch-up budget of $maxCatchUpPerTick spent this '
+          'pass; "${job.name}" resumes on the next tick.',
+        );
+        return false;
+      }
       // Due now, dated then: the run is late, and says so.
-      await _enqueueWindow(job, missed, now);
+      // Only an enqueue that actually happened spends budget — a window already
+      // on record did no work.
+      if (await _enqueueWindow(job, missed, now)) _catchUpBudget--;
     }
+    return true;
   }
 
   /// How many windows elapsed between [last] and [now] — used only to report
@@ -491,12 +610,15 @@ class TomScheduler implements TomClosable {
   ///
   /// The existence check is the idempotence guarantee that makes a tick safe to
   /// replay after a crash.
-  Future<void> _enqueueWindow(
+  ///
+  /// Returns whether a run was actually added, which is what lets the catch-up
+  /// budget count work rather than attempts.
+  Future<bool> _enqueueWindow(
     TomJobDefinition job,
     DateTime scheduledFor,
     DateTime runAt,
   ) async {
-    if (await store.findWindow(job.name, scheduledFor) != null) return;
+    if (await store.findWindow(job.name, scheduledFor) != null) return false;
     await store.enqueue(
       TomJobRun(
         id: _nextRunId(job.name),
@@ -505,6 +627,7 @@ class TomScheduler implements TomClosable {
         runAt: runAt,
       ),
     );
+    return true;
   }
 
   /// Enqueues a run for an event-triggered job, carrying [payload].
@@ -648,6 +771,14 @@ class TomScheduler implements TomClosable {
         if (_stillOurs(run)) await _failFinally(job, run, error, stack);
         return;
       }
+      // Recorded *before* the dispatch and never after: the whole value of the
+      // mark is that a node which dies during the body has already written it.
+      // Stamping it afterwards would leave every interrupted run looking like
+      // one that never started, which is exactly the case recovery must not
+      // confuse. The cost is the opposite error — a run marked started whose
+      // dispatch never happened — and that one is safe, because it only ever
+      // makes recovery more cautious.
+      await store.markStarted(run, clock());
       await dispatcher.dispatch(command).timeout(job.timeout);
       if (_stillOurs(run)) await store.complete(run, clock());
     } on TimeoutException catch (error, stack) {

@@ -16,6 +16,12 @@
 --    run's own id remains the primary key, because that is what every claim,
 --    completion and failure statement addresses.
 --
+-- `started_at` is nullable and the null carries meaning: a `running` row without
+-- it was reserved and then lost before anything executed, so re-queueing it
+-- cannot repeat a side effect; a `running` row with it was interrupted
+-- mid-execution and may only be offered again when the job opted in
+-- (`requestsRecovery`). Quartz spends two trigger states on the same line.
+--
 -- Instants are DATETIME(6) and are always written in UTC by the store.
 CREATE TABLE IF NOT EXISTS tom_job_run (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
@@ -27,6 +33,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   attempt       INT          NOT NULL DEFAULT 1,
   claimed_by    VARCHAR(191) NULL,
   claimed_at    DATETIME(6)  NULL,
+  started_at    DATETIME(6)  NULL,
   last_error    TEXT         NULL,
   completed_at  DATETIME(6)  NULL,
   payload       LONGTEXT     NULL,

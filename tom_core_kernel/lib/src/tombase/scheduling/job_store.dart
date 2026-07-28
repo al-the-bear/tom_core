@@ -110,6 +110,22 @@ class TomJobRun {
   /// lease timeout by [TomJobStore.recoverAbandoned].
   DateTime? claimedAt;
 
+  /// When the body actually began executing, `null` if it never did.
+  ///
+  /// The distinction between "claimed" and "started" is what makes recovery
+  /// safe to reason about. A `running` run with no [startedAt] was reserved and
+  /// then lost — the node died between the claim and the dispatch — so nothing
+  /// was executed and re-queueing it cannot repeat a side effect. A `running`
+  /// run *with* [startedAt] was interrupted **mid-execution**, and whether it is
+  /// safe to run again is a property of the job, not of the store: see
+  /// [TomJobDefinition.requestsRecovery].
+  ///
+  /// Quartz draws the same line with two trigger states, `ACQUIRED` and
+  /// `EXECUTING`. It is one nullable instant here because the instant is also
+  /// worth having — "how long had it been running when the node died" is the
+  /// first question asked after an incident.
+  DateTime? startedAt;
+
   /// The most recent failure message, retained on retry so a run that
   /// eventually fails can report why it kept failing.
   String? lastError;
@@ -132,6 +148,7 @@ class TomJobRun {
     this.attempt = 1,
     this.claimedBy,
     this.claimedAt,
+    this.startedAt,
     this.lastError,
     this.completedAt,
     this.payload,
@@ -155,6 +172,7 @@ class TomJobRun {
         'attempt': attempt,
         'claimedBy': claimedBy,
         'claimedAt': claimedAt?.toIso8601String(),
+        'startedAt': startedAt?.toIso8601String(),
         'lastError': lastError,
         'completedAt': completedAt?.toIso8601String(),
         'payload': payload,
@@ -178,6 +196,7 @@ class TomJobRun {
         attempt: map['attempt'] as int? ?? 1,
         claimedBy: map['claimedBy'] as String?,
         claimedAt: _parseOrNull(map['claimedAt']),
+        startedAt: _parseOrNull(map['startedAt']),
         lastError: map['lastError'] as String?,
         completedAt: _parseOrNull(map['completedAt']),
         payload: map['payload'],
@@ -207,6 +226,36 @@ class TomJobRun {
 /// implementations here are atomic by virtue of Dart's single-threaded event
 /// loop — they perform no `await` between selecting and stamping.
 abstract class TomJobStore {
+  /// Whether an abandoned [run] may be offered again.
+  ///
+  /// A run that never started always may — nothing executed, so nothing can
+  /// repeat. One that was interrupted mid-execution may only when its job says
+  /// so, which is what [requestsRecovery] answers; a `null` predicate means the
+  /// caller cannot see the job registry, and re-queueing is then the only
+  /// answer it can give.
+  ///
+  /// Shared rather than duplicated because both stores must decide identically
+  /// — but only the decision is shared. Each store applies the resulting
+  /// transition in its own idiom: field assignment in memory, a different
+  /// `UPDATE` in SQL.
+  static bool isRecoverable(
+    TomJobRun run,
+    bool Function(String jobName)? requestsRecovery,
+  ) =>
+      run.startedAt == null ||
+      requestsRecovery == null ||
+      requestsRecovery(run.jobName);
+
+  /// What an interrupted run's [TomJobRun.lastError] says when its job did not
+  /// ask to be recovered.
+  ///
+  /// A constant because it is the operator-facing explanation of a decision the
+  /// framework made on the job's behalf, and it must read the same whichever
+  /// store recorded it.
+  static const String recoveryDeclinedError =
+      'Interrupted mid-execution and not re-queued: the job does not set '
+      'requestsRecovery, so re-running it could repeat work already done.';
+
   /// Adds [run] to the queue.
   ///
   /// The caller is responsible for idempotence via [findWindow]; the store
@@ -251,6 +300,18 @@ abstract class TomJobStore {
   /// through contention alone.
   Future<void> release(TomJobRun run);
 
+  /// Records that [run]'s body actually began executing at [now].
+  ///
+  /// Called once per attempt, immediately before the body is handed to the
+  /// dispatcher, and it is the only thing that distinguishes an interrupted
+  /// *execution* from an abandoned *reservation*. Without it every `running` row
+  /// looks the same after a node dies, and recovery has to guess.
+  ///
+  /// A no-op on a run the store no longer holds as `running`, for the same
+  /// reason [renewClaim] is: the outcome of a run this node has lost belongs to
+  /// whoever took it over.
+  Future<void> markStarted(TomJobRun run, DateTime now);
+
   /// Refreshes the lease timestamp on a claimed [run] to [now].
   ///
   /// A long-running attempt must be able to say it is still alive, or
@@ -274,17 +335,39 @@ abstract class TomJobStore {
     DateTime? retryAt,
   });
 
-  /// Returns runs left `running` by a holder that vanished to `pending`.
+  /// Reclaims runs left `running` by a holder that vanished.
   ///
   /// A lease older than [leaseTimeout] is treated as abandoned. The attempt
   /// count is **not** incremented: the run may never have started, and charging
   /// it an attempt for the scheduler's own death would let a crash loop consume
-  /// a job's whole retry budget. Returns the recovered runs so the caller can
-  /// alert on them.
+  /// a job's whole retry budget. Returns every run whose state this call
+  /// changed, so the caller can alert on each; read [TomJobRun.state] to see
+  /// which way it went.
+  ///
+  /// ## Re-queued, or terminally failed
+  ///
+  /// A run that was claimed but never started ([TomJobRun.startedAt] is `null`)
+  /// always returns to `pending`, unpenalised: nothing ran, so nothing can
+  /// repeat.
+  ///
+  /// A run that *had* started was interrupted mid-execution, and re-running it
+  /// repeats whatever it had already done. Whether that is safe is a property of
+  /// the job, so [requestsRecovery] is consulted: it returns `true` for a job
+  /// that has declared itself recoverable ([TomJobDefinition.requestsRecovery]),
+  /// and such a run goes back to `pending` like any other. A run whose job says
+  /// otherwise becomes terminally [TomJobRunState.failed] with an explanatory
+  /// [TomJobRun.lastError], because silently re-running a non-idempotent job is
+  /// the worse of the two failures and the operator needs to see the decision.
+  ///
+  /// Passing `null` — the default — recovers everything, which is what a caller
+  /// that cannot see the job registry must do. A store cannot invent the answer,
+  /// and re-queueing is the behaviour every caller had before the distinction
+  /// existed. `TomScheduler` always supplies the predicate.
   Future<List<TomJobRun>> recoverAbandoned(
     DateTime now,
-    Duration leaseTimeout,
-  );
+    Duration leaseTimeout, {
+    bool Function(String jobName)? requestsRecovery,
+  });
 
   /// Every run currently held, in insertion order. Primarily for diagnostics
   /// and tests.
@@ -382,6 +465,15 @@ class TomMemoryJobStore implements TomJobStore {
   }
 
   @override
+  Future<void> markStarted(TomJobRun run, DateTime now) async {
+    final stored = _runs[run.id];
+    if (stored == null || stored.state != TomJobRunState.running) return;
+    stored.startedAt = now;
+    run.startedAt = now;
+    onMutated();
+  }
+
+  @override
   Future<void> renewClaim(TomJobRun run, DateTime now) async {
     final stored = _runs[run.id];
     if (stored == null || stored.state != TomJobRunState.running) return;
@@ -426,8 +518,9 @@ class TomMemoryJobStore implements TomJobStore {
   @override
   Future<List<TomJobRun>> recoverAbandoned(
     DateTime now,
-    Duration leaseTimeout,
-  ) async {
+    Duration leaseTimeout, {
+    bool Function(String jobName)? requestsRecovery,
+  }) async {
     final recovered = <TomJobRun>[];
     for (final run in _runs.values) {
       if (run.state != TomJobRunState.running) continue;
@@ -435,9 +528,15 @@ class TomMemoryJobStore implements TomJobStore {
       // A `running` run with no lease timestamp is corrupt state; treat it as
       // abandoned rather than leaving it stuck forever.
       if (since != null && now.difference(since) < leaseTimeout) continue;
-      run.state = TomJobRunState.pending;
       run.claimedBy = null;
       run.claimedAt = null;
+      if (TomJobStore.isRecoverable(run, requestsRecovery)) {
+        run.state = TomJobRunState.pending;
+      } else {
+        run.state = TomJobRunState.failed;
+        run.completedAt = now;
+        run.lastError = TomJobStore.recoveryDeclinedError;
+      }
       recovered.add(run);
     }
     if (recovered.isNotEmpty) onMutated();

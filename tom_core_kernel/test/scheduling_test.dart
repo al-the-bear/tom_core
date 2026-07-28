@@ -118,14 +118,23 @@ TomScheduler schedulerFor(
   String ownerId = 'test-owner',
   Duration leaseTtl = const Duration(minutes: 1),
   Duration? leaseRenewInterval,
+  int maxCatchUpPerTick = 20,
+  Duration tickInterval = const Duration(seconds: 30),
+  // Exact by default: almost every test drives `tick()` by hand, and a jittered
+  // timer would only add nondeterminism to assertions that never observe it.
+  double tickJitter = 0,
+  DateTime Function()? clockOverride,
 }) =>
     TomScheduler(
       store: store,
       dispatcher: dispatcher ?? const TomInlineJobDispatcher(),
-      clock: clock.call,
+      clock: clockOverride ?? clock.call,
       ownerId: ownerId,
       leaseTimeout: leaseTimeout,
       maxRunsPerTick: maxRunsPerTick,
+      maxCatchUpPerTick: maxCatchUpPerTick,
+      tickInterval: tickInterval,
+      tickJitter: tickJitter,
       // Zero-seed Random keeps jitter reproducible run to run.
       random: Random(0),
       onAlert: alerts == null ? (_) {} : alerts.add,
@@ -203,11 +212,12 @@ class StallingLeaseLock extends TomLeaseLock {
 /// not hold up the next window of a fast one — so completion, the store write
 /// and the lease release all land in later turns of the event loop. Tests that
 /// assert on the *aftermath* of a run have to yield first.
-Future<void> settle() async {
-  for (var i = 0; i < 4; i++) {
-    await Future<void>.delayed(Duration.zero);
-  }
-}
+///
+/// [pumpEventQueue] rather than a counted loop of zero delays: the number of
+/// turns a dispatch takes is an implementation detail, and a test that encodes
+/// it fails the next time the runtime gains an await — which is exactly what
+/// adding the `markStarted` write did.
+Future<void> settle() => pumpEventQueue();
 
 /// A job whose body simply succeeds, named for readability at the call site.
 TomJobDefinition jobNamed(
@@ -216,6 +226,7 @@ TomJobDefinition jobNamed(
   bool allowOverlap = false,
   TomCommand Function(TomJobRun run)? body,
   TomRetryPolicy retryPolicy = TomRetryPolicy.none,
+  bool requestsRecovery = false,
 }) =>
     TomJobDefinition(
       name: name,
@@ -223,6 +234,7 @@ TomJobDefinition jobNamed(
       body: body ?? (_) => OkCommand(),
       allowOverlap: allowOverlap,
       retryPolicy: retryPolicy,
+      requestsRecovery: requestsRecovery,
     );
 
 /// An event source for a [TomEventSchedule], closed at the end of the test.
@@ -991,6 +1003,7 @@ void main() {
       Duration timeout = const Duration(minutes: 5),
       bool allowOverlap = false,
       String name = 'daily',
+      bool requestsRecovery = false,
     }) =>
         TomJobDefinition(
           name: name,
@@ -1001,6 +1014,7 @@ void main() {
           retryPolicy: retry,
           timeout: timeout,
           allowOverlap: allowOverlap,
+          requestsRecovery: requestsRecovery,
         );
 
     group('registration', () {
@@ -1147,6 +1161,7 @@ void main() {
         // No dispatcher work: assert the record, not the execution.
         scheduler.register(dailyJob(policy: TomMissedWindowPolicy.runOnce));
         await scheduler.tick();
+        await settle();
 
         final catchUp = (await store.all()).firstWhere(
             (r) => r.scheduledFor == DateTime.utc(2026, 3, 5));
@@ -1774,6 +1789,246 @@ void main() {
         expect(alerts.where((a) => a.kind == TomJobAlertKind.runAbandoned),
             isEmpty);
       });
+
+      /// A run left `running` by a node that died, optionally mid-execution.
+      Future<void> seedAbandoned({required bool started}) async {
+        final past = clock.now.subtract(const Duration(hours: 1));
+        await store.enqueue(TomJobRun(
+          id: 'a',
+          jobName: 'daily',
+          scheduledFor: past,
+          runAt: past,
+          state: TomJobRunState.running,
+          claimedBy: 'a-scheduler-that-died',
+          claimedAt: past,
+          startedAt: started ? past : null,
+        ));
+      }
+
+      test('a run interrupted mid-execution is not re-queued by default',
+          () async {
+        final scheduler = schedulerFor(store, clock,
+            alerts: alerts, leaseTimeout: const Duration(minutes: 5));
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob());
+        await seedAbandoned(started: true);
+
+        await scheduler.tick();
+        await settle();
+
+        // The default is the safe reading: the body may have written half its
+        // effects, and re-running it would repeat them.
+        final run = (await store.all()).firstWhere((r) => r.id == 'a');
+        expect(run.state, TomJobRunState.failed);
+        expect(run.lastError, TomJobStore.recoveryDeclinedError);
+        expect(alerts.where((a) => a.kind == TomJobAlertKind.recoveryDeclined),
+            hasLength(1));
+        expect(alerts.where((a) => a.kind == TomJobAlertKind.runAbandoned),
+            isEmpty,
+            reason: 'declining recovery is a different event from recovering');
+      });
+
+      test('a run interrupted mid-execution is re-queued when the job requests '
+          'recovery', () async {
+        final scheduler = schedulerFor(store, clock,
+            alerts: alerts, leaseTimeout: const Duration(minutes: 5));
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob(requestsRecovery: true));
+        await seedAbandoned(started: true);
+
+        await scheduler.tick();
+        await settle();
+
+        expect((await store.all()).firstWhere((r) => r.id == 'a').state,
+            TomJobRunState.succeeded);
+        expect(alerts.where((a) => a.kind == TomJobAlertKind.runAbandoned),
+            hasLength(1));
+      });
+
+      test('a run claimed but never started is re-queued regardless of the '
+          'opt-in', () async {
+        final scheduler = schedulerFor(store, clock,
+            alerts: alerts, leaseTimeout: const Duration(minutes: 5));
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob());
+        await seedAbandoned(started: false);
+
+        await scheduler.tick();
+        await settle();
+
+        expect((await store.all()).firstWhere((r) => r.id == 'a').state,
+            TomJobRunState.succeeded,
+            reason: 'nothing executed, so nothing can repeat');
+      });
+
+      test('a run is marked started before its body is dispatched', () async {
+        final gate = Completer<Object?>();
+        final scheduler = schedulerFor(store, clock,
+            alerts: alerts,
+            dispatcher: RecordingDispatcher(handler: (_) => gate.future));
+        addTearDown(scheduler.close);
+        scheduler.register(dailyJob());
+
+        await scheduler.tick();
+        clock.advance(const Duration(days: 1));
+        await scheduler.tick();
+        await settle();
+
+        // Still in flight — and already on record as having started, which is
+        // the whole point: a node that dies here must leave that evidence.
+        final run = (await store.all())
+            .firstWhere((r) => r.state == TomJobRunState.running);
+        expect(run.startedAt, isNotNull);
+        gate.complete(null);
+        await settle();
+      });
+    });
+
+    group('catch-up budget', () {
+      /// Nine windows are already missed, across three jobs.
+      Future<void> seedThreeStaleJobs() async {
+        for (final name in ['j1', 'j2', 'j3']) {
+          await store.enqueue(TomJobRun(
+            id: 'seed-$name',
+            jobName: name,
+            scheduledFor: clock.now.subtract(const Duration(days: 3)),
+            runAt: clock.now.subtract(const Duration(days: 3)),
+            state: TomJobRunState.succeeded,
+          ));
+        }
+      }
+
+      /// The runs a pass enqueued for a window that has already elapsed — which
+      /// is what the budget counts. A look-ahead window is not catch-up and is
+      /// deliberately free.
+      List<TomJobRun> catchUpRuns(List<TomJobRun> all) => all
+          .where((r) =>
+              !r.id.startsWith('seed-') && !r.scheduledFor.isAfter(clock.now))
+          .toList();
+
+      test('the per-pass budget is shared across jobs', () async {
+        await seedThreeStaleJobs();
+        final scheduler = schedulerFor(store, clock,
+            alerts: alerts, maxCatchUpPerTick: 4);
+        addTearDown(scheduler.close);
+        for (final name in ['j1', 'j2', 'j3']) {
+          scheduler.register(dailyJob(
+              name: name,
+              policy: TomMissedWindowPolicy.runAll,
+              catchUpLimit: 10));
+        }
+
+        await scheduler.tick();
+
+        // Each job is within its own catchUpLimit; the cap that bites is the
+        // registry-wide one, which is the whole reason it exists.
+        expect(catchUpRuns(await store.all()), hasLength(4));
+      });
+
+      test('a clipped backlog resumes on the next pass rather than being lost',
+          () async {
+        await seedThreeStaleJobs();
+        final scheduler = schedulerFor(store, clock,
+            alerts: alerts, maxCatchUpPerTick: 4);
+        addTearDown(scheduler.close);
+        for (final name in ['j1', 'j2', 'j3']) {
+          scheduler.register(dailyJob(
+              name: name,
+              policy: TomMissedWindowPolicy.runAll,
+              catchUpLimit: 10));
+        }
+
+        await scheduler.tick();
+        await settle();
+        await scheduler.tick();
+        await settle();
+        await scheduler.tick();
+        await settle();
+
+        // Every missed window arrives, just spread over three passes.
+        expect(catchUpRuns(await store.all()), hasLength(9),
+            reason: 'clipping defers; it must not drop');
+      });
+
+      test('an unclipped pass still plans the next window', () async {
+        await seedThreeStaleJobs();
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(
+            dailyJob(name: 'j1', policy: TomMissedWindowPolicy.runAll));
+
+        await scheduler.tick();
+
+        expect(
+            (await store.all())
+                .where((r) => r.scheduledFor.isAfter(clock.now)),
+            hasLength(1),
+            reason: 'look-ahead is skipped only when the backlog was clipped');
+      });
+
+      test('a budget below one is rejected at construction', () {
+        expect(
+          () => schedulerFor(store, clock, maxCatchUpPerTick: 0),
+          throwsA(isA<TomScheduleException>().having(
+              (e) => e.key, 'key', 'schedule.scheduler.catch_up_per_tick')),
+        );
+      });
+    });
+
+    group('tick jitter', () {
+      test('an out-of-range jitter is rejected at construction', () {
+        for (final bad in [-0.1, 1.0, 2.0]) {
+          expect(
+            () => schedulerFor(store, clock, tickJitter: bad),
+            throwsA(isA<TomScheduleException>()
+                .having((e) => e.key, 'key', 'schedule.scheduler.tick_jitter')),
+            reason: 'jitter $bad',
+          );
+        }
+      });
+
+      test('successive intervals differ, and never exceed tickInterval',
+          () async {
+        // The observable consequence of jitter without reaching into private
+        // state: over many draws the delays must vary, and none may be late.
+        const interval = Duration(milliseconds: 40);
+        final fired = <DateTime>[];
+        final scheduler = schedulerFor(
+          store,
+          clock,
+          tickInterval: interval,
+          tickJitter: 0.5,
+          clockOverride: () {
+            final now = DateTime.now();
+            fired.add(now);
+            return now;
+          },
+        );
+        addTearDown(scheduler.close);
+
+        await scheduler.start();
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        scheduler.stop();
+
+        expect(fired.length, greaterThan(4),
+            reason: 'the timer must actually be re-arming');
+        final gaps = <int>[
+          for (var i = 1; i < fired.length; i++)
+            fired[i].difference(fired[i - 1]).inMicroseconds,
+        ];
+        // Never later than the promised interval, allowing for the event loop's
+        // own lateness on a busy machine.
+        expect(gaps.every((g) => g <= interval.inMicroseconds * 2), isTrue);
+        expect(gaps.toSet(), hasLength(greaterThan(1)),
+            reason: 'a constant gap would mean the jitter was not drawn per '
+                'interval');
+      });
+
+      test('zero jitter keeps the interval exact', () {
+        final scheduler = schedulerFor(store, clock, tickJitter: 0);
+        addTearDown(scheduler.close);
+        expect(scheduler.tickJitter, 0);
+      });
     });
 
     group('event triggers', () {
@@ -1933,7 +2188,9 @@ void main() {
           alerts: alerts,
           leaseTimeout: const Duration(minutes: 5),
         );
-        firstScheduler.register(dailyJob());
+        // Opted into recovery: the process dies *mid-execution*, and only a job
+        // that says it is safe to run again gets picked back up.
+        firstScheduler.register(dailyJob(requestsRecovery: true));
         await firstScheduler.tick();
         expect((await firstStore.all()).single.scheduledFor,
             DateTime.utc(2026, 3, 2));
@@ -1962,7 +2219,7 @@ void main() {
           leaseTimeout: const Duration(minutes: 5),
         );
         addTearDown(secondScheduler.close);
-        secondScheduler.register(dailyJob());
+        secondScheduler.register(dailyJob(requestsRecovery: true));
         await secondScheduler.tick();
         await pumpEventQueue();
 
@@ -2366,6 +2623,7 @@ void main() {
       }
       clock.now = DateTime.utc(2026, 5, 2, 3);
       await Future.wait(nodes.map((n) => n.tick()));
+      await settle();
 
       final total = dispatchers.values
           .fold<int>(0, (sum, d) => sum + d.dispatched.length);
@@ -2494,6 +2752,9 @@ void main() {
         schedule: TomIntervalSchedule(const Duration(minutes: 5)),
         body: (_) => GatedCommand('never'),
         retryPolicy: TomRetryPolicy.none,
+        // The dead node had *started* this body, so only a job that declares
+        // itself safe to run twice is handed to the survivor.
+        requestsRecovery: true,
       );
       GatedCommand.open('never');
       dying.register(job);
@@ -2518,9 +2779,11 @@ void main() {
       );
       addTearDown(survivor.close);
       survivor.register(jobNamed('orphaned',
-          TomIntervalSchedule(const Duration(minutes: 5))));
+          TomIntervalSchedule(const Duration(minutes: 5)),
+          requestsRecovery: true));
 
       await survivor.tick();
+      await settle();
 
       expect(ranOn, contains('live'),
           reason: 'the survivor must recover the dead node\'s run');
@@ -2541,6 +2804,7 @@ void main() {
       await solo.tick();
       clock.advance(const Duration(minutes: 6));
       await solo.tick();
+      await settle();
 
       expect(dispatcher.dispatched, hasLength(1));
       expect(solo.heldLeases, isEmpty);
@@ -2609,6 +2873,7 @@ void main() {
       await nodes[0].tick();
       clock.advance(const Duration(minutes: 3));
       await Future.wait(nodes.map((n) => n.tick()));
+      await settle();
 
       final runs = await store.all();
       final succeeded =

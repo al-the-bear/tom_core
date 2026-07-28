@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS fixture_document (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $manifestTable');
   }
 
-  /// Drops the relational scheduler's two tables (CSEXB3).
+  /// Drops the relational scheduler's tables (CSEXB3, CSEXC2).
   ///
   /// Dropped rather than truncated for the same reason as the blob tables: the
   /// stores create them on first use, so a run that changed the DDL would
@@ -206,9 +206,11 @@ CREATE TABLE IF NOT EXISTS fixture_document (
     TomDataSourceInfo dsi, {
     String jobRunTable = defaultJobRunTable,
     String leaseTable = defaultLeaseTable,
+    String nodeTable = defaultSchedulerNodeTable,
   }) async {
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $jobRunTable');
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $leaseTable');
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $nodeTable');
   }
 
   /// Drops the relational audit trail's table and its optional guard triggers

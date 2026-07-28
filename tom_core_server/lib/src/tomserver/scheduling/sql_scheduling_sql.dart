@@ -13,6 +13,9 @@ const String defaultJobRunTable = 'tom_job_run';
 /// The default name of the lease table.
 const String defaultLeaseTable = 'tom_lease';
 
+/// The default name of the scheduler roll-call table.
+const String defaultSchedulerNodeTable = 'tom_scheduler_node';
+
 /// The DDL for the job queue table [table].
 ///
 /// Notes on the shape, because each column earns its place:
@@ -27,6 +30,11 @@ const String defaultLeaseTable = 'tom_lease';
 ///    impossible rather than merely unlikely under a race.
 ///  * `state, run_at` is the index the claim scan rides; `state, claimed_at` is
 ///    the one abandoned-lease recovery rides.
+///  * `started_at` is nullable **and that is the information**: a `running` row
+///    without it was reserved and lost before anything executed, one with it was
+///    interrupted mid-execution. Recovery may always re-queue the first and may
+///    only re-queue the second when the job opted in. Quartz spends two trigger
+///    states (`ACQUIRED`, `EXECUTING`) on the same distinction.
 ///  * instants are `DATETIME(6)` and always written in UTC — see
 ///    `sqlInstant` in `datasources/sql_instant.dart`.
 ///  * `job_name` is `VARCHAR(160)` rather than 191 so the composite unique key
@@ -43,6 +51,7 @@ CREATE TABLE IF NOT EXISTS $table (
   attempt       INT          NOT NULL DEFAULT 1,
   claimed_by    VARCHAR(191) NULL,
   claimed_at    DATETIME(6)  NULL,
+  started_at    DATETIME(6)  NULL,
   last_error    TEXT         NULL,
   completed_at  DATETIME(6)  NULL,
   payload       LONGTEXT     NULL,
@@ -77,4 +86,24 @@ CREATE TABLE IF NOT EXISTS $table (
   released    TINYINT(1)   NOT NULL DEFAULT 0,
   version     BIGINT       NOT NULL DEFAULT 1,
   PRIMARY KEY (resource)
+)''';
+
+/// The DDL for the scheduler roll-call table [table].
+///
+/// One row per node, rewritten on every pass. It has no index beyond its key and
+/// wants none: a cluster is read in full, and it is a handful of rows.
+///
+/// `checkin_interval` is stored in milliseconds and is each node's *own*
+/// published cadence, because a node that polls every 60 s is not late at 20 s
+/// while a node that polls every 2 s is very late at 20 s. Judging a peer by the
+/// accuser's interval would make the verdict depend on who happened to ask.
+///
+/// `node_id` is the same string the node claims runs under, so a failed node's
+/// abandoned work can be attributed to it by an ordinary join.
+String schedulerNodeTableDdl(String table) => '''
+CREATE TABLE IF NOT EXISTS $table (
+  node_id          VARCHAR(191) NOT NULL,
+  checkin_at       DATETIME(6)  NOT NULL,
+  checkin_interval BIGINT       NOT NULL,
+  PRIMARY KEY (node_id)
 )''';

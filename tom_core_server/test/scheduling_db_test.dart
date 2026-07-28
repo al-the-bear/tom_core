@@ -1,4 +1,4 @@
-/// DB-backed tests for the relational scheduling pair (CSEXB3).
+/// DB-backed tests for the relational scheduling pair (CSEXB3, CSEXC2).
 ///
 /// Two halves, and the first is the important one.
 ///
@@ -201,6 +201,199 @@ void main() async {
       });
     });
 
+    // -------------------------------------------------------------------------
+    // CSEXC2 — what a cluster needs beyond a working claim
+    // -------------------------------------------------------------------------
+
+    group('recovery distinguishes claimed from started', () {
+      final at = DateTime.utc(2026, 5, 1, 12);
+      final later = at.add(const Duration(minutes: 20));
+      const leaseTimeout = Duration(minutes: 15);
+      late TomSqlJobStore store;
+
+      setUp(() async {
+        store = TomSqlJobStore(dsi.datasource);
+        await store.deleteAll();
+      });
+
+      test('when execution began survives the store object that recorded it',
+          () async {
+        await store.enqueue(_run('started', at));
+        final claimed = (await store.claimDue(at, 'node-a')).single;
+        expect(claimed.startedAt, isNull,
+            reason: 'a claim is not a start; the dispatcher marks the start');
+
+        final begun = at.add(const Duration(seconds: 5));
+        await store.markStarted(claimed, begun);
+
+        // Read back through a second store object — which is what the surviving
+        // node is. The whole opt-in recovery rule rests on this column being
+        // legible to a *peer*, not merely remembered in this process.
+        final peer = TomSqlJobStore(dsi.datasource);
+        expect((await peer.all()).single.startedAt, begun);
+      });
+
+      test('a run claimed but never started is re-queued even when its job '
+          'declines recovery', () async {
+        await store.enqueue(_run('never-ran', at));
+        await store.claimDue(at, 'node-that-dies');
+
+        final survivor = TomSqlJobStore(dsi.datasource);
+        final recovered = await survivor.recoverAbandoned(
+          later,
+          leaseTimeout,
+          requestsRecovery: (_) => false,
+        );
+
+        // Nothing ran, so nothing can be repeated: the opt-in does not apply.
+        expect(recovered.single.state, TomJobRunState.pending);
+        expect((await survivor.claimDue(later, 'node-b')).single.id,
+            'never-ran');
+      });
+
+      test('an interrupted run is re-queued only when its job asks', () async {
+        await store.enqueue(_run('interrupted', at));
+        final claimed = (await store.claimDue(at, 'node-that-dies')).single;
+        await store.markStarted(claimed, at.add(const Duration(seconds: 5)));
+
+        final survivor = TomSqlJobStore(dsi.datasource);
+        final recovered = await survivor.recoverAbandoned(
+          later,
+          leaseTimeout,
+          requestsRecovery: (_) => false,
+        );
+
+        // Written off rather than re-queued, and *stated* rather than left as a
+        // silent gap: an operator reading the row must see why it was not run
+        // again.
+        final row = recovered.single;
+        expect(row.state, TomJobRunState.failed);
+        expect(row.completedAt, later);
+        expect(row.lastError, TomJobStore.recoveryDeclinedError);
+        expect(await survivor.claimDue(later, 'node-b'), isEmpty);
+      });
+
+      test('an interrupted run whose job opts in is re-queued', () async {
+        await store.enqueue(_run('retryable', at));
+        final claimed = (await store.claimDue(at, 'node-that-dies')).single;
+        await store.markStarted(claimed, at.add(const Duration(seconds: 5)));
+
+        final survivor = TomSqlJobStore(dsi.datasource);
+        final recovered = await survivor.recoverAbandoned(
+          later,
+          leaseTimeout,
+          requestsRecovery: (_) => true,
+        );
+
+        expect(recovered.single.state, TomJobRunState.pending);
+        final retaken = await survivor.claimDue(later, 'node-b');
+        expect(retaken.single.claimedBy, 'node-b');
+        // Recovery is not failure, so the retry budget is untouched.
+        expect(retaken.single.attempt, 1);
+      });
+    });
+
+    group('the roll call', () {
+      final at = DateTime.utc(2026, 5, 1, 12);
+      late TomSqlSchedulerNodes roll;
+
+      setUp(() async {
+        roll = TomSqlSchedulerNodes(dsi.datasource, nodeId: 'node-a');
+        await roll.deleteAll();
+      });
+
+      test('a check-in is one row per node, rewritten and not appended',
+          () async {
+        await roll.checkIn(at);
+        await roll.checkIn(at.add(const Duration(seconds: 30)));
+
+        final rows = await roll.nodes();
+        expect(rows, hasLength(1));
+        expect(rows.single.nodeId, 'node-a');
+        expect(rows.single.checkinAt, at.add(const Duration(seconds: 30)));
+        expect(rows.single.checkinInterval, roll.checkinInterval);
+      });
+
+      test('a peer that stopped checking in is reported failed, and only then',
+          () async {
+        final peer = TomSqlSchedulerNodes(
+          dsi.datasource,
+          nodeId: 'node-b',
+          checkinInterval: const Duration(seconds: 30),
+        );
+        await peer.checkIn(at);
+        await roll.checkIn(at);
+
+        // Inside the peer's own interval plus the slack: alive.
+        expect(await roll.failedNodes(at.add(const Duration(seconds: 20))),
+            isEmpty);
+
+        // Past it — but the accuser has to be current too, so it checks in
+        // first. A judgement made without that would be the stalled accuser the
+        // formula exists to prevent.
+        final late_ = at.add(const Duration(minutes: 5));
+        await roll.checkIn(late_);
+        final failed = await roll.failedNodes(late_);
+        expect(failed.map((n) => n.nodeId), ['node-b'],
+            reason: 'a node never reports itself failed');
+      });
+
+      test("a departed node's work is recovered before its lease would lapse",
+          () async {
+        final store = TomSqlJobStore(dsi.datasource, nodes: roll);
+        await store.deleteAll();
+        await roll.deleteAll();
+
+        // The dead node claims a run, then stops — both its heartbeat and its
+        // renewals.
+        final dead = TomSqlSchedulerNodes(
+          dsi.datasource,
+          nodeId: 'node-that-dies',
+          checkinInterval: const Duration(seconds: 30),
+        );
+        await dead.checkIn(at);
+        await store.enqueue(_run('orphan', at));
+        expect(await store.claimDue(at, 'node-that-dies'), hasLength(1));
+
+        // Two minutes later: far short of the fifteen-minute lease, so lease
+        // expiry alone would still be waiting. The roll call is what makes the
+        // difference, and this is the whole point of GAP 2.
+        final soon = at.add(const Duration(minutes: 2));
+        final recovered =
+            await store.recoverAbandoned(soon, const Duration(minutes: 15));
+
+        expect(recovered.map((r) => r.id), ['orphan']);
+        expect((await store.claimDue(soon, 'node-a')).single.claimedBy,
+            'node-a');
+        // The departed node is forgotten once its work is reattributed, so the
+        // next pass does not re-scan a node that has nothing left.
+        expect((await roll.nodes()).map((n) => n.nodeId),
+            isNot(contains('node-that-dies')));
+      });
+
+      test('a live node keeps its work, roll call or not', () async {
+        final store = TomSqlJobStore(dsi.datasource, nodes: roll);
+        await store.deleteAll();
+        await roll.deleteAll();
+
+        final peer = TomSqlSchedulerNodes(
+          dsi.datasource,
+          nodeId: 'node-b',
+          checkinInterval: const Duration(seconds: 30),
+        );
+        await peer.checkIn(at);
+        await store.enqueue(_run('busy', at));
+        final claimed = (await store.claimDue(at, 'node-b')).single;
+
+        final soon = at.add(const Duration(minutes: 2));
+        await peer.checkIn(soon);
+        await store.renewClaim(claimed, soon);
+
+        expect(await store.recoverAbandoned(soon, const Duration(minutes: 15)),
+            isEmpty);
+      });
+    });
+
     group('the lease lock arbitrates', () {
       late TomSqlLeaseLock lock;
       final clock = FakeClock(DateTime.utc(2026, 5, 1, 12));
@@ -332,15 +525,26 @@ void main() async {
         // build the tables, these calls fail.
         final store = TomSqlJobStore(dsi.datasource, createSchema: false);
         final lock = TomSqlLeaseLock(dsi.datasource, createSchema: false);
+        final roll = TomSqlSchedulerNodes(dsi.datasource,
+            nodeId: 'node-a', createSchema: false);
         final at = DateTime.utc(2026, 5, 1, 12);
 
         await store.enqueue(_run('migrated', at));
-        expect((await store.claimDue(at, 'node-a')).single.id, 'migrated');
+        final claimed = (await store.claimDue(at, 'node-a')).single;
+        expect(claimed.id, 'migrated');
+        // Exercises `started_at`, the column the migration gained with the
+        // opt-in recovery rule: a file that forgot it would pass every other
+        // assertion here.
+        await store.markStarted(claimed, at);
+        expect((await store.all()).single.startedAt, at);
         expect(await lock.acquire('r', 'node-a', const Duration(minutes: 1)),
             isNotNull);
+        await roll.checkIn(at);
+        expect((await roll.nodes()).single.nodeId, 'node-a');
 
         await store.deleteAll();
         await lock.deleteAll();
+        await roll.deleteAll();
       });
     });
   }, skip: skipReason);

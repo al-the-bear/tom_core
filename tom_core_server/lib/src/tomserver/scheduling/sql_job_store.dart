@@ -56,6 +56,27 @@
 /// recorded the job as busy for this tick, so that window waits for the next
 /// one. A run is delayed by a tick, never executed twice.
 ///
+/// ### When the answer to the claim is lost
+///
+/// The affected-row count *is* the arbitration, so a claim whose acknowledgement
+/// never arrives is not the same as a claim that was refused. If the connection
+/// drops after the `UPDATE` was sent, the row may well have been claimed, and a
+/// node that reads the failure as "I did not get it" abandons a run it owns —
+/// which then sits `running` until the lease expires, held by a node that
+/// believes it holds nothing.
+///
+/// So a failed claim is classified (`classifySqlFailure`): a failure the server
+/// itself reported is definitive and rethrown, while a transport-level one is
+/// ambiguous and settled by re-reading the row and believing what it says. It is
+/// Quartz's `TransactionValidator` in miniature — the same question, asked of a
+/// single row rather than of `QRTZ_FIRED_TRIGGERS`.
+///
+/// No other statement in this store needs the recheck, and it is worth saying
+/// why rather than leaving it to be rediscovered: a lost acknowledgement leaves
+/// the row `running` for `complete`, `fail`, `markStarted` and `renewClaim`, and
+/// `pending` for `release`. Both are states the lease already recovers from,
+/// because none of them is answering a question with an affected-row count.
+///
 /// ## Time
 ///
 /// Instants are stored as `DATETIME(6)` in **UTC** and read back through
@@ -74,9 +95,11 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
+import '../datasources/sql_failure_mode.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
+import 'sql_scheduler_nodes.dart';
 import 'sql_scheduling_sql.dart';
 
 /// A [TomJobStore] whose queue is a table in a [TomDataSource].
@@ -92,11 +115,18 @@ class TomSqlJobStore implements TomJobStore {
   /// supplied: the scan reads up to `limit * candidateFactor` due runs so that
   /// rejected ones do not starve the accepted ones behind them. A rejected
   /// candidate costs a row read, not a claim.
+  ///
+  /// [nodes], when supplied, is this node's entry in the cluster roll call. It
+  /// makes [recoverAbandoned] react to a departed node within a poll interval
+  /// instead of a whole lease timeout, and lets it name the node that left. It
+  /// is an accelerator only: leave it `null` and the lease timeout recovers
+  /// exactly the same runs, just later and anonymously.
   TomSqlJobStore(
     this.datasource, {
     this.table = defaultJobRunTable,
     this.createSchema = true,
     this.candidateFactor = 8,
+    this.nodes,
   });
 
   /// Creates a store over the registered data source named [datasourceName].
@@ -108,6 +138,7 @@ class TomSqlJobStore implements TomJobStore {
     String table = defaultJobRunTable,
     bool createSchema = true,
     int candidateFactor = 8,
+    TomSqlSchedulerNodes? nodes,
   }) {
     final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
     if (info == null) {
@@ -122,6 +153,7 @@ class TomSqlJobStore implements TomJobStore {
       table: table,
       createSchema: createSchema,
       candidateFactor: candidateFactor,
+      nodes: nodes,
     );
   }
 
@@ -137,11 +169,15 @@ class TomSqlJobStore implements TomJobStore {
   /// How many due runs to consider per claim when a filter is present.
   final int candidateFactor;
 
+  /// The cluster roll call, or `null` when the lease timeout is the only
+  /// liveness signal.
+  final TomSqlSchedulerNodes? nodes;
+
   bool _schemaReady = false;
 
   static const String _columns =
       'id, job_name, scheduled_for, run_at, state, attempt, claimed_by, '
-      'claimed_at, last_error, completed_at, payload';
+      'claimed_at, started_at, last_error, completed_at, payload';
 
   /// Creates the queue table if it does not exist.
   ///
@@ -166,7 +202,7 @@ class TomSqlJobStore implements TomJobStore {
     await datasource.executeCommand(
       'REPLACE INTO $table ($_columns) VALUES '
       '(:id, :jobName, :scheduledFor, :runAt, :state, :attempt, :claimedBy, '
-      ':claimedAt, :lastError, :completedAt, :payload)',
+      ':claimedAt, :startedAt, :lastError, :completedAt, :payload)',
       _bindOf(run),
     );
   }
@@ -218,7 +254,21 @@ class TomSqlJobStore implements TomJobStore {
     for (final run in candidates) {
       if (claimed.length >= limit) break;
       if (accept != null && !accept(run)) continue;
-      final affected = await datasource.executeCommand(
+      final won = await _claim(run, owner, now);
+      if (won != null) claimed.add(won);
+    }
+    return claimed;
+  }
+
+  /// Runs the conditional claim of [run] for [owner], returning the claimed run
+  /// or `null` when it was not won.
+  ///
+  /// The `UPDATE` is the arbitration; everything else here is about the one case
+  /// in which its result does not arrive.
+  Future<TomJobRun?> _claim(TomJobRun run, String owner, DateTime now) async {
+    final BigInt affected;
+    try {
+      affected = await datasource.executeCommand(
         'UPDATE $table SET state = :running, claimed_by = :owner, '
         'claimed_at = :now WHERE id = :id AND state = :pending',
         {
@@ -229,15 +279,77 @@ class TomSqlJobStore implements TomJobStore {
           'pending': TomJobRunState.pending.name,
         },
       );
-      // Zero affected rows means a peer got there first. It is not an error and
-      // it is the whole point: the database, not this process, decided.
-      if (affected != BigInt.one) continue;
-      run.state = TomJobRunState.running;
-      run.claimedBy = owner;
-      run.claimedAt = _asUtc(now);
-      claimed.add(run);
+    } catch (error, stack) {
+      // A claim is the one statement whose *affected-row count is the answer*,
+      // so losing the answer is not the same as losing the write. If the server
+      // rejected the statement the row is untouched and this is an ordinary
+      // failure; if the connection dropped, the claim may have committed and
+      // this node would otherwise walk away from a run it owns — leaving it
+      // stuck until the lease expires, owned by a node that believes it owns
+      // nothing.
+      //
+      // Every other statement here is safe without the recheck, and for the
+      // same reason stated positively: a lost acknowledgement leaves the row
+      // `running` (complete/fail/markStarted/renewClaim) or `pending`
+      // (release), and both are states the lease already recovers from.
+      if (classifySqlFailure(error) == TomSqlFailureMode.definite) rethrow;
+      return _resolveAmbiguousClaim(run, owner, now, error, stack);
     }
-    return claimed;
+    // Zero affected rows means a peer got there first. It is not an error and
+    // it is the whole point: the database, not this process, decided.
+    if (affected != BigInt.one) return null;
+    run.state = TomJobRunState.running;
+    run.claimedBy = owner;
+    run.claimedAt = _asUtc(now);
+    return run;
+  }
+
+  /// Decides a claim whose outcome was lost, by re-reading the row.
+  ///
+  /// This is Quartz's `TransactionValidator` in miniature: after a commit whose
+  /// acknowledgement never arrived, ask the database what it actually holds
+  /// rather than assuming either answer.
+  ///
+  /// The row identifies *this* write, not merely a claim by this owner: a node
+  /// whose earlier claim of the same run is still in flight would otherwise read
+  /// its own older lease as proof and dispatch the run twice. `claimed_at` is
+  /// the instant this call bound, so matching it means the row carries this
+  /// statement.
+  Future<TomJobRun?> _resolveAmbiguousClaim(
+    TomJobRun run,
+    String owner,
+    DateTime now,
+    Object error,
+    StackTrace stack,
+  ) async {
+    final List<TomJobRun> rows;
+    try {
+      rows = await _select('WHERE id = :id LIMIT 1', {'id': run.id});
+    } catch (_) {
+      // Still blind. Surfacing the original failure is the honest answer, and
+      // the lease timeout remains what it always was: the backstop that frees
+      // the run if the claim did land.
+      Error.throwWithStackTrace(error, stack);
+    }
+
+    final stored = rows.isEmpty ? null : rows.first;
+    final landed = stored != null &&
+        stored.state == TomJobRunState.running &&
+        stored.claimedBy == owner &&
+        stored.claimedAt == _asUtc(now);
+    if (landed) {
+      tomLog.warn(
+        'TomSqlJobStore: the claim of run ${run.id} by "$owner" failed in '
+        'transport but had committed; taking ownership from the stored row. '
+        'Cause: $error',
+      );
+      return stored;
+    }
+    tomLog.warn(
+      'TomSqlJobStore: the claim of run ${run.id} by "$owner" failed in '
+      'transport and did not commit; the run stays available. Cause: $error',
+    );
+    return null;
   }
 
   @override
@@ -258,6 +370,29 @@ class TomSqlJobStore implements TomJobStore {
     run.state = TomJobRunState.pending;
     run.claimedBy = null;
     run.claimedAt = null;
+  }
+
+  @override
+  Future<void> markStarted(TomJobRun run, DateTime now) async {
+    await ensureSchema();
+    // Guarded on `running` for the same reason [renewClaim] is: a run the lease
+    // recovered out from under this node is no longer ours to stamp, and
+    // writing `started_at` onto it would tell recovery that a *different*
+    // node's attempt had begun.
+    //
+    // Not guarded on `started_at IS NULL`: a retry re-runs the same row, and
+    // the field means "this attempt began", not "the first attempt began".
+    final affected = await datasource.executeCommand(
+      'UPDATE $table SET started_at = :now '
+      'WHERE id = :id AND state = :running',
+      {
+        'now': sqlInstant(now),
+        'id': run.id,
+        'running': TomJobRunState.running.name,
+      },
+    );
+    if (affected != BigInt.one) return;
+    run.startedAt = _asUtc(now);
   }
 
   @override
@@ -343,9 +478,15 @@ class TomSqlJobStore implements TomJobStore {
   @override
   Future<List<TomJobRun>> recoverAbandoned(
     DateTime now,
-    Duration leaseTimeout,
-  ) async {
+    Duration leaseTimeout, {
+    bool Function(String jobName)? requestsRecovery,
+  }) async {
     await ensureSchema();
+    // This node's own liveness, announced on the same pass that judges everyone
+    // else's — so a node that stops recovering also stops claiming to be alive,
+    // and the two facts cannot drift apart.
+    await nodes?.checkIn(now);
+
     final cutoff = now.subtract(leaseTimeout);
     // `claimed_at IS NULL` counts as abandoned: a `running` row with no lease
     // stamp is corrupt state, and leaving it stuck forever is worse than
@@ -358,25 +499,121 @@ class TomSqlJobStore implements TomJobStore {
         'cutoff': sqlInstant(cutoff),
       },
     );
+    final abandoned = await _withFailedNodesWork(stale, now);
 
     final recovered = <TomJobRun>[];
-    for (final run in stale) {
-      final affected = await datasource.executeCommand(
-        'UPDATE $table SET state = :pending, claimed_by = NULL, '
-        'claimed_at = NULL WHERE id = :id AND state = :running',
-        {
-          'pending': TomJobRunState.pending.name,
-          'running': TomJobRunState.running.name,
-          'id': run.id,
-        },
-      );
+    for (final run in abandoned) {
+      // The decision is the kernel's, shared with the memory store so both
+      // answer identically; only the transition differs, because "goes back to
+      // the queue" and "is written off" are two different statements here.
+      final recoverable = TomJobStore.isRecoverable(run, requestsRecovery);
+      final affected = recoverable
+          ? await datasource.executeCommand(
+              'UPDATE $table SET state = :pending, claimed_by = NULL, '
+              'claimed_at = NULL WHERE id = :id AND state = :running',
+              {
+                'pending': TomJobRunState.pending.name,
+                'running': TomJobRunState.running.name,
+                'id': run.id,
+              },
+            )
+          : await datasource.executeCommand(
+              'UPDATE $table SET state = :failed, completed_at = :now, '
+              'last_error = :error, claimed_by = NULL, claimed_at = NULL '
+              'WHERE id = :id AND state = :running',
+              {
+                'failed': TomJobRunState.failed.name,
+                'now': sqlInstant(now),
+                'error': TomJobStore.recoveryDeclinedError,
+                'running': TomJobRunState.running.name,
+                'id': run.id,
+              },
+            );
+      // Still guarded on `running`: between the scan and this write a peer may
+      // have recovered the same row, and the loser must not report a change it
+      // did not make.
       if (affected != BigInt.one) continue;
-      run.state = TomJobRunState.pending;
       run.claimedBy = null;
       run.claimedAt = null;
+      if (recoverable) {
+        run.state = TomJobRunState.pending;
+      } else {
+        run.state = TomJobRunState.failed;
+        run.completedAt = _asUtc(now);
+        run.lastError = TomJobStore.recoveryDeclinedError;
+      }
       recovered.add(run);
     }
     return recovered;
+  }
+
+  /// [stale] plus any run still held by a node the roll call says has died.
+  ///
+  /// The lease timeout finds these too, eventually — this only finds them
+  /// sooner, and knows whose they were. Which is why every failure in here is
+  /// swallowed after logging: the roll call is an accelerator, and an
+  /// accelerator that can break recovery is worse than no accelerator.
+  Future<List<TomJobRun>> _withFailedNodesWork(
+    List<TomJobRun> stale,
+    DateTime now,
+  ) async {
+    final roll = nodes;
+    if (roll == null) return stale;
+
+    final List<TomSchedulerNode> failed;
+    try {
+      failed = await roll.failedNodes(now);
+    } catch (error) {
+      tomLog.warn(
+        'TomSqlJobStore: could not read the scheduler roll call; falling back '
+        'to lease expiry alone. Cause: $error',
+      );
+      return stale;
+    }
+    if (failed.isEmpty) return stale;
+
+    final byId = {for (final run in stale) run.id: run};
+    for (final peer in failed) {
+      final List<TomJobRun> orphans;
+      try {
+        orphans = await _select(
+          'WHERE state = :running AND claimed_by = :owner ORDER BY seq',
+          {
+            'running': TomJobRunState.running.name,
+            'owner': peer.nodeId,
+          },
+        );
+      } catch (error) {
+        tomLog.warn(
+          'TomSqlJobStore: could not read the work of failed node '
+          '"${peer.nodeId}"; leaving it to lease expiry. Cause: $error',
+        );
+        continue;
+      }
+      // Attribution is the second thing the roll call buys, and it is worth a
+      // log line even when there is nothing to recover: "worker-3 left" is the
+      // sentence an operator is looking for.
+      tomLog.warn(
+        'TomSqlJobStore: scheduler node "${peer.nodeId}" last checked in at '
+        '${peer.checkinAt} and is treated as failed; recovering '
+        '${orphans.length} run(s) it held.',
+      );
+      for (final run in orphans) {
+        byId.putIfAbsent(run.id, () => run);
+      }
+      try {
+        // Its work is accounted for, so the departure is dealt with; leaving the
+        // row would re-report it on every pass. A node that comes back simply
+        // registers again on its next check-in.
+        await roll.forget(peer.nodeId);
+      } catch (error) {
+        tomLog.warn(
+          'TomSqlJobStore: could not drop failed node "${peer.nodeId}" from '
+          'the roll call. Cause: $error',
+        );
+      }
+    }
+    return byId.values.toList();
   }
 
   @override
@@ -436,6 +673,7 @@ class TomSqlJobStore implements TomJobStore {
         attempt: row.attempt,
         claimedBy: row.claimedBy,
         claimedAt: parseOptionalSqlInstant(row.claimedAt),
+        startedAt: parseOptionalSqlInstant(row.startedAt),
         lastError: row.lastError,
         completedAt: parseOptionalSqlInstant(row.completedAt),
         payload: _decodePayload(row.payload),
@@ -450,6 +688,7 @@ class TomSqlJobStore implements TomJobStore {
         'attempt': run.attempt,
         'claimedBy': run.claimedBy,
         'claimedAt': run.claimedAt == null ? null : sqlInstant(run.claimedAt!),
+        'startedAt': run.startedAt == null ? null : sqlInstant(run.startedAt!),
         'lastError': run.lastError,
         'completedAt':
             run.completedAt == null ? null : sqlInstant(run.completedAt!),
@@ -542,6 +781,14 @@ class TomJobRunRow {
   /// When the claim was last stamped, as stored UTC text.
   @TomDbColumn(columnName: "claimed_at")
   String? claimedAt;
+
+  /// When the body began executing, as stored UTC text; `null` if it never did.
+  ///
+  /// The one column that separates an interrupted *execution* from an abandoned
+  /// *reservation*, which is what recovery has to know before it may offer a
+  /// run again.
+  @TomDbColumn(columnName: "started_at")
+  String? startedAt;
 
   /// The message of the most recent failure.
   @TomDbColumn(columnName: "last_error")

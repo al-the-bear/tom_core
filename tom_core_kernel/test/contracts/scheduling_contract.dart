@@ -307,6 +307,104 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
 
       expect((await reload('r1')).claimedAt, isNull);
     });
+
+    // -------------------------------------------------------------------------
+    // markStarted, and the recovery branch it exists to enable
+    // -------------------------------------------------------------------------
+
+    test('a claimed run has not started until it is marked', () async {
+      final run = await seedClaimed();
+      expect(run.startedAt, isNull);
+      expect((await reload('r1')).startedAt, isNull,
+          reason: 'a reservation is not an execution');
+    });
+
+    test('markStarted stamps the run and survives a reload', () async {
+      final run = await seedClaimed();
+      final started = at.add(const Duration(seconds: 3));
+
+      await store.markStarted(run, started);
+
+      expect(run.startedAt, started, reason: 'the caller sees its own write');
+      expect((await reload('r1')).startedAt, started);
+    });
+
+    test('markStarted ignores a run that is not running', () async {
+      final run = makeRun('r1');
+      await store.enqueue(run);
+
+      await store.markStarted(run, at);
+
+      expect((await reload('r1')).startedAt, isNull);
+    });
+
+    test('an abandoned run that never started is re-queued even when its job '
+        'declines recovery', () async {
+      await store.enqueue(makeRun('a'));
+      await store.claimDue(at, 'dead-owner');
+
+      final recovered = await store.recoverAbandoned(
+        at.add(const Duration(minutes: 20)),
+        const Duration(minutes: 15),
+        requestsRecovery: (_) => false,
+      );
+
+      // Nothing executed, so nothing can repeat: the opt-in does not apply.
+      expect(recovered.single.state, TomJobRunState.pending);
+      expect((await reload('a')).state, TomJobRunState.pending);
+    });
+
+    test('an abandoned run that started is re-queued when its job requests '
+        'recovery', () async {
+      await store.enqueue(makeRun('a'));
+      final claimed = (await store.claimDue(at, 'dead-owner')).single;
+      await store.markStarted(claimed, at);
+
+      final recovered = await store.recoverAbandoned(
+        at.add(const Duration(minutes: 20)),
+        const Duration(minutes: 15),
+        requestsRecovery: (name) => name == 'job',
+      );
+
+      expect(recovered.single.state, TomJobRunState.pending);
+      expect((await reload('a')).state, TomJobRunState.pending);
+    });
+
+    test('an abandoned run that started is failed, not re-queued, when its job '
+        'declines recovery', () async {
+      await store.enqueue(makeRun('a'));
+      final claimed = (await store.claimDue(at, 'dead-owner')).single;
+      await store.markStarted(claimed, at);
+      final later = at.add(const Duration(minutes: 20));
+
+      final recovered = await store.recoverAbandoned(
+        later,
+        const Duration(minutes: 15),
+        requestsRecovery: (_) => false,
+      );
+
+      // Reported, because an operator has to know work was dropped — silently
+      // leaving it `running` forever would be the worse failure.
+      expect(recovered.single.state, TomJobRunState.failed);
+      final stored = await reload('a');
+      expect(stored.state, TomJobRunState.failed);
+      expect(stored.completedAt, later);
+      expect(stored.lastError, TomJobStore.recoveryDeclinedError);
+      expect(stored.claimedBy, isNull);
+    });
+
+    test('recoverAbandoned with no predicate re-queues a started run', () async {
+      await store.enqueue(makeRun('a'));
+      final claimed = (await store.claimDue(at, 'dead-owner')).single;
+      await store.markStarted(claimed, at);
+
+      // The pre-opt-in behaviour, kept for callers that cannot see the job
+      // registry and therefore cannot answer the question at all.
+      final recovered = await store.recoverAbandoned(
+          at.add(const Duration(minutes: 20)), const Duration(minutes: 15));
+
+      expect(recovered.single.state, TomJobRunState.pending);
+    });
   });
 }
 

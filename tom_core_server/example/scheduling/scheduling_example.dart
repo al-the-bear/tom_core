@@ -11,9 +11,11 @@
 ///
 /// What this example does show, connection-free: the schema the pair relies on
 /// and why each part of it is load-bearing, the on-disk migration layout that
-/// creates it in a deployment, the UTC instant encoding both stores use, and the
-/// wiring — including the error you get when the named data source is not
-/// registered.
+/// creates it in a deployment, the UTC instant encoding both stores use, the two
+/// cluster decisions that are pure functions — when a peer node counts as failed
+/// ([isSchedulerNodeFailed]) and whether a failed write leaves the claim in
+/// doubt ([classifySqlFailure]) — and the wiring, including the error you get
+/// when the named data source is not registered.
 ///
 /// Run with `dart run example/scheduling/scheduling_example.dart`.
 /// The same behaviour is covered by `test/scheduling_schema_test.dart` (schema
@@ -73,26 +75,93 @@ void run() {
       '$normalised (same moment: ${normalised.isAtSameMomentAs(local)})');
   assert(normalised.isUtc && normalised.isAtSameMomentAs(local));
 
-  // 5. In a deployment the schema is created by the migration orchestrator, not
+  // 5. The roll call. One row per node, rewritten on every check-in, so the
+  //    cluster can notice a departed *node* rather than only an expired lease.
+  //    `node_id` is the same string the node claims runs under, which is what
+  //    lets a failed node's work join straight back to it.
+  final nodeDdl = schedulerNodeTableDdl(defaultSchedulerNodeTable);
+  print('\n5. roll call table `$defaultSchedulerNodeTable`:');
+  print(nodeDdl);
+  assert(nodeDdl.contains('node_id          VARCHAR(191) NOT NULL'));
+  assert(nodeDdl.contains('checkin_interval BIGINT       NOT NULL'));
+
+  // 6. The failure test is Quartz's, and it is a pure function — which is the
+  //    whole reason it can be shown here at all, and asserted in a test with no
+  //    database:
+  //
+  //      failedAfter = checkin_at
+  //                  + max(checkin_interval, now - my_last_checkin)
+  //                  + 7.5s
+  //
+  //    Both halves of the `max` are load-bearing.
+  final peer = TomSchedulerNode(
+    nodeId: 'node-b',
+    checkinAt: DateTime.utc(2026, 3, 1, 10),
+    checkinInterval: const Duration(seconds: 30),
+  );
+  final healthy = DateTime.utc(2026, 3, 1, 10, 0, 40);
+  print('\n6. the failed-node formula');
+  print('   a peer silent for 40s, judged by a node that is itself current: '
+      '${isSchedulerNodeFailed(peer: peer, now: healthy, lastSelfCheckin: healthy) ? 'failed' : 'alive'}');
+  assert(isSchedulerNodeFailed(
+      peer: peer, now: healthy, lastSelfCheckin: healthy));
+
+  // The same peer, same instant — but the accuser has itself been silent for
+  // two minutes. A node that was stalled must not accuse its peers of the
+  // outage it was having.
+  final stalledSince = DateTime.utc(2026, 3, 1, 9, 58, 40);
+  print('   the same peer, judged by a node that was itself stalled 2m: '
+      '${isSchedulerNodeFailed(peer: peer, now: healthy, lastSelfCheckin: stalledSince) ? 'failed' : 'alive'}');
+  assert(!isSchedulerNodeFailed(
+      peer: peer, now: healthy, lastSelfCheckin: stalledSince));
+
+  // It accelerates recovery; it never replaces the lease. The lease TTL stays
+  // the correctness floor, and the formula reads one node's clock against
+  // another's — so the cluster needs its clocks within about a second. Claiming
+  // and leasing are unaffected: those instants are database-written.
+
+  // 7. A claim is the one statement whose affected-row count *is* the answer, so
+  //    a lost acknowledgement is genuinely ambiguous. The store asks the
+  //    inverted question — not "was this a transport failure" (an open set that
+  //    grows with every driver and proxy) but "did the server answer" (a closed,
+  //    recognisable one).
+  print('\n7. classifying a failed write');
+  print('   the server reported it: '
+      '${classifySqlFailure(MySQLServerException('deadlock', 1213)).name}');
+  print('   the connection broke:   '
+      '${classifySqlFailure(MySQLClientException('socket closed')).name}');
+  assert(classifySqlFailure(MySQLServerException('deadlock', 1213)) ==
+      TomSqlFailureMode.definite);
+  assert(classifySqlFailure(MySQLClientException('socket closed')) ==
+      TomSqlFailureMode.ambiguous);
+  // Anything unrecognised is ambiguous too, and that asymmetry is deliberate: a
+  // false "ambiguous" costs one extra SELECT, a false "definite" an abandoned
+  // run.
+  assert(classifySqlFailure(StateError('anything at all')) ==
+      TomSqlFailureMode.ambiguous);
+
+  // 8. In a deployment the schema is created by the migration orchestrator, not
   //    by the stores. The shipped reference migrations live next to this file
   //    and are byte-checked against the DDL above by the schema test.
-  print('\n5. migration layout walked by TomDbMigrations.migrateDatabases():');
+  print('\n8. migration layout walked by TomDbMigrations.migrateDatabases():');
   print('   <directory>/<datasourceName>/<schemaName>/'
       '[<version>]-<description>.sql');
   print('   example/scheduling/migrations/main/tomcore/'
       '[1]-create_tom_job_run.sql');
   print('   example/scheduling/migrations/main/tomcore/'
       '[2]-create_tom_lease.sql');
-  print('   With the tables already migrated, construct the pair with '
+  print('   example/scheduling/migrations/main/tomcore/'
+      '[3]-create_tom_scheduler_node.sql');
+  print('   With the tables already migrated, construct the stores with '
       '`createSchema: false`.');
 
-  // 6. Wiring. Both types resolve a registered data source by name, and both
+  // 9. Wiring. All three types resolve a registered data source by name, and all
   //    say so plainly when it is absent — a scheduler pointed at a data source
   //    that was never registered is a configuration error, not an empty queue.
   try {
     TomSqlJobStore.named('not_registered');
   } on TomServerException catch (e) {
-    print('\n6. TomSqlJobStore.named on an unknown data source: ${e.key}');
+    print('\n9. TomSqlJobStore.named on an unknown data source: ${e.key}');
     assert(e.key == 'scheduling.store.unknown_datasource');
   }
   try {
@@ -101,20 +170,31 @@ void run() {
     print('   TomSqlLeaseLock.named on an unknown data source: ${e.key}');
     assert(e.key == 'scheduling.lock.unknown_datasource');
   }
+  try {
+    TomSqlSchedulerNodes.named('not_registered', nodeId: 'node-a');
+  } on TomServerException catch (e) {
+    print('   TomSqlSchedulerNodes.named on an unknown data source: ${e.key}');
+    assert(e.key == 'scheduling.nodes.unknown_datasource');
+  }
 
-  // 7. The pair, as a scheduler would take them. Both must address the *same*
-  //    database: a queue and a lock in different systems can each be healthy
-  //    while the other is unreachable, and the resulting disagreement — the
-  //    queue says node A claimed the run, the lock says node B holds it — has no
-  //    resolution.
-  print('\n7. wiring for a cluster node (same data source for both):');
+  // 10. The set, as a scheduler would take them. All must address the *same*
+  //     database: a queue and a lock in different systems can each be healthy
+  //     while the other is unreachable, and the resulting disagreement — the
+  //     queue says node A claimed the run, the lock says node B holds it — has
+  //     no resolution. The roll call is optional; without it recovery simply
+  //     waits out the lease.
+  print('\n10. wiring for a cluster node (same data source throughout):');
   print('''
-     final store = TomSqlJobStore.named('main', createSchema: false);
+     final nodeId = Platform.localHostname;   // must differ per node
+     final roll = TomSqlSchedulerNodes.named('main', nodeId: nodeId,
+         createSchema: false);
+     final store = TomSqlJobStore.named('main', createSchema: false,
+         nodes: roll);
      final lock = TomSqlLeaseLock.named('main', createSchema: false);
      final scheduler = TomScheduler(
        store: store,
        dispatcher: const TomInlineJobDispatcher(),
-       ownerId: Platform.localHostname,   // must differ per node
+       ownerId: nodeId,
        lock: lock,
        leaseTtl: const Duration(minutes: 1),
      );''');

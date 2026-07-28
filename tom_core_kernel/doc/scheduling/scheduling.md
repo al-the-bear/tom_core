@@ -16,6 +16,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [The Job Store](#the-job-store)
 - [The Scheduler](#the-scheduler)
 - [Missed Windows](#missed-windows)
+- [Recovering an Interrupted Run](#recovering-an-interrupted-run)
 - [Retries, Backoff and Timeouts](#retries-backoff-and-timeouts)
 - [Running More Than One Node](#running-more-than-one-node)
 - [Lease Locks](#lease-locks)
@@ -211,7 +212,9 @@ trigger is declared instead by four **mutually exclusive** fields, of which
 | `event: true` | `TomEventSchedule` | see [Event Jobs](#event-jobs) |
 
 The remaining fields map one-to-one onto `TomJobDefinition`: `retry`, `timeout`,
-`missedWindow`, `catchUpLimit` and `allowOverlap`, with the same defaults.
+`missedWindow`, `catchUpLimit`, `allowOverlap` and `requestsRecovery`, with the
+same defaults. `requestsRecovery` is the one to think about deliberately — see
+[Recovering an Interrupted Run](#recovering-an-interrupted-run).
 
 `TomOnceSchedule` has no annotation field on purpose — a one-shot's instant is a
 `DateTime`, which is not a constant either, and a "fire in three days" that
@@ -350,6 +353,7 @@ TomJobDefinition(
   missedWindowPolicy: TomMissedWindowPolicy.runOnce,
   catchUpLimit: 24,
   allowOverlap: false,
+  requestsRecovery: false,        // may a partial execution be re-run?
 )
 ```
 
@@ -368,6 +372,14 @@ the command is the unit that crosses the isolate boundary.
 | `attempt` | Which attempt is next or in flight, 1-based |
 | `state` | `pending`, `running`, `succeeded`, `failed` |
 | `claimedBy` / `claimedAt` | The node holding it, and when — the store's own lease |
+| `startedAt` | When execution actually began, or `null` if it never did |
+
+`startedAt` is not a duplicate of `claimedAt`. A run can be claimed and never
+start — the node dies in the gap — and the two cases must be recovered
+differently; see [Recovering an Interrupted Run](#recovering-an-interrupted-run).
+The scheduler calls `markStarted` immediately before dispatching the body, so the
+distinction is recorded where a *peer* can read it rather than being remembered
+in the node that is about to disappear.
 
 Two implementations ship here:
 
@@ -387,9 +399,11 @@ the production choice for a cluster; see
 Every `tick()` does three things, in order:
 
 1. **Recover** — return runs whose claim has outlived `leaseTimeout` to the
-   queue. This is how work survives the node that was doing it. Recovery does
-   *not* charge the run an attempt: a scheduler crash is not the job's fault, and
-   charging it would let a crash loop consume a job's retry budget.
+   queue, subject to the rule in
+   [Recovering an Interrupted Run](#recovering-an-interrupted-run). This is how
+   work survives the node that was doing it. Recovery does *not* charge the run
+   an attempt: a scheduler crash is not the job's fault, and charging it would
+   let a crash loop consume a job's retry budget.
 2. **Plan** — walk each schedule forward and enqueue the windows now due,
    including any [missed](#missed-windows) while the process was down.
 3. **Dispatch** — claim what is due, win the [lease](#lease-locks), and start it.
@@ -398,6 +412,17 @@ Every `tick()` does three things, in order:
 testable without waiting on wall-clock time. `start()` runs a pass immediately
 and then every `tickInterval`; `stop()` halts the timer but leaves the scheduler
 usable; `close()` releases held leases and refuses further registration.
+
+Two settings shape the rhythm rather than the semantics, and both exist because
+several nodes share one queue:
+
+| Setting | Default | Why |
+| ------- | ------- | --- |
+| `maxCatchUpPerTick` | 20 | A pass enqueues at most this many catch-up windows across *all* jobs. A long outage otherwise produces a burst of backlog that starves the runs that are due now; the remainder is planned by the following ticks, so nothing is lost, only spread. |
+| `tickJitter` | 0.1 | Each idle interval is shortened by up to this fraction, at random. N nodes started by the same deployment would otherwise wake in lockstep for the lifetime of the cluster and contend on every single tick. Jitter, not partitioning, is the answer — it costs nothing and needs no coordination. |
+
+The jitter is downward-only, so a tick never happens *later* than
+`tickInterval`: lateness is the property schedules care about.
 
 Dispatch does **not** await the work it starts — a slow job must not hold up the
 next window of a fast one — so completion, the store write and the lease release
@@ -438,6 +463,34 @@ measure "missed" against, so no missed-window policy applies; instead the
 scheduler raises a `neverFires` alert carrying the schedule, once per job rather
 than once per tick. Without it, a job that can never run would be
 indistinguishable from one that is merely not due yet.
+
+## Recovering an Interrupted Run
+
+A claim that outlives `leaseTimeout` means its holder is gone. What to do with
+the run depends on how far it got, and re-queueing everything is not safe by
+default:
+
+| The run | Recovered as | Because |
+| ------- | ------------ | ------- |
+| claimed, never started (`startedAt == null`) | back to `pending` | Nothing happened, so nothing can be repeated. No opt-in needed, ever. |
+| started, and the job sets `requestsRecovery` | back to `pending` | The job has stated that re-running a partial execution is safe. |
+| started, and the job does not | `failed`, with `TomJobStore.recoveryDeclinedError` | It may have sent the email, charged the card or written half the file. |
+
+The default is the safe one: `requestsRecovery` is `false` unless a job asks.
+
+```dart
+@TomScheduledJob(name: 'rebuild-index', cron: '@hourly', requestsRecovery: true)
+class RebuildIndexJob extends TomJobBase { … }
+```
+
+The declined case is *written off explicitly* rather than left in place, and
+raises a `recoveryDeclined` alert. An operator reading the row must be able to
+see why the run was not attempted again, not find a gap and have to reconstruct
+it.
+
+This is the distinction `startedAt` exists for, and it is also why `markStarted`
+is a store operation rather than a field the node keeps: the decision is made by
+a *surviving peer*, reading state the departed node wrote before it died.
 
 ## Retries, Backoff and Timeouts
 
@@ -549,6 +602,13 @@ final scheduler = TomScheduler(
 );
 ```
 
+The relational pair also offers what only a cluster can use: an optional roll
+call (`TomSqlSchedulerNodes`) that notices a departed *node* rather than only an
+expired lease, so its work is recovered within a poll interval instead of a whole
+lease timeout, and is attributed to the host that left. It is an accelerator —
+the lease TTL remains the correctness floor either way. See
+`tom_core_server/doc/scheduling.md`.
+
 The file pair remains correct wherever every node mounts the same filesystem —
 it is what the cross-process tests exercise — but most clusters do not have a
 shared mount, and all of them have a database.
@@ -579,6 +639,7 @@ Everything worth an operator's attention arrives as a `TomJobAlert` on
 | `timedOut` | An attempt overran `timeout` | warn |
 | `runFailed` | Every attempt is spent; the run is terminally failed | error |
 | `runAbandoned` | A claim outlived `leaseTimeout` and was returned to the queue | error |
+| `recoveryDeclined` | A run was interrupted mid-execution and *not* re-queued, because its job does not set `requestsRecovery` | error |
 | `windowsMissed` | Windows the missed-window policy or `catchUpLimit` dropped | warn |
 | `neverFires` | The job's schedule will never produce a window — `schedule` says which | warn |
 | `lockContended` | A peer holds this job's lease; conceding | debug |
@@ -623,6 +684,10 @@ Three questions and where they are answered:
   is the cluster-wide reading of the flag, not merely a per-process one.
 - **Treat `leaseLost` as an incident.** It means two nodes believed they owned
   the same run.
+- **Set `requestsRecovery: true` only when a half-finished run really may be
+  repeated.** The default declines, which is the safe answer; a job that sends,
+  charges or ships should keep it. `recoveryDeclined` then tells an operator that
+  a run needs a human, which is better than a silent re-run.
 - **Prefer `tick()` in tests.** It is awaitable, which removes wall-clock waits
   from the suite entirely.
 

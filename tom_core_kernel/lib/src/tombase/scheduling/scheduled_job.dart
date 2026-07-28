@@ -212,6 +212,13 @@ class TomScheduledJob {
   /// Whether a new run may start while a previous one is still in flight.
   final bool allowOverlap;
 
+  /// Whether a run interrupted mid-execution may be re-queued.
+  ///
+  /// `false` by default — see [TomJobDefinition.requestsRecovery]. Set it only
+  /// on a body that is safe to run twice; a run that was claimed but never
+  /// started is re-queued either way.
+  final bool requestsRecovery;
+
   /// Declares a scheduled job. Exactly one of [cron], [interval], [calendar]
   /// and [event] must be given.
   const TomScheduledJob({
@@ -225,6 +232,7 @@ class TomScheduledJob {
     this.missedWindow = TomMissedWindowPolicy.runOnce,
     this.catchUpLimit = 10,
     this.allowOverlap = false,
+    this.requestsRecovery = false,
   });
 }
 
@@ -357,6 +365,7 @@ class TomScheduledJobs {
         missedWindowPolicy: annotation.missedWindow,
         catchUpLimit: annotation.catchUpLimit,
         allowOverlap: annotation.allowOverlap,
+        requestsRecovery: annotation.requestsRecovery,
       );
     } on TomScheduleException catch (error) {
       throw TomScheduledJobException(

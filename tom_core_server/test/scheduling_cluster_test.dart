@@ -1,0 +1,490 @@
+/// Connection-free tests for the cluster hardening of the relational scheduler
+/// (CSEXC2).
+///
+/// Three questions, none of which a live database can be made to ask reliably:
+///
+///  * **the ambiguous commit** — what a node does when the answer to its claim
+///    is lost rather than negative. Reproducing it against a real server means
+///    severing a socket at a chosen instant; against a scripted data source it
+///    is one line, and the case under test is the *classification*, not the
+///    network;
+///  * **the failed-node formula** — pure arithmetic over three instants,
+///    including the case that is easiest to omit, a stalled node accusing its
+///    peers of its own outage;
+///  * **opt-in recovery** — which of two `UPDATE`s the store issues for an
+///    interrupted run. The behaviour is in the choice, and the choice is
+///    visible in the statement.
+///
+/// The round trips these decisions ride on — that `started_at` survives the
+/// column, that the roll-call table really is one row per node — are asserted
+/// against a live server in `scheduling_db_test.dart`.
+library;
+
+import 'dart:collection';
+import 'dart:io';
+
+import 'package:test/test.dart';
+import 'package:tom_core_server/tom_core_server.dart';
+
+// ===========================================================================
+// A scripted data source
+// ===========================================================================
+
+/// A [TomDataSource] that answers from a script instead of from a server.
+///
+/// It parses no SQL and enforces no constraints: it hands back the queued answer
+/// for each call in order and records what it was asked. That is enough, because
+/// every behaviour under test here is a decision the *store* makes about an
+/// answer it was given — and it lets a claim fail in transport, which is the one
+/// thing a real server will not do on request.
+///
+/// Only the two execution methods are implemented; [noSuchMethod] makes anything
+/// else a loud test bug rather than a silent `null`.
+class _ScriptedDataSource implements TomDataSource {
+  /// What each successive `executeQuery` does: a `List` of rows to return, or
+  /// any other object to throw.
+  final Queue<Object> queryAnswers = Queue();
+
+  /// What each successive `executeCommand` does: a `BigInt` to return, or any
+  /// other object to throw.
+  final Queue<Object> commandAnswers = Queue();
+
+  /// Every command issued, in order, with the parameters it was bound with.
+  final List<String> commands = [];
+
+  /// The bound parameters of every command issued, in order.
+  final List<Map<String, dynamic>?> commandParameters = [];
+
+  /// Every query issued, in order.
+  final List<String> queries = [];
+
+  @override
+  Future<BigInt> executeCommand(
+    String command, [
+    Map<String, dynamic>? params,
+  ]) async {
+    commands.add(command);
+    commandParameters.add(params);
+    if (commandAnswers.isEmpty) return BigInt.one;
+    final answer = commandAnswers.removeFirst();
+    if (answer is BigInt) return answer;
+    throw answer;
+  }
+
+  @override
+  Future<List<T>> executeQuery<T extends Object>(
+    String command, [
+    Map<String, dynamic>? params,
+    Type? resultType,
+  ]) async {
+    queries.add(command);
+    if (queryAnswers.isEmpty) return <T>[];
+    final answer = queryAnswers.removeFirst();
+    // `cast` rather than a `is List<T>` test: a `[_row(...)]` literal is a
+    // `List<Object>`, so the type test would be false and every scripted row
+    // would be thrown instead of returned.
+    if (answer is List) return answer.cast<T>();
+    throw answer;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
+        'The scripted data source was asked for '
+        '${invocation.memberName}, which no test needs. Implement it here if '
+        'that changes.',
+      );
+}
+
+/// A queue row in whatever state a test needs it in.
+TomJobRunRow _row({
+  String id = 'run-1',
+  String jobName = 'job',
+  required DateTime scheduledFor,
+  TomJobRunState state = TomJobRunState.pending,
+  String? claimedBy,
+  DateTime? claimedAt,
+  DateTime? startedAt,
+}) =>
+    TomJobRunRow()
+      ..id = id
+      ..jobName = jobName
+      ..scheduledFor = sqlInstant(scheduledFor)
+      ..runAt = sqlInstant(scheduledFor)
+      ..state = state.name
+      ..attempt = 1
+      ..claimedBy = claimedBy
+      ..claimedAt = claimedAt == null ? null : sqlInstant(claimedAt)
+      ..startedAt = startedAt == null ? null : sqlInstant(startedAt);
+
+/// A transport-level failure, wrapped the way the MariaDB driver wraps one.
+Object _transportFailure([String message = 'socket closed']) => TomException(
+      'error.result_processing.executecommand_failed',
+      'ExecuteCommand failed',
+      rootException: MySQLClientException(message),
+    );
+
+/// A failure the server itself reported.
+Object _serverFailure([int code = 1213]) => TomException(
+      'error.result_processing.executecommand_failed',
+      'ExecuteCommand failed',
+      rootException: MySQLServerException('deadlock found', code),
+    );
+
+void main() {
+  final at = DateTime.utc(2026, 5, 1, 12);
+
+  // =========================================================================
+  // GAP 1 — the claim whose answer was lost
+  // =========================================================================
+
+  group('a claim whose answer is lost', () {
+    late _ScriptedDataSource datasource;
+    late TomSqlJobStore store;
+
+    setUp(() {
+      datasource = _ScriptedDataSource();
+      // createSchema: false so the script describes only the statements under
+      // test; a DDL call at the front would shift every queued answer by one.
+      store = TomSqlJobStore(datasource, createSchema: false);
+    });
+
+    /// Scripts the candidate scan, then the claim's failure.
+    void scriptClaimFailing(Object failure) {
+      datasource.queryAnswers.add([_row(scheduledFor: at)]);
+      datasource.commandAnswers.add(failure);
+    }
+
+    test('a failure the server reported is definitive and propagates', () async {
+      // The server answered, so the row is untouched and there is nothing to
+      // re-read. Re-reading anyway would be harmless but dishonest: it would
+      // treat a known outcome as an unknown one, and hide real errors behind a
+      // recheck that always says "not claimed".
+      scriptClaimFailing(_serverFailure());
+
+      await expectLater(store.claimDue(at, 'node-a'), throwsA(isA<TomException>()));
+      expect(datasource.queries, hasLength(1),
+          reason: 'a definite failure must not trigger a recheck');
+    });
+
+    test('a transport failure that had committed is claimed after all',
+        () async {
+      // The claim reached the server and committed; only the acknowledgement was
+      // lost. Reporting this as a loss is the bug: the run would sit `running`,
+      // owned by a node that believes it owns nothing, until the lease expired.
+      scriptClaimFailing(_transportFailure());
+      datasource.queryAnswers.add([
+        _row(
+          scheduledFor: at,
+          state: TomJobRunState.running,
+          claimedBy: 'node-a',
+          claimedAt: at,
+        ),
+      ]);
+
+      final claimed = await store.claimDue(at, 'node-a');
+
+      expect(claimed, hasLength(1));
+      expect(claimed.single.claimedBy, 'node-a');
+      expect(claimed.single.state, TomJobRunState.running);
+    });
+
+    test('a transport failure that had not committed leaves the run available',
+        () async {
+      scriptClaimFailing(_transportFailure());
+      datasource.queryAnswers.add([_row(scheduledFor: at)]);
+
+      // Not an error: the run is still `pending`, so the next pass — this node's
+      // or a peer's — will offer it again.
+      expect(await store.claimDue(at, 'node-a'), isEmpty);
+    });
+
+    test("a peer's claim is not mistaken for ours", () async {
+      scriptClaimFailing(_transportFailure());
+      datasource.queryAnswers.add([
+        _row(
+          scheduledFor: at,
+          state: TomJobRunState.running,
+          claimedBy: 'node-b',
+          claimedAt: at,
+        ),
+      ]);
+
+      expect(await store.claimDue(at, 'node-a'), isEmpty);
+    });
+
+    test('an earlier claim of our own is not mistaken for this one', () async {
+      // Same owner, different instant — an overlapping pass of this same node.
+      // Owner alone would read as proof and dispatch the run a second time; the
+      // claim stamp is what identifies *this* write.
+      scriptClaimFailing(_transportFailure());
+      datasource.queryAnswers.add([
+        _row(
+          scheduledFor: at,
+          state: TomJobRunState.running,
+          claimedBy: 'node-a',
+          claimedAt: at.subtract(const Duration(minutes: 5)),
+        ),
+      ]);
+
+      expect(await store.claimDue(at, 'node-a'), isEmpty);
+    });
+
+    test('a run that vanished between the scan and the recheck is not claimed',
+        () async {
+      scriptClaimFailing(_transportFailure());
+      datasource.queryAnswers.add(<Object>[]);
+
+      expect(await store.claimDue(at, 'node-a'), isEmpty);
+    });
+
+    test('a recheck that also fails surfaces the original failure', () async {
+      final original = _transportFailure('the original break');
+      scriptClaimFailing(original);
+      datasource.queryAnswers.add(_transportFailure('and the recheck too'));
+
+      // Still blind, so the honest answer is the failure that started it. The
+      // lease timeout remains the backstop if the claim did land.
+      await expectLater(
+        store.claimDue(at, 'node-a'),
+        throwsA(same(original)),
+      );
+    });
+  });
+
+  group('classifying a failed write', () {
+    test('a server-reported error is definitive', () {
+      expect(classifySqlFailure(MySQLServerException('duplicate key', 1062)),
+          TomSqlFailureMode.definite);
+    });
+
+    test('a driver-side error is ambiguous', () {
+      expect(classifySqlFailure(MySQLClientException('socket closed')),
+          TomSqlFailureMode.ambiguous);
+      expect(classifySqlFailure(MySQLProtocolException('bad packet')),
+          TomSqlFailureMode.ambiguous);
+    });
+
+    test('the verdict is found through the wrapping', () {
+      // The driver's exception arrives inside a MariadbDatasourceException, so a
+      // classifier that only looked at the top of the chain would call every
+      // failure ambiguous — including the ones it can be sure about.
+      expect(classifySqlFailure(_serverFailure()), TomSqlFailureMode.definite);
+      expect(
+          classifySqlFailure(_transportFailure()), TomSqlFailureMode.ambiguous);
+    });
+
+    test('anything unrecognised is ambiguous', () {
+      // The default is the safe direction, and deliberately so: the set of
+      // transport failures is open-ended, the set of "the server answered" is
+      // not. Guessing "ambiguous" costs one SELECT; guessing "definite" costs an
+      // abandoned run.
+      expect(classifySqlFailure(const SocketException('reset by peer')),
+          TomSqlFailureMode.ambiguous);
+      expect(classifySqlFailure(StateError('connection closed')),
+          TomSqlFailureMode.ambiguous);
+      expect(classifySqlFailure(null), TomSqlFailureMode.ambiguous);
+    });
+
+    test('the cause chain is enumerable for logging', () {
+      final causes = sqlFailureCauses(_serverFailure(1205)).toList();
+      expect(causes.first, isA<TomException>());
+      expect(causes.last, isA<MySQLServerException>());
+    });
+  });
+
+  // =========================================================================
+  // GAP 2 — the failed-node formula
+  // =========================================================================
+
+  group('the failed-node formula', () {
+    TomSchedulerNode peer({
+      required Duration silentFor,
+      Duration interval = const Duration(seconds: 30),
+      String nodeId = 'node-b',
+    }) =>
+        TomSchedulerNode(
+          nodeId: nodeId,
+          checkinAt: at.subtract(silentFor),
+          checkinInterval: interval,
+        );
+
+    bool failed(TomSchedulerNode node, {Duration selfSilentFor = Duration.zero}) =>
+        isSchedulerNodeFailed(
+          peer: node,
+          now: at,
+          lastSelfCheckin: at.subtract(selfSilentFor),
+        );
+
+    test('a peer inside its own interval is alive', () {
+      expect(failed(peer(silentFor: const Duration(seconds: 20))), isFalse);
+    });
+
+    test('a peer past its interval plus the slack has failed', () {
+      // 30 s interval + 7.5 s slack: 37 s is still grace, 38 s is not.
+      expect(failed(peer(silentFor: const Duration(seconds: 37))), isFalse);
+      expect(failed(peer(silentFor: const Duration(seconds: 38))), isTrue);
+    });
+
+    test('a peer is judged by its own interval, not the accuser\'s', () {
+      // The same 40 s of silence: damning for a node that promised to speak
+      // every 2 s, unremarkable for one that promised every 5 minutes. Judging
+      // by the accuser's cadence would make the verdict depend on who asked.
+      final chatty = peer(
+        silentFor: const Duration(seconds: 40),
+        interval: const Duration(seconds: 2),
+      );
+      final quiet = peer(
+        silentFor: const Duration(seconds: 40),
+        interval: const Duration(minutes: 5),
+      );
+      expect(failed(chatty), isTrue);
+      expect(failed(quiet), isFalse);
+    });
+
+    test('a node that was itself stalled does not accuse its peers', () {
+      // THE guard. This process was descheduled for two minutes; every peer now
+      // looks two minutes stale through no fault of its own. Without the
+      // `now - myLastCheckin` term, waking up would mean declaring the whole
+      // cluster dead and stealing its work — the outage turning destructive at
+      // the moment it ends.
+      final silent = peer(silentFor: const Duration(minutes: 2));
+      expect(failed(silent), isTrue,
+          reason: 'a healthy accuser would call this peer failed');
+      expect(
+        failed(silent, selfSilentFor: const Duration(minutes: 2)),
+        isFalse,
+        reason: 'an accuser that missed the same window must not accuse',
+      );
+    });
+
+    test('a stalled node still accuses a peer that is later than its outage',
+        () {
+      // The guard grants peers the accuser's own lateness — not amnesty. A peer
+      // silent for ten minutes was already gone before this node stalled.
+      expect(
+        failed(
+          peer(silentFor: const Duration(minutes: 10)),
+          selfSilentFor: const Duration(minutes: 2),
+        ),
+        isTrue,
+      );
+    });
+
+    test('the failure instant is the sum the formula names', () {
+      // Spelled out once, so a future edit that quietly drops a term fails here
+      // rather than in a cluster.
+      expect(
+        schedulerNodeFailedAfter(
+          peer: peer(
+            silentFor: const Duration(seconds: 10),
+            interval: const Duration(seconds: 30),
+          ),
+          now: at,
+          lastSelfCheckin: at.subtract(const Duration(seconds: 90)),
+        ),
+        // checkinAt (now - 10s) + max(30s, 90s) + 7.5s
+        at.add(const Duration(seconds: 87, milliseconds: 500)),
+      );
+    });
+  });
+
+  // =========================================================================
+  // GAP 3 — recovery is opt-in for interrupted runs
+  // =========================================================================
+
+  group('recovering an abandoned run', () {
+    late _ScriptedDataSource datasource;
+    late TomSqlJobStore store;
+    final later = at.add(const Duration(minutes: 30));
+
+    setUp(() {
+      datasource = _ScriptedDataSource();
+      store = TomSqlJobStore(datasource, createSchema: false);
+    });
+
+    void scriptStaleRun({required bool started}) {
+      datasource.queryAnswers.add([
+        _row(
+          scheduledFor: at,
+          state: TomJobRunState.running,
+          claimedBy: 'node-that-died',
+          claimedAt: at,
+          startedAt: started ? at : null,
+        ),
+      ]);
+    }
+
+    test('a run claimed but never started goes back to the queue', () async {
+      // Nothing executed, so nothing can repeat: the opt-in does not apply and
+      // is not consulted.
+      scriptStaleRun(started: false);
+
+      final recovered = await store.recoverAbandoned(
+        later,
+        const Duration(minutes: 15),
+        requestsRecovery: (_) => false,
+      );
+
+      expect(recovered.single.state, TomJobRunState.pending);
+      expect(datasource.commandParameters.single!['pending'],
+          TomJobRunState.pending.name);
+    });
+
+    test('an interrupted run goes back to the queue when its job asks', () async {
+      scriptStaleRun(started: true);
+
+      final recovered = await store.recoverAbandoned(
+        later,
+        const Duration(minutes: 15),
+        requestsRecovery: (_) => true,
+      );
+
+      expect(recovered.single.state, TomJobRunState.pending);
+    });
+
+    test('an interrupted run is written off when its job does not', () async {
+      // The default, and the conservative one: re-running a job that was halfway
+      // through repeats whatever it had already done. The run becomes terminally
+      // failed with the explanation, because an operator has to be able to see
+      // that the framework made this call.
+      scriptStaleRun(started: true);
+
+      final recovered = await store.recoverAbandoned(
+        later,
+        const Duration(minutes: 15),
+        requestsRecovery: (_) => false,
+      );
+
+      final run = recovered.single;
+      expect(run.state, TomJobRunState.failed);
+      expect(run.completedAt, later);
+      expect(run.lastError, TomJobStore.recoveryDeclinedError);
+      expect(datasource.commandParameters.single!['error'],
+          TomJobStore.recoveryDeclinedError);
+    });
+
+    test('with no predicate an interrupted run is still re-queued', () async {
+      // A store asked in isolation cannot see the job registry, so it cannot
+      // answer the question; recovering is the only answer it may give, and the
+      // scheduler — which can see the registry — always supplies the predicate.
+      scriptStaleRun(started: true);
+
+      final recovered =
+          await store.recoverAbandoned(later, const Duration(minutes: 15));
+
+      expect(recovered.single.state, TomJobRunState.pending);
+    });
+
+    test('a row a peer recovered first is not reported twice', () async {
+      scriptStaleRun(started: false);
+      datasource.commandAnswers.add(BigInt.zero);
+
+      // The guarded UPDATE is still the arbitration: the loser of the race
+      // changed nothing and must not claim it did.
+      expect(
+        await store.recoverAbandoned(later, const Duration(minutes: 15)),
+        isEmpty,
+      );
+    });
+  });
+}
