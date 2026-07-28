@@ -51,10 +51,10 @@ CE-UP `roaming` pattern (a shared shape with a server-side persistence facet).
 The persistence markers themselves remain **server-side** parts
 (`service_annotations.dart`).
 
-> Naming note: the csm4 survey wrote "CsDbTable"; the Band R annotations-only
-> catalogue realises that as the `@CsTable` (CE-TB) + `@CsColumn` (CE-CO) pair.
-> No base classes exist — a persistent entity is an ordinary `tom_core_server`
-> class marked by `@CsTable`/`@CsColumn`/`@CsRepository`.
+> Naming note: an earlier survey wrote "CsDbTable"; the annotations-only
+> catalogue realises CE-DB as the `@CsTable` + `@CsColumn` + `@CsRepository`
+> trio. No base classes exist — a persistent entity is an ordinary
+> `tom_core_server` class marked by those three.
 
 ## Status
 
