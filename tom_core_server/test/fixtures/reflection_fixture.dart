@@ -336,6 +336,73 @@ class FixtureFileSlotRecord {
   String? internalNotes;
 }
 
+/// A reflected entity whose two file columns collide on a name (CSEXD3).
+///
+/// This is the shape `TomFileSlots._assertUnambiguous` exists to reject, built
+/// so that the *consequence* of not rejecting it is visible and not merely
+/// asserted about. A slot serves its column by handing the column's **declared**
+/// name to the repository, and the repository resolves a file field by declared
+/// name **or** mapped column name, first match wins in declaration order. So:
+///
+/// - [notes] is closed (`exposed:` defaults to `false`) and is *mapped* to the
+///   column name `dossier`;
+/// - [dossier] is exposed, and its *declared* name is `dossier`.
+///
+/// The exposed column would therefore publish the slot
+/// `fixture_ambiguous_slot/<id>/public_dossier` and ask the repository for the
+/// field `dossier` — which [notes], declared first, answers to. The published
+/// column would serve the closed column's bytes: an exposure by accident, which
+/// is precisely what the `exposed: false` default is supposed to make
+/// impossible.
+///
+/// It maps to no table in `test_database.dart` and needs none — registration
+/// fails before any row is ever read.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_ambiguous_slot',
+  primaryKeyField: 'id',
+)
+class FixtureAmbiguousSlotRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The closed column — declared *first*, so it is the one a lookup by the
+  /// colliding name finds.
+  @TomDbColumn(columnName: 'dossier')
+  @TomFileReference(keyPrefix: 'fixture/ambiguous/closed')
+  String? notes;
+
+  /// The exposed column, whose declared name is the closed column's mapped one.
+  @TomDbColumn(columnName: 'public_dossier')
+  @TomFileReference(keyPrefix: 'fixture/ambiguous/open', exposed: true)
+  String? dossier;
+}
+
+/// A reflected entity that holds an exposed file column but declares no
+/// `@TomDbTable` (CSEXD3).
+///
+/// A slot is addressed as `<table>/<id>/<column>` and the table name comes from
+/// the mapping, so an unmapped entity has no name to be addressed by. The
+/// endpoint says so at wire-up time rather than resolving to something arbitrary
+/// — the entity has no persistent identity at all, so `exposed: true` on it is a
+/// declaration that cannot be honoured, not one to be honoured approximately.
+///
+/// Deliberately carries no `@TomDbColumn`: an entity with no table has no
+/// persistent columns by definition, and annotating them would only assert that
+/// two annotations disagree rather than that one is missing.
+@tomReflector
+class FixtureUnmappedFileRecord {
+  /// Would-be identity, mapped by nothing.
+  int? id;
+
+  /// An exposed file column on an entity that has nowhere to live.
+  @TomFileReference(keyPrefix: 'fixture/unmapped', exposed: true)
+  String? attachment;
+}
+
 /// A reflected entity covering every case the reflected export projection has
 /// to decide (CSEXC5).
 ///

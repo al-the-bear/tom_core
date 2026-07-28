@@ -4,11 +4,17 @@ import 'dart:io';
 import 'package:http/http.dart' show Client;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
+import 'package:shelf_router/shelf_router.dart' show Router;
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import 'fixtures/reflection_fixture.dart'
-    show FixtureApiServer, FixtureDocumentRecord, FixtureFileSlotRecord;
+    show
+        FixtureAmbiguousSlotRecord,
+        FixtureApiServer,
+        FixtureDocumentRecord,
+        FixtureFileSlotRecord,
+        FixtureUnmappedFileRecord;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// CSFSB1 / CSEXC4 — the framework's HTTP file endpoint, end to end.
@@ -40,6 +46,7 @@ class _MemoryFileRepository
     this.grades = const {},
     this.outOfScope = const {},
     this.writeScopeRefused = const {},
+    this.loseStoredBlob = false,
   });
 
   /// Column grades by resource key; an unlisted key is unrestricted.
@@ -64,6 +71,16 @@ class _MemoryFileRepository
   /// implementation of it, so the translation has to be exercised on its own,
   /// not only through the read gate that happens to fire first.
   final Set<int> writeScopeRefused;
+
+  /// Drops the blob after a successful `saveFile`, leaving the row holding a key
+  /// the store cannot answer for.
+  ///
+  /// The row and the store are two systems, and nothing in the interface makes
+  /// them atomic — a store eviction, a failed replica, a key deleted out of band
+  /// all land here. The endpoint has a named branch for exactly this
+  /// (`stored_file_not_readable`), and the only way to reach it is to put the
+  /// two into the disagreement it describes.
+  final bool loseStoredBlob;
 
   /// The rows, by primary key.
   final Map<int, FixtureFileSlotRecord> rows = {};
@@ -132,6 +149,10 @@ class _MemoryFileRepository
       fileName: fileName,
     );
     column.setVariableValue(entity, key);
+    // The row keeps the key; the bytes go. This is the write *succeeding* — the
+    // caller is told nothing — and the disagreement only surfaces on the read
+    // back, which is what makes it worth a branch of its own.
+    if (loseStoredBlob) await _store(column).delete(key);
     return entity;
   }
 
@@ -210,10 +231,15 @@ class _TestClientFactory extends TomHttpClientFactory {
 /// [TomFileSlots.register] resolves the entity's table and file columns by
 /// mirror and never calls a single repository method, so a type that cannot
 /// serve a request is still a perfectly good argument. It has to be a fake
-/// rather than the real `FixtureDocumentRepository`, because constructing that
-/// one resolves its data source and there is no database in this suite.
-class _UnusedDocumentRepository
-    implements TomFileRepository<FixtureDocumentRecord, int> {
+/// rather than a real `TomSqlDatasourceRepository`, because constructing one of
+/// those resolves its data source and there is no database in this suite.
+///
+/// Generic in [T] because every registration failure is a failure to read some
+/// entity's annotations, and they differ only in which entity: writing one such
+/// stand-in per rejected fixture would be three copies of a class whose whole
+/// body is a refusal.
+class _AnnotationsOnlyRepository<T extends Object>
+    implements TomFileRepository<T, int> {
   @override
   Never noSuchMethod(Invocation invocation) => throw UnimplementedError(
     'This repository is registered for its annotations only.',
@@ -248,7 +274,9 @@ void main() {
       // marks neither exposed. Default-closed means adding the endpoint did not
       // silently put its files on the network.
       expect(
-        () => TomFileSlots.register(_UnusedDocumentRepository()),
+        () => TomFileSlots.register(
+          _AnnotationsOnlyRepository<FixtureDocumentRecord>(),
+        ),
         throwsA(
           isA<TomFileSlotException>().having(
             (e) => e.key,
@@ -286,6 +314,136 @@ void main() {
         isNull,
       );
     });
+
+    test('an entity that declares no table cannot expose files at all', () {
+      // A slot is `<table>/<id>/<column>` and the table name comes from
+      // `@TomDbTable`. An unmapped entity has no name to be addressed by, so
+      // `exposed: true` on it is a declaration that cannot be honoured — and the
+      // endpoint says so while the application is wiring itself up, rather than
+      // publishing something and discovering at request time that there is
+      // nothing behind it.
+      expect(
+        () => TomFileSlots.register(
+          _AnnotationsOnlyRepository<FixtureUnmappedFileRecord>(),
+        ),
+        throwsA(
+          isA<TomFileSlotException>().having(
+            (e) => e.key,
+            'key',
+            'file_endpoint.entity_not_mapped',
+          ),
+        ),
+      );
+      // Nothing was published under any plausible name for it.
+      expect(TomFileSlots.slots, isEmpty);
+      expect(
+        TomFileSlots.resolve('FixtureUnmappedFileRecord', 'attachment'),
+        isNull,
+      );
+      expect(TomFileSlots.resolve('fixture_unmapped_file', 'attachment'),
+          isNull);
+    });
+
+    group('the ambiguity guard behind the default-closed rule', () {
+      // The `exposed: false` default is only as strong as this guard. A slot
+      // serves its column by handing the column's *declared* name to the
+      // repository, and the repository resolves a file field by declared name
+      // **or** mapped column name, first match wins. So a closed column mapped
+      // to the *declared* name of an exposed one answers in the exposed one's
+      // place, and a caller reaches closed bytes through a slot that never
+      // named them. `FixtureAmbiguousSlotRecord` is built to be exactly that
+      // shape.
+
+      test('a closed column would answer in the exposed column\'s place', () {
+        // The premise, asserted rather than assumed — otherwise the guard below
+        // is a test of an arbitrary rule instead of a test of a defence. This
+        // repeats `TomSqlDatasourceRepository._fileColumn` verbatim: the same
+        // list, the same order, the same first-match-wins predicate.
+        final columns = TomAnnotationAnalyzer.findFileColumns(
+          FixtureAmbiguousSlotRecord,
+        );
+        final exposed = columns.singleWhere(
+          (column) => column.fileReference!.exposed,
+        );
+        final resolved = columns.firstWhere(
+          (column) =>
+              column.declaredName == exposed.declaredName ||
+              column.getQueryFieldName() == exposed.declaredName,
+        );
+        expect(
+          resolved.declaredName,
+          'notes',
+          reason: 'the field name the exposed slot would pass to the '
+              'repository resolves to the closed column, so registering this '
+              'entity would put closed bytes behind an open slot',
+        );
+        expect(resolved.fileReference!.exposed, isFalse);
+      });
+
+      test('registration is refused with ambiguous_slot', () {
+        expect(
+          () => TomFileSlots.register(
+            _AnnotationsOnlyRepository<FixtureAmbiguousSlotRecord>(),
+          ),
+          throwsA(
+            isA<TomFileSlotException>()
+                .having((e) => e.key, 'key', 'file_endpoint.ambiguous_slot')
+                .having(
+                  (e) => e.parameters?['name'],
+                  'the colliding name',
+                  'dossier',
+                ),
+          ),
+        );
+      });
+
+      test('the closed column is unreachable through any slot', () {
+        // The assertion that matters. `ambiguous_slot` firing is only useful if
+        // it leaves nothing published — a guard that threw *after* registering
+        // the exposed column would have opened the hole it was written to
+        // close. So: every name either column answers to resolves to no slot,
+        // and the entity contributes nothing to the registry.
+        expect(
+          () => TomFileSlots.register(
+            _AnnotationsOnlyRepository<FixtureAmbiguousSlotRecord>(),
+          ),
+          throwsA(isA<TomFileSlotException>()),
+        );
+        for (final name in [
+          'dossier', // the collision itself
+          'notes', // the closed column's declared name
+          'public_dossier', // the exposed column's slot name
+        ]) {
+          expect(
+            TomFileSlots.resolve('fixture_ambiguous_slot', name),
+            isNull,
+            reason: 'a rejected entity published the slot "$name"',
+          );
+        }
+        expect(TomFileSlots.slots, isEmpty);
+      });
+
+      test('a sound entity registered alongside it is unaffected', () {
+        // The guard is per entity, not a global kill switch: rejecting one
+        // registration must not cost an application the slots it registered
+        // correctly, or the safe response to an ambiguity would be to stop
+        // serving files at all.
+        TomFileSlots.register(_MemoryFileRepository());
+        expect(
+          () => TomFileSlots.register(
+            _AnnotationsOnlyRepository<FixtureAmbiguousSlotRecord>(),
+          ),
+          throwsA(isA<TomFileSlotException>()),
+        );
+        expect(
+          TomFileSlots.slots,
+          unorderedEquals([
+            'fixture_file_slot/poster',
+            'fixture_file_slot/graded_poster',
+          ]),
+        );
+      });
+    });
   });
 
   group('the endpoint over a real socket', () {
@@ -304,6 +462,7 @@ void main() {
       Map<String, TomAuthState> grades = const {},
       Set<int> outOfScope = const {},
       Set<int> writeScopeRefused = const {},
+      bool loseStoredBlob = false,
     }) async {
       TomBean.resetBeanContext();
       TomFileSlots.reset();
@@ -314,6 +473,7 @@ void main() {
         grades: grades,
         outOfScope: outOfScope,
         writeScopeRefused: writeScopeRefused,
+        loseStoredBlob: loseStoredBlob,
       );
       repository.rows[1] = FixtureFileSlotRecord()
         ..id = 1
@@ -636,6 +796,90 @@ void main() {
       expect(response.statusCode, 404);
     });
 
+    test('PUT uploads exactly as POST does', () async {
+      // `PUT` is a declared method of the endpoint and the handler routes it to
+      // the same upload as `POST` — a file slot is a single resource whose
+      // content is replaced whole, so "create" and "replace" are not two
+      // operations here. Declared but never exercised, the two could have drifted
+      // apart without anything noticing.
+      await start();
+      const slot = 'fixture_file_slot/1/poster';
+      final response = await _raw(
+        server.port,
+        'PUT',
+        '/files/$slot',
+        body: utf8.encode('put across the socket'),
+      );
+      expect(response.statusCode, 201);
+      final descriptor = jsonDecode(await response.transform(utf8.decoder).join());
+      expect(descriptor['byteCount'], 'put across the socket'.length);
+      expect(repository.rows[1]!.poster, descriptor['key']);
+
+      final downloaded = <int>[];
+      await for (final chunk in client.download(slot)) {
+        downloaded.addAll(chunk);
+      }
+      expect(utf8.decode(downloaded), 'put across the socket');
+    });
+
+    test('a method the endpoint does not declare never reaches it', () async {
+      // The first of the two gates on the method. `@TomEndpoint.methods` lists
+      // five verbs and the router mounts one route per verb, so a `PATCH` never
+      // matches a route and the handler is not entered at all — the answer is
+      // the router's 404, not the handler's 405. Asserted so that the 405 test
+      // below is understood for what it is: the handler's *own* guard, for a
+      // handler mounted more widely than the framework mounts it.
+      await start();
+      final response = await _raw(
+        server.port,
+        'PATCH',
+        '/files/fixture_file_slot/1/poster',
+        body: utf8.encode('patched'),
+      );
+      expect(response.statusCode, 404);
+    });
+
+    test('a stored file the store cannot answer for is not silently a success',
+        () async {
+      // The row took the key and the store lost the bytes. `saveFile` reported
+      // success, so the upload cannot simply be failed as a client error — but
+      // neither may it be reported as stored, because the descriptor the client
+      // is owed does not exist. The endpoint names the disagreement instead of
+      // dereferencing the `null` it got back.
+      await start(loseStoredBlob: true);
+      final slot = TomFileSlots.resolve('fixture_file_slot', 'poster')!;
+      await expectLater(
+        slot.upload('1', Stream.value(utf8.encode('bytes that will vanish'))),
+        throwsA(
+          isA<TomFileSlotException>().having(
+            (e) => e.key,
+            'key',
+            'file_endpoint.stored_file_not_readable',
+          ),
+        ),
+      );
+      // The row is left holding the key it was given — the endpoint reports the
+      // inconsistency, it does not paper over it by clearing the column, which
+      // would destroy the only evidence of what the store lost.
+      expect(repository.rows[1]!.poster, isNotNull);
+    });
+
+    test('a lost blob surfaces as a server fault, not as a 404', () async {
+      // Over the wire the same case must *not* join the 404 family. 404 tells a
+      // client "there is no file here", which is a true statement about their
+      // request and an invitation to move on; this is a true statement about the
+      // server, and the client's request was fine. Conflating them would let a
+      // storage outage be read as an empty slot and silently lose files.
+      await start(loseStoredBlob: true);
+      final response = await _raw(
+        server.port,
+        'POST',
+        '/files/fixture_file_slot/1/poster',
+        body: utf8.encode('bytes that will vanish'),
+      );
+      expect(response.statusCode, greaterThanOrEqualTo(500));
+    });
+
     test('a large upload streams through without being buffered whole',
         () async {
       await start();
@@ -657,6 +901,66 @@ void main() {
       }
       expect(downloadedLength, payload.length);
       expect(chunks, greaterThan(0));
+    });
+  });
+
+  group('the handler mounted on its own', () {
+    // `TomFileEndpoint.handle` is public and stateless, and an application may
+    // mount it itself — behind its own auth, at its own path, or on a route that
+    // matches every method. Mounted that way it is the only thing standing
+    // between an unsupported verb and the switch's fall-through, so its method
+    // guard is its own contract and not a restatement of `@TomEndpoint.methods`.
+    // This group mounts it on a catch-all route, which is the only way the 405
+    // branch is reachable at all.
+
+    late HttpServer server;
+
+    setUp(() async {
+      TomFileSlots.reset();
+      TomBlobStoreInfo.stores.clear();
+      TomBlobStoreInfo.register('files', TomMemoryBlobStore(), asDefault: true);
+      TomFileSlots.register(_MemoryFileRepository());
+      final router = Router()
+        ..all('/files/<entity>/<id>/<column>', TomFileEndpoint.handle);
+      server = await shelf_io.serve(router.call, InternetAddress.loopbackIPv4, 0);
+    });
+
+    tearDown(() async {
+      await server.close(force: true);
+      TomFileSlots.reset();
+      TomBlobStoreInfo.stores.clear();
+    });
+
+    for (final method in ['PATCH', 'OPTIONS', 'TRACE']) {
+      test('$method on a real slot answers 405', () async {
+        final response = await _raw(
+          server.port,
+          method,
+          '/files/fixture_file_slot/1/poster',
+        );
+        expect(response.statusCode, 405);
+        expect(
+          jsonDecode(await response.transform(utf8.decoder).join())['key'],
+          'file_endpoint.method_not_allowed',
+        );
+      });
+    }
+
+    test('an unsupported method on an unknown slot is still 404', () async {
+      // Slot resolution runs before the method switch, and it must: answering
+      // 405 here would tell a caller that `secret_column` is a slot they merely
+      // used the wrong verb on. "That method is not supported *for a file slot*"
+      // presumes a file slot.
+      final response = await _raw(
+        server.port,
+        'PATCH',
+        '/files/fixture_file_slot/1/internal_notes',
+      );
+      expect(response.statusCode, 404);
+      expect(
+        jsonDecode(await response.transform(utf8.decoder).join())['key'],
+        'file_endpoint.unknown_slot',
+      );
     });
   });
 }
