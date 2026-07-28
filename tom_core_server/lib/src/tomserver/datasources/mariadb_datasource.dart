@@ -347,7 +347,19 @@ class MariaDbDatasource implements TomDataSource {
         case int:
           values[alias] = row.typedColByName<int>(alias);
         case double:
-          values[alias] = row.typedColByName<double>(alias);
+          // Read the raw text and parse it here rather than via
+          // `typedColByName<double>`: the driver converts to `double` only from
+          // a fixed whitelist of column types that does not include
+          // `NEWDECIMAL` (246), and `SUM`/`AVG` over an integer column is
+          // exactly what MariaDB returns as `NEWDECIMAL`. Asking the driver for
+          // a `double` there throws `MySQLProtocolException` instead of
+          // widening — which would make `Sum` and `Avg`, whose whole purpose is
+          // to absorb that widening, unusable against a real server. The text
+          // form ("43.0000") parses losslessly.
+          final decimalText = row.colByName(alias);
+          values[alias] = decimalText == null
+              ? null
+              : double.parse(decimalText);
         case String:
           values[alias] = row.typedColByName<String>(alias);
         case bool:
