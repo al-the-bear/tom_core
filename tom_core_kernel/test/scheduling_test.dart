@@ -111,17 +111,115 @@ TomScheduler schedulerFor(
   List<TomJobAlert>? alerts,
   Duration leaseTimeout = const Duration(minutes: 15),
   int maxRunsPerTick = 16,
+  TomLeaseLock? lock,
+  String ownerId = 'test-owner',
+  Duration leaseTtl = const Duration(minutes: 1),
+  Duration? leaseRenewInterval,
 }) =>
     TomScheduler(
       store: store,
       dispatcher: dispatcher ?? const TomInlineJobDispatcher(),
       clock: clock.call,
-      ownerId: 'test-owner',
+      ownerId: ownerId,
       leaseTimeout: leaseTimeout,
       maxRunsPerTick: maxRunsPerTick,
       // Zero-seed Random keeps jitter reproducible run to run.
       random: Random(0),
       onAlert: alerts == null ? (_) {} : alerts.add,
+      lock: lock,
+      leaseTtl: leaseTtl,
+      leaseRenewInterval: leaseRenewInterval,
+    );
+
+/// A command that blocks until the test releases it.
+///
+/// Lets a test hold a run "in flight" across an arbitrary number of awaits —
+/// which is what the lease-renewal and lease-loss paths need, since both only
+/// happen while work is genuinely outstanding.
+class GatedCommand extends TomCommand {
+  static final Map<String, Completer<void>> gates = {};
+
+  final String gate;
+
+  GatedCommand(this.gate);
+
+  static Completer<void> open(String gate) =>
+      gates[gate] = Completer<void>();
+
+  static void release(String gate) {
+    final completer = gates[gate];
+    if (completer != null && !completer.isCompleted) completer.complete();
+  }
+
+  @override
+  Future<Object?> execute() async {
+    await gates[gate]?.future;
+    return 'gated';
+  }
+}
+
+/// A lock whose renewals stop landing after [beatsBeforeStall].
+///
+/// A node whose event loop stalls — a stop-the-world pause, a suspended VM, a
+/// wedged disk — misses its heartbeats, and its lease lapses underneath it
+/// while it still believes it holds it. That is the one way a live holder
+/// genuinely loses a lease, and it cannot be produced by waiting: a healthy
+/// heartbeat keeps a lease alive indefinitely, which is the whole point of
+/// renewal. Failing the renewal reproduces the stall's only observable effect.
+class StallingLeaseLock extends TomLeaseLock {
+  final TomLeaseLock inner;
+  final int beatsBeforeStall;
+  int renewals = 0;
+
+  StallingLeaseLock(this.inner, {this.beatsBeforeStall = 1});
+
+  @override
+  Future<TomLease?> acquire(String resource, String owner, Duration ttl) =>
+      inner.acquire(resource, owner, ttl);
+
+  @override
+  Future<TomLease?> renew(TomLease lease, Duration ttl) async =>
+      ++renewals > beatsBeforeStall ? null : inner.renew(lease, ttl);
+
+  @override
+  Future<void> release(TomLease lease) => inner.release(lease);
+
+  @override
+  Future<TomLeaseInfo> inspect(String resource) => inner.inspect(resource);
+
+  @override
+  Future<void> forget(String resource) => inner.forget(resource);
+
+  @override
+  void close() => inner.close();
+}
+
+/// Lets the runs a `tick()` started actually finish.
+///
+/// `tick()` deliberately does not await the work it dispatches — a slow job must
+/// not hold up the next window of a fast one — so completion, the store write
+/// and the lease release all land in later turns of the event loop. Tests that
+/// assert on the *aftermath* of a run have to yield first.
+Future<void> settle() async {
+  for (var i = 0; i < 4; i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+}
+
+/// A job whose body simply succeeds, named for readability at the call site.
+TomJobDefinition jobNamed(
+  String name,
+  TomSchedule schedule, {
+  bool allowOverlap = false,
+  TomCommand Function(TomJobRun run)? body,
+  TomRetryPolicy retryPolicy = TomRetryPolicy.none,
+}) =>
+    TomJobDefinition(
+      name: name,
+      schedule: schedule,
+      body: body ?? (_) => OkCommand(),
+      allowOverlap: allowOverlap,
+      retryPolicy: retryPolicy,
     );
 
 /// An event source for a [TomEventSchedule], closed at the end of the test.
@@ -1828,8 +1926,19 @@ void main() {
 
       expect(File(marker).existsSync(), isTrue,
           reason: 'the job body ran inside a worker isolate');
-      final run = (await store.all())
+
+      // The marker proves the *body* ran; the store is written afterwards, once
+      // the isolate's result has travelled back over the port. Those are two
+      // separate events and the second one is the one being asserted, so wait
+      // for it rather than assuming the first implies it.
+      Future<TomJobRun> pooledRun() async => (await store.all())
           .firstWhere((r) => r.scheduledFor == DateTime.utc(2026, 3, 2));
+      var run = await pooledRun();
+      while (run.state == TomJobRunState.running &&
+          DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        run = await pooledRun();
+      }
       expect(run.state, TomJobRunState.succeeded);
     });
 
@@ -1841,6 +1950,1043 @@ void main() {
 
       TomWorkerPoolJobDispatcher(pool).close();
       expect(await pool.execute(OkCommand(11)), 11);
+    });
+  });
+
+  // ===========================================================================
+  // csex8 — cluster coordination
+  // ===========================================================================
+
+  group('TomLease', () {
+    final acquired = DateTime.utc(2026, 5, 1, 12);
+
+    TomLease leaseAt(DateTime at, Duration ttl) => TomLease(
+          resource: 'job:r',
+          owner: 'node-a',
+          token: 7,
+          acquiredAt: at,
+          expiresAt: at.add(ttl),
+        );
+
+    test('is live before its expiry and dead from the instant it lapses', () {
+      final lease = leaseAt(acquired, const Duration(minutes: 1));
+      expect(lease.isExpiredAt(acquired), isFalse);
+      expect(lease.isExpiredAt(acquired.add(const Duration(seconds: 59))),
+          isFalse);
+      // Expiry is inclusive: at exactly expiresAt the lease is gone. The
+      // alternative leaves a one-instant window in which two nodes disagree.
+      expect(
+          lease.isExpiredAt(acquired.add(const Duration(minutes: 1))), isTrue);
+    });
+
+    test('reports remaining time and clamps to zero once lapsed', () {
+      final lease = leaseAt(acquired, const Duration(minutes: 1));
+      expect(lease.remainingAt(acquired.add(const Duration(seconds: 20))),
+          const Duration(seconds: 40));
+      expect(lease.remainingAt(acquired.add(const Duration(hours: 1))),
+          Duration.zero);
+    });
+
+    test('round-trips through JSON', () {
+      final lease = leaseAt(acquired, const Duration(minutes: 5));
+      final back = TomLease.fromJson(lease.toJson());
+      expect(back.resource, lease.resource);
+      expect(back.owner, lease.owner);
+      expect(back.token, lease.token);
+      expect(back.acquiredAt, lease.acquiredAt);
+      expect(back.expiresAt, lease.expiresAt);
+    });
+  });
+
+  group('TomLeaseInfo', () {
+    final lease = TomLease(
+      resource: 'job:r',
+      owner: 'node-a',
+      token: 3,
+      acquiredAt: DateTime.utc(2026, 5, 1),
+      expiresAt: DateTime.utc(2026, 5, 1, 0, 1),
+    );
+
+    test('a never-held resource is free and has no holder', () {
+      const info = TomLeaseInfo.free('job:r');
+      expect(info.isHeld, isFalse);
+      expect(info.lease, isNull);
+      expect(info.holderVanished, isFalse);
+      expect(info.describe(), contains('never held'));
+    });
+
+    test('distinguishes a released holder from one that vanished', () {
+      final released = TomLeaseInfo(
+        resource: 'job:r',
+        lease: lease,
+        isHeld: false,
+        wasReleased: true,
+      );
+      final vanished = TomLeaseInfo(
+        resource: 'job:r',
+        lease: lease,
+        isHeld: false,
+      );
+
+      // This is the distinction an operator needs after an incident: a clean
+      // shutdown and a dead node both leave the lease free.
+      expect(released.holderVanished, isFalse);
+      expect(vanished.holderVanished, isTrue);
+      expect(released.describe(), contains('released by node-a'));
+      expect(vanished.describe(), contains('holder vanished'));
+    });
+
+    test('a live lease describes its holder, token and expiry', () {
+      final info =
+          TomLeaseInfo(resource: 'job:r', lease: lease, isHeld: true);
+      expect(info.describe(), contains('held by node-a'));
+      expect(info.describe(), contains('token 3'));
+      expect(info.holderVanished, isFalse);
+    });
+  });
+
+  // Every behaviour required of the port is asserted against *both*
+  // implementations, so the file lock cannot quietly diverge from the in-memory
+  // one that most tests use as a stand-in.
+  for (final variant in ['TomMemoryLeaseLock', 'TomFileLeaseLock']) {
+    group('$variant (TomLeaseLock contract)', () {
+      late FakeClock clock;
+      late TomLeaseLock lock;
+
+      setUp(() {
+        clock = FakeClock(DateTime.utc(2026, 5, 1, 12));
+        lock = variant == 'TomMemoryLeaseLock'
+            ? TomMemoryLeaseLock(clock: clock.call)
+            : TomFileLeaseLock(
+                '${makeTempDir().path}/leases',
+                clock: clock.call,
+              );
+        addTearDown(lock.close);
+      });
+
+      test('the first acquirer wins and the second is refused', () async {
+        final first = await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        final second =
+            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
+
+        expect(first, isNotNull);
+        expect(first!.owner, 'node-a');
+        expect(second, isNull, reason: 'node-b must not get a second lease');
+      });
+
+      test('an unheld resource reports free', () async {
+        final info = await lock.inspect('r');
+        expect(info.isHeld, isFalse);
+        expect(info.lease, isNull);
+      });
+
+      test('inspect names the holder and its expiry without acquiring',
+          () async {
+        await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+
+        final info = await lock.inspect('r');
+        expect(info.isHeld, isTrue);
+        expect(info.lease!.owner, 'node-a');
+        expect(info.lease!.expiresAt, clock.now.add(const Duration(minutes: 1)));
+        // Inspecting must not disturb the lease.
+        expect(await lock.acquire('r', 'node-b', const Duration(minutes: 1)),
+            isNull);
+      });
+
+      test('a lapsed lease is taken over by the next acquirer', () async {
+        final first =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        clock.advance(const Duration(minutes: 2));
+
+        final second =
+            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
+
+        expect(second, isNotNull, reason: 'a dead holder must not block forever');
+        expect(second!.owner, 'node-b');
+        expect(second.token, greaterThan(first!.token),
+            reason: 'takeover must fence the previous holder out');
+      });
+
+      test('a released lease frees the resource immediately', () async {
+        final first =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 10));
+        await lock.release(first!);
+
+        final second =
+            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
+        expect(second, isNotNull,
+            reason: 'release must not wait out the TTL');
+        expect(second!.token, greaterThan(first.token));
+      });
+
+      test('release reports the holder as gone but not vanished', () async {
+        final lease =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 10));
+        await lock.release(lease!);
+
+        final info = await lock.inspect('r');
+        expect(info.isHeld, isFalse);
+        expect(info.holderVanished, isFalse,
+            reason: 'an orderly release is not a disappearance');
+      });
+
+      test('a lapsed holder is reported as vanished', () async {
+        await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        clock.advance(const Duration(minutes: 2));
+
+        final info = await lock.inspect('r');
+        expect(info.isHeld, isFalse);
+        expect(info.holderVanished, isTrue);
+        expect(info.lease!.owner, 'node-a',
+            reason: 'the vanished holder must still be nameable');
+      });
+
+      test('renewal pushes the expiry forward and keeps the token', () async {
+        final lease =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        clock.advance(const Duration(seconds: 30));
+
+        final renewed = await lock.renew(lease!, const Duration(minutes: 1));
+
+        expect(renewed, isNotNull);
+        expect(renewed!.expiresAt, clock.now.add(const Duration(minutes: 1)));
+        expect(renewed.token, lease.token,
+            reason: 'renewing is not re-acquiring; the fence must not move');
+      });
+
+      test('renewal keeps a long job safe past its original TTL', () async {
+        var lease = await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+
+        // Four renewals across four minutes: a job far outliving the TTL.
+        for (var i = 0; i < 4; i++) {
+          clock.advance(const Duration(seconds: 40));
+          lease = await lock.renew(lease!, const Duration(minutes: 1));
+          expect(lease, isNotNull, reason: 'renewal $i must succeed');
+          expect(
+              await lock.acquire('r', 'node-b', const Duration(minutes: 1)),
+              isNull,
+              reason: 'a renewed lease must never look free to a peer');
+        }
+      });
+
+      test('a lease that was taken over can no longer be renewed', () async {
+        final first =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        clock.advance(const Duration(minutes: 2));
+        await lock.acquire('r', 'node-b', const Duration(minutes: 1));
+
+        // node-a wakes up late and tries to carry on.
+        expect(await lock.renew(first!, const Duration(minutes: 1)), isNull,
+            reason: 'the displaced holder must learn it is displaced');
+      });
+
+      test('releasing a lease already taken over does not disturb the new '
+          'holder', () async {
+        final first =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        clock.advance(const Duration(minutes: 2));
+        final second =
+            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
+
+        // The classic late-release bug: node-a finishes, releases, and frees a
+        // lock it no longer owns.
+        await lock.release(first!);
+
+        final info = await lock.inspect('r');
+        expect(info.isHeld, isTrue);
+        expect(info.lease!.owner, 'node-b');
+        expect(info.lease!.token, second!.token);
+      });
+
+      test('the holder re-acquiring its own lease extends rather than '
+          'conflicts', () async {
+        final first =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        clock.advance(const Duration(seconds: 10));
+
+        final again =
+            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+
+        expect(again, isNotNull, reason: 'a node must not lock itself out');
+        expect(again!.token, first!.token);
+      });
+
+      test('fencing tokens increase strictly across takeovers', () async {
+        final tokens = <int>[];
+        for (var i = 0; i < 5; i++) {
+          final lease =
+              await lock.acquire('r', 'node-$i', const Duration(minutes: 1));
+          tokens.add(lease!.token);
+          clock.advance(const Duration(minutes: 2));
+        }
+
+        // Strict monotonicity is the whole value of a fencing token: a repeated
+        // token would let a stale holder's write past a token check.
+        for (var i = 1; i < tokens.length; i++) {
+          expect(tokens[i], greaterThan(tokens[i - 1]));
+        }
+      });
+
+      test('fencing tokens keep increasing across release and re-acquire',
+          () async {
+        final a = await lock.acquire('r', 'node-a', const Duration(minutes: 1));
+        await lock.release(a!);
+        final b = await lock.acquire('r', 'node-b', const Duration(minutes: 1));
+        await lock.release(b!);
+        final c = await lock.acquire('r', 'node-c', const Duration(minutes: 1));
+
+        expect(b.token, greaterThan(a.token));
+        expect(c!.token, greaterThan(b.token));
+      });
+
+      test('different resources do not contend', () async {
+        expect(await lock.acquire('a', 'node-a', const Duration(minutes: 1)),
+            isNotNull);
+        expect(await lock.acquire('b', 'node-b', const Duration(minutes: 1)),
+            isNotNull);
+      });
+    });
+  }
+
+  group('TomFileLeaseLock (durability and process sharing)', () {
+    test('a lease survives the object that created it', () async {
+      final dir = makeTempDir();
+      final clock = FakeClock(DateTime.utc(2026, 5, 1, 12));
+
+      final first = TomFileLeaseLock('${dir.path}/leases', clock: clock.call);
+      await first.acquire('r', 'node-a', const Duration(minutes: 5));
+
+      // A second lock object over the same directory is what a second *process*
+      // sees. It must observe the first one's lease.
+      final second = TomFileLeaseLock('${dir.path}/leases', clock: clock.call);
+      expect(await second.acquire('r', 'node-b', const Duration(minutes: 5)),
+          isNull);
+      expect((await second.inspect('r')).lease!.owner, 'node-a');
+    });
+
+    test('a holder that dies without releasing is taken over once its lease '
+        'lapses', () async {
+      final dir = makeTempDir();
+      final clock = FakeClock(DateTime.utc(2026, 5, 1, 12));
+
+      // "Death" is simply never releasing and never renewing.
+      final dead = TomFileLeaseLock('${dir.path}/leases', clock: clock.call);
+      final lost = await dead.acquire('r', 'node-a', const Duration(minutes: 1));
+
+      clock.advance(const Duration(minutes: 2));
+      final survivor =
+          TomFileLeaseLock('${dir.path}/leases', clock: clock.call);
+      final taken =
+          await survivor.acquire('r', 'node-b', const Duration(minutes: 1));
+
+      expect(taken, isNotNull);
+      expect(taken!.token, greaterThan(lost!.token));
+      expect((await survivor.inspect('r')).lease!.owner, 'node-b');
+    });
+
+    test('resource names that are not filesystem-safe still work', () async {
+      final lock = TomFileLeaseLock('${makeTempDir().path}/leases');
+      addTearDown(lock.close);
+
+      // Run ids embed the job name and a timestamp with colons and slashes.
+      const nasty = 'run:nightly/report:2026-05-01T00:00:00.000Z';
+      expect(await lock.acquire(nasty, 'node-a', const Duration(minutes: 1)),
+          isNotNull);
+      expect(await lock.acquire(nasty, 'node-b', const Duration(minutes: 1)),
+          isNull);
+    });
+
+    test('a corrupt lease record is taken over once it is older than the TTL',
+        () async {
+      final dir = makeTempDir();
+      final lock = TomFileLeaseLock('${dir.path}/leases');
+      const ttl = Duration(minutes: 1);
+      final first = await lock.acquire('r', 'node-a', ttl);
+
+      // Simulate a process killed between creating its record and writing it.
+      final record = Directory('${dir.path}/leases')
+          .listSync()
+          .whereType<Directory>()
+          .single
+          .listSync()
+          .whereType<File>()
+          .single;
+      record.writeAsStringSync('{ this is not json');
+
+      // Recently touched: another node may be mid-acquire, so do not steal.
+      expect(await lock.acquire('r', 'node-b', ttl), isNull);
+
+      // Age is measured against the real clock, because it asks how long a file
+      // has physically existed. Backdate it rather than sleeping out the TTL.
+      record.setLastModifiedSync(
+          DateTime.now().subtract(const Duration(hours: 1)));
+
+      // Old enough that its writer is certainly gone: recover rather than
+      // leaving the resource wedged forever.
+      final second = await lock.acquire('r', 'node-b', ttl);
+      expect(second, isNotNull);
+      expect(second!.token, greaterThan(first!.token),
+          reason: 'recovery is still an acquisition and still fences');
+    });
+
+    test('concurrent isolates racing one resource produce exactly one winner',
+        () async {
+      final dir = makeTempDir();
+      final path = '${dir.path}/leases';
+      const racers = 8;
+
+      // Real isolates issuing real syscalls against one directory. This is the
+      // only way to test that the exclusive-create/rename pair actually holds
+      // under contention rather than merely looking like it should.
+      final results = await Future.wait([
+        for (var i = 0; i < racers; i++)
+          Isolate.run(() async {
+            final lock = TomFileLeaseLock(path);
+            final lease = await lock.acquire(
+                'contended', 'node-$i', const Duration(minutes: 5));
+            return lease == null ? '' : lease.owner;
+          }),
+      ]);
+
+      final winners = results.where((owner) => owner.isNotEmpty).toList();
+      expect(winners, hasLength(1),
+          reason: 'exactly one of $racers isolates may hold the lease, '
+              'got $winners');
+    });
+
+    test('concurrent isolates racing a lapsed lease produce exactly one '
+        'winner', () async {
+      final dir = makeTempDir();
+      final path = '${dir.path}/leases';
+      const racers = 8;
+
+      // Seed an already-expired lease so every racer arrives at the *takeover*
+      // path simultaneously — the two-step rename dance, which is where a
+      // naive implementation double-grants.
+      final seed = TomFileLeaseLock(path);
+      await seed.acquire('contended', 'dead-node', const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+
+      final results = await Future.wait([
+        for (var i = 0; i < racers; i++)
+          Isolate.run(() async {
+            final lock = TomFileLeaseLock(path);
+            final lease = await lock.acquire(
+                'contended', 'node-$i', const Duration(minutes: 5));
+            return lease == null ? '' : '${lease.owner}#${lease.token}';
+          }),
+      ]);
+
+      final winners = results.where((r) => r.isNotEmpty).toList();
+      expect(winners, hasLength(1),
+          reason: 'a lapsed lease may be taken over by exactly one node, '
+              'got $winners');
+    });
+  });
+
+  group('TomJobStore release and renewClaim', () {
+    late TomMemoryJobStore store;
+    final now = DateTime.utc(2026, 5, 1, 12);
+
+    setUp(() => store = TomMemoryJobStore());
+
+    Future<TomJobRun> seedClaimed() async {
+      final run = TomJobRun(
+        id: 'r1',
+        jobName: 'job',
+        scheduledFor: now,
+        runAt: now,
+      );
+      await store.enqueue(run);
+      await store.claimDue(now, 'node-a');
+      return run;
+    }
+
+    test('release returns a claimed run to pending without charging an '
+        'attempt', () async {
+      final run = await seedClaimed();
+      expect(run.state, TomJobRunState.running);
+
+      await store.release(run);
+
+      expect(run.state, TomJobRunState.pending);
+      expect(run.claimedBy, isNull);
+      // Contention is not failure. Charging an attempt would let a busy cluster
+      // burn a job's whole retry budget without ever executing it.
+      expect(run.attempt, 1);
+    });
+
+    test('a released run is immediately claimable again', () async {
+      final run = await seedClaimed();
+      await store.release(run);
+
+      final claimed = await store.claimDue(now, 'node-b');
+      expect(claimed.single.id, run.id);
+      expect(run.claimedBy, 'node-b');
+    });
+
+    test('release does not resurrect a finished run', () async {
+      final run = await seedClaimed();
+      await store.complete(run, now);
+
+      await store.release(run);
+
+      expect(run.state, TomJobRunState.succeeded,
+          reason: 'a completion that raced a release must win');
+    });
+
+    test('renewClaim refreshes the lease so recovery leaves the run alone',
+        () async {
+      final run = await seedClaimed();
+      const leaseTimeout = Duration(minutes: 10);
+
+      final later = now.add(const Duration(minutes: 9));
+      await store.renewClaim(run, later);
+
+      // Without the renewal this run would be 15 minutes stale and recovered.
+      final recovered = await store.recoverAbandoned(
+          now.add(const Duration(minutes: 15)), leaseTimeout);
+      expect(recovered, isEmpty);
+      expect(run.state, TomJobRunState.running);
+      expect(run.claimedAt, later);
+    });
+
+    test('renewClaim ignores a run that is not running', () async {
+      final run = TomJobRun(
+        id: 'r1',
+        jobName: 'job',
+        scheduledFor: now,
+        runAt: now,
+      );
+      await store.enqueue(run);
+
+      await store.renewClaim(run, now);
+
+      expect(run.claimedAt, isNull);
+    });
+
+    test('the file store persists a release', () async {
+      final path = '${makeTempDir().path}/queue.json';
+      final store = TomFileJobStore(path);
+      final run = TomJobRun(
+        id: 'r1',
+        jobName: 'job',
+        scheduledFor: now,
+        runAt: now,
+      );
+      await store.enqueue(run);
+      await store.claimDue(now, 'node-a');
+      await store.release(run);
+
+      final reloaded = await TomFileJobStore(path).all();
+      expect(reloaded.single.state, TomJobRunState.pending);
+      expect(reloaded.single.claimedBy, isNull);
+    });
+  });
+
+  group('TomScheduler cluster coordination', () {
+    late FakeClock clock;
+    late TomMemoryJobStore store;
+    late TomMemoryLeaseLock lock;
+    final start = DateTime.utc(2026, 5, 1, 12);
+
+    setUp(() {
+      clock = FakeClock(start);
+      store = TomMemoryJobStore();
+      lock = TomMemoryLeaseLock(clock: clock.call);
+    });
+
+    /// Two schedulers over one store and one lock — the cluster, in miniature.
+    List<TomScheduler> cluster(
+      int size, {
+      TomJobDispatcher Function(int index)? dispatcher,
+      List<TomJobAlert>? alerts,
+    }) =>
+        [
+          for (var i = 0; i < size; i++)
+            schedulerFor(
+              store,
+              clock,
+              lock: lock,
+              ownerId: 'node-$i',
+              dispatcher: dispatcher?.call(i),
+              alerts: alerts,
+            ),
+        ];
+
+    test('two nodes sharing a store execute a due run exactly once', () async {
+      final dispatchers = <int, RecordingDispatcher>{};
+      final nodes = cluster(2, dispatcher: (i) {
+        return dispatchers[i] = RecordingDispatcher();
+      });
+      addTearDown(() {
+        for (final node in nodes) {
+          node.close();
+        }
+      });
+
+      final job = jobNamed('nightly', TomCronSchedule('0 3 * * *'));
+      for (final node in nodes) {
+        node.register(job);
+      }
+
+      // Both nodes plan, both see the window come due, both try to claim.
+      for (final node in nodes) {
+        await node.tick();
+      }
+      clock.now = DateTime.utc(2026, 5, 2, 3);
+      await Future.wait(nodes.map((n) => n.tick()));
+
+      final total = dispatchers.values
+          .fold<int>(0, (sum, d) => sum + d.dispatched.length);
+      expect(total, 1,
+          reason: 'the whole point: one window, one execution, two nodes');
+      final runs = await store.all();
+      expect(runs.where((r) => r.state == TomJobRunState.succeeded), hasLength(1));
+    });
+
+    // A peer already holds the job's lease. This is the case the lock exists
+    // for: a store whose claim is *not* atomic across processes — the file
+    // store — lets two nodes both believe they claimed the run, and only the
+    // lease separates them. Holding the lease directly reproduces the loser's
+    // position without needing two processes to collide by luck.
+    Future<TomLease> peerHolds(String jobName) async =>
+        (await lock.acquire('job:$jobName', 'peer', const Duration(minutes: 5)))!;
+
+    test('the losing node hands its claim straight back rather than sitting '
+        'on it', () async {
+      final node = schedulerFor(store, clock, lock: lock, ownerId: 'node-0');
+      addTearDown(node.close);
+      node.register(
+          jobNamed('gated', TomIntervalSchedule(const Duration(minutes: 5))));
+
+      await node.tick();
+      clock.advance(const Duration(minutes: 6));
+      await peerHolds('gated');
+      await node.tick();
+
+      // The claim must go back to the queue, not sit under the loser's name
+      // until its store lease times out — a peer should be able to take it on
+      // its very next tick.
+      final runs = await store.all();
+      expect(runs.where((r) => r.claimedBy != null), isEmpty);
+      final due = runs.singleWhere((r) => !r.runAt.isAfter(clock.now));
+      expect(due.state, TomJobRunState.pending);
+      expect(due.attempt, 1,
+          reason: 'the first attempt is still ahead of it — losing a race must '
+              'not spend the job\'s retry budget');
+      expect(node.inFlightCount, 0);
+      expect(node.heldLeases, isEmpty);
+    });
+
+    test('the conceding node reports contention rather than failing the run',
+        () async {
+      final alerts = <TomJobAlert>[];
+      final node = schedulerFor(store, clock,
+          lock: lock, ownerId: 'node-0', alerts: alerts);
+      addTearDown(node.close);
+      node.register(
+          jobNamed('gated', TomIntervalSchedule(const Duration(minutes: 5))));
+
+      await node.tick();
+      clock.advance(const Duration(minutes: 6));
+      await peerHolds('gated');
+      await node.tick();
+
+      final contended =
+          alerts.where((a) => a.kind == TomJobAlertKind.lockContended).toList();
+      expect(contended, hasLength(1));
+      expect(contended.single.lease!.owner, 'peer',
+          reason: 'an operator asking "why did this node not run?" must be '
+              'told who did');
+      expect(alerts.where((a) => a.kind == TomJobAlertKind.runFailed), isEmpty,
+          reason: 'losing a race is not a failure');
+    });
+
+    test('a node resumes the moment the peer lets go', () async {
+      final dispatcher = RecordingDispatcher();
+      final node = schedulerFor(store, clock,
+          lock: lock, ownerId: 'node-0', dispatcher: dispatcher);
+      addTearDown(node.close);
+      node.register(
+          jobNamed('gated', TomIntervalSchedule(const Duration(minutes: 5))));
+
+      await node.tick();
+      clock.advance(const Duration(minutes: 6));
+      final peer = await peerHolds('gated');
+      await node.tick();
+      expect(dispatcher.dispatched, isEmpty);
+
+      await lock.release(peer);
+      await node.tick();
+      await settle();
+      expect(dispatcher.dispatched, hasLength(1),
+          reason: 'the handed-back claim must still be there to pick up');
+    });
+
+    test('a node that takes over a lapsed lease says whose it was', () async {
+      final alerts = <TomJobAlert>[];
+
+      // node-a acquires and then "dies" — never renews, never releases.
+      await lock.acquire('job:orphan', 'node-a', const Duration(minutes: 1));
+      clock.advance(const Duration(minutes: 5));
+
+      final survivor = schedulerFor(store, clock,
+          lock: lock, ownerId: 'node-b', alerts: alerts);
+      addTearDown(survivor.close);
+      survivor.register(
+          jobNamed('orphan', TomIntervalSchedule(const Duration(minutes: 1))));
+
+      await survivor.tick();
+      clock.advance(const Duration(minutes: 2));
+      await survivor.tick();
+
+      final stolen =
+          alerts.where((a) => a.kind == TomJobAlertKind.leaseStolen).toList();
+      expect(stolen, isNotEmpty,
+          reason: 'a takeover must be visible, not silent');
+      expect(stolen.first.lease!.owner, 'node-a',
+          reason: 'the vanished holder must be named');
+    });
+
+    test('a killed holder\'s work is picked up by a survivor', () async {
+      final ranOn = <String>[];
+      TomJobDispatcher dispatcherFor(String node) =>
+          RecordingDispatcher(handler: (command) async {
+            ranOn.add(node);
+            return command.execute();
+          });
+
+      final dying = schedulerFor(store, clock,
+          lock: lock, ownerId: 'node-dead', dispatcher: dispatcherFor('dead'));
+      final job = TomJobDefinition(
+        name: 'orphaned',
+        schedule: TomIntervalSchedule(const Duration(minutes: 5)),
+        body: (_) => GatedCommand('never'),
+        retryPolicy: TomRetryPolicy.none,
+      );
+      GatedCommand.open('never');
+      dying.register(job);
+
+      await dying.tick();
+      clock.advance(const Duration(minutes: 6));
+      await dying.tick();
+      expect(dying.inFlightCount, 1);
+      expect(dying.heldLeases, hasLength(1));
+
+      // The node dies: no close, no release, no renewal. Its lease and its
+      // store claim both go stale.
+      clock.advance(const Duration(minutes: 20));
+
+      final survivor = schedulerFor(
+        store,
+        clock,
+        lock: lock,
+        ownerId: 'node-live',
+        leaseTimeout: const Duration(minutes: 15),
+        dispatcher: dispatcherFor('live'),
+      );
+      addTearDown(survivor.close);
+      survivor.register(jobNamed('orphaned',
+          TomIntervalSchedule(const Duration(minutes: 5))));
+
+      await survivor.tick();
+
+      expect(ranOn, contains('live'),
+          reason: 'the survivor must recover the dead node\'s run');
+      GatedCommand.release('never');
+      await Future<void>.delayed(Duration.zero);
+    });
+
+    test('with no lock the scheduler behaves exactly as a single node',
+        () async {
+      // The regression guard for the default path: adding coordination must not
+      // change the behaviour of the deployments that do not ask for it.
+      final dispatcher = RecordingDispatcher();
+      final solo = schedulerFor(store, clock, dispatcher: dispatcher);
+      addTearDown(solo.close);
+      solo.register(
+          jobNamed('solo', TomIntervalSchedule(const Duration(minutes: 5))));
+
+      await solo.tick();
+      clock.advance(const Duration(minutes: 6));
+      await solo.tick();
+
+      expect(dispatcher.dispatched, hasLength(1));
+      expect(solo.heldLeases, isEmpty);
+    });
+
+    test('allowOverlap false serialises a job across the whole cluster',
+        () async {
+      final nodes = cluster(2);
+      addTearDown(() {
+        for (final node in nodes) {
+          node.close();
+        }
+      });
+
+      GatedCommand.open('serial');
+      final job = TomJobDefinition(
+        name: 'serial',
+        schedule: TomIntervalSchedule(const Duration(minutes: 1)),
+        body: (_) => GatedCommand('serial'),
+        allowOverlap: false,
+        retryPolicy: TomRetryPolicy.none,
+      );
+      for (final node in nodes) {
+        node.register(job);
+      }
+
+      await nodes[0].tick();
+      // Two windows come due at once, on two different nodes.
+      clock.advance(const Duration(minutes: 3));
+      await nodes[0].tick();
+      await nodes[1].tick();
+
+      final running = (await store.all())
+          .where((r) => r.state == TomJobRunState.running)
+          .toList();
+      expect(running, hasLength(1),
+          reason: 'the job leases its own name, so the cluster runs one');
+
+      GatedCommand.release('serial');
+      await Future<void>.delayed(Duration.zero);
+    });
+
+    test('allowOverlap true lets distinct windows run concurrently but never '
+        'the same one twice', () async {
+      final dispatchers = <int, RecordingDispatcher>{};
+      final nodes = cluster(2,
+          dispatcher: (i) => dispatchers[i] = RecordingDispatcher());
+      addTearDown(() {
+        for (final node in nodes) {
+          node.close();
+        }
+      });
+
+      final job = TomJobDefinition(
+        name: 'parallel',
+        schedule: TomIntervalSchedule(const Duration(minutes: 1)),
+        body: (_) => OkCommand(),
+        allowOverlap: true,
+        missedWindowPolicy: TomMissedWindowPolicy.runAll,
+        retryPolicy: TomRetryPolicy.none,
+      );
+      for (final node in nodes) {
+        node.register(job);
+      }
+
+      await nodes[0].tick();
+      clock.advance(const Duration(minutes: 3));
+      await Future.wait(nodes.map((n) => n.tick()));
+
+      final runs = await store.all();
+      final succeeded =
+          runs.where((r) => r.state == TomJobRunState.succeeded).toList();
+      final windows = succeeded.map((r) => r.scheduledFor).toSet();
+      expect(windows, hasLength(succeeded.length),
+          reason: 'no window may be executed twice even when overlap is '
+              'allowed');
+      final total = dispatchers.values
+          .fold<int>(0, (sum, d) => sum + d.dispatched.length);
+      expect(total, succeeded.length);
+    });
+
+    test('the lease is released when the run finishes, so a peer can take the '
+        'next window at once', () async {
+      final node = schedulerFor(store, clock, lock: lock, ownerId: 'node-0');
+      addTearDown(node.close);
+      node.register(
+          jobNamed('quick', TomIntervalSchedule(const Duration(minutes: 5))));
+
+      await node.tick();
+      clock.advance(const Duration(minutes: 6));
+      await node.tick();
+      await settle();
+
+      expect(node.heldLeases, isEmpty,
+          reason: 'a finished run must not leave its lease held');
+      final info = await lock.inspect('job:quick');
+      expect(info.isHeld, isFalse);
+      expect(info.holderVanished, isFalse,
+          reason: 'an orderly finish releases rather than lapses');
+      expect(info.wasReleased, isTrue,
+          reason: 'the record must say the holder left cleanly, so an incident '
+              'review can tell a scale-down from a death');
+    });
+
+    test('close releases held leases so peers need not wait out the TTL',
+        () async {
+      final node = schedulerFor(store, clock, lock: lock, ownerId: 'node-0');
+      GatedCommand.open('closing');
+      node.register(TomJobDefinition(
+        name: 'closing',
+        schedule: TomIntervalSchedule(const Duration(minutes: 5)),
+        body: (_) => GatedCommand('closing'),
+        retryPolicy: TomRetryPolicy.none,
+      ));
+
+      await node.tick();
+      clock.advance(const Duration(minutes: 6));
+      await node.tick();
+      expect(node.heldLeases, hasLength(1));
+
+      node.close();
+      // The release is fire-and-forget, so let the microtask queue drain.
+      await Future<void>.delayed(Duration.zero);
+
+      expect((await lock.inspect('job:closing')).isHeld, isFalse);
+      GatedCommand.release('closing');
+      await Future<void>.delayed(Duration.zero);
+    });
+
+    test('heldLeases reports what this node is sitting on', () async {
+      final node = schedulerFor(store, clock, lock: lock, ownerId: 'node-0');
+      addTearDown(node.close);
+      GatedCommand.open('held');
+      node.register(TomJobDefinition(
+        name: 'held',
+        schedule: TomIntervalSchedule(const Duration(minutes: 5)),
+        body: (_) => GatedCommand('held'),
+        retryPolicy: TomRetryPolicy.none,
+      ));
+
+      await node.tick();
+      clock.advance(const Duration(minutes: 6));
+      await node.tick();
+
+      expect(node.heldLeases, hasLength(1));
+      expect(node.heldLeases.values.single.owner, 'node-0');
+      expect(node.heldLeases.values.single.resource, 'job:held');
+
+      GatedCommand.release('held');
+      await Future<void>.delayed(Duration.zero);
+    });
+
+    test('a renew interval at or beyond the TTL is rejected at construction',
+        () {
+      // Misconfiguration that would lapse every lease before its first renewal,
+      // producing constant spurious takeovers. Fail loudly at wiring time.
+      expect(
+        () => TomScheduler(
+          store: store,
+          dispatcher: const TomInlineJobDispatcher(),
+          leaseTtl: const Duration(seconds: 30),
+          leaseRenewInterval: const Duration(seconds: 30),
+        ),
+        throwsA(isA<TomScheduleException>()),
+      );
+    });
+
+    test('the renew interval defaults to a third of the TTL', () {
+      final node = TomScheduler(
+        store: store,
+        dispatcher: const TomInlineJobDispatcher(),
+        leaseTtl: const Duration(seconds: 90),
+      );
+      addTearDown(node.close);
+      expect(node.leaseRenewInterval, const Duration(seconds: 30));
+    });
+  });
+
+  group('TomScheduler lease renewal and loss', () {
+    // These tests use the real wall clock, because the renewal heartbeat is a
+    // real Timer. The durations are small but the mechanism is production's.
+    test('a long run keeps its lease alive by renewing it', () async {
+      final store = TomMemoryJobStore();
+      final lock = TomMemoryLeaseLock();
+      final node = TomScheduler(
+        store: store,
+        dispatcher: const TomInlineJobDispatcher(),
+        ownerId: 'node-0',
+        lock: lock,
+        leaseTtl: const Duration(milliseconds: 120),
+        leaseRenewInterval: const Duration(milliseconds: 20),
+      );
+      addTearDown(node.close);
+
+      GatedCommand.open('long');
+      node.register(TomJobDefinition(
+        name: 'long',
+        schedule: TomIntervalSchedule(const Duration(milliseconds: 10)),
+        body: (_) => GatedCommand('long'),
+        timeout: const Duration(seconds: 5),
+        retryPolicy: TomRetryPolicy.none,
+      ));
+
+      await node.tick();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      await node.tick();
+      expect(node.inFlightCount, 1);
+
+      // Outlive the TTL several times over. Without renewal the lease would
+      // have lapsed long ago and a peer could have stolen the run.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+
+      final info = await lock.inspect('job:long');
+      expect(info.isHeld, isTrue,
+          reason: 'renewal must keep a long run\'s lease alive');
+      expect(info.lease!.owner, 'node-0');
+
+      GatedCommand.release('long');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+
+    test('losing the lease mid-run is reported and the node stops writing the '
+        'outcome', () async {
+      final alerts = <TomJobAlert>[];
+      final store = TomMemoryJobStore();
+      final inner = TomMemoryLeaseLock();
+      final node = TomScheduler(
+        store: store,
+        dispatcher: const TomInlineJobDispatcher(),
+        ownerId: 'node-0',
+        lock: StallingLeaseLock(inner),
+        leaseTtl: const Duration(milliseconds: 100),
+        leaseRenewInterval: const Duration(milliseconds: 15),
+        onAlert: alerts.add,
+      );
+      addTearDown(node.close);
+
+      GatedCommand.open('stolen');
+      node.register(TomJobDefinition(
+        name: 'stolen',
+        schedule: TomIntervalSchedule(const Duration(milliseconds: 10)),
+        body: (_) => GatedCommand('stolen'),
+        timeout: const Duration(seconds: 5),
+        retryPolicy: TomRetryPolicy.none,
+      ));
+
+      await node.tick();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await node.tick();
+      expect(node.inFlightCount, 1);
+
+      // The heartbeat stops landing, so the lease lapses under a node that is
+      // still working — the split-brain case.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(alerts.where((a) => a.kind == TomJobAlertKind.leaseLost),
+          isNotEmpty,
+          reason: 'losing a lease mid-run must never be silent');
+
+      final thief = await inner.acquire(
+          'job:stolen', 'node-thief', const Duration(minutes: 1));
+      expect(thief, isNotNull,
+          reason: 'a lapsed lease is exactly what a peer is entitled to take');
+      expect(thief!.token, greaterThan(1),
+          reason: 'the fencing token is how a resource tells the two apart');
+
+      GatedCommand.release('stolen');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      // The displaced node must not have written its result over the thief's
+      // record: the run is the thief's to complete now.
+      final runs = await store.all();
+      expect(runs.where((r) => r.state == TomJobRunState.succeeded), isEmpty,
+          reason: 'a node that lost its lease must not record an outcome');
+      expect(runs.where((r) => r.state == TomJobRunState.running), hasLength(1),
+          reason: 'the run stays in flight, owned by whoever holds the lease');
+      expect(node.heldLeases, isEmpty);
     });
   });
 }

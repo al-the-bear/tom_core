@@ -239,6 +239,26 @@ abstract class TomJobStore {
     bool Function(TomJobRun run)? accept,
   });
 
+  /// Returns a claimed [run] to `pending` without charging it an attempt.
+  ///
+  /// The voluntary counterpart of [recoverAbandoned]: a runner that claimed a
+  /// run and then found it could not proceed — most usually because a cluster
+  /// peer holds the coordination lease for it — hands it straight back instead
+  /// of sitting on the claim until the lease times out.
+  ///
+  /// The attempt count is deliberately untouched. Nothing was attempted, and
+  /// charging an attempt would let a busy cluster exhaust a job's retry budget
+  /// through contention alone.
+  Future<void> release(TomJobRun run);
+
+  /// Refreshes the lease timestamp on a claimed [run] to [now].
+  ///
+  /// A long-running attempt must be able to say it is still alive, or
+  /// [recoverAbandoned] would hand its work to a second runner while the first
+  /// is still going. This is the store half of that heartbeat; the lock half is
+  /// `TomLeaseLock.renew`.
+  Future<void> renewClaim(TomJobRun run, DateTime now);
+
   /// Marks [run] succeeded at [now] and releases its lease.
   Future<void> complete(TomJobRun run, DateTime now);
 
@@ -347,6 +367,26 @@ class TomMemoryJobStore implements TomJobStore {
     }
     if (claimed.isNotEmpty) onMutated();
     return claimed;
+  }
+
+  @override
+  Future<void> release(TomJobRun run) async {
+    final stored = _runs[run.id];
+    // Only a claimed run can be handed back. Resetting one that already
+    // finished — a completion that raced the release — would resurrect it.
+    if (stored == null || stored.state != TomJobRunState.running) return;
+    stored.state = TomJobRunState.pending;
+    stored.claimedBy = null;
+    stored.claimedAt = null;
+    onMutated();
+  }
+
+  @override
+  Future<void> renewClaim(TomJobRun run, DateTime now) async {
+    final stored = _runs[run.id];
+    if (stored == null || stored.state != TomJobRunState.running) return;
+    stored.claimedAt = now;
+    onMutated();
   }
 
   @override

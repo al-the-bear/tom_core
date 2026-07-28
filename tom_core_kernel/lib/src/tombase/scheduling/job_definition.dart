@@ -24,6 +24,7 @@ import 'dart:math';
 
 import '../isolate_pooling/tom_worker.dart';
 import 'job_store.dart';
+import 'lease_lock.dart';
 import 'schedule.dart';
 
 // =============================================================================
@@ -149,6 +150,30 @@ enum TomJobAlertKind {
 
   /// A schedule produced windows that were skipped by its missed-window policy.
   windowsMissed,
+
+  /// A cluster peer held the coordination lease, so this node did not run the
+  /// work.
+  ///
+  /// Routine in a healthy cluster — exactly one node wins each run and the rest
+  /// report this — so the default sink logs it at debug level. It earns its
+  /// place as an alert because a job that *never* runs anywhere looks identical
+  /// to a job nobody scheduled until you can see that every node is conceding.
+  lockContended,
+
+  /// This node took over a lease whose holder had let it expire.
+  ///
+  /// The cluster-visible answer to "what happened to a run whose holder
+  /// vanished": the run was picked up here, and the previous holder is named in
+  /// [TomJobAlert.lease].
+  leaseStolen,
+
+  /// A lease could not be renewed while its work was still running.
+  ///
+  /// The serious one. This node no longer owns the run, another node may
+  /// already be executing it, and the work in flight here cannot be recalled.
+  /// See `doc/scheduling/scheduling.md` — this is the window in which the
+  /// at-least-once guarantee becomes visible.
+  leaseLost,
 }
 
 /// A failure worth telling somebody about.
@@ -174,6 +199,15 @@ class TomJobAlert {
   /// How many windows were dropped, for [TomJobAlertKind.windowsMissed].
   final int missedWindows;
 
+  /// The lease involved, for the coordination kinds.
+  ///
+  /// For [TomJobAlertKind.leaseStolen] this is the lease *taken over*, so it
+  /// names the holder that vanished. For [TomJobAlertKind.leaseLost] it is the
+  /// lease this node held and could no longer renew. For
+  /// [TomJobAlertKind.lockContended] it is the peer's lease when the lock could
+  /// report one.
+  final TomLease? lease;
+
   /// Creates an alert.
   const TomJobAlert({
     required this.jobName,
@@ -183,6 +217,7 @@ class TomJobAlert {
     this.stackTrace,
     this.retryAt,
     this.missedWindows = 0,
+    this.lease,
   });
 
   /// A one-line description suitable for a log line or a notification body.
@@ -200,6 +235,15 @@ class TomJobAlert {
               'returned to the queue.',
         TomJobAlertKind.windowsMissed =>
           'Job "$jobName" skipped $missedWindows missed window(s).',
+        TomJobAlertKind.lockContended =>
+          'Job "$jobName" run ${run?.id} is held by another node'
+              '${lease == null ? '' : ' (${lease!.owner})'}; conceding.',
+        TomJobAlertKind.leaseStolen =>
+          'Job "$jobName" run ${run?.id} taken over from a lapsed holder'
+              '${lease == null ? '' : ' (was ${lease!.owner})'}.',
+        TomJobAlertKind.leaseLost =>
+          'Job "$jobName" run ${run?.id} lost its lease while running '
+              '(token ${lease?.token}); another node may now be executing it.',
       };
 
   @override

@@ -29,6 +29,7 @@ export 'src/tombase/resources/tom_resource_provider.dart';
 export 'src/tombase/result/result.dart';
 export 'src/tombase/scheduling/job_definition.dart';
 export 'src/tombase/scheduling/job_store.dart';
+export 'src/tombase/scheduling/lease_lock.dart';
 export 'src/tombase/scheduling/schedule.dart';
 export 'src/tombase/scheduling/scheduler.dart';
 export 'src/tombase/scope_ids/scope_ids.dart';

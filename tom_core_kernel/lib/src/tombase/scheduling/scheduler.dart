@@ -26,12 +26,21 @@
 /// It does not execute anything. Bodies go to a dispatcher, which in production
 /// is the kernel's existing isolate pool.
 ///
-/// It does not coordinate across machines. [TomJobDefinition.allowOverlap]
-/// serialises a job's runs within *this* scheduler; two schedulers pointed at
-/// the same store will both claim, because nothing here arbitrates between
-/// them. Cluster-wide single-fire is a separate problem with its own failure
-/// modes — clock skew, lease expiry versus job duration, the node that dies
-/// holding the lock — and is deliberately not solved here.
+/// ## Running more than one of these
+///
+/// Two schedulers pointed at the same store will both claim the same due run
+/// unless something arbitrates between them. Supply a [TomLeaseLock] and this
+/// scheduler becomes cluster-safe: every run is gated on a lease, the lease is
+/// renewed while the work runs, and a node that dies has its work picked up when
+/// its lease lapses. Leave the lock `null` — the default — and the scheduler
+/// behaves exactly as a single-node runtime, with [TomJobDefinition.allowOverlap]
+/// serialising a job's runs within this process only.
+///
+/// The execution guarantee is **at-least-once**, and it is stated in full in
+/// `doc/scheduling/scheduling.md`. Job bodies must be idempotent. The lock makes
+/// duplicate execution rare and bounded; it does not make it impossible, and a
+/// runtime that claimed otherwise would be lying about a case its users will
+/// eventually hit.
 library;
 
 import 'dart:async';
@@ -43,6 +52,7 @@ import '../isolate_pooling/tom_worker.dart';
 import '../shutdown_cleanup/tom_shutdown_cleanup.dart';
 import 'job_definition.dart';
 import 'job_store.dart';
+import 'lease_lock.dart';
 import 'schedule.dart';
 
 /// Drives registered [TomJobDefinition]s against a [TomJobStore].
@@ -87,6 +97,27 @@ class TomScheduler implements TomClosable {
   /// The most runs claimed in one pass.
   final int maxRunsPerTick;
 
+  /// Cluster coordination, or `null` for a single-node scheduler.
+  ///
+  /// When present, no run is executed without first winning its lease, so two
+  /// schedulers sharing a store cannot both execute the same run.
+  final TomLeaseLock? lock;
+
+  /// How long a coordination lease is taken for.
+  ///
+  /// Short is good: it bounds how long a dead node blocks its work. It is safe
+  /// to keep it short because [leaseRenewInterval] pushes it forward for as long
+  /// as the work is genuinely running, so this does **not** need to exceed the
+  /// slowest job.
+  final Duration leaseTtl;
+
+  /// How often a held lease is renewed while its work runs.
+  ///
+  /// Must be comfortably shorter than [leaseTtl] — a third of it by default —
+  /// so a single missed renewal does not lapse the lease. The gap is the margin
+  /// that absorbs a slow store, a GC pause or a moment of clock skew.
+  final Duration leaseRenewInterval;
+
   final Map<String, TomJobDefinition> _jobs = {};
   final Map<String, StreamSubscription<Object?>> _eventSubscriptions = {};
 
@@ -97,6 +128,16 @@ class TomScheduler implements TomClosable {
   /// [TomJobDefinition.allowOverlap] check is a lookup rather than a scan.
   final Map<String, String> _inFlight = {};
 
+  /// Coordination leases currently held, keyed by run id.
+  ///
+  /// Exposed through [heldLeases] so an operator can ask what this node is
+  /// sitting on without going to the substrate.
+  final Map<String, TomLease> _leases = {};
+
+  /// Runs whose lease was lost mid-flight, and whose outcome this node must
+  /// therefore not record. Cleared when the run finishes here.
+  final Set<String> _lostLeases = {};
+
   Timer? _timer;
   bool _ticking = false;
   bool _closed = false;
@@ -106,6 +147,13 @@ class TomScheduler implements TomClosable {
   ///
   /// [ownerId] defaults to a value derived from the process start time, which
   /// is enough to tell one scheduler's leases from another's in the store.
+  /// **In a cluster it must be distinct per node**, and the default satisfies
+  /// that only by luck — two nodes started in the same microsecond would
+  /// collide. Set it explicitly to something stable and unique, such as the
+  /// host name plus the process id.
+  ///
+  /// [leaseRenewInterval] defaults to a third of [leaseTtl], which leaves room
+  /// for two renewals to fail before the lease lapses.
   TomScheduler({
     required this.store,
     required this.dispatcher,
@@ -116,10 +164,27 @@ class TomScheduler implements TomClosable {
     TomJobAlertSink? onAlert,
     Random? random,
     this.maxRunsPerTick = 16,
+    this.lock,
+    this.leaseTtl = const Duration(minutes: 1),
+    Duration? leaseRenewInterval,
   })  : ownerId = ownerId ?? 'scheduler-${DateTime.now().microsecondsSinceEpoch}',
         clock = clock ?? DateTime.now,
         onAlert = onAlert ?? _logAlert,
-        random = random ?? Random();
+        random = random ?? Random(),
+        leaseRenewInterval = leaseRenewInterval ??
+            Duration(microseconds: leaseTtl.inMicroseconds ~/ 3) {
+    if (this.leaseRenewInterval >= leaseTtl) {
+      throw TomScheduleException(
+        'schedule.scheduler.renew_interval',
+        'leaseRenewInterval must be shorter than leaseTtl, or a lease lapses '
+            'before it is ever renewed.',
+        parameters: {
+          'leaseTtl': leaseTtl.toString(),
+          'leaseRenewInterval': this.leaseRenewInterval.toString(),
+        },
+      );
+    }
+  }
 
   /// The default alert sink: everything goes to the framework log, with a
   /// severity that matches how bad the news is.
@@ -127,11 +192,18 @@ class TomScheduler implements TomClosable {
     switch (alert.kind) {
       case TomJobAlertKind.runFailed:
       case TomJobAlertKind.runAbandoned:
+      case TomJobAlertKind.leaseLost:
         tomLog.error(alert.describe());
       case TomJobAlertKind.attemptFailed:
       case TomJobAlertKind.timedOut:
       case TomJobAlertKind.windowsMissed:
+      case TomJobAlertKind.leaseStolen:
         tomLog.warn(alert.describe());
+      case TomJobAlertKind.lockContended:
+        // Every node but the winner reports this on every run. At warn level a
+        // healthy three-node cluster would generate two spurious warnings per
+        // job per window, which is how operators learn to ignore warnings.
+        tomLog.debug(alert.describe());
     }
   }
 
@@ -143,6 +215,14 @@ class TomScheduler implements TomClosable {
 
   /// How many runs this scheduler currently has dispatched.
   int get inFlightCount => _inFlight.length;
+
+  /// The coordination leases this node currently holds, keyed by run id.
+  ///
+  /// The local half of "who holds the lock": what *this* node believes it owns.
+  /// For the cluster-wide answer, including leases held elsewhere, ask
+  /// [TomLeaseLock.inspect] — which is authoritative, because a lease can lapse
+  /// without the holder noticing until its next renewal.
+  Map<String, TomLease> get heldLeases => Map.unmodifiable(_leases);
 
   /// Registers [job], replacing any previous definition of the same name.
   ///
@@ -210,6 +290,12 @@ class TomScheduler implements TomClosable {
   ///
   /// Runs already dispatched are not waited for — [close] is the shutdown path,
   /// and their leases will expire so another process picks them up.
+  ///
+  /// Held leases are released on the way out so peers can take the work
+  /// immediately instead of waiting out [leaseTtl]. That release is
+  /// fire-and-forget: [TomClosable.close] is synchronous, and a lease that fails
+  /// to release simply expires, which is the behaviour a hard kill would have
+  /// produced anyway.
   @override
   void close() {
     _closed = true;
@@ -218,6 +304,14 @@ class TomScheduler implements TomClosable {
       _cancel(subscription);
     }
     _eventSubscriptions.clear();
+    final coordinator = lock;
+    if (coordinator != null) {
+      for (final lease in _leases.values) {
+        unawaited(coordinator.release(lease));
+      }
+    }
+    _leases.clear();
+    _lostLeases.clear();
     dispatcher.close();
   }
 
@@ -252,6 +346,7 @@ class TomScheduler implements TomClosable {
     final recovered = await store.recoverAbandoned(now, leaseTimeout);
     for (final run in recovered) {
       _inFlight.remove(run.id);
+      _leases.remove(run.id);
       onAlert(
         TomJobAlert(
           jobName: run.jobName,
@@ -437,15 +532,86 @@ class TomScheduler implements TomClosable {
     for (final run in claimed) {
       final job = _jobs[run.jobName];
       if (job == null) continue;
+      // The claim is a *local* reservation; the lease is the cluster arbiter.
+      // A node that claimed but cannot win the lease hands the claim straight
+      // back, so a peer can take it on its own next tick instead of waiting for
+      // this one's lease to time out.
+      final lease = await _acquireLease(job, run);
+      if (lease == null && lock != null) {
+        await store.release(run);
+        continue;
+      }
       _inFlight[run.id] = run.jobName;
       // Not awaited: a tick starts runs, it does not wait them out. A slow job
       // must not hold up the next window of a fast one.
-      unawaited(_runOne(job, run));
+      unawaited(_runOne(job, run, lease));
     }
   }
 
+  /// The resource a run's coordination lease is taken on.
+  ///
+  /// The key *is* the policy. A job that forbids overlap leases its own name,
+  /// so the whole cluster runs at most one of it at a time — the cluster-wide
+  /// reading of [TomJobDefinition.allowOverlap]. A job that allows overlap
+  /// leases the individual run, so concurrent windows are fine but no single
+  /// window is executed twice.
+  String _leaseResource(TomJobDefinition job, TomJobRun run) =>
+      job.allowOverlap ? 'run:${run.id}' : 'job:${job.name}';
+
+  /// Wins the coordination lease for [run], or reports why it could not.
+  ///
+  /// Returns `null` both when there is no lock (the single-node case, where the
+  /// caller proceeds anyway) and when a peer holds the lease; the caller
+  /// distinguishes them by whether [lock] is set.
+  Future<TomLease?> _acquireLease(
+    TomJobDefinition job,
+    TomJobRun run,
+  ) async {
+    final coordinator = lock;
+    if (coordinator == null) return null;
+    final resource = _leaseResource(job, run);
+
+    // Read before taking, so a takeover can name the holder it displaced. This
+    // is the observability half of DO 4 and is why "the node that died" is
+    // answerable rather than merely inferable.
+    final before = await coordinator.inspect(resource);
+    final lease = await coordinator.acquire(resource, ownerId, leaseTtl);
+
+    if (lease == null) {
+      onAlert(
+        TomJobAlert(
+          jobName: job.name,
+          kind: TomJobAlertKind.lockContended,
+          run: run,
+          lease: before.lease,
+        ),
+      );
+      return null;
+    }
+    if (before.holderVanished && before.lease!.owner != ownerId) {
+      onAlert(
+        TomJobAlert(
+          jobName: job.name,
+          kind: TomJobAlertKind.leaseStolen,
+          run: run,
+          lease: before.lease,
+        ),
+      );
+    }
+    _leases[run.id] = lease;
+    return lease;
+  }
+
   /// Executes one attempt of [run] and records the outcome.
-  Future<void> _runOne(TomJobDefinition job, TomJobRun run) async {
+  ///
+  /// [lease] is the coordination lease held for this run, or `null` when the
+  /// scheduler is running single-node.
+  Future<void> _runOne(
+    TomJobDefinition job,
+    TomJobRun run,
+    TomLease? lease,
+  ) async {
+    final heartbeat = _startHeartbeat(job, run, lease);
     try {
       final TomCommand command;
       try {
@@ -453,11 +619,11 @@ class TomScheduler implements TomClosable {
       } catch (error, stack) {
         // A body factory that throws is a permanent defect, not a transient
         // failure — retrying it just fails identically. Fail the run outright.
-        await _failFinally(job, run, error, stack);
+        if (_stillOurs(run)) await _failFinally(job, run, error, stack);
         return;
       }
       await dispatcher.dispatch(command).timeout(job.timeout);
-      await store.complete(run, clock());
+      if (_stillOurs(run)) await store.complete(run, clock());
     } on TimeoutException catch (error, stack) {
       onAlert(
         TomJobAlert(
@@ -467,12 +633,80 @@ class TomScheduler implements TomClosable {
           error: error,
         ),
       );
-      await _failAttempt(job, run, error, stack);
+      if (_stillOurs(run)) await _failAttempt(job, run, error, stack);
     } catch (error, stack) {
-      await _failAttempt(job, run, error, stack);
+      if (_stillOurs(run)) await _failAttempt(job, run, error, stack);
     } finally {
+      heartbeat?.cancel();
       _inFlight.remove(run.id);
+      await _releaseLease(job, run);
+      _lostLeases.remove(run.id);
     }
+  }
+
+  /// Whether this node may still write [run]'s outcome to the store.
+  ///
+  /// Once a lease is lost the run belongs to whichever node took it over.
+  /// Writing our result anyway would clobber theirs — marking succeeded a run
+  /// they are still executing, or failing one they already completed. Our work
+  /// is not wasted, it is simply no longer authoritative, and the discrepancy
+  /// is reported as [TomJobAlertKind.leaseLost] rather than hidden.
+  bool _stillOurs(TomJobRun run) =>
+      lock == null || !_lostLeases.contains(run.id);
+
+  /// Starts the renewal timer that keeps [lease] alive while the work runs.
+  ///
+  /// Renewal is what decouples the lease TTL from job duration: without it the
+  /// TTL would have to exceed the slowest possible run, and a dead node would
+  /// then block its work for exactly that long.
+  Timer? _startHeartbeat(
+    TomJobDefinition job,
+    TomJobRun run,
+    TomLease? lease,
+  ) {
+    if (lock == null || lease == null) return null;
+    return Timer.periodic(
+      leaseRenewInterval,
+      (_) => unawaited(_renewLease(job, run)),
+    );
+  }
+
+  /// One heartbeat: push the lease expiry forward and refresh the store claim.
+  Future<void> _renewLease(TomJobDefinition job, TomJobRun run) async {
+    final coordinator = lock;
+    final current = _leases[run.id];
+    if (coordinator == null || current == null) return;
+
+    final renewed = await coordinator.renew(current, leaseTtl);
+    if (renewed == null) {
+      _leases.remove(run.id);
+      _lostLeases.add(run.id);
+      onAlert(
+        TomJobAlert(
+          jobName: job.name,
+          kind: TomJobAlertKind.leaseLost,
+          run: run,
+          lease: current,
+        ),
+      );
+      return;
+    }
+    _leases[run.id] = renewed;
+    // The store lease moves with the lock lease, so `recoverAbandoned` and the
+    // coordinator agree about who is alive rather than expiring independently.
+    await store.renewClaim(run, clock());
+  }
+
+  /// Gives up the lease held for [run], if any.
+  Future<void> _releaseLease(TomJobDefinition job, TomJobRun run) async {
+    final lease = _leases.remove(run.id);
+    final coordinator = lock;
+    if (lease == null || coordinator == null) return;
+    await coordinator.release(lease);
+    // A run-scoped resource is named after an id that is never reused, so its
+    // record is dead weight the moment the run ends. A job-scoped one must be
+    // kept: forgetting it would restart that job's fencing tokens at 1.
+    if (job.allowOverlap) await coordinator.forget(lease.resource);
   }
 
   /// Fails one attempt, scheduling a retry when the policy allows one.
