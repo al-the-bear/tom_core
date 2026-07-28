@@ -10,6 +10,8 @@ export 'src/tombase/context/execution_context.dart';
 export 'src/tombase/http_connection/server_connection.dart';
 export 'src/tombase/http_connection/auth_retry.dart';
 export 'src/tombase/http_connection/endpoints_apis.dart';
+export 'src/tombase/http_connection/file_transfer.dart';
+export 'src/tombase/http_connection/http_file_transfer.dart';
 export 'src/tombase/http_connection/remote_context.dart';
 export 'src/tombase/http_connection/httpmethods.dart';
 export 'src/tombase/http_connection/mimetypes.dart';

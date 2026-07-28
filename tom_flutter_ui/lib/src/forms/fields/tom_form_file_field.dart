@@ -1,70 +1,52 @@
-/// Phase 4 — File upload field.
+/// File fields — choosing a file, and moving it to and from a file store.
 ///
-/// `FileRef` is a minimal value type — name + size + mime + optional
-/// in-memory bytes — chosen so the field works without dragging a file
-/// picker package into `tom_flutter_ui`. Apps wire a concrete
-/// `picker` callback when constructing the field; the framework calls
-/// it on user action and stores whatever `FileRef` it returns.
+/// The value type [FileRef] and the [FilePicker] contract live in
+/// `../files/file_ref.dart` and are re-exported here, so importing this file
+/// still gives you everything a file field deals in.
 ///
-/// Two concretes ship:
+/// ## Picking
+///
+/// `picker` is **optional**. A field without one uses the application's
+/// registered picker (see `TomFilePickerRegistry`), which is how these fields
+/// work out of the box without `tom_flutter_ui` depending on a picker package.
+/// Passing a `picker` explicitly still wins, for the field that needs
+/// something else.
+///
+/// ## Transferring
+///
+/// Give a field a [TomFileTransferClient] and a `storageSlot` and it uploads
+/// what the user picked, showing progress and offering cancel and retry; the
+/// picked [FileRef] is replaced by a stored one carrying the server's key. A
+/// field re-opened later describes its slot and shows the stored file without
+/// downloading it.
+///
+/// Two Material concretes ship:
 ///   * [TomFormFileUpload] — compact "Choose file…" button + selected
 ///     file caption.
-///   * [TomFormFileDropzone] — large dashed drop-target surface that
-///     also opens the picker on tap.
+///   * [TomFormFileDropzone] — large drop-target surface that also opens the
+///     picker on tap.
 library;
 
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widgets/dialogs/tom_messenger.dart';
 import '../decoration/tom_generic_field_decoration_mixin.dart';
+import '../files/file_ref.dart';
+import '../files/tom_file_picker_registry.dart';
+import '../files/tom_file_transfer_controller.dart';
+import '../files/tom_file_transfer_indicator.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
 import '../validation/validation_result.dart';
 import 'tom_field_widget_adapter.dart';
 
-/// Lightweight, framework-agnostic file reference. Apps may extend or
-/// adapt to richer types (e.g. wrap a `PlatformFile` from `file_picker`).
-@immutable
-class FileRef {
-  final String name;
-  final int sizeBytes;
-  final String? mimeType;
-
-  /// Optional in-memory bytes (small uploads). Larger files should keep
-  /// `bytes` null and stream from disk via a separate channel.
-  final Uint8List? bytes;
-
-  const FileRef({
-    required this.name,
-    required this.sizeBytes,
-    this.mimeType,
-    this.bytes,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FileRef &&
-          other.name == name &&
-          other.sizeBytes == sizeBytes &&
-          other.mimeType == mimeType;
-
-  @override
-  int get hashCode => Object.hash(name, sizeBytes, mimeType);
-
-  @override
-  String toString() =>
-      'FileRef($name, $sizeBytes B${mimeType != null ? ', $mimeType' : ''})';
-}
-
-/// Picker callback contract. Returns the chosen file (or `null` if the
-/// user cancels). Implementations can wrap `file_picker`, `image_picker`,
-/// or any platform-specific picker.
-typedef FilePicker = Future<FileRef?> Function(BuildContext context);
+export '../files/file_ref.dart';
 
 // ===========================================================================
 // Built-in file validators
@@ -76,9 +58,7 @@ typedef FilePicker = Future<FileRef?> Function(BuildContext context);
 Validator<FileRef?> _fileExtensionValidator(List<String> allowed) =>
     (FileRef? value) {
       if (value == null) return const ValidationSuccess();
-      final dot = value.name.lastIndexOf('.');
-      final ext = dot < 0 ? '' : value.name.substring(dot + 1).toLowerCase();
-      return allowed.contains(ext)
+      return allowed.contains(value.extension)
           ? const ValidationSuccess()
           : const ValidationError('error.fileExtension');
     };
@@ -86,11 +66,11 @@ Validator<FileRef?> _fileExtensionValidator(List<String> allowed) =>
 /// Returns a [Validator] that checks the file's size against [maxBytes].
 /// Pristine `null` values pass.
 Validator<FileRef?> _fileSizeValidator(int maxBytes) => (FileRef? value) {
-      if (value == null) return const ValidationSuccess();
-      return value.sizeBytes <= maxBytes
-          ? const ValidationSuccess()
-          : const ValidationError('error.fileTooLarge');
-    };
+  if (value == null) return const ValidationSuccess();
+  return value.sizeBytes <= maxBytes
+      ? const ValidationSuccess()
+      : const ValidationError('error.fileTooLarge');
+};
 
 // ===========================================================================
 // Abstract type
@@ -110,14 +90,53 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   /// built-in size validator (see [allowedExtensions]).
   final int? maxSizeBytes;
 
-  /// Required picker callback. Called when the user activates the
-  /// "Choose file…" affordance.
-  final FilePicker picker;
+  /// Optional picker callback, overriding the application's registered picker.
+  ///
+  /// Leave it `null` in the ordinary case: the field then uses whatever
+  /// `TomFilePickerRegistry.register` installed, so an application wires its
+  /// picker package once instead of at every field.
+  final FilePicker? picker;
+
+  /// What kind of file this field is after, passed to the registered picker so
+  /// it can open the right dialog.
+  final TomFilePickKind pickKind;
+
+  /// The transport used to upload and download this field's file.
+  ///
+  /// Without one the field is picker-only: it holds whatever was chosen and
+  /// leaves storing it to the form's own save path.
+  final TomFileTransferClient? transferClient;
+
+  /// The application-owned slot this field's file is stored in.
+  ///
+  /// A path such as `invoices/4711/scan`. Storage *keys* are generated by the
+  /// server and never chosen here — a client that named its own key would turn
+  /// the upload endpoint into an open write surface.
+  final String? storageSlot;
+
+  /// Whether picking a file immediately uploads it.
+  ///
+  /// On by default because it is what makes progress and cancel meaningful; a
+  /// form that would rather upload on save sets this to `false` and calls
+  /// [TomFileTransferController.upload] itself.
+  final bool autoUpload;
+
+  /// Called with the bytes of a stored file when the user downloads it.
+  ///
+  /// The field offers the download affordance and runs the transfer; what a
+  /// downloaded file *is* — a preview, a share sheet, a save dialog — is the
+  /// application's decision, so it gets the bytes and nothing more.
+  final void Function(FileRef ref, Uint8List bytes)? onDownload;
 
   TomFormFileField(
     super.tomId,
     super.initialValue, {
-    required this.picker,
+    this.picker,
+    this.pickKind = TomFilePickKind.any,
+    this.transferClient,
+    this.storageSlot,
+    this.autoUpload = true,
+    this.onDownload,
     this.labelTextOverride,
     this.descriptionTextOverride,
     this.allowedExtensions,
@@ -132,31 +151,65 @@ abstract class TomFormFileField extends TomField<FileRef?> {
     super.actionIconTooltip,
     super.onActionIconPressed,
   }) : super(
-          validators: [
-            if (allowedExtensions != null)
-              _fileExtensionValidator(allowedExtensions),
-            if (maxSizeBytes != null) _fileSizeValidator(maxSizeBytes),
-            ...validators,
-          ],
-        );
+         validators: [
+           if (allowedExtensions != null)
+             _fileExtensionValidator(allowedExtensions),
+           if (maxSizeBytes != null) _fileSizeValidator(maxSizeBytes),
+           ...validators,
+         ],
+       );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
+  /// Whether this field can open a picker at all.
+  ///
+  /// `false` when neither a `picker` nor a registered one exists — the widgets
+  /// disable their affordance rather than offer a button that throws.
+  bool get canPick => picker != null || TomFilePickerRegistry.hasPicker;
+
+  /// Whether this field is wired for upload and download.
+  bool get canTransfer => transferClient != null && storageSlot != null;
+
+  /// Opens the picker, honouring this field's constraints.
+  ///
+  /// Delegates to [picker] when one was given, otherwise to the registered
+  /// application picker with this field's extensions and size limit — so a
+  /// user is offered only files the field would accept.
+  Future<FileRef?> runPicker(BuildContext context) {
+    final explicit = picker;
+    if (explicit != null) return explicit(context);
+    return TomFilePickerRegistry.pick(
+      TomFilePickRequest(
+        allowedExtensions: allowedExtensions,
+        maxSizeBytes: maxSizeBytes,
+        kind: pickKind,
+      ),
+    );
+  }
+
+  /// Creates the controller for this field's slot, or `null` when the field is
+  /// not wired for transfer.
+  TomFileTransferController? createTransferController() => canTransfer
+      ? TomFileTransferController(
+          client: transferClient!,
+          slot: storageSlot!,
+        )
+      : null;
+
   /// Validate the picked file against `allowedExtensions` / `maxSizeBytes`.
   /// Returns an error key string on failure, null on success.
   ///
-  /// Used by the picker shim to show an immediate snackbar and reject the
-  /// file before it ever reaches `setValue`. The same constraints are also
+  /// Used by the picker shim to show an immediate message and reject the file
+  /// before it ever reaches `setValue`. The same constraints are also
   /// auto-prepended as `Validator<FileRef?>`s, so any programmatic
   /// `setValue(invalidFile)` will be caught by the framework pipeline.
   String? checkFile(FileRef ref) {
-    if (allowedExtensions != null) {
-      final dot = ref.name.lastIndexOf('.');
-      final ext = dot < 0 ? '' : ref.name.substring(dot + 1).toLowerCase();
-      if (!allowedExtensions!.contains(ext)) return 'error.fileExtension';
+    if (allowedExtensions != null &&
+        !allowedExtensions!.contains(ref.extension)) {
+      return 'error.fileExtension';
     }
     if (maxSizeBytes != null && ref.sizeBytes > maxSizeBytes!) {
       return 'error.fileTooLarge';
@@ -169,8 +222,17 @@ abstract class TomFormFileField extends TomField<FileRef?> {
 // Shared widget logic
 // ===========================================================================
 
-mixin _FileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
+/// The pick → validate → store → upload sequence and the transfer state that
+/// goes with it, shared by every file-field widget in both families.
+///
+/// A mixin rather than a base class because the Material and Cupertino widgets
+/// have nothing else in common: they share this behaviour and no chrome at all.
+mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
   late final TomFunctionObserver<TomObservable> _observer;
+
+  /// The controller for this field's slot, or `null` when the field is
+  /// picker-only.
+  TomFileTransferController? transferController;
 
   TomFormFileField get field;
 
@@ -181,9 +243,32 @@ mixin _FileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
       if (mounted) setState(() {});
     };
     field.validationListenable.addListener(_onValidationChanged);
+    transferController = field.createTransferController();
+    if (transferController != null) {
+      transferController!.addListener(_onTransferChanged);
+      // A field whose value already names a stored file was restored from a
+      // saved form; describing the slot costs one HEAD and is what lets the
+      // widget show a download affordance for it.
+      if (field.get()?.isStored ?? false) {
+        unawaited(_describeQuietly());
+      }
+    }
+  }
+
+  Future<void> _describeQuietly() async {
+    try {
+      await transferController?.describe();
+    } on Object {
+      // A describe is an optimisation, not the user's request: a slot that
+      // cannot be described still renders from the value the field holds.
+    }
   }
 
   void _onValidationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onTransferChanged() {
     if (mounted) setState(() {});
   }
 
@@ -191,28 +276,94 @@ mixin _FileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
   void dispose() {
     field.validationListenable.removeListener(_onValidationChanged);
     field.removeObserver(_observer);
+    transferController?.removeListener(_onTransferChanged);
+    transferController?.dispose();
     super.dispose();
   }
 
+  /// Reports a rejected file to the user.
+  ///
+  /// Overridden per family — Material has a `ScaffoldMessenger`, Cupertino has
+  /// a dialog — which is the only reason `pick` is not fully generic.
+  Future<void> showFileRejected(String errorKey);
+
+  /// Opens the picker, validates the result, stores it and (when configured)
+  /// uploads it.
   Future<void> pick() async {
-    final picked = await field.picker(context);
+    final picked = await field.runPicker(context);
     if (picked == null) return;
     final err = field.checkFile(picked);
     if (err != null) {
       if (!mounted) return;
-      TomMessenger.showSnackBarIfPresent(context, SnackBar(content: Text(err)));
+      await showFileRejected(err);
       return;
     }
     field.setValue(picked);
+    if (field.autoUpload) await upload(picked);
   }
 
-  String _humanSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  /// Uploads [ref], replacing the field's value with the stored reference.
+  ///
+  /// The replacement is what makes the upload visible to the rest of the form:
+  /// a value carrying a storage key is a value the form can save.
+  Future<void> upload(FileRef ref) async {
+    final controller = transferController;
+    if (controller == null || !ref.hasLocalContent) return;
+    final stored = await controller.upload(ref);
+    if (stored == null || !mounted) return;
+    field.setValue(ref.copyWith(storageKey: stored.key));
   }
+
+  /// Retries the last failed or cancelled transfer.
+  Future<void> retryTransfer() async => transferController?.retry();
+
+  /// Cancels the transfer in flight.
+  void cancelTransfer() => transferController?.cancel();
+
+  /// Downloads the stored file and hands its bytes to the field's
+  /// `onDownload` callback.
+  Future<void> download() async {
+    final controller = transferController;
+    final ref = field.get();
+    if (controller == null || ref == null) return;
+    final bytes = await controller.download();
+    if (bytes == null || !mounted) return;
+    field.onDownload?.call(ref, bytes);
+  }
+
+  /// Clears the field, and the stored file with it when there is one.
+  ///
+  /// Deleting the stored file is the point: leaving an orphan blob behind
+  /// every time a user changes their mind is how a store fills up.
+  Future<void> clear() async {
+    final ref = field.get();
+    field.setValue(null);
+    if (ref?.isStored ?? false) {
+      try {
+        await transferController?.remove();
+      } on Object {
+        // The field is already cleared; a failed cleanup must not undo that.
+      }
+    } else {
+      transferController?.reset();
+    }
+  }
+
+  /// Whether the download affordance should be offered.
+  bool get canDownload =>
+      field.onDownload != null && (field.get()?.isStored ?? false);
+
+  String humanSize(int bytes) => tomHumanFileSize(bytes);
+}
+
+/// A human-readable rendering of a byte count.
+///
+/// Free function because three widgets and an example need it and none of them
+/// owns it.
+String tomHumanFileSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
 }
 
 // ===========================================================================
@@ -225,7 +376,12 @@ class TomFormFileUpload extends TomFormFileField
   TomFormFileUpload(
     super.tomId,
     super.initialValue, {
-    required super.picker,
+    super.picker,
+    super.pickKind,
+    super.transferClient,
+    super.storageSlot,
+    super.autoUpload,
+    super.onDownload,
     super.labelTextOverride,
     super.descriptionTextOverride,
     super.allowedExtensions,
@@ -249,10 +405,8 @@ class TomFormFileUpload extends TomFormFileField
   }
 
   @override
-  Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _FileUploadWidget(field: this),
-      );
+  Widget get widget =>
+      TomFieldWidgetAdapter(field: this, child: _FileUploadWidget(field: this));
 }
 
 class _FileUploadWidget extends StatefulWidget {
@@ -264,9 +418,17 @@ class _FileUploadWidget extends StatefulWidget {
 }
 
 class _FileUploadWidgetState extends State<_FileUploadWidget>
-    with _FileFieldStateMixin<_FileUploadWidget> {
+    with TomFileFieldStateMixin<_FileUploadWidget> {
   @override
   TomFormFileField get field => widget.field;
+
+  @override
+  Future<void> showFileRejected(String errorKey) async {
+    TomMessenger.showSnackBarIfPresent(
+      context,
+      SnackBar(content: Text(errorKey)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -274,36 +436,56 @@ class _FileUploadWidgetState extends State<_FileUploadWidget>
     final style = f.resolveStyle(context);
     final v = f.get();
 
-    final row = Row(
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OutlinedButton.icon(
-          onPressed: f.isEditable ? pick : null,
-          icon: const Icon(Icons.upload_file),
-          label: const Text('Choose file…'),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: f.isEditable && f.canPick ? pick : null,
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Choose file…'),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                v == null
+                    ? '— no file selected'
+                    : '${v.name} (${humanSize(v.sizeBytes)})',
+                style: style.inputStyle,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (canDownload)
+              IconButton(
+                tooltip: 'Download',
+                icon: const Icon(Icons.download),
+                onPressed: download,
+              ),
+            if (v != null && f.isEditable)
+              IconButton(
+                tooltip: 'Clear',
+                icon: const Icon(Icons.clear),
+                onPressed: clear,
+              ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            v == null ? '— no file selected' : '${v.name} (${_humanSize(v.sizeBytes)})',
-            style: style.inputStyle,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (v != null && f.isEditable)
-          IconButton(
-            tooltip: 'Clear',
-            icon: const Icon(Icons.clear),
-            onPressed: () => f.setValue(null),
+        if (transferController != null)
+          TomFileTransferIndicator(
+            controller: transferController!,
+            onCancel: cancelTransfer,
+            onRetry: retryTransfer,
           ),
       ],
     );
 
-    return f.decorateField(context, row);
+    return f.decorateField(context, column);
   }
 }
 
 // ===========================================================================
-// TomFormFileDropzone — large dashed drop-target affordance
+// TomFormFileDropzone — large drop-target affordance
 // ===========================================================================
 
 @tomReflector
@@ -315,7 +497,12 @@ class TomFormFileDropzone extends TomFormFileField
   TomFormFileDropzone(
     super.tomId,
     super.initialValue, {
-    required super.picker,
+    super.picker,
+    super.pickKind,
+    super.transferClient,
+    super.storageSlot,
+    super.autoUpload,
+    super.onDownload,
     this.height = 120.0,
     super.labelTextOverride,
     super.descriptionTextOverride,
@@ -341,9 +528,9 @@ class TomFormFileDropzone extends TomFormFileField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _FileDropzoneWidget(field: this),
-      );
+    field: this,
+    child: _FileDropzoneWidget(field: this),
+  );
 }
 
 class _FileDropzoneWidget extends StatefulWidget {
@@ -355,9 +542,17 @@ class _FileDropzoneWidget extends StatefulWidget {
 }
 
 class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
-    with _FileFieldStateMixin<_FileDropzoneWidget> {
+    with TomFileFieldStateMixin<_FileDropzoneWidget> {
   @override
   TomFormFileField get field => widget.field;
+
+  @override
+  Future<void> showFileRejected(String errorKey) async {
+    TomMessenger.showSnackBarIfPresent(
+      context,
+      SnackBar(content: Text(errorKey)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -367,7 +562,7 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
     final v = f.get();
 
     final dropzone = InkWell(
-      onTap: f.isEditable ? pick : null,
+      onTap: f.isEditable && f.canPick ? pick : null,
       child: Container(
         height: f.height,
         decoration: BoxDecoration(
@@ -384,7 +579,9 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                v == null ? Icons.cloud_upload_outlined : Icons.insert_drive_file_outlined,
+                v == null
+                    ? Icons.cloud_upload_outlined
+                    : Icons.insert_drive_file_outlined,
                 size: 36,
                 color: scheme.onSurfaceVariant,
               ),
@@ -392,21 +589,33 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
               Text(
                 v == null
                     ? 'Tap to choose a file'
-                    : '${v.name} (${_humanSize(v.sizeBytes)})',
+                    : '${v.name} (${humanSize(v.sizeBytes)})',
                 style: style.inputStyle,
                 overflow: TextOverflow.ellipsis,
               ),
               if (v != null && f.isEditable)
-                TextButton(
-                  onPressed: () => f.setValue(null),
-                  child: const Text('Clear'),
-                ),
+                TextButton(onPressed: clear, child: const Text('Clear')),
             ],
           ),
         ),
       ),
     );
 
-    return f.decorateField(context, dropzone);
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        dropzone,
+        if (transferController != null)
+          TomFileTransferIndicator(
+            controller: transferController!,
+            onCancel: cancelTransfer,
+            onRetry: retryTransfer,
+            onDownload: canDownload ? download : null,
+          ),
+      ],
+    );
+
+    return f.decorateField(context, column);
   }
 }

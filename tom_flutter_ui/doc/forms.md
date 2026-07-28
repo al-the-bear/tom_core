@@ -21,6 +21,7 @@ Cupertino sibling changes the rendering without touching the model.
 - [The event bus](#the-event-bus)
 - [Style and decoration](#style-and-decoration)
 - [The field catalogue and `FormFieldFamily`](#the-field-catalogue-and-formfieldfamily)
+- [File fields](#file-fields)
 - [List and master-detail forms](#list-and-master-detail-forms)
 - [Dependencies](#dependencies)
 
@@ -152,6 +153,20 @@ Factory methods cover strings, numerics (int/double, nullable variants),
 boolean switches, date/time pickers, enum/object pickers, search/lookup, and
 file upload. `FormFieldFamily.material` / `.cupertino` are const singletons;
 `isCupertino` reports which side a family resolves to.
+
+## File fields
+
+A file field is the one field whose value does not live in the form: it holds a
+*reference* — a name, a size, and once stored the key the server generated —
+while the bytes travel a separate path. That path has its own plumbing:
+`TomFilePickerRegistry` (the application's one picker adaptor, which is why this
+package depends on no picker plugin), `TomFileTransferController` (streaming
+upload/download with progress, cancel and retry over the kernel's
+`TomFileTransferClient`), and `TomFileTransferIndicator`.
+
+See [`forms_file_fields.md`](forms_file_fields.md) for the whole path, and
+[`../example/forms/file_fields_example.dart`](../example/forms/file_fields_example.dart)
+for a runnable walkthrough that needs neither a server nor a picker package.
 
 ## List and master-detail forms
 

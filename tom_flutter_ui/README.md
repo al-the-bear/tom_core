@@ -118,6 +118,13 @@ The field catalogue spans a parallel Material/Cupertino set: **string**
 `TomFormFileDropzone`), and **nullable** wrappers (`TomFormNStringInput`,
 `TomFormNIntInput`, `TomFormNDateInput`, `TomFormNEnumDropdown`).
 
+The file fields come with their own plumbing: `TomFilePickerRegistry` (one
+application-wide picker adaptor, so the package needs no dependency on
+`file_picker` / `image_picker`), `TomFileTransferController` (streaming upload
+and download with progress, cancel and retry over the kernel's
+`TomFileTransferClient`), and `TomFileTransferIndicator`. See
+[`doc/forms_file_fields.md`](doc/forms_file_fields.md).
+
 ### Theming (`theme/`)
 
 | Type | Responsibility |
@@ -330,6 +337,7 @@ Per-module guides live in [`doc/`](doc):
 [`actions.md`](doc/actions.md) (+ [`tom_action_integration.md`](doc/tom_action_integration.md)),
 [`resource_auth.md`](doc/resource_auth.md), [`forms.md`](doc/forms.md)
 (+ [`form_authorizers.md`](doc/form_authorizers.md),
+[`forms_file_fields.md`](doc/forms_file_fields.md),
 [`formstyle_migration.md`](doc/formstyle_migration.md)),
 [`groups.md`](doc/groups.md),
 [`advanced_container_layout.md`](doc/advanced_container_layout.md)

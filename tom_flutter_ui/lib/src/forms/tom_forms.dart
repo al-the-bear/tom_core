@@ -65,6 +65,14 @@ export 'fields/tom_form_search_lookup_fields.dart';
 export 'fields/tom_form_file_field.dart';
 export 'fields/tom_form_nullable_inputs.dart';
 
+// Phase 4a — file plumbing: the picked value, the platform-picker registry,
+// the transfer state machine and the transfer UX. Usable on their own, not
+// just through a file field.
+export 'files/file_ref.dart';
+export 'files/tom_file_picker_registry.dart';
+export 'files/tom_file_transfer_controller.dart';
+export 'files/tom_file_transfer_indicator.dart';
+
 // Phase 5a — Cupertino style + string / bool / string-list concretes
 export 'style/tom_cupertino_form_style.dart';
 export 'fields/cupertino/tom_cupertino_form_string_fields.dart';
