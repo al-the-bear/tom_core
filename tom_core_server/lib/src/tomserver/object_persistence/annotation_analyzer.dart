@@ -57,6 +57,10 @@ mixin TomAnnotationAnalyzer {
   /// entity type (an empty list = the entity declares no column access rights).
   static final authColumnCache = <Type, List<TomColumnInformation>>{};
 
+  /// Cache of the file-reference (`@TomFileReference`) columns per entity type
+  /// (an empty list = the entity references no stored files).
+  static final fileColumnCache = <Type, List<TomColumnInformation>>{};
+
   /// Resolves the full persistence metadata (table + columns) for entity [T].
   ///
   /// Throws [TomAnnotationAnalyzerException] if the type is not reflectable,
@@ -156,6 +160,25 @@ mixin TomAnnotationAnalyzer {
     return result;
   }
 
+  /// Returns the columns of [dbType] that hold a blob storage key — those
+  /// annotated `@TomFileReference` — or an empty list when the entity
+  /// references no stored files.
+  ///
+  /// Cached per type, and consulted before *any* file work is done, so an
+  /// entity that stores no files never pays for the feature: no extra read on
+  /// update, no select-before-delete, no store resolution.
+  static List<TomColumnInformation> findFileColumns(Type dbType) {
+    final cached = fileColumnCache[dbType];
+    if (cached != null) return cached;
+    final columns = getPersistentColumns(dbType) ?? const [];
+    final result = [
+      for (final column in columns)
+        if (column.fileReference != null) column,
+    ];
+    fileColumnCache[dbType] = result;
+    return result;
+  }
+
   /// Returns the persistence metadata for every annotated field of [dbType]
   /// (each `@TomDbColumn` / `@TomReference`), or `null` if [dbType] is not
   /// reflectable. Throws [TomAnnotationAnalyzerSyntaxException] for an
@@ -229,6 +252,7 @@ mixin TomAnnotationAnalyzer {
     TomEntityId? entityId;
     TomReference? reference;
     TomPersistenceEventHandler? eventHandler;
+    TomFileReference? fileReference;
     for (var md in decl.metadata) {
       if (md is TomDbColumn) {
         column = md;
@@ -238,6 +262,8 @@ mixin TomAnnotationAnalyzer {
         reference = md;
       } else if (md is TomPersistenceEventHandler) {
         eventHandler = md;
+      } else if (md is TomFileReference) {
+        fileReference = md;
       }
     }
     column ??= TomDbColumn(columnName: field);
@@ -253,6 +279,7 @@ mixin TomAnnotationAnalyzer {
         decl.reflectedType,
         declaredName,
         field ?? declaredName,
+        fileReference: fileReference,
       );
     } else {
       throw TomAnnotationAnalyzerException(

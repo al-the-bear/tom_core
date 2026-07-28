@@ -7,8 +7,10 @@ import '../datasources/datasource_initialization.dart';
 import '../datasources/sql_dialects.dart';
 import '../datasources/sql_placeholder_scan.dart';
 import '../datasources/types_operator.dart';
+import '../file_storage/blob_store.dart';
 
 import 'grouped_query.dart';
+import 'file_reference.dart';
 import 'persistence_annotations.dart';
 import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
@@ -379,6 +381,265 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     return rows;
   }
 
+  // ─────────────────────── File-reference columns ────────────────────────
+  //
+  // A `@TomFileReference` column holds a *storage key*; the bytes live in a
+  // blob store (`TomBlobStoreInfo`). The row therefore stays small enough to
+  // select, diff, audit and mask like any other, while the payload — which may
+  // be gigabytes — never passes through SQL.
+  //
+  // The authorization story is deliberately unremarkable: the key is an
+  // ordinary column, so the entity's `@TomDbScope` (C-3) and the column's
+  // `authKey` (C-4) already govern who can read or change it. The methods below
+  // therefore reach the bytes *through* the existing read paths rather than
+  // beside them — `openFile` takes an **id** and loads the row with `findById`,
+  // so a principal who cannot see the row cannot see its file, by construction
+  // and not by a second copy of the rule. What is added on top is only what the
+  // masked case needs: a masked key reads back as `null`, which is
+  // indistinguishable from "no file attached", so the grade is checked
+  // explicitly and the refusal is named.
+
+  /// The entity's file-reference columns, or empty when it stores no files — in
+  /// which case every path below short-circuits and the feature costs nothing.
+  List<TomColumnInformation> get _fileColumns =>
+      TomAnnotationAnalyzer.findFileColumns(queryTypes[0]);
+
+  /// Resolves the `@TomFileReference` column named [fieldName] (by declared
+  /// name or column name), throwing when the entity has no such file column.
+  TomColumnInformation _fileColumn(String fieldName) {
+    for (final column in _fileColumns) {
+      if (column.declaredName == fieldName ||
+          column.getQueryFieldName() == fieldName) {
+        return column;
+      }
+    }
+    throw TomStorageException(
+      'storage.file_reference.unknown_column',
+      'That field is not a stored-file column of this entity.',
+      parameters: {'entity': T.toString(), 'field': fieldName},
+    );
+  }
+
+  /// The grade the current principal holds on [column] (C-4);
+  /// [TomAuthState.full] for an unrestricted column.
+  TomAuthState _columnGrade(TomColumnInformation column) =>
+      TomColumnAuthorization.stateForKey(column.column?.authKey);
+
+  /// The blob store [column]'s `@TomFileReference` names.
+  TomBlobStore _fileStore(TomColumnInformation column) =>
+      TomFileReferenceKeys.storeFor(column.fileReference!);
+
+  /// Uploads [bytes] to the store behind the file-reference column [fieldName],
+  /// writes the resulting key into [entity], and saves the row.
+  ///
+  /// Returns the stored entity, exactly as [save] does. When the column already
+  /// held a key, the superseded blob is deleted by [save] itself, so replacing
+  /// a file leaves nothing behind.
+  ///
+  /// The order — upload, then save — is the one whose failure mode is
+  /// survivable. Saving first would leave a row pointing at a key that reads
+  /// back `not_found`: a *dangling reference*, visible to users and repairable
+  /// only by hand. Uploading first can at worst leave an orphaned blob, which
+  /// nothing references and a sweep can collect; and even that is cleaned up
+  /// here when the save throws.
+  Future<T> saveFile(
+    T entity,
+    String fieldName,
+    Stream<List<int>> bytes, {
+    String? mediaType,
+    String? fileName,
+  }) async {
+    final column = _fileColumn(fieldName);
+    final reference = column.fileReference!;
+
+    // C-4 and C-3 up front. `save` enforces both authoritatively at the end,
+    // and that check remains the binding one; doing it here as well turns a
+    // refusal that would have arrived *after* the transfer into an immediate
+    // one, so a principal who may not write the column never uploads at all.
+    final grade = _columnGrade(column);
+    if (!grade.isInteractive) {
+      throw TomColumnAuthorizationException(
+        'column_authorization.write.field_forbidden',
+        'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
+            'is not writable at your access level (${grade.name}).',
+      );
+    }
+    final primaryKey =
+        readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(entity));
+    if (isUnsavedKey(primaryKey)) {
+      _assertInsertWritable(entity);
+    } else {
+      await _assertRowWritable(primaryKey as K);
+    }
+
+    final store = TomFileReferenceKeys.storeFor(reference);
+    final key = TomFileReferenceKeys.generate(reference, fileName: fileName);
+    await store.put(
+      key: key,
+      bytes: bytes,
+      mediaType: mediaType ?? reference.mediaType,
+      fileName: fileName,
+    );
+
+    column.setVariableValue(entity, key);
+    try {
+      return await save(entity);
+    } on Object {
+      // The row never took the key, so nothing references these bytes.
+      await _discardBlob(store, key);
+      rethrow;
+    }
+  }
+
+  /// Streams the file held by the file-reference column [fieldName] of the row
+  /// with primary key [id].
+  ///
+  /// Reads the row through [findById], so the entity's row scope (C-3) applies
+  /// unchanged: a row the principal may not see is simply not found. A column
+  /// the principal may not *read* (C-4) raises
+  /// [TomColumnAuthorizationException] rather than reporting an absent file,
+  /// and a row whose column holds no key raises `storage.file_reference
+  /// .no_file` — the caller asked for a file that is not there, which is a
+  /// different answer from an empty one.
+  Stream<List<int>> openFile(K id, String fieldName) async* {
+    final column = _fileColumn(fieldName);
+    final row = await findById(id);
+    if (row == null) {
+      throw TomStorageException(
+        'storage.file_reference.row_not_found',
+        'No such record exists, or it is not visible to you.',
+        parameters: {'entity': T.toString(), 'id': '$id'},
+      );
+    }
+    final grade = _columnGrade(column);
+    if (!grade.showsContent) {
+      throw TomColumnAuthorizationException(
+        'column_authorization.read.field_forbidden',
+        'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
+            'is not readable at your access level (${grade.name}).',
+      );
+    }
+    final key = column.getVariableValue(row);
+    if (key is! String || key.isEmpty) {
+      throw TomStorageException(
+        'storage.file_reference.no_file',
+        'That record has no file attached.',
+        parameters: {'entity': T.toString(), 'field': fieldName, 'id': '$id'},
+      );
+    }
+    yield* _fileStore(column).get(key);
+  }
+
+  /// The descriptor of the file held by [fieldName] on row [id] — its media
+  /// type, size and original name — or `null` when the row holds no key.
+  ///
+  /// The metadata read that precedes a download: a caller needs the
+  /// `Content-Type` and `Content-Length` before it starts streaming. Gated
+  /// identically to [openFile].
+  Future<TomStoredBlob?> describeFile(K id, String fieldName) async {
+    final column = _fileColumn(fieldName);
+    final row = await findById(id);
+    if (row == null) return null;
+    final grade = _columnGrade(column);
+    if (!grade.showsContent) {
+      throw TomColumnAuthorizationException(
+        'column_authorization.read.field_forbidden',
+        'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
+            'is not readable at your access level (${grade.name}).',
+      );
+    }
+    final key = column.getVariableValue(row);
+    if (key is! String || key.isEmpty) return null;
+    return _fileStore(column).describe(key);
+  }
+
+  /// Clears the file-reference column [fieldName] on [entity] and saves the row,
+  /// deleting the blob it referenced.
+  ///
+  /// Expressed as a save of a nulled column rather than as its own delete path,
+  /// so the orphan collection, the audit record and both authorization gates are
+  /// the ones every other write goes through.
+  Future<T> clearFile(T entity, String fieldName) async {
+    final column = _fileColumn(fieldName);
+    column.setVariableValue(entity, null);
+    return save(entity);
+  }
+
+  /// Deletes [key] from [store], logging rather than raising on failure.
+  ///
+  /// Every caller has already completed the operation the user asked for — the
+  /// row was updated, the row was deleted, the save was rolled back. A store
+  /// that will not delete leaves bytes behind, which is a housekeeping problem;
+  /// raising would report a completed operation as failed, which is a
+  /// correctness problem. The key is logged so a sweep can find what was left.
+  Future<void> _discardBlob(TomBlobStore store, String key) async {
+    try {
+      await store.delete(key);
+    } on Object catch (error) {
+      tomLog.warn(
+        'Orphaned blob "$key" could not be deleted from $store: $error',
+      );
+    }
+  }
+
+  /// The (column, key) pairs whose blobs an update has orphaned: file columns
+  /// that cascade, whose [baseline] value is a key, and whose newly [written]
+  /// value differs from it.
+  ///
+  /// Measured against the value actually **written** rather than the row read
+  /// back: a C-4 masked column reads back as `null`, which would otherwise look
+  /// like the file having been removed and would delete a live blob. A column
+  /// absent from [written] — a read-only one — was not changed by this save and
+  /// so orphans nothing.
+  List<(TomColumnInformation, String)> _supersededFiles(
+    T? baseline,
+    Map<String, Object?> written,
+  ) {
+    final result = <(TomColumnInformation, String)>[];
+    if (baseline == null) return result;
+    for (final column in _fileColumns) {
+      if (!column.fileReference!.cascadeDelete) continue;
+      if (!written.containsKey(column.declaredName)) continue;
+      final previous = column.getVariableValue(baseline);
+      if (previous is! String || previous.isEmpty) continue;
+      if (written[column.declaredName] == previous) continue;
+      result.add((column, previous));
+    }
+    return result;
+  }
+
+  /// Deletes the blobs referenced by [rows], for the cascade of a row delete.
+  ///
+  /// Called **after** the rows are gone: a delete that fails must not have
+  /// destroyed the files of rows that are still there.
+  Future<void> _deleteReferencedFiles(Iterable<T> rows) async {
+    final columns = _fileColumns;
+    if (columns.isEmpty) return;
+    for (final row in rows) {
+      for (final column in columns) {
+        if (!column.fileReference!.cascadeDelete) continue;
+        final key = column.getVariableValue(row);
+        if (key is! String || key.isEmpty) continue;
+        await _discardBlob(_fileStore(column), key);
+      }
+    }
+  }
+
+  /// The rows a pending delete is about to remove, read **unmasked** so their
+  /// file keys are visible for the cascade; empty when the entity stores no
+  /// files, so a delete on an ordinary entity keeps its single statement.
+  ///
+  /// [where] is the delete's own predicate (scope already ANDed in) and
+  /// [params] its bind values, so exactly the rows that will be deleted are the
+  /// rows whose files are collected.
+  Future<List<T>> _rowsAboutToBeDeleted(
+    TomOperator<TomDbBool> where,
+    Map<String, Object?> params,
+  ) async {
+    if (_fileColumns.isEmpty) return const [];
+    return _runPrepared<T>(TomSelect(queryTypes, query: where), params);
+  }
+
   /// The audit name of this repository's entity — what a record's
   /// `target` says the action was performed on (CE-LG).
   ///
@@ -440,6 +701,17 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     final before = _audits(TomAuditAction.delete)
         ? _auditValues(entity)
         : const <String, Object?>{};
+    // The file keys are read back from storage rather than taken from the
+    // caller's [entity]: if the entity came from `findById` its C-4 masked
+    // columns are null, and a masked file key would then silently escape the
+    // cascade. Only entities that declare file columns pay for this read.
+    final doomed = <T>[];
+    if (_fileColumns.isNotEmpty) {
+      final stored = await _selectById(
+        primaryKeyColumnInfo.getVariableValue(entity) as K,
+      );
+      if (stored != null) doomed.add(stored);
+    }
     _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
       _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
@@ -450,6 +722,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
       "id": primaryKeyColumnInfo.getVariableValue(entity),
     };
     await _deleteQuery!.execute(params);
+    await _deleteReferencedFiles(doomed);
     await _audit(
       TomAuditAction.delete,
       key: primaryKeyColumnInfo.getVariableValue(entity),
@@ -499,7 +772,11 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     // C-3: every named row must be within the principal's data scope.
     await _assertIdsWritable(ids);
     final (where, params) = await _idListPredicate(ids);
+    // Collected before the delete (the rows are about to be unreadable) but
+    // discarded after it — see [_rowsAboutToBeDeleted].
+    final doomed = await _rowsAboutToBeDeleted(where, params);
     await _runPrepared<T>(TomDelete(queryTypes, query: where), params);
+    await _deleteReferencedFiles(doomed);
     // One record per row, not per call: an auditor asks what happened to a
     // record, and an entry naming a batch cannot answer that.
     for (final id in ids) {
@@ -512,6 +789,11 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   Future<int> deleteById(K id) async {
     // C-3: a principal may only delete a row within its data scope.
     await _assertRowWritable(id);
+    final doomed = <T>[];
+    if (_fileColumns.isNotEmpty) {
+      final stored = await _selectById(id);
+      if (stored != null) doomed.add(stored);
+    }
     _deleteByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
       _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
@@ -520,6 +802,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     );
     Map<String, Object?> params = {"id": id};
     await _deleteByIdQuery!.execute(params);
+    await _deleteReferencedFiles(doomed);
     // Key only, no before-image. Reading the row first would put an extra
     // SELECT on every delete in every deployment, to recover data the trail is
     // not there to restore — attribution ("who destroyed which record") is the
@@ -789,13 +1072,17 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // The stored row before this save: the true, unmasked state, `null` for an
     // insert (a fresh row starts empty, so any populated column is a change).
     //
-    // Read **once** and shared by the two features that need it — C-4 write
-    // authorization, which compares against it to decide what changed, and the
-    // CE-LG audit before-image, which records it. They ask for the same row for
-    // different reasons; reading it twice would double the cost of every update
-    // on an entity that uses both.
-    final needsBaseline =
-        !insert && (authColumns.isNotEmpty || _audits(TomAuditAction.update));
+    // Read **once** and shared by the three features that need it — C-4 write
+    // authorization, which compares against it to decide what changed, the
+    // CE-LG audit before-image, which records it, and the file-reference
+    // cascade, which needs the key a replaced file column is about to orphan.
+    // They ask for the same row for different reasons; reading it once per
+    // reason would multiply the cost of every update on an entity that uses
+    // more than one.
+    final needsBaseline = !insert &&
+        (authColumns.isNotEmpty ||
+            _fileColumns.isNotEmpty ||
+            _audits(TomAuditAction.update));
     final baseline = needsBaseline ? await _selectById(primaryKey as K) : null;
 
     if (authColumns.isNotEmpty) {
@@ -869,7 +1156,15 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
         for (final col in writable) col.declaredName: dbValue(col),
         primaryKeyColumnInfo.declaredName: primaryKey,
       };
+      // Which blobs this update strands, decided from the values about to be
+      // written and collected *before* the statement runs — afterwards the
+      // baseline key is no longer anywhere to be read.
+      final superseded = _supersededFiles(baseline, params);
       await _saveUpdateQuery!.execute(params);
+      // Discarded only once the row no longer points at them.
+      for (final (column, key) in superseded) {
+        await _discardBlob(_fileStore(column), key);
+      }
       // Reached only when `isUnsavedKey` is false, so the key is non-null.
       final newRow = await findById(primaryKey as K);
       if (newRow != null) {
@@ -980,7 +1275,10 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // reads — a query-based delete cannot reach out-of-scope rows.
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
-    await _runPrepared<T>(_scopedDelete(select, scope), effective);
+    final scoped = _scopedDelete(select, scope);
+    final doomed = await _rowsAboutToBeDeleted(scoped.query, effective);
+    await _runPrepared<T>(scoped, effective);
+    await _deleteReferencedFiles(doomed);
     return 0;
   }
 
@@ -1026,7 +1324,10 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // reads do), so a built delete cannot reach out-of-scope rows.
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
-    await _runPrepared<T>(_scopedDelete(query, scope), effective);
+    final scoped = _scopedDelete(query, scope);
+    final doomed = await _rowsAboutToBeDeleted(scoped.query, effective);
+    await _runPrepared<T>(scoped, effective);
+    await _deleteReferencedFiles(doomed);
     return 0;
   }
 

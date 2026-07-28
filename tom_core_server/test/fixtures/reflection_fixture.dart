@@ -190,6 +190,53 @@ class FixtureSecretRecord {
 class FixtureSecretRepository
     extends TomSqlDatasourceRepository<FixtureSecretRecord, int> {}
 
+/// A reflected entity with two **file-reference** columns (CSFS1).
+///
+/// A `@TomFileReference` column holds a storage *key*; the bytes live in a blob
+/// store. Two columns rather than one, because the interesting behaviour is in
+/// how they differ:
+///
+/// - `attachment` is an ordinary file column that **cascades** — replacing or
+///   deleting the row must take its blob with it;
+/// - `secretAttachment` carries an `authKey`, so the C-4 grade governs it. It
+///   is the column that proves a masked file column refuses a download by name
+///   instead of reporting "no file", and that a masked round-trip cannot orphan
+///   a live blob. It also sets `cascadeDelete: false`, so the "leave the bytes
+///   alone" opt-out is exercised rather than merely declared.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_document',
+  primaryKeyField: 'id',
+)
+class FixtureDocumentRecord {
+  /// Surrogate primary key, assigned by the database on insert.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// An ordinary column, so a save that touches no file still has work to do.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+
+  /// The cascading file column: holds the storage key of the attached file.
+  @TomDbColumn(columnName: 'attachment')
+  @TomFileReference(keyPrefix: 'fixture/attachment')
+  String? attachment;
+
+  /// A C-4 graded, non-cascading file column.
+  @TomDbColumn(
+    columnName: 'secret_attachment',
+    authKey: 'fixture.document.secret_attachment',
+  )
+  @TomFileReference(keyPrefix: 'fixture/secret', cascadeDelete: false)
+  String? secretAttachment;
+}
+
+/// The MariaDB-backed repository for [FixtureDocumentRecord].
+class FixtureDocumentRepository
+    extends TomSqlDatasourceRepository<FixtureDocumentRecord, int> {}
+
 /// A reflected entity that has **declared itself out** of the audit trail.
 ///
 /// The escape hatch for high-volume machine-written tables (sessions, job runs)

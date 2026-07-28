@@ -158,6 +158,43 @@ CREATE TABLE IF NOT EXISTS fixture_secret (
     await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_secret');
   }
 
+  /// The DDL for `FixtureDocumentRecord`, the entity whose two columns hold
+  /// blob-storage keys rather than bytes (CSFS1).
+  static const String _fixtureDocumentDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_document (
+  id                BIGINT       NOT NULL AUTO_INCREMENT,
+  title             VARCHAR(255) NULL,
+  attachment        VARCHAR(512) NULL,
+  secret_attachment VARCHAR(512) NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_document` table if it does not already exist.
+  static Future<void> ensureFixtureDocumentTable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(_fixtureDocumentDdl);
+  }
+
+  /// Empties the `fixture_document` table so each test starts from a known
+  /// state.
+  static Future<void> truncateFixtureDocument(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_document');
+  }
+
+  /// Drops the blob store's two tables, so a `TomDatabaseBlobStore` test starts
+  /// from an empty store regardless of what an earlier run left behind.
+  ///
+  /// Dropped rather than truncated because the store creates them on first use:
+  /// a run that changed the schema would otherwise keep the previous shape.
+  static Future<void> dropBlobTables(
+    TomDataSourceInfo dsi, {
+    String manifestTable = 'tom_blob',
+    String chunkTable = 'tom_blob_chunk',
+  }) async {
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $chunkTable');
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $manifestTable');
+  }
+
   /// Closes every registered data source and clears the process-wide registry,
   /// so a torn-down suite leaves no open connection or stale registration for
   /// the next one.

@@ -8,18 +8,20 @@
 ///
 /// ## Why a four-method interface and not the persistence layer's blob API
 ///
-/// The framework's general blob/file storage is `csfs1`, and it is not written
-/// yet. Waiting for it would have blocked a rendering capability that is
-/// independently useful, and pre-empting it would have been worse: guessing the
+/// This is deliberately *not* a general file store. It is the narrowest
+/// interface an export needs — put a stream under a key, read it back, ask
+/// whether it is there, delete it — with no directories to list, no metadata to
+/// update, no partial reads. It was written before the framework's general
+/// blob storage (`file_storage/`) existed, on the reasoning that guessing the
 /// shape of an API someone else is designing produces two APIs that nearly
 /// match.
 ///
-/// So this is deliberately *not* a general file store. It is the narrowest
-/// interface an export needs — put a stream under a key, read it back, ask
-/// whether it is there, delete it — with no directories to list, no metadata to
-/// update, no partial reads. When `csfs1` lands, a `TomExportStore`
-/// implementation over its blob API is the whole adaptation, and nothing that
-/// renders or delivers an export changes.
+/// That storage now exists, and the adaptation turned out to be exactly what
+/// was predicted: [TomBlobExportStore] — one class, four delegating methods —
+/// puts every blob backend (filesystem, database, S3, or an application's own)
+/// behind this interface, and nothing that renders or delivers an export
+/// changed. The two backends below remain because an export module that can
+/// run with no storage configured at all is worth the hundred lines.
 ///
 /// ## Why streams on both sides
 ///
@@ -36,6 +38,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../file_storage/blob_store.dart';
 import 'tabular_result.dart';
 
 /// A stored export: what was written, where, and how big it turned out.
@@ -114,15 +117,13 @@ abstract class TomExportStore {
   /// key of `../../etc/passwd` would then be a directory traversal handed to
   /// whatever built the key from a report name. Validating centrally means
   /// every backend gets the check, including ones written later.
+  ///
+  /// The *rule* is [TomBlobStore.isValidKey] — one definition, so an export key
+  /// and a file-reference key cannot drift apart and a key that passes here is
+  /// storable by any blob backend. Only the error is this module's own, because
+  /// a caller catching `export.store.invalid_key` should keep catching it.
   static String validateKey(String key) {
-    final valid = key.isNotEmpty &&
-        !key.startsWith('/') &&
-        !key.endsWith('/') &&
-        !key.contains('\\') &&
-        !key.contains('//') &&
-        RegExp(r'^[A-Za-z0-9._/-]+$').hasMatch(key) &&
-        !key.split('/').any((segment) => segment == '.' || segment == '..');
-    if (!valid) {
+    if (!TomBlobStore.isValidKey(key)) {
       throw TomExportException(
         'export.store.invalid_key',
         'The export storage key is not a valid relative key.',

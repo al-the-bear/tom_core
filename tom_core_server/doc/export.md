@@ -22,6 +22,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [XLSX](#xlsx)
 - [PDF, and Why It Is the One That Does Not Stream](#pdf-and-why-it-is-the-one-that-does-not-stream)
 - [Storage: A Deliberately Narrow Seam](#storage-a-deliberately-narrow-seam)
+- [Every Backend at Once](#every-backend-at-once)
 - [The Two Delivery Channels](#the-two-delivery-channels)
 - [Untrusted Text in Three Places](#untrusted-text-in-three-places)
 - [Wiring a Server](#wiring-a-server)
@@ -46,6 +47,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomPdfRenderer` | class | A paginated document for a person to read |
 | `TomExportStore` | abstract class | Put a rendered export under a key; read it back |
 | `TomDirectoryExportStore` / `TomMemoryExportStore` | classes | Filesystem and in-memory backends |
+| `TomBlobExportStore` | class | The same interface over the `file_storage` blob API — every configured backend at once |
 | `TomStoredExport` | class | What was stored, where, and how big it turned out |
 | `TomExportService` | class | The seam an endpoint calls: respond with, or store, an export |
 | `tomFormatCellAsText` | function | The one answer to "how does a value look as text" |
@@ -298,13 +300,9 @@ megabyte-scale asset and which one is right is a deployment's decision.
 
 ## Storage: A Deliberately Narrow Seam
 
-The framework's general blob/file storage capability is not written yet.
-Waiting for it would have blocked a rendering capability that is independently
-useful; pre-empting it would have been worse, because guessing the shape of an
-API someone else is designing produces two APIs that nearly match.
-
-So `TomExportStore` is explicitly **not** a general file store. It is the
-narrowest interface an export needs:
+`TomExportStore` is explicitly **not** a general file store — the `file_storage`
+module is (see [`file_storage.md`](file_storage.md)). It is the narrowest
+interface an export needs:
 
 ```dart
 abstract class TomExportStore {
@@ -318,10 +316,10 @@ abstract class TomExportStore {
 }
 ```
 
-No directories to list, no metadata to update, no partial reads. When the
-general blob storage lands, **a `TomExportStore` implementation over its blob
-API is the whole adaptation** — nothing that renders or delivers an export
-changes.
+No directories to list, no metadata to update, no partial reads. Keeping it that
+narrow is what made `TomBlobExportStore` four delegating methods when the blob
+storage arrived (see [Every Backend at Once](#every-backend-at-once)); nothing
+that renders or delivers an export changed.
 
 Properties that are load-bearing rather than incidental:
 
@@ -348,6 +346,29 @@ Properties that are load-bearing rather than incidental:
 exports by definition, which is why it is not the default; it exposes `keys`,
 `descriptorFor` and `textOf` so a test can assert on content without touching a
 filesystem.
+
+## Every Backend at Once
+
+`TomBlobExportStore` puts the `file_storage` module's `TomBlobStore` behind the
+four methods above, so an export can be written to a database table, an S3
+bucket, a directory or an application's own backend — chosen in configuration —
+without the export module knowing any of them exist.
+
+```dart
+// The blob store named in configuration, or the default one.
+final store = TomBlobExportStore.named('archive', keyPrefix: 'exports');
+```
+
+Two things it does rather than delegate:
+
+- **`keyPrefix` namespaces the exports** inside a store that holds other things,
+  and makes a retention rule expressible as a prefix. The key recorded in the
+  returned `TomStoredExport` is still the caller's — an export whose key could
+  not be passed back to `open` would be a trap — and validation happens *before*
+  prefixing, so a traversal cannot be smuggled in relative to the prefix.
+- **`storage.blob.not_found` is translated to `export.store.not_found`.** A
+  caller of this module catches `TomExportException` and should not have to
+  learn a second error vocabulary because of which backend was configured.
 
 ## The Two Delivery Channels
 
@@ -437,15 +458,13 @@ where the bytes go.
 - **`TomCsvRenderer` / `TomXlsxRenderer` / `TomPdfRenderer`** — the three shipped
   formats.
 - **`TomExportStore` / `TomDirectoryExportStore` / `TomMemoryExportStore` /
-  `TomStoredExport`** — the storage seam and its two backends.
+  `TomBlobExportStore` / `TomStoredExport`** — the storage seam, its two own
+  backends, and the adaptor onto the `file_storage` module's backends.
 - **`TomExportService`** — the `apiResponse` and `fileExport` channels.
 - **`TomExportException`** — the module's base error.
 
 ## Not Yet Implemented
 
-- **A blob-storage-backed `TomExportStore`.** The framework's general file/blob
-  storage capability is unwritten; when it lands, an implementation of the
-  four-method interface over it is the whole adaptation.
 - **Charts.** The specification names series and axes; two of the three formats
   cannot express a chart at all, so a chart model would be a field only the PDF
   renderer ever read. When charts are specified they belong *beside*
@@ -464,6 +483,8 @@ where the bytes go.
 
 - `tom_core_kernel` — `TomHeader` (the two response headers), `TomServerException`
   by way of `TomExportException`.
+- The `file_storage` module — `TomBlobStore` and its registry, used only by
+  `TomBlobExportStore`; the rest of the module does not know it exists.
 - `pdf` (Apache-2.0) — the PDF document model and its layout engine.
 - `shelf` — the `Response` returned by the `apiResponse` channel.
 - `path` — key-to-path joining in `TomDirectoryExportStore`.
