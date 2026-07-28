@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.4.0
+
+- csra2: add the four remaining gap classes the §4.1 catalogue marks *gap*,
+  each re-verified against the current `tom_core` before being written:
+  - `TomLayoutModel` (CE-LO, §5.2/§5.12/§5.22) — the two-layer layout holder:
+    a generated `base` tree of `TomLayoutContainerNode` / `TomLayoutSlotNode`
+    over the closed nine `TomLayoutContainerKind`, plus an authored `overrides`
+    layer of id-addressed `TomLayoutOverrideDelta` over the closed five
+    `TomLayoutDeltaOp`. `reconcileWarnings()` **reports** a delta whose target
+    id has vanished and never drops it, so manual layout survives regeneration.
+    `tom_flutter_ui`'s `AclComponent` is a rendering leaf holding a live
+    `Widget` — it has no base/override layering and no delta grammar.
+  - `TomMessageKeyRegistry` (CE-TX, §5.8/§5.21) — the closed message-key
+    catalogue: `TomMessageKey` with base copy, per-locale copy, declared
+    parameters, the closed `TomMessageRole` five and `TomMessageCategory` pair.
+    `resolve()` falls back to base copy and **never to the raw key**, and
+    rejects an uncatalogued key as a generation-time spec error; error copy must
+    name its CE-ER code, because that namespace *is* the code namespace.
+    `tom_core_kernel`'s `TomTextResourceProvider` is an untyped runtime
+    `Map<String, dynamic>` with no key vocabulary.
+  - `TomRouteRegistry` (CE-NV, §5.11) — the route-id registry (`registerRoute`
+    rejects a duplicate id; `danglingRouteReferences()` finds edges and
+    assignments naming an unregistered route) plus the screen-flow model:
+    `TomFormScreenAssignment` (replace vs popup) and `TomScreenFlowEdge`
+    (per-`TomFlowOutcome` conditional targets). `tom_flutter_ui`'s
+    `TomPageRoute` is a bare `MaterialPageRoute` subclass carrying no id.
+  - `TomJobDeclaration` (CE-JB, §5.29) — the deployment/ownership envelope
+    (`enabled`, `environments`, `serviceUnitId`, `targetRefs`, `runsIn()`).
+    Deliberately **narrow**: `tom_core_kernel`'s scheduling module now supplies
+    the whole runtime half (`TomJobDefinition`, `TomSchedule`, `TomScheduler`,
+    `TomJobStore`, `TomLeaseLock`, `TomJobDispatcher`), which is reused as-is.
+- CE-AC (Trigger) is confirmed **not** a gap and gets no class here — §4.1 /
+  §5.10 / §5.20 record "no gap — full action implementation reused". Its closed
+  five-kind taxonomy ships as `TriggerKind` on `@CsTrigger` in `tom_code_specs`
+  0.5.0 instead.
+
 ## 0.3.0
 
 - csm210-4-1 (wave-2 W10): add the CE-EN domain-enum gap class flagged *gap* by

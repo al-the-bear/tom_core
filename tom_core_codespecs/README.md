@@ -56,10 +56,29 @@ The persistence markers themselves remain **server-side** parts
 > trio. No base classes exist — a persistent entity is an ordinary
 > `tom_core_server` class marked by those three.
 
+**csra2 — the remaining catalogued gaps.** Four parts the §4.1 catalogue marks
+*gap*, each re-verified against the current `tom_core` before the class was
+written:
+
+| Class | Part | Purpose | Why the substrate does not cover it |
+|-------|------|---------|-------------------------------------|
+| `TomLayoutModel` (+ `TomLayoutContainerNode`, `TomLayoutSlotNode`, `TomLayoutOverrideDelta`, `TomLayoutContainerKind`, `TomLayoutDeltaOp`) | CE-LO Layout (§5.2/§5.12/§5.22) | Two-layer layout: a generated `base` tree plus an authored `overrides` layer of id-addressed deltas. `reconcileWarnings()` reports a delta whose target vanished, never drops it. | `tom_flutter_ui`'s `AclComponent` is a rendering leaf holding a live `Widget` — no base/override layering, no delta grammar, no id-addressed placement. |
+| `TomMessageKeyRegistry` (+ `TomMessageKey`, `TomMessageRole`, `TomMessageCategory`) | CE-TX Text (§5.8/§5.21) | The closed message-key catalogue. Locale fallback goes to base copy, never the raw key; an uncatalogued key is a spec error; error copy is keyed by its CE-ER code. | `tom_core_kernel`'s `TomTextResourceProvider` is an untyped runtime `Map<String, dynamic>` — it answers "what text is behind this key", not "which keys may exist". |
+| `TomRouteRegistry` (+ `TomRouteDefinition`, `TomFormScreenAssignment`, `TomScreenFlowEdge`, `TomScreenPresentation`, `TomFlowOutcome`) | CE-NV Navigation (§5.11) | Route-id registry (uniqueness + dangling-reference checks) and the screen-flow model: form→screen as replace/popup, action targets conditional on outcome. | `tom_flutter_ui`'s `TomPageRoute` is a bare `MaterialPageRoute` subclass with no route id and no registry — the framework assumes uniqueness with nowhere to check it. |
+| `TomJobDeclaration` | CE-JB Job (§5.29) | The deployment/ownership envelope around a job: `enabled`, `environments`, `serviceUnitId`, `targetRefs`. | `tom_core_kernel`'s scheduling module now supplies the entire *runtime* half (`TomJobDefinition`, `TomSchedule`, `TomScheduler`, `TomJobStore`, `TomLeaseLock`, `TomJobDispatcher`) and is reused as-is; what it has no home for is the spec-side decision to deploy the job at all. |
+
+**CE-AC (Trigger) is not a gap.** §4.1 / §5.10 / §5.20 all record "no gap — full
+action implementation reused": the trigger taxonomy is a documented
+classification over the reused `tom_flutter_ui` action classes. Its closed
+five-kind vocabulary therefore ships as `TriggerKind` on `@CsTrigger` in
+`tom_code_specs`, not as a class here.
+
 ## Status
 
-csm210-4-1 (wave-2 W10). CE-EN domain-enum gap class added; CE-DB confirmed reuse
-with the entity-model placement decided (shared shape, server persistence
-projection). Earlier: csm2r7 three gap classes for the four new parts (CE-CL /
-CE-CC / CE-UP; CE-AU and CE-CF reuse). Later waves add gap classes for the
-remaining original parts where csm4 flagged them (e.g. layout node model).
+csra2. The four remaining catalogued gap classes added (CE-LO / CE-TX / CE-NV /
+CE-JB), CE-AC confirmed reuse. Earlier: csm210-4-1 CE-EN domain enum with CE-DB
+confirmed reuse and the entity-model placement decided (shared shape, server
+persistence projection); csm2r7 three gap classes for the four new parts (CE-CL /
+CE-CC / CE-UP; CE-AU and CE-CF reuse). Every part the §4.1 catalogue marks *gap*
+now has its class; later waves add classes only if a new part is promoted out of
+§4.3.

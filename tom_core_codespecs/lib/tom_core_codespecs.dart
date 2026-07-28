@@ -29,9 +29,27 @@
 /// built on. CE-DB stays a *reuse* verdict: `@CsTable`/`@CsColumn`/`@CsRepository`
 /// are built directly on `tom_core_server` persistence classes, so CE-DB needs no
 /// gap class here.
+///
+/// **csra2 — the remaining catalogued gaps.** The §4.1 catalogue marks four
+/// further parts *gap*, and the csra2 cross-check confirmed each against the
+/// current `tom_core`: [TomLayoutModel] (CE-LO, §5.2/§5.12/§5.22 — the
+/// base/override two-layer model `tom_flutter_ui`'s rendering-leaf
+/// `AclComponent` has no equivalent of), [TomMessageKeyRegistry] (CE-TX,
+/// §5.8/§5.21 — the closed key catalogue behind `TomTextResourceProvider`'s
+/// untyped runtime store), [TomRouteRegistry] (CE-NV, §5.11 — the route-id
+/// registry and screen-flow model `TomPageRoute` assumes but cannot check), and
+/// [TomJobDeclaration] (CE-JB, §5.29 — the deployment/ownership envelope around
+/// the now-complete `tom_core_kernel` scheduling runtime). CE-AC (Trigger) is
+/// **not** a gap: §4.1/§5.10/§5.20 record "no gap — full action implementation
+/// reused", and its closed trigger vocabulary is delivered as `TriggerKind` on
+/// `@CsTrigger` in `tom_code_specs` instead.
 library;
 
 export 'src/client_application.dart';
 export 'src/client_configuration.dart';
 export 'src/domain_enum.dart';
+export 'src/job_declaration.dart';
+export 'src/layout_node.dart';
+export 'src/message_key.dart';
+export 'src/route_flow.dart';
 export 'src/user_settings.dart';
