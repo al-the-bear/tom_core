@@ -9,6 +9,7 @@ surface documented here.
 
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
+| Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
 | Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login/2FA services, adaptors, and the authentication server. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
@@ -17,13 +18,59 @@ surface documented here.
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, and the MariaDB migration adaptor. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling. |
+| Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
+| File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`. |
+| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP and stand-ins), MIME encoding, and the durable outbox. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, data scoping, column authorization. |
+| Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, request identity/logging, and middleware. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
 
 ## Modules
+
+### Audit (`lib/src/tomserver/audit/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomAuditRecord` | class | One entry in the trail: an attributable statement that an action happened. |
+| `TomAuditActor` | class | Who performed the action; never left blank. |
+| `TomAuditAction` | enum | What kind of action a record describes. |
+| `TomAuditOutcome` | enum | How the action ended — `denied` stays distinct from `failed`. |
+| `TomAuditEntry` | class | A record plus its position in the hash chain. |
+| `TomAuditChainVerification` | class | The outcome of checking a chain's integrity. |
+| `TomAuditException` | class | Audit failure (extends `TomServerException`). |
+| `TomAuditSink` | abstract class | Where a record is persisted. |
+| `TomMemoryAuditSink` | class | In-memory sink bounded by entry count; tests and dev servers. |
+| `TomFileAuditSink` | class | Append-only JSON Lines file sink with retention. |
+| `TomSqlAuditSink` | class | Sink whose entries are rows in a `TomDataSource`. |
+| `TomAudited` | class | Declares how an entity or endpoint method is audited. |
+| `TomAuditPolicy` | class | The resolved policy for a type. |
+| `TomAuditBypass` | class | A zone marker suppressing auditing inside it. |
+| `TomAuditTrail` | class | Resolves policy, builds records, hands them to the sink. |
+| `TomAuditAnchor` | class | A claim about where a chain stood at a moment. |
+| `TomAuditAnchorSigner` | abstract class | Attaches a signature to an anchor's payload. |
+| `TomAuditAnchorVerifier` | abstract class | Checks the signature on an anchor. |
+| `TomRsaAuditAnchorSigner` | class | Signs anchors with an RSA private key. |
+| `TomRsaAuditAnchorVerifier` | class | Verifies anchors against published public keys. |
+| `TomAuditAnchorStatus` | enum | How a chain stands relative to an anchor. |
+| `TomAuditAnchorVerification` | class | The outcome of checking a chain against an anchor. |
+| `TomAuditAnchorStore` | abstract class | An append-only archive of published anchors. |
+| `TomMemoryAuditAnchorStore` | class | In-memory anchor store, for tests. |
+| `TomFileAuditAnchorStore` | class | JSON Lines anchor store, one file per writer. |
+| `TomAuditAnchorPublisher` | class | Publishes anchors for a sink's chain on a schedule. |
+| `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed. |
+| `TomAuditTrailRow` | class | One row of the audit trail table. |
+| `TomAuditHeadRow` | class | The columns projected when recovering a chain head. |
+| `TomAuditSeqRow` | class | A projected sequence number, for retention boundaries. |
+| `TomAuditTriggerRow` | class | One `information_schema.TRIGGERS` row. |
+| `verifyAuditChain` / `verifyAgainstAnchor` | top-level | Chain and anchor verification. |
+| `parseAuditLines` / `auditDiff` | top-level | JSON-Lines parsing; the changed-fields pair. |
+| `tomAuditGenesisHash` / `tomAuditRedactedPlaceholder` | top-level | The chain start hash; the redaction placeholder. |
+| `defaultAuditTrailTable` / `auditTrailTable` / `auditTrailTableDdl` | top-level | The trail table's name, descriptor and DDL. |
+| `auditTrailNoUpdateTriggerName` / `auditTrailNoDeleteTriggerName` | top-level | Names of the write-once guard triggers. |
+| `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | top-level | DDL for the write-once guard triggers. |
 
 ### Authentication (`lib/src/tomserver/authentication/`)
 
@@ -159,6 +206,50 @@ surface documented here.
 | `TomEndpointHandlerException` | class | Handler error. |
 | `TomEndpointPipelineException` | class | Pipeline error. |
 
+### Export (`lib/src/tomserver/export/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomTabularResult` | class | A complete result: title, metadata, and one or more sections. |
+| `TomTabularSection` | class | One titled table: typed columns over a stream of rows. |
+| `TomTabularColumn` | class | One typed column: machine key, human label, type. |
+| `TomTabularRow` | class | One row: cell values positional to the columns. |
+| `TomColumnType` | enum | The value types a column may hold. |
+| `TomTabularRenderer` | abstract class | Renders a result to a byte stream in one format. |
+| `TomCsvRenderer` | class | RFC 4180 CSV, one row at a time. |
+| `TomXlsxRenderer` | class | Office Open XML workbook, one worksheet per section. |
+| `TomPdfRenderer` | class | Paginated PDF with title, metadata block and tables. |
+| `TomExportFormats` | class | The set of formats an application offers. |
+| `TomExportStore` | abstract class | Stores and retrieves rendered exports by key. |
+| `TomDirectoryExportStore` | class | Export store over a local directory tree. |
+| `TomMemoryExportStore` | class | In-memory export store, for tests. |
+| `TomBlobExportStore` | class | Export store backed by a `TomBlobStore`. |
+| `TomStoredExport` | class | What was written, where, and how big it turned out. |
+| `TomExportService` | class | The seam an endpoint calls: render, optionally store. |
+| `TomExportException` | class | Export failure (extends `TomServerException`). |
+| `tomFormatCellAsText` | top-level | The shared text rule for the text-oriented renderers. |
+
+### File Storage (`lib/src/tomserver/file_storage/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomBlobStore` | abstract class | Stores and retrieves blobs by key, streaming. |
+| `TomStoredBlob` | class | A stored blob: key, content type, size. |
+| `TomMemoryBlobStore` | class | In-memory blob store, for tests and development. |
+| `TomDirectoryBlobStore` | class | Blob store over a local directory tree. |
+| `TomDatabaseBlobStore` | class | Blob store over a manifest and chunk table pair. |
+| `TomS3BlobStore` | class | Blob store over an S3-compatible object store. |
+| `TomBlobStoreInfo` | class | The process-wide registry of named, configured stores. |
+| `TomBlobStoreFactory` | typedef | Builds a store of one backend type from its settings. |
+| `TomAwsV4Signer` | class | Signs HTTP requests with AWS Signature Version 4. |
+| `TomAwsCredentials` | class | The key pair, optionally with a session token. |
+| `TomBlobManifestRow` | class | One row of the blob manifest table. |
+| `TomBlobChunkRow` | class | One chunk row's payload. |
+| `TomStorageException` | class | Storage failure (extends `TomServerException`). |
+| `defaultBlobManifestTable` / `defaultBlobChunkTable` | top-level | Default table names. |
+| `blobManifestTable` / `blobChunkTable` | top-level | The table descriptors. |
+| `blobManifestTableDdl` / `blobChunkTableDdl` | top-level | The `CREATE TABLE` statements. |
+
 ### Health Check (`lib/src/tomserver/healthcheck/`)
 
 | Type | Kind | Description |
@@ -173,6 +264,37 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
+
+### Messaging (`lib/src/tomserver/messaging/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomMessage` | class | One composed message: sender, recipients, subject, bodies, attachments. |
+| `TomRecipient` | class | One addressee, by channel-specific address. |
+| `TomRecipientKind` | enum | `to`, `cc`, `bcc`. |
+| `TomMessageBody` | class | One typed content representation. |
+| `TomAttachment` | class | A named binary part, optionally inline. |
+| `TomMessageChannel` | class | An open named channel — `email`, `sms`, `push`, `webhook`, or yours. |
+| `TomMessageTransport` | abstract class | One delivery channel: one attempt at one message. |
+| `TomDeliveryReceipt` | class | What became of an attempt, including partial delivery. |
+| `TomDeliveryOutcome` | enum | `delivered`, `rejected`, `deferred`, `discarded`. |
+| `TomMessageRouter` | class | Maps a channel to its transport. |
+| `TomMemoryMessageTransport` | class | Captures messages in memory; the test stand-in. |
+| `TomNoOpMessageTransport` | class | Accepts and discards; the silenced-deployment stand-in. |
+| `TomFileMessageTransport` | class | Writes each message to an `.eml` file. |
+| `TomSmtpTransport` | class | Real delivery over SMTP. |
+| `TomSmtpSettings` | class | Everything needed to reach one mail server. |
+| `TomSmtpSecurity` | enum | `none`, `startTls`, `implicitTls`. |
+| `TomSmtpConnection` | abstract class | The wire, behind an interface so the protocol is testable. |
+| `TomSocketSmtpConnection` | class | The `dart:io` socket implementation. |
+| `TomSmtpReply` | class | One SMTP reply and its classification. |
+| `TomMimeEncoder` | class | Renders a message as an RFC 5322 / MIME document. |
+| `TomMessageOutbox` | class | The durable send queue in front of a router. |
+| `TomMessagingException` | class | The module's base error (extends `TomServerException`). |
+| `TomDeliveryException` | class | A delivery failure, classified transient or permanent. |
+| `TomPermanentDeliveryException` | class | A delivery failure the scheduler will not retry. |
+| `tomMimeLineEnding` / `tomMimeMaxLineLength` | top-level | MIME line ending and maximum line length. |
+| `tomOutboxJobName` | top-level | The default job name the outbox registers under. |
 
 ### Object Persistence (`lib/src/tomserver/object_persistence/`)
 
@@ -201,6 +323,24 @@ surface documented here.
 | `TomAnnotationAnalyzer` | mixin | Persistence-annotation analysis (static). |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | Analyzer errors. |
 
+### Scheduling (`lib/src/tomserver/scheduling/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomSqlJobStore` | class | A `TomJobStore` whose queue is a table in a `TomDataSource`. |
+| `TomJobRunRow` | class | One row of the job queue table. |
+| `TomJobRunWindowRow` | class | The aggregate column `lastWindow` projects. |
+| `TomSqlLeaseLock` | class | A `TomLeaseLock` whose leases are rows in a `TomDataSource`. |
+| `TomLeaseRow` | class | One row of the lease table. |
+| `TomSqlSchedulerNodes` | class | The cluster roll call, backed by a table. |
+| `TomSchedulerNode` | class | One node of the cluster, as the roll call knows it. |
+| `TomSchedulerNodeRow` | class | One row of the roll-call table. |
+| `schedulerNodeFailedAfter` / `isSchedulerNodeFailed` | top-level | When a peer counts as failed, and whether it does. |
+| `defaultNodeFailureSlack` | top-level | The grace period added to a peer's expected check-in. |
+| `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | top-level | Default table names. |
+| `jobRunTable` / `leaseTable` / `schedulerNodeTable` | top-level | The table descriptors. |
+| `jobRunTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | top-level | The `CREATE TABLE` statements. |
+
 ### Server (`lib/src/tomserver/server/`)
 
 | Type | Kind | Description |
@@ -228,7 +368,18 @@ surface documented here.
 | Type | Module |
 | ---- | ------ |
 | `And` | Object Persistence |
+| `auditDiff` | Audit |
+| `auditTrailNoDeleteTriggerDdl` | Audit |
+| `auditTrailNoDeleteTriggerName` | Audit |
+| `auditTrailNoUpdateTriggerDdl` | Audit |
+| `auditTrailNoUpdateTriggerName` | Audit |
+| `auditTrailTable` | Audit |
+| `auditTrailTableDdl` | Audit |
 | `Between` | Object Persistence |
+| `blobChunkTable` | File Storage |
+| `blobChunkTableDdl` | File Storage |
+| `blobManifestTable` | File Storage |
+| `blobManifestTableDdl` | File Storage |
 | `BoolCol` | Object Persistence |
 | `BoolLiteral` | Object Persistence |
 | `contextSetupMiddleware` | Server |
@@ -237,7 +388,14 @@ surface documented here.
 | `DateTimeCol` | Object Persistence |
 | `DateTimeLiteral` | Object Persistence |
 | `DbCol` | Object Persistence |
+| `defaultAuditTrailTable` | Audit |
+| `defaultBlobChunkTable` | File Storage |
+| `defaultBlobManifestTable` | File Storage |
 | `DefaultHealthAnalyzer` | Health Check |
+| `defaultJobRunTable` | Scheduling |
+| `defaultLeaseTable` | Scheduling |
+| `defaultNodeFailureSlack` | Scheduling |
+| `defaultSchedulerNodeTable` | Scheduling |
 | `DoubleCol` | Object Persistence |
 | `DoubleLiteral` | Object Persistence |
 | `Eq` | Object Persistence |
@@ -253,6 +411,11 @@ surface documented here.
 | `IntegerLiteral` | Object Persistence |
 | `IsNotNull` | Object Persistence |
 | `IsNull` | Object Persistence |
+| `isSchedulerNodeFailed` | Scheduling |
+| `jobRunTable` | Scheduling |
+| `jobRunTableDdl` | Scheduling |
+| `leaseTable` | Scheduling |
+| `leaseTableDdl` | Scheduling |
 | `Like` | Object Persistence |
 | `LoginException` | Authentication |
 | `Lt` | Object Persistence |
@@ -272,11 +435,15 @@ surface documented here.
 | `NotLike` | Object Persistence |
 | `Or` | Object Persistence |
 | `Parameter` | Object Persistence |
+| `parseAuditLines` | Audit |
 | `PrincipalDelegationStore` | Authorization |
 | `PrincipalResourceGrantStore` | Authorization |
 | `Regexp` | Object Persistence |
 | `RepositoryPrincipalDelegationStore` | Authorization |
 | `RepositoryPrincipalResourceGrantStore` | Authorization |
+| `schedulerNodeFailedAfter` | Scheduling |
+| `schedulerNodeTable` | Scheduling |
+| `schedulerNodeTableDdl` | Scheduling |
 | `SqlPlaceholderScan` | Datasources |
 | `SqlString` | Datasources |
 | `StringCol` | Object Persistence |
@@ -288,8 +455,35 @@ surface documented here.
 | `TomAnnotationAnalyzerSyntaxException` | Object Persistence |
 | `TomApiEndpointImplementation` | Endpoints |
 | `TomApiImplementation` | Endpoints |
+| `tomAppId` | Configuration |
 | `TomArgs` | Command Line |
 | `TomAsyncDataScopeResolver` | Object Persistence |
+| `TomAttachment` | Messaging |
+| `TomAuditAction` | Audit |
+| `TomAuditActor` | Audit |
+| `TomAuditAnchor` | Audit |
+| `TomAuditAnchorPublisher` | Audit |
+| `TomAuditAnchorSigner` | Audit |
+| `TomAuditAnchorStatus` | Audit |
+| `TomAuditAnchorStore` | Audit |
+| `TomAuditAnchorVerification` | Audit |
+| `TomAuditAnchorVerifier` | Audit |
+| `TomAuditBypass` | Audit |
+| `TomAuditChainVerification` | Audit |
+| `TomAudited` | Audit |
+| `TomAuditEntry` | Audit |
+| `TomAuditException` | Audit |
+| `tomAuditGenesisHash` | Audit |
+| `TomAuditHeadRow` | Audit |
+| `TomAuditPolicy` | Audit |
+| `TomAuditRecord` | Audit |
+| `tomAuditRedactedPlaceholder` | Audit |
+| `TomAuditSeqRow` | Audit |
+| `TomAuditSink` | Audit |
+| `TomAuditTrail` | Audit |
+| `TomAuditTrailRow` | Audit |
+| `TomAuditTriggerRow` | Audit |
+| `TomAuditWriteOnceCheck` | Audit |
 | `TomAuthenticationAdaptor` | Authentication |
 | `TomAuthenticationData` | Authentication |
 | `TomAuthenticationInfo` | Authentication |
@@ -302,8 +496,16 @@ surface documented here.
 | `TomAuthorizationCacheRetrieveMessage` | Authorization |
 | `TomAuthorizationCacheStoreMessage` | Authorization |
 | `TomAuthStateCodec` | Authorization |
+| `TomAwsCredentials` | File Storage |
+| `TomAwsV4Signer` | File Storage |
 | `TomBaseServerConfiguration` | Configuration |
 | `TomBinaryOperator` | Object Persistence |
+| `TomBlobChunkRow` | File Storage |
+| `TomBlobExportStore` | Export |
+| `TomBlobManifestRow` | File Storage |
+| `TomBlobStore` | File Storage |
+| `TomBlobStoreFactory` | File Storage |
+| `TomBlobStoreInfo` | File Storage |
 | `TomBoolConfig` | Configuration |
 | `TomCache` | Cache |
 | `TomCacheEntry` | Cache |
@@ -313,16 +515,19 @@ surface documented here.
 | `TomCacheRetrieveMessage` | Cache |
 | `TomCacheStoreMessage` | Cache |
 | `TomClassScanResult` | Endpoints |
-| `TomColumnAuthResolver` | Object Persistence |
 | `TomColumnAuthorization` | Object Persistence |
 | `TomColumnAuthorizationException` | Object Persistence |
+| `TomColumnAuthResolver` | Object Persistence |
 | `TomColumnInformation` | Object Persistence |
+| `TomColumnType` | Export |
 | `TomColumnWriteDecision` | Object Persistence |
 | `TomComponentReference` | Endpoints |
 | `TomConfig` | Configuration |
 | `TomCount` | Datasources |
 | `TomCountResult` | Object Persistence |
+| `TomCsvRenderer` | Export |
 | `TomDartType` | Object Persistence |
+| `TomDatabaseBlobStore` | File Storage |
 | `TomDataScope` | Object Persistence |
 | `TomDataScopeAuthorizationException` | Object Persistence |
 | `TomDataScopeBypass` | Object Persistence |
@@ -354,6 +559,11 @@ surface documented here.
 | `TomDelegationMode` | Authorization |
 | `TomDelegationResolver` | Authorization |
 | `TomDelete` | Datasources |
+| `TomDeliveryException` | Messaging |
+| `TomDeliveryOutcome` | Messaging |
+| `TomDeliveryReceipt` | Messaging |
+| `TomDirectoryBlobStore` | File Storage |
+| `TomDirectoryExportStore` | Export |
 | `TomDoubleConfig` | Configuration |
 | `TomDummyAuthenticationService` | Authentication |
 | `TomEndpoint` | Endpoints |
@@ -366,16 +576,46 @@ surface documented here.
 | `TomEntityId` | Object Persistence |
 | `TomEnvFile` | Command Line |
 | `TomErrorHandler` | Endpoints |
+| `TomExportException` | Export |
+| `TomExportFormats` | Export |
+| `TomExportService` | Export |
+| `TomExportStore` | Export |
+| `TomFileAuditAnchorStore` | Audit |
+| `TomFileAuditSink` | Audit |
+| `TomFileMessageTransport` | Messaging |
+| `tomFormatCellAsText` | Export |
 | `TomGeneratedQuery` | Datasources |
 | `TomGradedAccessControlInformation` | Authorization |
 | `TomHealthServer` | Health Check |
 | `TomHealthService` | Health Check |
 | `TomIntConfig` | Configuration |
+| `TomJobRunRow` | Scheduling |
+| `TomJobRunWindowRow` | Scheduling |
 | `TomJoinTable` | Object Persistence |
+| `TomLeaseRow` | Scheduling |
 | `TomLiteralSelect` | Datasources |
+| `TomMemoryAuditAnchorStore` | Audit |
+| `TomMemoryAuditSink` | Audit |
+| `TomMemoryBlobStore` | File Storage |
+| `TomMemoryExportStore` | Export |
+| `TomMemoryMessageTransport` | Messaging |
+| `TomMessage` | Messaging |
+| `TomMessageBody` | Messaging |
+| `TomMessageChannel` | Messaging |
+| `TomMessageOutbox` | Messaging |
+| `TomMessageRouter` | Messaging |
+| `TomMessageTransport` | Messaging |
+| `TomMessagingException` | Messaging |
 | `TomMethodMetadata` | Endpoints |
 | `TomMigrationFileName` | Database Migration |
+| `TomMimeEncoder` | Messaging |
+| `tomMimeLineEnding` | Messaging |
+| `tomMimeMaxLineLength` | Messaging |
+| `TomNoOpMessageTransport` | Messaging |
 | `TomOperator` | Datasources |
+| `tomOutboxJobName` | Messaging |
+| `TomPdfRenderer` | Export |
+| `TomPermanentDeliveryException` | Messaging |
 | `TomPersistenceEventHandler` | Object Persistence |
 | `TomPreparedStatement` | Datasources |
 | `TomPrincipalDelegation` | Authorization |
@@ -385,29 +625,56 @@ surface documented here.
 | `TomQueryBuilder` | Object Persistence |
 | `TomQuerySentenceCompiler` | Object Persistence |
 | `TomQuerySyntaxException` | Object Persistence |
+| `TomRecipient` | Messaging |
+| `TomRecipientKind` | Messaging |
 | `TomReference` | Object Persistence |
 | `TomRepository` | Object Persistence |
 | `TomRepositoryType` | Object Persistence |
 | `TomRequestId` | Server |
 | `TomRequestLogInfo` | Server |
 | `TomResourceGrant` | Authorization |
+| `TomRsaAuditAnchorSigner` | Audit |
+| `TomRsaAuditAnchorVerifier` | Audit |
+| `TomS3BlobStore` | File Storage |
+| `TomSchedulerNode` | Scheduling |
+| `TomSchedulerNodeRow` | Scheduling |
 | `TomSelect` | Datasources |
 | `TomServer` | Server |
 | `TomServerConfigResourceProvider` | Configuration |
 | `TomServerException` | Little Things |
 | `TomService` | Endpoints |
 | `tomService` | Endpoints |
+| `TomSmtpConnection` | Messaging |
+| `TomSmtpReply` | Messaging |
+| `TomSmtpSecurity` | Messaging |
+| `TomSmtpSettings` | Messaging |
+| `TomSmtpTransport` | Messaging |
+| `TomSocketSmtpConnection` | Messaging |
+| `TomSqlAuditSink` | Audit |
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlDialect` | Datasources |
+| `TomSqlJobStore` | Scheduling |
+| `TomSqlLeaseLock` | Scheduling |
+| `TomSqlSchedulerNodes` | Scheduling |
 | `TomStandardSqlDialect` | Datasources |
+| `TomStorageException` | File Storage |
+| `TomStoredBlob` | File Storage |
+| `TomStoredExport` | Export |
 | `TomStringConfig` | Configuration |
+| `TomTabularColumn` | Export |
+| `TomTabularRenderer` | Export |
+| `TomTabularResult` | Export |
+| `TomTabularRow` | Export |
+| `TomTabularSection` | Export |
 | `TomTransaction` | Transactions |
+| `TomTransactional` | Endpoints |
 | `TomTransactionException` | Transactions |
 | `TomTransactionManager` | Transactions |
 | `TomTransactionParticipant` | Transactions |
-| `TomTransactional` | Endpoints |
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
 | `TomUnaryOperator` | Object Persistence |
+| `TomXlsxRenderer` | Export |
 | `TomYaml` | Configuration |
-| `tomAppId` | Configuration |
+| `verifyAgainstAnchor` | Audit |
+| `verifyAuditChain` | Audit |

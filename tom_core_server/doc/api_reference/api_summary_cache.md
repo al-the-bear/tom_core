@@ -69,10 +69,10 @@ does not match the requested type parameter.
 TomCacheException(
   String key,
   String userMessage, {
-  Map<String, dynamic>? parameters,
-  StackTrace? stack,
+  Map<String, Object?>? parameters,
+  Object? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
 })
 ```
 

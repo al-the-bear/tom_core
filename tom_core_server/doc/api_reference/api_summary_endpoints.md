@@ -329,9 +329,9 @@ TomEndpointHandlerException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
-  StackTrace? stack,
+  Object? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
 })
 ```
 
@@ -349,9 +349,9 @@ TomEndpointPipelineException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
-  StackTrace? stack,
+  Object? stack,
   Object? rootException,
-  bool? autoLog,
+  bool autoLog = false,
 })
 ```
 
