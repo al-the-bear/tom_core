@@ -33,6 +33,7 @@ import 'samples/logging/00_run_all_examples.dart' as logging;
 import 'samples/observable/00_run_all_examples.dart' as observable;
 import 'samples/reflection/00_run_all_examples.dart' as reflection;
 import 'samples/resources/00_run_all_examples.dart' as resources;
+import 'samples/result/00_run_all_examples.dart' as result;
 import 'samples/runtime/00_run_all_examples.dart' as runtime;
 import 'samples/security/00_run_all_examples.dart' as security;
 import 'samples/settings/00_run_all_examples.dart' as settings;
@@ -134,35 +135,42 @@ Future<void> main() async {
     resources.run();
     samplesRun++;
 
-    // 12. Runtime samples
+    // 12. Result samples
+    print('\n${'═' * 70}');
+    print('RESULT SAMPLES');
+    print('═' * 70);
+    result.run();
+    samplesRun++;
+
+    // 13. Runtime samples
     print('\n${'═' * 70}');
     print('RUNTIME SAMPLES');
     print('═' * 70);
     runtime.run();
     samplesRun++;
 
-    // 13. Security samples
+    // 14. Security samples
     print('\n${'═' * 70}');
     print('SECURITY SAMPLES');
     print('═' * 70);
     security.run();
     samplesRun++;
 
-    // 14. Settings samples
+    // 15. Settings samples
     print('\n${'═' * 70}');
     print('SETTINGS SAMPLES');
     print('═' * 70);
     settings.run();
     samplesRun++;
 
-    // 15. Shutdown Cleanup samples
+    // 16. Shutdown Cleanup samples
     print('\n${'═' * 70}');
     print('SHUTDOWN CLEANUP SAMPLES');
     print('═' * 70);
     shutdown_cleanup.run();
     samplesRun++;
 
-    // 16. Timezoned samples
+    // 17. Timezoned samples
     print('\n${'═' * 70}');
     print('TIMEZONED SAMPLES');
     print('═' * 70);

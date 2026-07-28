@@ -1,9 +1,10 @@
 # Tom Core Kernel API Reference: Index
 
 Per-module API summaries for `tom_core_kernel` — the foundational layer of Tom
-Core. The package barrel (`lib/tom_core_kernel.dart`) exports the fifteen
+Core. The package barrel (`lib/tom_core_kernel.dart`) exports the seventeen
 modules documented here and re-exports `tom_basics`, `tom_crypto`, and
-`tom_reflection` (see those packages' docs for their APIs).
+`tom_reflection` (see those packages' docs for their APIs — notably the runtime
+and platform-detection types, which live in `tom_basics`).
 
 Each summary follows the standard format (Overview with source paths, class
 hierarchy, per-class constructors / static & instance members, enums, and
@@ -24,6 +25,8 @@ declarations are omitted.
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
 | Reflection | [api_summary_reflection.md](api_summary_reflection.md) | The kernel reflector, reflection info, and JSON (de)serialization via mirrors. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Text and config resource providers over a JSON tree. |
+| Result | [api_summary_result.md](api_summary_result.md) | The canonical success-or-error envelope, structured error codes, and field-level details. |
+| Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | Schedules, job definitions, the persistent run store, the lease lock, and the scheduler. |
 | Scope IDs | [api_summary_scope_ids.md](api_summary_scope_ids.md) | Hierarchical scope identity, scope-path building, and zone-scoped builders. |
 | Security | [api_summary_security.md](api_summary_security.md) | Principals/ACIs, access controls, authorization state machine, resource roles, bearer auth. |
 | Settings | [api_summary_settings.md](api_summary_settings.md) | Reflected settings request/result messages. |
@@ -183,6 +186,46 @@ declarations are omitted.
 | ---- | ---- | ----------- |
 | `TomTextResourceProvider` | class | Provides localized text over a JSON tree with key fallback. |
 | `TomConfigResourceProvider` | class | Provides config values over a JSON tree. |
+
+### Result (`lib/src/tombase/result/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomResult<T>` | class | The success-or-error envelope, with an explicit `success` wire discriminator. |
+| `TomErrorResult` | class | A structured application error: machine code, optional message, field details, retryable flag, severity. |
+| `TomFieldError` | class | A field-level error detail (field path + code). |
+| `TomErrorSeverity` | enum | `info`, `warning`, `error`, `fatal` — a presentation hint, parsed forward-compatibly. |
+
+### Scheduling (`lib/src/tombase/scheduling/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomSchedule` | abstract class | The "when" contract — `nextFireAfter` and nothing about jobs. |
+| `TomCronSchedule`, `TomCalendarSchedule`, `TomIntervalSchedule`, `TomOnceSchedule`, `TomEventSchedule` | class | Cron, month-grid, fixed-interval, one-shot and stream-driven schedules. |
+| `TomCalendarRule` | enum | `dayOfMonth`, `weekdayOfMonth`. |
+| `TomJobDefinition` | class | A named schedule bound to a `TomCommand` factory, plus retry/timeout/overlap/catch-up policy. |
+| `TomRetryPolicy` | class | Exponential backoff with jitter (`none` for no retry). |
+| `TomMissedWindowPolicy` | enum | `skip`, `runOnce`, `runAll`. |
+| `TomJobDispatcher` | abstract class | How a job's command is executed. |
+| `TomWorkerPoolJobDispatcher`, `TomInlineJobDispatcher` | class | Dispatch onto a worker pool, or inline in the calling isolate. |
+| `TomJobAlert` | class | Everything the scheduler wants an operator to know. |
+| `TomJobAlertKind` | enum | Attempt/run failures, timeouts, missed windows, never-fires, and the four lease outcomes. |
+| `TomJobAlertSink` | typedef | `void Function(TomJobAlert alert)`. |
+| `TomPermanentFailure` | mixin | Marker meaning "do not retry". |
+| `TomPermanentJobFailure` | class | The ready-made permanent failure. |
+| `TomJobBase` | abstract class | Base for an annotation-declared job; carries the injected `TomJobRun`. |
+| `TomScheduledJob` | class | The `@TomScheduledJob` annotation — exactly one of `cron`/`interval`/`calendar`/`event`. |
+| `TomScheduledJobs` | class | Reflection-driven `discover` / `registerAll`. |
+| `TomJobRun` | class | One row per schedule *window* — the idempotence key across restarts and cluster nodes. |
+| `TomJobRunState` | enum | `pending`, `running`, `succeeded`, `failed`. |
+| `TomJobStore` | abstract class | The persistence contract the tick loop is written in. |
+| `TomMemoryJobStore`, `TomFileJobStore` | class | In-process store, and its JSON-file-backed durable subclass. |
+| `TomLease` | class | A time-limited claim carrying a monotonic fencing `token`. |
+| `TomLeaseInfo` | class | A resource's lock state, including "the holder vanished". |
+| `TomLeaseLock` | abstract class | The mutual-exclusion contract. |
+| `TomMemoryLeaseLock`, `TomFileLeaseLock` | class | In-isolate lock, and a cross-process lock over a shared directory. |
+| `TomScheduler` | class | The tick loop: recover, plan, claim, lease, dispatch, retry (implements `TomClosable`). |
+| `TomScheduleException`, `TomScheduledJobException` | class | Misconfiguration, raised eagerly at construction / scan time. |
 
 ### Scope IDs (`lib/src/tombase/scope_ids/`)
 

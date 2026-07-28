@@ -36,7 +36,8 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
 - **Security** — authentication, a layered access-control model, bearer-token
   auth, and a four-state authorization model (`TomAuthState`).
 - **Runtime utilities** — logging (including isolate/remote), an isolate worker
-  pool, JSON tree helpers, resource providers, settings, timezone-aware
+  pool, a durable job scheduler, the canonical success-or-error result
+  envelope, JSON tree helpers, resource providers, settings, timezone-aware
   timestamps, and ordered shutdown.
 
 ## Installation
@@ -103,7 +104,9 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | ------ | --------- | ------------ |
 | `logging` | isolate & remote log output/server | Structured logging across isolates and the wire |
 | `isolate_pooling` | `TomWorker`, `TomWorkerPool`, `TomExecutor`, `TomCommand` | Worker-pool execution across isolates |
+| `scheduling` | `TomScheduler`, `TomJobDefinition`, `TomSchedule` (cron / calendar / interval / once / event), `TomJobStore`, `TomLeaseLock` | Durable, leased job scheduling with retry and catch-up policies |
 | `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
+| `result` | `TomResult<T>`, `TomErrorResult`, `TomFieldError`, `TomErrorSeverity` | The canonical success-or-error envelope every operation returns |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
 | `settings` | client settings/authorization | Settings management |
 | `shutdown_cleanup` | `TomShutdownCleanup`, `TomDisposable`, `TomClosable` | Ordered shutdown / cleanup hooks |
@@ -131,8 +134,10 @@ every change.
 
 ## Example projects
 
-Every module ships a runnable sample folder under [`example/`](example/), and a
-top-level [`run_all_samples.dart`](example/run_all_samples.dart) runs them all.
+Modules ship runnable sample folders under [`example/`](example/), and the
+top-level [`run_all_samples.dart`](example/run_all_samples.dart) runs the set in
+[`example/samples/`](example/samples/) in sequence. `scheduling` has no sample
+folder.
 
 | Sample | Demonstrates |
 | ------ | ------------ |
@@ -142,9 +147,11 @@ top-level [`run_all_samples.dart`](example/run_all_samples.dart) runs them all.
 | [`example/scope_ids/`](example/scope_ids/) | Hierarchical scope paths |
 | [`example/security/`](example/security/) | Access controls, authorization, bearer auth |
 | [`example/crypto/`](example/crypto/) | JWT / hashing helpers (via `tom_crypto`) |
+| [`example/runtime/`](example/runtime/) | Environment / platform detection (via `tom_basics`) |
 | [`example/isolate_pooling/`](example/isolate_pooling/) | Worker-pool execution |
 | [`example/logging/`](example/logging/) | Structured / isolate / remote logging |
 | [`example/resources/`](example/resources/) | Text & config resource providers |
+| [`example/samples/result/`](example/samples/result/) | The success-or-error envelope, error details, and its wire form |
 | [`example/json/`](example/json/) · [`example/timezoned/`](example/timezoned/) · [`example/settings/`](example/settings/) · [`example/shutdown_cleanup/`](example/shutdown_cleanup/) · [`example/http_connection/`](example/http_connection/) · [`example/little_things/`](example/little_things/) · [`example/reflection/`](example/reflection/) | The remaining utility modules |
 
 Run the whole set:
@@ -243,9 +250,17 @@ the common dependency of the server, Flutter, and DartScript layers. See the
 
 - Per-module guides under [`doc/`](doc/) — one folder per module
   (`doc/observable/`, `doc/security/`, `doc/scope_ids/`, …).
+- [`doc/scheduling/scheduling.md`](doc/scheduling/scheduling.md) — the job
+  scheduler: schedule kinds, retry and missed-window policies, the job store,
+  and the lease lock that keeps one owner per job across processes.
+- [`doc/result/result.md`](doc/result/result.md) — the result envelope: why an
+  application outcome is not an HTTP error, and how error codes key client copy.
 - Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
   one summary per barrel-exported module plus a cross-module type index; start at
   [`api_summary_index.md`](doc/api_reference/api_summary_index.md).
+- [`tom_basics/doc/runtime/runtime.md`](../../basics/tom_basics/doc/runtime/runtime.md)
+  — the runtime guide (`TomEnvironment`, `TomPlatform`, `TomRuntime`). The code
+  lives in `tom_basics`; the kernel barrel re-exports it.
 - [`tom_core_server`](../tom_core_server/README.md) — the server runtime built on
   this kernel.
 - [`tom_core_flutter`](../tom_core_flutter/README.md) /
@@ -256,6 +271,6 @@ the common dependency of the server, Flutter, and DartScript layers. See the
 ## Status
 
 - **Version:** 1.1.1
-- **Tests:** 1,464 test cases across 17 module suites (run with `testkit :test`
+- **Tests:** 2,096 test cases across 25 suites (run with `testkit :test`
   or `dart test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
