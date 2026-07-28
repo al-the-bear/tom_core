@@ -16,6 +16,8 @@ remembering to ask.
 - [The `@TomAudited` Annotation](#the-tomaudited-annotation)
 - [Attribution](#attribution)
 - [Sinks, Persistence and Retention](#sinks-persistence-and-retention)
+- [The Relational Sink](#the-relational-sink)
+- [The Write-Once Story](#the-write-once-story)
 - [Tamper Evidence](#tamper-evidence)
 - [Failure Behaviour](#failure-behaviour)
 - [Suppressing the Trail](#suppressing-the-trail)
@@ -37,6 +39,8 @@ remembering to ask.
 | `TomAuditTrail` | class | The static facade the chokepoints call |
 | `TomAuditSink` | abstract class | Where entries go |
 | `TomMemoryAuditSink` / `TomFileAuditSink` | classes | Bounded in-memory sink; append-only rotating file sink |
+| `TomSqlAuditSink` | class | One row per entry in a `TomDataSource`, with row-prefix retention |
+| `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed |
 | `TomAuditEntry` | class | A record plus its position in the hash chain |
 | `TomAuditChainVerification` | class | The result of verifying a chain |
 
@@ -188,7 +192,7 @@ then omitted, so the trail never claims a user id that does not exist.
 
 ## Sinks, Persistence and Retention
 
-`TomAuditSink` has two implementations:
+`TomAuditSink` has three implementations:
 
 - **`TomMemoryAuditSink`** — bounded ring (default 1000 entries) with a
   `droppedCount`. For tests and short-lived processes.
@@ -197,17 +201,144 @@ then omitted, so the trail never claims a user id that does not exist.
   through an internal queue so concurrent callers cannot interleave, and the
   head hash is recovered from disk on reopen, so a restart continues the chain
   rather than starting a new one.
+- **`TomSqlAuditSink`** — one row per entry in a `TomDataSource`. Same
+  serialised queue and same head recovery; see [The Relational
+  Sink](#the-relational-sink).
 
-Retention is `TomFileAuditSink`'s own, expressed in whole files: entries older
-than `retention` (default 3650 days ≈ 10 years) and files beyond `maxFiles`
-(default 512) are deleted **whole**. Deleting whole files leaves a valid
-*suffix* of the chain, which still verifies; deleting individual entries would
-break it and be indistinguishable from tampering.
+Retention is expressed in the unit each sink can delete without breaking the
+chain. `TomFileAuditSink` deletes **whole files** — entries older than
+`retention` (default 3650 days ≈ 10 years) and files beyond `maxFiles` (default
+512). `TomSqlAuditSink` deletes **a contiguous prefix of rows**, via
+`purgeBefore(instant)` or `purgeToMaxEntries(n)`. Both leave a valid *suffix* of
+the chain, which still verifies; removing an interior entry would break it and
+be indistinguishable from tampering.
 
 Rotation sequence numbers are monotonic and never reused, including after
 retention has deleted the file that held one — a reused number would let a new
 file take an older file's name, and read-back order would stop matching write
 order.
+
+## The Relational Sink
+
+```dart
+TomAuditTrail.install(
+  TomSqlAuditSink.named(
+    'audit',                  // its own data source, not the application's
+    writer: 'app-node-1',     // names this chain
+    createSchema: false,      // the migration owns the table
+    requireWriteOnce: true,   // refuse to start if the grant is wrong
+  ),
+);
+```
+
+One row per entry in `tom_audit_trail` (`auditTrailTableDdl`), holding the
+projection columns an operator searches by — actor, action, target, outcome,
+`recorded_at` — plus the two chain columns and the canonical record JSON. The
+**record text is authoritative**: it is exactly what was hashed, so a row
+verifies against its own hash without the reader reproducing the encoding. The
+projection columns are a lossy index, truncated to fit rather than allowed to
+fail an insert, because the trail is fail-closed and a rejected row would take
+the audited action down with it.
+
+Three design points are worth stating outright:
+
+- **It does not go through `TomSqlDatasourceRepository`.** The repository is
+  itself an audit chokepoint, so a repository-backed sink would audit its own
+  writes and each entry would produce another. The regress could be broken with
+  `runUnaudited`, but a bypass holds only as long as every write path remembers
+  to wrap itself. Talking to the data source directly makes the regress
+  impossible rather than merely avoided.
+- **`writer` is required.** Each entry hashes its predecessor, so a chain has
+  exactly one head; two processes appending to one table with one chain would
+  interleave into a sequence that fails its own verification. A per-node chain
+  makes a clustered deployment correct, and `UNIQUE (writer, previous_hash)`
+  turns a fork into a duplicate-key error at insert time instead of silent
+  corruption found at the next audit.
+- **`seq` is the primary key.** Nothing addresses an audit row by anything else,
+  while insertion order is load-bearing twice: it is the order the chain is read
+  back in, and it is the axis retention trims a prefix from. Retention resolves
+  its cutoff to a *sequence* boundary before deleting anything —
+  `DELETE ... WHERE recorded_at < :cutoff` looks equivalent and is not, because
+  timestamps come from the record and sequence numbers from the insert, so
+  clock skew is enough to leave an older-stamped row after a newer-stamped one
+  and deleting by timestamp would punch a hole.
+
+Reference migrations live in `example/audit/migrations/main/tomcore/`.
+
+## The Write-Once Story
+
+`TomFileAuditSink` is append-only *by construction* — the only file operation it
+performs is "append a line", and rotation renames rather than rewrites. A table
+has no such property: `UPDATE` and `DELETE` are ordinary statements. A trail
+stored in one is append-only only because something outside the code says so,
+and **that something cannot be the code**: the grant is the guarantee, and a
+grant is not a thing a library can hold.
+
+This framework takes the first of the three available postures, and provides
+mechanism for the second:
+
+| Posture | What makes it write-once | When it is right |
+| ------- | ------------------------ | ---------------- |
+| **Separate credential** (adopted) | The serving user holds `INSERT` and `SELECT` on the trail table and nothing else | Any deployment that can issue a second credential — which is nearly all of them |
+| **Database-side guard** | `BEFORE UPDATE` / `BEFORE DELETE` triggers that `SIGNAL SQLSTATE '45000'` | A deployment that cannot separate credentials: one application user, one schema, `UPDATE` already granted across it |
+| **Explicit acceptance** | Nothing. The trail is tamper-*evident* only | Development and test, where operational convenience genuinely outweighs tamper-resistance — and stated as such, never assumed |
+
+**The separate credential is the primary mechanism.** Apply the migration with a
+privileged credential, then serve the trail with a restricted one:
+
+```sql
+CREATE USER 'audit_writer'@'%' IDENTIFIED BY '…';
+GRANT INSERT, SELECT ON app_db.tom_audit_trail TO 'audit_writer'@'%';
+```
+
+Configure that credential as the sink's **own** data source — never the
+application's, which by definition can modify everything it can read. The sink
+takes an explicitly named `TomDataSource` and never defaults to one, so the
+restricted credential has somewhere to live.
+
+**The triggers are defence in depth, not the mechanism.** They ship as two
+environment-tagged migrations (`[2]-…@hardened.sql`,
+`[3]-…@immutable.sql`) and are deliberately not part of the default chain: a
+deployment whose serving credential already lacks `UPDATE` gains nothing from
+them, and applying them needs `TRIGGER` rights a locked-down schema owner may
+not wish to exercise. They are also not a *guarantee* — a connection holding
+`SUPER` or `TRIGGER` can drop them. Where they earn their place is the
+deployment that cannot separate credentials at all: there the grant cannot
+express "append-only" and a trigger can.
+
+The two guards are tagged separately because they cost differently. The `UPDATE`
+guard costs nothing. The `DELETE` guard **blocks retention entirely** — both
+`purgeBefore` and `purgeToMaxEntries` issue `DELETE` — so installing it is a
+decision to keep the trail forever, or to prune out of band with a role that
+drops the trigger, prunes, and recreates it.
+
+### Retention is an operator action
+
+The restricted serving credential has no `DELETE`, which is the point — and it
+means **retention cannot be run by the server that writes the trail**. Calling
+`purgeToMaxEntries` on a correctly restricted sink fails, loudly, which is the
+right outcome and a surprising one to meet for the first time in production.
+Pruning is an operator task performed with a separate, privileged credential.
+
+### What the sink checks, and what it does about it
+
+`verifyWriteOnce()` observes the deployment rather than trusting its
+configuration, and returns a `TomAuditWriteOnceCheck`. It makes two independent
+observations, because neither alone is conclusive:
+
+- a **privilege** probe — an `UPDATE`/`DELETE` restricted to no rows, which
+  still fails at permission-check time when the grant is missing; and
+- a **trigger** probe of `information_schema.TRIGGERS`, because a zero-row
+  statement matches nothing and therefore fires no `FOR EACH ROW` trigger. A
+  trigger-protected table looks perfectly mutable to the privilege probe alone.
+
+`open()` runs the check and, when the table can be rewritten in place, either
+**warns** or — with `requireWriteOnce: true` — **refuses to start**. The default
+is the warning: a sink that refused to start on a developer machine would push
+people towards installing no sink at all, and an unprotected trail is still
+better than no trail. A deployment that has made the arrangement should set the
+flag, because a silently mis-granted credential is precisely the failure it
+exists to catch.
 
 ## Tamper Evidence
 
@@ -257,16 +388,17 @@ and therefore auditable in its own right.
   `recordAction` / `policyFor` / `runUnaudited`; the only thing the chokepoints
   touch.
 - **`auditDiff`** — computes the changed-fields-only before/after pair.
-- **`TomAuditSink` / `TomMemoryAuditSink` / `TomFileAuditSink`** — storage.
+- **`TomAuditSink` / `TomMemoryAuditSink` / `TomFileAuditSink` /
+  `TomSqlAuditSink`** — storage.
+- **`TomAuditWriteOnceCheck` / `auditTrailTableDdl` /
+  `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl`** — the
+  relational trail's schema and its write-once probe.
 - **`TomAuditEntry` / `verifyAuditChain` / `parseAuditLines` /
   `TomAuditChainVerification`** — the hash chain and its verification.
 - **`TomAuditException`** — a sink that could not store a record.
 
 ## Not Yet Implemented
 
-- A database-backed sink. The file sink is append-only by construction, which a
-  table is not; a DB sink needs its own write-once story (a separate schema, or
-  an insert-only grant) before it is worth having.
 - Query/export of the trail (overlaps CE-RP reporting — see `csex11`).
 - Signed or externally anchored chain heads, which is what would turn the
   tamper-*evidence* above into tamper-*proof*.
@@ -280,3 +412,5 @@ and therefore auditable in its own right.
   declared-invocation points.
 - The object-persistence module — `TomSqlDatasourceRepository` calls the trail
   on every mutation.
+- The datasources module — `TomSqlAuditSink` writes through a `TomDataSource`
+  directly, and encodes instants with `sqlInstant`.

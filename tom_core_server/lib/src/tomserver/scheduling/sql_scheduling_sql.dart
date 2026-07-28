@@ -28,7 +28,7 @@ const String defaultLeaseTable = 'tom_lease';
 ///  * `state, run_at` is the index the claim scan rides; `state, claimed_at` is
 ///    the one abandoned-lease recovery rides.
 ///  * instants are `DATETIME(6)` and always written in UTC — see
-///    [sqlInstant].
+///    `sqlInstant` in `datasources/sql_instant.dart`.
 ///  * `job_name` is `VARCHAR(160)` rather than 191 so the composite unique key
 ///    stays inside the 767-byte index limit of older InnoDB row formats
 ///    (160 × 4 bytes of utf8mb4 + 8 bytes of `DATETIME(6)`).
@@ -78,27 +78,3 @@ CREATE TABLE IF NOT EXISTS $table (
   version     BIGINT       NOT NULL DEFAULT 1,
   PRIMARY KEY (resource)
 )''';
-
-/// Renders [value] as the UTC `DATETIME(6)` literal the columns bind.
-///
-/// Always UTC, always six fractional digits. A cluster whose nodes disagree
-/// about the local zone must still agree about an instant, and the fixed width
-/// keeps the text comparable in SQL as well as in Dart.
-String sqlInstant(DateTime value) {
-  final utc = value.toUtc();
-  String pad(int v, int width) => v.toString().padLeft(width, '0');
-  return '${pad(utc.year, 4)}-${pad(utc.month, 2)}-${pad(utc.day, 2)} '
-      '${pad(utc.hour, 2)}:${pad(utc.minute, 2)}:${pad(utc.second, 2)}.'
-      '${pad(utc.millisecond, 3)}${pad(utc.microsecond, 3)}';
-}
-
-/// Reads a stored `DATETIME(6)` back as a UTC [DateTime].
-///
-/// The driver hands back the column's text; `DateTime.parse` on it alone would
-/// produce a *local* `DateTime`, which compares unequal to the UTC value that
-/// was written even though it denotes the same wall-clock reading. Appending
-/// the zone marker is what makes the round trip exact.
-DateTime parseSqlInstant(String value) {
-  final text = value.trim();
-  return DateTime.parse(text.endsWith('Z') ? text : '${text}Z');
-}

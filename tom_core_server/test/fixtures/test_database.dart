@@ -211,6 +211,26 @@ CREATE TABLE IF NOT EXISTS fixture_document (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $leaseTable');
   }
 
+  /// Drops the relational audit trail's table and its optional guard triggers
+  /// (CSEXB4).
+  ///
+  /// The triggers are dropped explicitly even though MariaDB drops a table's
+  /// triggers with it: a test that installs a guard and then fails part-way
+  /// would otherwise leave an `UPDATE`-rejecting trigger behind for whatever
+  /// runs next, and the failure it caused would look like a different bug.
+  static Future<void> dropAuditTrailTable(
+    TomDataSourceInfo dsi, {
+    String table = defaultAuditTrailTable,
+  }) async {
+    await dsi.datasource.executeCommand(
+      'DROP TRIGGER IF EXISTS ${auditTrailNoUpdateTriggerName(table)}',
+    );
+    await dsi.datasource.executeCommand(
+      'DROP TRIGGER IF EXISTS ${auditTrailNoDeleteTriggerName(table)}',
+    );
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
+  }
+
   /// Drops the `<schemaName>_versioning` table the migration orchestrator keeps.
   ///
   /// The orchestrator is idempotent by design: it skips a version it has already

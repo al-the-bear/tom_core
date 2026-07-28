@@ -74,6 +74,7 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
+import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'sql_scheduling_sql.dart';
@@ -434,9 +435,9 @@ class TomSqlJobStore implements TomJobStore {
         ),
         attempt: row.attempt,
         claimedBy: row.claimedBy,
-        claimedAt: _parseOptional(row.claimedAt),
+        claimedAt: parseOptionalSqlInstant(row.claimedAt),
         lastError: row.lastError,
-        completedAt: _parseOptional(row.completedAt),
+        completedAt: parseOptionalSqlInstant(row.completedAt),
         payload: _decodePayload(row.payload),
       );
 
@@ -454,9 +455,6 @@ class TomSqlJobStore implements TomJobStore {
             run.completedAt == null ? null : sqlInstant(run.completedAt!),
         'payload': _encodePayload(run),
       };
-
-  static DateTime? _parseOptional(String? value) =>
-      value == null || value.isEmpty ? null : parseSqlInstant(value);
 
   static DateTime _asUtc(DateTime value) => value.isUtc ? value : value.toUtc();
 

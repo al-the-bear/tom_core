@@ -3,14 +3,15 @@
 /// Demonstrates the audit trail without a database or a server: installing a
 /// sink, the shape of a [TomAuditRecord], attribution from the ambient zone,
 /// the declared-versus-automatic split expressed by [TomAudited], redaction,
-/// the tamper-evident hash chain, and the append-only file sink with its
-/// whole-file retention.
+/// the tamper-evident hash chain, the append-only file sink with its whole-file
+/// retention, and the relational sink's schema and write-once check.
 ///
 /// The two *chokepoints* — the endpoint pipeline and the repository write path
 /// — are what make this automatic in a running server; they are exercised by
 /// `test/endpoints_pipeline_test.dart` and `test/audit_db_test.dart` (the
-/// latter against a live MariaDB). Here the records are produced by hand so the
-/// example stays connection-free.
+/// latter against a live MariaDB). The relational sink's behaviour needs a
+/// server too and lives in `test/audit_sql_db_test.dart`. Here the records are
+/// produced by hand so the example stays connection-free.
 ///
 /// Run with `dart run example/audit/audit_example.dart`.
 /// The same behaviour is covered by `test/audit_test.dart`.
@@ -155,6 +156,56 @@ Future<void> run() async {
     await dir.delete(recursive: true);
     TomAuditTrail.uninstall();
   }
+
+  // 9. The relational sink stores one row per entry instead of one line per
+  //    entry. Installing it needs a database, so what runs here is the part
+  //    that does not: the schema it ships, and the reasoning about whether the
+  //    table it finds can be trusted.
+  //
+  //    A file is append-only by construction; a table is not. UPDATE and DELETE
+  //    are ordinary statements, so the guarantee has to come from outside the
+  //    code — and the grant is not a thing a library can hold. See
+  //    `doc/audit.md` § "The Write-Once Story"; the migrations that go with it
+  //    are in `example/audit/migrations/main/tomcore/`.
+  final ddl = auditTrailTableDdl(defaultAuditTrailTable);
+  print('9. chain linearity as a constraint:');
+  print('   ${ddl.split('\n').firstWhere((l) => l.contains('uq_')).trim()}');
+  // Two entries claiming the same predecessor is a fork. As a convention it
+  // holds until two writers share a name; as a unique index it holds always.
+  assert(ddl.contains('UNIQUE KEY uq_tom_audit_trail_link'));
+
+  // The posture a deployment should aim for: a serving credential holding
+  // INSERT and SELECT and nothing else.
+  const granted = TomAuditWriteOnceCheck(
+    table: defaultAuditTrailTable,
+    grantsUpdate: false,
+    grantsDelete: false,
+  );
+  print('   restricted credential     : ${granted.summary}');
+  assert(granted.isAppendOnly);
+
+  // The fallback for a deployment that cannot separate credentials: the guard
+  // triggers. Defence in depth, not the mechanism — a connection holding SUPER
+  // can drop them — and the DELETE guard blocks retention outright.
+  const guarded = TomAuditWriteOnceCheck(
+    table: defaultAuditTrailTable,
+    grantsUpdate: true,
+    grantsDelete: true,
+    updateGuardTrigger: 'trg_tom_audit_trail_no_update',
+  );
+  // The case a privilege probe alone cannot see: a zero-row UPDATE fires no
+  // FOR EACH ROW trigger, so a protected table looks perfectly mutable.
+  print('   trigger-guarded           : ${guarded.summary}');
+  assert(guarded.updatesBlocked && !guarded.isAppendOnly);
+
+  // And the posture to recognise rather than assume: nothing stops a rewrite.
+  const open = TomAuditWriteOnceCheck(
+    table: defaultAuditTrailTable,
+    grantsUpdate: true,
+    grantsDelete: true,
+  );
+  print('   unprotected               : ${open.summary}');
+  assert(!open.isAppendOnly);
 }
 
 Future<void> main() async {
