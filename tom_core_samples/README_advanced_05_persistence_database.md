@@ -154,7 +154,10 @@ annotation sits next to the field, in the same record class as every other colum
 
 ```dart
 // advanced_app_server — ItemRecord
-@TomDbColumn(columnName: 'attachment')
+@TomDbColumn(
+  columnName: itemAttachmentColumn,     // 'attachment'
+  authKey: itemAttachmentGradeKey,      // 'todo.item.attachment'
+)
 @TomFileReference(
   keyPrefix: 'items/attachment',
   exposed: true,
@@ -167,11 +170,11 @@ String? attachment;
 String? internalNote;   // `exposed` defaults to false — see below
 ```
 
-| Column | Record | `exposed` | `cascadeDelete` | What it demonstrates |
-| --- | --- | --- | --- | --- |
-| `app_items.attachment` | `ItemRecord` | **true** | **true** | the ordinary case: reachable over HTTP, and its bytes die with the row |
-| `app_items.internal_note` | `ItemRecord` | *(default false)* | true | **default-closed**: a file column nobody exposed has no HTTP slot at all |
-| `auth_users.avatar_ref` | `UserRecord` | **true** | **false** | the deliberate contrast: deleting the user leaves the blob behind |
+| Column | Record | `exposed` | `cascadeDelete` | `authKey` | What it demonstrates |
+| --- | --- | --- | --- | --- | --- |
+| `app_items.attachment` | `ItemRecord` | **true** | **true** | `todo.item.attachment` | the full case: reachable over HTTP, graded per row, and its bytes die with the row |
+| `app_items.internal_note` | `ItemRecord` | *(default false)* | true | *(none)* | **default-closed**: a file column nobody exposed has no HTTP slot at all |
+| `auth_users.avatar_ref` | `UserRecord` | **true** | **false** | *(none)* | the deliberate contrast: deleting the user leaves the blob behind |
 
 **`exposed` is the whole access decision, and it defaults to closed.** `attachment`
 and `internal_note` are indistinguishable in the DDL — the migration declares two

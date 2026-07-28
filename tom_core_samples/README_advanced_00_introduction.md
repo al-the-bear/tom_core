@@ -99,7 +99,13 @@ the whole thing in order:
 > 00 Introduction → 01 Architecture → 02 Project layout & build →
 > 03 Domain & reflection → 04 Wire contracts → 05 Persistence & databases →
 > 06 Authentication → 07 Authorization → 08 Resources & texts → 09 Forms & UI →
-> 10 Servers & endpoints → 11 Clients → 12 Testing & integration.
+> 10 Servers & endpoints → 11 Clients → 12 Testing & integration →
+> 13 File transfer under the authorization matrix.
+
+The last part is a **capstone**: rather than introducing a new layer, it follows
+one feature — a task's file attachment — down through every layer the preceding
+twelve introduced, from the three annotations on the field to the live cross-tier
+assertion that an admin's grant edit takes the upload away from the row's owner.
 
 The **appendices** are deep dives linked from the parts that need them (and from
 the [index](README_advanced_sample.md#user-guide)). Branch into them when a part

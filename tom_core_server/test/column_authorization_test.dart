@@ -144,4 +144,46 @@ void main() {
       expect(decision.writable, contains('title'));
     });
   });
+
+  group('TomRowColumnAuthorization (per-row grades)', () {
+    tearDown(TomRowColumnAuthorization.reset);
+
+    test('an unregistered key resolves to null so the caller keeps its own '
+        'column-wide grade', () async {
+      expect(await TomRowColumnAuthorization.resolve('k.attachment', '7'),
+          isNull);
+    });
+
+    test('a null authKey resolves to null without consulting the registry',
+        () async {
+      TomRowColumnAuthorization.register(
+        'k.attachment',
+        (principal, rowId) async =>
+            throw StateError('must not be consulted for an unrestricted column'),
+      );
+      expect(await TomRowColumnAuthorization.resolve(null, '7'), isNull);
+    });
+
+    test('a registered key resolves per row', () async {
+      // The point of the registry: the *same* column grades differently on two
+      // rows, because the caller holds a different role on each one.
+      TomRowColumnAuthorization.register(
+        'k.attachment',
+        (principal, rowId) async =>
+            rowId == '1' ? TomAuthState.full : TomAuthState.read,
+      );
+      expect(await TomRowColumnAuthorization.resolve('k.attachment', '1'),
+          TomAuthState.full);
+      expect(await TomRowColumnAuthorization.resolve('k.attachment', '2'),
+          TomAuthState.read);
+    });
+
+    test('reset removes every registration', () async {
+      TomRowColumnAuthorization.register(
+          'k.attachment', (principal, rowId) async => TomAuthState.none);
+      TomRowColumnAuthorization.reset();
+      expect(await TomRowColumnAuthorization.resolve('k.attachment', '1'),
+          isNull);
+    });
+  });
 }

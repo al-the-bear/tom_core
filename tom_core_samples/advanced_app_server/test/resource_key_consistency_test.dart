@@ -24,9 +24,16 @@
 /// The auth server's grant-matrix half of the same invariant is pinned by
 /// `advanced_auth_server/test/grant_matrix_key_consistency_test.dart`; each test
 /// lives in the package that owns its artifact (no cross-package file reads).
+///
+/// One `todo.item.*` key is deliberately **outside** this set:
+/// [itemAttachmentGradeKey], the item's graded file column. It is granted in the
+/// same auth-server matrix but must never join the bundle-derived *field* set —
+/// see the last test for why that exclusion is load-bearing rather than an
+/// oversight.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
+import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
 
 /// The gradable item field tokens (plain field names) and their full wire keys.
@@ -111,6 +118,33 @@ void main() {
       // so a bundle field without a read/copy binding (or a stray binding) would
       // surface here as a mismatch.
       expect(gradableItemFieldKeys, orderedEquals(_gradableItemKeys));
+    });
+
+    test('the graded attachment column stays out of the gradable field set',
+        () {
+      // `todo.item.attachment` is granted by the same four roles in the same
+      // auth-server matrix, but it is a **column**, not a form field, and the
+      // difference is a security boundary rather than bookkeeping:
+      //
+      //  * the gradable field set is the list of JSON members the item write
+      //    path copies from a client payload. `attachment` holds a *blob key*
+      //    minted server-side by `saveFile`; a caller able to write it would
+      //    repoint their row at somebody else's bytes.
+      //  * the set is bundle-derived, and the write path looks every derived key
+      //    up in its binding table with `!`. A `todo.item.attachment.label` text
+      //    added to `resources_app.json` would therefore not merely widen the
+      //    set — it would crash the write path at boot-time binding.
+      //
+      // The column is graded on the file endpoint instead, where the only thing
+      // a caller supplies is bytes (`registerAppColumnGrades`).
+      expect(
+        AppResourceBundles.gradableItemKeys(),
+        isNot(contains(itemAttachmentGradeKey)),
+        reason: 'a todo.item.attachment.* text in resources_app.json would pull '
+            'the file column into the item write path — grade it on the file '
+            'endpoint instead',
+      );
+      expect(gradableItemFieldKeys, isNot(contains(itemAttachmentGradeKey)));
     });
   });
 }

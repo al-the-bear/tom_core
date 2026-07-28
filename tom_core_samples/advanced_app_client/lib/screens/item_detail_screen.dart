@@ -135,7 +135,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       field.authorizer = TomAuthorizer.fixed(resourceState.narrow(fieldGrade));
     }
     _form = form;
-    _attachment = _buildAttachmentField(resourceState);
+    _attachment = _buildAttachmentField(resourceState, role);
   }
 
   /// Builds the item's attachment field: its file slot on the app server, wired
@@ -143,24 +143,39 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   /// stored.
   ///
   /// **Not a member of [TodoItemForm], and deliberately not under
-  /// `todo.item.*`.** Three separate reasons converge on the same answer:
+  /// `todo.item.*` in the form** — although it *is* graded by the same matrix:
   ///
   ///  * The value types differ. The field holds a [FileRef]; `TodoItem.attachment`
   ///    holds the *storage key* the server stamps. They cannot be the same bound
   ///    member.
   ///  * The write paths differ. Bytes travel over the file endpoint; the server
   ///    keeps the file column out of the item's writable bindings precisely so a
-  ///    client cannot mint a storage key by editing an item.
-  ///  * The authorization differs. Every `todo.item.<field>` key is a row in the
-  ///    seeded per-role grade matrix; a slot is authorized by the row's resource
-  ///    state and by the column being an exposed file reference — which is what
-  ///    the server checks. Grading the attachment through the matrix as well
-  ///    would invent a second gate the server does not have.
+  ///    client cannot mint a storage key by editing an item. That is also why
+  ///    [itemAttachmentGradeKey] is absent from [AppResourceBundles.gradableItemKeys]
+  ///    and so from [TomForm.gradableFields] — the loop above cannot reach it.
   ///
-  /// So it takes the item's resource state as its ceiling, unnarrowed, and lives
-  /// at `board.item.attachment` alongside the rest of this screen's chrome.
-  TomFormFileUpload _buildAttachmentField(TomAuthState resourceState) {
+  /// The **authorization**, however, is the same story as every other field, and
+  /// this method applies it by hand because the form loop cannot: the item's
+  /// resource state narrowed by the role's attachment grade
+  /// ([projectRoleAttachmentGrades]). A commenter or viewer is graded `read`, so
+  /// the field renders its download affordance and hides the picker — matching
+  /// what the server will actually answer, because the app server resolves the
+  /// very same grade per row at the file endpoint (`registerAppColumnGrades`)
+  /// from the authoritative `tom_resource_grant` row.
+  ///
+  /// As everywhere else in this sample, the narrowing here is **cooperation, not
+  /// enforcement**: it spares the user an affordance that would be refused. An
+  /// administrator who edits the grant row changes the server's answer without
+  /// changing this map, and the server's answer is the binding one.
+  TomFormFileUpload _buildAttachmentField(
+    TomAuthState resourceState,
+    ProjectRole? role,
+  ) {
     final stored = widget.attachment;
+    // Closed-safe like the fields: no role → `none` → the field collapses.
+    final grade = role == null
+        ? TomAuthState.none
+        : (projectRoleAttachmentGrades[role] ?? TomAuthState.none);
     return TomScope.withScope(
       'board',
       () => TomFormFileUpload(
@@ -169,7 +184,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         storageSlot: AppFileSlots.itemAttachment(_item.id.get()),
         transferClient: _session.backend.files,
         onDownload: _onAttachmentDownloaded,
-        authorizer: TomAuthorizer.fixed(resourceState),
+        authorizer: TomAuthorizer.fixed(resourceState.narrow(grade)),
       ),
     );
   }

@@ -45,6 +45,7 @@ bottom; each links to the next.
 | 10 | [Servers & the secured endpoint pipeline](README_advanced_10_servers_endpoints.md) | The endpoint pipeline; per-endpoint access policies; bearer validation; ownership/share resolution; health; boot order. |
 | 11 | [The two Flutter clients](README_advanced_11_clients_app_admin.md) | App client vs admin console; sessions; the in-memory vs live backend seam; bootstrap; the share flow and grant-matrix editor. |
 | 12 | [Testing & cross-tier integration](README_advanced_12_testing_integration.md) | Test strategy; serial-Flutter rule; the sentinel render proof; the four-role matrix; the cross-tier runner; the green gate. |
+| 13 | [File transfer under the authorization matrix](README_advanced_13_file_transfer.md) | One feature across every layer: the three column declarations; slots from annotations; the per-row C-4 grade; the three refusal layers; the client field; cascade delete; how it is proved. |
 
 ### Appendices (deep dives)
 
@@ -207,9 +208,9 @@ It boots both databases and both servers, runs the three live suites in
 
 | Suite | What it walks |
 | --- | --- |
-| `cross_tier_integration_test.dart` | an admin grant edit → the end-user's field matrix reflects it → a share reveals a project to a second user |
+| `cross_tier_integration_test.dart` | an admin grant edit → the end-user's field matrix reflects it → a share reveals a project to a second user → the same kind of edit reaches the **file endpoint**, taking the upload away from the owner of the row |
 | `auth_client_integration_test.dart` | a real login, including the two-pass 2FA exchange |
-| `file_transfer_integration_test.dart` | bytes through both blob stores, plus the closed-column and anonymous refusals |
+| `file_transfer_integration_test.dart` | bytes through both blob stores, the closed-column and anonymous refusals, and a `read`-graded principal who gets the download but not the upload |
 
 A green run is a genuine live-stack pass — the runner converts a
 server-unreachable skip into a failure.

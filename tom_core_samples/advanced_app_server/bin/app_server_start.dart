@@ -264,6 +264,13 @@ Future<void> main(List<String> args) async {
   // construction time. Registered before serving.
   registerAppDataScopes();
 
+  // C-4: register the per-row grade of the item's `attachment` column, so the
+  // file endpoint's three operations resolve the caller's role on *this item's*
+  // project and grade the column from the same seeded grant matrix that grades
+  // the item's fields. Same ordering constraint as the data scopes above — it
+  // eagerly builds the production resolvers.
+  registerAppColumnGrades();
+
   initializeJwtSigning();
   warnIfDevelopmentSigningKey();
 

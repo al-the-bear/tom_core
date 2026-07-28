@@ -33,6 +33,7 @@ library;
 // tom_core_server re-exports tom_core_kernel, so `@tomReflector` and the
 // persistence annotations both resolve through this single barrel.
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
+import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// The `app_db` datasource name every record below binds to.
@@ -271,7 +272,19 @@ class ItemRecord {
   /// nothing else points at it, so deleting the item must not leave the bytes
   /// behind. Compare an avatar, which the application may reuse across rows and
   /// therefore manages itself.
-  @TomDbColumn(columnName: itemAttachmentColumn)
+  ///
+  /// **`authKey` is what makes the transfer authorized rather than merely
+  /// authenticated.** `exposed: true` decides that a slot *names* this column;
+  /// it says nothing about who may have it. The C-4 grade does: the app-server
+  /// boot registers a per-row resolver for [itemAttachmentGradeKey]
+  /// (`registerAppColumnGrades`), so `openFile`/`saveFile`/`describeFile` resolve
+  /// the caller's role on *this item's* project and grade the column from the
+  /// seeded grant matrix — `full` downloads and replaces, `read` downloads and
+  /// is refused the upload.
+  @TomDbColumn(
+    columnName: itemAttachmentColumn,
+    authKey: itemAttachmentGradeKey,
+  )
   @TomFileReference(
     keyPrefix: 'items/attachment',
     exposed: true,

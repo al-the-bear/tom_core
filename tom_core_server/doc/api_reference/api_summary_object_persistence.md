@@ -46,6 +46,7 @@ column-level access rights (C-4).
   - [Authorization & Scoping](#authorization--scoping)
     - [TomColumnWriteDecision&lt;C&gt;](#tomcolumnwritedecisionc)
     - [TomColumnAuthorization](#tomcolumnauthorization)
+    - [TomRowColumnAuthorization](#tomrowcolumnauthorization)
     - [TomDataScopeRegistry](#tomdatascoperegistry)
     - [TomDataScopePredicate](#tomdatascopepredicate)
     - [TomDataScopeBypass](#tomdatascopebypass)
@@ -994,7 +995,25 @@ reflection-backed read-mask. All members are static.
 | `stateForKey` | `static TomAuthState stateForKey(String? authKey, {TomColumnAuthResolver? resolver})` | The `TomAuthState` the principal holds on the column identified by `authKey`, or `full` when `authKey` is `null`. |
 | `maskedColumns` | `static List<C> maskedColumns<C>({required Iterable<C> columns, required String? Function(C) keyOf, TomColumnAuthResolver? resolver})` | The subset of `columns` the principal may not see (grade lacks `showsContent`). |
 | `decideWrites` | `static TomColumnWriteDecision<C> decideWrites<C>({required Iterable<C> columns, required String? Function(C) gradeOf, required bool Function(C) changed, required Never Function(C column, String authKey, TomAuthState grade) onForbidden, TomColumnAuthResolver? resolver})` | Partitions `columns` into writable vs preserved, rejecting an unauthorized visible change. |
-| `applyReadMask` | `static T applyReadMask<T extends Object>(T instance, List<TomColumnInformation> columns, {TomColumnAuthResolver? resolver})` | Nulls out — in place — every masked field of `instance`; returns `instance`. |
+| `applyReadMask` | `static T applyReadMask<T extends Object>(T instance, List<TomColumnInformation> columns, {TomColumnAuthResolver? resolver})` | Nulls out — in place — every masked field of `instance` (skipping per-row-graded columns); returns `instance`. |
+
+#### TomRowColumnAuthorization
+
+Per-row column grades (C-4), for columns whose grade depends on *which row* is
+addressed. The column-grade counterpart of `TomDataScopeRegistry.registerAsync`:
+a resolver is registered once at boot against the column's `authKey` and awaited
+per operation with the current-zone principal and the row's id. Only the file
+operations (`saveFile` / `openFile` / `describeFile`) consult it — they address
+exactly one row and are already asynchronous. All members are static.
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `register` | `static void register(String authKey, TomRowColumnAuthResolver resolver)` | Registers (or replaces) the per-row grade source for `authKey`. |
+| `isRegistered` | `static bool isRegistered(String? authKey)` | Whether `authKey` has a per-row resolver — the read mask skips such columns. |
+| `resolve` | `static Future<TomAuthState?> resolve(String? authKey, Object? rowId)` | The per-row grade, or `null` when the column is unrestricted or has no resolver. |
+| `reset` | `static void reset()` | Clears every registration (tests, re-boot). |
 
 #### TomDataScopeRegistry
 
@@ -1123,10 +1142,11 @@ None — this module declares no enums.
 ## Global Functions and Constants
 
 None — this module exposes no top-level functions or constants. It does declare
-three top-level typedefs used by the scoping/authorization APIs:
+four top-level typedefs used by the scoping/authorization APIs:
 
 | Typedef | Definition | Source |
 | ------- | ---------- | ------ |
 | `TomColumnAuthResolver` | `TomAuthState Function(String authKey)` | `column_authorization.dart` |
+| `TomRowColumnAuthResolver` | `Future<TomAuthState> Function(TomPrincipal? principal, Object? rowId)` | `column_authorization.dart` |
 | `TomDataScopeResolver` | `List<Object?>? Function(TomPrincipal? principal)` | `data_scope.dart` |
 | `TomAsyncDataScopeResolver` | `Future<List<List<Object?>>?> Function(TomPrincipal? principal)` | `data_scope.dart` |

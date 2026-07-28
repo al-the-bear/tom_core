@@ -2,15 +2,17 @@
 
 *Part 12 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
-This is the last spine part. [Part 10](README_advanced_10_servers_endpoints.md)
-showed the secured servers and [Part 11](README_advanced_11_clients_app_admin.md)
-the two clients that consume them. This part is how the whole sample *proves
+[Part 10](README_advanced_10_servers_endpoints.md) showed the secured servers and
+[Part 11](README_advanced_11_clients_app_admin.md) the two clients that consume
+them. This part is how the whole sample *proves
 itself*: a layered test strategy that keeps the everyday suites fast and
 socket-free, plus one scripted run that boots the real stack end-to-end. The
 two ideas the guide rests on — server-delivered texts and authorization-driven
 field grades — are not described and trusted here, they are **asserted**: a
 sentinel suffix proves a label came from the server bundle, and a four-role
 matrix proves the same widget renders differently per principal.
+[Part 13](README_advanced_13_file_transfer.md) then follows a single feature —
+file transfer — through every layer this part tests.
 
 ## Test strategy across the seven packages
 
@@ -23,8 +25,8 @@ against the seam directly below it — never against a live socket:
 | `advanced_todo_contracts` | the wire DTOs serialize/deserialize and the typed service interfaces match the registry |
 | `advanced_client_core` | the Flutter-free client core: auth/token storage, the shared transport, error normalisation (+ the live cross-tier, login and file-transfer scenarios, below) |
 | `advanced_auth_server` | the JWT issuer, the role gate, and the admin grant/assignment API against an in-process datasource |
-| `advanced_app_server` | the secured task API: the ownership-or-share resolver, the four-state field-grade resolver, and the write enforcement |
-| `advanced_app_client` | the end-user widgets bound to the **in-memory** backend fake — the four-role render matrix and the sentinel render proof |
+| `advanced_app_server` | the secured task API: the ownership-or-share resolver, the four-state field-grade resolver, the write enforcement, and the per-row column grade + file-column declarations behind the file slots |
+| `advanced_app_client` | the end-user widgets bound to the **in-memory** backend fake — the four-role render matrix, the sentinel render proof, and the graded attachment field |
 | `advanced_authadmin_client` | the admin console widgets against the **in-memory** admin fake — CRUD drafts, two-phase login, the grant-matrix editor |
 
 The discipline that makes this work is the **injected backend seam**
@@ -107,9 +109,9 @@ driven by the one script `advanced_client_core/tool/run_cross_tier_integration.s
 
 | Suite | What only a live stack can show |
 | --- | --- |
-| `cross_tier_integration_test.dart` (**TC-37-01…08**) | the two servers' authorization agreeing across the database boundary |
+| `cross_tier_integration_test.dart` (**TC-37-01…09**) | the two servers' authorization agreeing across the database boundary — including at the file endpoint |
 | `auth_client_integration_test.dart` (**TC-22-11/12**) | a real login, including the two-pass 2FA exchange |
-| `file_transfer_integration_test.dart` (**TC-FT-01…04**) | bytes moving through both blob stores, and the closed/anonymous refusals |
+| `file_transfer_integration_test.dart` (**TC-FT-01…05**) | bytes moving through both blob stores, the closed/anonymous refusals, and a read-only column grade |
 
 The runner is one scripted command for the Phase-7 "scenario passes end-to-end"
 bar:
@@ -131,7 +133,8 @@ bar:
 4. **Run the three suites** against the live stack and tear everything down via
    an `EXIT` trap that dumps the server logs on any non-zero exit.
 
-The cross-tier scenario itself walks the two cross-tier authorization mechanisms:
+The cross-tier scenario itself walks the three cross-tier authorization
+mechanisms:
 
 - **An admin grant edit reaches the end-user's field matrix.** The `admin` edits
   the `viewer` role's `todo.item.title` grant through the auth server's
@@ -144,17 +147,27 @@ The cross-tier scenario itself walks the two cross-tier authorization mechanisms
 - **A share reveals a project to a second user.** `alice` creates a project,
   `bob` cannot list it, `alice` shares it as `editor`, and `bob` then lists it —
   the ownership-or-share resolver in action over the live wire.
+- **An admin grant edit reaches the *file* endpoint** (**TC-37-09**). The same
+  `PUT /admin/grants` narrows `owner`'s grade on the item's `attachment` column
+  from `full` to `read`; alice, who owns the item, keeps the download and is
+  refused the upload; restoring the cell gives it back. The beat proves the
+  grade governing bytes is the grant row an administrator already edits — not a
+  file-specific permission model — and it is why file transfer belongs in this
+  sample rather than in a framework example
+  ([Part 13](README_advanced_13_file_transfer.md)).
 
 The **file-transfer** suite is the one that cannot be faked at all: it asserts
 that a byte stream posted by a client lands in a blob store, that the row's key
 column is updated, and that a later `GET` hands the same bytes back — six layers
 agreeing at once (client → endpoint → repository → column grade → blob store →
-database). It also makes the two negative claims the feature exists to guarantee:
-a column that never said `exposed` is **not addressable** (asserted beside a
-reachable neighbour on the same row, by the same principal, so a 404 cannot be
-mistaken for an unreachable row), and an **unauthenticated** caller is refused by
-the endpoint's own gate on both servers. Each test restores the slot it used, so
-the suite is re-runnable against the same databases.
+database). It also makes the three negative claims the feature exists to
+guarantee, one per refusal layer: a column that never said `exposed` is **not
+addressable** (asserted beside a reachable neighbour on the same row, by the same
+principal, so a 404 cannot be mistaken for an unreachable row); an
+**unauthenticated** caller is refused by the endpoint's own gate on both servers;
+and a principal whose **column grade is `read`** is served the complete bytes yet
+refused both the replace and the delete (TC-FT-05). Each test restores the slot
+it used, so the suite is re-runnable against the same databases.
 
 Because the servers' host ports may be held by an unrelated service, the runner
 guards 8080/8081 with a preflight (`assert_ports_free`) and refuses to start
@@ -189,20 +202,20 @@ Current green-gate counts (runtime, the authoritative figure):
 | Package | Tests |
 | --- | --- |
 | `advanced_todo_domain` | 24 |
-| `advanced_todo_contracts` | 38 |
-| `advanced_client_core` | 51 (+16 live-stack tests that skip without the servers) |
-| `advanced_auth_server` | 77 |
-| `advanced_app_server` | 94 |
-| `advanced_app_client` | 44 |
-| `advanced_authadmin_client` | 60 |
+| `advanced_todo_contracts` | 45 |
+| `advanced_client_core` | 63 (+18 live-stack tests that skip without the servers) |
+| `advanced_auth_server` | 81 |
+| `advanced_app_server` | 115 |
+| `advanced_app_client` | 54 |
+| `advanced_authadmin_client` | 67 |
 
-`advanced_client_core`'s 16 skips are not a shortfall — they are the suites that
+`advanced_client_core`'s 18 skips are not a shortfall — they are the suites that
 only a booted stack can answer, and the runner turns each of them green:
-`cross_tier` 8, `file_transfer` 4, `auth_client` 2, plus one apiece in
+`cross_tier` 9, `file_transfer` 5, `auth_client` 2, plus one apiece in
 `admin_api_client_integration_test.dart` and `app_api_client_integration_test.dart`.
 
-> A static grep of `app_server` finds 91 `test()`/`testWidgets()` calls against
-> the runtime 94, because several suites emit tests from a loop (e.g.
+> A static grep of `app_server` finds 112 `test()`/`testWidgets()` calls against
+> the runtime 115, because several suites emit tests from a loop (e.g.
 > `field_grade_resolver_test.dart` over `ProjectRole.values`,
 > `resource_bundle_endpoint_test.dart` over the gradable item field tokens,
 > `app_share_endpoints_test.dart` over the not-found keys). The **runtime** count
@@ -218,4 +231,4 @@ only a booted stack can answer, and the runner turns each of them green:
 
 ---
 
-← Prev: [11 · The two Flutter clients](README_advanced_11_clients_app_admin.md) · Next: [A1 · Four-state authorization deep dive](README_advanced_A1_authorization_state_machine.md) →
+← Prev: [11 · The two Flutter clients](README_advanced_11_clients_app_admin.md) · Next: [13 · File transfer under the authorization matrix](README_advanced_13_file_transfer.md) →

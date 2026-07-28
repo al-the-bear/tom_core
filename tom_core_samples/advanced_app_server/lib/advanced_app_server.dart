@@ -11,6 +11,7 @@
 /// package's stable public entry point.
 library;
 
+export 'src/access/column_grade_resolver.dart';
 export 'src/access/field_grade_resolver.dart';
 export 'src/access/ownership_grant_writer.dart';
 export 'src/access/resource_role_resolver.dart';

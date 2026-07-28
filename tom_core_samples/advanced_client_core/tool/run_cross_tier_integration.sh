@@ -5,8 +5,9 @@
 # integration test (step 37) against it and tears everything down again.
 #
 # One scripted command for the Phase-7 "scripted scenario passes end-to-end"
-# done bar: an admin grant edit reaching the end-user's field matrix, and a
-# share revealing a project to a second user.
+# done bar: an admin grant edit reaching the end-user's field matrix, a share
+# revealing a project to a second user, and the same admin edit reaching the
+# file endpoint — one grant cell deciding whether bytes may be written.
 #
 #   tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh
 #
@@ -188,7 +189,11 @@ wait_app_health
 #    Three suites, because they prove different things and any can break alone:
 #      - cross_tier_integration_test  — the admin→end-user authorization loop
 #        (step 37): a grant edit reaching the field matrix, a share revealing a
-#        project to a second user.
+#        project to a second user, and — the file step — a grant edit reaching
+#        the *file endpoint*, where narrowing one `tom_resource_grant` cell takes
+#        the upload away from the owner of the row and restoring it gives it
+#        back (TC-37-09). That beat is what makes file transfer part of this
+#        sample's authorization story rather than a feature bolted beside it.
 #      - auth_client_integration_test — the login paths themselves (step 22 +
 #        csex3), including dave's two-pass TOTP login. It is the only run in
 #        which the real client, the real server and a secret read from the
@@ -196,9 +201,11 @@ wait_app_health
 #        halves of the 2FA flow disagreeing on the wire.
 #      - file_transfer_integration_test — bytes moving across both servers: an
 #        upload landing in each server's own blob store and being served back,
-#        and the non-exposed file column staying unaddressable. Nothing short of
-#        a running stack can show a client, an endpoint, a column grade, a blob
-#        store and a database agreeing about one file.
+#        the non-exposed file column staying unaddressable, and a principal whose
+#        C-4 grade on the column is `read` getting the download while the upload
+#        and the delete are refused. Nothing short of a running stack can show a
+#        client, an endpoint, a column grade, a blob store and a database
+#        agreeing about one file.
 run_live_suite() {
   local label="$1" path="$2" output status
   log "Running $label"

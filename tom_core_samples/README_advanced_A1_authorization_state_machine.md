@@ -246,4 +246,4 @@ for a commenter still has its write rejected.
 
 ---
 
-← Prev: [12 · Testing & cross-tier integration](README_advanced_12_testing_integration.md) · Next: [A2 · Scope, basePath & resource-key conventions](README_advanced_A2_resource_scope_conventions.md) →
+← Prev: [13 · File transfer under the authorization matrix](README_advanced_13_file_transfer.md) · Next: [A2 · Scope, basePath & resource-key conventions](README_advanced_A2_resource_scope_conventions.md) →

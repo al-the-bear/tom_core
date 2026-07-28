@@ -158,6 +158,14 @@ class TomColumnAuthorization {
   /// `null`); an entity opts a column into masking by declaring its
   /// [TomDbColumn.authKey], and such columns are modelled nullable so the value
   /// can be withheld.
+  ///
+  /// A column with a per-row resolver ([TomRowColumnAuthorization]) is skipped:
+  /// its grade is not a column-wide fact, and a row projection — one
+  /// synchronous answer applied to a whole result set — has no authority to
+  /// decide it. Such a column is gated where its grade can actually be
+  /// resolved, in the file operations that address a single row. Masking it
+  /// here would additionally be self-defeating: the masked value *is* the blob
+  /// key the gate then needs to read.
   static T applyReadMask<T extends Object>(
     T instance,
     List<TomColumnInformation> columns, {
@@ -165,7 +173,10 @@ class TomColumnAuthorization {
   }) {
     final masked = maskedColumns<TomColumnInformation>(
       columns: columns,
-      keyOf: (column) => column.column?.authKey,
+      keyOf: (column) {
+        final authKey = column.column?.authKey;
+        return TomRowColumnAuthorization.isRegistered(authKey) ? null : authKey;
+      },
       resolver: resolver,
     );
     for (final column in masked) {
@@ -173,4 +184,78 @@ class TomColumnAuthorization {
     }
     return instance;
   }
+}
+
+/// Resolves the [TomAuthState] a [principal] holds on one authorized column **of
+/// a specific row**, asynchronously.
+///
+/// [rowId] is the row's primary key as the repository read it; a `null` id means
+/// the row does not exist yet (an insert).
+typedef TomRowColumnAuthResolver = Future<TomAuthState> Function(
+  TomPrincipal? principal,
+  Object? rowId,
+);
+
+/// Per-row column grades (C-4), for columns whose grade depends on *which row*
+/// is addressed rather than only on who is asking.
+///
+/// [TomColumnAuthorization] resolves a column's `authKey` through the
+/// process-wide [TomAuthorization] singleton, which is a pure `key → state`
+/// function: it can express "this principal may not see salaries", but not "this
+/// principal may edit the attachment of the items in the project they own and
+/// only read the ones in a project shared with them". A deployment whose grades
+/// are *relational* — derived from the caller's role on the row's owning
+/// aggregate — cannot be expressed that way, and cannot be computed
+/// synchronously either, because the role lives in another table.
+///
+/// This registry is the column-grade counterpart of
+/// [TomDataScopeRegistry.registerAsync]: a resolver is registered once at boot
+/// against the column's `authKey`, and is awaited per operation with the current
+/// principal and the row's id. Registration is process-wide and the resolver is
+/// stateless by contract — it reads the request's principal from its argument,
+/// never from a field — so one registration serves every concurrent request.
+///
+/// **Only the file operations consult it.** `saveFile`, `openFile` and
+/// `describeFile` each address exactly one row and are already asynchronous, so
+/// awaiting a grade there costs nothing extra. The row-projection paths
+/// ([applyReadMask], [decideWrites]) are synchronous and operate on whole result
+/// sets, and are deliberately left on the column-wide resolution: a per-row
+/// grade there would mean a cross-table read per row per column.
+///
+/// ```dart
+/// // At boot:
+/// TomRowColumnAuthorization.register(
+///   'todo.item.attachment',
+///   (principal, rowId) => grades.attachmentGradeFor(principal, rowId),
+/// );
+/// ```
+class TomRowColumnAuthorization {
+  TomRowColumnAuthorization._();
+
+  static final Map<String, TomRowColumnAuthResolver> _resolvers = {};
+
+  /// Registers [resolver] as the per-row grade source for [authKey], replacing
+  /// any previous registration for that key.
+  static void register(String authKey, TomRowColumnAuthResolver resolver) =>
+      _resolvers[authKey] = resolver;
+
+  /// Whether [authKey] has a per-row resolver registered.
+  static bool isRegistered(String? authKey) =>
+      authKey != null && _resolvers.containsKey(authKey);
+
+  /// The per-row grade for [authKey] on the row keyed by [rowId], or `null` when
+  /// the column is unrestricted (`authKey == null`) or has no per-row resolver —
+  /// in which case the caller keeps its own column-wide resolution.
+  ///
+  /// The principal is read from the current zone, exactly as the C-3 row scope
+  /// reads it, so a resolver sees the same caller the rest of the request does.
+  static Future<TomAuthState?> resolve(String? authKey, Object? rowId) async {
+    if (authKey == null) return null;
+    final resolver = _resolvers[authKey];
+    if (resolver == null) return null;
+    return resolver(getFromCurrentZone<TomPrincipal>(), rowId);
+  }
+
+  /// Clears every registration. Intended for tests and for a re-boot.
+  static void reset() => _resolvers.clear();
 }

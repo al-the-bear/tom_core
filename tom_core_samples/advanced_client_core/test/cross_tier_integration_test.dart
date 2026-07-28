@@ -74,6 +74,16 @@
 ///    repository refuses the write — mapped to 403 by the app server's
 ///    `appForbiddenOrNotFound`. It is the live end-to-end counterpart RCB9 adds
 ///    because TC-37-05's rejection is only the service-layer `app.access.forbidden`.
+///  - [TC-37-09] **the admin grant edit reaches the *file* endpoint too.** The
+///    admin narrows the `owner` role's `todo.item.attachment` grade from `full`
+///    to `read`; `alice`, who owns item 1, keeps the download and loses the
+///    upload (HTTP 403); restoring the grade restores the upload. This is beat 1
+///    of TC-37-01 applied to bytes instead of a form field, and it is what makes
+///    the file feature part of this sample's thesis rather than a feature demo:
+///    the same table, the same admin API, the same console screen, resolved per
+///    row at the file endpoint. The role-relative half (a `viewer` downloads and
+///    is refused the upload) is asserted by `file_transfer_integration_test.dart`
+///    TC-FT-05; this test asserts the *editability* half.
 ///
 /// **Why the grant edit writes the whole `viewer` row.** `adminPutGrants`
 /// replaces grants *per role* (`replaceGrantsForRole`), and `adminGetGrants`
@@ -103,6 +113,7 @@
 /// when an operator brings the stack up.
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
@@ -125,6 +136,10 @@ const _bobUserId = '3';
 const _aliceWorkspaceId = '1';
 const _carolItemId = '1';
 const _titleKey = 'todo.item.title';
+
+/// Item 1's attachment slot, as `<table>/<id>/<column>` — the file column
+/// TC-37-09 regrades through the admin API.
+const _attachmentSlot = 'app_items/1/attachment';
 
 // The seeded C-6 share the RCC5 delegation check revokes and restores: row id 1
 // in `[003]-auth_demo_seed` is alice(2) → bob(3) `editor` on `project:1`. The id
@@ -524,7 +539,110 @@ void main() {
         c.transport.close();
       }
     });
+
+    test(
+        'TC-37-09: an admin grant edit reaches the file endpoint — narrowing '
+        "the owner's attachment grade takes away her upload", () async {
+      // The file step of the cross-tier loop, and the reason the file feature
+      // belongs in *this* sample rather than in a framework example: the grade
+      // that decides whether bytes may be written is not a file-specific
+      // permission model but the very `tom_resource_grant` row TC-37-01 edits
+      // for a form field, through the same admin API and the same console
+      // screen. The app server resolves it per row at the file endpoint, so an
+      // administrator narrowing one cell changes what an *owner* may do with her
+      // own attachment — without a redeploy, a restart, or a line of code.
+      final c = _liveClients();
+      final files = ioFileTransferClient(Uri.parse(_appBaseUri));
+      var uploaded = false;
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // --- Beat 1: admin normalises owner.attachment -> full (the seed). ---
+        await c.auth.login(_adminLogin);
+        await c.admin.putGrants(_ownerRow(TomAuthState.full));
+
+        // --- Beat 2: alice owns item 1 and may write its attachment. ---
+        await c.auth.login(_aliceLogin);
+        final bytes = utf8.encode('uploaded while the owner was graded full');
+        final stored = await files.upload(
+          slot: _attachmentSlot,
+          source: TomFileSource.bytes('cross-tier.txt', bytes,
+              mediaType: 'text/plain'),
+        );
+        uploaded = true;
+        expect(stored.byteCount, equals(bytes.length));
+
+        // --- Beat 3: admin narrows owner.attachment -> read. ---
+        await c.auth.login(_adminLogin);
+        await c.admin.putGrants(_ownerRow(TomAuthState.read));
+
+        // --- Beat 4: the same principal, the same row, the same slot — the
+        //     download still works and the upload is now refused. ---
+        await c.auth.login(_aliceLogin);
+        expect(await _downloadAll(files, _attachmentSlot), equals(bytes),
+            reason: 'a read grade still serves the file — the edit took away '
+                'the write, not the row');
+        await expectLater(
+          files.upload(
+            slot: _attachmentSlot,
+            source: TomFileSource.bytes('denied.txt', utf8.encode('nope')),
+          ),
+          throwsA(isA<TomFileTransferException>()
+              .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
+          reason: 'the admin edit reached the file endpoint: the owner of the '
+              'item may no longer replace its attachment',
+        );
+
+        // --- Beat 5: restore the grade and the upload works again, proving
+        //     beat 4's refusal was the grant row and nothing else. ---
+        await c.auth.login(_adminLogin);
+        await c.admin.putGrants(_ownerRow(TomAuthState.full));
+        await c.auth.login(_aliceLogin);
+        final again = await files.upload(
+          slot: _attachmentSlot,
+          source: TomFileSource.bytes('restored.txt',
+              utf8.encode('and again once the grade came back')),
+        );
+        expect(again.key, isNotEmpty);
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        try {
+          // Leave both databases as seeded: the grant row back at `full`, the
+          // slot empty. Order matters — the clear needs the restored grade.
+          await c.auth.login(_adminLogin);
+          await c.admin.putGrants(_ownerRow(TomAuthState.full));
+          if (uploaded) {
+            await c.auth.login(_aliceLogin);
+            await files.remove(_attachmentSlot);
+          }
+        } on SocketException {
+          // Servers unreachable — nothing to restore.
+        } finally {
+          files.close();
+          c.transport.close();
+        }
+      }
+    });
   });
+}
+
+/// Every byte [slot] serves, or `null` when the slot holds no file.
+Future<List<int>?> _downloadAll(
+  TomFileTransferClient files,
+  String slot,
+) async {
+  final received = <int>[];
+  try {
+    await for (final chunk in files.download(slot)) {
+      received.addAll(chunk);
+    }
+  } on TomFileTransferException catch (e) {
+    if (e.key == 'file_transfer.not_found') return null;
+    rethrow;
+  }
+  return received;
 }
 
 /// One live transport plus the auth/admin/app clients that share it — the
@@ -578,7 +696,13 @@ Future<TodoItem?> _findVisibleItem(AppApiClient app, String itemId) async {
 ///
 /// Posting the whole row (not just the one cell) is deliberate:
 /// `adminPutGrants` replaces a role's grants wholesale, so a partial row would
-/// drop the other six fields. See the library doc.
+/// drop the other seven grants. See the library doc.
+///
+/// The **attachment** grant is part of that row and must be posted with it: it
+/// is the same table and the same role, so omitting it here would silently
+/// revoke the viewer's file access — leaving carol graded `none` and refused
+/// even the download that TC-FT-05 asserts she gets, in a suite that never
+/// mentions files.
 GrantMatrixDto _viewerRow(TomAuthState title) => GrantMatrixDto.fromGrades({
       'viewer': [
         GradedFieldDto(resourceKey: _titleKey, access: title),
@@ -594,5 +718,23 @@ GrantMatrixDto _viewerRow(TomAuthState title) => GrantMatrixDto.fromGrades({
             resourceKey: 'todo.item.estimate', access: TomAuthState.none),
         GradedFieldDto(
             resourceKey: 'todo.item.description', access: TomAuthState.read),
+        GradedFieldDto(
+            resourceKey: itemAttachmentGradeKey, access: TomAuthState.read),
+      ],
+    });
+
+/// The complete `owner` row from the §A.4 seed — every gradable field `full` —
+/// with the item's **file column** graded [attachment].
+///
+/// The same wholesale-replace caveat as [_viewerRow]: the seven field grants are
+/// posted alongside the one cell TC-37-09 moves, so narrowing the attachment
+/// leaves the owner's fields exactly as seeded and the beat under test is the
+/// file grade alone.
+GrantMatrixDto _ownerRow(TomAuthState attachment) => GrantMatrixDto.fromGrades({
+      ProjectRole.owner.name: [
+        for (final key in gradableItemKeys)
+          GradedFieldDto(resourceKey: key, access: TomAuthState.full),
+        GradedFieldDto(
+            resourceKey: itemAttachmentGradeKey, access: attachment),
       ],
     });

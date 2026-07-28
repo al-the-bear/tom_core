@@ -1,12 +1,22 @@
 /// Widget tests for the item attachment — the file half of the end-user app.
 ///
-/// The item's file is not an eighth graded field: it is a **slot** on the
-/// server, moved by [AppBackend.files] rather than by [AppBackend.saveItem],
-/// worded under `board.item.attachment.*` and authorized by the item's resource
-/// state. These tests hold that shape in place from both ends — the detail
-/// screen (pick → upload → progress → download → clear, and a viewer who may do
-/// none of it) and the board (paperclip exactly the items that have a file, and
-/// hand the detail screen the descriptor it already fetched).
+/// The item's file is not an eighth form field: it is a **slot** on the server,
+/// moved by [AppBackend.files] rather than by [AppBackend.saveItem] and worded
+/// under `board.item.attachment.*`. Its authorization, however, is the same
+/// story as every field's — the item's resource ceiling narrowed by the role's
+/// grade, here [projectRoleAttachmentGrades] rather than
+/// `projectRoleFieldGrades`. These tests hold both halves of that shape in place
+/// from both ends: the detail screen (pick → upload → progress → download →
+/// clear; an editor who may replace the file, a viewer who may only see it, and
+/// no field at all when the resource ceiling cannot be resolved) and the board
+/// (paperclip exactly the items that have a file, and hand the detail screen the
+/// descriptor it already fetched).
+///
+/// What these cannot show is whether the **server** agrees: the shaping here is
+/// cooperation, and the binding answer is the app server's per-row grade at the
+/// file endpoint. That half is asserted live by `advanced_client_core`'s
+/// `file_transfer_integration_test.dart` (TC-FT-05) and by the cross-tier runner
+/// (TC-37-09).
 ///
 /// Socket-free, like the rest of the suite: the seeded [InMemoryAppBackend]
 /// carries the kernel's own [TomMemoryFileTransferClient], so the field runs its
@@ -27,7 +37,7 @@ import 'package:advanced_app_client/screens/board_screen.dart';
 import 'package:advanced_app_client/screens/item_detail_screen.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show ProjectRole, registerProjectRoleVocabulary;
+    show ProjectRole, projectRoleAttachmentGrades, registerProjectRoleVocabulary;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -249,6 +259,46 @@ void main() {
       ),
     );
     expect(choose.onPressed, isNull);
+  });
+
+  testWidgets(
+      'TC-D13-01: an editor keeps the picker — the attachment grade follows '
+      'the role, not the field set', (tester) async {
+    // The complement of TC-D12-05, and the reason the field consults
+    // `projectRoleAttachmentGrades` rather than assuming the resource ceiling:
+    // an editor and a viewer are *both* below the owner, and the matrix says one
+    // may replace the file and the other may not. Regrading `editor` to `read`
+    // in the shared matrix would close this picker and fail here — which is what
+    // makes the map load-bearing on the client instead of decorative.
+    await openDetail(tester, 'carol', shareCarolAs: ProjectRole.editor);
+
+    final choose = tester.widget<OutlinedButton>(
+      find.ancestor(
+        of: find.text('Choose file…'),
+        matching: find.byType(OutlinedButton),
+      ),
+    );
+    expect(choose.onPressed, isNotNull,
+        reason: 'the editor row of the attachment matrix is `full`');
+  });
+
+  testWidgets(
+      'TC-D13-02: without the resource-role registry the attachment collapses '
+      'entirely', (tester) async {
+    // The closed-safe floor, and the thing the composition exists to preserve:
+    // the attachment's state is the item's *resource ceiling* narrowed by the
+    // role's grade, so an unresolvable ceiling closes the field no matter what
+    // the grade map says. Dropping the registry is how a real deployment reaches
+    // that state (a role name the vocabulary does not know), and the answer must
+    // be "no field", not "an owner's field".
+    TomResourceRoleRegistry.reset();
+
+    await openDetail(tester, 'alice');
+
+    expect(find.text('Attachment'), findsNothing,
+        reason: 'resource state `none` hides the field, exactly as it hides an '
+            'ungraded form field');
+    expect(find.text('Choose file…'), findsNothing);
   });
 
   testWidgets('TC-D12-06: the board paperclips exactly the items with a file',

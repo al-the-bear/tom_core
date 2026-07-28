@@ -224,8 +224,24 @@ side door into the C-grade model:
 3. **Row scope (C-3)** — may *this* principal have this row? The app's
    `@TomDbScope`d entities filter the row away, and an unreachable row is a 404.
 4. **Column grade (C-4)** — may this principal read/write *this field*? A column
-   graded `none` answers **403** (`column_authorization.read.field_forbidden`),
-   because here the caller's right to the row is not in question.
+   graded below `full` answers **403**
+   (`column_authorization.{read,write}.field_forbidden`), because here the
+   caller's right to the row is not in question.
+
+Check 4 is where the app server's attachment stops being merely authenticated and
+becomes **authorized**. `@TomDbColumn(authKey: itemAttachmentGradeKey)` names the
+grade, and boot registers a *per-row* resolver for that key
+(`registerAppColumnGrades` → `TomRowColumnAuthorization`), because the grade is
+both per request and per row: alice may replace the attachment on an item she owns
+and only download the one in a project shared with her as a viewer. The resolver
+is the app server's existing two layers composed — the caller's `ProjectRole` on
+`item:<id>`, then that role's grade for `todo.item.attachment` in the seeded
+`tom_resource_grant` matrix — so an administrator narrowing that one cell changes
+what an owner may do with a *file*, through the same console and API that already
+govern the item's form fields. Without the `authKey` the column would fall back to
+the process-global `TomAuthorization`, which answers `full` for everyone when no
+adapter is installed. Part [13](README_advanced_13_file_transfer.md) follows the
+whole path.
 
 Uploads stream. The endpoint declares `consumes: octet-stream` precisely so the
 pipeline does **not** materialise the body — it reads a request into a string only
@@ -275,6 +291,7 @@ demo-password seed):
 | bean context | `initializeBeanContext()` | instantiates the `@tomComponent` services |
 | migrations | `migrateDatabases(...)` | brings the schema + seed data up before serving |
 | seed | `seedDemoPasswords()` *(auth only)* | fills demo passwords onto the password-less seed rows so the README `curl`s can log in |
+| access registries *(app only)* | `registerAppDataScopes()`, `registerAppColumnGrades()` | installs the C-3 row scopes and the per-row C-4 column grades; both eagerly build their production resolvers, so both **must follow reflection and the datasource init** |
 | file slots | `TomFileSlots.register(...)` | publishes the exposed file columns; needs reflection and the store registry in place, and must precede serving |
 | serve | `TomServer.start()` | binds the socket; installs the default auth middleware |
 

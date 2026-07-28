@@ -646,6 +646,108 @@ void main() async {
         expect(blobs.textOf(secretKey), 'classified');
       });
 
+      test('a per-row resolver grades the same column differently on two rows',
+          () async {
+        // The column-wide adapter above can say "nobody may write secret
+        // attachments". It cannot say "you may write the one on the row you
+        // own and only read the one on the row shared with you" — that grade
+        // is a property of the (principal, row) pair, and it is what a
+        // relational deployment actually has. `TomRowColumnAuthorization` is
+        // the seam for it; the file operations are the only paths that consult
+        // it, because they are the only ones that address a single row and can
+        // afford to await.
+        final writable = await repo.saveFile(
+          _document('row-writable'),
+          'secretAttachment',
+          _text('mine'),
+        );
+        final readOnly = await repo.saveFile(
+          _document('row-readonly'),
+          'secretAttachment',
+          _text('theirs'),
+        );
+
+        TomRowColumnAuthorization.register(
+          authKey,
+          (principal, rowId) async =>
+              rowId == writable.id ? TomAuthState.full : TomAuthState.read,
+        );
+        addTearDown(TomRowColumnAuthorization.reset);
+
+        // The read-only row downloads — `read` shows content …
+        expect(
+          utf8.decode(await repo
+              .openFile(readOnly.id!, 'secretAttachment')
+              .expand((c) => c)
+              .toList()),
+          'theirs',
+        );
+        // … and refuses the upload, because `read` is not interactive.
+        await expectLater(
+          repo.saveFile(readOnly, 'secretAttachment', _text('overwrite')),
+          throwsA(isA<TomColumnAuthorizationException>().having(
+            (e) => e.key,
+            'key',
+            'column_authorization.write.field_forbidden',
+          )),
+        );
+        // … and refuses the *clear*, which is the write that would otherwise
+        // slip through: `clearFile` delegates to `save`, and `save` grades the
+        // column column-wide — which is not the answer for a per-row column. A
+        // principal allowed only to download the file must not be able to
+        // destroy it.
+        await expectLater(
+          repo.clearFile(readOnly, 'secretAttachment'),
+          throwsA(isA<TomColumnAuthorizationException>().having(
+            (e) => e.key,
+            'key',
+            'column_authorization.write.field_forbidden',
+          )),
+        );
+        expect(
+          blobs.textOf(readOnly.secretAttachment!),
+          'theirs',
+          reason: 'the refused clear left the stored blob untouched',
+        );
+
+        // The writable row, same column, same principal: the upload lands.
+        final replaced =
+            await repo.saveFile(writable, 'secretAttachment', _text('replaced'));
+        expect(blobs.textOf(replaced.secretAttachment!), 'replaced');
+      });
+
+      test('a per-row resolver overrides the column-wide adapter, and the row '
+          'projection stops masking the column', () async {
+        // Precedence matters and must not be accidental: a registered per-row
+        // resolver is the answer, not a fallback consulted when the global
+        // adapter is silent. The read mask has to step aside with it — a
+        // projection grades a whole result set with one synchronous answer, so
+        // it cannot decide a per-row grade, and the value it would null out is
+        // the very blob key the row-level gate then needs to read.
+        final saved = await repo.saveFile(
+          _document('precedence'),
+          'secretAttachment',
+          _text('classified'),
+        );
+        TomAuthorization.adapter = _GradeAdapter({authKey: TomAuthState.none});
+        TomRowColumnAuthorization.register(
+          authKey,
+          (principal, rowId) async => TomAuthState.read,
+        );
+        addTearDown(TomRowColumnAuthorization.reset);
+
+        final reloaded = await repo.findById(saved.id!);
+        expect(reloaded!.secretAttachment, saved.secretAttachment,
+            reason: 'the column-wide `none` no longer masks a per-row column');
+        expect(
+          utf8.decode(await repo
+              .openFile(saved.id!, 'secretAttachment')
+              .expand((c) => c)
+              .toList()),
+          'classified',
+        );
+      });
+
       test('an unrestricted column is unaffected by a grade on its sibling',
           () async {
         var saved = await repo.saveFile(

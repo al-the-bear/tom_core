@@ -17,6 +17,12 @@
 /// resource-level ceiling, the narrow is an identity over this matrix — so the
 /// composition reproduces §A.4 exactly while making the registry the load-bearing
 /// resource-level gate (no role → resource state `none` → every field collapses).
+///
+/// The same vocabulary carries one graded key that is **not** a form field:
+/// [itemAttachmentGradeKey], the item's file column. It is graded per role like
+/// the fields are, but enforced on the file endpoint rather than in the item
+/// payload — see [projectRoleAttachmentGrades] for why the distinction is
+/// load-bearing.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -94,3 +100,40 @@ const List<String> gradableItemKeys = [
   'todo.item.estimate',
   'todo.item.description',
 ];
+
+/// The C-4 resource key of the item's **attachment column** — the graded file
+/// column behind the slot `app_items/<id>/attachment`.
+///
+/// Deliberately *not* a member of [gradableItemKeys], because it is not a form
+/// field. The keys in that list name JSON members a client sends back in an item
+/// payload; this one names a **blob-key column** which no client may ever write
+/// directly — the key is minted server-side by `saveFile`, and a caller able to
+/// write it would repoint their row at somebody else's bytes. Keeping it out of
+/// the gradable field set is what keeps it out of the item write path's
+/// overlay; it is graded on the *file endpoint* instead, where the only thing a
+/// caller can supply is bytes.
+const String itemAttachmentGradeKey = 'todo.item.attachment';
+
+/// The per-role grade of the attachment column ([itemAttachmentGradeKey]).
+///
+/// | role      | attachment | meaning                                  |
+/// | --------- | ---------- | ---------------------------------------- |
+/// | owner     | full       | download and replace                     |
+/// | editor    | full       | download and replace                     |
+/// | commenter | read       | download only — the upload is refused    |
+/// | viewer    | read       | download only — the upload is refused    |
+///
+/// This is the **client's** copy of the default, used to shape the attachment
+/// field; the *authoritative* copy is the `tom_resource_grant` row the auth
+/// server seeds and the authadmin console edits, which the app server resolves
+/// per row at the file endpoint. The two are seeded identically and may then
+/// diverge — an administrator who narrows `owner` to `read` changes the server's
+/// answer, not this map, and the server's answer is the binding one. That is
+/// exactly the duality [projectRoleFieldGrades] already has, and the reason the
+/// client's shaping is cooperation rather than enforcement.
+const Map<ProjectRole, TomAuthState> projectRoleAttachmentGrades = {
+  ProjectRole.owner: TomAuthState.full,
+  ProjectRole.editor: TomAuthState.full,
+  ProjectRole.commenter: TomAuthState.read,
+  ProjectRole.viewer: TomAuthState.read,
+};

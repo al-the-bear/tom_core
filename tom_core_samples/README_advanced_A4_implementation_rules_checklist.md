@@ -9,7 +9,8 @@ is *made true* — kernel / `tom_flutter_ui` / `tom_core_server`) and **(b)** a
 sample site you can copy from. Nothing here is new: it consolidates what
 [07](README_advanced_07_authorization.md),
 [08](README_advanced_08_resources_texts.md),
-[09](README_advanced_09_forms_ui.md), [A1](README_advanced_A1_authorization_state_machine.md),
+[09](README_advanced_09_forms_ui.md), [13](README_advanced_13_file_transfer.md),
+[A1](README_advanced_A1_authorization_state_machine.md),
 [A2](README_advanced_A2_resource_scope_conventions.md), and
 [A3](README_advanced_A3_request_lifecycle.md) establish, so you can verify a rule
 holds without re-reading the prose.
@@ -45,6 +46,20 @@ is already "doing it the tom_core way":
 - [ ] **Default closed.** Unknown/absent grade ⇒ `TomAuthState.none` (hidden), enforced at three independent points: the resource adapter (an ungranted `<type>:<id>` key → `none`), a `roleName` with no matching `ProjectRole` → `none`, and the client per-field narrow (`projectRoleFieldGrades[role][basePath] ?? none`). The server WRITE-path resolver (`field_grade_resolver.dart:73-80`) defaults the same. → D-A4, [A1](README_advanced_A1_authorization_state_machine.md).
 - [ ] **Enforce writes on the server too.** Field grades are a UX convenience client-side; the server re-checks every changed field is `full` and rejects otherwise. → `app_endpoints.dart:663` (`_enforceFieldWrites`), [A3](README_advanced_A3_request_lifecycle.md).
 - [ ] **Role-gate admin routes** by declaring `TomRoleAccess([...])` on the contract endpoint (`TomApiEndpoint.access`) — the pipeline extracts and enforces it *before* the method runs. → `tom_core_server`; sample `api_registry.dart` (`adminApi`, shared `adminAccess`).
+- [ ] **Register a per-row resolver for every graded file column** —
+  `TomRowColumnAuthorization.register(authKey, resolver)` at boot, composed from
+  the authorization layers you already have (role on the row × that role's grant
+  row), closed-safe at every edge. The default source is the *synchronous,
+  process-global* `TomAuthorization`, which answers `full` when no adapter is
+  installed — so an `authKey` with no registered resolver is worse than none. →
+  [13](README_advanced_13_file_transfer.md); sample `column_grade_resolver.dart`,
+  `column_grade_resolver_test.dart`.
+- [ ] **Grade a file field on the client by the same rule as a form field** —
+  resource ceiling `narrow`ed by the role's grade, defaulting to `none`. It is
+  cooperation, not enforcement: the server's per-row C-4 answer is the binding
+  one, and an admin's grant edit changes it without touching the client map. →
+  [13](README_advanced_13_file_transfer.md); sample
+  `item_detail_screen.dart` (`_buildAttachmentField`), `projectRoleAttachmentGrades`.
 - [ ] **Source the server principal from the request zone**, `getFromCurrentZone<TomPrincipal>()` — never the client-side `TomBearerAuthentication` singleton (not request-scoped). → sample `app_endpoints.dart:981`, `auth_endpoints.dart:206`.
 
 ## Domain & reflection
@@ -68,6 +83,19 @@ is already "doing it the tom_core way":
 - [ ] **Number migrations consecutively (`000,001,002,…`) and split schema / admin / demo.** DDL untagged, the production admin bootstrap untagged, and demo seeds in a separate `@dev,test`-tagged file (G-MIG-1/2/3) — so a production apply seeds the admin account but omits demo users, and every table exists before it is seeded. → RC-23, [05](README_advanced_05_persistence_database.md); sample `app_db/app_schema/[000]-app_core_schema.sql` + `[001]-app_demo_seed@dev,test.sql` (auth: `[000]`+`[001]` schema, `[002]-auth_admin_seed.sql`, `[003]-auth_demo_seed@dev,test.sql`).
 - [ ] **Keep every seed `INSERT` idempotent** (`ON DUPLICATE KEY UPDATE`) so a re-applied migration is a no-op. → [05](README_advanced_05_persistence_database.md); sample `[002]-auth_admin_seed.sql`, `[003]-auth_demo_seed@dev,test.sql`, `[001]-app_demo_seed@dev,test.sql`.
 - [ ] **Map columns with `@TomDbColumn`** on the persistence record; the empty-bodied `TomSqlDatasourceRepository` singletons are the CRUD seam. → [05](README_advanced_05_persistence_database.md); sample `app_persistence_model.dart`.
+- [ ] **Declare a file column with three facts, all beside the field** —
+  `@TomFileReference(exposed:, cascadeDelete:)` next to `@TomDbColumn(authKey:)`.
+  Each is silent when lost: no `exposed` ⇒ the column is unreachable (nothing
+  fails to compile); no `cascadeDelete` ⇒ orphaned blobs on every delete; no
+  `authKey` ⇒ the column falls back to the *permissive* process-global
+  `TomAuthorization`. Pin them in a reflection-read declaration test. →
+  [13](README_advanced_13_file_transfer.md), [05](README_advanced_05_persistence_database.md);
+  sample `app_persistence_model.dart:284-305`, `file_column_declarations_test.dart`.
+- [ ] **Point each blob store at the database that owns the rows.** A
+  `type: database` store names its datasource in `blobstores_default.yaml`; that
+  name is what keeps one tier's blobs out of the other tier's database, and it
+  must be initialised *after* the datasources. → [05](README_advanced_05_persistence_database.md);
+  sample `*/assets/blobstores_default.yaml`.
 - [ ] **One datasource per logical DB**, configured in YAML (map-key = folder, literal-int port). Cross-DB references are *logical* (no cross-DB FK); the app server binds the framework `main` datasource to `auth_db` to read the shared grant table. → [05](README_advanced_05_persistence_database.md); sample `assets/datasources_*.yaml`, `field_grade_resolver.dart:30-39`.
 
 ## Servers & endpoints
@@ -76,6 +104,13 @@ is already "doing it the tom_core way":
 - [ ] **Validate the bearer on every non-public request** — the pipeline rejects pre-invocation with `endpoint_handler.handle_method_call.access_denied` → 403. → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:904`/`:935-939` (`appForbiddenOrNotFound`).
 - [ ] **Fail closed/safe: 404 over 403 for unreachable resources.** A resource the caller cannot reach is reported *missing*, never leaking its existence. → [A1](README_advanced_A1_authorization_state_machine.md)/[A3](README_advanced_A3_request_lifecycle.md); sample `app_endpoints.dart:232-237` (`app.item.not_found`).
 - [ ] **Keep services server-/zone-free; map error keys at the boundary.** Services throw stable `TomEndpointHandlerException` keys; a server-level handler maps them to HTTP statuses. → sample `appForbiddenOrNotFound` (`app_endpoints.dart:920`), `LoginUnauthorizedErrorHandler` (`auth_endpoints.dart:148`).
+- [ ] **Publish file slots from the annotations, one line per entity** —
+  `TomFileSlots.register(repository)` at boot (after reflection + stores, before
+  serving) turns the *exposed* file columns into `/files/{entity}/{id}/{column}`
+  slots. Never restate a table or column name; an unexposed column resolves to
+  nothing and answers **404** — the same answer a column that does not exist
+  gets. → [13](README_advanced_13_file_transfer.md),
+  [10](README_advanced_10_servers_endpoints.md); sample `app_server_start.dart`.
 - [ ] **Boot servers in dependency order** — the token-issuing auth server before the app server that trusts its key; reserve a distinct path for the typed status (`/status`) vs the framework liveness probe (`/health`). → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:987` (`appHealth` at `/status`).
 
 ## Testing
@@ -96,7 +131,7 @@ resources → authorization → forms → tests.
 
 ## Primary sources
 
-- All spine docs [00](README_advanced_00_introduction.md)–[12](README_advanced_12_testing_integration.md); appendices [A1](README_advanced_A1_authorization_state_machine.md)/[A2](README_advanced_A2_resource_scope_conventions.md)/[A3](README_advanced_A3_request_lifecycle.md)
+- All spine docs [00](README_advanced_00_introduction.md)–[13](README_advanced_13_file_transfer.md); appendices [A1](README_advanced_A1_authorization_state_machine.md)/[A2](README_advanced_A2_resource_scope_conventions.md)/[A3](README_advanced_A3_request_lifecycle.md)
 - Framework anchors: `tom_flutter_ui` `tom_form.dart:807`/`:855`; `tom_core_server` endpoint pipeline + `@TomRoleAccess`
 
 ---

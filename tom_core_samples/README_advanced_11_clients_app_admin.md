@@ -41,6 +41,16 @@ project — owner-only, a non-owner's share refused inline. The item editor's gr
 come from the session's fetched field-state matrix, stamped per field (below), so
 the four-state model is live over the wire, not faked in the widget.
 
+The item editor also carries the item's **attachment**, and the board paperclips
+the items that have one. Both go through `AppBackend.files` — a
+`TomFileTransferClient` alongside the JSON one, backed live by
+`AuthorizedFileTransferClient` (it presents the bearer token on all five verbs
+and replays a transfer once after refreshing an expired token) and in tests by
+the same in-memory fake as the rest of the backend. The field is graded exactly
+like the form's fields, and for the same reason: shaping the affordance to what
+the server will answer, never deciding it (part
+[13](README_advanced_13_file_transfer.md)).
+
 ## The admin console
 
 `AdminConsoleApp` mirrors the app shell exactly — a `MaterialApp` whose `home` is

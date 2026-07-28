@@ -43,11 +43,34 @@
 ///    [TomAuthenticatedAccess] an avatar would be readable by anyone; the test
 ///    reads exactly that slot.
 ///
-/// **Why 404 and not 403 for the closed column.** [TomFileSlots.resolve] returns
-/// `null` for a column that is merely closed just as it does for one that does
-/// not exist, and the endpoint answers both with a plain 404. A 403 would
-/// confirm the column is there — the same reasoning that makes the framework map
-/// an out-of-scope row to 404 rather than admitting the row exists.
+///  - [TC-FT-05] **the file endpoint under the sample's four-role matrix.**
+///    `carol` holds a `viewer` share on project 1, and the auth server's
+///    `tom_resource_grant` matrix grades that role `read` on
+///    `todo.item.attachment`. She downloads the file alice uploaded and is
+///    **refused the upload and the delete**. This is the assertion that joins
+///    the file feature to the sample's existing thesis: the grade is not a
+///    second, file-specific permission model but *the same grant row* that makes
+///    her `status` field read-only on the board, resolved per row at the file
+///    endpoint. An administrator narrowing that row through the authadmin
+///    console changes this outcome without touching a line of either server —
+///    which is exactly what `run_cross_tier_integration.sh` then does live.
+///
+/// **404, 403 and the three different questions.** The endpoint answers a
+/// refusal differently depending on which layer refused, and TC-FT-03/04/05 pin
+/// one each:
+///
+///  - **Exposure** (TC-FT-03) is asked while resolving the slot, before any
+///    principal is considered. [TomFileSlots.resolve] returns `null` for a
+///    column that is merely closed just as it does for one that does not exist,
+///    and the endpoint answers both with a plain **404** — for everybody
+///    equally, the row's own owner included. A 403 would confirm the column is
+///    there, the same reasoning that makes the framework map an out-of-scope row
+///    to 404 rather than admitting the row exists.
+///  - **Authentication** (TC-FT-04) is asked at the endpoint gate: no principal
+///    at all → **403**.
+///  - **The column grade** (TC-FT-05) is asked per row and per principal, once
+///    the slot is known and the caller is known: the slot exists and this caller
+///    may see it but not write it → **403**.
 ///
 /// **Identity.** [TomBearerAuthentication] is a single global token store and
 /// the transfer client reads it, so logging in through [AuthClient] is all a
@@ -73,6 +96,11 @@ const _appBaseUri = 'http://localhost:8080';
 const _authBaseUri = 'http://localhost:8081';
 
 final _aliceLogin = LoginRequest(username: 'alice', password: 'alice-pass');
+
+/// Carol holds a `viewer` share on project 1 (the `app_db` `[000]` seed's C-6
+/// delegation), so item 1 is inside her row scope and her seeded attachment
+/// grade is `read` — the principal TC-FT-05 needs.
+final _carolLogin = LoginRequest(username: 'carol', password: 'carol-pass');
 
 /// Slots addressed below, as `<table>/<id>/<column>`.
 ///
@@ -199,9 +227,20 @@ void main() {
         uploaded = true;
         expect(await files.describe(_attachmentSlot), isNotNull);
 
-        // The closed column: absent, not forbidden.
+        // The closed column: absent, not forbidden — and the distinction is the
+        // lesson. `exposed` decides *which column a slot names*, never whether
+        // this caller may have it: it is consulted while resolving the slot,
+        // before any principal is looked at, so an unexposed column resolves to
+        // nothing and the request 404s for everybody equally — alice, who owns
+        // the row and is graded `full` on its neighbour, included. That is why
+        // the answer here is "no such slot" and not "not for you": there is no
+        // authorization question to ask about a column that HTTP cannot name.
+        // The principal-relative refusals live one layer down and are asserted
+        // by TC-FT-04 (no principal → 403) and TC-FT-05 (a read grade → 403).
         expect(await files.describe(_internalNoteSlot), isNull,
-            reason: 'a non-exposed column has no slot, so HEAD is a 404');
+            reason: 'exposure decides which column a slot names, not who may '
+                'have it — so this HEAD is a 404 for the row\'s own owner, at '
+                'the same moment her neighbouring column answers');
 
         // And the dangerous direction — a write — is refused for the same
         // reason, with the same "no such thing" answer.
@@ -286,6 +325,86 @@ void main() {
       } finally {
         appFiles.close();
         authFiles.close();
+        c.transport.close();
+      }
+    });
+
+    test(
+        'TC-FT-05: a read-only column grade serves the download and refuses the '
+        'upload', () async {
+      final c = _liveClients();
+      final files = ioFileTransferClient(Uri.parse(_appBaseUri));
+      var uploaded = false;
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // Alice owns the tree, is graded `full` on the attachment, and puts a
+        // file in the slot for carol to find.
+        await c.auth.login(_aliceLogin);
+        final bytes = utf8.encode('alice uploaded this, carol may only read it');
+        await files.upload(
+          slot: _attachmentSlot,
+          source: TomFileSource.bytes('shared.txt', bytes,
+              mediaType: 'text/plain'),
+        );
+        uploaded = true;
+
+        // Now carol. Her share on project 1 is `viewer`, which the auth seed
+        // grades `read` on `todo.item.attachment` — so the app server's per-row
+        // resolver folds "carol's role on *this item*" with "that role's grant"
+        // and reaches `read`.
+        await c.auth.login(_carolLogin);
+
+        // `read` means showsContent: the two read verbs answer, in full.
+        final described = await files.describe(_attachmentSlot);
+        expect(described, isNotNull,
+            reason: 'the grade is read, not none — carol is not being hidden '
+                'from the file, she is being denied the write');
+        expect(described!.byteCount, equals(bytes.length));
+        expect(await _downloadAll(files, _attachmentSlot), equals(bytes),
+            reason: 'a read grade serves the bytes, not a redacted stand-in');
+
+        // `read` means !isInteractive: the two write verbs are refused, with the
+        // *forbidden* answer rather than the *absent* one. The distinction from
+        // TC-FT-03 is the whole point of this test — there the slot did not
+        // exist for anybody (404); here it exists, carol may see it, and the
+        // refusal is about her grade on it (403).
+        await expectLater(
+          files.upload(
+            slot: _attachmentSlot,
+            source: TomFileSource.bytes('carol.txt', utf8.encode('overwrite')),
+          ),
+          throwsA(isA<TomFileTransferException>()
+              .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
+          reason: 'the same four-role matrix that makes a field read-only makes '
+              'this file column read-only — one grant row, both effects',
+        );
+        await expectLater(
+          files.remove(_attachmentSlot),
+          throwsA(isA<TomFileTransferException>()
+              .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
+          reason: 'clearing is a write too; a grade that refuses the replace '
+              'must refuse the delete, or the read-only file could still be '
+              'destroyed',
+        );
+
+        // And the refusals stored nothing: the bytes alice uploaded are intact.
+        expect(await _downloadAll(files, _attachmentSlot), equals(bytes),
+            reason: 'both refusals happened before the blob store was touched');
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        if (uploaded) {
+          try {
+            // Cleared as alice — carol demonstrably cannot, which is the point.
+            await c.auth.login(_aliceLogin);
+            await files.remove(_attachmentSlot);
+          } on SocketException {
+            // Stack already down — nothing to clean up.
+          }
+        }
+        files.close();
         c.transport.close();
       }
     });

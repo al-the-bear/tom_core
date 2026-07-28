@@ -57,7 +57,21 @@ entity persists as one row.
 
 `TodoItem` is the centre of gravity: its gradable fields (`title`, `status`,
 `priority`, `assigneeId`, `dueDate`, `estimateHours`/`estimate`, `description`)
-are exactly the fields the grant matrix grades per principal.
+are exactly the fields the grant matrix grades per principal — the seven keys the
+domain publishes as `gradableItemKeys`.
+
+The item carries one more graded value that is deliberately **not** in that list.
+`TodoItem.attachment` holds the *blob-storage key* of an uploaded file, and the
+domain grades it under a key of its own, `itemAttachmentGradeKey`
+(`'todo.item.attachment'`), with its own per-role row
+(`projectRoleAttachmentGrades`: owner and editor `full`, commenter and viewer
+`read`). Both live in `authz/field_grade_vocabulary.dart` beside the seven, in
+the same four states, read from the same grant matrix — the split exists because
+the attachment is a **column moved over the file endpoint**, not a form field
+bound to a member, so the form's `gradableFields` loop must not reach it and the
+server's writable bindings must not contain it (otherwise a client could mint a
+storage key by saving an item). [Part 13](README_advanced_13_file_transfer.md)
+follows that key through the stack.
 
 ## `@tomReflector` and observable `TomClass`
 

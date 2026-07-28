@@ -53,6 +53,19 @@ ON DUPLICATE KEY UPDATE user_id = VALUES(user_id);
 --   dueDate      full   full    read       read
 --   estimate     full   read    none       none
 --   description  full   full    read       read
+--
+--   Column       owner  editor  commenter  viewer
+--   attachment   full   full    read       read
+--
+-- The last row is the item's **file column**, not a form field: no client ever
+-- sends `attachment` in an item payload (the blob key is minted server-side by
+-- `saveFile`), so it is graded on the file endpoint instead. The app server
+-- registers a per-row resolver for it at boot (`registerAppColumnGrades`), which
+-- folds the caller's role on *that item's* project and then reads its grade from
+-- this very table — so `full` downloads and replaces, `read` downloads and is
+-- refused the upload. Editing this row through the authadmin console therefore
+-- changes what a role may do with a file, using the same screen and API that
+-- govern the fields above it.
 INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('owner',     'todo.item.title',       'full'),
   ('owner',     'todo.item.status',      'full'),
@@ -61,6 +74,7 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('owner',     'todo.item.dueDate',     'full'),
   ('owner',     'todo.item.estimate',    'full'),
   ('owner',     'todo.item.description', 'full'),
+  ('owner',     'todo.item.attachment',  'full'),
 
   ('editor',    'todo.item.title',       'full'),
   ('editor',    'todo.item.status',      'full'),
@@ -69,6 +83,7 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('editor',    'todo.item.dueDate',     'full'),
   ('editor',    'todo.item.estimate',    'read'),
   ('editor',    'todo.item.description', 'full'),
+  ('editor',    'todo.item.attachment',  'full'),
 
   ('commenter', 'todo.item.title',       'read'),
   ('commenter', 'todo.item.status',      'full'),
@@ -77,6 +92,7 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('commenter', 'todo.item.dueDate',     'read'),
   ('commenter', 'todo.item.estimate',    'none'),
   ('commenter', 'todo.item.description', 'read'),
+  ('commenter', 'todo.item.attachment',  'read'),
 
   ('viewer',    'todo.item.title',       'read'),
   ('viewer',    'todo.item.status',      'read'),
@@ -84,7 +100,8 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('viewer',    'todo.item.assigneeId',  'none'),
   ('viewer',    'todo.item.dueDate',     'read'),
   ('viewer',    'todo.item.estimate',    'none'),
-  ('viewer',    'todo.item.description', 'read')
+  ('viewer',    'todo.item.description', 'read'),
+  ('viewer',    'todo.item.attachment',  'read')
 ON DUPLICATE KEY UPDATE access_level = VALUES(access_level);
 
 -- C-5 ownership grants (RCC1). Ownership is now a per-principal-per-resource

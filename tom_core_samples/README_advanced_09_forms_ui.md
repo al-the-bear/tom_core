@@ -160,6 +160,7 @@ the client packages add no field widgets of their own:
 | `TomFormNDoubleInput` | nullable numbers (the estimate, `decimals: 1`) |
 | `StaticSelectableSource` / `SelectableItem` | a fixed option list, *valued by the wire/enum token, labelled from the bundle via the enum's `global.<enumtype>.<value>` key (G-RES-5)* |
 | `Validators.required()` | declarative per-field validation |
+| `TomFormFileUpload` | the item's attachment — a **slot**, not a bound member: it moves bytes over the file endpoint through a transfer client rather than through `save()` (part [13](README_advanced_13_file_transfer.md)) |
 | `TomAuthorizer.fixed(state)` | a per-field grade (the item screen's DB-resolved grades and the admin forms' stable-key fields — part 07) |
 
 Each component derives its `basePath` from the form (above) and resolves its
@@ -195,6 +196,13 @@ The two clients layer screens over these forms. The **app client**
   `isEditable` is `effectiveAuthState == TomAuthState.full` (`tom_form.dart:838`),
   so the *same* form renders four ways by role with no per-screen branching —
   the authorization mechanism of part 07 doing the gating, not the screen.
+  Beneath the form sits the item's **attachment**: a `TomFormFileUpload` scoped
+  under `board.item.attachment`, built outside the form because it holds a
+  `FileRef` rather than a bound member and its bytes travel over the file
+  endpoint. It is graded by the same rule as the fields all the same — the
+  registry-resolved resource ceiling narrowed by the role's grade — which is why
+  a viewer sees the download and no picker (part
+  [13](README_advanced_13_file_transfer.md)).
 - **Share dialog** (`share_dialog.dart`) — the cross-user half of the model;
   grants another user a `ProjectRole` on the selected project.
 

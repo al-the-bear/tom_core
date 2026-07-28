@@ -332,6 +332,8 @@ surface documented here.
 | `TomColumnAuthorization` | class | Column-level write authorization (static). |
 | `TomColumnWriteDecision<C>` | class | A column write decision. |
 | `TomColumnAuthResolver` | typedef | Column-auth resolver signature. |
+| `TomRowColumnAuthorization` | class | Per-row column grades for file operations (static). |
+| `TomRowColumnAuthResolver` | typedef | Per-row column-grade resolver signature. |
 | `TomColumnAuthorizationException` | class | Column-auth error. |
 | `TomAnnotationAnalyzer` | mixin | Persistence-annotation analysis (static). |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | Analyzer errors. |

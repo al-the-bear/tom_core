@@ -461,6 +461,56 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   TomAuthState _columnGrade(TomColumnInformation column) =>
       TomColumnAuthorization.stateForKey(column.column?.authKey);
 
+  /// The grade the current principal holds on [column] **for the row keyed by
+  /// [rowId]** — a registered per-row resolver when the column has one
+  /// ([TomRowColumnAuthorization]), otherwise the column-wide [_columnGrade].
+  ///
+  /// Only the file operations resolve a grade this way. Each addresses exactly
+  /// one row and is already asynchronous, so a relational grade — "may edit the
+  /// attachments of items in a project you own, may only read the ones in a
+  /// project shared with you" — costs one extra await where the synchronous
+  /// row-projection paths could not express it at all.
+  Future<TomAuthState> _rowColumnGrade(
+    TomColumnInformation column,
+    Object? rowId,
+  ) async =>
+      await TomRowColumnAuthorization.resolve(column.column?.authKey, rowId) ??
+      _columnGrade(column);
+
+  /// Raises when the principal may not **write** [column] on the row keyed by
+  /// [rowId] — its per-row grade lacks [TomAuthState.isInteractive].
+  ///
+  /// The three write-side file operations share this because they share the
+  /// question: uploading a file, replacing one and clearing one are all writes
+  /// of the same column, and a grade that refuses one must refuse all three.
+  Future<void> _assertColumnWritable(
+    TomColumnInformation column,
+    Object? rowId,
+  ) async {
+    final grade = await _rowColumnGrade(column, rowId);
+    if (grade.isInteractive) return;
+    throw TomColumnAuthorizationException(
+      'column_authorization.write.field_forbidden',
+      'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
+          'is not writable at your access level (${grade.name}).',
+    );
+  }
+
+  /// Raises when the principal may not **read** [column] on the row keyed by
+  /// [rowId] — its per-row grade lacks [TomAuthState.showsContent].
+  Future<void> _assertColumnReadable(
+    TomColumnInformation column,
+    Object? rowId,
+  ) async {
+    final grade = await _rowColumnGrade(column, rowId);
+    if (grade.showsContent) return;
+    throw TomColumnAuthorizationException(
+      'column_authorization.read.field_forbidden',
+      'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
+          'is not readable at your access level (${grade.name}).',
+    );
+  }
+
   /// The blob store [column]'s `@TomFileReference` names.
   TomBlobStore _fileStore(TomColumnInformation column) =>
       TomFileReferenceKeys.storeFor(column.fileReference!);
@@ -492,16 +542,13 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // and that check remains the binding one; doing it here as well turns a
     // refusal that would have arrived *after* the transfer into an immediate
     // one, so a principal who may not write the column never uploads at all.
-    final grade = _columnGrade(column);
-    if (!grade.isInteractive) {
-      throw TomColumnAuthorizationException(
-        'column_authorization.write.field_forbidden',
-        'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
-            'is not writable at your access level (${grade.name}).',
-      );
-    }
+    //
+    // The primary key is read before the grade rather than after, because a
+    // per-row grade needs to know which row is being written; on an insert
+    // there is no row yet and the resolver is handed the unsaved key.
     final primaryKey =
         readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(entity));
+    await _assertColumnWritable(column, primaryKey);
     if (isUnsavedKey(primaryKey)) {
       _assertInsertWritable(entity);
     } else {
@@ -547,14 +594,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
         parameters: {'entity': T.toString(), 'id': '$id'},
       );
     }
-    final grade = _columnGrade(column);
-    if (!grade.showsContent) {
-      throw TomColumnAuthorizationException(
-        'column_authorization.read.field_forbidden',
-        'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
-            'is not readable at your access level (${grade.name}).',
-      );
-    }
+    await _assertColumnReadable(column, id);
     final key = column.getVariableValue(row);
     if (key is! String || key.isEmpty) {
       throw TomStorageException(
@@ -576,14 +616,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     final column = _fileColumn(fieldName);
     final row = await findById(id);
     if (row == null) return null;
-    final grade = _columnGrade(column);
-    if (!grade.showsContent) {
-      throw TomColumnAuthorizationException(
-        'column_authorization.read.field_forbidden',
-        'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
-            'is not readable at your access level (${grade.name}).',
-      );
-    }
+    await _assertColumnReadable(column, id);
     final key = column.getVariableValue(row);
     if (key is! String || key.isEmpty) return null;
     return _fileStore(column).describe(key);
@@ -595,8 +628,18 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// Expressed as a save of a nulled column rather than as its own delete path,
   /// so the orphan collection, the audit record and both authorization gates are
   /// the ones every other write goes through.
+  ///
+  /// The per-row C-4 grade is checked here for the same reason [saveFile] checks
+  /// it: [save] resolves the column *column-wide*, which is not the answer for a
+  /// column with a [TomRowColumnAuthorization] resolver. Without this a
+  /// principal graded `read` — allowed to download the file and nothing else —
+  /// could delete it, which is the most destructive of the three writes.
   Future<T> clearFile(T entity, String fieldName) async {
     final column = _fileColumn(fieldName);
+    await _assertColumnWritable(
+      column,
+      readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(entity)),
+    );
     column.setVariableValue(entity, null);
     return save(entity);
   }

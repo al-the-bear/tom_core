@@ -1,14 +1,22 @@
-/// Drift guard: the seeded `tom_resource_grant` matrix and the gradable item
-/// field keys must name the same set of `todo.item.*` resources.
+/// Drift guard: the seeded `tom_resource_grant` matrix and the graded item
+/// resource keys must name the same set of `todo.item.*` resources.
 ///
-/// Three artifacts have to agree on the scope/form/field keys — the gradable
-/// item key set (`todo.item.<field>`, the wire contract each side addresses),
-/// the app server's `resources_app.json` text tree, and **this** server's
-/// grant-matrix seed
+/// Three artifacts have to agree on the scope/form/field keys — the graded item
+/// key set (`todo.item.<name>`, the wire contract each side addresses), the app
+/// server's `resources_app.json` text tree, and **this** server's grant-matrix
+/// seed
 /// (`database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql`).
 /// This test pins the auth server's half: the distinct `resource_key`s the seed
-/// grants are exactly the gradable item key set, and the matrix is fully
-/// populated — one row per ([ProjectRole], gradable key) pair.
+/// grants are exactly the graded item key set, and the matrix is fully
+/// populated — one row per ([ProjectRole], graded key) pair.
+///
+/// The graded set is **not** the gradable *field* set alone. It is the fields a
+/// client sends in an item payload *plus* the authorized **columns** the file
+/// endpoint grades per row — currently [itemAttachmentGradeKey]. Both kinds are
+/// graded from this one table by the same four roles; they differ only in where
+/// the grade is enforced (the item write path's field overlay vs.
+/// `saveFile`/`openFile`). Splitting them here keeps that distinction visible
+/// instead of letting a column silently join the form-field set.
 ///
 /// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class;
 /// steps 21/24/26 derive the gradable set from reflection/the resource bundle.
@@ -25,10 +33,11 @@ import 'dart:io';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
 
-/// The gradable item resource keys. Steps 21/24/26 derive this from
-/// reflection/the resource bundle; here it is the inline expectation this drift
-/// guard checks the seed against.
-const _gradableItemKeys = <String>[
+/// The gradable item **field** resource keys — the JSON members a client sends
+/// back in an item payload. Steps 21/24/26 derive this from reflection/the
+/// resource bundle; here it is the inline expectation this drift guard checks
+/// the seed against.
+const _gradableItemFieldKeys = <String>[
   'todo.item.title',
   'todo.item.status',
   'todo.item.priority',
@@ -36,6 +45,16 @@ const _gradableItemKeys = <String>[
   'todo.item.dueDate',
   'todo.item.estimate',
   'todo.item.description',
+];
+
+/// The graded item **column** resource keys — values no client may write
+/// directly, graded on the file endpoint instead of in the item payload.
+const _gradedItemColumnKeys = <String>[itemAttachmentGradeKey];
+
+/// Every `todo.item.*` resource the seed must grant, of either kind.
+const _gradedItemKeys = <String>[
+  ..._gradableItemFieldKeys,
+  ..._gradedItemColumnKeys,
 ];
 
 /// The grant-matrix seed, resolved relative to the package root (the working
@@ -75,26 +94,26 @@ void main() {
       rows = _gradeGrantRows(file.readAsStringSync());
     });
 
-    test('seeded resource keys equal the gradable item key set exactly', () {
+    test('seeded resource keys equal the graded item key set exactly', () {
       final keys = {for (final row in rows) row.key};
       expect(
         keys,
-        equals(_gradableItemKeys.toSet()),
+        equals(_gradedItemKeys.toSet()),
         reason: 'The todo.item.* keys granted in the seed must match the '
-            'gradable item key set exactly. A difference means the grant '
-            'matrix drifted from the field key set.',
+            'graded item key set — the gradable fields plus the graded '
+            'columns — exactly. A difference means the grant matrix drifted '
+            'from the key set.',
       );
     });
 
-    test('the matrix is full — one row per (ProjectRole, gradable key)', () {
-      final expectedCount =
-          ProjectRole.values.length * _gradableItemKeys.length;
+    test('the matrix is full — one row per (ProjectRole, graded key)', () {
+      final expectedCount = ProjectRole.values.length * _gradedItemKeys.length;
       expect(rows.length, expectedCount,
           reason: 'expected ${ProjectRole.values.length} roles × '
-              '${_gradableItemKeys.length} keys = $expectedCount grant '
+              '${_gradedItemKeys.length} keys = $expectedCount grant '
               'rows');
 
-      // Every role grades every gradable key — no gaps in the matrix.
+      // Every role grades every graded key — no gaps in the matrix.
       for (final role in ProjectRole.values) {
         final keysForRole = {
           for (final row in rows)
@@ -102,8 +121,37 @@ void main() {
         };
         expect(
           keysForRole,
-          equals(_gradableItemKeys.toSet()),
+          equals(_gradedItemKeys.toSet()),
           reason: 'role "${role.name}" is missing or has stray grant keys',
+        );
+      }
+    });
+
+    test('the attachment column is graded for every role, read at the weakest',
+        () {
+      final seeded = {
+        for (final row in rows)
+          if (row.key == itemAttachmentGradeKey) row.role: row.access,
+      };
+      expect(
+        seeded.keys.toSet(),
+        equals({for (final role in ProjectRole.values) role.name}),
+        reason: 'the file endpoint resolves its C-4 grade from this table, so '
+            'a role with no attachment row would resolve to `none` and be '
+            'refused even the download',
+      );
+      // The seed is the *initial* state of the matrix — an administrator may
+      // narrow any of these through the authadmin console at runtime, and the
+      // server honours the edited row, not this file. What is pinned here is
+      // that the initial state matches the client's default shaping map, so a
+      // first run shows a consistent story on both tiers.
+      for (final role in ProjectRole.values) {
+        expect(
+          seeded[role.name],
+          projectRoleAttachmentGrades[role]!.name,
+          reason: 'seeded attachment grade for "${role.name}" must match '
+              'projectRoleAttachmentGrades, the client-side default the item '
+              'screen shapes the upload field with',
         );
       }
     });
