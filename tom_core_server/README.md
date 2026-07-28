@@ -84,7 +84,7 @@ abstract, so other backends can be added.
 | `TomDbMigrator` / `TomDbMigrations` / `TomDbVersion` | Versioned schema migrations (MariaDB adapter) |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `file_storage`, `healthcheck`, `cmdline`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `file_storage`, `scheduling`, `healthcheck`, `cmdline`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -96,6 +96,7 @@ abstract, so other backends can be added.
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
 | `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
 | `file_storage` | `TomBlobStore`, `TomDatabaseBlobStore`, `TomDirectoryBlobStore`, `TomS3BlobStore`, `TomMemoryBlobStore`, `TomBlobStoreInfo`, `TomFileReference` | Streaming blob storage behind one four-method contract, backends chosen in configuration, and entity columns that hold a storage key instead of the bytes |
+| `scheduling` | `TomSqlJobStore`, `TomSqlLeaseLock` | The kernel's job-store and lease-lock contracts over a shared database, so a cluster whose nodes share no filesystem still runs each window exactly once |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `HealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException` | Server exception base (extends kernel `TomException`) |
@@ -143,6 +144,7 @@ annotated entities and are documented in [`doc/`](doc/).
 | [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox |
 | [`example/export/`](example/export/) | The streaming tabular shape, CSV/XLSX/PDF renderers, the format registry, export storage and the two delivery channels |
 | [`example/file_storage/`](example/file_storage/) | The one streaming blob contract, the key grammar, the infrastructure-free backends, configuration-driven selection, generated file-reference keys and the blob-backed export store |
+| [`example/scheduling/`](example/scheduling/) | The relational job queue and lease lock: the schema and why each constraint is load-bearing, the shipped migrations, the UTC instant encoding, and the cluster wiring |
 | [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
 
 Run a single example:

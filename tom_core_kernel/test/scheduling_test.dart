@@ -16,6 +16,13 @@ import 'dart:math';
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+// The port contracts — every behaviour required of a TomJobStore or a
+// TomLeaseLock — live in their own file so a second package can run them
+// against a second implementation. `tom_core_server` imports the same file for
+// its relational pair. FakeClock comes from there too, so both suites drive
+// time identically.
+import 'contracts/scheduling_contract.dart';
+
 // =============================================================================
 // Test helpers
 // =============================================================================
@@ -72,17 +79,6 @@ class RecordingDispatcher extends TomJobDispatcher {
     dispatched.add(command);
     return handler?.call(command) ?? command.execute();
   }
-}
-
-/// A clock the tests move by hand.
-class FakeClock {
-  DateTime now;
-
-  FakeClock(this.now);
-
-  DateTime call() => now;
-
-  void advance(Duration by) => now = now.add(by);
 }
 
 /// Worker context for the one test that uses a real isolate pool.
@@ -655,160 +651,12 @@ void main() {
   // JOB STORE
   // ===========================================================================
 
-  group('TomMemoryJobStore', () {
-    late TomMemoryJobStore store;
-    final at = DateTime.utc(2026, 3, 1, 10);
-
-    setUp(() => store = TomMemoryJobStore());
-
-    TomJobRun run(String id, {DateTime? window, DateTime? runAt}) => TomJobRun(
-          id: id,
-          jobName: 'job',
-          scheduledFor: window ?? at,
-          runAt: runAt ?? window ?? at,
-        );
-
-    test('enqueue stores a run retrievable by window', () async {
-      await store.enqueue(run('a'));
-      expect((await store.findWindow('job', at))!.id, 'a');
-    });
-
-    test('findWindow does not match a different job', () async {
-      await store.enqueue(run('a'));
-      expect(await store.findWindow('other', at), isNull);
-    });
-
-    test('lastWindow is null for an unknown job', () async {
-      expect(await store.lastWindow('job'), isNull);
-    });
-
-    test('lastWindow reports the latest window enqueued', () async {
-      await store.enqueue(run('a'));
-      await store.enqueue(run('b', window: at.add(const Duration(days: 1))));
-      await store.enqueue(
-          run('c', window: at.subtract(const Duration(days: 1))));
-      expect(await store.lastWindow('job'), at.add(const Duration(days: 1)));
-    });
-
-    test('claimDue takes a due run and leases it', () async {
-      await store.enqueue(run('a'));
-      final claimed = await store.claimDue(at, 'owner-1');
-      expect(claimed.single.id, 'a');
-      expect(claimed.single.state, TomJobRunState.running);
-      expect(claimed.single.claimedBy, 'owner-1');
-      expect(claimed.single.claimedAt, at);
-    });
-
-    test('claimDue leaves a future run alone', () async {
-      await store.enqueue(run('a', runAt: at.add(const Duration(minutes: 1))));
-      expect(await store.claimDue(at, 'owner-1'), isEmpty);
-    });
-
-    test('claimDue does not re-claim a running run', () async {
-      await store.enqueue(run('a'));
-      await store.claimDue(at, 'owner-1');
-      expect(await store.claimDue(at, 'owner-2'), isEmpty);
-    });
-
-    test('claimDue honours the limit', () async {
-      for (var i = 0; i < 5; i++) {
-        await store.enqueue(run('r$i', window: at.add(Duration(minutes: i))));
-      }
-      expect((await store.claimDue(at.add(const Duration(hours: 1)), 'o',
-              limit: 2))
-          .length, 2);
-    });
-
-    test('claimDue honours the accept predicate', () async {
-      await store.enqueue(run('a'));
-      await store.enqueue(run('b', window: at.add(const Duration(minutes: 1))));
-      final claimed = await store.claimDue(
-        at.add(const Duration(hours: 1)),
-        'o',
-        accept: (r) => r.id == 'b',
-      );
-      expect(claimed.map((r) => r.id), ['b']);
-    });
-
-    test('complete marks succeeded and releases the lease', () async {
-      await store.enqueue(run('a'));
-      final claimed = (await store.claimDue(at, 'o')).single;
-      await store.complete(claimed, at.add(const Duration(seconds: 5)));
-      final stored = (await store.all()).single;
-      expect(stored.state, TomJobRunState.succeeded);
-      expect(stored.completedAt, at.add(const Duration(seconds: 5)));
-      expect(stored.claimedBy, isNull);
-      expect(stored.isFinished, isTrue);
-    });
-
-    test('fail with a retryAt returns the run to pending with a new attempt',
-        () async {
-      await store.enqueue(run('a'));
-      final claimed = (await store.claimDue(at, 'o')).single;
-      final retryAt = at.add(const Duration(minutes: 1));
-      await store.fail(claimed, 'nope', at, retryAt: retryAt);
-      final stored = (await store.all()).single;
-      expect(stored.state, TomJobRunState.pending);
-      expect(stored.attempt, 2);
-      expect(stored.runAt, retryAt);
-      expect(stored.lastError, 'nope');
-      expect(stored.completedAt, isNull);
-    });
-
-    test('fail without a retryAt is terminal', () async {
-      await store.enqueue(run('a'));
-      final claimed = (await store.claimDue(at, 'o')).single;
-      await store.fail(claimed, 'nope', at);
-      final stored = (await store.all()).single;
-      expect(stored.state, TomJobRunState.failed);
-      expect(stored.attempt, 1);
-      expect(stored.completedAt, at);
-      expect(stored.isFinished, isTrue);
-    });
-
-    test('recoverAbandoned returns an expired lease to the queue', () async {
-      await store.enqueue(run('a'));
-      await store.claimDue(at, 'dead-owner');
-      final later = at.add(const Duration(minutes: 20));
-      final recovered =
-          await store.recoverAbandoned(later, const Duration(minutes: 15));
-      expect(recovered.single.id, 'a');
-      expect(recovered.single.state, TomJobRunState.pending);
-      expect(recovered.single.claimedBy, isNull);
-    });
-
-    test('recoverAbandoned leaves a fresh lease alone', () async {
-      await store.enqueue(run('a'));
-      await store.claimDue(at, 'live-owner');
-      final recovered = await store.recoverAbandoned(
-          at.add(const Duration(minutes: 1)), const Duration(minutes: 15));
-      expect(recovered, isEmpty);
-    });
-
-    test('recoverAbandoned does not charge the run an attempt', () async {
-      await store.enqueue(run('a'));
-      await store.claimDue(at, 'dead-owner');
-      final recovered = await store.recoverAbandoned(
-          at.add(const Duration(hours: 1)), const Duration(minutes: 15));
-      expect(recovered.single.attempt, 1);
-    });
-
-    test('purgeFinished drops terminal runs older than the cutoff', () async {
-      await store.enqueue(run('done'));
-      await store.enqueue(run('open', window: at.add(const Duration(hours: 1))));
-      await store.complete(
-          (await store.claimDue(at, 'o')).single, at);
-      final purged = await store.purgeFinished(at.add(const Duration(days: 1)));
-      expect(purged, 1);
-      expect((await store.all()).map((r) => r.id), ['open']);
-    });
-
-    test('purgeFinished keeps a terminal run newer than the cutoff', () async {
-      await store.enqueue(run('done'));
-      await store.complete((await store.claimDue(at, 'o')).single, at);
-      expect(await store.purgeFinished(at.subtract(const Duration(days: 1))), 0);
-    });
-  });
+  // The store contract runs against both kernel implementations. The file store
+  // is a TomMemoryJobStore subclass that mirrors to disk, so running the whole
+  // contract against it is what proves the mirror never changes an answer.
+  runTomJobStoreContract('TomMemoryJobStore', () async => TomMemoryJobStore());
+  runTomJobStoreContract(
+      'TomFileJobStore', () async => TomFileJobStore('${makeTempDir().path}/queue.json'));
 
   group('TomJobRun serialization', () {
     test('round-trips every field', () {
@@ -2104,205 +1952,15 @@ void main() {
   // Every behaviour required of the port is asserted against *both*
   // implementations, so the file lock cannot quietly diverge from the in-memory
   // one that most tests use as a stand-in.
-  for (final variant in ['TomMemoryLeaseLock', 'TomFileLeaseLock']) {
-    group('$variant (TomLeaseLock contract)', () {
-      late FakeClock clock;
-      late TomLeaseLock lock;
-
-      setUp(() {
-        clock = FakeClock(DateTime.utc(2026, 5, 1, 12));
-        lock = variant == 'TomMemoryLeaseLock'
-            ? TomMemoryLeaseLock(clock: clock.call)
-            : TomFileLeaseLock(
-                '${makeTempDir().path}/leases',
-                clock: clock.call,
-              );
-        addTearDown(lock.close);
-      });
-
-      test('the first acquirer wins and the second is refused', () async {
-        final first = await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        final second =
-            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
-
-        expect(first, isNotNull);
-        expect(first!.owner, 'node-a');
-        expect(second, isNull, reason: 'node-b must not get a second lease');
-      });
-
-      test('an unheld resource reports free', () async {
-        final info = await lock.inspect('r');
-        expect(info.isHeld, isFalse);
-        expect(info.lease, isNull);
-      });
-
-      test('inspect names the holder and its expiry without acquiring',
-          () async {
-        await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-
-        final info = await lock.inspect('r');
-        expect(info.isHeld, isTrue);
-        expect(info.lease!.owner, 'node-a');
-        expect(info.lease!.expiresAt, clock.now.add(const Duration(minutes: 1)));
-        // Inspecting must not disturb the lease.
-        expect(await lock.acquire('r', 'node-b', const Duration(minutes: 1)),
-            isNull);
-      });
-
-      test('a lapsed lease is taken over by the next acquirer', () async {
-        final first =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        clock.advance(const Duration(minutes: 2));
-
-        final second =
-            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
-
-        expect(second, isNotNull, reason: 'a dead holder must not block forever');
-        expect(second!.owner, 'node-b');
-        expect(second.token, greaterThan(first!.token),
-            reason: 'takeover must fence the previous holder out');
-      });
-
-      test('a released lease frees the resource immediately', () async {
-        final first =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 10));
-        await lock.release(first!);
-
-        final second =
-            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
-        expect(second, isNotNull,
-            reason: 'release must not wait out the TTL');
-        expect(second!.token, greaterThan(first.token));
-      });
-
-      test('release reports the holder as gone but not vanished', () async {
-        final lease =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 10));
-        await lock.release(lease!);
-
-        final info = await lock.inspect('r');
-        expect(info.isHeld, isFalse);
-        expect(info.holderVanished, isFalse,
-            reason: 'an orderly release is not a disappearance');
-      });
-
-      test('a lapsed holder is reported as vanished', () async {
-        await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        clock.advance(const Duration(minutes: 2));
-
-        final info = await lock.inspect('r');
-        expect(info.isHeld, isFalse);
-        expect(info.holderVanished, isTrue);
-        expect(info.lease!.owner, 'node-a',
-            reason: 'the vanished holder must still be nameable');
-      });
-
-      test('renewal pushes the expiry forward and keeps the token', () async {
-        final lease =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        clock.advance(const Duration(seconds: 30));
-
-        final renewed = await lock.renew(lease!, const Duration(minutes: 1));
-
-        expect(renewed, isNotNull);
-        expect(renewed!.expiresAt, clock.now.add(const Duration(minutes: 1)));
-        expect(renewed.token, lease.token,
-            reason: 'renewing is not re-acquiring; the fence must not move');
-      });
-
-      test('renewal keeps a long job safe past its original TTL', () async {
-        var lease = await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-
-        // Four renewals across four minutes: a job far outliving the TTL.
-        for (var i = 0; i < 4; i++) {
-          clock.advance(const Duration(seconds: 40));
-          lease = await lock.renew(lease!, const Duration(minutes: 1));
-          expect(lease, isNotNull, reason: 'renewal $i must succeed');
-          expect(
-              await lock.acquire('r', 'node-b', const Duration(minutes: 1)),
-              isNull,
-              reason: 'a renewed lease must never look free to a peer');
-        }
-      });
-
-      test('a lease that was taken over can no longer be renewed', () async {
-        final first =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        clock.advance(const Duration(minutes: 2));
-        await lock.acquire('r', 'node-b', const Duration(minutes: 1));
-
-        // node-a wakes up late and tries to carry on.
-        expect(await lock.renew(first!, const Duration(minutes: 1)), isNull,
-            reason: 'the displaced holder must learn it is displaced');
-      });
-
-      test('releasing a lease already taken over does not disturb the new '
-          'holder', () async {
-        final first =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        clock.advance(const Duration(minutes: 2));
-        final second =
-            await lock.acquire('r', 'node-b', const Duration(minutes: 1));
-
-        // The classic late-release bug: node-a finishes, releases, and frees a
-        // lock it no longer owns.
-        await lock.release(first!);
-
-        final info = await lock.inspect('r');
-        expect(info.isHeld, isTrue);
-        expect(info.lease!.owner, 'node-b');
-        expect(info.lease!.token, second!.token);
-      });
-
-      test('the holder re-acquiring its own lease extends rather than '
-          'conflicts', () async {
-        final first =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        clock.advance(const Duration(seconds: 10));
-
-        final again =
-            await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-
-        expect(again, isNotNull, reason: 'a node must not lock itself out');
-        expect(again!.token, first!.token);
-      });
-
-      test('fencing tokens increase strictly across takeovers', () async {
-        final tokens = <int>[];
-        for (var i = 0; i < 5; i++) {
-          final lease =
-              await lock.acquire('r', 'node-$i', const Duration(minutes: 1));
-          tokens.add(lease!.token);
-          clock.advance(const Duration(minutes: 2));
-        }
-
-        // Strict monotonicity is the whole value of a fencing token: a repeated
-        // token would let a stale holder's write past a token check.
-        for (var i = 1; i < tokens.length; i++) {
-          expect(tokens[i], greaterThan(tokens[i - 1]));
-        }
-      });
-
-      test('fencing tokens keep increasing across release and re-acquire',
-          () async {
-        final a = await lock.acquire('r', 'node-a', const Duration(minutes: 1));
-        await lock.release(a!);
-        final b = await lock.acquire('r', 'node-b', const Duration(minutes: 1));
-        await lock.release(b!);
-        final c = await lock.acquire('r', 'node-c', const Duration(minutes: 1));
-
-        expect(b.token, greaterThan(a.token));
-        expect(c!.token, greaterThan(b.token));
-      });
-
-      test('different resources do not contend', () async {
-        expect(await lock.acquire('a', 'node-a', const Duration(minutes: 1)),
-            isNotNull);
-        expect(await lock.acquire('b', 'node-b', const Duration(minutes: 1)),
-            isNotNull);
-      });
-    });
-  }
+  // Every behaviour required of the port is asserted against *both*
+  // implementations, so the file lock cannot quietly diverge from the in-memory
+  // one that most tests use as a stand-in.
+  runTomLeaseLockContract(
+      'TomMemoryLeaseLock', (clock) async => TomMemoryLeaseLock(clock: clock));
+  runTomLeaseLockContract(
+      'TomFileLeaseLock',
+      (clock) async =>
+          TomFileLeaseLock('${makeTempDir().path}/leases', clock: clock));
 
   group('TomFileLeaseLock (durability and process sharing)', () {
     test('a lease survives the object that created it', () async {
@@ -2440,87 +2098,11 @@ void main() {
     });
   });
 
-  group('TomJobStore release and renewClaim', () {
-    late TomMemoryJobStore store;
+  group('TomJobStore release (durability)', () {
     final now = DateTime.utc(2026, 5, 1, 12);
 
-    setUp(() => store = TomMemoryJobStore());
-
-    Future<TomJobRun> seedClaimed() async {
-      final run = TomJobRun(
-        id: 'r1',
-        jobName: 'job',
-        scheduledFor: now,
-        runAt: now,
-      );
-      await store.enqueue(run);
-      await store.claimDue(now, 'node-a');
-      return run;
-    }
-
-    test('release returns a claimed run to pending without charging an '
-        'attempt', () async {
-      final run = await seedClaimed();
-      expect(run.state, TomJobRunState.running);
-
-      await store.release(run);
-
-      expect(run.state, TomJobRunState.pending);
-      expect(run.claimedBy, isNull);
-      // Contention is not failure. Charging an attempt would let a busy cluster
-      // burn a job's whole retry budget without ever executing it.
-      expect(run.attempt, 1);
-    });
-
-    test('a released run is immediately claimable again', () async {
-      final run = await seedClaimed();
-      await store.release(run);
-
-      final claimed = await store.claimDue(now, 'node-b');
-      expect(claimed.single.id, run.id);
-      expect(run.claimedBy, 'node-b');
-    });
-
-    test('release does not resurrect a finished run', () async {
-      final run = await seedClaimed();
-      await store.complete(run, now);
-
-      await store.release(run);
-
-      expect(run.state, TomJobRunState.succeeded,
-          reason: 'a completion that raced a release must win');
-    });
-
-    test('renewClaim refreshes the lease so recovery leaves the run alone',
-        () async {
-      final run = await seedClaimed();
-      const leaseTimeout = Duration(minutes: 10);
-
-      final later = now.add(const Duration(minutes: 9));
-      await store.renewClaim(run, later);
-
-      // Without the renewal this run would be 15 minutes stale and recovered.
-      final recovered = await store.recoverAbandoned(
-          now.add(const Duration(minutes: 15)), leaseTimeout);
-      expect(recovered, isEmpty);
-      expect(run.state, TomJobRunState.running);
-      expect(run.claimedAt, later);
-    });
-
-    test('renewClaim ignores a run that is not running', () async {
-      final run = TomJobRun(
-        id: 'r1',
-        jobName: 'job',
-        scheduledFor: now,
-        runAt: now,
-      );
-      await store.enqueue(run);
-
-      await store.renewClaim(run, now);
-
-      expect(run.claimedAt, isNull);
-    });
-
+    // The rest of release/renewClaim is in the shared contract; this asserts the
+    // one thing only the file store can be asked: that the mirror was written.
     test('the file store persists a release', () async {
       final path = '${makeTempDir().path}/queue.json';
       final store = TomFileJobStore(path);

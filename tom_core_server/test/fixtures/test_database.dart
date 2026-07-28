@@ -195,6 +195,37 @@ CREATE TABLE IF NOT EXISTS fixture_document (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $manifestTable');
   }
 
+  /// Drops the relational scheduler's two tables (CSEXB3).
+  ///
+  /// Dropped rather than truncated for the same reason as the blob tables: the
+  /// stores create them on first use, so a run that changed the DDL would
+  /// otherwise keep the previous shape. Dropping also resets `tom_lease`, whose
+  /// rows *are* the fencing counters — a contract group that expects tokens to
+  /// start at 1 needs the counter gone, not merely the leases.
+  static Future<void> dropSchedulingTables(
+    TomDataSourceInfo dsi, {
+    String jobRunTable = defaultJobRunTable,
+    String leaseTable = defaultLeaseTable,
+  }) async {
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $jobRunTable');
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $leaseTable');
+  }
+
+  /// Drops the `<schemaName>_versioning` table the migration orchestrator keeps.
+  ///
+  /// The orchestrator is idempotent by design: it skips a version it has already
+  /// recorded. So a test that drops the tables a migration created must drop
+  /// that record too — otherwise the second run finds nothing to apply and
+  /// leaves the schema missing, and the test passes or fails depending only on
+  /// whether the database was fresh.
+  static Future<void> dropMigrationVersioning(
+    TomDataSourceInfo dsi,
+    String schemaName,
+  ) async {
+    await dsi.datasource
+        .executeCommand('DROP TABLE IF EXISTS ${schemaName}_versioning');
+  }
+
   /// Closes every registered data source and clears the process-wide registry,
   /// so a torn-down suite leaves no open connection or stale registration for
   /// the next one.

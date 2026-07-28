@@ -180,7 +180,7 @@ the command is the unit that crosses the isolate boundary.
 | `state` | `pending`, `running`, `succeeded`, `failed` |
 | `claimedBy` / `claimedAt` | The node holding it, and when — the store's own lease |
 
-Two implementations ship:
+Two implementations ship here:
 
 - **`TomMemoryJobStore`** — one process, nothing survives a restart. Right for
   tests and for jobs whose loss on restart is acceptable.
@@ -188,8 +188,10 @@ Two implementations ship:
   comes back as an *expired claim* rather than as lost work, so the scheduler
   recovers it on its next tick.
 
-A relational implementation belongs in `tom_core_server`, alongside the
-relational lease lock.
+A third, **`TomSqlJobStore`**, ships in `tom_core_server` — the kernel has no
+persistence layer, so the relational implementation belongs one layer up. It is
+the production choice for a cluster; see
+[Choosing a substrate](#choosing-a-substrate).
 
 ## The Scheduler
 
@@ -253,6 +255,10 @@ run. Whether that is a problem depends on the store:
 - A **`TomMemoryJobStore`** is not shared across processes at all.
 - A **`TomFileJobStore`**'s claim is *not* atomic between processes — two nodes
   can both come away believing they claimed the same run.
+- A **`TomSqlJobStore`**'s claim *is* atomic: it is a conditional `UPDATE` and
+  the database picks the winner. The lock is still worth having — it is what
+  enforces `allowOverlap` across nodes — but the store no longer needs it to
+  make a claim mean something.
 
 The `lock` is the arbiter that makes the answer uniform:
 
@@ -314,11 +320,32 @@ guards.** A lock in a different store can be healthy while the queue is
 unreachable, at which point a node holds a valid lease over work it cannot see
 and no reconciliation exists.
 
-| Store | Lock |
-| ----- | ---- |
-| `TomMemoryJobStore` | `TomMemoryLeaseLock` |
-| `TomFileJobStore` | `TomFileLeaseLock` |
-| relational (`tom_core_server`) | relational, over this same contract |
+| Store | Lock | Shared by | Use for |
+| ----- | ---- | --------- | ------- |
+| `TomMemoryJobStore` | `TomMemoryLeaseLock` | nothing — one process | tests, single-process work |
+| `TomFileJobStore` | `TomFileLeaseLock` | a filesystem | one host, or nodes on a shared mount |
+| `TomSqlJobStore` | `TomSqlLeaseLock` | a database | **a cluster — the production choice** |
+
+**For a multi-node deployment, take the relational pair.** `TomSqlJobStore` and
+`TomSqlLeaseLock` live in `tom_core_server` (documented in
+`tom_core_server/doc/scheduling.md`) and are implementations of these same two
+contracts — nothing here is extended or narrowed for them, and they are verified
+against this package's own parameterised contract suite rather than against tests
+written to fit them. Point both at the same `TomDataSource`:
+
+```dart
+final scheduler = TomScheduler(
+  store: TomSqlJobStore.named('main', createSchema: false),
+  dispatcher: const TomInlineJobDispatcher(),
+  ownerId: Platform.localHostname,   // must differ per node
+  lock: TomSqlLeaseLock.named('main', createSchema: false),
+  leaseTtl: const Duration(minutes: 1),
+);
+```
+
+The file pair remains correct wherever every node mounts the same filesystem —
+it is what the cross-process tests exercise — but most clusters do not have a
+shared mount, and all of them have a database.
 
 `TomFileLeaseLock` coordinates separate processes through a shared directory,
 built on `File.createSync(exclusive: true)` — `O_EXCL`, an atomic test-and-set
