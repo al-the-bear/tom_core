@@ -10,7 +10,7 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
-| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login/2FA services, adaptors, and the authentication server. |
+| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the authentication server, and the server's own self-login. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
@@ -79,12 +79,25 @@ surface documented here.
 | `TomAuthenticationServer` | class | Server-side authentication entry point. |
 | `TomAuthenticationService` | abstract class | Authentication service contract. |
 | `TomDummyAuthenticationService` | class | In-memory service for tests/dev. |
-| `Tom2FAService` | abstract class | Two-factor service contract. |
+| `Tom2FAService` | abstract class | Two-factor mechanism contract: issue a challenge, verify a submission. |
+| `Tom2FARegistry` | class | Maps a mechanism key to its adaptor; scans `@Tom2FAAdaptor` classes. |
+| `Tom2FAContext` | class | What an adaptor is told about the login it is challenging. |
+| `Tom2FAChallengeSpec` | class | What an adaptor returns when issuing a challenge. |
+| `Tom2FASubmission` | class | One answer to a challenge, as presented to the adaptor. |
+| `TomTotp2FAService` | class | The shipped RFC 6238 authenticator-app mechanism. |
+| `TomTotpSecretResolver` | typedef | Resolves a user's base32 TOTP secret. |
+| `Tom2FAException` | class | 2FA configuration fault (extends `TomServerException`). |
 | `TomAuthenticationAdaptor` | class | Reflection marker for auth adaptors. |
 | `Tom2FAAdaptor` | class | Reflection marker for 2FA adaptors. |
 | `TomAuthenticationData` | class | Reflected authentication payload. |
 | `TomAuthenticationInfo` | class | Resolved authentication result. |
 | `LoginException` | class | Login failure (extends `TomServerException`). |
+| `TomServerSelfLogin` | class | Logs the deployment in as itself and installs the server principal. |
+| `TomServiceCredential` | class | The deployment's own login credential and where to present it. |
+| `TomServiceLoginTransport` | abstract class | The one-JSON-POST seam the self-login runs over. |
+| `TomHttpServiceLoginTransport` | class | The live transport, over `TomServerChannel`. |
+| `TomServiceLoginResponse` | class | The raw status + body of a self-login POST. |
+| `TomServerSelfLoginException` | class | A configured deployment failed to log itself in. |
 
 ### Authorization (`lib/src/tomserver/authorization/`)
 
@@ -449,7 +462,12 @@ surface documented here.
 | `StringCol` | Object Persistence |
 | `StringLiteral` | Object Persistence |
 | `Tom2FAAdaptor` | Authentication |
+| `Tom2FAChallengeSpec` | Authentication |
+| `Tom2FAContext` | Authentication |
+| `Tom2FAException` | Authentication |
+| `Tom2FARegistry` | Authentication |
 | `Tom2FAService` | Authentication |
+| `Tom2FASubmission` | Authentication |
 | `TomAnnotationAnalyzer` | Object Persistence |
 | `TomAnnotationAnalyzerException` | Object Persistence |
 | `TomAnnotationAnalyzerSyntaxException` | Object Persistence |
@@ -588,6 +606,7 @@ surface documented here.
 | `TomGradedAccessControlInformation` | Authorization |
 | `TomHealthServer` | Health Check |
 | `TomHealthService` | Health Check |
+| `TomHttpServiceLoginTransport` | Authentication |
 | `TomIntConfig` | Configuration |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
@@ -642,8 +661,13 @@ surface documented here.
 | `TomServer` | Server |
 | `TomServerConfigResourceProvider` | Configuration |
 | `TomServerException` | Little Things |
+| `TomServerSelfLogin` | Authentication |
+| `TomServerSelfLoginException` | Authentication |
 | `TomService` | Endpoints |
 | `tomService` | Endpoints |
+| `TomServiceCredential` | Authentication |
+| `TomServiceLoginResponse` | Authentication |
+| `TomServiceLoginTransport` | Authentication |
 | `TomSmtpConnection` | Messaging |
 | `TomSmtpReply` | Messaging |
 | `TomSmtpSecurity` | Messaging |
@@ -666,6 +690,8 @@ surface documented here.
 | `TomTabularResult` | Export |
 | `TomTabularRow` | Export |
 | `TomTabularSection` | Export |
+| `TomTotp2FAService` | Authentication |
+| `TomTotpSecretResolver` | Authentication |
 | `TomTransaction` | Transactions |
 | `TomTransactional` | Endpoints |
 | `TomTransactionException` | Transactions |

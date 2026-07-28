@@ -33,6 +33,7 @@ The security module consists of these main files:
 | `bearer_authentication.dart` | JWT token management |
 | `user_principal_aci.dart` | User, principal, and ACI types |
 | `tom_authorization.dart` | UI authorization primitives — the four-state model, groups, authorizers, and the global authorization singleton |
+| `two_factor.dart` | The shared half of the two-pass login — the challenge wire shape, its claim names, and the TOTP primitives |
 
 ### Key Concepts
 
@@ -40,6 +41,8 @@ The security module consists of these main files:
 - **Principal**: Authenticated session with full context
 - **ACI (Access Control Information)**: Roles, groups, entitlements, resource keys
 - **CLI (Client Limits Information)**: Quotas and feature flags
+- **2FA Challenge**: A pending second factor, carried in an interim token's
+  public claims between pass 1 and pass 2 of a login
 
 ---
 
@@ -485,27 +488,55 @@ Use resource keys for PII and sensitive data:
 'salary': tomProtect(user.salary, null, 'user.salary'),
 ```
 
-### 6. Handle 2FA Properly
+### 6. Drive 2FA from the Challenge, Not from the Type
+
+A login that owes a second factor comes back from pass 1 as an **interim token
+pair** carrying a [Tom2FAChallenge] in its public claims. Install it like any
+other token pair and ask the kernel what is pending:
 
 ```dart
-var result = await authenticate(message);
+var result = await api.login(message);
+TomBearerAuthentication.setTokens(
+  result.authenticationToken,
+  result.authorizationToken,
+);
 
-if (result.requires2FA) {
-  switch (result.twoFactorType) {
-    case 'totp':
-      showTotpDialog();
-      break;
-    case 'sms':
-      await sendSmsCode();
-      showSmsDialog();
-      break;
-    case 'email':
-      await sendEmailCode();
-      showEmailDialog();
-      break;
-  }
+var challenge = TomBearerAuthentication.pendingTwoFactorChallenge;
+if (challenge != null) {
+  // challenge.type / .hint / .attemptsRemaining / .expiresAt / .clientData
+  // carry everything the second-factor UI needs.
+  final code = await promptForCode(challenge);
+  // The interim token is the ambient bearer, so the pass-2 call presents it.
+  result = await api.loginPass2(message..password = code);
+  TomBearerAuthentication.setTokens(
+    result.authenticationToken,
+    result.authorizationToken,
+  );
 }
+// pendingTwoFactorChallenge == null → the login is complete, and the token pair
+// is the same one a login with no second factor would have produced.
 ```
+
+Three things this buys over branching on `result.twoFactorType` by hand:
+
+- **The challenge, not the type, drives the UI.** `hint`, `attemptsRemaining`
+  and `expiresAt` are what a user needs to see, and `clientData` carries
+  whatever else the mechanism wants to say. Switching on the type alone throws
+  all of that away.
+- **A wrong code is a loop, not a restart.** With attempts left, pass 2 answers
+  with a *fresh* interim token whose attempt counter has advanced, so the block
+  above simply repeats. Only an exhausted or expired challenge sends the client
+  back to pass 1 — and then `pendingTwoFactorChallenge` is `null`, so the code
+  above cannot mistake it for a completed login.
+- **The interim token is not a session.** Its `requires2FA` claim makes
+  [TomBearerAuthentication.convertTokenPayloadToPrincipal] build a principal
+  with `authenticated == false`, so holding it never passes an authentication
+  guard. It is a challenge carrier and nothing more.
+
+`Tom2FAChallenge`, `Tom2FAClaims` and `TomTotp` live in this module because
+both tiers must agree on them exactly. The server half — the adaptor registry,
+the mechanisms and the two passes — is `tom_core_server`'s authentication
+module; see its `doc/authentication.md` for wiring a second factor.
 
 ### 7. Refresh Permissions Appropriately
 

@@ -41,6 +41,9 @@ per-principal-per-resource role resolution.
   - [TomAuthenticationMessage](#tomauthenticationmessage)
   - [TomAuthenticationResult](#tomauthenticationresult)
   - [TomBearerAuthentication](#tombearerauthentication)
+  - [Tom2FAClaims](#tom2faclaims)
+  - [Tom2FAChallenge](#tom2fachallenge)
+  - [TomTotp](#tomtotp)
 - [Enums](#enums)
   - [TomAuthState](#tomauthstate)
   - [AuthGroupMode](#authgroupmode)
@@ -52,7 +55,7 @@ per-principal-per-resource role resolution.
 Sources: `lib/src/tombase/security/user_principal_aci.dart`,
 `tom_authorization.dart`, `access_controls.dart`,
 `resource_role_authorization.dart`, `authentication_authorization.dart`,
-`bearer_authentication.dart`.
+`bearer_authentication.dart`, `two_factor.dart`.
 
 `user_principal_aci.dart` holds the identity/authorization data model:
 `TomUser` (identity), `TomPrincipal` (authenticated session + context),
@@ -82,6 +85,15 @@ map. `authentication_authorization.dart` carries the login DTOs
 `bearer_authentication.dart` manages JWT tokens and principal conversion via
 `TomBearerAuthentication`.
 
+`two_factor.dart` holds the shared half of the two-pass login: `Tom2FAClaims`
+(the claim names a pending challenge travels under), `Tom2FAChallenge` (its wire
+shape, carried in the interim token's public claims), and `TomTotp` (the RFC
+4226/6238 derivation primitives plus the base32 codec). These live in the kernel
+because three tiers must agree about them exactly — the server issuing and
+verifying, enrolment tooling handing out a secret, and the client driving the
+second-factor UI. The server-side orchestration (adaptor registry, mechanisms,
+the two passes) is `tom_core_server`'s authentication module.
+
 ## Class Hierarchy
 
 ```
@@ -103,6 +115,9 @@ Object
 ├── TomAuthenticationMessage                 (@tomReflector)
 ├── TomAuthenticationResult                  (@tomReflector)
 ├── TomBearerAuthentication
+├── Tom2FAClaims                             (private constructor)
+├── Tom2FAChallenge
+├── TomTotp                                  (private constructor)
 └── TomAccessControl                         (abstract)
     ├── TomGradedAccess
     ├── TomNoAccess
@@ -978,16 +993,122 @@ TomBearerAuthentication()
 | `authorizationToken` | `String?` | *(getter)* The current authorization token string. |
 | `clientJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authentication JWT token. |
 | `clientAuthorizationJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authorization JWT token. |
+| `pendingTwoFactorChallenge` | `Tom2FAChallenge?` | *(getter)* The challenge carried by the currently held token, or `null` when the login is complete. Reads the authorization token if present, otherwise the authentication token. |
 
 #### Static Methods
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `setTokens(String authenticationToken, String authorizationToken, [bool decrypt = true])` | `void` | Stores the tokens and derives the principal. |
-| `convertTokenPayloadToPrincipal(TomClientJwtToken authenticationToken, [TomClientJwtToken? authorizationToken])` | `TomPrincipal` | Builds a [TomPrincipal] from JWT token payloads (defensive against malformed claims). |
+| `clearTokens()` | `void` | Drops the stored tokens and the cached principal. |
+| `convertTokenPayloadToPrincipal(TomClientJwtToken authenticationToken, [TomClientJwtToken? authorizationToken])` | `TomPrincipal` | Builds a [TomPrincipal] from JWT token payloads (defensive against malformed claims). A token carrying a `requires2FA` claim yields an unauthenticated principal. |
 | `getPrincipal()` | `TomPrincipal` | The current authenticated principal (cached); throws [StateError] without valid tokens. |
 | `updatePrincipal(List<String> groups, List<String> roles, List<String> entitlements, List<String> resourceKeys, {Map<String, String> resourceRoles = const {}})` | `void` | Refreshes the current principal's ACI without re-authentication. |
-| `convertPrincipalToTokenPayload(TomPrincipal principal, TomAccessControlDefinition? definition, String? clientCountry, String? clientLanguage)` | `(Map<String, Object?>, Map<String, Object?>)` | Converts a principal to the public and private JWT payloads. |
+| `convertPrincipalToTokenPayload(TomPrincipal principal, TomAccessControlDefinition? definition, String? clientCountry, String? clientLanguage, {Tom2FAChallenge? challenge, Map<String, Object?>? twoFactorVerification, bool twoFactorSatisfied = false})` | `(Map<String, Object?>, Map<String, Object?>)` | Converts a principal to the public and private JWT payloads. A `challenge` is written into the public claims and `twoFactorVerification` into the private ones; the `requires2FA` claim is set unless the principal never owed a second factor or `twoFactorSatisfied` is `true`. |
+
+### Tom2FAClaims
+
+The claim names a pending two-factor challenge travels under. Both tiers read
+and write the token through these constants rather than string literals, so the
+server issuing a challenge and the client reading it cannot drift apart.
+
+All of them name **public** claims — readable by the client without the server
+key — except `verificationData`, which names the encrypted claim holding
+whatever the mechanism needs on the second pass.
+
+#### Constructors
+
+*(private constructor — the class is a constant namespace)*
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `requires2FA` | `String` | Claim marking the token as an interim one: a second factor is still owed. |
+| `type` | `String` | Claim holding the mechanism type, e.g. `'totp'`. |
+| `hint` | `String` | Claim holding the mechanism's display hint, e.g. a masked phone number. |
+| `attempt` | `String` | Claim holding the number of attempts already consumed. |
+| `attemptsAllowed` | `String` | Claim holding the attempt budget for this challenge. |
+| `expiresAt` | `String` | Claim holding the challenge expiry as an ISO-8601 UTC string. |
+| `clientData` | `String` | Claim holding the mechanism's own opaque payload for its client UI. |
+| `verificationData` | `String` | Claim (in the **encrypted** section) holding the mechanism's own opaque payload for its second pass. |
+
+### Tom2FAChallenge
+
+The wire shape of a pending second factor, carried in the interim token's
+public claims. It is a value object: consuming an attempt produces a new
+challenge rather than mutating this one, because each attempt is minted into a
+fresh token.
+
+#### Constructors
+
+```dart
+Tom2FAChallenge({
+  required String type,
+  required DateTime expiresAt,
+  String hint = '',
+  int attempt = 0,
+  int attemptsAllowed = 3,
+  Map<String, Object?> clientData = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `type` | `String` | The mechanism type, matched against [Tom2FARegistry] on the server. |
+| `hint` | `String` | Display hint for the client, e.g. a masked destination. Never a secret. |
+| `attempt` | `int` | Attempts already consumed against this challenge. |
+| `attemptsAllowed` | `int` | The attempt budget. |
+| `expiresAt` | `DateTime` | UTC instant after which the challenge is refused. |
+| `clientData` | `Map<String, Object?>` | The mechanism's own payload for its client UI; not interpreted by the framework. |
+| `attemptsRemaining` | `int` | *(getter)* `attemptsAllowed - attempt`, floored at zero. |
+| `isExhausted` | `bool` | *(getter)* True once no attempts remain. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `isExpired([DateTime? now])` | `bool` | Whether the challenge has passed [expiresAt] (defaults to the current UTC time). |
+| `withConsumedAttempt()` | `Tom2FAChallenge` | A copy with [attempt] advanced by one. |
+| `toClaims()` | `Map<String, Object?>` | The public-claim map, keyed by [Tom2FAClaims]. |
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `fromClaims(Map<String, dynamic>? payload)` | `Tom2FAChallenge?` | Reads a challenge back out of a token payload, or `null` when the payload carries no challenge or a malformed one. Never returns a half-built challenge. |
+
+### TomTotp
+
+The RFC 4226 / RFC 6238 derivation primitives plus the base32 codec, with no
+policy attached — no notion of a window, an attempt budget or where a secret
+lives. Those belong to the server's `TomTotp2FAService`; what is here is only
+the arithmetic, kept in the kernel because the server verifying a code,
+enrolment tooling handing out a secret, and any client generating one must all
+agree on it exactly.
+
+#### Constructors
+
+*(private constructor — the class is a static namespace)*
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultDigits` | `int` | `6` — the code length assumed by authenticator apps. |
+| `defaultPeriod` | `Duration` | 30 seconds — the standard time step. |
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `counterFor({DateTime? at, Duration period = defaultPeriod})` | `int` | The time-step counter for an instant: seconds since the epoch divided by the period. |
+| `generateCode(List<int> key, int counter, [int digits = defaultDigits])` | `String` | The HOTP code for a raw key and counter, zero-padded to `digits`. |
+| `codeFor(String secret, {DateTime? at, int digits = defaultDigits, Duration period = defaultPeriod})` | `String` | The TOTP code for a base32 secret at an instant. Returns an empty string for an undecodable secret, so a bad secret matches nothing rather than throwing into a UI. |
+| `decodeBase32(String secret)` | `List<int>` | Decodes an RFC 4648 base32 secret to bytes; case-insensitive, ignoring spaces, `-` and `=`. Returns an empty list for an out-of-alphabet character. |
+| `encodeBase32(List<int> bytes)` | `String` | Encodes bytes as an unpadded base32 secret, for enrolment. |
 
 ## Enums
 
