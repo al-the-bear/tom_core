@@ -17,11 +17,13 @@
 /// whether it is switched on at all. `TomJobDefinition` is a *runtime* object —
 /// by the time it exists the decision to deploy the job has already been made.
 /// So this thin declaration lands here as a concrete `tom_core`-family class —
-/// never an abstract `Cs*` base (the framework carries annotations only, §0).
+/// never an abstract `Cs*` base (the framework carries annotations only,
+/// `codespecs_mapping.md` §1.1).
 ///
 /// A CodeSpec `@CsJob` class *is a* [TomJobDeclaration] and supplies its own
-/// `TomJobDefinition` for the runtime half. CE-JB is a *server* part (§4.2), so
-/// the declaration lives in the server project of the three-project output trio.
+/// `TomJobDefinition` for the runtime half. CE-JB is a *server* part
+/// (`codespecs_mapping.md` §4.2), so the declaration lives in the server
+/// project of the three-project output trio.
 class TomJobDeclaration {
   /// Stable identifier of the job, unique within the system.
   String jobId;

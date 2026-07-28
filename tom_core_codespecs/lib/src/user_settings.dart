@@ -1,12 +1,12 @@
 /// One user-scoped setting a CodeSpec's `@CsUserSetting` (CE-UP) is built on.
 ///
-/// **Scope — user, and only user** (`codespecs_mapping.md` §11). A CE-UP setting
-/// is keyed by the **user** and persisted **server-side**, so it is
+/// **Scope — user, and only user** (`codespecs_mapping.md` §11). A CE-UP
+/// setting is keyed by the **user** and persisted **server-side**, so it is
 /// re-materialised on any device that user signs into. There is no persistence
-/// mode to choose: §11 splits configuration and settings into four parts, one
-/// per scope key, **each single-moded — the scope key alone decides where a
-/// value lives**. A value that must stay on one machine is a different part, not
-/// a different mode of this one:
+/// mode to choose: `codespecs_mapping.md` §11 splits configuration and settings
+/// into four parts, one per scope key, **each single-moded — the scope key
+/// alone decides where a value lives**. A value that must stay on one machine
+/// is a different part, not a different mode of this one:
 ///
 /// | Scope key | Part |
 /// |-----------|------|
@@ -15,23 +15,24 @@
 /// | (user, device) — never leaves the device | CE-DS `@CsDeviceSetting` |
 /// | (user) — follows the user | **CE-UP, this class** |
 ///
-/// **Why this is a gap.** §4.1 records the CE-UP substrate as the *round-trip
-/// carrier only*: `TomGetSettingsMessage` / `TomGetSettingsResult`
-/// (`tom_core_kernel`) deliver a settings bootstrap payload server → client, and
-/// that transport is reused as-is. What `tom_core` has nowhere is the pair this
-/// file supplies — a **typed user-settings holder** naming a setting as a
-/// spec-authorable unit, and a **server-side per-user persistence** seam
-/// ([TomUserSettingsStore]). The kernel carrier is read-only and has no
-/// write-back path, so a user's chosen preference has nothing to be stored in.
+/// **Why this is a gap.** `codespecs_mapping.md` §4.1 records the CE-UP
+/// substrate as the *round-trip carrier only*: `TomGetSettingsMessage` /
+/// `TomGetSettingsResult` (`tom_core_kernel`) deliver a settings bootstrap
+/// payload server → client, and that transport is reused as-is. What `tom_core`
+/// has nowhere is the pair this file supplies — a **typed user-settings
+/// holder** naming a setting as a spec-authorable unit, and a **server-side
+/// per-user persistence** seam ([TomUserSettingsStore]). The kernel carrier is
+/// read-only and has no write-back path, so a user's chosen preference has
+/// nothing to be stored in.
 ///
-/// **Locus (§4.2).** A CE-UP setting spans two of the three generated projects:
-/// its **shape** is declared in the client project (`<app>_codespec_client`),
-/// and its **persistence** lives in the server project
-/// (`<app>_codespec_server`), reached through [TomUserSettingsStore].
+/// **Locus (`codespecs_mapping.md` §4.2).** A CE-UP setting spans two of the
+/// three generated projects: its **shape** is declared in the client project
+/// (`<app>_codespec_client`), and its **persistence** lives in the server
+/// project (`<app>_codespec_server`), reached through [TomUserSettingsStore].
 ///
-/// **Spec-authorable surface (§5.16):** the setting's key, type and default. The
-/// [value] is the user's persisted choice — supplied at run time, never
-/// authored.
+/// **Spec-authorable surface (`codespecs_mapping.md` §5.16):** the setting's
+/// key, type and default. The [value] is the user's persisted choice — supplied
+/// at run time, never authored.
 class TomUserSettings {
   /// Stable identifier of the setting (e.g. `preferred_language`).
   String settingId;
@@ -57,8 +58,8 @@ class TomUserSettings {
     this.defaultValue,
   });
 
-  /// The value in force, applying §5.16's intra-scope precedence for CE-UP:
-  /// **persisted user value → declared default**.
+  /// The value in force, applying `codespecs_mapping.md` §5.16's intra-scope
+  /// precedence for CE-UP: **persisted user value → declared default**.
   Object? get effectiveValue => value ?? defaultValue;
 }
 
@@ -77,9 +78,9 @@ class TomUserSettings {
 /// backend (a settings table, a document store): implement them and pass the
 /// instance in.
 ///
-/// The store is **framework-internal** (§5.16) — a spec authors a setting's key,
-/// type and default, never the storage. The seam exists so the generated server
-/// project has something to bind to.
+/// The store is **framework-internal** (`codespecs_mapping.md` §5.16) — a spec
+/// authors a setting's key, type and default, never the storage. The seam
+/// exists so the generated server project has something to bind to.
 abstract class TomUserSettingsStore {
   /// Allows `const` implementations.
   const TomUserSettingsStore();

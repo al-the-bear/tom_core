@@ -59,7 +59,9 @@ void main() {
       expect(s.defaultValue, 'light');
     });
 
-    test('effectiveValue applies the §5.16 persisted-value → default order', () {
+    test(
+        'effectiveValue applies the codespecs_mapping.md §5.16 '
+        'persisted-value → default order', () {
       expect(
         TomUserSettings(settingId: 'theme', defaultValue: 'light')
             .effectiveValue,
@@ -150,7 +152,8 @@ void main() {
   });
 
   group('csra2: CE-LO TomLayoutModel', () {
-    test('the container-kind set is the closed §5.22 nine', () {
+    test('the container-kind set is the closed codespecs_mapping.md §5.22 '
+        'nine', () {
       expect(TomLayoutContainerKind.values, [
         TomLayoutContainerKind.row,
         TomLayoutContainerKind.column,
@@ -164,7 +167,8 @@ void main() {
       ]);
     });
 
-    test('the override-delta grammar is the closed §5.22 five', () {
+    test('the override-delta grammar is the closed '
+        'codespecs_mapping.md §5.22 five', () {
       expect(TomLayoutDeltaOp.values, [
         TomLayoutDeltaOp.reparent,
         TomLayoutDeltaOp.setContainerProp,
@@ -174,8 +178,8 @@ void main() {
       ]);
     });
 
-    // §5.2: a slot references its element by stable id and never embeds the
-    // definition — the semantics↔layout split.
+    // `codespecs_mapping.md` §5.2: a slot references its element by stable id
+    // and never embeds the definition — the semantics↔layout split.
     test('a slot node references its element by id, never embedding it', () {
       final slot = TomLayoutSlotNode(nodeId: 'amount', referencedId: 'amount');
       expect(slot.referencedId, 'amount');
@@ -205,9 +209,10 @@ void main() {
       expect(model.findNode('nope'), isNull);
     });
 
-    // §5.2/§5.22: the load-bearing invariant of the two-layer design — a delta
-    // whose target id no longer exists is surfaced as a reconcile warning,
-    // NEVER silently dropped, so manual layout survives model changes.
+    // `codespecs_mapping.md` §5.2/§5.22: the load-bearing invariant of the
+    // two-layer design — a delta whose target id no longer exists is surfaced
+    // as a reconcile warning, NEVER silently dropped, so manual layout survives
+    // model changes.
     test('a delta targeting a vanished node is reported, not dropped', () {
       final model = TomLayoutModel(
         layoutId: 'payment_form',
@@ -270,7 +275,8 @@ void main() {
   });
 
   group('csra2: CE-TX TomMessageKeyRegistry', () {
-    test('the role and category sets are the closed §5.21 sets', () {
+    test('the role and category sets are the closed '
+        'codespecs_mapping.md §5.21 sets', () {
       expect(TomMessageRole.values, [
         TomMessageRole.error,
         TomMessageRole.notification,
@@ -296,8 +302,9 @@ void main() {
       expect(registry.resolve('app.order.placed', 'en'), 'Order placed');
     });
 
-    // §5.21: the MSGKR is the closed key vocabulary, so an unresolved key is a
-    // generation-time spec error — never a silent raw-key render.
+    // `codespecs_mapping.md` §5.21: the MSGKR is the closed key vocabulary, so
+    // an unresolved key is a generation-time spec error — never a silent
+    // raw-key render.
     test('an unregistered key is a spec error, not a raw-key render', () {
       final registry = TomMessageKeyRegistry(baseLocale: 'en');
       expect(registry.hasKey('app.missing'), isFalse);
@@ -323,8 +330,8 @@ void main() {
       );
     });
 
-    // §5.21: the error-copy namespace IS the CE-ER code namespace — each code
-    // has exactly one MSGKR entry.
+    // `codespecs_mapping.md` §5.21: the error-copy namespace IS the CE-ER code
+    // namespace — each code has exactly one MSGKR entry.
     test('error copy is keyed by its CE-ER error code', () {
       final registry = TomMessageKeyRegistry(baseLocale: 'en')
         ..register(TomMessageKey(
@@ -356,7 +363,9 @@ void main() {
   });
 
   group('csra2: CE-NV TomRouteRegistry', () {
-    test('the presentation and outcome sets are the closed §5.11 sets', () {
+    test(
+        'the presentation and outcome sets are the closed '
+        'codespecs_mapping.md §5.11 sets', () {
       expect(TomScreenPresentation.values,
           [TomScreenPresentation.replace, TomScreenPresentation.popup]);
       expect(TomFlowOutcome.values, [
@@ -367,7 +376,8 @@ void main() {
     });
 
     // The documented gap: the substrate "assumes route uniqueness" with no
-    // formal registry (§5.11). The registry is what makes it checkable.
+    // formal registry (`codespecs_mapping.md` §5.11). The registry is what
+    // makes it checkable.
     test('route ids are unique — a duplicate is rejected', () {
       final registry = TomRouteRegistry()
         ..registerRoute(TomRouteDefinition(routeId: 'dashboard'));
@@ -391,8 +401,8 @@ void main() {
       expect(registry.assignmentFor('nope'), isNull);
     });
 
-    // §5.11: navigation is action-triggered and its target is CONDITIONAL on
-    // the action outcome.
+    // `codespecs_mapping.md` §5.11: navigation is action-triggered and its
+    // target is CONDITIONAL on the action outcome.
     test('an action reaches different targets per outcome', () {
       final registry = TomRouteRegistry()
         ..registerRoute(TomRouteDefinition(routeId: 'payment'))

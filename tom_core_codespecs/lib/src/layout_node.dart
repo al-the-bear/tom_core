@@ -103,9 +103,9 @@ class TomLayoutContainerNode extends TomLayoutNode {
 ///
 /// The slot carries [referencedId] — the id of the field, action or component —
 /// and never the element's definition. That is the semantics↔layout split of
-/// §5.2: what an element *is* is authored once in the semantic model; where it
-/// *sits* is authored here, so re-arranging a screen cannot silently change a
-/// field's meaning, validation or binding.
+/// `codespecs_mapping.md` §5.2: what an element *is* is authored once in the
+/// semantic model; where it *sits* is authored here, so re-arranging a screen
+/// cannot silently change a field's meaning, validation or binding.
 class TomLayoutSlotNode extends TomLayoutNode {
   /// Id of the element (field, action, component) this slot places.
   String referencedId;
@@ -158,20 +158,20 @@ class TomLayoutOverrideDelta {
 ///
 /// **Why this is a gap (`codespecs_mapping.md` §5.2/§5.12/§5.22, verdict
 /// *gap*).** The `tom_flutter_ui` substrate (`AclComponent` in
-/// `advanced_container_layout/`) is a *rendering leaf*: it holds a live
-/// `Widget child` and its own alignment flags, so it describes one already-built
-/// widget tree. CodeSpecs needs the layer above that — an **authorable,
-/// serializable layout description** in which (a) placement references elements
-/// by stable id instead of embedding them, and (b) a generated [base] tree and
-/// an authored [overrides] layer are kept *separate* so regeneration does not
-/// destroy manual layout work. `tom_flutter_ui` has no such base/override
-/// layering and no id-addressed delta grammar, so the model lands here as a
-/// concrete `tom_core`-family class — never an abstract `Cs*` base (the
-/// framework carries annotations only, §0).
+/// `advanced_container_layout/`) is a *rendering leaf*: it holds a live `Widget
+/// child` and its own alignment flags, so it describes one already-built widget
+/// tree. CodeSpecs needs the layer above that — an **authorable, serializable
+/// layout description** in which (a) placement references elements by stable id
+/// instead of embedding them, and (b) a generated [base] tree and an authored
+/// [overrides] layer are kept *separate* so regeneration does not destroy
+/// manual layout work. `tom_flutter_ui` has no such base/override layering and
+/// no id-addressed delta grammar, so the model lands here as a concrete
+/// `tom_core`-family class — never an abstract `Cs*` base (the framework
+/// carries annotations only, `codespecs_mapping.md` §1.1).
 ///
 /// A CodeSpec `@CsLayout` class *is a* [TomLayoutModel]. CE-LO is a *client*
-/// part (§4.2), so the layout lives in the client project of the three-project
-/// output trio.
+/// part (`codespecs_mapping.md` §4.2), so the layout lives in the client
+/// project of the three-project output trio.
 class TomLayoutModel {
   /// Stable identifier of this layout (typically the form or screen it lays
   /// out).
@@ -226,11 +226,11 @@ class TomLayoutModel {
   /// Deltas whose addressed node no longer exists in the regenerated [base]
   /// tree, described one warning per delta.
   ///
-  /// A delta that no longer resolves is **reported, never dropped** (§5.22):
-  /// silently discarding it would destroy authored layout work at the exact
-  /// moment the author most needs to know — when the underlying model changed
-  /// beneath it. The delta stays in [overrides] so it can be re-pointed rather
-  /// than re-invented.
+  /// A delta that no longer resolves is **reported, never dropped**
+  /// (`codespecs_mapping.md` §5.22): silently discarding it would destroy
+  /// authored layout work at the exact moment the author most needs to know —
+  /// when the underlying model changed beneath it. The delta stays in
+  /// [overrides] so it can be re-pointed rather than re-invented.
   List<String> reconcileWarnings() {
     final known = nodeIds;
     final warnings = <String>[];

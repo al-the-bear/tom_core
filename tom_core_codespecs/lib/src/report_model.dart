@@ -544,8 +544,8 @@ class TomReportDefinition {
 
   /// The CE-AZ requirement a caller must satisfy to run the report.
   ///
-  /// Authorization is an attribute, never a leaf (§1.2), so it is a field here
-  /// rather than a part of its own.
+  /// Authorization is an attribute, never a leaf (`codespecs_mapping.md` §1.2),
+  /// so it is a field here rather than a part of its own.
   final String? authorizationKey;
 
   /// Whether the report aggregates rather than listing rows.

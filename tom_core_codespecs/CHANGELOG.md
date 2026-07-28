@@ -4,10 +4,10 @@
 
 - csra8: add the CE-RP report model — `TomReportDefinition` with
   `TomReportDimension`, `TomReportMeasure`, `TomReportColumn`,
-  `TomReportParameter` and `TomReportChart`, plus the shared `TomReportResult`
-  / `TomReportResultSection` envelope and the `TomReportValueKind` /
-  `TomReportMeasureFunction` / `TomReportDeliveryChannel` /
-  `TomReportChartKind` closed sets. CE-RP was promoted out of §4.3 on the
+  `TomReportParameter` and `TomReportChart`, plus the shared `TomReportResult` /
+  `TomReportResultSection` envelope and the `TomReportValueKind` /
+  `TomReportMeasureFunction` / `TomReportDeliveryChannel` / `TomReportChartKind`
+  closed sets. CE-RP was promoted out of `codespecs_mapping.md` §4.3 on the
   finding that a **grouped projection** — dimensions and measures — has no
   authoring home in any active part: `tom_core_server`'s `TomGroupedSelect`
   supplies the runtime grammar, but CE-DB's spec-authorable surface is
@@ -33,9 +33,9 @@
 - csra7: add the CE-NT notification model — `TomNotificationType`,
   `TomNotificationChannelDeclaration`, `TomNotificationPreferences`,
   `TomNotificationCatalog` and the `TomNotificationCategory` /
-  `TomNotificationUrgency` closed sets. CE-NT was promoted out of §4.3 because
-  its SOM section (`NotificationModel`) is a structured entry list, not free
-  text.
+  `TomNotificationUrgency` closed sets. CE-NT was promoted out of
+  `codespecs_mapping.md` §4.3 because its SOM section (`NotificationModel`) is a
+  structured entry list, not free text.
 - Only the *choosing* layer is new. `tom_core_server`'s `messaging` module
   already delivers on a named channel (`TomMessage`, `TomMessageChannel`,
   `TomMessageRouter`, `TomMessageOutbox`) and is reused as-is per pillar (b);
@@ -58,15 +58,17 @@
     property/settings classes, so it is deliberately **not** re-created here);
     the old `roaming` arm is the only meaning CE-UP has.
   - Add `TomUserSettingsStore` + `TomMemoryUserSettingsStore` — the
-    **server-side per-user persistence** seam. §4.1 names the CE-UP gap as
-    "typed user-settings holder **+** server-side per-user persistence", and
+    **server-side per-user persistence** seam. `codespecs_mapping.md` §4.1
+    names the CE-UP gap as "typed user-settings holder **+** server-side
+    per-user persistence", and
     only the holder existed; the reused kernel carrier
     (`TomGetSettingsMessage`/`TomGetSettingsResult`) is a read-only bootstrap
     payload with no write-back path, so a user's chosen preference had nowhere
     to be stored. The user key is in every method signature because it *is* the
     scope — the sibling `TomClientConfigurationStore` deliberately has no user
     parameter at all.
-  - Add `TomUserSettings.effectiveValue`, encoding §5.16's intra-scope
+  - Add `TomUserSettings.effectiveValue`, encoding `codespecs_mapping.md`
+    §5.16's intra-scope
     precedence for CE-UP (persisted user value → declared default). A `value` of
     `null` means *unset*, not *set to null*.
   - Correct the `TomClientConfiguration` doc-comment, which distinguished CE-CC
@@ -78,9 +80,11 @@
 
 ## 0.4.0
 
-- csra2: add the four remaining gap classes the §4.1 catalogue marks *gap*,
-  each re-verified against the current `tom_core` before being written:
-  - `TomLayoutModel` (CE-LO, §5.2/§5.12/§5.22) — the two-layer layout holder:
+- csra2: add the four remaining gap classes the `codespecs_mapping.md` §4.1
+  catalogue marks *gap*, each re-verified against the current `tom_core` before
+  being written:
+  - `TomLayoutModel` (CE-LO, `codespecs_mapping.md` §5.2/§5.12/§5.22) — the
+    two-layer layout holder:
     a generated `base` tree of `TomLayoutContainerNode` / `TomLayoutSlotNode`
     over the closed nine `TomLayoutContainerKind`, plus an authored `overrides`
     layer of id-addressed `TomLayoutOverrideDelta` over the closed five
@@ -88,7 +92,8 @@
     id has vanished and never drops it, so manual layout survives regeneration.
     `tom_flutter_ui`'s `AclComponent` is a rendering leaf holding a live
     `Widget` — it has no base/override layering and no delta grammar.
-  - `TomMessageKeyRegistry` (CE-TX, §5.8/§5.21) — the closed message-key
+  - `TomMessageKeyRegistry` (CE-TX, `codespecs_mapping.md` §5.8/§5.21) — the
+    closed message-key
     catalogue: `TomMessageKey` with base copy, per-locale copy, declared
     parameters, the closed `TomMessageRole` five and `TomMessageCategory` pair.
     `resolve()` falls back to base copy and **never to the raw key**, and
@@ -96,21 +101,23 @@
     name its CE-ER code, because that namespace *is* the code namespace.
     `tom_core_kernel`'s `TomTextResourceProvider` is an untyped runtime
     `Map<String, dynamic>` with no key vocabulary.
-  - `TomRouteRegistry` (CE-NV, §5.11) — the route-id registry (`registerRoute`
+  - `TomRouteRegistry` (CE-NV, `codespecs_mapping.md` §5.11) — the route-id
+    registry (`registerRoute`
     rejects a duplicate id; `danglingRouteReferences()` finds edges and
     assignments naming an unregistered route) plus the screen-flow model:
     `TomFormScreenAssignment` (replace vs popup) and `TomScreenFlowEdge`
     (per-`TomFlowOutcome` conditional targets). `tom_flutter_ui`'s
     `TomPageRoute` is a bare `MaterialPageRoute` subclass carrying no id.
-  - `TomJobDeclaration` (CE-JB, §5.29) — the deployment/ownership envelope
+  - `TomJobDeclaration` (CE-JB, `codespecs_mapping.md` §5.29) — the
+    deployment/ownership envelope
     (`enabled`, `environments`, `serviceUnitId`, `targetRefs`, `runsIn()`).
     Deliberately **narrow**: `tom_core_kernel`'s scheduling module now supplies
     the whole runtime half (`TomJobDefinition`, `TomSchedule`, `TomScheduler`,
     `TomJobStore`, `TomLeaseLock`, `TomJobDispatcher`), which is reused as-is.
-- CE-AC (Trigger) is confirmed **not** a gap and gets no class here — §4.1 /
-  §5.10 / §5.20 record "no gap — full action implementation reused". Its closed
-  five-kind taxonomy ships as `TriggerKind` on `@CsTrigger` in `tom_code_specs`
-  0.5.0 instead.
+- CE-AC (Trigger) is confirmed **not** a gap and gets no class here —
+  `codespecs_mapping.md` §4.1 / §5.10 / §5.20 record "no gap — full action
+  implementation reused". Its closed five-kind taxonomy ships as `TriggerKind`
+  on `@CsTrigger` in `tom_code_specs` 0.5.0 instead.
 
 ## 0.3.0
 

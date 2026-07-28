@@ -109,14 +109,15 @@ class TomScreenFlowEdge {
 /// claim the same name and nothing notices until runtime. CodeSpecs needs the
 /// two things the substrate has no home for: (a) a **route-id registry** that
 /// makes uniqueness and dangling references checkable at generation time, and
-/// (b) a **screen-flow model** in which an action's target is conditional on its
-/// [TomFlowOutcome] and a form's placement is authored as replace-or-popup. So
-/// it lands here as a concrete `tom_core`-family class — never an abstract
-/// `Cs*` base (the framework carries annotations only, §0).
+/// (b) a **screen-flow model** in which an action's target is conditional on
+/// its [TomFlowOutcome] and a form's placement is authored as replace-or-popup.
+/// So it lands here as a concrete `tom_core`-family class — never an abstract
+/// `Cs*` base (the framework carries annotations only, `codespecs_mapping.md`
+/// §1.1).
 ///
 /// A CodeSpec `@CsRoute` graph *is a* [TomRouteRegistry]. CE-NV is a *client*
-/// part (§4.2), so the registry lives in the client project of the
-/// three-project output trio.
+/// part (`codespecs_mapping.md` §4.2), so the registry lives in the client
+/// project of the three-project output trio.
 class TomRouteRegistry {
   final Map<String, TomRouteDefinition> _routes = <String, TomRouteDefinition>{};
   final Map<String, TomFormScreenAssignment> _assignments =
@@ -142,8 +143,8 @@ class TomRouteRegistry {
   /// Registers [route].
   ///
   /// Throws [ArgumentError] when the id is already taken. Uniqueness is the
-  /// registry's whole reason to exist (§5.11): the substrate assumes it, so
-  /// something has to enforce it.
+  /// registry's whole reason to exist (`codespecs_mapping.md` §5.11): the
+  /// substrate assumes it, so something has to enforce it.
   void registerRoute(TomRouteDefinition route) {
     if (_routes.containsKey(route.routeId)) {
       throw ArgumentError.value(

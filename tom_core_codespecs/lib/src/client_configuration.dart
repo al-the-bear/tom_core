@@ -1,17 +1,18 @@
 /// The per-machine client-configuration holder a CodeSpec's `@CsClientConfig`
 /// (CE-CC) is built on.
 ///
-/// **Why this is a gap (csm2r7 survey `codespecs_mapping.md` §1.1b).**
-/// The *values* reuse the `tom_core_flutter` `TomProperty`* family (each field
-/// reads one client-side config key at construction). What `tom_core` lacks is a
-/// **holder** that groups those values as the deployment/per-machine
+/// **Why this is a gap (csm2r7 survey `codespecs_mapping.md` §1.1b).** The
+/// *values* reuse the `tom_core_flutter` `TomProperty`* family (each field
+/// reads one client-side config key at construction). What `tom_core` lacks is
+/// a **holder** that groups those values as the deployment/per-machine
 /// configuration of one client — the settings keyed by the **(client app,
 /// machine)** pair, with **no user identity in the key**
 /// (`codespecs_mapping.md` §11). That key is the whole discriminator: a value
 /// that is the same for every user of an install is CE-CC; a value that differs
 /// per signed-in user is CE-DS (device-persisted) or CE-UP (server-persisted,
 /// follows the user). CodeSpecs needs that holder, so it lands here as a
-/// concrete `tom_core`-family class (never an abstract `Cs*` base, §0).
+/// concrete `tom_core`-family class (never an abstract `Cs*` base,
+/// `codespecs_mapping.md` §1.1).
 ///
 /// A CodeSpec `@CsClientConfig` class *is a* `TomClientConfiguration`. Its scalar
 /// fields are backed by `TomProperty` reads in the running client.

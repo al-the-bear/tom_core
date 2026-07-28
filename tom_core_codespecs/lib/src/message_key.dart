@@ -20,7 +20,7 @@ enum TomMessageRole {
   generic,
 }
 
-/// The derived-vs-catalogued split of §5.8/§5.21.
+/// The derived-vs-catalogued split of `codespecs_mapping.md` §5.8/§5.21.
 ///
 /// Element copy (a field's label, a button's caption) is **derived** from the
 /// element's `basePath` and gets no catalogue entry — duplicating it here would
@@ -89,12 +89,12 @@ class TomMessageKey {
 /// every translation preserve. None of that exists in the provider — it will
 /// happily return `null` for a key nobody ever defined. So the catalogue lands
 /// here as a concrete `tom_core`-family class — never an abstract `Cs*` base
-/// (the framework carries annotations only, §0).
+/// (the framework carries annotations only, `codespecs_mapping.md` §1.1).
 ///
 /// A CodeSpec `@CsMessage` catalogue *is a* [TomMessageKeyRegistry]. CE-TX is a
-/// *shared* part (§4.2): server-side error and email copy and client-side UI
-/// copy resolve against one catalogue, so it lives in the shared project of the
-/// three-project output trio.
+/// *shared* part (`codespecs_mapping.md` §4.2): server-side error and email
+/// copy and client-side UI copy resolve against one catalogue, so it lives in
+/// the shared project of the three-project output trio.
 class TomMessageKeyRegistry {
   /// Locale whose copy is held in [TomMessageKey.baseCopy].
   String baseLocale;
@@ -114,8 +114,9 @@ class TomMessageKeyRegistry {
   ///
   /// Throws [ArgumentError] if the key is already catalogued (two entries for
   /// one key make the rendered text depend on registration order) or if an
-  /// error-copy entry carries no CE-ER code (§5.21: the error-copy namespace
-  /// *is* the code namespace, so an uncoded error string belongs to nothing).
+  /// error-copy entry carries no CE-ER code (`codespecs_mapping.md` §5.21: the
+  /// error-copy namespace *is* the code namespace, so an uncoded error string
+  /// belongs to nothing).
   void register(TomMessageKey entry) {
     if (_byKey.containsKey(entry.key)) {
       throw ArgumentError.value(
@@ -147,10 +148,11 @@ class TomMessageKeyRegistry {
   /// Copy for [key] in [locale], falling back to the base-locale copy when the
   /// locale has no translation.
   ///
-  /// Fallback is **never to the raw key** (§5.21): a user shown
-  /// `app.error.amount.tooLarge` has been shown a bug, not a message. An
-  /// unregistered key is a *generation-time spec error* — the catalogue is the
-  /// closed key vocabulary, so a key outside it cannot be rendered at all.
+  /// Fallback is **never to the raw key** (`codespecs_mapping.md` §5.21): a
+  /// user shown `app.error.amount.tooLarge` has been shown a bug, not a
+  /// message. An unregistered key is a *generation-time spec error* — the
+  /// catalogue is the closed key vocabulary, so a key outside it cannot be
+  /// rendered at all.
   String resolve(String key, String locale) {
     final entry = _byKey[key];
     if (entry == null) {

@@ -29,23 +29,24 @@ class TomDomainEnumValue {
 /// kind) is built on.
 ///
 /// **Why this is a gap (csm4 survey `codespecs_mapping.md` §5, verdict
-/// *gap*).** `tom_core_kernel` carries only *mechanical* enums — `TomHttpMethod`,
-/// `TomMimeType` and similar transport/plumbing sets — and no **domain-enum /
-/// value-object framework** that names a business-domain closed value set as a
-/// first-class, spec-authorable unit (its id, its members, and each member's
-/// stable token vs. display label). A CodeSpecs data model needs that unit: a
-/// `@CsEnum` marks a domain enumeration (e.g. `OrderStatus { pending, paid,
-/// shipped }`) that is referenced by both the shared entity shape (CE-DB) and the
-/// UI (`@OneOf` discriminators). So it lands here as a concrete `tom_core`-family
-/// class — never an abstract `Cs*` base (the framework carries annotations only,
-/// §0).
+/// *gap*).** `tom_core_kernel` carries only *mechanical* enums —
+/// `TomHttpMethod`, `TomMimeType` and similar transport/plumbing sets — and no
+/// **domain-enum / value-object framework** that names a business-domain closed
+/// value set as a first-class, spec-authorable unit (its id, its members, and
+/// each member's stable token vs. display label). A CodeSpecs data model needs
+/// that unit: a `@CsEnum` marks a domain enumeration (e.g. `OrderStatus {
+/// pending, paid, shipped }`) that is referenced by both the shared entity
+/// shape (CE-DB) and the UI (`@OneOf` discriminators). So it lands here as a
+/// concrete `tom_core`-family class — never an abstract `Cs*` base (the
+/// framework carries annotations only, `codespecs_mapping.md` §1.1).
 ///
 /// A CodeSpec `@CsEnum` class *is a* `TomDomainEnum`. `domainEnum` is a
 /// **member kind, not a part** (`codespecs_mapping.md` §4.1) — `@CsEnum` lives
 /// with the shared contract markers (`contract_annotations.dart`), so a domain
 /// enum referenced by a shared contract type lives in the shared project of the
-/// three-project output trio (§4.2) and is visible to both client and server;
-/// otherwise it lives in the project of the part that introduces it.
+/// three-project output trio (`codespecs_mapping.md` §4.2) and is visible to
+/// both client and server; otherwise it lives in the project of the part that
+/// introduces it.
 class TomDomainEnum {
   /// Stable identifier of the enumeration (e.g. `order_status`).
   String enumId;

@@ -1,15 +1,18 @@
 /// The client-application descriptor a CodeSpec's `@CsClient` (CE-CL) is built on.
 ///
 /// **Why this is a gap (csm2r7 survey `codespecs_mapping.md` §1.1b).**
-/// `tom_core` has no client-application *descriptor* root: `TomAuthenticationData`
-/// carries a `client` id string and `TomClientRemoteContext` models a live
-/// connection, but neither names the client application as a first-class,
-/// spec-authorable unit (its id, platforms, entry route, and the server it talks
-/// to). CodeSpecs needs that unit, so it lands here — a concrete `tom_core`-family
-/// class, not an abstract `Cs*` base (the framework carries annotations only, §0).
+/// `tom_core` has no client-application *descriptor* root:
+/// `TomAuthenticationData` carries a `client` id string and
+/// `TomClientRemoteContext` models a live connection, but neither names the
+/// client application as a first-class, spec-authorable unit (its id,
+/// platforms, entry route, and the server it talks to). CodeSpecs needs that
+/// unit, so it lands here — a concrete `tom_core`-family class, not an abstract
+/// `Cs*` base (the framework carries annotations only, `codespecs_mapping.md`
+/// §1.1).
 ///
 /// A CodeSpec `@CsClient` class *is a* `TomClientApplication`; the client-only
-/// project (`<app>_codespec_client`, §4.2) instantiates it.
+/// project (`<app>_codespec_client`, `codespecs_mapping.md` §4.2) instantiates
+/// it.
 class TomClientApplication {
   /// Stable identifier of the client application (e.g. `admin_console`).
   ///
