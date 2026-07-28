@@ -12,7 +12,7 @@
 /// is a pure function and can be tested by evaluating it against fixed dates
 /// with no waiting and no fakes.
 ///
-/// ## The three trigger kinds
+/// ## The shipped schedules
 ///
 /// * [TomCronSchedule] — the standard five-field POSIX cron expression, for
 ///   "at these minutes of these hours of these days".
@@ -21,6 +21,9 @@
 ///   first: last-day-of-month, and the nth (or last) weekday of a month.
 /// * [TomIntervalSchedule] — a fixed period from an anchor, for cadences that
 ///   are not aligned to the wall clock at all ("every 90 seconds").
+/// * [TomOnceSchedule] — a single absolute instant, then never again. The only
+///   non-recurring clock-driven schedule, and the one that expresses a deadline
+///   or a timer wait.
 /// * [TomEventSchedule] — not clock-driven. It answers `null` to every
 ///   [TomSchedule.nextFireAfter] and instead exposes a [Stream]; the scheduler
 ///   subscribes and enqueues a run per event.
@@ -33,6 +36,11 @@
 /// evaluate against a UTC `DateTime` and you get a DST-immune absolute
 /// cadence. The schedule does not decide which you want — the scheduler's
 /// clock does.
+///
+/// [TomOnceSchedule] is the exception that proves the rule: it names one
+/// absolute instant rather than a wall-clock position, so there is nothing for
+/// a zone to change. It still answers in [from]'s zone, but only because the
+/// contract says the answer is comparable to the question.
 library;
 
 import '../little_things/exception_base.dart';
@@ -714,6 +722,82 @@ class TomIntervalSchedule extends TomSchedule {
 
   @override
   String describe() => 'interval($period)';
+}
+
+// =============================================================================
+// ONCE
+// =============================================================================
+
+/// A single absolute instant: fire once at [at], then never again.
+///
+/// The other clock-driven schedules all recur. This one is what expresses a
+/// **deadline** — "escalate this ticket at 09:00 on the 1st", "expire this
+/// invitation in seven days" — and it is the shape a timer wait takes when a
+/// multi-step process is built out of jobs rather than out of a process engine.
+/// Without it, a caller needing one future instant has to abuse
+/// [TomIntervalSchedule] (which will fire again) or write a subclass at the
+/// call site.
+///
+/// It needs no scheduler support because [TomSchedule] already accommodates it:
+/// `null` from [nextFireAfter] means *never again*, so the whole implementation
+/// is "the instant, if we are not past it yet".
+///
+/// ## An instant, not a wall-clock position
+///
+/// [at] is an absolute moment. Its zone affects nothing — a deadline of
+/// `2026-08-01T09:00Z` is the same moment whether it is compared against a UTC
+/// or a local clock, and unlike the recurring schedules there is no DST
+/// question to answer because there is no recurrence to shift. [nextFireAfter]
+/// still returns its answer in [from]'s zone, so the value can be compared and
+/// stored like any other schedule's, but that is a rendering, not a
+/// reinterpretation. [describe] prints UTC for the same reason: a deadline in an
+/// alert should not depend on which host formatted it.
+///
+/// ## Nothing to validate, including a deadline in the past
+///
+/// The sibling schedules reject expressions that cannot mean anything. A
+/// [DateTime] always means something, *including one already behind us*: that
+/// is a schedule which will never fire, and `null` is exactly how the contract
+/// spells it. The schedule cannot judge otherwise without reading a clock, and
+/// [nextFireAfter] must stay pure — the scheduler replays windows
+/// deterministically after a restart and would get different answers from a
+/// schedule that had opinions about now.
+///
+/// For the same reason there is deliberately no `TomOnceSchedule.after(
+/// Duration)` convenience. It would have to read the clock *at construction*,
+/// and job definitions are typically rebuilt at start-up — so a "fire in three
+/// days" schedule would quietly push its own deadline three days further out on
+/// every restart, and a process that restarted often would never fire at all.
+/// Compute the instant once, persist it, and pass it here.
+///
+/// ## Being planned is what survives a restart
+///
+/// A one-shot fires late rather than not at all when the process is down over
+/// its instant, because the scheduler enqueues the window as soon as it sees
+/// the job — the run is then durable store state, and
+/// [TomMissedWindowPolicy.skip] does not un-plan it. The case that genuinely
+/// does not fire is a job **first registered after** its instant has passed:
+/// first sight anchors on the present for every schedule kind, so there is no
+/// window to catch up on. The scheduler raises
+/// [TomJobAlertKind.neverFires] for that rather than staying quiet about it.
+class TomOnceSchedule extends TomSchedule {
+  /// The one instant this schedule fires at.
+  final DateTime at;
+
+  /// Creates a schedule that fires once at [at].
+  const TomOnceSchedule(this.at);
+
+  @override
+  DateTime? nextFireAfter(DateTime from) {
+    // Strictly after, like every other schedule: asked exactly at the instant,
+    // the answer is "never again" — that window has been reached, and offering
+    // it a second time would fire the deadline twice.
+    if (!from.isBefore(at)) return null;
+    return from.isUtc ? at.toUtc() : at.toLocal();
+  }
+
+  @override
+  String describe() => 'once(${at.toUtc().toIso8601String()})';
 }
 
 // =============================================================================

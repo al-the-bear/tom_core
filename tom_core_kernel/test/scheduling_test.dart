@@ -638,6 +638,58 @@ void main() {
     });
   });
 
+  group('TomOnceSchedule', () {
+    test('answers its instant while it is still ahead', () {
+      final once = TomOnceSchedule(DateTime.utc(2026, 8, 1, 9));
+      expect(once.nextFireAfter(DateTime.utc(2026, 7, 1)),
+          DateTime.utc(2026, 8, 1, 9));
+      expect(once.nextFireAfter(DateTime.utc(2026, 8, 1, 8, 59, 59)),
+          DateTime.utc(2026, 8, 1, 9));
+    });
+
+    test('answers null at the instant and after it', () {
+      final at = DateTime.utc(2026, 8, 1, 9);
+      final once = TomOnceSchedule(at);
+      // Asked exactly at the instant the window has been reached; offering it
+      // again is how a one-shot would fire twice.
+      expect(once.nextFireAfter(at), isNull);
+      expect(once.nextFireAfter(at.add(const Duration(microseconds: 1))),
+          isNull);
+      expect(once.nextFireAfter(DateTime.utc(2027)), isNull);
+    });
+
+    test('is clock-driven', () {
+      expect(TomOnceSchedule(DateTime.utc(2026, 8, 1)).isClockDriven, isTrue);
+    });
+
+    test('answers in the zone it was asked in, naming the same instant', () {
+      final at = DateTime.utc(2026, 8, 1, 9);
+      final once = TomOnceSchedule(at);
+
+      final utc = once.nextFireAfter(DateTime.utc(2026, 7, 1))!;
+      expect(utc.isUtc, isTrue);
+      expect(utc, at);
+
+      final local = once.nextFireAfter(DateTime(2026, 7, 1))!;
+      expect(local.isUtc, isFalse);
+      // Rendering, not reinterpretation: still the same point in time.
+      expect(local.toUtc(), at);
+    });
+
+    test('takes a local instant as the absolute instant it names', () {
+      final at = DateTime(2026, 8, 1, 9);
+      final once = TomOnceSchedule(at);
+      expect(once.nextFireAfter(DateTime.utc(2026, 7, 1))!, at.toUtc());
+    });
+
+    test('describes itself in the family style', () {
+      expect(TomOnceSchedule(DateTime.utc(2026, 8, 1, 9)).describe(),
+          'once(2026-08-01T09:00:00.000Z)');
+      expect(TomOnceSchedule(DateTime.utc(2026, 8, 1, 9)).toString(),
+          'once(2026-08-01T09:00:00.000Z)');
+    });
+  });
+
   group('TomEventSchedule', () {
     test('is not clock-driven and never answers a fire time', () {
       final controller = makeEventSource();
@@ -1167,6 +1219,146 @@ void main() {
         await scheduler.tick();
         expect(alerts.where((a) => a.kind == TomJobAlertKind.windowsMissed),
             isEmpty);
+      });
+    });
+
+    group('one-shot deadlines', () {
+      /// A one-shot job firing an hour after the clock's start.
+      TomJobDefinition deadlineJob({
+        DateTime? at,
+        TomMissedWindowPolicy policy = TomMissedWindowPolicy.runOnce,
+      }) =>
+          TomJobDefinition(
+            name: 'deadline',
+            schedule: TomOnceSchedule(at ?? DateTime.utc(2026, 3, 1, 11)),
+            body: (_) => OkCommand(),
+            missedWindowPolicy: policy,
+            retryPolicy: TomRetryPolicy.none,
+          );
+
+      test('fires once and only once, however long the scheduler runs on',
+          () async {
+        final dispatcher = RecordingDispatcher();
+        final scheduler =
+            schedulerFor(store, clock, dispatcher: dispatcher, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(deadlineJob());
+
+        // Planned but not due.
+        await scheduler.tick();
+        expect(dispatcher.dispatched, isEmpty);
+        expect((await store.all()).single.scheduledFor,
+            DateTime.utc(2026, 3, 1, 11));
+
+        clock.now = DateTime.utc(2026, 3, 1, 11);
+        await scheduler.tick();
+        await settle();
+        expect(dispatcher.dispatched, hasLength(1));
+
+        // Days of ticking afterwards add nothing: nextFireAfter is null from
+        // the instant onwards, so there is no second window to plan.
+        for (var i = 0; i < 5; i++) {
+          clock.advance(const Duration(hours: 12));
+          await scheduler.tick();
+          await settle();
+        }
+        expect(dispatcher.dispatched, hasLength(1));
+        expect(await store.all(), hasLength(1));
+      });
+
+      test('a planned deadline still fires after an outage that swallowed it, '
+          'under every missed-window policy', () async {
+        for (final policy in TomMissedWindowPolicy.values) {
+          final outageStore = TomMemoryJobStore();
+          final outageClock = FakeClock(DateTime.utc(2026, 3, 1, 10));
+          final job = TomJobDefinition(
+            name: 'deadline',
+            schedule: TomOnceSchedule(DateTime.utc(2026, 3, 1, 11)),
+            body: (_) => OkCommand(),
+            missedWindowPolicy: policy,
+            retryPolicy: TomRetryPolicy.none,
+          );
+
+          final before = schedulerFor(outageStore, outageClock);
+          before.register(job);
+          await before.tick();
+          before.close();
+
+          // The process was down across the instant. The window is durable
+          // state, so the policy — which governs windows the schedule would
+          // *produce* after the last record — never gets a say: the run is
+          // already planned and merely late.
+          outageClock.now = DateTime.utc(2026, 3, 4, 9);
+          final after = schedulerFor(outageStore, outageClock);
+          addTearDown(after.close);
+          after.register(job);
+          await after.tick();
+          await settle();
+
+          final runs = await outageStore.all();
+          expect(runs, hasLength(1), reason: '$policy');
+          expect(runs.single.scheduledFor, DateTime.utc(2026, 3, 1, 11),
+              reason: '$policy');
+          expect(runs.single.state, TomJobRunState.succeeded, reason: '$policy');
+        }
+      });
+
+      test('a deadline first registered after its instant plans nothing and '
+          'says so', () async {
+        clock.now = DateTime.utc(2026, 3, 4, 9);
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(deadlineJob());
+        await scheduler.tick();
+        await settle();
+
+        expect(await store.all(), isEmpty);
+        final never = alerts.where((a) => a.kind == TomJobAlertKind.neverFires);
+        expect(never, hasLength(1));
+        expect(never.single.jobName, 'deadline');
+        expect(never.single.schedule, isA<TomOnceSchedule>());
+        expect(never.single.describe(),
+            contains('once(2026-03-01T11:00:00.000Z)'));
+      });
+
+      test('the never-fires alert is raised once, not once per tick', () async {
+        clock.now = DateTime.utc(2026, 3, 4, 9);
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(deadlineJob());
+        for (var i = 0; i < 5; i++) {
+          clock.advance(const Duration(minutes: 30));
+          await scheduler.tick();
+        }
+        expect(alerts.where((a) => a.kind == TomJobAlertKind.neverFires),
+            hasLength(1));
+      });
+
+      test('re-registering the job lets it report again', () async {
+        clock.now = DateTime.utc(2026, 3, 4, 9);
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(deadlineJob());
+        await scheduler.tick();
+        // A corrected registration that is still wrong is news again — the
+        // operator changed something and deserves to hear it did not help.
+        scheduler.register(deadlineJob(at: DateTime.utc(2026, 3, 2)));
+        await scheduler.tick();
+        expect(alerts.where((a) => a.kind == TomJobAlertKind.neverFires),
+            hasLength(2));
+      });
+
+      test('a recurrence that can never match reports the same way', () async {
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        // February 30th.
+        scheduler.register(jobNamed('impossible', TomCronSchedule('0 0 30 2 *')));
+        await scheduler.tick();
+
+        expect(await store.all(), isEmpty);
+        final never = alerts.where((a) => a.kind == TomJobAlertKind.neverFires);
+        expect(never, hasLength(1));
+        expect(never.single.describe(), contains('will never run'));
       });
     });
 

@@ -138,6 +138,14 @@ class TomScheduler implements TomClosable {
   /// therefore not record. Cleared when the run finishes here.
   final Set<String> _lostLeases = {};
 
+  /// Jobs already reported as never firing.
+  ///
+  /// The condition is detected on the planning pass, which runs every tick, and
+  /// it cannot resolve itself — so without this the alert would repeat for the
+  /// life of the process. Cleared whenever the registry entry changes, so a
+  /// corrected job that is still wrong reports again.
+  final Set<String> _neverFiresReported = {};
+
   Timer? _timer;
   bool _ticking = false;
   bool _closed = false;
@@ -197,6 +205,7 @@ class TomScheduler implements TomClosable {
       case TomJobAlertKind.attemptFailed:
       case TomJobAlertKind.timedOut:
       case TomJobAlertKind.windowsMissed:
+      case TomJobAlertKind.neverFires:
       case TomJobAlertKind.leaseStolen:
         tomLog.warn(alert.describe());
       case TomJobAlertKind.lockContended:
@@ -232,6 +241,7 @@ class TomScheduler implements TomClosable {
   void register(TomJobDefinition job) {
     _requireOpen();
     _jobs[job.name] = job;
+    _neverFiresReported.remove(job.name);
     final schedule = job.schedule;
     if (schedule is TomEventSchedule) {
       _cancel(_eventSubscriptions.remove(job.name));
@@ -255,6 +265,7 @@ class TomScheduler implements TomClosable {
   /// them silently would make deregistration a way to lose work.
   void deregister(String name) {
     _jobs.remove(name);
+    _neverFiresReported.remove(name);
     _cancel(_eventSubscriptions.remove(name));
   }
 
@@ -377,7 +388,22 @@ class TomScheduler implements TomClosable {
       // as missed would make registering a long-standing daily job replay every
       // day since the epoch.
       final first = job.schedule.nextFireAfter(now);
-      if (first != null) await _enqueueWindow(job, first, first);
+      if (first != null) {
+        await _enqueueWindow(job, first, first);
+      } else if (_neverFiresReported.add(job.name)) {
+        // Anchoring on the present has one cost, and this is it: a job whose
+        // only window is already behind it gets nothing planned, and would
+        // otherwise sit in the registry looking exactly like a job that is
+        // merely not due yet. Missed-window policy cannot help — policy applies
+        // to windows *after* the last one on record, and there is no record.
+        onAlert(
+          TomJobAlert(
+            jobName: job.name,
+            kind: TomJobAlertKind.neverFires,
+            schedule: job.schedule,
+          ),
+        );
+      }
       return;
     }
 

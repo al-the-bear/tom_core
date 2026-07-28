@@ -34,7 +34,7 @@ a restart.
 
 | Type | Role |
 | ---- | ---- |
-| `TomSchedule` | When a job should fire. Cron, calendar, interval or event |
+| `TomSchedule` | When a job should fire. Cron, calendar, interval, once or event |
 | `TomJobDefinition` | A schedule plus a body, retry policy, timeout and overlap rule |
 | `TomJobRun` | One attempt-carrying occurrence: window, next attempt, state, claim |
 | `TomJobStore` | Durable queue of runs. Memory and file implementations ship here |
@@ -126,7 +126,7 @@ the contract.
 
 ## Schedules
 
-A `TomSchedule` answers one question: `nextFireAfter(instant)`. Four
+A `TomSchedule` answers one question: `nextFireAfter(instant)`. Five
 implementations ship, one of them with two constructors:
 
 | Schedule | Fires |
@@ -135,15 +135,23 @@ implementations ship, one of them with two constructors:
 | `TomCalendarSchedule.dayOfMonth(...)` | Calendar rules: the 15th, the last day, every quarter |
 | `TomCalendarSchedule.weekdayOfMonth(...)` | The second Tuesday, the last Friday |
 | `TomIntervalSchedule(Duration(minutes: 5))` | A fixed grid anchored at an instant |
+| `TomOnceSchedule(DateTime.utc(2026, 8, 1, 9))` | Exactly once, at one absolute instant, then never again |
 | `TomEventSchedule(stream)` | Not clock-driven at all — a stream enqueues the runs |
 
-Two behaviours worth knowing:
+Three behaviours worth knowing:
 
 - **Cron day fields are OR-ed**, per POSIX: with both day-of-month and
   day-of-week restricted, a day matching *either* fires.
 - **Intervals do not drift.** The grid is absolute, so a scheduler that was down
   for an hour resumes on the original grid rather than restarting from the
   moment it woke up.
+- **A one-shot names an instant, not a wall-clock position.** The recurring
+  schedules take their meaning from the zone of the instant they are asked
+  about — "03:00" is 03:00 wherever you stand. `TomOnceSchedule` is the
+  exception: it already knows the exact point in time, so the zone only decides
+  how the answer is *rendered*, never which moment it means. Pass a local
+  `DateTime` and you get that machine's reading of it; the schedule fires at the
+  same absolute instant either way.
 
 `TomEventSchedule` inverts the direction: instead of the clock producing windows,
 each event on the stream enqueues a run carrying its payload. Two events at the
@@ -232,6 +240,23 @@ are alerted rather than silently discarded.
 **First sight anchors on the present.** A newly registered job does not replay
 its entire history — the scheduler has no record of it, so there is nothing to
 catch up on.
+
+**A planned window survives, whatever the policy says.** The policy governs
+windows the schedule would *produce* after the last one on record; once a window
+has been written to the store it is durable state and is simply late. This is
+most visible with `TomOnceSchedule`: a deadline planned before an outage fires
+when the process comes back, under `skip` as much as under `runAll`, and fires
+exactly once — because from the instant onwards `nextFireAfter` answers `null`,
+so there is no second window to plan.
+
+**A job that can never run says so.** The two cases are a recurrence that cannot
+match (`0 0 30 2 *` is February 30th) and a one-shot whose instant had already
+passed when the job was *first* registered — the second is what a deadline
+restored at start-up after a long outage looks like. Neither has a record to
+measure "missed" against, so no missed-window policy applies; instead the
+scheduler raises a `neverFires` alert carrying the schedule, once per job rather
+than once per tick. Without it, a job that can never run would be
+indistinguishable from one that is merely not due yet.
 
 ## Retries, Backoff and Timeouts
 
@@ -374,13 +399,18 @@ Everything worth an operator's attention arrives as a `TomJobAlert` on
 | `runFailed` | Every attempt is spent; the run is terminally failed | error |
 | `runAbandoned` | A claim outlived `leaseTimeout` and was returned to the queue | error |
 | `windowsMissed` | Windows the missed-window policy or `catchUpLimit` dropped | warn |
+| `neverFires` | The job's schedule will never produce a window — `schedule` says which | warn |
 | `lockContended` | A peer holds this job's lease; conceding | debug |
 | `leaseStolen` | Took over from a holder that vanished — `lease` names it | warn |
 | `leaseLost` | **Lost the lease mid-run.** Another node may now be executing it | error |
 
 `lockContended` is debug on purpose: in a healthy cluster it fires once per job
 per window for every node that did not win, and a warning that fires constantly
-is a warning operators learn to ignore.
+is a warning operators learn to ignore. `neverFires` is raised once per job per
+scheduler for the same reason: the condition is re-detected on every planning
+pass and cannot resolve itself, so repeating it would drown the channel.
+Re-registering the job arms it again — a corrected registration that is still
+wrong is news.
 
 Three questions and where they are answered:
 

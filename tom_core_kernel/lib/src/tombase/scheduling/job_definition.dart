@@ -198,6 +198,20 @@ enum TomJobAlertKind {
   /// A schedule produced windows that were skipped by its missed-window policy.
   windowsMissed,
 
+  /// A registered job's schedule will never produce a window.
+  ///
+  /// The quiet misconfiguration: a job that can never run looks exactly like a
+  /// job that is merely not due yet, and without this nothing would ever say
+  /// otherwise. It arises two ways — a recurrence that cannot match (`0 0 30 2
+  /// *` is February 30th) and, more usefully, a `TomOnceSchedule` whose instant
+  /// had already passed when the job was first registered, which is what a
+  /// deadline job restored at start-up after a long outage looks like.
+  ///
+  /// Raised once per job per scheduler rather than once per tick: the condition
+  /// cannot resolve itself, and an alert that repeats every tick forever is how
+  /// operators learn to filter a channel.
+  neverFires,
+
   /// A cluster peer held the coordination lease, so this node did not run the
   /// work.
   ///
@@ -246,6 +260,12 @@ class TomJobAlert {
   /// How many windows were dropped, for [TomJobAlertKind.windowsMissed].
   final int missedWindows;
 
+  /// The schedule involved, for [TomJobAlertKind.neverFires].
+  ///
+  /// Carried rather than left to the reader to look up: "job X will never run"
+  /// is only actionable next to the expression that cannot match.
+  final TomSchedule? schedule;
+
   /// The lease involved, for the coordination kinds.
   ///
   /// For [TomJobAlertKind.leaseStolen] this is the lease *taken over*, so it
@@ -264,6 +284,7 @@ class TomJobAlert {
     this.stackTrace,
     this.retryAt,
     this.missedWindows = 0,
+    this.schedule,
     this.lease,
   });
 
@@ -282,6 +303,9 @@ class TomJobAlert {
               'returned to the queue.',
         TomJobAlertKind.windowsMissed =>
           'Job "$jobName" skipped $missedWindows missed window(s).',
+        TomJobAlertKind.neverFires =>
+          'Job "$jobName" has no future window and will never run '
+              '(schedule: $schedule).',
         TomJobAlertKind.lockContended =>
           'Job "$jobName" run ${run?.id} is held by another node'
               '${lease == null ? '' : ' (${lease!.owner})'}; conceding.',
