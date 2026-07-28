@@ -1,15 +1,15 @@
 /// The spec-side job declaration a CodeSpec's `@CsJob` (CE-JB) is built on.
 ///
-/// **Why this is a gap (`codespecs_mapping.md` §5.29, verdict *gap* — narrowed
-/// by the csra2 cross-check).** The scheduling substrate in
-/// `tom_core_kernel/lib/src/tombase/scheduling/` is now substantial: it carries
-/// `TomJobDefinition` (name, schedule, body, retry policy, timeout,
+/// **Why this is a narrow gap (`codespecs_mapping.md` §5.29).** The scheduling
+/// substrate in `tom_core_kernel/lib/src/tombase/scheduling/` is complete: it
+/// carries `TomJobDefinition` (name, schedule, body, retry policy, timeout,
 /// missed-window policy, overlap rule), the `TomSchedule` family
-/// (cron/calendar/interval/event), `TomScheduler`, the `TomJobStore`
-/// implementations, the `TomLeaseLock` family for multi-node coordination, and
-/// `TomJobDispatcher` for pluggable execution. **Everything a job needs to
-/// *run* already exists** and is reused directly per pillar (b) — duplicating
-/// any of it here would be exactly the mistake that pillar forbids.
+/// (cron/calendar/interval/once/event), `TomScheduler`, the `TomJobStore`
+/// implementations, the `TomLeaseLock` family for multi-node coordination,
+/// `TomJobBase` with `@TomScheduledJob` discovery, and `TomJobDispatcher` for
+/// pluggable execution. **Everything a job needs to *run* already exists** and
+/// is reused directly per pillar (b) — duplicating any of it here would be
+/// exactly the mistake that pillar forbids.
 ///
 /// What the substrate has no home for is the **deployment-and-ownership
 /// envelope** a specification authors around a job: which service unit owns it,
