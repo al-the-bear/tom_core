@@ -54,6 +54,9 @@ repositories on top of this layer.
     - [MariadbDatasourceException](#mariadbdatasourceexception)
     - [MariadbPreparedStatementException](#mariadbpreparedstatementexception)
 - [Enums](#enums)
+  - [TomAggregateFunction](#tomaggregatefunction)
+  - [TomSqlTypeFamily](#tomsqltypefamily)
+  - [TomSqlFailureMode](#tomsqlfailuremode)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -63,6 +66,7 @@ Source: `lib/src/tomserver/datasources/datasource_initialization.dart`,
 `lib/src/tomserver/datasources/mariadb_sql_dialect.dart`,
 `lib/src/tomserver/datasources/queries.dart`,
 `lib/src/tomserver/datasources/sql_dialects.dart`,
+`lib/src/tomserver/datasources/sql_failure_mode.dart`,
 `lib/src/tomserver/datasources/sql_placeholder_scan.dart`,
 `lib/src/tomserver/datasources/types_operator.dart`.
 
@@ -70,7 +74,11 @@ A `TomDbType<T>` boxes a Dart value together with its SQL column type; a
 `TomOperator<R>` is a node in a type-safe SQL expression tree that renders
 itself through a `TomStandardSqlDialect`. Query objects (`TomSelect`,
 `TomCount`, `TomDelete`, `TomLiteralSelect`) wrap a predicate into a full
-statement. A `TomDataSource` is a driver-implemented connection that prepares
+statement. `TomAggregateFunction` and four dialect fragments (`aggregate`,
+`aliased`, `groupByClause`, `havingClause`) are the whole SQL surface a grouped
+query renders through — the query object itself, `TomGroupedSelect`, is declared
+in the object-persistence module because it is built from that module's
+aggregate nodes. A `TomDataSource` is a driver-implemented connection that prepares
 statements, runs commands and queries, and enlists in transactions;
 `TomDataSourceInfo` is the process-wide registry of named, configured data
 sources. The MariaDB driver (`MariaDbDatasource`, plus the XA variant
@@ -104,7 +112,8 @@ TomTypedPersistenceBase
             ├── TomGeneratedQuery
             │       ├── TomSelect
             │       ├── TomCount
-            │       └── TomDelete
+            │       ├── TomDelete
+            │       └── TomGroupedSelect  (object_persistence)
             └── TomLiteralSelect
 
 TomTypePersistenceInfo
@@ -365,11 +374,33 @@ fragment.
 | `dateTimeF` | `SqlString dateTimeF(String fieldName, DbCol column, Type dbType)` | Renders a qualified reference to a timestamp column as `table.column`. |
 | `dateF` | `SqlString dateF(String fieldName, DbCol column, Type dbType)` | Renders a qualified reference to a date column as `table.column`. |
 
+##### Methods — aggregates
+
+The whole SQL surface a grouped query renders through. A database that spells
+any of it differently overrides one method here rather than forking the query
+builder.
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `aggregate` | `SqlString aggregate(TomAggregateFunction function, SqlString? operand, {bool distinct = false})` | Renders `COUNT(*)` when `operand` is `null`, else `SUM(t.c)` / `COUNT(DISTINCT t.c)`. `distinct` is meaningless for `COUNT(*)` and is ignored there. |
+| `aliased` | `SqlString aliased(SqlString expression, String alias)` | Renders `<expression> AS <alias>` — the projection form that names a result column so the row mapper can find it. |
+| `groupByClause` | `SqlString groupByClause(List<SqlString> columnExprs)` | Renders ` GROUP BY a, b`, or `""` for an empty list (an aggregate over the whole result set groups by nothing). |
+| `havingClause` | `SqlString havingClause(SqlString? predicate)` | Renders ` HAVING <predicate>`, or `""` when there is none. |
+
+`groupByClause` and `havingClause` are separate methods, and the `WHERE` and
+`HAVING` predicates stay separate all the way down to them, because the two
+filter different things: `WHERE` removes rows before aggregation, `HAVING`
+removes groups after it. ANDing them upstream would change the meaning of both.
+
 #### MariadbSqlDialect
 
-The SQL dialect for MariaDB. Inherits standard SQL generation unchanged from
+The SQL dialect for MariaDB. Inherits standard SQL *generation* unchanged from
 `TomStandardSqlDialect`; the `@TomSqlDialect("mariadb")` annotation registers it
 for the `"mariadb"` data-source type and `@tomReflector` makes it discoverable.
+Its one override is `typeFamily`, which classifies `TINYINT(1)` as
+`TomSqlTypeFamily.boolean` — MariaDB has no distinct boolean storage, so calling
+it an integer would report every boolean column of every migration as a type
+divergence.
 
 - **Extends:** `TomStandardSqlDialect`
 
@@ -772,6 +803,18 @@ MariaDbDatasource()
 | `toPositionalStatement` | `static (String, List<String>) toPositionalStatement(String namedSql)` | Translates generated `:name` SQL into the positional `?` form, returning the rewritten SQL and placeholder names in order. |
 | `normalizePort` | `static Map<String, dynamic> normalizePort(Map<String, dynamic> settings)` | Returns `settings` with its `port` value normalized to an `int`. |
 | `parsePort` | `static int parsePort(Object? raw)` | Parses a configured port value into the `int` the driver binds; throws `MariadbDatasourceException` when unparsable. |
+| `mapGroupedRow` | `static TomGroupedRow mapGroupedRow(ResultSetRow row, Map<String, Type> projection)` | Maps one row of a grouped result, reading each alias as the Dart type the query declared for it. Throws `MariadbDatasourceException` (`error.result_processing_grouped.unknown_type`) for a declared type outside `int` / `double` / `String` / `bool` / `DateTime`. |
+
+A grouped query has no entity class and no column metadata — its shape is
+decided by the query — so `prepareStatement` copies the query's
+`projectionTypes` onto the statement and `mapGroupedRow` runs before any mirror
+is taken.
+
+A `double` alias is read as raw text and parsed, not via the driver's typed
+accessor: MariaDB types `SUM`/`AVG` over an integer column as `NEWDECIMAL`
+(protocol type 246), and `mysql_client` converts to `double` only from a
+whitelist of column types that omits it — asking for a `double` there throws
+`MySQLProtocolException` rather than widening. The text form parses losslessly.
 
 ##### Properties
 
@@ -846,8 +889,9 @@ MariadbPreparedStatement(
   List<String> parameterList,
   MariaDbDatasource datasource,
   Type? resultType,
-  String command,
-)
+  String command, {
+  Map<String, Type>? groupedProjection,
+})
 ```
 
 ##### Static Methods
@@ -866,6 +910,7 @@ MariadbPreparedStatement(
 | `parameterList` | `List<String>` | The placeholder names in positional order. |
 | `resultType` | `Type?` | The type result rows are mapped to (defaults to `T`). |
 | `command` | `String` | The compiled SQL command (kept so the statement can be re-prepared). |
+| `groupedProjection` | `Map<String, Type>?` | For a grouped query, the Dart type of each projected result column keyed by its alias; `null` for every other statement. The types travel with the statement because a grouped row is not an entity. |
 | `lastGeneratedId` | `int?` | *(override)* The auto-increment key the most recent `execute` generated. |
 
 ##### Methods
@@ -956,9 +1001,48 @@ MariadbPreparedStatementException(
 
 ## Enums
 
-None — this module exposes no public enums.
+### TomAggregateFunction
+
+The aggregate functions the typed query layer can express. Naming the vocabulary
+in the dialect file rather than in the expression tree keeps the set a dialect
+must be able to render in one place: an override switches on this enum and the
+compiler reports every site when a member is added.
+
+| Value | Renders | Meaning |
+| ----- | ------- | ------- |
+| `count` | `COUNT` | The number of rows, or of non-null operand values. |
+| `sum` | `SUM` | The total of the operand across the group. |
+| `avg` | `AVG` | The mean of the operand across the group. |
+| `min` | `MIN` | The smallest operand value in the group. |
+| `max` | `MAX` | The largest operand value in the group. |
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `sqlName` | `String` | The SQL function name the member renders as (the upper-cased member name). |
+
+### TomSqlTypeFamily
+
+The coarse type classes a stored column can belong to — `integer`, `decimal`,
+`text`, `boolean`, `dateTime`, `date`, `time`, `binary`, `unknown`. It exists so
+a Dart type and a SQL type name can be compared at all (the schema-convergence
+check reduces both sides to it), and is deliberately coarse: widths, precisions,
+signedness and defaults are not represented, because the Dart side never states
+them. A dialect classifies through `TomStandardSqlDialect.typeFamily`.
+
+### TomSqlFailureMode
+
+What a failed data-source write says about whether it took effect —
+`definite` (the server answered with an error, so the statement did not apply)
+or `ambiguous` (the failure was on the way to or from the server, so the write
+may have been applied anyway). Ambiguous is the default because only a server
+answer is evidence; see `sql_failure_mode.dart`.
 
 ## Global Functions and Constants
 
-None — this module exposes no top-level functions or constants (`SqlString` is a
-typedef alias for `String`, defined in `sql_dialects.dart`).
+| Function | Signature | Description |
+| -------- | --------- | ----------- |
+| `classifySqlFailure` | `TomSqlFailureMode classifySqlFailure(Object? error)` | Classifies the failure of a data-source write: `definite` when the chain contains a `MySQLServerException` (the server received the statement and rejected it), `ambiguous` for everything else. |
+| `sqlFailureCauses` | `Iterable<Object> sqlFailureCauses(Object? error)` | `error` and every `rootException` beneath it, outermost first — exposed so a caller that has decided a failure is ambiguous can name the driver exception several wrappers down. |
+
+`SqlString` (in `sql_dialects.dart`) is a typedef alias for `String` that
+documents "this is a SQL fragment" at call sites.

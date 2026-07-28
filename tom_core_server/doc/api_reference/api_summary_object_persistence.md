@@ -38,6 +38,11 @@ column-level access rights (C-4).
     - [DbCol&lt;R&gt; and column references](#dbcolr-and-column-references)
     - [Literals](#literals)
     - [Logical & comparison operators](#logical--comparison-operators)
+  - [Grouping & Aggregation](#grouping--aggregation)
+    - [TomAggregate&lt;R, V&gt;](#tomaggregater-v)
+    - [The aggregate nodes](#the-aggregate-nodes)
+    - [TomGroupedSelect](#tomgroupedselect)
+    - [TomGroupedRow](#tomgroupedrow)
   - [Authorization & Scoping](#authorization--scoping)
     - [TomColumnWriteDecision&lt;C&gt;](#tomcolumnwritedecisionc)
     - [TomColumnAuthorization](#tomcolumnauthorization)
@@ -58,6 +63,7 @@ Source:
 `lib/src/tomserver/object_persistence/column_authorization.dart`,
 `lib/src/tomserver/object_persistence/crud_repository.dart`,
 `lib/src/tomserver/object_persistence/data_scope.dart`,
+`lib/src/tomserver/object_persistence/grouped_query.dart`,
 `lib/src/tomserver/object_persistence/mariadb_repository.dart`,
 `lib/src/tomserver/object_persistence/operators_expressions.dart`,
 `lib/src/tomserver/object_persistence/persistence_annotations.dart`,
@@ -68,7 +74,10 @@ An entity is a `@tomReflector` class annotated with `@TomDbTable`, its fields
 mapped with `@TomDbColumn` (and `@TomEntityId` on the primary key). A
 `TomRepository<T, K>` offers Spring-Data-style CRUD plus three query styles: a
 parsed *query sentence* (`findByQuerySentence`), a built `TomQuery`
-(`findByQuery`), and raw SQL (`executeQueryString`). `TomAnnotationAnalyzer`
+(`findByQuery`), and raw SQL (`executeQueryString`). A fourth entry point,
+`findGroupedByQuery`, runs a `TomGroupedSelect` — grouping and aggregation
+return `TomGroupedRow`s rather than entities, because a group's shape is decided
+by the query rather than by any entity class. `TomAnnotationAnalyzer`
 resolves an entity's metadata by reflection into a `TomColumnInformation` per
 field; `TomQueryBuilder` and `TomQuerySentenceCompiler` assemble a `TomOperator`
 expression tree rendered through a `TomStandardSqlDialect`. `@TomDbScope`
@@ -95,8 +104,15 @@ TomRepository<T, K>
 TomTypedPersistenceBase  (queries)
     └── TomQuerySentenceCompiler  (with TomQueryBuilder)
 
+TomGeneratedQuery  (queries)
+    └── TomGroupedSelect
+
 TomOperator<R>  (types_operator)
     ├── Parameter<T>
+    ├── TomAggregate<R, V>
+    │       ├── CountAll / Count<T>
+    │       ├── Sum<T> / Avg<T>
+    │       └── Min<R, V> / Max<R, V>
     ├── TomUnaryOperator<T, R>
     │       ├── DbCol<R>
     │       │       ├── IntCol / StringCol / DoubleCol
@@ -110,6 +126,8 @@ TomOperator<R>  (types_operator)
             ├── Eq<T> / Neq<T> / Lt<T> / Gt<T> / Lte<T> / Gte<T>
             ├── Like / NotLike / Regexp
             └── In<T> / Between<T>
+
+TomGroupedRow  (plain value holder)
 
 TomQueryBuilder  (mixin)
 TomAnnotationAnalyzer  (mixin)
@@ -444,6 +462,7 @@ Data's `CrudRepository`.
 | `findByQuery` | `Future<Iterable<T>> findByQuery(TomSelect query, Map<String, Object?> params)` | Runs a built `TomSelect`, binding `params`. |
 | `deleteByQuery` | `Future<void> deleteByQuery(TomDelete query, Map<String, Object?> params)` | Runs a built `TomDelete`, binding `params`. |
 | `countByQuery` | `Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params)` | Runs a built `TomCount`, binding `params`. |
+| `findGroupedByQuery` | `Future<List<TomGroupedRow>> findGroupedByQuery(TomGroupedSelect query, Map<String, Object?> params)` | Runs a built `TomGroupedSelect`, binding `params`, and returns one `TomGroupedRow` per group. Deliberately not `T`: a grouped row's shape is the query's, not the entity's. |
 | `executeQueryString` | `Future<Iterable<T>> executeQueryString(String dbQuery, Map<String, Object?> params)` | Runs a raw SQL string, binding `params`, and maps the rows to `T`. |
 
 #### TomSqlDatasourceRepository&lt;T, K&gt;
@@ -553,10 +572,33 @@ return the matching SQL-typed operator.
 | `dateTimeF` | `TomOperator<TomDbDateTime> dateTimeF(String fieldName, TomColumnInformation columnInformation)` | A reference to a timestamp column. |
 | `dateF` | `TomOperator<TomDbDate> dateF(String fieldName, TomColumnInformation columnInformation)` | A reference to a date column. |
 
+##### Methods — aggregates
+
+Each returns a `TomAggregate`, which *is* a `TomOperator`, so an aggregate
+composes with the predicate builders above: `gt(countAll('n'), intOp(3))` is the
+`HAVING COUNT(*) > 3` of a grouped select. Every factory takes the `alias` the
+aggregate is projected under.
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `countAll` | `CountAll countAll(String alias)` | `COUNT(*) AS <alias>` — the number of rows in each group. |
+| `countOf` | `Count<T> countOf<T>(TomOperator<T> value, String alias, {bool distinct = false})` | `COUNT([DISTINCT] <value>) AS <alias>` — the non-null values in each group. Named `countOf`, not `count`, because repositories mix this builder in beside `TomRepository.count()`. |
+| `sum` | `Sum<T> sum<T>(TomOperator<T> value, String alias, {bool distinct = false})` | `SUM(<value>) AS <alias>`, always a `double`. |
+| `avg` | `Avg<T> avg<T>(TomOperator<T> value, String alias, {bool distinct = false})` | `AVG(<value>) AS <alias>`, always a `double`. |
+| `minInt` / `maxInt` | `Min<TomDbInt, int> minInt(TomOperator<TomDbInt> value, String alias)` | `MIN`/`MAX` over an `int` expression. |
+| `minDouble` / `maxDouble` | `Min<TomDbDouble, double> minDouble(TomOperator<TomDbDouble> value, String alias)` | `MIN`/`MAX` over a `double` expression. |
+| `minText` / `maxText` | `Min<TomDbString, String> minText(TomOperator<TomDbString> value, String alias)` | `MIN`/`MAX` over a `String` expression. |
+| `minDateTime` / `maxDateTime` | `Min<TomDbDateTime, DateTime> minDateTime(TomOperator<TomDbDateTime> value, String alias)` | `MIN`/`MAX` over a timestamp expression. |
+
+`min`/`max` are split by type rather than left generic because they preserve the
+operand's type on both sides (SQL and Dart); `sum`/`avg` always widen to `double`
+and so need no such split.
+
 #### TomQuerySentenceCompiler
 
 Compiles a Spring-Data-style query sentence (e.g. `find by name = :name order by
-age desc`) into a `TomQuery` (`TomSelect` / `TomCount` / `TomDelete`).
+age desc`) into a `TomQuery` (`TomSelect` / `TomCount` / `TomDelete` /
+`TomGroupedSelect`).
 
 - **Extends:** `TomTypedPersistenceBase`
 - **Mixes in:** `TomQueryBuilder`
@@ -571,7 +613,19 @@ TomQuerySentenceCompiler(List<Type> types)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `compileQuerySentence` | `TomQuery compileQuerySentence(String qs)` | Parses query sentence `qs` into a `TomSelect`, `TomCount`, or `TomDelete`. Throws `TomQuerySyntaxException` for a malformed sentence. |
+| `compileQuerySentence` | `TomQuery compileQuerySentence(String qs)` | Parses query sentence `qs` into a `TomSelect`, `TomCount`, `TomDelete` or `TomGroupedSelect`. Throws `TomQuerySyntaxException` for a malformed sentence. |
+
+The kind is the first word: `find` / `count` / `delete` / `group`. The `group`
+sentence carries an aggregate projection and an optional `over <fields>` group
+key before `by`, and accepts a `having <predicate>` clause after it:
+
+```text
+group count ( * ) as total , sum ( amount ) as revenue over status
+  by createdAt >= :from having total > :minCount order by total desc
+```
+
+`having` addresses the projection **by alias**; the `by` predicate addresses
+columns. Omitting `over` aggregates the whole filtered set into one row.
 
 ### Operators & Expressions
 
@@ -734,6 +788,177 @@ Each overrides `generate` to render its SQL.
 | `In<T>` | `TomBinaryOperator<TomOperator<T>, List<TomOperator<T>>, TomDbBool>` | `In(operant1, operant2)` | `<a> IN (<choices...>)`. |
 | `Between<T>` | `TomBinaryOperator<TomOperator<T>, List<TomOperator<T>>, TomDbBool>` | `Between(TomOperator<T> operant1, List<TomOperator<T>> operant2)` | `<a> BETWEEN <lo> AND <hi>`; throws `TomQuerySyntaxException` if not exactly two bounds. |
 | `Group<T>` | `TomUnaryOperator<TomOperator<T>, T>` | `Group(TomOperator<T> operant1)` | `( <operand> )`. |
+
+### Grouping & Aggregation
+
+`grouped_query.dart`. Where the operators above describe *rows*, these describe
+*groups*: rows collapsed by one or more key columns with an aggregate value per
+group. A grouped query is a separate compiled sentence rather than an option on
+`TomSelect` because its result is a different shape — `TomGroupedRow`s, not
+entities.
+
+#### TomAggregate&lt;R, V&gt;
+
+An aggregate function applied to a group: `COUNT(*)`, `SUM(t.amount)`,
+`MAX(t.created)`. Abstract; the concrete nodes are listed below and are normally
+built through the `TomQueryBuilder` factories.
+
+- **Extends:** `TomOperator<R>` — so an aggregate composes with the ordinary
+  predicates, which is what makes `HAVING COUNT(*) > 3` expressible.
+- **Type Parameters:** `R` — the SQL type of the result; `V` — the Dart type the
+  value materialises as.
+
+##### Constructors
+
+```dart
+TomAggregate(
+  TomAggregateFunction function,
+  TomOperator? operand,
+  String alias, {
+  bool distinct = false,
+})
+```
+
+Throws `TomQuerySyntaxException` when `alias` is not a plain SQL identifier
+(`^[A-Za-z_][A-Za-z0-9_]*$`), or when `V` is not one of `int`, `double`,
+`String`, `bool`, `DateTime`. The alias is written into the statement text rather
+than bound — it names a result column — so validating it at construction closes
+the one injection surface a grouped query adds.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `function` | `TomAggregateFunction` | The SQL function this node renders. |
+| `operand` | `TomOperator?` | The expression being aggregated; `null` for the argument-less `COUNT(*)`. |
+| `distinct` | `bool` | Whether to aggregate over distinct operand values. |
+| `alias` | `String` | The result-column name this aggregate is projected under. |
+| `valueType` | `Type` | *(late final)* The Dart type `V`, captured at construction so the result mapper can read the column without a type argument. |
+| `children` | `List<TomOperator>` | *(override)* The operand, or empty. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `generate` | `SqlString generate(TomStandardSqlDialect t)` | *(override)* Renders the call via the dialect's `aggregate` fragment. |
+| `generateProjection` | `SqlString generateProjection(TomStandardSqlDialect t)` | The projected form, `<function>(<operand>) AS <alias>`. |
+| `read` | `V? read(TomGroupedRow row)` | This aggregate's value in `row`, typed as `V`, or `null` when the group produced no value (an aggregate over an all-null column). |
+
+#### The aggregate nodes
+
+| Class | Extends | Constructor | Renders / value type |
+| ----- | ------- | ----------- | -------------------- |
+| `CountAll` | `TomAggregate<TomDbInt, int>` | `CountAll(String alias)` | `COUNT(*)` — the number of rows in the group, including rows whose columns are `NULL`. |
+| `Count<T>` | `TomAggregate<TomDbInt, int>` | `Count(TomOperator<T> value, String alias, {bool distinct = false})` | `COUNT([DISTINCT] v)` — the number of non-null values. |
+| `Sum<T>` | `TomAggregate<TomDbDouble, double>` | `Sum(TomOperator<T> value, String alias, {bool distinct = false})` | `SUM(v)`, always a `double`. |
+| `Avg<T>` | `TomAggregate<TomDbDouble, double>` | `Avg(TomOperator<T> value, String alias, {bool distinct = false})` | `AVG(v)`, always a `double`. |
+| `Min<R, V>` | `TomAggregate<R, V>` | `Min(TomOperator<R> value, String alias)` | `MIN(v)`, preserving the operand's SQL and Dart types. |
+| `Max<R, V>` | `TomAggregate<R, V>` | `Max(TomOperator<R> value, String alias)` | `MAX(v)`, preserving the operand's SQL and Dart types. |
+
+`CountAll` and `Count` answer different questions: `COUNT(*)` counts rows,
+`COUNT(column)` counts non-null values, so a group whose column is entirely
+`NULL` yields the row count from the first and `0` from the second.
+
+`Sum` and `Avg` widen to `double` because SQL widens a sum to an exact-numeric
+type (MariaDB returns `DECIMAL` for an integer column), which does not round-trip
+through Dart's `int`. Widening once, in the node, keeps the value type
+predictable instead of dialect-dependent. `Min`/`Max` do not widen — an extremum
+is one of the operand's own values — so prefer the typed builder factories
+(`minInt`, `minText`, …) over naming both type arguments.
+
+#### TomGroupedSelect
+
+A `SELECT … GROUP BY …` over the entity types: the group-key columns and the
+aggregate projection, filtered by a row predicate (`WHERE`) and a group predicate
+(`HAVING`).
+
+- **Extends:** `TomGeneratedQuery`
+
+##### Constructors
+
+```dart
+TomGroupedSelect(
+  List<Type> types, {
+  required TomOperator<TomDbBool> query,
+  List<DbCol> groupBy = const [],
+  required List<TomAggregate> aggregates,
+  TomOperator<TomDbBool>? having,
+  List<String> orderBy,
+  bool ascending,
+  int top,
+})
+```
+
+Throws `TomQuerySyntaxException` when no aggregate is given (a grouped select
+with none is a `DISTINCT` select, which `TomSelect` already expresses), when two
+projections share an alias, when a group column's type cannot be materialised, or
+when an `orderBy` entry is not a projection alias.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `groupBy` | `List<DbCol>` | The key columns. May be empty, which aggregates the whole filtered set into exactly one row. |
+| `aggregates` | `List<TomAggregate>` | The projected aggregates; at least one is required. |
+| `having` | `TomOperator<TomDbBool>?` | The group predicate, evaluated after aggregation. |
+| `projectionAliases` | `List<String>` | *(getter)* The result-column names, group keys first: a group column under its declared field name, an aggregate under its alias. |
+| `projectionTypes` | `Map<String, Type>` | *(getter)* The Dart type each projected column materialises as, keyed by alias — the only type information a grouped row has. |
+| `referencedColumns` | `Set<TomColumnInformation>` | *(getter)* Every column read outside an aggregate: the group keys plus the columns `WHERE` and `HAVING` reference directly. The repository uses this to refuse a query touching a column the principal may not read (C-4). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `generateQuery` | `String generateQuery(TomStandardSqlDialect t)` | *(override)* Renders the full statement. Rejects a `HAVING` on a bare column that is neither a group key nor inside an aggregate (`grouped_query.select.having_on_ungrouped_field`) — such a predicate has many values per group and databases differ on whether they refuse it or silently pick a row. |
+| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | *(override)* Parameters in statement-text order — projection, `WHERE`, then `HAVING`. The order is load-bearing: placeholders bind positionally. |
+| `columnsOf` | `static Set<TomColumnInformation> columnsOf(TomOperator node)` | Every `DbCol` reachable from `node`, descending through aggregates. |
+
+`WHERE` and `HAVING` stay separate all the way down to the dialect for the same
+reason they are separate in SQL: `WHERE` filters rows before aggregation,
+`HAVING` filters groups after it, and ANDing them would change the meaning of
+both. The C-3 row scope is therefore ANDed into `WHERE`, never `HAVING` —
+filtering groups afterwards would still have counted the hidden rows.
+
+#### TomGroupedRow
+
+One row of a grouped result: the group-key values plus the aggregate values, each
+under the alias the query projected it as. Deliberately not an entity — a grouped
+row's shape is decided by the query, so there is no entity class it could map
+onto.
+
+##### Constructors
+
+```dart
+TomGroupedRow(Map<String, Object?> values)
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `values` | `Map<String, Object?>` | Every value in the row, keyed by its projection alias (unmodifiable). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `has` | `bool has(String alias)` | Whether the row carries a value (possibly `null`) under `alias`. |
+| `value` | `Object? value(String alias)` | The raw value. Throws `TomQuerySyntaxException` (`grouped_query.row.unknown_alias`) when the row has no such alias. |
+| `intValue` | `int? intValue(String alias)` | The value as an `int`. |
+| `doubleValue` | `double? doubleValue(String alias)` | The value as a `double`. |
+| `stringValue` | `String? stringValue(String alias)` | The value as a `String`. |
+| `boolValue` | `bool? boolValue(String alias)` | The value as a `bool` (MariaDB stores booleans as `1`/`0`). |
+| `dateTimeValue` | `DateTime? dateTimeValue(String alias)` | The value as a `DateTime`. |
+| `typed` | `V? typed<V>(String alias)` | The value coerced to `V` — the accessor `TomAggregate.read` and `keyOf` use, so a caller never names a type twice. Throws for an unsupported `V`. |
+| `keyOf` | `Object? keyOf(DbCol column)` | The group-key value for `column`, which a grouped query projects under the column's declared field name. |
+
+An unknown alias **throws** rather than yielding `null`, because `null` is a real
+answer here — an aggregate over an all-null column is `null` — and a typo must
+not be indistinguishable from it.
+
+A conversion that cannot succeed raises
+`grouped_query.row.value_conversion_failed`; an unsupported declared type raises
+`grouped_query.row.unsupported_value_type`.
 
 ### Authorization & Scoping
 

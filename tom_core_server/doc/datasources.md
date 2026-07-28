@@ -15,6 +15,7 @@ layer.
 - [SQL-Typed Values](#sql-typed-values)
 - [The Operator Tree](#the-operator-tree)
 - [The SQL Dialect](#the-sql-dialect)
+- [Aggregate Fragments](#aggregate-fragments)
 - [Query Objects](#query-objects)
 - [Data Sources and Drivers](#data-sources-and-drivers)
 - [The MariaDB Driver](#the-mariadb-driver)
@@ -31,6 +32,7 @@ layer.
 | `TomOperator<R>` | abstract class | A node in a SQL expression tree, typed by its SQL return type `R` |
 | `SqlString` | typedef | A `String` that documents "this is a SQL fragment" |
 | `TomStandardSqlDialect` | class | Renders operator nodes to standard-SQL fragments |
+| `TomAggregateFunction` | enum | The aggregate vocabulary a dialect must render (`count`/`sum`/`avg`/`min`/`max`) |
 | `TomSqlDialect` | annotation | Binds a dialect subclass to a data-source type |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | A query over a set of entity types |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect` | class | Concrete statements |
@@ -94,6 +96,40 @@ A driver supplies its own dialect by subclassing and annotating with
 `@TomSqlDialect("<type>")`; `MariadbSqlDialect` does this and inherits the
 standard generation unchanged.
 
+## Aggregate Fragments
+
+Grouped queries are assembled in the object-persistence module, but every SQL
+character they emit comes from four dialect methods and one enum here — so a
+database that spells any of it differently overrides a method rather than
+forking the query builder:
+
+| Member | Renders |
+| ------ | ------- |
+| `TomAggregateFunction` | the vocabulary: `count`, `sum`, `avg`, `min`, `max`; `sqlName` is the upper-cased member name |
+| `aggregate(fn, operand, {distinct})` | `COUNT(*)` when `operand` is `null`, else `SUM(t.c)` / `COUNT(DISTINCT t.c)` |
+| `aliased(expression, alias)` | `<expression> AS <alias>` — the projection form that names a result column |
+| `groupByClause(columnExprs)` | ` GROUP BY a, b`, or `""` for an empty list (an aggregate over the whole result set groups by nothing) |
+| `havingClause(predicate)` | ` HAVING <predicate>`, or `""` when there is none |
+
+```dart
+final d = TomStandardSqlDialect();
+d.aggregate(TomAggregateFunction.count, null);                    // COUNT(*)
+d.aggregate(TomAggregateFunction.count, 't.c', distinct: true);   // COUNT(DISTINCT t.c)
+d.aliased('COUNT(*)', 'n');                                       // COUNT(*) AS n
+d.groupByClause(['t.status']);                                    // ' GROUP BY t.status'
+d.havingClause('COUNT(*) > 2');                                   // ' HAVING COUNT(*) > 2'
+```
+
+The enum exists so the set of functions a dialect must handle is declared in one
+place: an override switches on it and the compiler reports every site when a
+member is added. `distinct` is meaningless for `COUNT(*)` — there is no
+expression to de-duplicate — and is ignored there.
+
+`groupByClause` and `havingClause` stay separate methods, and the `WHERE` and
+`HAVING` predicates travel separately all the way down to them, because the two
+filter different things: `WHERE` removes rows before aggregation, `HAVING`
+removes groups after it. ANDing them upstream would change the meaning of both.
+
 ## Query Objects
 
 A query is built over a set of entity `types` and renders to SQL via
@@ -109,6 +145,13 @@ predicate with shaping options (`distinct`, `orderBy`, `ascending`, `top`):
 
 `TomLiteralSelect` is the escape hatch for statements the generated queries
 cannot express; its `types` still drive result-row mapping.
+
+A fifth generated form, `TomGroupedSelect`, is declared in the
+object-persistence module because it is built from that module's aggregate
+nodes; it renders `SELECT <group columns + aggregates> FROM … WHERE …
+GROUP BY … [HAVING …]` out of the [aggregate fragments](#aggregate-fragments)
+above. It is the one query whose rows are not entities, so a driver treats it
+specially — see [The MariaDB Driver](#the-mariadb-driver).
 
 ## Data Sources and Drivers
 
@@ -146,6 +189,23 @@ rows back onto annotated `@tomReflector` entity classes (including JSON columns,
 custom converters, and reference-field dereferencing). Transactions use plain
 `START TRANSACTION` / `COMMIT` / `ROLLBACK`.
 
+A grouped query takes a different path through the same driver. A grouped row
+has no entity class and no column metadata — its shape is decided by the query —
+so `prepareStatement` copies the query's `projectionTypes` (alias → Dart type)
+onto the prepared statement, and `mapGroupedRow` reads each alias as the type
+the query declared for it, producing a `TomGroupedRow`. That runs before any
+mirror is taken; an alias whose declared type is outside
+`int`/`double`/`String`/`bool`/`DateTime` raises
+`error.result_processing_grouped.unknown_type`.
+
+> **`double` aliases are read as text, deliberately.** MariaDB types
+> `SUM`/`AVG` over an integer column as `NEWDECIMAL` (protocol type 246), and
+> `mysql_client` converts to `double` only from a whitelist of column types that
+> omits it — asking the driver for a `double` there throws
+> `MySQLProtocolException` rather than widening. `mapGroupedRow` therefore reads
+> the raw text and parses it, which is lossless. A driver for another database
+> should check the equivalent conversion before assuming its client widens.
+
 `MariaDbXADatasource` (`@TomDatasourceDriver("mariadb_xa")`) inherits all of
 that but overrides the transaction lifecycle to use **XA** (`XA START` / `XA
 END` + `XA PREPARE` / `XA COMMIT` / `XA ROLLBACK`), so it can take part in a
@@ -163,6 +223,9 @@ two-phase commit across multiple resources.
   `getParameters`).
 - **`TomStandardSqlDialect`** (+ the `TomSqlDialect` annotation) — SQL-fragment
   generation; `SqlString`.
+- **`TomAggregateFunction`** and the aggregate fragments (`aggregate`,
+  `aliased`, `groupByClause`, `havingClause`) — the whole SQL surface a grouped
+  query renders through.
 - **`TomQuery` / `TomGeneratedQuery`** and `TomSelect` / `TomCount` /
   `TomDelete` / `TomLiteralSelect` — query objects; `TomTypePersistenceInfo` /
   `TomTypedPersistenceBase` for the per-type metadata.
@@ -186,5 +249,6 @@ two-phase commit across multiple resources.
   `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog`.
 - The transactions module — `TomTransactionParticipant`.
 - The object-persistence module — `TomAnnotationAnalyzer`,
-  `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`.
+  `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`,
+  `TomGroupedSelect` / `TomGroupedRow`.
 - `mysql_client` — the MariaDB / MySQL driver used by `MariaDbDatasource`.
