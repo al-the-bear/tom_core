@@ -52,8 +52,22 @@ class UserRecord {
   @TomDbColumn(columnName: 'email')
   String? email;
 
-  /// Optional avatar asset reference; `null`/empty when unset.
+  /// Blob key of the user's avatar — **exposed**, so the framework file
+  /// endpoint serves it as the slot `auth_users/<id>/avatar_ref`.
+  ///
+  /// `cascadeDelete: false` is the deliberate contrast with
+  /// `ItemRecord.attachment` (which is `true`). An attachment belongs to its
+  /// item and dies with it; an avatar is an asset the application manages —
+  /// several rows may point at one blob, and a suspended account is routinely
+  /// restored — so the framework must not delete the bytes when the row goes.
+  /// Reclaiming an orphaned avatar is then the application's job, which is the
+  /// price of sharing the key.
   @TomDbColumn(columnName: 'avatar_ref')
+  @TomFileReference(
+    keyPrefix: 'users/avatar',
+    exposed: true,
+    cascadeDelete: false,
+  )
   String? avatarRef;
 
   /// Account lifecycle state stored as the `UserStatus` name

@@ -18901,6 +18901,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[294],
         const prefix24.TomReflector(),
         const <Object>[
+          const prefix25.TomAuthenticatedAccess(),
           const prefix50.TomEndpoint(
             methods: const [
               prefix18.TomHttpMethod.post,

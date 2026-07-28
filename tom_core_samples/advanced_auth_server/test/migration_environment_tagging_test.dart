@@ -70,6 +70,10 @@ void main() {
         // account that fills them is dev/test. Splitting them is the whole
         // reason this is two migrations.
         'auth_two_factor_columns',
+        // The blob tables backing the avatar file column are schema too: a
+        // production deployment that skipped them would accept an avatar upload
+        // and then have nowhere to put it.
+        'auth_blob_tables',
       ]) {
         expect(byDesc[desc]!.environments, isEmpty,
             reason: '$desc must be untagged (applies in every environment)');

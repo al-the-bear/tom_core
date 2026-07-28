@@ -247,6 +247,34 @@ class ItemRecord {
   @TomDbColumn(columnName: 'tags')
   String? tags;
 
+  /// Blob key of the item's user-facing attachment — **exposed**, so the
+  /// framework file endpoint serves it as the slot `app_items/<id>/attachment`.
+  ///
+  /// `cascadeDelete: true` (the default, spelled out here for the contrast with
+  /// [UserRecord.avatarRef], which is `false`): the blob belongs to this row and
+  /// nothing else points at it, so deleting the item must not leave the bytes
+  /// behind. Compare an avatar, which the application may reuse across rows and
+  /// therefore manages itself.
+  @TomDbColumn(columnName: 'attachment')
+  @TomFileReference(
+    keyPrefix: 'items/attachment',
+    exposed: true,
+    cascadeDelete: true,
+  )
+  String? attachment;
+
+  /// Blob key of an internal, staff-only note document — deliberately **not**
+  /// exposed (`exposed` defaults to `false`).
+  ///
+  /// The bytes are stored, streamed and cascade-deleted exactly like
+  /// [attachment]; the only difference is that no HTTP slot is published, so a
+  /// request for `app_items/<id>/internal_note` is a 404 however privileged the
+  /// caller is. That is the framework's default-closed rule: reaching a file
+  /// over HTTP is opted into per column, never inherited from the row.
+  @TomDbColumn(columnName: 'internal_note')
+  @TomFileReference(keyPrefix: 'items/internal_note')
+  String? internalNote;
+
   /// When the item was created; `null` until persisted.
   @TomDbColumn(columnName: 'created_at')
   DateTime? createdAt;

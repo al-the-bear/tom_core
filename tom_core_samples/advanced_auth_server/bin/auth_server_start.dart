@@ -173,6 +173,19 @@ Map<String, dynamic> datasourceLoaderFunction() {
   return result;
 }
 
+/// Loads `assets/blobstores_default.yaml` — where the bytes behind this
+/// server's `@TomFileReference` column (`auth_users.avatar_ref`) live.
+///
+/// Deliberately a separate file from `datasources_default.yaml` even though the
+/// only configured store is backed by a data source: the two answer different
+/// questions ("which databases do we talk to" vs "where do files go"), and a
+/// deployment that moves its files to S3 edits this file alone.
+Map<String, dynamic> blobStoreLoaderFunction() {
+  final result = <String, dynamic>{};
+  _mergeYamlIfPresent(result, 'assets/blobstores_default.yaml');
+  return result;
+}
+
 void _mergeYamlIfPresent(Map<String, dynamic> into, String path) {
   if (!File(path).existsSync()) return;
   mergeMapsOneSided(into, TomYaml.loadYamlFile(path));
@@ -271,6 +284,11 @@ Future<void> main(List<String> args) async {
 
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
 
+  // Must follow the datasource init: the `type: database` backend resolves its
+  // named data source eagerly, so a store pointing at an unregistered name is a
+  // start-up failure rather than a failed upload hours later.
+  await TomBlobStoreInfo.initializeBlobStores(blobStoreLoaderFunction());
+
   initializeJwtSigning();
   warnIfDevelopmentSigningKey();
 
@@ -283,6 +301,16 @@ Future<void> main(List<String> args) async {
   );
 
   await seedDemoPasswords();
+
+  // Publishes `POST|GET|HEAD|DELETE /files/auth_users/{id}/avatar_ref`. One
+  // line, naming the repository and nothing else: the table name, the column
+  // name and the store all come off the entity's own annotations, so there is no
+  // second copy of them to drift.
+  //
+  // `TomFileService` needs no bean: it is a `@tomService` like any other, and
+  // the router constructs its `@tomComponent` implementation (`TomFileServer`)
+  // when it mounts the reflected endpoint pipeline.
+  TomFileSlots.register(userRepository);
 
   startServer(configuration);
 

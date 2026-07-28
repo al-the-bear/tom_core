@@ -1,0 +1,32 @@
+# Blob-store configuration: where the bytes behind this server's
+# @TomFileReference columns actually live.
+#
+# One store, so it becomes the default without saying `default: true` — a server
+# with one place to put files has no ambiguity to resolve, and the columns name
+# no store, so they resolve to this one.
+#
+# `datasource: app_db` is NOT redundant and NOT interchangeable with the default.
+# This server's `main` datasource deliberately points at the *auth* server's
+# database (port 3307) so it can read the shared grant matrix; `app_db` is the
+# application's own schema on 3308. Naming app_db here is therefore what keeps an
+# item attachment out of auth_db. The auth server's equivalent file names
+# auth_db, so each server's blobs stay inside its own database and the sample's
+# two-database boundary survives the addition of file transfer.
+#
+# `type: database` means no new infrastructure: no object store, no shared mount,
+# no extra credential. `TomDirectoryBlobStore` (type: directory) or
+# `TomS3BlobStore` (type: s3) are the same four methods behind the same
+# interface, so a real deployment swaps this block without touching a line of
+# application code.
+#
+# `createSchema: false` hands schema ownership to the migration chain: the
+# tom_blob / tom_blob_chunk tables are created by
+# database_migrations/app_db/app_schema/[003]-app_blob_tables.sql, which is the
+# only place this server's DDL lives and the thing the convergence test checks.
+# Leaving it at the default (true) would let the store issue its own CREATE TABLE
+# at boot — harmless when it agrees with the migration, and a silent divergence
+# the moment it does not.
+files:
+  type: database
+  datasource: app_db
+  createSchema: false

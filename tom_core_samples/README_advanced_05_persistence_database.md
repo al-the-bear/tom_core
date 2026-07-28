@@ -8,9 +8,9 @@ loaded and saved through a singleton `TomSqlDatasourceRepository`, with the sche
 and demo data delivered as **migrations** under each package's
 `database_migrations/` tree. This part covers the persistence record shape and its
 mapping, the CRUD repositories, the two-database design and the cross-database
-logical references, the datasources YAML, and the **schema-creation vs sample-data
-migration split** — the clean separation of DDL from demo content that this
-sample establishes.
+logical references, the datasources YAML, the **file columns and per-database blob
+stores**, and the **schema-creation vs sample-data migration split** — the clean
+separation of DDL from demo content that this sample establishes.
 
 ## The persistence model & `@TomDbColumn` mapping
 
@@ -145,6 +145,95 @@ it there), so the app server reads it by pointing its `main` datasource at the
 grants — it only resolves a principal's per-field states from the rows the auth
 server seeded.
 
+## File columns & the blob stores
+
+Three columns in this sample hold **files**. None of them holds bytes: a
+`@TomFileReference` column is a `VARCHAR(512)` that stores a **blob storage key**,
+and the payload lives in the framework's `tom_blob` / `tom_blob_chunk` tables. The
+annotation sits next to the field, in the same record class as every other column:
+
+```dart
+// advanced_app_server — ItemRecord
+@TomDbColumn(columnName: 'attachment')
+@TomFileReference(
+  keyPrefix: 'items/attachment',
+  exposed: true,
+  cascadeDelete: true,
+)
+String? attachment;
+
+@TomDbColumn(columnName: 'internal_note')
+@TomFileReference(keyPrefix: 'items/internal_note')
+String? internalNote;   // `exposed` defaults to false — see below
+```
+
+| Column | Record | `exposed` | `cascadeDelete` | What it demonstrates |
+| --- | --- | --- | --- | --- |
+| `app_items.attachment` | `ItemRecord` | **true** | **true** | the ordinary case: reachable over HTTP, and its bytes die with the row |
+| `app_items.internal_note` | `ItemRecord` | *(default false)* | true | **default-closed**: a file column nobody exposed has no HTTP slot at all |
+| `auth_users.avatar_ref` | `UserRecord` | **true** | **false** | the deliberate contrast: deleting the user leaves the blob behind |
+
+**`exposed` is the whole access decision, and it defaults to closed.** `attachment`
+and `internal_note` are indistinguishable in the DDL — the migration declares two
+identical `VARCHAR(512) NULL` columns — because whether a file may be fetched over
+HTTP is an authorization statement, not a storage one, and it is declared beside
+the field so it cannot drift away from what it governs. Nothing has to be written
+to keep `internal_note` private; *not* saying `exposed: true` is what keeps it
+private. Part [10](README_advanced_10_servers_endpoints.md#the-file-endpoint)
+covers what that means at the HTTP boundary.
+
+**`cascadeDelete` is a lifecycle choice, not a default to accept.** With
+`cascadeDelete: true`, deleting an item deletes its attachment's bytes — the blob
+was *part of* the row and outliving it would be a leak. The avatar says `false` on
+purpose: an avatar is plausibly shared, re-pointed, or kept for an audit trail, so
+removing a user row must not silently destroy a blob another row may name. The
+pair exists so the two halves of the question are visible together; a sample where
+every column took the default would teach that there is no question.
+
+`keyPrefix` namespaces the generated keys (`items/attachment/…`) so a store's
+contents remain legible, and so two columns backed by the same store cannot
+collide.
+
+### Where the bytes go: `blobstores_default.yaml`
+
+Each server declares its stores in `assets/blobstores_default.yaml`, loaded at
+boot by its own `blobStoreLoaderFunction()` and installed with
+`TomBlobStoreInfo.initializeBlobStores(...)` — **after**
+`TomDataSourceInfo.initializeDatasourceInfo(...)`, because a `type: database`
+store resolves its named data source eagerly, turning a misnamed store into a
+start-up failure rather than a failed upload hours later.
+
+```yaml
+# advanced_app_server/assets/blobstores_default.yaml
+files:
+  type: database
+  datasource: app_db
+  createSchema: false
+```
+
+Three details carry weight:
+
+- **One store, so it is the default.** The file columns name no store, so they
+  resolve to the only one configured — no `default: true` needed.
+- **`datasource:` is load-bearing, not decoration.** The app server's `main`
+  datasource deliberately points at *auth_db* so it can read the shared grant
+  matrix (above); naming `app_db` here is what keeps an item attachment out of the
+  auth database. The auth server's equivalent file names `auth_db`. Each server
+  therefore writes its blobs into its own database, and **the two-database
+  boundary survives the addition of file transfer** — no avatar in `app_db`, no
+  attachment in `auth_db`.
+- **`createSchema: false` hands schema ownership to the migration chain.** The
+  blob tables are created by the migrations below and nowhere else. Left at the
+  default (`true`), the store would issue its own `CREATE TABLE` at boot —
+  harmless while it agrees with the migration, and a silent divergence the moment
+  it does not.
+
+`type: database` is what makes file transfer cost this sample **no new
+infrastructure**: no object store, no shared mount, no extra credential.
+`TomDirectoryBlobStore` (`type: directory`) and `TomS3BlobStore` (`type: s3`) are
+the same four methods behind the same interface, so a real deployment swaps this
+block without touching application code.
+
 ## Migrations: schema-creation vs sample-data
 
 Each database's schema and demo data live as SQL migrations under
@@ -168,8 +257,8 @@ runner skips them outside `dev`/`test`:
 
 | Database | Schema (DDL, untagged) | Admin seed (untagged — all envs) | Demo seeds (`@dev,test` — dev/test only) |
 | --- | --- | --- | --- |
-| `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) | — (no admin rows in `app_db`) | `[001]-app_demo_seed@dev,test.sql` |
-| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) · `[004]-auth_two_factor_columns.sql` (the two second-factor columns) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` · `[005]-auth_two_factor_seed@dev,test.sql` |
+| `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) · `[002]-app_file_columns.sql` (the two `@TomFileReference` key columns) · `[003]-app_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) | — (no admin rows in `app_db`) | `[001]-app_demo_seed@dev,test.sql` |
+| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) · `[004]-auth_two_factor_columns.sql` (the two second-factor columns) · `[006]-auth_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` · `[005]-auth_two_factor_seed@dev,test.sql` |
 
 Each seed sorts after the schema it depends on, so every table and column exists
 before it is filled: the grant rows in `[003]` populate the `tom_resource_grant`
@@ -184,7 +273,22 @@ two columns are also declared in `[000]`, which is what a fresh database gets;
 created *before* 2FA existed — whose `[000]` is already recorded as applied and
 will never run again — picks them up too. It carries **no** environment tag,
 because schema must reach production even when the demo account that exercises it
-must not.
+must not. `app_db` `[002]` has exactly this shape for the two file-key columns,
+for exactly this reason.
+
+The two **blob-table** migrations (`app_db` `[003]`, `auth_db` `[006]`) are
+byte-identical to each other and copied verbatim from the framework's canonical
+reference migrations under
+`tom_core_server/example/file_storage/migrations/main/tomcore/`. They are
+duplicated rather than shared because each server backs its store with its *own*
+database — that duplication is the two-database boundary, not an oversight. Since
+the DDL now lives in two sample files and the framework separately describes the
+same tables in `blobManifestTable()` / `blobChunkTable()`, each server carries a
+**convergence test** (`test/app_blob_schema_test.dart`,
+`test/auth_blob_schema_test.dart`) that fails if the migration and the framework
+descriptors drift apart. There is no column migration alongside `auth_db` `[006]`:
+`auth_users.avatar_ref` already existed from `[000]` at the right width, so the
+avatar feature reuses a column rather than adding one.
 
 The **admin seed** (`auth_db` `[002]`, untagged) is the one seed a production
 apply keeps: just the administrator account, the `admin` role, and the assignment
@@ -220,7 +324,7 @@ format (part [06](README_advanced_06_authentication.md)).
 
 - [`advanced_app_server/README.md`](advanced_app_server/README.md), [`advanced_auth_server/README.md`](advanced_auth_server/README.md)
 - `advanced_app_server/lib/src/persistence/app_persistence_model.dart`, `advanced_auth_server/lib/src/persistence/auth_persistence_model.dart`, and the `*_mapping.dart` converters
-- `*/assets/datasources_default.yaml`, `*/database_migrations/<datasource>/<schema>/`
+- `*/assets/datasources_default.yaml`, `*/assets/blobstores_default.yaml`, `*/database_migrations/<datasource>/<schema>/`
 
 ---
 

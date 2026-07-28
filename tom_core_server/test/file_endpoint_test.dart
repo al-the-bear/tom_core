@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -47,6 +48,7 @@ class _MemoryFileRepository
     this.outOfScope = const {},
     this.writeScopeRefused = const {},
     this.loseStoredBlob = false,
+    this.scopedByPrincipal = false,
   });
 
   /// Column grades by resource key; an unlisted key is unrestricted.
@@ -82,13 +84,30 @@ class _MemoryFileRepository
   /// two into the disagreement it describes.
   final bool loseStoredBlob;
 
+  /// Resolves the scope from the zone, as a `@TomDbScope` predicate does.
+  ///
+  /// The scopes above are configured per fixture and so are visible from any
+  /// zone, which is convenient and, for one property, misleading: a real scope
+  /// is not a set the repository was handed, it is a predicate built from the
+  /// [TomPrincipal] of the *ambient request*, and `getFromCurrentZone` answers
+  /// only where that request still is. With this set, a row is visible exactly
+  /// while a principal is — so a read that has drifted out of the request zone
+  /// finds nothing, which is what the real repository does and what no
+  /// configured set can reproduce.
+  final bool scopedByPrincipal;
+
   /// The rows, by primary key.
   final Map<int, FixtureFileSlotRecord> rows = {};
 
   /// The row [id] as the scope lets the caller see it: `null` when excluded,
   /// which is the same answer an absent id gets.
-  FixtureFileSlotRecord? _visible(int id) =>
-      outOfScope.contains(id) ? null : rows[id];
+  FixtureFileSlotRecord? _visible(int id) {
+    if (outOfScope.contains(id)) return null;
+    if (scopedByPrincipal && getFromCurrentZone<TomPrincipal>() == null) {
+      return null;
+    }
+    return rows[id];
+  }
 
   TomColumnInformation _column(String fieldName) {
     for (final column in TomAnnotationAnalyzer.findFileColumns(
@@ -463,6 +482,8 @@ void main() {
       Set<int> outOfScope = const {},
       Set<int> writeScopeRefused = const {},
       bool loseStoredBlob = false,
+      bool scopedByPrincipal = false,
+      bool anonymous = false,
     }) async {
       TomBean.resetBeanContext();
       TomFileSlots.reset();
@@ -474,6 +495,7 @@ void main() {
         outOfScope: outOfScope,
         writeScopeRefused: writeScopeRefused,
         loseStoredBlob: loseStoredBlob,
+        scopedByPrincipal: scopedByPrincipal,
       );
       repository.rows[1] = FixtureFileSlotRecord()
         ..id = 1
@@ -488,13 +510,30 @@ void main() {
       // constructor must not force every application to register it.
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       final router = TomEndpointRouting().initializeRouter();
-      final handler = Pipeline()
-          .addMiddleware(
-            contextSetupMiddleware('file endpoint test', {
-              TomRequestLogInfo.contextName: TomRequestLogInfo(),
-            }),
-          )
-          .addHandler(router.call);
+      var pipeline = Pipeline().addMiddleware(
+        contextSetupMiddleware('file endpoint test', {
+          TomRequestLogInfo.contextName: TomRequestLogInfo(),
+        }),
+      );
+      // A file slot requires an authenticated principal, so every request the
+      // harness makes carries one — a test that wanted to say nothing about
+      // authentication would otherwise be saying the strongest thing possible
+      // about it. `anonymous: true` is how the one test that *is* about the gate
+      // asks what an unauthenticated caller sees.
+      if (!anonymous) {
+        pipeline = pipeline.addMiddleware(
+          _principalMiddleware(
+            TomPrincipal(
+              authenticated: true,
+              // Named explicitly: the default `TomUser` is the *guest*, and
+              // `TomAuthenticatedAccess` refuses a guest however authenticated
+              // the flag claims it is.
+              user: TomUser(username: 'fixture-user'),
+            ),
+          ),
+        );
+      }
+      final handler = pipeline.addHandler(router.call);
       server = await shelf_io.serve(handler, InternetAddress.loopbackIPv4, 0);
       client = TomHttpFileTransferClient(
         baseUri: Uri.parse('http://127.0.0.1:${server.port}/files'),
@@ -545,6 +584,96 @@ void main() {
       expect(await client.remove(slot), isTrue);
       expect(repository.rows[1]!.poster, isNull);
       expect(await client.describe(slot), isNull);
+    });
+
+    test('a download produces its bytes inside the request execution context',
+        () async {
+      // A response body is *lazy*. The handler returns a stream and shelf hands
+      // it to the socket, so the bytes are pulled after the request's zone —
+      // and with it the [TomPrincipal] the authentication middleware installed
+      // — is no longer current. Everything the endpoint does before that point
+      // is unaffected, which is exactly what makes the bug survivable: the slot
+      // resolves, the descriptor is read, the 200 and its headers go out, and
+      // only then does the scoped read find nothing and raise mid-body. The
+      // caller gets a truncated response and a status code that says the
+      // opposite of what happened.
+      //
+      // The repository here is scoped by principal rather than by a configured
+      // id set, because a set is visible from any zone and so cannot fail this
+      // way; a `@TomDbScope` predicate reads the ambient principal and can. The
+      // principal itself is the harness default — the point is *where* it is
+      // still visible, not which one it is.
+      //
+      // `describe` is the control: same principal, same row, same moment. It
+      // answers from inside the handler, so it proves the row is reachable and
+      // leaves the download as the only thing under test.
+      await start(scopedByPrincipal: true);
+      const slot = 'fixture_file_slot/1/poster';
+      final payload = utf8.encode('bytes only a scoped read could fetch');
+      await client.upload(
+        slot: slot,
+        source: TomFileSource.bytes('scoped.txt', payload),
+      );
+      expect(await client.describe(slot), isNotNull);
+
+      final downloaded = <int>[];
+      await for (final chunk in client.download(slot)) {
+        downloaded.addAll(chunk);
+      }
+      expect(
+        downloaded,
+        payload,
+        reason: 'the stream must be subscribed in the request zone, or the '
+            'scoped read behind it sees no principal',
+      );
+    });
+
+    test('an unauthenticated caller reaches no slot at all', () async {
+      // The endpoint's own protections — the row scope (C-3) and the column
+      // grade (C-4) — are both *principal-relative*, so an anonymous request is
+      // the one case where they have nothing to decide against. C-3 filters a
+      // row away only when a scope says the caller may not have it, and an
+      // entity that declares no `@TomDbScope` therefore filters nothing; C-4
+      // grades a column for a principal, and an ungraded column is readable.
+      // Neither is a bug: they answer "which rows, which columns", never
+      // "whether a caller exists". That question belongs to the endpoint gate,
+      // and if the gate does not ask it, an exposed file column on an unscoped
+      // entity is world-readable and world-writable.
+      //
+      // The fixture entity is unscoped and its `poster` column ungraded — not to
+      // contrive a failure, but because that is the ordinary shape. A file
+      // feature whose only defence is a scope every entity is free not to
+      // declare is default-open wearing default-closed's clothes.
+      //
+      // Asserted as "refused, and nothing changed" rather than on a status code:
+      // the denial is raised outside the pipeline's per-endpoint `try`, so the
+      // status a caller sees is whatever the *application's* server-level error
+      // handler maps it to (the advanced sample's maps it to 403). What must
+      // hold everywhere is the security property — no bytes in, no bytes out.
+      await start(anonymous: true);
+      const slot = 'fixture_file_slot/1/poster';
+
+      await expectLater(
+        client.upload(
+          slot: slot,
+          source: TomFileSource.bytes('anon.txt', utf8.encode('no principal')),
+        ),
+        throwsA(isA<TomFileTransferException>()),
+        reason: 'an anonymous caller must not be able to write a file column',
+      );
+      expect(repository.rows[1]!.poster, isNull,
+          reason: 'and the refused write must leave the row untouched');
+
+      // The read direction, against a slot that genuinely holds a file — so a
+      // refusal cannot be confused with an empty slot. The file is placed
+      // through the repository rather than over HTTP, because the upload above
+      // is precisely what must not work.
+      repository.rows[1]!.poster = await _storeFixtureBlob('secret bytes');
+      await expectLater(
+        client.download(slot).drain<void>(),
+        throwsA(isA<TomFileTransferException>()),
+        reason: 'nor read one',
+      );
     });
 
     test('a re-upload replaces the file and mints a new key', () async {
@@ -964,6 +1093,34 @@ void main() {
     });
   });
 }
+
+/// Puts [content] straight into the registered blob store and returns its key.
+///
+/// The endpoint is the thing under test in the suite this serves, so a test that
+/// needs a slot to *already* hold a file cannot fill it over HTTP without
+/// assuming the very behaviour it is about to deny.
+Future<String> _storeFixtureBlob(String content) async {
+  final key = 'fixture/poster/preloaded-${DateTime.now().microsecondsSinceEpoch}';
+  await TomBlobStoreInfo.defaultStore.putBytes(
+    key: key,
+    bytes: utf8.encode(content),
+    mediaType: 'text/plain',
+  );
+  return key;
+}
+
+/// Publishes [principal] into the request zone, as the real pipeline does.
+///
+/// `tomDefaultAuthenticationMiddleware` derives its principal from a bearer
+/// token and then installs it with exactly this `runZoned` — minting a signed
+/// token here would test the authentication path, which has its own suite, and
+/// leave this one unable to run without a key. What matters downstream is only
+/// that a `TomPrincipal` is in the zone, so that is all this puts there.
+Middleware _principalMiddleware(TomPrincipal principal) =>
+    (innerHandler) => (request) => runZoned<FutureOr<Response>>(
+      () => innerHandler(request),
+      zoneValues: {TomPrincipal: principal},
+    );
 
 /// Issues a raw request, bypassing the client, so a status code the client
 /// turns into an exception can be asserted directly.

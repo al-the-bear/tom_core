@@ -21,7 +21,7 @@ against the seam directly below it — never against a live socket:
 | --- | --- |
 | `advanced_todo_domain` | the reflected entities round-trip and the enums/resource-key constants hold |
 | `advanced_todo_contracts` | the wire DTOs serialize/deserialize and the typed service interfaces match the registry |
-| `advanced_client_core` | the Flutter-free client core: auth/token storage, the shared transport, error normalisation (+ the one live cross-tier scenario, below) |
+| `advanced_client_core` | the Flutter-free client core: auth/token storage, the shared transport, error normalisation (+ the live cross-tier, login and file-transfer scenarios, below) |
 | `advanced_auth_server` | the JWT issuer, the role gate, and the admin grant/assignment API against an in-process datasource |
 | `advanced_app_server` | the secured task API: the ownership-or-share resolver, the four-state field-grade resolver, and the write enforcement |
 | `advanced_app_client` | the end-user widgets bound to the **in-memory** backend fake — the four-role render matrix and the sentinel render proof |
@@ -32,10 +32,10 @@ The discipline that makes this work is the **injected backend seam**
 written against an interface (`AppBackend` / `AdminBackend`), and the widget
 suites bind the seeded in-memory implementation. Because the fake mirrors the
 server's ownership + four-state model in process, the widget tests are
-deterministic by construction and never open a socket. The single place the
-real stack is exercised is the cross-tier scenario in `advanced_client_core`,
-which **skips itself** when the servers are unreachable so a plain unit run
-stays green.
+deterministic by construction and never open a socket. The only place the real
+stack is exercised is `advanced_client_core`'s live suites, each of which
+**skips itself** when the servers are unreachable so a plain unit run stays
+green.
 
 ## Flutter tests serial only
 
@@ -102,10 +102,17 @@ the backstop for a client that ignores its grade.
 
 ## The cross-tier integration runner
 
-The one place the real stack runs end-to-end is
-`advanced_client_core/test/cross_tier_integration_test.dart` (**TC-37-01**),
-driven by `advanced_client_core/tool/run_cross_tier_integration.sh`. The runner
-is one scripted command for the Phase-7 "scenario passes end-to-end" bar:
+Three suites in `advanced_client_core/test/` run against the real stack, all
+driven by the one script `advanced_client_core/tool/run_cross_tier_integration.sh`:
+
+| Suite | What only a live stack can show |
+| --- | --- |
+| `cross_tier_integration_test.dart` (**TC-37-01…08**) | the two servers' authorization agreeing across the database boundary |
+| `auth_client_integration_test.dart` (**TC-22-11/12**) | a real login, including the two-pass 2FA exchange |
+| `file_transfer_integration_test.dart` (**TC-FT-01…04**) | bytes moving through both blob stores, and the closed/anonymous refusals |
+
+The runner is one scripted command for the Phase-7 "scenario passes end-to-end"
+bar:
 
 1. **Fresh databases.** `docker compose down -v` drops the old volume so the
    `initdb` seed re-applies, then brings up `advanced-auth-db` (:3307) and
@@ -121,10 +128,10 @@ is one scripted command for the Phase-7 "scenario passes end-to-end" bar:
    `dart run` cold-compiles the reflection-bootstrapping server graph on first
    boot; a `.dill` snapshot is *not* viable (detached snapshots fail to
    initialise the generated reflection).
-4. **Run the scenario** against the live stack and tear everything down via an
-   `EXIT` trap that dumps the server logs on any non-zero exit.
+4. **Run the three suites** against the live stack and tear everything down via
+   an `EXIT` trap that dumps the server logs on any non-zero exit.
 
-The scenario itself walks the two cross-tier authorization mechanisms:
+The cross-tier scenario itself walks the two cross-tier authorization mechanisms:
 
 - **An admin grant edit reaches the end-user's field matrix.** The `admin` edits
   the `viewer` role's `todo.item.title` grant through the auth server's
@@ -138,12 +145,23 @@ The scenario itself walks the two cross-tier authorization mechanisms:
   `bob` cannot list it, `alice` shares it as `editor`, and `bob` then lists it —
   the ownership-or-share resolver in action over the live wire.
 
+The **file-transfer** suite is the one that cannot be faked at all: it asserts
+that a byte stream posted by a client lands in a blob store, that the row's key
+column is updated, and that a later `GET` hands the same bytes back — six layers
+agreeing at once (client → endpoint → repository → column grade → blob store →
+database). It also makes the two negative claims the feature exists to guarantee:
+a column that never said `exposed` is **not addressable** (asserted beside a
+reachable neighbour on the same row, by the same principal, so a 404 cannot be
+mistaken for an unreachable row), and an **unauthenticated** caller is refused by
+the endpoint's own gate on both servers. Each test restores the slot it used, so
+the suite is re-runnable against the same databases.
+
 Because the servers' host ports may be held by an unrelated service, the runner
 guards 8080/8081 with a preflight (`assert_ports_free`) and refuses to start
-rather than racing a stale process. When the servers are unreachable the test
-calls `markTestSkipped` rather than failing; under the runner the servers are
-guaranteed up, so the runner treats a skip as a failure ("Scenario was
-SKIPPED … treating as failure") — only a real PASS exits 0.
+rather than racing a stale process. When the servers are unreachable the tests
+call `markTestSkipped` rather than failing; under the runner the servers are
+guaranteed up, so the runner treats "All tests skipped" as a failure — only a
+real PASS from each of the three suites exits 0.
 
 ## The global green gate
 
@@ -154,11 +172,15 @@ A change is done only when all three hold together:
 3. **The cross-tier runner exits 0** with "All tests passed!" against a freshly
    booted stack.
 
-This gate was last re-run live on 2026-06-29. Reaching it the first time also
-surfaced and fixed five real `tom_core_server` bugs (zone principal resolution,
+This gate was last re-run live on 2026-07-28. Reaching it has so far surfaced
+and fixed **seven** real `tom_core_server` bugs: zone principal resolution, the
 nullable surrogate-key read, the MariaDB `bool`→`1`/`0` bind, query-string
-parameter binding, and pipeline error logging). The suites are not decoration;
-they were the instrument that found framework defects.
+parameter binding, pipeline error logging, a streamed download that lost its
+principal (a shelf response body is lazy, so the read ran outside the request
+zone), and a file endpoint that declared no access policy at all — which, given
+that the framework's protection default is *open*, made every exposed file
+column world-readable. The suites are not decoration; they were the instrument
+that found framework defects, including two security-relevant ones.
 
 ## Test counts
 
@@ -166,20 +188,26 @@ Current green-gate counts (runtime, the authoritative figure):
 
 | Package | Tests |
 | --- | --- |
-| `advanced_todo_domain` | 27 |
-| `advanced_todo_contracts` | 52 |
-| `advanced_client_core` | 44 (+4 designed integration skips) |
-| `advanced_auth_server` | 55 |
-| `advanced_app_server` | 77 |
-| `advanced_app_client` | 53 |
+| `advanced_todo_domain` | 24 |
+| `advanced_todo_contracts` | 38 |
+| `advanced_client_core` | 51 (+16 live-stack tests that skip without the servers) |
+| `advanced_auth_server` | 77 |
+| `advanced_app_server` | 94 |
+| `advanced_app_client` | 44 |
 | `advanced_authadmin_client` | 60 |
 
-> A static grep of `app_server` finds only ~74 `test()`/`testWidgets()` calls
-> against the runtime 77, because several suites emit tests from a loop (e.g.
+`advanced_client_core`'s 16 skips are not a shortfall — they are the suites that
+only a booted stack can answer, and the runner turns each of them green:
+`cross_tier` 8, `file_transfer` 4, `auth_client` 2, plus one apiece in
+`admin_api_client_integration_test.dart` and `app_api_client_integration_test.dart`.
+
+> A static grep of `app_server` finds 91 `test()`/`testWidgets()` calls against
+> the runtime 94, because several suites emit tests from a loop (e.g.
 > `field_grade_resolver_test.dart` over `ProjectRole.values`,
 > `resource_bundle_endpoint_test.dart` over the gradable item field tokens,
 > `app_share_endpoints_test.dart` over the not-found keys). The **runtime** count
-> from the green gate is the one to trust.
+> from the green gate is the one to trust. Every other package's static and
+> runtime counts agree.
 
 ## Primary sources
 

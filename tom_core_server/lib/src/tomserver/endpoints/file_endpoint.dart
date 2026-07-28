@@ -468,9 +468,62 @@ class TomFileEndpoint {
       return _error(404, 'file_endpoint.no_file', 'No file is stored there.');
     }
     return Response.ok(
-      slot.open(id),
+      _inCurrentZone(() => slot.open(id)),
       headers: tomFileDescriptorHeaders(metadata),
     );
+  }
+
+  /// [open]'s stream, opened and consumed in the zone this is called from.
+  ///
+  /// A response body is *lazy*: the handler returns a stream and shelf hands it
+  /// to the socket, so nothing is read until the request has already returned
+  /// and the zone the authentication middleware established — the one holding
+  /// the [TomPrincipal] — is no longer current. For a file that is not an
+  /// implementation detail. `openFile` is a scoped read, and a `@TomDbScope`
+  /// predicate resolves its principal from the zone; subscribed outside the
+  /// request it finds none, filters the row away, and raises `row_not_found`
+  /// *after* the 200 and its headers are on the wire. The caller is left with a
+  /// truncated body and a status code that says the opposite of what happened.
+  ///
+  /// So the subscription is made where the request still is. The controller
+  /// defers [open] until something listens, then runs both the call and the
+  /// `listen` inside the captured zone, which is what the async generator
+  /// behind `openFile` captures in turn. Pause, resume and cancel are forwarded
+  /// so backpressure still reaches the store — buffering the file to sidestep
+  /// the zone would trade this bug for a worse one.
+  static Stream<List<int>> _inCurrentZone(Stream<List<int>> Function() open) {
+    final zone = Zone.current;
+    late final StreamController<List<int>> controller;
+    StreamSubscription<List<int>>? subscription;
+    controller = StreamController<List<int>>(
+      onListen: () => zone.run(() {
+        try {
+          subscription = open().listen(
+            controller.add,
+            onError: controller.addError,
+            onDone: controller.close,
+          );
+        } catch (error, stackTrace) {
+          // [open] is declared to return a stream, so a synchronous throw has
+          // no route to the caller — it would surface as an unhandled error in
+          // the socket's zone, killing the connection with nothing logged
+          // against the request. Turned into a stream error it travels the same
+          // path a failure inside the stream does.
+          controller.addError(error, stackTrace);
+          // Not awaited, and cannot be: `close` completes when the consumer has
+          // drained the stream, which is the socket, which is waiting on this
+          // callback to return.
+          unawaited(controller.close());
+        }
+      }),
+      onPause: () => subscription?.pause(),
+      onResume: () => subscription?.resume(),
+      // The controller takes a `Future` from `onCancel` and from no other
+      // callback, so the cancel is handed over rather than merely started: a
+      // client that hangs up mid-file must not leave a read running behind it.
+      onCancel: () => subscription?.cancel(),
+    );
+    return controller.stream;
   }
 
   static Future<Response> _head(TomFileSlot slot, String id) async {
@@ -517,6 +570,19 @@ abstract class TomFileService {
   /// `consumes` is deliberately **not** JSON: the pipeline reads a request body
   /// into a string only for a JSON endpoint, so declaring octet-stream is what
   /// leaves the upload stream intact all the way to the blob store.
+  ///
+  /// [TomAuthenticatedAccess] because the endpoint's other protections cannot
+  /// stand in for it. The row scope (C-3) and the column grade (C-4) are both
+  /// principal-*relative*: they answer "which rows, which columns", never
+  /// "whether there is a caller at all". An entity that declares no
+  /// `@TomDbScope` filters nothing and an ungraded column refuses nothing, so
+  /// without this an exposed file column on an ordinary entity would be
+  /// world-readable and world-writable. An application that genuinely wants
+  /// anonymous file access declares its own [TomFileService] component with a
+  /// different [TomAccessControl] — a handler-side annotation is a local
+  /// override (G-API-3) — rather than every application inheriting the open
+  /// case by default.
+  @TomAuthenticatedAccess()
   @TomEndpoint(
     methods: [
       TomHttpMethod.post,

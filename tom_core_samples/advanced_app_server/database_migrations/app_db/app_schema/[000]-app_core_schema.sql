@@ -64,6 +64,11 @@ CREATE TABLE IF NOT EXISTS app_items (
   due_date        DATETIME     NULL,
   estimate_hours  DOUBLE       NULL,
   tags            TEXT         NULL,
+  -- @TomFileReference key columns. VARCHAR(512) is not arbitrary: it matches
+  -- TomBlobStore.maxKeyLength exactly, so the column cannot silently truncate a
+  -- key the validator accepted. NULL means "no file". See [002].
+  attachment      VARCHAR(512) NULL,
+  internal_note   VARCHAR(512) NULL,
   created_at      DATETIME     NULL,
   updated_at      DATETIME     NULL,
   PRIMARY KEY (id),

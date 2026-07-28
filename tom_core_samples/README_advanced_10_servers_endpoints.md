@@ -8,7 +8,8 @@ grade matrix is computed. This part is where those two meet the wire: how the tw
 servers turn an HTTP request into an authenticated, authorized method call. We
 look at the endpoint pipeline and its access annotations, the bearer check that
 runs on every request, the resource/field authorization the handlers add on top,
-the health probe, and the boot order that has to be right for any of it to work.
+the framework file endpoint both servers mount, the health probe, and the boot
+order that has to be right for any of it to work.
 The blow-by-blow trace of a single request is deferred to
 [Appendix A3](README_advanced_A3_request_lifecycle.md); here we map the moving
 parts.
@@ -173,6 +174,64 @@ forbidden — so existence is not leaked — while a genuine permission refusal 
 403 (`app.access.forbidden` / `app.item.field_forbidden`). The server-level
 `appForbiddenOrNotFound` maps those keys (`app_endpoints.dart:920`).
 
+## The file endpoint
+
+File transfer does not go through the contract registry at all. Both servers
+mount the framework's own `TomFileService`, whose single method answers
+`POST`/`PUT`/`GET`/`HEAD`/`DELETE` on **`/files/{entity}/{id}/{column}`** — one
+handler for all five verbs, because the wire contract addresses one resource and
+varies only the method. Each server publishes its slots with **one line** at boot:
+
+```dart
+TomFileSlots.register(itemRepository);   // app server  → app_items
+TomFileSlots.register(userRepository);   // auth server → auth_users
+```
+
+Everything else is read off the entity's own annotations: the table name from
+`@TomDbTable`, the column name from `@TomDbColumn`, the store and lifecycle from
+`@TomFileReference`. There is no second copy of those facts to drift, and a
+renamed column moves its slot rather than breaking one. `TomFileService` needs
+**no bean** — it is a `@tomService` like any other and the router constructs its
+`@tomComponent` implementation (`TomFileServer`) when it mounts the pipeline.
+
+The published slots are exactly the **exposed** file columns (part
+[05](README_advanced_05_persistence_database.md#file-columns--the-blob-stores)):
+
+| Slot | Verbs | Backed by |
+| --- | --- | --- |
+| `app_items/{id}/attachment` | POST · PUT · GET · HEAD · DELETE | `app_db`, the app server's `files` store |
+| `auth_users/{id}/avatar_ref` | POST · PUT · GET · HEAD · DELETE | `auth_db`, the auth server's `files` store |
+
+`app_items/{id}/internal_note` is **not** in that table: it is a
+`@TomFileReference` column of the same row that never said `exposed: true`, so no
+slot is published for it. A request naming it is a plain **404** — the same answer
+a column that does not exist gets. That is deliberate: a 403 would confirm the
+column is there, exactly as the app services report an out-of-scope row as *not
+found* rather than *forbidden*.
+
+**Four checks, in order, and each answers a different question.** A file is not a
+side door into the C-grade model:
+
+1. **The gate** — `TomFileService.file` declares `TomAuthenticatedAccess()`, so an
+   anonymous caller never reaches a slot. This one has to be the endpoint's own:
+   the three below are all principal-*relative*, and a request with no principal
+   gives them nothing to decide. `auth_users` declares no `@TomDbScope`, so
+   without the gate its avatar column would be readable by anyone who guessed the
+   URL. (An application that genuinely wants anonymous files declares its own
+   `TomFileService` component with a different policy — a handler-side annotation
+   is a local override, G-API-3.)
+2. **Exposure** — is this column published at all? Default-closed, per column.
+3. **Row scope (C-3)** — may *this* principal have this row? The app's
+   `@TomDbScope`d entities filter the row away, and an unreachable row is a 404.
+4. **Column grade (C-4)** — may this principal read/write *this field*? A column
+   graded `none` answers **403** (`column_authorization.read.field_forbidden`),
+   because here the caller's right to the row is not in question.
+
+Uploads stream. The endpoint declares `consumes: octet-stream` precisely so the
+pipeline does **not** materialise the body — it reads a request into a string only
+for a JSON endpoint — and downloads stream back the same way, so a large file
+never sits whole in server memory.
+
 ## Health check
 
 Two distinct probes, deliberately on different paths:
@@ -195,8 +254,8 @@ Both `bin/*_server_start.dart` follow the same sequence, and the order is not
 incidental — each step depends on the prior ones being in place:
 
 ```
-platform → registry → reflection → runtime → config → datasource →
-JWT signing → bean context → migrations → [seed] → TomServer.start()
+platform → registry → reflection → runtime → config → datasource → blob stores →
+JWT signing → bean context → migrations → [seed] → file slots → TomServer.start()
 ```
 
 Reading `auth_server_start.dart:221` (the app server's `main` is identical bar the
@@ -211,10 +270,12 @@ demo-password seed):
 | runtime | `initializeRuntime()` | resolves the active environment (`prod`/`dev`) |
 | config | `AuthServerConfiguration(args)` | merges YAML/env/args; sets port, error handler |
 | datasource | `initializeDatasourceInfo(...)` | opens the DB connections the repositories and migrations use |
+| blob stores | `initializeBlobStores(...)` | **must follow the datasource init** — a `type: database` store resolves its named data source eagerly, so a store pointing at an unregistered name fails at start-up rather than at the first upload |
 | JWT signing | `initializeJwtSigning()` | installs the shared keypair — **identical on both servers**, which is what lets the app server verify a token the auth server minted |
 | bean context | `initializeBeanContext()` | instantiates the `@tomComponent` services |
 | migrations | `migrateDatabases(...)` | brings the schema + seed data up before serving |
 | seed | `seedDemoPasswords()` *(auth only)* | fills demo passwords onto the password-less seed rows so the README `curl`s can log in |
+| file slots | `TomFileSlots.register(...)` | publishes the exposed file columns; needs reflection and the store registry in place, and must precede serving |
 | serve | `TomServer.start()` | binds the socket; installs the default auth middleware |
 
 The cross-server trust hinges on two of these matching exactly: the **issuer**

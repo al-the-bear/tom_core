@@ -574,6 +574,13 @@ class _GradableItemField {
 /// [_gradableItemFields] is built. The non-gradable columns (`label`, `tags`)
 /// are absent by design — `updateItem` preserves them from the stored row,
 /// `createItem` takes them from the creator's payload.
+///
+/// The `@TomFileReference` columns (`attachment`, `internalNote`) are absent for
+/// a stronger reason than grading: a blob key is *server-minted* by
+/// `saveFile`, and a caller who could write one would repoint their row at
+/// somebody else's bytes. Because the merge only ever overlays fields listed
+/// here, leaving them out is what makes a client-supplied key unwritable — the
+/// keys move exclusively through the file endpoint.
 final Map<String, _GradableItemBinding> _gradableItemBindings = {
   'todo.item.title':
       _GradableItemBinding((r) => r.title, (t, s) => t.title = s.title),
@@ -930,6 +937,12 @@ class AppWriteService {
 
   /// A field-by-field copy of [record] (the write paths never mutate the stored
   /// row in place — a rejected write must leave storage untouched).
+  ///
+  /// The `@TomFileReference` keys are copied like any other column, which is
+  /// what makes them survive an ordinary edit: [_enforceFieldWrites] builds the
+  /// row to persist from this clone and overlays only the *gradable* fields, so
+  /// a column absent from [_gradableItemFields] always keeps its baseline value.
+  /// Omitting them here would clear a live blob key on every update.
   static ItemRecord _cloneItem(ItemRecord record) => ItemRecord()
     ..id = record.id
     ..listId = record.listId
@@ -943,6 +956,8 @@ class AppWriteService {
     ..dueDate = record.dueDate
     ..estimateHours = record.estimateHours
     ..tags = record.tags
+    ..attachment = record.attachment
+    ..internalNote = record.internalNote
     ..createdAt = record.createdAt
     ..updatedAt = record.updatedAt;
 }

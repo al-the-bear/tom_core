@@ -40,28 +40,48 @@ void main() {
     setUpAll(() => migrations = _migrations(_appSchemaDir));
 
     test('versions are numbered consecutively from 0 with no gaps', () {
-      expect(migrations.map((m) => m.version), [0, 1],
-          reason: 'app_db migrations must be [000],[001]');
+      // Stated as the property rather than as a literal inventory (matching the
+      // auth server's equivalent guard): adding a migration is routine, and a
+      // list that has to be edited each time would fail for the wrong reason and
+      // teach the reader to just bump it.
+      expect(migrations, isNotEmpty);
+      expect(
+        migrations.map((m) => m.version),
+        List.generate(migrations.length, (index) => index),
+        reason: 'app_db migrations must run [000], [001], … with no gaps and '
+            'no duplicates',
+      );
     });
 
     test('schema is untagged; the demo seed is @dev,test', () {
       final byDesc = {
         for (final m in migrations) m.parsed.description: m.parsed,
       };
-      expect(byDesc['app_core_schema']!.environments, isEmpty,
-          reason: 'the schema DDL applies in every environment');
+      for (final desc in const [
+        'app_core_schema',
+        // The file-reference columns and the blob tables that hold their bytes
+        // are schema, not content: a production deployment that skipped them
+        // would accept an upload and then have nowhere to put it.
+        'app_file_columns',
+        'app_blob_tables',
+      ]) {
+        expect(byDesc[desc]!.environments, isEmpty,
+            reason: '$desc must be untagged (applies in every environment)');
+      }
       expect(byDesc['app_demo_seed']!.environments, ['dev', 'test']);
     });
 
     test('a production apply creates the schema but skips demo content', () {
-      TomMigrationFileName forDesc(String desc) =>
-          migrations.firstWhere((m) => m.parsed.description == desc).parsed;
+      bool appliesIn(String env, String desc) =>
+          migrations.firstWhere((m) => m.parsed.description == desc)
+              .parsed
+              .appliesInEnvironment(env);
 
-      expect(forDesc('app_core_schema').appliesInEnvironment('production'),
-          isTrue);
-      expect(forDesc('app_demo_seed').appliesInEnvironment('production'),
-          isFalse);
-      expect(forDesc('app_demo_seed').appliesInEnvironment('dev'), isTrue);
+      expect(appliesIn('production', 'app_core_schema'), isTrue);
+      expect(appliesIn('production', 'app_file_columns'), isTrue);
+      expect(appliesIn('production', 'app_blob_tables'), isTrue);
+      expect(appliesIn('production', 'app_demo_seed'), isFalse);
+      expect(appliesIn('dev', 'app_demo_seed'), isTrue);
     });
   });
 }

@@ -1,0 +1,29 @@
+# Blob-store configuration: where the bytes behind this server's
+# @TomFileReference column (auth_users.avatar_ref) actually live.
+#
+# One store, so it becomes the default without saying `default: true` — and the
+# avatar column names no store, so it resolves to this one.
+#
+# `datasource: auth_db` keeps avatars inside the auth server's own database, the
+# mirror of the app server's `datasource: app_db`. That separation is what
+# preserves the sample's two-database boundary now that both servers store
+# files: an avatar never lands in app_db, and an item attachment never lands
+# here.
+#
+# `type: database` means no new infrastructure: no object store, no shared mount,
+# no extra credential. `TomDirectoryBlobStore` (type: directory) or
+# `TomS3BlobStore` (type: s3) are the same four methods behind the same
+# interface, so a real deployment swaps this block without touching a line of
+# application code.
+#
+# `createSchema: false` hands schema ownership to the migration chain: the
+# tom_blob / tom_blob_chunk tables are created by
+# database_migrations/auth_db/auth_schema/[006]-auth_blob_tables.sql, which is
+# the only place this server's DDL lives and the thing the convergence test
+# checks. Leaving it at the default (true) would let the store issue its own
+# CREATE TABLE at boot — harmless when it agrees with the migration, and a silent
+# divergence the moment it does not.
+files:
+  type: database
+  datasource: auth_db
+  createSchema: false

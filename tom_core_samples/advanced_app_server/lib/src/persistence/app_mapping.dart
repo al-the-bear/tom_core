@@ -41,6 +41,13 @@ int? _idOrNull(String value) => value.isEmpty ? null : int.tryParse(value);
 /// Renders a database key back as the domain display-id (empty for `null`).
 String _idString(int? value) => value?.toString() ?? '';
 
+/// Narrows the domain's "unset" (an empty `TomString`) to SQL `NULL`.
+///
+/// Used for the `@TomFileReference` key columns, where the distinction matters:
+/// the blob lifecycle reads "no key" as `NULL`, and an empty string would be a
+/// key-shaped value the store would then try to account for.
+String? _nullIfEmpty(String value) => value.isEmpty ? null : value;
+
 /// Serializes the item's observable tags into a single JSON text column, or
 /// `null` when there are none (the column is left NULL rather than `"[]"`).
 String? _encodeTags(List<TomString> tags) =>
@@ -123,6 +130,13 @@ TodoList listFromRecord(ListRecord record) => TodoList()
 
 /// Flattens a [TodoItem] into its [ItemRecord]. The enum fields are stored as
 /// their raw name token; the tags collapse to the JSON `tags` column.
+///
+/// The `attachment` blob key is carried for symmetry with [itemFromRecord], not
+/// because a caller may set it: the endpoint write paths merge through
+/// `_enforceFieldWrites`, which overlays only *gradable* fields, so a
+/// client-supplied key is dropped and the stored one preserved. The key is
+/// minted server-side by `saveFile` and moves solely through the file endpoint.
+/// `internalNote` has no domain counterpart at all — it is not exposed.
 ItemRecord itemToRecord(TodoItem item) => ItemRecord()
   ..id = _idOrNull(item.id.get())
   ..listId = _idOrNull(item.listId.get())
@@ -136,6 +150,7 @@ ItemRecord itemToRecord(TodoItem item) => ItemRecord()
   ..dueDate = item.dueDate.get()
   ..estimateHours = item.estimateHours.get()
   ..tags = _encodeTags(item.tags.get())
+  ..attachment = _nullIfEmpty(item.attachment.get())
   ..createdAt = item.createdAt.get()
   ..updatedAt = item.updatedAt.get();
 
@@ -157,6 +172,7 @@ TodoItem itemFromRecord(ItemRecord record) {
     ..reporterId.set(_idString(record.reporterId))
     ..dueDate.set(record.dueDate)
     ..estimateHours.set(record.estimateHours)
+    ..attachment.set(record.attachment ?? '')
     ..createdAt.set(record.createdAt)
     ..updatedAt.set(record.updatedAt);
   for (final tag in _decodeTags(record.tags)) {

@@ -53,6 +53,15 @@ class TodoItem extends TomClass {
   /// Free-form tags applied to the item.
   late final tags = TomList<TomString>();
 
+  /// Blob-storage key of the item's attachment; empty when there is none.
+  ///
+  /// The key is *minted by the server* when the file is uploaded through the
+  /// framework file endpoint — the client reads it (to build the download URL)
+  /// but never authors it, so a value set here does not travel to the row on
+  /// save. The matching `internal_note` column exists only server-side: it is
+  /// not exposed over HTTP, so the domain has no reason to carry it.
+  late final attachment = TomString('');
+
   /// When the item was created; null until persisted.
   late final createdAt = TomNDateTime(null);
 

@@ -158,6 +158,19 @@ Map<String, dynamic> datasourceLoaderFunction() {
   return result;
 }
 
+/// Loads `assets/blobstores_default.yaml` — where the bytes behind this
+/// server's `@TomFileReference` columns live.
+///
+/// Deliberately a separate file from `datasources_default.yaml` even though the
+/// only configured store is backed by a data source: the two answer different
+/// questions ("which databases do we talk to" vs "where do files go"), and a
+/// deployment that moves its files to S3 edits this file alone.
+Map<String, dynamic> blobStoreLoaderFunction() {
+  final result = <String, dynamic>{};
+  _mergeYamlIfPresent(result, 'assets/blobstores_default.yaml');
+  return result;
+}
+
 void _mergeYamlIfPresent(Map<String, dynamic> into, String path) {
   if (!File(path).existsSync()) return;
   mergeMapsOneSided(into, TomYaml.loadYamlFile(path));
@@ -237,6 +250,11 @@ Future<void> main(List<String> args) async {
 
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
 
+  // Must follow the datasource init: the `type: database` backend resolves its
+  // named data source eagerly, so a store pointing at an unregistered name is a
+  // start-up failure rather than a failed upload hours later.
+  await TomBlobStoreInfo.initializeBlobStores(blobStoreLoaderFunction());
+
   // RCB8: register the async `visible:project|list|item` data scopes so the CRUD
   // repository pushes each caller's owned ∪ shared id-set to `app_db` as an
   // OR-union predicate — the DB-side counterpart of the app read service's
@@ -256,6 +274,18 @@ Future<void> main(List<String> args) async {
   await TomDbMigrations.migrateDatabases(
     configuration.databaseMigrationsDirectory,
   );
+
+  // Publishes `POST|GET|HEAD|DELETE /files/app_items/{id}/attachment`. One line,
+  // naming the repository and nothing else: the table name, the column name and
+  // the store all come off the entity's own annotations, so there is no second
+  // copy of them to drift. `internal_note` is a file column of the same entity
+  // and is *not* published — it says nothing about `exposed`, and the default is
+  // closed.
+  //
+  // `TomFileService` needs no bean: it is a `@tomService` like any other, and
+  // the router constructs its `@tomComponent` implementation (`TomFileServer`)
+  // when it mounts the reflected endpoint pipeline.
+  TomFileSlots.register(itemRepository);
 
   startServer(configuration);
 

@@ -185,7 +185,7 @@ wait_app_health
 #    means something died after the health checks — treat it as a failure and
 #    surface the server logs.
 #
-#    Two suites, because they prove different things and either can break alone:
+#    Three suites, because they prove different things and any can break alone:
 #      - cross_tier_integration_test  — the admin→end-user authorization loop
 #        (step 37): a grant edit reaching the field matrix, a share revealing a
 #        project to a second user.
@@ -194,6 +194,11 @@ wait_app_health
 #        which the real client, the real server and a secret read from the
 #        database all take part, so it is the only one that can catch the two
 #        halves of the 2FA flow disagreeing on the wire.
+#      - file_transfer_integration_test — bytes moving across both servers: an
+#        upload landing in each server's own blob store and being served back,
+#        and the non-exposed file column staying unaddressable. Nothing short of
+#        a running stack can show a client, an endpoint, a column grade, a blob
+#        store and a database agreeing about one file.
 run_live_suite() {
   local label="$1" path="$2" output status
   log "Running $label"
@@ -217,6 +222,8 @@ run_live_suite "the cross-tier integration test" \
 # failures in one run beats fixing them one boot at a time.
 run_live_suite "the live auth-client suite (incl. the two-pass 2FA login)" \
   test/auth_client_integration_test.dart || result=1
+run_live_suite "the live file-transfer suite (both blob stores, closed column)" \
+  test/file_transfer_integration_test.dart || result=1
 
 # Server logs are dumped by the EXIT trap (cleanup) whenever the run exits
 # non-zero, so a test failure here surfaces them without an explicit dump.
