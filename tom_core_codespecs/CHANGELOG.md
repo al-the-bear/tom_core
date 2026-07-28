@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.0
+
+- csra3: make CE-UP **single-moded** and close the second half of its gap.
+  - Remove `TomUserSettingsPersistence` and the `persistence` / `isRoaming`
+    members from `TomUserSettings`. They predate the settings re-cut and
+    contradict `codespecs_mapping.md` §11, which splits configuration and
+    settings into four parts — one per scope key, each single-moded, with the
+    scope key alone deciding where a value lives. The old `local` arm is now
+    CE-DS `@CsDeviceSetting` (a *reuse* verdict over existing `tom_core`
+    property/settings classes, so it is deliberately **not** re-created here);
+    the old `roaming` arm is the only meaning CE-UP has.
+  - Add `TomUserSettingsStore` + `TomMemoryUserSettingsStore` — the
+    **server-side per-user persistence** seam. §4.1 names the CE-UP gap as
+    "typed user-settings holder **+** server-side per-user persistence", and
+    only the holder existed; the reused kernel carrier
+    (`TomGetSettingsMessage`/`TomGetSettingsResult`) is a read-only bootstrap
+    payload with no write-back path, so a user's chosen preference had nowhere
+    to be stored. The user key is in every method signature because it *is* the
+    scope — the sibling `TomClientConfigurationStore` deliberately has no user
+    parameter at all.
+  - Add `TomUserSettings.effectiveValue`, encoding §5.16's intra-scope
+    precedence for CE-UP (persisted user value → declared default). A `value` of
+    `null` means *unset*, not *set to null*.
+  - Correct the `TomClientConfiguration` doc-comment, which distinguished CE-CC
+    from "CE-UP roaming". The discriminator is **user identity in the key**: no
+    user → CE-CC; per signed-in user → CE-DS or CE-UP.
+
+**Breaking:** `TomUserSettingsPersistence` is gone, and
+`TomUserSettings(persistence: …)` / `.isRoaming` no longer compile.
+
 ## 0.4.0
 
 - csra2: add the four remaining gap classes the §4.1 catalogue marks *gap*,

@@ -26,7 +26,7 @@ gap class. The three remaining new parts had no `tom_core` holder:
 |-------|------|---------|
 | `TomClientApplication` | CE-CL Client | Client-application descriptor (id, platforms, entry route, server URL). |
 | `TomClientConfiguration` | CE-CC ClientConfiguration | Per-machine client config holder — does **not** follow the user. |
-| `TomUserSettings` + `TomUserSettingsPersistence` | CE-UP UserSettings | User-settings holder with the `local` (machine-bound) / `roaming` (server-persisted, follows the user) split (§11). |
+| `TomUserSettings` + `TomUserSettingsStore` | CE-UP UserSettings | The typed user-settings holder and the server-side per-user persistence seam — both halves of the gap §4.1 names. Single-moded: user-scoped and server-persisted, because §11 lets the scope key alone decide where a value lives (csra3, below). |
 
 **csm210-4-1 (wave-2 W10) — CE-DB / CE-EN** (survey:
 `../../ai_build/tom_specs_model/doc/codespecs_mapping.md` §3). CE-DB is a *reuse* verdict —
@@ -73,12 +73,29 @@ classification over the reused `tom_flutter_ui` action classes. Its closed
 five-kind vocabulary therefore ships as `TriggerKind` on `@CsTrigger` in
 `tom_code_specs`, not as a class here.
 
+**csra3 — CE-UP is single-moded.** §11 splits configuration and settings into
+four parts, **one per scope key, each single-moded**: CE-CF (server/system),
+CE-CC (client app + machine, no user), CE-DS (user + device, device-persisted),
+CE-UP (user, server-persisted). The scope key alone decides where a value lives,
+so no part carries a persistence discriminator — the choice is *which part you
+use*. `TomUserSettings` accordingly lost its `local`/`roaming` enum: the `local`
+arm is CE-DS, which §4.1 marks *reuse — no new class* and which is therefore
+deliberately **not** re-created here.
+
+The same pass closed the second half of the CE-UP gap. §4.1 names it as "typed
+user-settings holder **+** server-side per-user persistence"; only the holder
+existed. The reused kernel carrier (`TomGetSettingsMessage` /
+`TomGetSettingsResult`) is a read-only bootstrap payload with no write-back
+path, so a user's chosen preference had nowhere to be stored —
+`TomUserSettingsStore` is that seam, keyed by user in every method because the
+user key *is* the scope.
+
 ## Status
 
-csra2. The four remaining catalogued gap classes added (CE-LO / CE-TX / CE-NV /
-CE-JB), CE-AC confirmed reuse. Earlier: csm210-4-1 CE-EN domain enum with CE-DB
-confirmed reuse and the entity-model placement decided (shared shape, server
-persistence projection); csm2r7 three gap classes for the four new parts (CE-CL /
-CE-CC / CE-UP; CE-AU and CE-CF reuse). Every part the §4.1 catalogue marks *gap*
-now has its class; later waves add classes only if a new part is promoted out of
-§4.3.
+csra3. CE-UP single-moded and its persistence seam added. Earlier: csra2 the
+four remaining catalogued gap classes (CE-LO / CE-TX / CE-NV / CE-JB) with CE-AC
+confirmed reuse; csm210-4-1 the CE-EN domain enum with CE-DB confirmed reuse and
+the entity-model placement decided (shared shape, server persistence
+projection); csm2r7 three gap classes for the four new parts (CE-CL / CE-CC /
+CE-UP; CE-AU and CE-CF reuse). Every part the §4.1 catalogue marks *gap* now has
+its class; later waves add classes only if a new part is promoted out of §4.3.
