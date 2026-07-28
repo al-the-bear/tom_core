@@ -7,8 +7,17 @@
 /// [AppSession.guard], so a dropped session clears the principal and the shell
 /// routes back to login without this screen handling it. Tapping a card opens
 /// the [ItemDetailScreen] (the bound editor lands in step 30).
+///
+/// ## Attachments
+///
+/// Each load also fetches the visible items' file descriptors, one
+/// [AppBackend.listAttachments] call per list. That answer is exactly what a
+/// `HEAD` on each slot returns, so it costs no bytes — enough to paperclip the
+/// cards that have a file, and enough to hand the detail screen its stored file
+/// so the field renders it on the first frame instead of after a round-trip.
 library;
 
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
@@ -35,6 +44,13 @@ class _BoardScreenState extends State<BoardScreen> {
   List<Workspace> _workspaces = const [];
   List<Project> _projects = const [];
   List<TodoItem> _items = const [];
+
+  /// The visible items' file descriptors, keyed by item id.
+  ///
+  /// Keyed by [FileDescriptorDto.slotId] rather than by the slot address, because
+  /// that is the key the card and the detail screen both already hold — an item
+  /// id. An item with no file is simply absent (the server omits empty slots).
+  Map<String, FileDescriptorDto> _attachments = const {};
 
   String? _workspaceId;
   String? _projectId;
@@ -92,12 +108,14 @@ class _BoardScreenState extends State<BoardScreen> {
     }
   }
 
-  /// Loads every item across the selected project's lists.
+  /// Loads every item across the selected project's lists, together with the
+  /// descriptors of the files those items carry.
   Future<void> _loadItems() async {
     final projectId = _projectId;
     if (projectId == null) {
       setState(() {
         _items = const [];
+        _attachments = const {};
         _loading = false;
       });
       return;
@@ -105,12 +123,23 @@ class _BoardScreenState extends State<BoardScreen> {
     try {
       final lists = await _session.guard((b) => b.listLists(projectId));
       final items = <TodoItem>[];
+      final attachments = <String, FileDescriptorDto>{};
       for (final list in lists) {
-        items.addAll(await _session.guard((b) => b.listItems(list.id.get())));
+        final listId = list.id.get();
+        items.addAll(await _session.guard((b) => b.listItems(listId)));
+        // One descriptor call per list, beside the item call. Not per card:
+        // a paperclip is worth one round-trip for the board, never one each.
+        for (final file in await _session.guard(
+          (b) => b.listAttachments(listId),
+        )) {
+          final itemId = file.slotId;
+          if (itemId != null && file.hasFile) attachments[itemId] = file;
+        }
       }
       if (!mounted) return;
       setState(() {
         _items = items;
+        _attachments = attachments;
         _loading = false;
       });
     } on AppBackendException catch (e) {
@@ -146,12 +175,25 @@ class _BoardScreenState extends State<BoardScreen> {
     await _loadItems();
   }
 
+  /// Opens [item]'s detail screen, handing it what the board already knows about
+  /// the item's file, and reloads on the way back.
+  ///
+  /// The reload is unconditional rather than gated on the screen's `pop(true)`
+  /// (which means "saved"), because the attachment moves *without* a save: the
+  /// bytes go the moment they are picked. A gated reload would leave the board
+  /// paperclip-free after an upload that plainly succeeded.
   Future<void> _openItem(TodoItem item) async {
     await Navigator.of(context).push<void>(
       TomPageRoute(
-        builder: (_) => ItemDetailScreen(session: _session, item: item),
+        builder: (_) => ItemDetailScreen(
+          session: _session,
+          item: item,
+          attachment: _attachments[item.id.get()],
+        ),
       ),
     );
+    if (!mounted) return;
+    await _loadItems();
   }
 
   /// Opens the share dialog for the selected project; on a granted share, a
@@ -318,13 +360,25 @@ class _BoardScreenState extends State<BoardScreen> {
   }
 
   Widget _buildCard(TodoItem item) {
+    final itemId = item.id.get();
+    final file = _attachments[itemId];
     return TomCard(
-      key: Key('item-${item.id.get()}'),
+      key: Key('item-$itemId'),
       child: TomListTile(
         titleText: item.title.get(),
         subtitle: TomText(
           text: '${enumText(item.priorityValue)} · ${enumText(item.labelValue)}',
         ),
+        // The paperclip is the whole point of fetching descriptors: presence,
+        // type and size are on the card before anyone asks for a byte.
+        trailing: file == null
+            ? null
+            : Tooltip(
+                key: Key('item-$itemId-attachment'),
+                message: TomCtr.text('board.item.attachment.present')
+                    .replaceAll('{size}', tomHumanFileSize(file.byteCount)),
+                child: const Icon(Icons.attach_file, size: 18),
+              ),
         onTap: () => _openItem(item),
       ),
     );

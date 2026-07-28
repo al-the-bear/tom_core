@@ -29,17 +29,31 @@ class LiveAdminBackend implements AdminBackend {
   final AuthClient _auth;
   final AdminApiClient _api;
 
-  /// Builds the backend over an [AuthClient] (login/token storage) and an
-  /// [AdminApiClient] (the authenticated `/admin/*` API). They are expected to
-  /// share a single [JsonTransport] so the stored bearer flows from one to the
-  /// other.
-  LiveAdminBackend(this._auth, this._api);
+  /// Bytes to and from the auth server's file endpoint, under the same session
+  /// the JSON calls use.
+  @override
+  final TomFileTransferClient files;
+
+  /// Builds the backend over an [AuthClient] (login/token storage), an
+  /// [AdminApiClient] (the authenticated `/admin/*` API) and a [files] client
+  /// (the avatar slots). They are expected to share a single [JsonTransport] so
+  /// the stored bearer flows from one to the other.
+  LiveAdminBackend(this._auth, this._api, this.files);
 
   /// Self-wires the live backend from the [AdvancedClientConfig] config bean:
   /// resolves the auth + admin server URLs, shares one [IoJsonTransport] between
   /// the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
   /// [AdminApiClient] sends on, so the bearer the login stores is the one every
   /// `/admin/*` call presents.
+  ///
+  /// The file client rides that same [AuthorizedHttp]:
+  /// [authenticatedFileTransferClient] takes it precisely so the bytes present
+  /// the credential the JSON calls present and refresh through the one
+  /// [TomAuthRefresher] the session already holds. It is the *identical*
+  /// function the app client wires against `advanced_app_server`, pointed here
+  /// at the auth server — which is the point of putting an avatar on this
+  /// console at all: one authenticated file client, two servers, no second
+  /// token path.
   ///
   /// This is the factory the admin bootstrap registers as the `prod`-environment
   /// backend; it reads its URLs from the config bean, never from
@@ -48,11 +62,17 @@ class LiveAdminBackend implements AdminBackend {
   factory LiveAdminBackend.fromConfig() {
     final config = AdvancedClientConfig.resolve();
     final transport = IoJsonTransport();
-    final auth =
-        AuthClient(Uri.parse(config.authServerUrl), transport: transport);
-    final api = AdminApiClient(
-        Uri.parse(config.adminServerUrl), AuthorizedHttp(transport, auth));
-    return LiveAdminBackend(auth, api);
+    final authServer = Uri.parse(config.authServerUrl);
+    final auth = AuthClient(authServer, transport: transport);
+    final http = AuthorizedHttp(transport, auth);
+    final api = AdminApiClient(Uri.parse(config.adminServerUrl), http);
+    // The avatar slot lives on the auth server (`auth_users.avatar_ref`), so the
+    // file client is pointed at `authServer`, not at `adminServerUrl`.
+    return LiveAdminBackend(
+      auth,
+      api,
+      authenticatedFileTransferClient(authServer, http),
+    );
   }
 
   @override

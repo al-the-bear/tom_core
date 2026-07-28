@@ -32,6 +32,7 @@ library;
 
 // tom_core_server re-exports tom_core_kernel, so `@tomReflector` and the
 // persistence annotations both resolve through this single barrel.
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// The `app_db` datasource name every record below binds to.
@@ -41,6 +42,20 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// is read through the framework default `main` datasource, which the boot
 /// points at the same physical schema.
 const String appDatasource = 'app_db';
+
+/// The `app_items` table name — the shared contract's [AppFileSlots.itemsTable].
+///
+/// Read from the contracts package rather than restated, because two
+/// independent things must agree on it: [ItemRecord]'s own `@TomDbTable`, and
+/// the file **slot** address `app_items/<id>/attachment` the framework file
+/// endpoint publishes and the clients call. With the clients reading the same
+/// constant there is no second spelling to drift — a mismatch here would
+/// otherwise only show up as a 404.
+const String appItemsTable = AppFileSlots.itemsTable;
+
+/// The exposed file column of [ItemRecord], for the same reason as
+/// [appItemsTable]: the annotation and the slot address share one spelling.
+const String itemAttachmentColumn = AppFileSlots.itemAttachmentColumn;
 
 /// The async `@TomDbScope` kind that scopes [ProjectRecord] reads to the
 /// caller's visible projects (RCB8). Registered at boot via
@@ -194,7 +209,8 @@ final listRepository = ListRepository();
 /// Read-scoped by the async [itemVisibilityScope] on its surrogate `id` (RCB8);
 /// see [ProjectRecord] for why the scope is on `id`.
 @tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_items', primaryKeyField: 'id')
+@TomDbTable(
+    datasource: appDatasource, table: appItemsTable, primaryKeyField: 'id')
 @TomDbScope(field: 'id', scope: itemVisibilityScope)
 class ItemRecord {
   /// Surrogate primary key.
@@ -255,7 +271,7 @@ class ItemRecord {
   /// nothing else points at it, so deleting the item must not leave the bytes
   /// behind. Compare an avatar, which the application may reuse across rows and
   /// therefore manages itself.
-  @TomDbColumn(columnName: 'attachment')
+  @TomDbColumn(columnName: itemAttachmentColumn)
   @TomFileReference(
     keyPrefix: 'items/attachment',
     exposed: true,

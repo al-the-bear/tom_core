@@ -37,6 +37,7 @@ import '../../widget_base/tom_construction_helpers.dart';
 import '../../widgets/dialogs/tom_messenger.dart';
 import '../decoration/tom_generic_field_decoration_mixin.dart';
 import '../files/file_ref.dart';
+import '../files/tom_file_labels.dart';
 import '../files/tom_file_picker_registry.dart';
 import '../files/tom_file_transfer_controller.dart';
 import '../files/tom_file_transfer_indicator.dart';
@@ -159,9 +160,21 @@ abstract class TomFormFileField extends TomField<FileRef?> {
          ],
        );
 
-  String? get labelText =>
+  /// The field's label: the explicit override, else `<basePath>.label` from
+  /// resources.
+  ///
+  /// Named rather than declared as `labelText` directly because both concretes
+  /// mix in [TomGenericFieldDecorationMixin], whose own `labelText` sits *after*
+  /// this class in the mixin linearization and would shadow it — a label
+  /// declared here would silently never render. So the resolution lives here,
+  /// once, and each concrete's `labelText` returns it.
+  String? get resolvedLabelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
-  String? get descriptionText =>
+
+  /// The field's helper line: the explicit override, else
+  /// `<basePath>.description`. Named for the same reason as
+  /// [resolvedLabelText].
+  String? get resolvedDescriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   /// Whether this field can open a picker at all.
@@ -284,8 +297,18 @@ mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
   /// Reports a rejected file to the user.
   ///
   /// Overridden per family — Material has a `ScaffoldMessenger`, Cupertino has
-  /// a dialog — which is the only reason `pick` is not fully generic.
+  /// a dialog — which is the only reason `pick` is not fully generic. The
+  /// *wording* is not per-family: resolve [errorKey] through
+  /// [rejectionMessage] rather than showing the key.
   Future<void> showFileRejected(String errorKey);
+
+  /// The sentence to show for a file [TomFormFileField.checkFile] refused.
+  ///
+  /// Here rather than at each override because every family owes the user the
+  /// same explanation for the same refusal, and because the key itself
+  /// ("error.fileTooLarge") is a thing to look up, not a thing to read.
+  String rejectionMessage(String errorKey) =>
+      TomFileLabels.rejection(field.basePath, errorKey);
 
   /// Opens the picker, validates the result, stores it and (when configured)
   /// uploads it.
@@ -354,6 +377,17 @@ mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
       field.onDownload != null && (field.get()?.isStored ?? false);
 
   String humanSize(int bytes) => tomHumanFileSize(bytes);
+
+  /// The caption naming [ref] and its size, resolved from resources.
+  ///
+  /// Shared because both concretes show the same thing for a chosen file; they
+  /// differ only in what they say when there is *no* file, which is a different
+  /// sentence in each ("— no file selected" vs. an invitation to tap).
+  String selectedCaption(FileRef ref) => TomFileLabels.selected(
+    field.basePath,
+    ref.name,
+    humanSize(ref.sizeBytes),
+  );
 }
 
 /// A human-readable rendering of a byte count.
@@ -398,6 +432,12 @@ class TomFormFileUpload extends TomFormFileField
   });
 
   @override
+  String? get labelText => resolvedLabelText;
+
+  @override
+  String? get descriptionText => resolvedDescriptionText;
+
+  @override
   TomFieldStyle resolveStyle(BuildContext context) {
     final form = TomFormStyleScope.of(context);
     final width = TomFormStyleScope.widthOf(context);
@@ -426,7 +466,7 @@ class _FileUploadWidgetState extends State<_FileUploadWidget>
   Future<void> showFileRejected(String errorKey) async {
     TomMessenger.showSnackBarIfPresent(
       context,
-      SnackBar(content: Text(errorKey)),
+      SnackBar(content: Text(rejectionMessage(errorKey))),
     );
   }
 
@@ -445,27 +485,27 @@ class _FileUploadWidgetState extends State<_FileUploadWidget>
             OutlinedButton.icon(
               onPressed: f.isEditable && f.canPick ? pick : null,
               icon: const Icon(Icons.upload_file),
-              label: const Text('Choose file…'),
+              label: Text(TomFileLabels.choose(f.basePath)),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 v == null
-                    ? '— no file selected'
-                    : '${v.name} (${humanSize(v.sizeBytes)})',
+                    ? TomFileLabels.none(f.basePath)
+                    : selectedCaption(v),
                 style: style.inputStyle,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (canDownload)
               IconButton(
-                tooltip: 'Download',
+                tooltip: TomFileLabels.download(f.basePath),
                 icon: const Icon(Icons.download),
                 onPressed: download,
               ),
             if (v != null && f.isEditable)
               IconButton(
-                tooltip: 'Clear',
+                tooltip: TomFileLabels.clear(f.basePath),
                 icon: const Icon(Icons.clear),
                 onPressed: clear,
               ),
@@ -474,6 +514,7 @@ class _FileUploadWidgetState extends State<_FileUploadWidget>
         if (transferController != null)
           TomFileTransferIndicator(
             controller: transferController!,
+            basePath: f.basePath,
             onCancel: cancelTransfer,
             onRetry: retryTransfer,
           ),
@@ -527,6 +568,12 @@ class TomFormFileDropzone extends TomFormFileField
   }
 
   @override
+  String? get labelText => resolvedLabelText;
+
+  @override
+  String? get descriptionText => resolvedDescriptionText;
+
+  @override
   Widget get widget => TomFieldWidgetAdapter(
     field: this,
     child: _FileDropzoneWidget(field: this),
@@ -550,7 +597,7 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
   Future<void> showFileRejected(String errorKey) async {
     TomMessenger.showSnackBarIfPresent(
       context,
-      SnackBar(content: Text(errorKey)),
+      SnackBar(content: Text(rejectionMessage(errorKey))),
     );
   }
 
@@ -588,13 +635,16 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
               const SizedBox(height: 8),
               Text(
                 v == null
-                    ? 'Tap to choose a file'
-                    : '${v.name} (${humanSize(v.sizeBytes)})',
+                    ? TomFileLabels.dropzoneHint(f.basePath)
+                    : selectedCaption(v),
                 style: style.inputStyle,
                 overflow: TextOverflow.ellipsis,
               ),
               if (v != null && f.isEditable)
-                TextButton(onPressed: clear, child: const Text('Clear')),
+                TextButton(
+                  onPressed: clear,
+                  child: Text(TomFileLabels.clear(f.basePath)),
+                ),
             ],
           ),
         ),
@@ -609,6 +659,7 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
         if (transferController != null)
           TomFileTransferIndicator(
             controller: transferController!,
+            basePath: f.basePath,
             onCancel: cancelTransfer,
             onRetry: retryTransfer,
             onDownload: canDownload ? download : null,

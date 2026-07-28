@@ -82,6 +82,31 @@ abstract class AppBackend {
   /// (from [resourceRoles]) drives each item's field grades.
   Future<List<TodoItem>> listItems(String listId);
 
+  /// The attachment descriptors of the visible items in [listId], one entry per
+  /// item that actually has a file.
+  ///
+  /// This is the board's paperclip source: one call per list, and it moves no
+  /// bytes — each entry is exactly what a `HEAD` on the item's file slot
+  /// returns, so the card can show presence, media type and size before anyone
+  /// asks for the content. An item whose slot is empty is simply absent.
+  Future<List<FileDescriptorDto>> listAttachments(String listId);
+
+  /// The byte half of the backend: uploads, downloads, `HEAD`s and deletes
+  /// against the server's file endpoint.
+  ///
+  /// Deliberately *not* routed through [saveItem]. An attachment is a stream,
+  /// and a payload worth storing is a payload not worth holding in memory as a
+  /// field of an entity; the server also keeps the file column out of the
+  /// writable bindings so a client cannot mint a storage key by editing an
+  /// item. So the item's metadata travels on [saveItem] and its bytes travel
+  /// here, addressed by [AppFileSlots.itemAttachment].
+  ///
+  /// Both implementations expose the *same* [TomFileTransferClient] surface, so
+  /// the screens' file field runs its real code path either way — offline
+  /// against a memory store, live against the authenticated HTTP client that
+  /// shares the JSON half's bearer and refresher.
+  TomFileTransferClient get files;
+
   /// Creates ([TodoItem.id] empty) or updates an item, returning the persisted
   /// entity (with its assigned id). A write to a field the principal's grade is
   /// not `full` on is rejected server-side with an [AppBackendException].

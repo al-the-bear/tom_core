@@ -126,8 +126,23 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
     if (saved && mounted) await _load();
   }
 
+  /// Opens [item]'s editor and reloads the list when it saved.
+  ///
+  /// The refusal path is the same one [_load] has, because opening an editor is
+  /// no longer purely local: an editor that must read something before it can be
+  /// shown (the Users editor reads the account's avatar descriptor) can fail
+  /// *before* the dialog exists, and so has nowhere of its own to report it.
   Future<void> _edit(T item) async {
-    final saved = await widget.onEdit(context, item);
+    final bool saved;
+    try {
+      saved = await widget.onEdit(context, item);
+    } on AdminBackendException catch (e) {
+      // A lost session is already cleared by guard (the shell rebuilds to
+      // login); other failures surface inline on the list.
+      if (!mounted) return;
+      setState(() => _error = e.message);
+      return;
+    }
     if (saved && mounted) await _load();
   }
 

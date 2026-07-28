@@ -25,7 +25,14 @@ import 'app_backend.dart';
 /// An in-memory implementation of [AppBackend], seeded with demo data.
 class InMemoryAppBackend implements AppBackend {
   /// Creates the backend and seeds its users, resource tree and shares.
-  InMemoryAppBackend() {
+  /// Builds the seeded offline backend.
+  ///
+  /// [files] replaces the blob store, which is what lets a caller hold the store
+  /// it planted bytes in, or wrap it to suspend a transfer mid-flight. Left
+  /// unset it is a fresh [TomMemoryFileTransferClient] — the shape `main`
+  /// installs for the `test` environment, where nobody is holding it.
+  InMemoryAppBackend({TomFileTransferClient? files})
+      : files = files ?? TomMemoryFileTransferClient() {
     _seed();
   }
 
@@ -38,6 +45,15 @@ class InMemoryAppBackend implements AppBackend {
 
   /// Active shares: each maps a resource to a grantee at a [ProjectRole].
   final List<ShareRequest> _shares = [];
+
+  /// The offline blob store, standing in for the server's file endpoint.
+  ///
+  /// By default the kernel's own in-memory transfer client, so the file field
+  /// the board wires (upload / progress / cancel / download / delete) runs its
+  /// *real* code path offline — and [listAttachments] answers from the same
+  /// store the upload wrote to, exactly as the server's `HEAD` does.
+  @override
+  final TomFileTransferClient files;
 
   int _nextId = 100;
   String? _currentUserId;
@@ -89,6 +105,15 @@ class InMemoryAppBackend implements AppBackend {
     'board.item.save': 'Save',
     'board.item.delete': 'Delete',
     'board.item.loadError': 'Could not load item.',
+    // The attachment's own chrome. Under `board.*`, never `todo.item.*`: the
+    // server derives its gradable field set from the `todo.item.*` keys, and
+    // the attachment is a file slot authorized by the item's resource state,
+    // not an eighth graded field.
+    'board.item.attachment.label': 'Attachment',
+    'board.item.attachment.description':
+        'One file per task. It uploads as soon as you pick it.',
+    'board.item.attachment.present': 'Has an attachment ({size})',
+    'board.item.attachment.downloaded': 'Downloaded {name} ({size})',
     'board.item.comment.add': 'Add comment',
     'board.item.comment.title': 'Add a comment',
     'board.item.comment.hint': 'Write a comment…',
@@ -101,6 +126,37 @@ class InMemoryAppBackend implements AppBackend {
     'share.grantee.hint': 'u-carol',
     'share.role': 'Role',
     'share.cancel': 'Cancel',
+    // The framework's file-field chrome, worded at the global level
+    // `TomFileLabels` resolves it from — one wording for every file field in
+    // the app. Mirrors the server bundle's `file.*` / `file_transfer.*` /
+    // `error.file*` blocks.
+    'file.choose': 'Choose file…',
+    'file.none': '— no file attached',
+    'file.dropzoneHint': 'Tap to choose a file',
+    'file.selected': '{name} ({size})',
+    'file.download': 'Download',
+    'file.clear': 'Remove',
+    'file.cancel': 'Cancel',
+    'file.retry': 'Retry',
+    'file.uploading': 'Uploading {percent}%',
+    'file.downloading': 'Downloading {percent}%',
+    'file.uploadingBusy': 'Uploading…',
+    'file.downloadingBusy': 'Downloading…',
+    'file.uploaded': 'Uploaded.',
+    'file.downloaded': 'Downloaded.',
+    'file.removed': 'Removed.',
+    'file.done': 'Done.',
+    'file.cancelled': 'Transfer cancelled.',
+    'file.rejectedTitle': 'File rejected',
+    'file.rejectedDismiss': 'OK',
+    'error.fileExtension': 'That file type is not allowed.',
+    'error.fileTooLarge': 'That file is too large.',
+    'file_transfer.not_found': 'That file is no longer on the server.',
+    'file_transfer.rejected': 'The server refused that file.',
+    'file_transfer.cancelled': 'Transfer cancelled.',
+    'file_transfer.invalid_slot': 'That file location is not valid.',
+    'file_transfer.invalid_descriptor':
+        'The server sent an unreadable response.',
     // Enum display text (G-RES-5), keyed `global.<enumtype>.<value>`. Mirrors the
     // server's `assets/resources_app.json` `global.*` tree; the domain enums
     // carry no hardcoded strings, so the board columns, item dropdowns and the
@@ -281,10 +337,30 @@ class InMemoryAppBackend implements AppBackend {
     if (project == null || _roleOnProject(project, principal) == null) {
       return const [];
     }
-    return [
+    final visible = [
       for (final item in _items)
         if (item.listId.get() == listId) _copyItem(item),
     ];
+    // The attachment key is stamped from the blob store, never carried on the
+    // stored item — mirroring the server, where the file columns are absent
+    // from the writable bindings so a client cannot mint a storage key.
+    for (final item in visible) {
+      final stored = await files.describe(AppFileSlots.itemAttachment(item.id.get()));
+      item.attachment.set(stored?.key ?? '');
+    }
+    return visible;
+  }
+
+  @override
+  Future<List<FileDescriptorDto>> listAttachments(String listId) async {
+    final descriptors = <FileDescriptorDto>[];
+    for (final item in await listItems(listId)) {
+      final slot = AppFileSlots.itemAttachment(item.id.get());
+      final stored = await files.describe(slot);
+      if (stored == null) continue;
+      descriptors.add(FileDescriptorDto.fromMetadata(slot, stored));
+    }
+    return descriptors;
   }
 
   @override

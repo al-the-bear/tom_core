@@ -17,7 +17,12 @@
     "users": {
       "create": "New user",
       "edit": "Edit user",
-      "empty": "No users yet."
+      "empty": "No users yet.",
+      "avatar": {
+        "label": "Avatar",
+        "description": "Uploads as soon as you pick it — Save is not needed.",
+        "downloaded": "Downloaded {name} ({size})"
+      }
     },
     "roles": {
       "create": "New role",
@@ -45,6 +50,38 @@
       "groupLabel": "Group",
       "noGroup": "— No group —"
     }
+  },
+  "file": {
+    "choose": "Choose image…",
+    "none": "— no avatar set",
+    "dropzoneHint": "Tap to choose an image",
+    "selected": "{name} ({size})",
+    "download": "Download",
+    "clear": "Remove",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "uploading": "Uploading {percent}%",
+    "downloading": "Downloading {percent}%",
+    "uploadingBusy": "Uploading…",
+    "downloadingBusy": "Downloading…",
+    "uploaded": "Uploaded.",
+    "downloaded": "Downloaded.",
+    "removed": "Removed.",
+    "done": "Done.",
+    "cancelled": "Transfer cancelled.",
+    "rejectedTitle": "File rejected",
+    "rejectedDismiss": "OK"
+  },
+  "error": {
+    "fileExtension": "Avatars must be a PNG or a JPEG.",
+    "fileTooLarge": "That image is too large."
+  },
+  "file_transfer": {
+    "not_found": "That file is no longer on the server.",
+    "rejected": "The server refused that file.",
+    "cancelled": "Transfer cancelled.",
+    "invalid_slot": "That file location is not valid.",
+    "invalid_descriptor": "The server sent an unreadable response."
   },
   "global": {
     "tomauthstate": {

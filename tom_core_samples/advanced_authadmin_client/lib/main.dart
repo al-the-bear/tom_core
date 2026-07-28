@@ -30,6 +30,7 @@ import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 import 'app/admin_app.dart';
 import 'backend/backend.dart';
+import 'files/sample_avatar_picker.dart';
 import 'reflection_seed.dart';
 
 /// The active client environment, chosen by the one launch flag: `prod` (the
@@ -42,6 +43,10 @@ const String _clientEnvironment =
 Future<void> main() async {
   initializeReflection();
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
+  // The one file-picker registration every file field in the console opens. A
+  // real console replaces the body of [registerSampleAvatarPicker] with the six
+  // lines that call its picker package — the seam does not change.
+  registerSampleAvatarPicker();
   AdvancedClientConfig.registerDefault();
 
   final session = AdminSession(_installBackend());

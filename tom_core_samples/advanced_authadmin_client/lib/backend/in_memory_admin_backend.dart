@@ -24,9 +24,23 @@ import 'admin_backend.dart';
 /// An in-memory implementation of [AdminBackend], seeded with demo data.
 class InMemoryAdminBackend implements AdminBackend {
   /// Creates the backend and seeds its users, roles, groups and grant matrix.
-  InMemoryAdminBackend() {
+  ///
+  /// [files] replaces the blob store, which is what lets a caller hold the store
+  /// it planted an avatar in. Left unset it is a fresh
+  /// [TomMemoryFileTransferClient] — the shape the console installs offline,
+  /// where nobody is holding it.
+  InMemoryAdminBackend({TomFileTransferClient? files})
+      : files = files ?? TomMemoryFileTransferClient() {
     _seed();
   }
+
+  /// The offline blob store standing in for the auth server's file endpoint.
+  ///
+  /// The kernel's own in-memory transfer client, so the avatar field runs its
+  /// *real* code path offline — pick, upload, progress, cancel, describe,
+  /// download, delete — against the same slot addresses the live server serves.
+  @override
+  final TomFileTransferClient files;
 
   final List<UserDto> _users = [];
   final List<RoleDto> _roles = [];
@@ -111,6 +125,14 @@ class InMemoryAdminBackend implements AdminBackend {
     'admin.users.create': 'New user',
     'admin.users.edit': 'Edit user',
     'admin.users.empty': 'No users yet.',
+    // The avatar's own chrome. Under `admin.users.*` with the rest of this
+    // screen's wording, not under `user.*`: the `user.<member>.label` keys are
+    // the reflected editor's *bound field* labels, and the avatar is not a bound
+    // member of `UserDraft` — it is a file slot that transfers on pick.
+    'admin.users.avatar.label': 'Avatar',
+    'admin.users.avatar.description':
+        'Uploads as soon as you pick it — Save is not needed.',
+    'admin.users.avatar.downloaded': 'Downloaded {name} ({size})',
     'admin.roles.create': 'New role',
     'admin.roles.edit': 'Edit role',
     'admin.roles.empty': 'No roles yet.',
@@ -120,6 +142,37 @@ class InMemoryAdminBackend implements AdminBackend {
     'admin.groups.members': 'Members',
     'admin.groups.memberCount': '{count} member',
     'admin.groups.memberCountPlural': '{count} members',
+    // The framework's file-field chrome, worded at the global level
+    // `TomFileLabels` resolves it from — one wording for every file field in the
+    // console. Mirrors the auth server bundle's `file.*` / `file_transfer.*` /
+    // `error.file*` blocks, and reads "image" rather than "file" because the one
+    // file field this console has is an avatar.
+    'file.choose': 'Choose image…',
+    'file.none': '— no avatar set',
+    'file.dropzoneHint': 'Tap to choose an image',
+    'file.selected': '{name} ({size})',
+    'file.download': 'Download',
+    'file.clear': 'Remove',
+    'file.cancel': 'Cancel',
+    'file.retry': 'Retry',
+    'file.uploading': 'Uploading {percent}%',
+    'file.downloading': 'Downloading {percent}%',
+    'file.uploadingBusy': 'Uploading…',
+    'file.downloadingBusy': 'Downloading…',
+    'file.uploaded': 'Uploaded.',
+    'file.downloaded': 'Downloaded.',
+    'file.removed': 'Removed.',
+    'file.done': 'Done.',
+    'file.cancelled': 'Transfer cancelled.',
+    'file.rejectedTitle': 'File rejected',
+    'file.rejectedDismiss': 'OK',
+    'error.fileExtension': 'Avatars must be a PNG or a JPEG.',
+    'error.fileTooLarge': 'That image is too large.',
+    'file_transfer.not_found': 'That file is no longer on the server.',
+    'file_transfer.rejected': 'The server refused that file.',
+    'file_transfer.cancelled': 'Transfer cancelled.',
+    'file_transfer.invalid_slot': 'That file location is not valid.',
+    'file_transfer.invalid_descriptor': 'The server sent an unreadable response.',
     'admin.assignments.title': 'Assign roles and groups',
     'admin.assignments.assignTo': 'Assign to {name}',
     'admin.assignments.assigned': 'Assigned to {name}.',

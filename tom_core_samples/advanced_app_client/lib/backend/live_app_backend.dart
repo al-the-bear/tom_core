@@ -40,16 +40,29 @@ class LiveAppBackend implements AppBackend {
   final AuthClient _auth;
   final AppApiClient _api;
 
-  /// Builds the backend over an [AuthClient] (login/token storage) and an
-  /// [AppApiClient] (the authenticated board API). They are expected to share a
-  /// single [JsonTransport] so the stored bearer flows from one to the other.
-  LiveAppBackend(this._auth, this._api);
+  @override
+  final TomFileTransferClient files;
+
+  /// Builds the backend over an [AuthClient] (login/token storage), an
+  /// [AppApiClient] (the authenticated board API) and a [files] client (the
+  /// byte half). All three are expected to share a single [JsonTransport] and
+  /// one [AuthorizedHttp] so the stored bearer — and its refresh — flows from
+  /// one to the next. [LiveAppBackend.fromConfig] is the wiring that guarantees
+  /// it.
+  LiveAppBackend(this._auth, this._api, this.files);
 
   /// Self-wires the live backend from the [AdvancedClientConfig] config bean:
   /// resolves the auth + app server URLs, shares one [IoJsonTransport] between
   /// the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
   /// [AppApiClient] sends on, so the bearer the login stores is the one every
   /// board call presents.
+  ///
+  /// The file client is built from that **same** [AuthorizedHttp], which is why
+  /// it is a local here rather than an inline argument:
+  /// [authenticatedFileTransferClient] takes it precisely so the bytes ride the
+  /// session the JSON already has — one stored token, one refresher. Giving the
+  /// file half its own would produce the failure this tier exists to avoid, a
+  /// board that loads while its attachments 401.
   ///
   /// This is the factory the app bootstrap registers as the `prod`-environment
   /// backend; it reads its URLs from the config bean, never from
@@ -60,9 +73,13 @@ class LiveAppBackend implements AppBackend {
     final transport = IoJsonTransport();
     final auth =
         AuthClient(Uri.parse(config.authServerUrl), transport: transport);
-    final api = AppApiClient(
-        Uri.parse(config.appServerUrl), AuthorizedHttp(transport, auth));
-    return LiveAppBackend(auth, api);
+    final http = AuthorizedHttp(transport, auth);
+    final appServer = Uri.parse(config.appServerUrl);
+    return LiveAppBackend(
+      auth,
+      AppApiClient(appServer, http),
+      authenticatedFileTransferClient(appServer, http),
+    );
   }
 
   @override
@@ -94,6 +111,10 @@ class LiveAppBackend implements AppBackend {
   @override
   Future<List<TodoItem>> listItems(String listId) =>
       _guard(() => _api.listItems(listId));
+
+  @override
+  Future<List<FileDescriptorDto>> listAttachments(String listId) =>
+      _guard(() => _api.listAttachments(listId));
 
   @override
   Future<TodoItem> saveItem(TodoItem item) => _guard(() {

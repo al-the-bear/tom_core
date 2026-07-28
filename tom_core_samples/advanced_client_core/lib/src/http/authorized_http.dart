@@ -26,8 +26,9 @@ import '../auth/auth_client.dart';
 /// retrying (`true`). A refresh that cannot proceed (no stored session) throws
 /// [AuthClientException] from [AuthClient.refresh]; that error propagates
 /// unchanged through [tomRunWithAuthRetry].
-class _AuthClientRefresher implements TomAuthRefresher {
-  _AuthClientRefresher(this._authClient);
+class AuthClientRefresher implements TomAuthRefresher {
+  /// Wraps [_authClient]'s refresh as the kernel's [TomAuthRefresher].
+  AuthClientRefresher(this._authClient);
 
   final AuthClient _authClient;
 
@@ -42,13 +43,33 @@ class _AuthClientRefresher implements TomAuthRefresher {
 /// refresh-once-on-expiry policy.
 class AuthorizedHttp {
   final JsonTransport _transport;
-  final TomAuthRefresher _refresher;
+
+  /// The refresher this decorator recovers a stale token with.
+  ///
+  /// Exposed so the byte half of the client
+  /// ([AuthorizedFileTransferClient]) runs on the *same instance* rather than
+  /// a second one of its own: one refresher over one [AuthClient] is what makes
+  /// "the file client uses exactly one token path" a structural fact instead of
+  /// a claim.
+  final TomAuthRefresher refresher;
 
   /// Builds the decorator over the [transport] that carries the calls and the
   /// [authClient] used to refresh a stale token. The two may share one
   /// transport instance (the live wiring) or hold separate ones (tests).
   AuthorizedHttp(this._transport, AuthClient authClient)
-      : _refresher = _AuthClientRefresher(authClient);
+      : refresher = AuthClientRefresher(authClient);
+
+  /// The `Authorization` header for the current session, or an empty map when
+  /// no one is logged in.
+  ///
+  /// The single definition of "how this client authenticates a request": the
+  /// stored **authorization** token, read fresh so a post-refresh retry picks
+  /// up the new one. Both halves of the client — JSON and bytes — send exactly
+  /// this.
+  static Map<String, String> authorizationHeader() {
+    final token = TomBearerAuthentication.authorizationToken;
+    return token == null ? const {} : {'Authorization': 'Bearer $token'};
+  }
 
   /// Sends [method] to [uri] with [body] and [headers], injecting
   /// `Authorization: Bearer <authzToken>` from the stored session.
@@ -70,7 +91,7 @@ class AuthorizedHttp {
       send: () => _sendWithBearer(method, uri, headers, body),
       statusOf: (response) => response.statusCode,
       errorKeyOf: _errorKey,
-      refresher: _refresher,
+      refresher: refresher,
     );
   }
 
@@ -83,10 +104,9 @@ class AuthorizedHttp {
     Map<String, String> headers,
     String? body,
   ) {
-    final token = TomBearerAuthentication.authorizationToken;
     final merged = <String, String>{
       ...headers,
-      if (token != null) 'Authorization': 'Bearer $token',
+      ...authorizationHeader(),
     };
     return _transport.send(
       method: method,

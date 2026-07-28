@@ -77,6 +77,15 @@ abstract class AppReadStore {
 
   /// The item rows whose `list_id` is [listId], in storage order.
   Future<List<ItemRecord>> itemsInList(int listId);
+
+  /// The stored-file descriptor of item [itemId]'s exposed `attachment`
+  /// column, or null when the slot holds nothing.
+  ///
+  /// This is deliberately the *same* call a `HEAD` on the slot makes rather
+  /// than a read of the row's key column: the framework applies the column
+  /// grade (C-4) inside it, and a masked column describes as `null`. Looking at
+  /// the key ourselves would report a file the caller may not have.
+  Future<TomFileMetadata?> describeAttachment(int itemId);
 }
 
 /// The query-backed [AppReadStore] wired at boot.
@@ -117,6 +126,21 @@ class RepositoryAppReadStore implements AppReadStore {
     );
     return matches.toList();
   }
+
+  @override
+  Future<TomFileMetadata?> describeAttachment(int itemId) {
+    // Resolved through the slot registry — the very object the file endpoint's
+    // `HEAD` handler uses — so the batched board descriptors and a per-slot
+    // `HEAD` cannot answer differently.
+    final slot = TomFileSlots.resolve(appItemsTable, itemAttachmentColumn);
+    if (slot == null) {
+      throw StateError(
+          'The $appItemsTable/$itemAttachmentColumn file slot is not '
+          'registered — TomFileSlots.register(itemRepository) must run at boot '
+          'before attachments can be described.');
+    }
+    return slot.describe('$itemId');
+  }
 }
 
 /// A seeded, database-free [AppReadStore] for tests (and local scaffolding).
@@ -128,17 +152,24 @@ class InMemoryAppReadStore implements AppReadStore {
   final List<ProjectRecord> _projects;
   final List<ListRecord> _lists;
   final List<ItemRecord> _items;
+  final Map<int, TomFileMetadata> _attachments;
 
   /// Seeds the store from the given record lists (each defaults to empty).
+  ///
+  /// [attachments] stands in for the blob store: item id → the descriptor a
+  /// `HEAD` on that item's slot would return. An item absent from the map has
+  /// no readable file, which is also how a masked column behaves live.
   InMemoryAppReadStore({
     List<WorkspaceRecord> workspaces = const [],
     List<ProjectRecord> projects = const [],
     List<ListRecord> lists = const [],
     List<ItemRecord> items = const [],
+    Map<int, TomFileMetadata> attachments = const {},
   })  : _workspaces = workspaces,
         _projects = projects,
         _lists = lists,
-        _items = items;
+        _items = items,
+        _attachments = attachments;
 
   @override
   Future<List<WorkspaceRecord>> allWorkspaces() async => List.of(_workspaces);
@@ -154,6 +185,10 @@ class InMemoryAppReadStore implements AppReadStore {
   @override
   Future<List<ItemRecord>> itemsInList(int listId) async =>
       [for (final i in _items) if (i.listId == listId) i];
+
+  @override
+  Future<TomFileMetadata?> describeAttachment(int itemId) async =>
+      _attachments[itemId];
 }
 
 /// Pure read logic over an [AppReadStore], filtered by the principal's access.
@@ -242,6 +277,34 @@ class AppReadService {
         (r) => r.id,
         itemFromRecord,
       );
+
+  /// The attachment descriptors of the visible items in [listId] — the board's
+  /// paperclip source, one entry per item that actually has a readable file.
+  ///
+  /// Derived from [listItems], so an item the principal cannot see contributes
+  /// nothing: visibility is decided once, by the same filter the item list
+  /// uses, and never re-derived here. Items whose key column is empty are
+  /// skipped without asking the store (there is nothing to describe); for the
+  /// rest the store performs the slot `HEAD`, and a `null` answer — an
+  /// orphaned key, or a column the caller's grade masks — is likewise omitted.
+  /// Absence therefore always means "no paperclip", which is the only reading
+  /// a client should have to implement.
+  Future<List<FileDescriptorDto>> listAttachments(int userId, int listId) async {
+    final descriptors = <FileDescriptorDto>[];
+    for (final item in await listItems(userId, listId)) {
+      if (item.attachment.get().isEmpty) continue;
+      final id = int.tryParse(item.id.get());
+      if (id == null) continue;
+      final metadata = await store.describeAttachment(id);
+      if (metadata == null) continue;
+      descriptors.add(FileDescriptorDto.fromMetadata(
+        FileDescriptorDto.slotOf(
+            appItemsTable, item.id.get(), itemAttachmentColumn),
+        metadata,
+      ));
+    }
+    return descriptors;
+  }
 
   /// The principal [userId]'s effective resource-role map: every resource they
   /// can reach keyed `<type>:<id>` (e.g. `project:1`, `item:1`) → role name.
@@ -1253,6 +1316,11 @@ class AdvancedAppApiService implements AppApiService {
   @override
   Future<List<TodoItem>> listItems(String listId) =>
       _reads.listItems(_principalId, int.tryParse(listId) ?? -1);
+
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListAttachments')
+  @override
+  Future<List<FileDescriptorDto>> listAttachments(String listId) =>
+      _reads.listAttachments(_principalId, int.tryParse(listId) ?? -1);
 
   // ----- Write endpoints (step 20) -----------------------------------------
 

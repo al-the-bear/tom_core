@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_file_field.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_file_field.dart';
+import 'package:tom_flutter_ui/src/forms/files/tom_file_labels.dart';
 import 'package:tom_flutter_ui/src/forms/files/tom_file_picker_registry.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
 
@@ -18,6 +19,14 @@ Widget _wrap(Widget child) =>
 
 Widget _wrapCupertino(Widget child) =>
     CupertinoApp(home: CupertinoPageScaffold(child: Center(child: child)));
+
+/// Installs [tree] as the application's resources, replacing whatever was
+/// there — the file widgets read their wording through this provider.
+void _installResources(Map<String, dynamic> tree) {
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(tree),
+  );
+}
 
 FileRef _localRef(String name, {int size = 4}) => FileRef(
   name: name,
@@ -251,7 +260,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(field.get(), isNull);
-      expect(find.text('error.fileExtension'), findsOneWidget);
+      // The refusal is reported as a sentence, not as the key that produced
+      // it — `error.fileExtension` is a thing to look up, not to read.
+      expect(find.text('That file type is not allowed.'), findsOneWidget);
     });
 
     testWidgets('picking uploads and the value gains the server\'s key', (
@@ -456,7 +467,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(CupertinoAlertDialog), findsOneWidget);
-      expect(find.text('error.fileExtension'), findsOneWidget);
+      expect(find.text('File rejected'), findsOneWidget);
+      expect(find.text('That file type is not allowed.'), findsOneWidget);
       expect(field.get(), isNull);
 
       await tester.tap(find.text('OK'));
@@ -497,6 +509,186 @@ void main() {
       expect(tomHumanFileSize(512), '512 B');
       expect(tomHumanFileSize(2048), '2.0 KB');
       expect(tomHumanFileSize(3 * 1024 * 1024), '3.00 MB');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Wording
+  // -------------------------------------------------------------------------
+  //
+  // The file widgets show a dozen user-visible strings. These tests pin that
+  // every one of them *has a key* — that an application can translate the
+  // paperclip row by declaring resources, without replacing the widgets.
+
+  group('TomFileLabels', () {
+    tearDown(() => _installResources({}));
+
+    test('falls back to the built-in English when nothing is declared', () {
+      _installResources({});
+      expect(TomFileLabels.choose(null), 'Choose file…');
+      expect(TomFileLabels.progress(null, false, 42), 'Uploading 42%');
+      expect(TomFileLabels.progress(null, true, 42), 'Downloading 42%');
+      expect(TomFileLabels.progressBusy(null, true), 'Downloading…');
+    });
+
+    test('a global key replaces the built-in wording everywhere', () {
+      _installResources({
+        'file': {'choose': 'Datei wählen…'},
+      });
+      expect(TomFileLabels.choose(null), 'Datei wählen…');
+      expect(TomFileLabels.choose('doc'), 'Datei wählen…');
+    });
+
+    test('a field-scoped key beats the global one', () {
+      _installResources({
+        'file': {'choose': 'Choose a file'},
+        'avatar': {
+          'file': {'choose': 'Choose a picture'},
+        },
+      });
+      expect(TomFileLabels.choose('doc'), 'Choose a file');
+      expect(TomFileLabels.choose('avatar'), 'Choose a picture');
+    });
+
+    test('placeholders are interpolated at whichever level won', () {
+      _installResources({
+        'file': {'uploading': '{percent}% hochgeladen'},
+      });
+      expect(TomFileLabels.progress(null, false, 7), '7% hochgeladen');
+    });
+
+    test('a refusal resolves under the validator key that caused it', () {
+      _installResources({
+        'error': {'fileTooLarge': 'Zu groß.'},
+      });
+      expect(TomFileLabels.rejection(null, 'error.fileTooLarge'), 'Zu groß.');
+      // Unknown keys stay visible rather than blanking the line.
+      expect(TomFileLabels.rejection(null, 'error.mystery'), 'error.mystery');
+    });
+  });
+
+  group('file field wording resolves from resources', () {
+    tearDown(() => _installResources({}));
+
+    testWidgets('the Material chrome reads the declared strings', (
+      tester,
+    ) async {
+      _installResources({
+        'file': {'choose': 'Pick one', 'none': 'nothing yet'},
+      });
+      final field = TomFormFileUpload(
+        'doc',
+        null,
+        picker: TomFilePickers.fixed(_localRef('report.pdf')),
+      );
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.text('Pick one'), findsOneWidget);
+      expect(find.text('nothing yet'), findsOneWidget);
+    });
+
+    testWidgets('the Cupertino chrome reads the same keys', (tester) async {
+      _installResources({
+        'file': {'choose': 'Pick one', 'none': 'nothing yet'},
+      });
+      final field = TomCupertinoFormFileUpload(
+        'doc',
+        null,
+        picker: TomFilePickers.fixed(_localRef('report.pdf')),
+      );
+      await tester.pumpWidget(_wrapCupertino(field.widget));
+
+      expect(find.text('Pick one'), findsOneWidget);
+      expect(find.text('nothing yet'), findsOneWidget);
+    });
+
+    testWidgets('a field-scoped override applies to one field only', (
+      tester,
+    ) async {
+      _installResources({
+        'file': {'choose': 'Choose file'},
+        'avatar': {
+          'file': {'choose': 'Choose picture'},
+        },
+      });
+      final doc = TomFormFileUpload(
+        'doc',
+        null,
+        picker: TomFilePickers.fixed(_localRef('report.pdf')),
+      );
+      final avatar = TomFormFileUpload(
+        'avatar',
+        null,
+        picker: TomFilePickers.fixed(_localRef('face.png')),
+      );
+      await tester.pumpWidget(
+        _wrap(Column(children: [doc.widget, avatar.widget])),
+      );
+
+      expect(find.text('Choose file'), findsOneWidget);
+      expect(find.text('Choose picture'), findsOneWidget);
+    });
+
+    testWidgets('the Material field renders its label and description', (
+      tester,
+    ) async {
+      // The label is the field's *own* chrome, not the file plumbing's: it
+      // resolves from `<basePath>.label` like every other field's. Asserted
+      // because `TomGenericFieldDecorationMixin` declares its own `labelText`
+      // after this class in the mixin linearization, so a label declared only
+      // on the shared base would be shadowed and silently never render.
+      _installResources({
+        'doc': {'label': 'Attachment', 'description': 'One file, please.'},
+      });
+      final field = TomFormFileUpload('doc', null);
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.text('Attachment'), findsWidgets);
+      expect(find.text('One file, please.'), findsOneWidget);
+    });
+
+    testWidgets('the dropzone renders its label and description', (
+      tester,
+    ) async {
+      _installResources({
+        'doc': {'label': 'Attachment', 'description': 'One file, please.'},
+      });
+      final field = TomFormFileDropzone('doc', null);
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.text('Attachment'), findsWidgets);
+      expect(find.text('One file, please.'), findsOneWidget);
+    });
+
+    testWidgets('an explicit label override beats the resource', (
+      tester,
+    ) async {
+      _installResources({
+        'doc': {'label': 'Attachment'},
+      });
+      final field = TomFormFileUpload('doc', null, labelTextOverride: 'Scan');
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.text('Scan'), findsWidgets);
+      expect(find.text('Attachment'), findsNothing);
+    });
+
+    testWidgets('the rejection sentence is translatable', (tester) async {
+      _installResources({
+        'error': {'fileExtension': 'Nur PDF-Dateien.'},
+      });
+      final field = TomFormFileUpload(
+        'doc',
+        null,
+        allowedExtensions: const ['pdf'],
+        picker: TomFilePickers.fixed(_localRef('scan.png')),
+      );
+      await tester.pumpWidget(_wrap(field.widget));
+
+      await tester.tap(find.byType(OutlinedButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nur PDF-Dateien.'), findsOneWidget);
     });
   });
 }

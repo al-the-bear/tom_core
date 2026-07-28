@@ -24,6 +24,12 @@
       "save": "Save",
       "delete": "Delete",
       "loadError": "Could not load item.",
+      "attachment": {
+        "label": "Attachment",
+        "description": "One file per task. It uploads as soon as you pick it.",
+        "present": "Has an attachment ({size})",
+        "downloaded": "Downloaded {name} ({size})"
+      },
       "comment": {
         "add": "Add comment",
         "title": "Add a comment",
@@ -33,6 +39,38 @@
       }
     },
     "share": "Share"
+  },
+  "file": {
+    "choose": "Choose file…",
+    "none": "— no file attached",
+    "dropzoneHint": "Tap to choose a file",
+    "selected": "{name} ({size})",
+    "download": "Download",
+    "clear": "Remove",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "uploading": "Uploading {percent}%",
+    "downloading": "Downloading {percent}%",
+    "uploadingBusy": "Uploading…",
+    "downloadingBusy": "Downloading…",
+    "uploaded": "Uploaded.",
+    "downloaded": "Downloaded.",
+    "removed": "Removed.",
+    "done": "Done.",
+    "cancelled": "Transfer cancelled.",
+    "rejectedTitle": "File rejected",
+    "rejectedDismiss": "OK"
+  },
+  "error": {
+    "fileExtension": "That file type is not allowed.",
+    "fileTooLarge": "That file is too large."
+  },
+  "file_transfer": {
+    "not_found": "That file is no longer on the server.",
+    "rejected": "The server refused that file.",
+    "cancelled": "Transfer cancelled.",
+    "invalid_slot": "That file location is not valid.",
+    "invalid_descriptor": "The server sent an unreadable response."
   },
   "share": {
     "title": "Share project",

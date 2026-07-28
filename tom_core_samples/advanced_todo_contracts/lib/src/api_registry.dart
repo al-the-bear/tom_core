@@ -21,6 +21,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'admin_dtos.dart';
 import 'entity_id_request.dart';
+import 'file_descriptor_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
 import 'resource_bundle_dto.dart';
@@ -304,6 +305,18 @@ final TomApi appApi = TomApi(
     TomApiEndpoint<List<TodoItem>, Object?>(
       id: 'appListItems',
       uri: '/items',
+      method: TomHttpMethod.get,
+      requestTypes: const [],
+      access: TomAuthenticatedAccess(),
+    ),
+    // The board's paperclip source: the `HEAD` facts for every attached file in
+    // one list, so a board renders presence/type/size without moving bytes and
+    // without one round trip per item. The response element is the kernel file
+    // descriptor itself (wrapped by `FileDescriptorDto`), which is what keeps
+    // this contract and the framework file endpoint in agreement.
+    TomApiEndpoint<List<FileDescriptorDto>, Object?>(
+      id: 'appListAttachments',
+      uri: '/attachments',
       method: TomHttpMethod.get,
       requestTypes: const [],
       access: TomAuthenticatedAccess(),

@@ -176,6 +176,24 @@ class _TestClientFactory extends TomHttpClientFactory {
   Client getClient() => Client();
 }
 
+/// Builds an unsigned, undecrypted JWT whose middle segment carries [payload].
+/// [TomBearerAuthentication.setTokens] parses what it is given, so the token
+/// pair in these tests has to be JWT-shaped rather than an arbitrary string.
+String _makeJwt(Map<String, dynamic> payload) {
+  String seg(Map<String, dynamic> m) =>
+      base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
+  return '${seg({'alg': 'HS256', 'typ': 'JWT'})}.${seg(payload)}.sig';
+}
+
+/// The authentication half of a stored token pair (`TomBearerAuthentication
+/// .token`) — what the client sends by default.
+final String _authJwt = _makeJwt({'sub': 'auth'});
+
+/// The authorization half (`TomBearerAuthentication.authorizationToken`) — the
+/// credential an application whose endpoints gate on access rights sends
+/// instead, through the header provider.
+final String _authzJwt = _makeJwt({'sub': 'authz'});
+
 // =============================================================================
 // TESTS
 // =============================================================================
@@ -671,6 +689,67 @@ void main() {
         source: TomFileSource.bytes('x.bin', const [1]),
       );
       expect(server.bytes.containsKey('/a'), isTrue);
+    });
+
+    test('a header provider is consulted per request, not captured once',
+        () async {
+      // The reason the seam is a callback and not a map: a credential rotates,
+      // and a client built at startup must present the *current* one — which is
+      // exactly what makes a refresh-and-retry able to succeed.
+      var issued = 0;
+      final rotating = TomHttpFileTransferClient(
+        baseUri: server.baseUri,
+        headerProvider: () => {'Authorization': 'Bearer token-${++issued}'},
+      );
+      addTearDown(rotating.close);
+
+      final source = TomFileSource.bytes('x.bin', const [1]);
+      await rotating.upload(slot: 'a', source: source);
+      await rotating.upload(slot: 'a', source: source);
+
+      expect(server.seenAuthorization,
+          ['Bearer token-1', 'Bearer token-2']);
+    });
+
+    test('a provider Authorization header replaces the built-in bearer',
+        () async {
+      // Two credentials on one request is the ambiguity the seam removes: when
+      // the application names the header, its answer is the only one sent.
+      TomBearerAuthentication.setTokens(_authJwt, _authzJwt, false);
+      addTearDown(TomBearerAuthentication.clearTokens);
+
+      final explicit = TomHttpFileTransferClient(
+        baseUri: server.baseUri,
+        headerProvider: () => {
+          'Authorization':
+              'Bearer ${TomBearerAuthentication.authorizationToken}',
+        },
+      );
+      addTearDown(explicit.close);
+      await explicit.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('x.bin', const [1]),
+      );
+
+      expect(server.seenAuthorization.single, 'Bearer $_authzJwt');
+    });
+
+    test('the built-in bearer still applies when the provider names no header',
+        () async {
+      TomBearerAuthentication.setTokens(_authJwt, _authzJwt, false);
+      addTearDown(TomBearerAuthentication.clearTokens);
+
+      final tagged = TomHttpFileTransferClient(
+        baseUri: server.baseUri,
+        headerProvider: () => const {'x-request': 'r1'},
+      );
+      addTearDown(tagged.close);
+      await tagged.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('x.bin', const [1]),
+      );
+
+      expect(server.seenAuthorization.single, 'Bearer $_authJwt');
     });
 
     test('a base path prefixes every slot', () async {

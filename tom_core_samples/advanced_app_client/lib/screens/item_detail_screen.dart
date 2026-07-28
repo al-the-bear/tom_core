@@ -25,8 +25,18 @@
 /// deferred — the step-26 backend seam exposes neither a comment-list read nor
 /// subtask operations, so they cannot be driven against the in-memory fake
 /// without extending the frozen seam (see `step30_item_detail_decisions.md`).
+///
+/// ## The attachment
+///
+/// The item's file lives beside the graded fields but not among them (see
+/// [_ItemDetailScreenState._attachment]): it is a *slot* on the server, moved
+/// by [AppBackend.files] rather than by [AppBackend.saveItem], and authorized
+/// by the row's resource state rather than by the per-field grade matrix.
 library;
 
+import 'dart:typed_data';
+
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -39,7 +49,12 @@ import '../forms/todo_item_form.dart';
 /// Bound, authorization-aware editor for a single [TodoItem].
 class ItemDetailScreen extends StatefulWidget {
   /// Creates the detail screen for [item] over [session].
-  const ItemDetailScreen({super.key, required this.session, required this.item});
+  const ItemDetailScreen({
+    super.key,
+    required this.session,
+    required this.item,
+    this.attachment,
+  });
 
   /// The signed-in session: backend seam + the field-grade matrix loader.
   final AppSession session;
@@ -47,12 +62,22 @@ class ItemDetailScreen extends StatefulWidget {
   /// The item whose detail is shown and edited.
   final TodoItem item;
 
+  /// What the board already learned about this item's file, when it has one.
+  ///
+  /// Passed in rather than re-fetched: the board loads every visible item's
+  /// descriptor in one [AppBackend.listAttachments] call, and that answer is
+  /// exactly what a `HEAD` on this slot would return. Opening a card therefore
+  /// costs no extra round-trip and the field renders its stored file on the
+  /// first frame instead of after one.
+  final FileDescriptorDto? attachment;
+
   @override
   State<ItemDetailScreen> createState() => _ItemDetailScreenState();
 }
 
 class _ItemDetailScreenState extends State<ItemDetailScreen> {
   TodoItemForm? _form;
+  TomFormFileUpload? _attachment;
   late final TodoItem _item = widget.item;
   final TextEditingController _commentController = TextEditingController();
 
@@ -72,6 +97,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   @override
   void dispose() {
     _form?.dispose();
+    _attachment?.dispose();
     _commentController.dispose();
     super.dispose();
   }
@@ -109,6 +135,63 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       field.authorizer = TomAuthorizer.fixed(resourceState.narrow(fieldGrade));
     }
     _form = form;
+    _attachment = _buildAttachmentField(resourceState);
+  }
+
+  /// Builds the item's attachment field: its file slot on the app server, wired
+  /// to [AppBackend.files] so picking uploads and re-opening shows what is
+  /// stored.
+  ///
+  /// **Not a member of [TodoItemForm], and deliberately not under
+  /// `todo.item.*`.** Three separate reasons converge on the same answer:
+  ///
+  ///  * The value types differ. The field holds a [FileRef]; `TodoItem.attachment`
+  ///    holds the *storage key* the server stamps. They cannot be the same bound
+  ///    member.
+  ///  * The write paths differ. Bytes travel over the file endpoint; the server
+  ///    keeps the file column out of the item's writable bindings precisely so a
+  ///    client cannot mint a storage key by editing an item.
+  ///  * The authorization differs. Every `todo.item.<field>` key is a row in the
+  ///    seeded per-role grade matrix; a slot is authorized by the row's resource
+  ///    state and by the column being an exposed file reference — which is what
+  ///    the server checks. Grading the attachment through the matrix as well
+  ///    would invent a second gate the server does not have.
+  ///
+  /// So it takes the item's resource state as its ceiling, unnarrowed, and lives
+  /// at `board.item.attachment` alongside the rest of this screen's chrome.
+  TomFormFileUpload _buildAttachmentField(TomAuthState resourceState) {
+    final stored = widget.attachment;
+    return TomScope.withScope(
+      'board',
+      () => TomFormFileUpload(
+        'item.attachment',
+        stored == null ? null : FileRef.stored(stored.toMetadata()),
+        storageSlot: AppFileSlots.itemAttachment(_item.id.get()),
+        transferClient: _session.backend.files,
+        onDownload: _onAttachmentDownloaded,
+        authorizer: TomAuthorizer.fixed(resourceState),
+      ),
+    );
+  }
+
+  /// Confirms a completed download.
+  ///
+  /// What a downloaded file *is* — a preview, a share sheet, a save dialog — is
+  /// the application's decision, which is why the field hands over the bytes and
+  /// nothing more. This sample has nowhere to put them (its clients ship no
+  /// platform folders), so it reports what arrived; a real app writes them.
+  void _onAttachmentDownloaded(FileRef ref, Uint8List bytes) {
+    if (!mounted) return;
+    TomMessenger.showSnackBar(
+      context,
+      TomSnackBar(
+        content: TomText(
+          text: TomCtr.text('board.item.attachment.downloaded')
+              .replaceAll('{name}', ref.name)
+              .replaceAll('{size}', tomHumanFileSize(bytes.length)),
+        ),
+      ),
+    );
   }
 
   /// Validates the form and runs the [SaveItemAction], then pops with `true` so
@@ -190,6 +273,13 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       children: [
         for (final field in form.gradableFields) ...[
           field.widget,
+          const SizedBox(height: 12),
+        ],
+        // The attachment renders after the graded fields and outside the save
+        // button's reach: its bytes move the moment they are picked, so it has
+        // no pending state for `_save` to flush.
+        if (_attachment != null) ...[
+          _attachment!.widget,
           const SizedBox(height: 12),
         ],
         if (_error != null) ...[

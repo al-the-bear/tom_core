@@ -21,6 +21,20 @@
 /// `global.todostatus.inreview`, `global.projectrole.editor`, … — so the domain
 /// enums carry no hardcoded strings and the client resolves each value's text
 /// from this bundle.
+///
+/// The framework's own file-field chrome is worded here too, at the **global**
+/// level the framework resolves it from: `file.*` (choose / progress / retry /
+/// cancel wording read by `TomFileLabels`), `file_transfer.*` (the transport's
+/// stable error keys) and `error.file*` (the picker's rejection reasons, shared
+/// with the form validators that raise the same keys). Global rather than
+/// scoped, because one wording for every file field in the app is the point —
+/// a per-field override remains possible by repeating the key under that
+/// field's base path.
+///
+/// The item's attachment is worded under `board.item.attachment.*`, **not**
+/// under `todo.item.*`: [AppResourceBundles.gradableItemKeys] derives the
+/// graded field set from the `todo.item.*` keys, and the attachment is not a
+/// graded field — it is a file slot, authorized by the item's resource state.
 library;
 
 import 'dart:convert';

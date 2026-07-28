@@ -18,6 +18,7 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 
 import 'admin_dtos.dart';
 import 'entity_id_request.dart';
+import 'file_descriptor_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
 import 'resource_bundle_dto.dart';
@@ -178,6 +179,17 @@ abstract class AppApiService {
   /// `appListItems` — `GET /items?listId=`. Items in a visible list; the client
   /// resolves each field's grade locally from its resource-role map ([appResourceRoles]).
   Future<List<TodoItem>> listItems(String listId);
+
+  /// `appListAttachments` — `GET /attachments?listId=`. The attachment
+  /// descriptors of the visible items in [listId], one entry per item that
+  /// actually has a file; an item with an empty slot is simply absent.
+  ///
+  /// This is the board's paperclip source. Each entry is exactly what a `HEAD`
+  /// against `app_items/<id>/attachment` returns ([FileDescriptorDto] wraps the
+  /// kernel's [TomFileMetadata] losslessly), so the list view renders the
+  /// presence, media type and size without moving a single byte — and without
+  /// one round trip per item.
+  Future<List<FileDescriptorDto>> listAttachments(String listId);
 
   /// `appCreateItem` — `POST /items`. Rejects writes to fields the principal's
   /// grade is not `full` on.

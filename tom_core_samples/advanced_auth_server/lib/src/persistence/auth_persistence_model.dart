@@ -18,6 +18,7 @@ library;
 
 // tom_core_server re-exports tom_core_kernel, so `@tomReflector` and the
 // persistence annotations both resolve through this single barrel.
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// The `auth_db` datasource name every record below binds to.
@@ -33,7 +34,13 @@ const String authDatasource = 'auth_db';
 /// [passwordHash] / [hashType] are server-only (the kernel-crypto hash written
 /// at creation, step 9); they never cross the wire onto `UserDto`.
 @tomReflector
-@TomDbTable(datasource: authDatasource, table: 'auth_users', primaryKeyField: 'id')
+// The table and the avatar column are read from the shared contract
+// (`AppFileSlots`) rather than spelled here, because the admin console composes
+// the very same names into the slot `auth_users/<id>/avatar_ref`.
+@TomDbTable(
+    datasource: authDatasource,
+    table: AppFileSlots.usersTable,
+    primaryKeyField: 'id')
 class UserRecord {
   /// Surrogate primary key (`null` until first persisted).
   @TomEntityId()
@@ -62,7 +69,7 @@ class UserRecord {
   /// restored — so the framework must not delete the bytes when the row goes.
   /// Reclaiming an orphaned avatar is then the application's job, which is the
   /// price of sharing the key.
-  @TomDbColumn(columnName: 'avatar_ref')
+  @TomDbColumn(columnName: AppFileSlots.userAvatarColumn)
   @TomFileReference(
     keyPrefix: 'users/avatar',
     exposed: true,

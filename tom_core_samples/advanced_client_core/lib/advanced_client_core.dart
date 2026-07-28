@@ -7,8 +7,9 @@
 /// parsers are unit-testable headless.
 ///
 /// It exports the authenticated HTTP stack — `AuthClient`, `AuthorizedHttp`,
-/// `AppApiClient`, `AdminApiClient` — plus [ioFileTransferClient] for the byte
-/// half (uploads/downloads against a server's file endpoint) and
+/// `AppApiClient`, `AdminApiClient` — plus [authenticatedFileTransferClient] for
+/// the byte half (uploads/downloads against a server's file endpoint, on the
+/// same bearer and the same refresher the JSON half uses) and
 /// [AdvancedClientConfig], the config bean that supplies the server URLs both
 /// Flutter clients target in their default (run-against-real-servers) mode.
 /// This barrel is their stable public entry point.

@@ -19,6 +19,7 @@
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// Raised when an admin-backend call fails — rejected credentials, a missing
 /// session, a non-admin caller, or an unknown row.
@@ -131,4 +132,23 @@ abstract class AdminBackend {
 
   /// Assigns a role and/or group to a user (`POST /admin/assignments`).
   Future<void> assign(AssignmentRequest request);
+
+  // ----- Files -------------------------------------------------------------
+
+  /// The console's byte transport — how a user's avatar is uploaded, described,
+  /// downloaded and removed.
+  ///
+  /// A **second seam beside the JSON one**, not a set of methods on it. Bytes do
+  /// not travel as JSON: a payload worth storing is a payload not worth holding
+  /// in memory, so files move over the framework file endpoint through
+  /// [TomFileTransferClient], which streams in both directions. Proxying every
+  /// transfer through a `Future<List<int>>` on this interface would undo exactly
+  /// that.
+  ///
+  /// Avatars live at [AppFileSlots.userAvatar] on the **auth** server, whose
+  /// `auth_users.avatar_ref` column is an exposed `@TomFileReference`. There is
+  /// no batch descriptor call as there is for the board's attachments: the
+  /// console edits one account at a time, so a single `HEAD`
+  /// ([TomFileTransferClient.describe]) on open is the whole read path.
+  TomFileTransferClient get files;
 }

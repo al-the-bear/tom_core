@@ -28,4 +28,5 @@ void main() {
   GrantMatrixDto();
   ResourceBundleDto();
   GradedFieldDto();
+  FileDescriptorDto();
 }

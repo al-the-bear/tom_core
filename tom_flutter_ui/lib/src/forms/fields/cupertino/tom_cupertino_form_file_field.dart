@@ -21,6 +21,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../../widget_base/tom_construction_helpers.dart';
 import '../../decoration/tom_generic_field_decoration_mixin.dart';
+import '../../files/tom_file_labels.dart';
 import '../../files/tom_file_transfer_controller.dart';
 import '../../files/tom_file_transfer_indicator.dart';
 import '../../style/tom_form_style.dart';
@@ -95,13 +96,13 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
   Future<void> showFileRejected(String errorKey) => showCupertinoDialog<void>(
     context: context,
     builder: (ctx) => CupertinoAlertDialog(
-      title: const Text('File rejected'),
-      content: Text(errorKey),
+      title: Text(TomFileLabels.rejectedTitle(field.basePath)),
+      content: Text(rejectionMessage(errorKey)),
       actions: [
         CupertinoDialogAction(
           isDefaultAction: true,
           onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('OK'),
+          child: Text(TomFileLabels.rejectedDismiss(field.basePath)),
         ),
       ],
     ),
@@ -118,12 +119,12 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
         CupertinoButton.filled(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           onPressed: f.isEditable && f.canPick ? pick : null,
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(CupertinoIcons.cloud_upload, size: 16),
-              SizedBox(width: 6),
-              Text('Choose file…'),
+              const Icon(CupertinoIcons.cloud_upload, size: 16),
+              const SizedBox(width: 6),
+              Text(TomFileLabels.choose(f.basePath)),
             ],
           ),
         ),
@@ -131,8 +132,8 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
         Expanded(
           child: Text(
             v == null
-                ? '— no file selected'
-                : '${v.name} (${humanSize(v.sizeBytes)})',
+                ? TomFileLabels.none(f.basePath)
+                : selectedCaption(v),
             style: style.inputStyle,
             overflow: TextOverflow.ellipsis,
           ),
@@ -171,6 +172,7 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
         if (controller != null)
           _CupertinoTransferStatus(
             controller: controller,
+            basePath: f.basePath,
             onCancel: cancelTransfer,
             onRetry: retryTransfer,
           ),
@@ -184,14 +186,24 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
 /// The Cupertino counterpart of `TomFileTransferIndicator`.
 ///
 /// Renders nothing while idle, so it can be included unconditionally.
+///
+/// The chrome differs from the Material indicator; the *wording* deliberately
+/// does not. Both read the same [TomFileLabels] keys, so an application that
+/// translates its file widgets translates them once rather than once per
+/// widget family.
 class _CupertinoTransferStatus extends StatelessWidget {
   const _CupertinoTransferStatus({
     required this.controller,
+    this.basePath,
     this.onCancel,
     this.onRetry,
   });
 
   final TomFileTransferController controller;
+
+  /// The field's resource path, so this row's wording can be overridden per
+  /// field exactly as the Material indicator's can.
+  final String? basePath;
   final VoidCallback? onCancel;
   final VoidCallback? onRetry;
 
@@ -206,16 +218,13 @@ class _CupertinoTransferStatus extends StatelessWidget {
             return const SizedBox.shrink();
 
           case TomTransferPhase.running:
-            final fraction = state.fraction;
             return _row(
               child: Row(
                 children: [
                   const CupertinoActivityIndicator(radius: 8),
                   const SizedBox(width: 8),
                   Text(
-                    fraction == null
-                        ? 'Transferring…'
-                        : 'Transferring ${(fraction * 100).round()}%',
+                    _runningLabel(state),
                     style: const TextStyle(
                       fontSize: 13,
                       color: CupertinoColors.systemGrey,
@@ -227,7 +236,10 @@ class _CupertinoTransferStatus extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(28, 28),
                       onPressed: onCancel,
-                      child: const Text('Cancel', style: TextStyle(fontSize: 13)),
+                      child: Text(
+                        TomFileLabels.cancel(basePath),
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
                 ],
               ),
@@ -235,15 +247,21 @@ class _CupertinoTransferStatus extends StatelessWidget {
 
           case TomTransferPhase.cancelled:
           case TomTransferPhase.failed:
+            final failed = state.phase == TomTransferPhase.failed;
             return _row(
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      tomTransferErrorMessage(state),
+                      // A cancellation is not a failure and must not borrow a
+                      // failure's wording: the user asked for it, and the
+                      // transfer often carries no error to describe.
+                      failed
+                          ? tomTransferErrorMessage(state, basePath: basePath)
+                          : TomFileLabels.cancelled(basePath),
                       style: TextStyle(
                         fontSize: 13,
-                        color: state.phase == TomTransferPhase.failed
+                        color: failed
                             ? CupertinoColors.systemRed
                             : CupertinoColors.systemGrey,
                       ),
@@ -255,7 +273,10 @@ class _CupertinoTransferStatus extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(28, 28),
                       onPressed: onRetry,
-                      child: const Text('Retry', style: TextStyle(fontSize: 13)),
+                      child: Text(
+                        TomFileLabels.retry(basePath),
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
                 ],
               ),
@@ -263,6 +284,15 @@ class _CupertinoTransferStatus extends StatelessWidget {
         }
       },
     );
+  }
+
+  /// The progress line, on the same keys the Material indicator uses.
+  String _runningLabel(TomFileTransferState state) {
+    final isDownload = state.kind == TomTransferKind.download;
+    final fraction = state.fraction;
+    return fraction == null
+        ? TomFileLabels.progressBusy(basePath, isDownload)
+        : TomFileLabels.progress(basePath, isDownload, (fraction * 100).round());
   }
 
   Widget _row({required Widget child}) =>

@@ -102,6 +102,20 @@ void main() {
           isA<TomAuthenticatedAccess>());
     });
 
+    test(
+        'the attachment descriptors are an authenticated GET that moves no '
+        'bytes', () {
+      // The board's paperclip source. It must be a GET (a read), authenticated
+      // (attachment names are as private as the items they hang off), and carry
+      // no request body — the list is selected by the `listId` query string,
+      // exactly like `appListItems` next to it.
+      final endpoint = appApi.endpoints['appListAttachments']!;
+      expect(endpoint.uri, '/attachments');
+      expect(endpoint.method, TomHttpMethod.get);
+      expect(endpoint.access, isA<TomAuthenticatedAccess>());
+      expect(endpoint.requestTypes, isEmpty);
+    });
+
     test('registerAdvancedTodoApis is idempotent and registers all three', () {
       registerAdvancedTodoApis();
       registerAdvancedTodoApis(); // second call must not throw or duplicate.

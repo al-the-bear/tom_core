@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
     show ProjectRole, UserStatus;
-import 'package:tom_core_kernel/tom_core_kernel.dart' show TomAuthState;
+import 'package:tom_core_kernel/tom_core_kernel.dart'
+    show TomAuthState, TomFileMetadata;
 import 'package:test/test.dart';
 
 // The single test-only reflection seed for this package (G-REFL-2).
@@ -323,6 +324,82 @@ void main() {
       final restored = dtoFromJson<EntityIdRequest>(_wire(request));
       expect(restored.id, '55');
       expect(request.toString(), contains('55'));
+    });
+  });
+
+  group('FileDescriptorDto', () {
+    // The descriptor JSON the framework file endpoint actually emits: the
+    // kernel `TomFileMetadata.toJson()` shape, optional members and all.
+    const headJson = <String, dynamic>{
+      'key': 'items/attachment/7f3c',
+      'mediaType': 'text/plain; charset=utf-8',
+      'byteCount': 34,
+      'fileName': 'notes.txt',
+      'storedAt': '2026-07-28T09:15:00.000Z',
+    };
+
+    test('an unset descriptor reads as "no file", not a zero-byte one', () {
+      // The board decides whether to draw a paperclip from `hasFile`; a default
+      // descriptor must never look like an empty file that exists.
+      expect(FileDescriptorDto().hasFile, isFalse);
+      expect(FileDescriptorDto(key: 'k').hasFile, isTrue);
+    });
+
+    test('wraps the endpoint descriptor losslessly in both directions', () {
+      // This is the "agree by construction" claim of the contract: whatever a
+      // HEAD returns survives the trip onto the application wire and back as
+      // the *same* kernel value. A bespoke present/type/size triple could not
+      // make this assertion at all.
+      final metadata = TomFileMetadata.fromJson(headJson);
+      final dto =
+          FileDescriptorDto.fromMetadata('app_items/1/attachment', metadata);
+
+      expect(dto.toMetadata(), equals(metadata));
+      expect(dto.toMetadata().toJson(), equals(headJson));
+      expect(dto.hasFile, isTrue);
+    });
+
+    test('the two optional members survive being absent', () {
+      // `fileName`/`storedAt` travel as the empty string (the reflection path's
+      // shape for an absent String); mapping empty back to null is what keeps
+      // the round trip equal for a server that reported neither.
+      final metadata = TomFileMetadata.fromJson(const {
+        'key': 'k',
+        'mediaType': 'application/octet-stream',
+        'byteCount': 0,
+      });
+      final dto =
+          FileDescriptorDto.fromMetadata('auth_users/2/avatar_ref', metadata);
+
+      expect(dto.fileName, isEmpty);
+      expect(dto.storedAt, isEmpty);
+      expect(dto.toMetadata(), equals(metadata));
+    });
+
+    test('carries the slot it describes, and its row id', () {
+      final dto = FileDescriptorDto(
+          slot: FileDescriptorDto.slotOf('app_items', '42', 'attachment'));
+      expect(dto.slot, 'app_items/42/attachment');
+      expect(dto.slotId, '42');
+      // A malformed address yields null rather than a wrong id — the caller
+      // must not silently key a board row on a guess.
+      expect(FileDescriptorDto(slot: 'app_items/42').slotId, isNull);
+    });
+
+    test('round-trips through reflection JSON', () {
+      final dto = FileDescriptorDto.fromMetadata(
+          'app_items/1/attachment', TomFileMetadata.fromJson(headJson));
+      final restored = dtoFromJson<FileDescriptorDto>(_wire(dto));
+
+      expect(restored.slot, 'app_items/1/attachment');
+      expect(restored.toMetadata(), equals(dto.toMetadata()));
+    });
+
+    test('toString names the slot and size without the storage key', () {
+      final dto = FileDescriptorDto.fromMetadata(
+          'app_items/1/attachment', TomFileMetadata.fromJson(headJson));
+      expect(dto.toString(), contains('app_items/1/attachment'));
+      expect(dto.toString(), contains('34'));
     });
   });
 }

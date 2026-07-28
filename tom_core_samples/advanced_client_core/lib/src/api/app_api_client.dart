@@ -229,6 +229,15 @@ class AppApiClient implements AppApiService {
       parseItems((await _get('/items', {'listId': listId})).jsonArray);
 
   @override
+  Future<List<FileDescriptorDto>> listAttachments(String listId) async {
+    final body = (await _get('/attachments', {'listId': listId})).jsonArray;
+    return [
+      for (final entry in body)
+        dtoFromJson<FileDescriptorDto>(_asMap(entry)),
+    ];
+  }
+
+  @override
   Future<TodoItem> createItem(TodoItem item) async => parseItem(
         (await _send('POST', '/items', body: jsonEncode(item.toJson())))
             .jsonObject,

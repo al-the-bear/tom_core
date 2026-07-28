@@ -77,11 +77,15 @@ List<TomPrincipalDelegation> demoShares() => [
 
 /// The framework resolver folding the demo ownership grants and share
 /// delegations into the effective `resourceKey → roleName` map.
-ResourceRoleResolver demoResolver() => ResourceRoleResolver(
+ResourceRoleResolver demoResolver() => resolverOver(demoItems());
+
+/// The demo resolver over an explicit item set, so a fixture that needs an extra
+/// row (the attachment group below) still resolves containment for it.
+ResourceRoleResolver resolverOver(List<ItemRecord> items) => ResourceRoleResolver(
       InMemoryResourceContainmentStore(
         projects: demoProjects(),
         lists: demoLists(),
-        items: demoItems(),
+        items: items,
       ),
       TomDelegationResolver(
         InMemoryPrincipalDelegationStore(demoShares()),
@@ -89,6 +93,37 @@ ResourceRoleResolver demoResolver() => ResourceRoleResolver(
           InMemoryPrincipalResourceGrantStore(demoGrants()),
         ),
       ),
+    );
+
+/// The descriptor the blob store answers for item 1's attachment slot — the
+/// exact shape a `HEAD app_items/1/attachment` returns.
+TomFileMetadata demoAttachment() => TomFileMetadata(
+      key: 'items/attachment/7f3c',
+      mediaType: 'text/plain; charset=utf-8',
+      byteCount: 34,
+      fileName: 'notes.txt',
+    );
+
+/// The three attachment cases in one list: item 1 has a file, item 2 has none,
+/// and item 3 carries a key the blob store cannot describe (a masked column, or
+/// bytes that are gone). Only the first must surface a paperclip.
+List<ItemRecord> attachmentItems() => [
+      ItemRecord()..id = 1..listId = 1..attachment = 'items/attachment/7f3c',
+      ItemRecord()..id = 2..listId = 1,
+      ItemRecord()..id = 3..listId = 1..attachment = 'items/attachment/gone',
+    ];
+
+/// The read service over the attachment fixture, sharing the demo grants and
+/// shares so visibility behaves exactly as in the groups above.
+AppReadService attachmentService() => AppReadService(
+      InMemoryAppReadStore(
+        workspaces: demoWorkspaces(),
+        projects: demoProjects(),
+        lists: demoLists(),
+        items: attachmentItems(),
+        attachments: {1: demoAttachment()},
+      ),
+      resolverOver(attachmentItems()),
     );
 
 /// Wires the read service over the two seeded in-memory stores.
@@ -190,6 +225,50 @@ void main() {
 
     test('a stranger holds no roles (empty map, closed/safe)', () async {
       expect(await service.resourceRoles(dave), isEmpty);
+    });
+  });
+
+  // The board's paperclip source: one batched call per list rather than one
+  // `HEAD` per item. The descriptors are produced by the *same* slot `describe`
+  // a `HEAD` would make, so presence here and reachability over HTTP cannot
+  // disagree — an item is listed only when its slot really answers.
+  group('listAttachments describes only the items that have a file', () {
+    final service = attachmentService();
+
+    test('an attached item yields the slot descriptor losslessly', () async {
+      final descriptors = await service.listAttachments(alice, 1);
+      expect(descriptors, hasLength(1));
+      expect(descriptors.single.slot, 'app_items/1/attachment');
+      expect(descriptors.single.hasFile, isTrue);
+      // Lossless: the DTO carries the HEAD descriptor, it does not summarise it.
+      expect(descriptors.single.toMetadata(), demoAttachment());
+    });
+
+    test('an item with an empty slot is simply absent', () async {
+      final descriptors = await service.listAttachments(alice, 1);
+      expect(descriptors.map((d) => d.slotId), isNot(contains('2')));
+    });
+
+    test('a key the blob store cannot describe is omitted, not reported',
+        () async {
+      // Item 3 holds a key but describes as null (masked column or missing
+      // bytes). "Absent" must mean "no paperclip" — never a broken one.
+      final descriptors = await service.listAttachments(alice, 1);
+      expect(descriptors.map((d) => d.slotId), isNot(contains('3')));
+    });
+
+    test('a stranger sees no descriptors (visibility is decided once)',
+        () async {
+      // The descriptors are derived from the already-filtered item listing, so
+      // an invisible item cannot leak its attachment metadata.
+      expect(await service.listAttachments(dave, 1), isEmpty);
+    });
+
+    test('a shared user sees the attachments of the shared project', () async {
+      // bob is shared `editor` on project 1, so list 1's items — and therefore
+      // their attachments — are his to see.
+      final descriptors = await service.listAttachments(bob, 1);
+      expect(descriptors.map((d) => d.slot), ['app_items/1/attachment']);
     });
   });
 }

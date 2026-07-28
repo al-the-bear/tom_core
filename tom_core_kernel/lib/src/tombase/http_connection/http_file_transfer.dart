@@ -62,13 +62,23 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
   /// [includeBearerAuthentication] mirrors [TomServerCallSpecs] — leave it on
   /// unless the endpoints are genuinely public, since a file store is exactly
   /// the kind of endpoint that should not be.
+  ///
+  /// [headerProvider] supplies headers that must be computed *per request*,
+  /// which [headers] cannot: a credential rotates, and a client built once at
+  /// startup would otherwise keep presenting the value it captured. It is also
+  /// the seam an application uses when its server gates on a different
+  /// credential than [TomBearerAuthentication.token] — returning an
+  /// `Authorization` header from here suppresses the built-in bearer, so there
+  /// is one credential on the request rather than two spellings of one.
   TomHttpFileTransferClient({
     required Uri baseUri,
     TomServerChannel? channel,
     this.includeBearerAuthentication = true,
     Map<String, String> headers = const {},
+    Map<String, String> Function()? headerProvider,
   }) : baseUri = _withoutTrailingSlash(baseUri),
        headers = Map.unmodifiable(headers),
+       _headerProvider = headerProvider,
        channel = channel ?? TomServerChannel(baseUri.host, _portOf(baseUri)),
        _ownsChannel = channel == null;
 
@@ -85,6 +95,8 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
   final Map<String, String> headers;
 
   final bool _ownsChannel;
+
+  final Map<String, String> Function()? _headerProvider;
 
   /// The URL for [slot], with each path segment escaped.
   ///
@@ -110,14 +122,22 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
 
   Map<String, String> _requestHeaders([Map<String, String> extra = const {}]) {
     final token = TomBearerAuthentication.token;
-    return {
+    final merged = <String, String>{
       ...headers,
+      ...?_headerProvider?.call(),
       ...extra,
-      // Omitted rather than sent as "Bearer null" when no one has logged in:
-      // an absent header is a clean 401, a malformed one is a puzzle.
-      if (includeBearerAuthentication && token != null)
-        'Authorization': 'Bearer $token',
     };
+    // Omitted rather than sent as "Bearer null" when no one has logged in: an
+    // absent header is a clean 401, a malformed one is a puzzle. A provider
+    // that already named an Authorization header wins — it is answering the
+    // same question with better information, and two credentials on one request
+    // is the ambiguity this whole seam exists to remove.
+    if (includeBearerAuthentication &&
+        token != null &&
+        !merged.containsKey('Authorization')) {
+      merged['Authorization'] = 'Bearer $token';
+    }
+    return merged;
   }
 
   @override
