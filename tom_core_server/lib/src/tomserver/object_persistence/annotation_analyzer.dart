@@ -1,5 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../datasources/queries.dart';
+import '../datasources/sql_dialects.dart';
+import '../datasources/types_operator.dart';
 import '../little_things/server_exception.dart';
 import 'persistence_annotations.dart';
 
@@ -177,6 +179,64 @@ mixin TomAnnotationAnalyzer {
     ];
     fileColumnCache[dbType] = result;
     return result;
+  }
+
+  /// The [TomDbType] boxes an entity may declare, mapped to their type family.
+  static const Map<Type, TomSqlTypeFamily> _boxFamilies = {
+    TomDbInt: TomSqlTypeFamily.integer,
+    TomDbDouble: TomSqlTypeFamily.decimal,
+    TomDbString: TomSqlTypeFamily.text,
+    TomDbBool: TomSqlTypeFamily.boolean,
+    TomDbDateTime: TomSqlTypeFamily.dateTime,
+    TomDbDate: TomSqlTypeFamily.date,
+    TomDbTime: TomSqlTypeFamily.time,
+  };
+
+  /// The Dart types a mapped field may have when no [TomDbType] box is declared.
+  static const Map<Type, TomSqlTypeFamily> _dartFamilies = {
+    int: TomSqlTypeFamily.integer,
+    double: TomSqlTypeFamily.decimal,
+    num: TomSqlTypeFamily.decimal,
+    String: TomSqlTypeFamily.text,
+    bool: TomSqlTypeFamily.boolean,
+    DateTime: TomSqlTypeFamily.dateTime,
+    TomZonedDate: TomSqlTypeFamily.date,
+    TomZonedTime: TomSqlTypeFamily.time,
+  };
+
+  /// The type family [column] is stored in.
+  ///
+  /// A JSON column is text whatever its Dart type — the value is encoded before
+  /// it reaches the database. Otherwise the declared [TomDbType] box decides,
+  /// and only when there is none does the Dart type stand in. An unrecognised
+  /// type (an enum behind a converter, say) yields [TomSqlTypeFamily.unknown],
+  /// which is compatible with everything: a gap in the caller's knowledge must
+  /// not be reported as a defect in the schema.
+  ///
+  /// Homed here rather than with either consumer because both the
+  /// schema-convergence check and the reflected export projection ask the same
+  /// question of the same annotations, and a second answer would be a second
+  /// thing to keep in step. Note what it describes: how a value is *stored*.
+  /// The Dart value a getter returns can differ — a JSON column is a `Map` in
+  /// Dart and text in the database — so a consumer that cares about the Dart
+  /// value must check [TomColumnInformation.declaredType] as well.
+  static TomSqlTypeFamily familyOf(TomColumnInformation column) {
+    if (column.column?.isJson ?? false) return TomSqlTypeFamily.text;
+    final boxed = column.column?.declaredColumnType();
+    if (boxed != null) {
+      final family = _boxFamilies[boxed];
+      if (family != null) return family;
+    }
+    final dartType = column.column?.declaredDartType() ?? column.declaredType;
+    return _dartFamilies[dartType] ?? TomSqlTypeFamily.unknown;
+  }
+
+  /// How [column]'s type is spelled on the entity side, for reporting only.
+  static String describeDeclaredType(TomColumnInformation column) {
+    if (column.column?.isJson ?? false) return 'JSON';
+    final boxed = column.column?.declaredColumnType();
+    if (boxed != null && _boxFamilies.containsKey(boxed)) return '$boxed';
+    return '${column.column?.declaredDartType() ?? column.declaredType}';
   }
 
   /// Returns the persistence metadata for every annotated field of [dbType]

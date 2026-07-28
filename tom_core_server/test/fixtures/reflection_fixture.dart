@@ -287,6 +287,125 @@ class FixtureFileSlotRecord {
   String? internalNotes;
 }
 
+/// A reflected entity covering every case the reflected export projection has
+/// to decide (CSEXC5).
+///
+/// One entity rather than several, because the interesting property is that a
+/// *single* declaration answers all of them at once:
+///
+/// - [id], [title], [amount], [done] and [createdAt] cover all five
+///   `TomColumnType`s, so the derived types can be asserted without a second
+///   fixture per type;
+/// - [secret] is named in `@TomAudited(redact:)` — the value that must not
+///   exist in a second place, and an export is a second place;
+/// - [attachment] is a `@TomFileReference`, holding an internal storage key
+///   rather than content;
+/// - [tag] is a `TomZonedDate`, whose *storage* family is `date` but whose Dart
+///   value is not a `DateTime` — the case that proves the derivation falls back
+///   to text when the declared Dart type cannot inhabit the candidate type.
+///
+/// It maps to no table in `test_database.dart` and needs none: only the
+/// annotations are read.
+@tomReflector
+@TomAudited(redact: ['secret'])
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_export',
+  primaryKeyField: 'id',
+)
+class FixtureExportRecord {
+  /// Surrogate primary key — derives `TomColumnType.integer`.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A text column — derives `TomColumnType.text`.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+
+  /// A fractional column — derives `TomColumnType.decimal`.
+  @TomDbColumn(columnName: 'amount')
+  double? amount;
+
+  /// A truth column — derives `TomColumnType.boolean`.
+  @TomDbColumn(columnName: 'done')
+  bool? done;
+
+  /// A point in time — derives `TomColumnType.timestamp`.
+  @TomDbColumn(columnName: 'created_at')
+  DateTime? createdAt;
+
+  /// A date whose Dart value is not a `DateTime` — derives text.
+  @TomDbColumn(columnName: 'tag_day')
+  TomZonedDate? tagDay;
+
+  /// The redacted column: never exported.
+  @TomDbColumn(columnName: 'secret')
+  String? secret;
+
+  /// The file-reference column: holds a storage key, not content.
+  @TomDbColumn(columnName: 'attachment')
+  @TomFileReference(keyPrefix: 'fixture/export')
+  String? attachment;
+}
+
+/// [FixtureExportRecord] **after a column was added** — the second half of the
+/// drift assertion (CSEXC5).
+///
+/// The point of deriving export columns from reflection is that adding a column
+/// to an entity adds it to the export with no other edit. That claim needs two
+/// entity versions to be testable at all, and an entity cannot grow a field at
+/// run time — so this is that version: identical to [FixtureExportRecord] but
+/// for [owner]. A test asserting the derived column sets differ by exactly
+/// `owner`, with no export-side change between them, is what makes the claim an
+/// assertion rather than a comment.
+@tomReflector
+@TomAudited(redact: ['secret'])
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_export_v2',
+  primaryKeyField: 'id',
+)
+class FixtureExportRecordV2 {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A text column.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+
+  /// A fractional column.
+  @TomDbColumn(columnName: 'amount')
+  double? amount;
+
+  /// A truth column.
+  @TomDbColumn(columnName: 'done')
+  bool? done;
+
+  /// A point in time.
+  @TomDbColumn(columnName: 'created_at')
+  DateTime? createdAt;
+
+  /// A date whose Dart value is not a `DateTime`.
+  @TomDbColumn(columnName: 'tag_day')
+  TomZonedDate? tagDay;
+
+  /// The redacted column.
+  @TomDbColumn(columnName: 'secret')
+  String? secret;
+
+  /// The file-reference column.
+  @TomDbColumn(columnName: 'attachment')
+  @TomFileReference(keyPrefix: 'fixture/export')
+  String? attachment;
+
+  /// **The added column** — the whole point of this second version.
+  @TomDbColumn(columnName: 'owner')
+  String? owner;
+}
+
 /// A reflected entity that has **declared itself out** of the audit trail.
 ///
 /// The escape hatch for high-volume machine-written tables (sessions, job runs)

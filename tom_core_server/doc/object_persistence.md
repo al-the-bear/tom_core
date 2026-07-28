@@ -127,6 +127,20 @@ accessors that the repository uses to read and write entity fields. A type that
 is not registered with `tomReflector`, or lacks a `@TomDbTable`, raises
 `TomAnnotationAnalyzerException`.
 
+`familyOf` reduces one column to the `TomSqlTypeFamily` it is **stored** in — a
+JSON column is text whatever its Dart type, an explicit `TomDbType` box decides
+next, and only failing both does the Dart type stand in; anything unrecognised is
+`unknown`, which is compatible with everything, because a gap in the reader's
+knowledge must not be reported as a defect. It is homed here, beside the
+annotations it reads, rather than with either of its callers: the
+schema-convergence check ([`db_migration.md`](db_migration.md#schema-convergence))
+and the reflected export projection ([`export.md`](export.md#columns-derived-from-the-entity))
+ask the same question of the same declaration, and a second answer would be a
+second thing to keep in step. Note what it does *not* describe — the Dart value a
+getter returns; a caller that cares about that must read
+`TomColumnInformation.declaredType` as well, which is what the export projection
+does.
+
 ## SQL Dialects
 
 Every operator renders itself through a `TomStandardSqlDialect` (see

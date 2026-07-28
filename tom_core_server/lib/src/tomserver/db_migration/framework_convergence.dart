@@ -205,7 +205,7 @@ class TomFrameworkSchemaCheck {
           );
           continue;
         }
-        final expected = TomEntitySchemaReader.familyOf(column);
+        final expected = TomAnnotationAnalyzer.familyOf(column);
         final actual = dialect.typeFamily(declared.type);
         if (expected == TomSqlTypeFamily.text) continue;
         if (expected.accepts(actual)) continue;
@@ -217,7 +217,7 @@ class TomFrameworkSchemaCheck {
             origin: '$type vs ${table.origin}',
             message:
                 '$type reads "$name" as '
-                '${TomEntitySchemaReader.describeDeclaredType(column)} '
+                '${TomAnnotationAnalyzer.describeDeclaredType(column)} '
                 '(${expected.name}) but ${table.origin} declares it '
                 '${declared.type} (${actual.name})',
           ),

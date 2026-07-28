@@ -40,9 +40,27 @@
 /// axes). Two of the three output formats cannot express a chart at all, so a
 /// chart model would be a field that only the PDF renderer ever read. When
 /// charts are specified they belong beside this type, not inside it.
+/// ## Why there are two ways to build a section
+///
+/// [TomTabularSection.ofRows] / [TomTabularSection.ofMaps] make the caller
+/// declare its columns and project each row onto them. For an export **of
+/// entities** that projection restates what `@TomDbColumn` already declares,
+/// and the two then drift in both directions: a column added to the entity
+/// never reaches the export, and a type changed on the entity leaves cells
+/// being formatted under a stale [TomColumnType].
+///
+/// [TomTabularSection.ofEntities] / [TomTabularResult.fromEntities] derive the
+/// columns from the reflected entity instead, so there is one declaration and
+/// nothing to keep in step. They are bounded on purpose — see
+/// [TomTabularSection.ofEntities] — and the explicit route remains for
+/// everything they cannot express.
 library;
 
+import '../audit/audit_trail.dart';
+import '../datasources/sql_dialects.dart';
 import '../little_things/server_exception.dart';
+import '../object_persistence/annotation_analyzer.dart';
+import '../object_persistence/persistence_annotations.dart';
 
 /// Raised when a result cannot be built, rendered or stored.
 ///
@@ -240,6 +258,85 @@ class TomTabularSection {
         title: title,
       );
 
+  /// Creates a section whose columns are **derived from the reflected entity**
+  /// [T], and whose rows are read off each entity by reflection.
+  ///
+  /// The "these entities, these columns" case — the majority of exports, and
+  /// the one a declarative report definition can express without a hand-written
+  /// projection. Every `@TomDbColumn` field of [T] becomes a column, named by
+  /// its **declared field name**, typed by [TomColumnType] derived from its
+  /// declared type, and labelled by [titles] or by the field name.
+  ///
+  /// ```dart
+  /// TomTabularSection.ofEntities<Task>(taskStream, title: 'Open tasks')
+  /// ```
+  ///
+  /// ## What this is not for
+  ///
+  /// An export of a **join** or of an **aggregate** is not one entity: its
+  /// columns come from several types or from expressions no type declares.
+  /// Those keep the explicit route ([ofRows] / [ofMaps]), and so does anything
+  /// needing a computed or reformatted column — a storage key turned into a
+  /// download URL, say, which this cannot produce because the public URL of a
+  /// file is a routing decision the export module does not know.
+  ///
+  /// ## Two kinds of column that are not exported
+  ///
+  /// - **Redacted fields.** `@TomAudited(redact: …)` names the fields whose
+  ///   values must not exist in a second place at all. An export is a second
+  ///   place, and answering that question differently here would defeat the
+  ///   declaration; they are dropped, and naming one in [include] throws.
+  /// - **File references.** A `@TomFileReference` column holds an internal
+  ///   *storage key*, not content — a spreadsheet of them is a small leak and
+  ///   is useless to the reader either way. Dropped by default; pass
+  ///   [includeFileReferences] to export the keys to an audience that has a use
+  ///   for them.
+  ///
+  /// ## Selecting and naming
+  ///
+  /// [include], when given, selects the columns **and their order**; [exclude]
+  /// removes columns; both are keyed by *declared field name*, matching how the
+  /// audit trail keys its own image — the database column name is a mapping
+  /// detail a spec author should not have to know. A name in [include],
+  /// [exclude] or [titles] that no field carries throws rather than being
+  /// ignored: a typo that silently drops a column is exactly the drift this
+  /// constructor exists to remove. [include] narrows the exportable set and
+  /// never widens it, so it cannot be used to reach a redacted or (unless
+  /// [includeFileReferences] is set) a file-reference column.
+  static TomTabularSection ofEntities<T>(
+    Stream<T> rows, {
+    String? title,
+    List<String>? include,
+    Set<String> exclude = const {},
+    Map<String, String> titles = const {},
+    bool includeFileReferences = false,
+  }) {
+    final projection = _TomEntityProjection.of(
+      T,
+      include: include,
+      exclude: exclude,
+      titles: titles,
+      includeFileReferences: includeFileReferences,
+    );
+    final sources = projection.sources;
+    return TomTabularSection(
+      columns: projection.columns,
+      // `map` is lazy: nothing is read off an entity — and nothing is pulled
+      // from `rows` — until a renderer subscribes, and only one row is live at
+      // a time. Cells stay positional to the columns, one list per row.
+      rows: rows.map(
+        (entity) => TomTabularRow(
+          List<Object?>.generate(
+            sources.length,
+            (index) => sources[index].getVariableValue(entity as Object),
+            growable: false,
+          ),
+        ),
+      ),
+      title: title,
+    );
+  }
+
   /// An optional table caption; becomes the XLSX sheet name and the PDF heading.
   final String? title;
 
@@ -282,6 +379,49 @@ class TomTabularResult {
         metadata: metadata,
       );
 
+  /// Creates a single-section result whose columns are derived from the
+  /// reflected entity [T].
+  ///
+  /// The declarative counterpart of [TomTabularResult.single] over
+  /// [TomTabularSection.ofRows]: what to export is stated as a type and a row
+  /// stream, and the column set is read off `@TomDbColumn`. See
+  /// [TomTabularSection.ofEntities] for what is derived, what is excluded, and
+  /// what keeps the explicit route.
+  ///
+  /// ```dart
+  /// final result = TomTabularResult.fromEntities<Task>(
+  ///   repository.streamAll(),
+  ///   title: 'Open tasks',
+  ///   metadata: {'Filter': 'state = open'},
+  ///   exclude: {'internalRank'},
+  ///   titles: {'dueAt': 'Due'},
+  /// );
+  /// ```
+  static TomTabularResult fromEntities<T>(
+    Stream<T> rows, {
+    required String title,
+    String? sectionTitle,
+    Map<String, String> metadata = const {},
+    List<String>? include,
+    Set<String> exclude = const {},
+    Map<String, String> titles = const {},
+    bool includeFileReferences = false,
+  }) =>
+      TomTabularResult(
+        title: title,
+        metadata: metadata,
+        sections: [
+          TomTabularSection.ofEntities<T>(
+            rows,
+            title: sectionTitle,
+            include: include,
+            exclude: exclude,
+            titles: titles,
+            includeFileReferences: includeFileReferences,
+          ),
+        ],
+      );
+
   /// The document title: the PDF heading, the XLSX workbook title.
   final String title;
 
@@ -298,4 +438,153 @@ class TomTabularResult {
 
   @override
   String toString() => 'TomTabularResult($title, ${sections.length} sections)';
+}
+
+/// The columns derived from one reflected entity type, and the metadata each
+/// was derived from — kept parallel so a row can be projected positionally.
+class _TomEntityProjection {
+  _TomEntityProjection(this.columns, this.sources);
+
+  /// The derived columns, in output order.
+  final List<TomTabularColumn> columns;
+
+  /// The reflected field behind each column, at the same index.
+  final List<TomColumnInformation> sources;
+
+  /// Derives the exportable columns of [entityType].
+  static _TomEntityProjection of(
+    Type entityType, {
+    required List<String>? include,
+    required Set<String> exclude,
+    required Map<String, String> titles,
+    required bool includeFileReferences,
+  }) {
+    final declared = TomAnnotationAnalyzer.getPersistentColumns(entityType);
+    if (declared == null || declared.isEmpty) {
+      throw TomExportException(
+        'export.entities.not_reflected',
+        'Cannot derive export columns: the entity declares none, or is not '
+            'registered with the reflector.',
+        parameters: {'entity': '$entityType'},
+      );
+    }
+
+    // An association is resolved through a join entity rather than a column of
+    // this table, so there is no cell to read for it.
+    final mapped = {
+      for (final column in declared)
+        if (column.reference == null) column.declaredName: column,
+    };
+    final redacted = TomAuditTrail.policyFor(entityType).redact;
+
+    void requireKnown(String name, String where) {
+      if (mapped.containsKey(name)) return;
+      throw TomExportException(
+        'export.entities.unknown_column',
+        'The export names a field the entity does not declare.',
+        parameters: {
+          'entity': '$entityType',
+          'field': name,
+          'where': where,
+          'declared': mapped.keys.join(', '),
+        },
+      );
+    }
+
+    for (final name in exclude) {
+      requireKnown(name, 'exclude');
+    }
+    for (final name in titles.keys) {
+      requireKnown(name, 'titles');
+    }
+
+    final ordered = <TomColumnInformation>[];
+    if (include == null) {
+      for (final entry in mapped.entries) {
+        if (exclude.contains(entry.key)) continue;
+        if (redacted.contains(entry.key)) continue;
+        if (!includeFileReferences && entry.value.fileReference != null) {
+          continue;
+        }
+        ordered.add(entry.value);
+      }
+    } else {
+      for (final name in include) {
+        requireKnown(name, 'include');
+        if (exclude.contains(name)) continue;
+        // `include` selects from what is exportable; it does not grant access
+        // to what is not. Silently dropping the name would make the two rules
+        // depend on which was written last.
+        if (redacted.contains(name)) {
+          throw TomExportException(
+            'export.entities.redacted_column',
+            'The export names a redacted field. A value declared out of the '
+                'audit trail must not be exported either.',
+            parameters: {'entity': '$entityType', 'field': name},
+          );
+        }
+        final column = mapped[name]!;
+        if (!includeFileReferences && column.fileReference != null) {
+          throw TomExportException(
+            'export.entities.file_reference_column',
+            'The export names a file-reference field, which holds an internal '
+                'storage key. Pass includeFileReferences to export the keys.',
+            parameters: {'entity': '$entityType', 'field': name},
+          );
+        }
+        ordered.add(column);
+      }
+    }
+
+    if (ordered.isEmpty) {
+      throw TomExportException(
+        'export.entities.no_columns',
+        'Nothing is left to export: every field of the entity is excluded, '
+            'redacted or a file reference.',
+        parameters: {'entity': '$entityType'},
+      );
+    }
+
+    return _TomEntityProjection(
+      [
+        for (final column in ordered)
+          TomTabularColumn(
+            column.declaredName,
+            label: titles[column.declaredName],
+            type: columnTypeOf(column),
+          ),
+      ],
+      ordered,
+    );
+  }
+
+  /// The cell type for [column], from the type family its annotations declare.
+  ///
+  /// [TomAnnotationAnalyzer.familyOf] describes how the value is **stored**; a
+  /// cell holds the **Dart** value the getter returns, and the two diverge — a
+  /// JSON column is text in the database and a `Map` in Dart, and an explicit
+  /// `TomDbType` box can disagree with the field it annotates. So a family maps
+  /// to a column type only when the declared Dart type can actually inhabit it;
+  /// otherwise the column is [TomColumnType.text], which every renderer formats
+  /// through `tomFormatCellAsText`.
+  ///
+  /// Reusing [TomColumnType.dartType] for that test is what keeps this a rule
+  /// rather than a second type table to maintain beside the first.
+  static TomColumnType columnTypeOf(TomColumnInformation column) {
+    final candidate = switch (TomAnnotationAnalyzer.familyOf(column)) {
+      TomSqlTypeFamily.integer => TomColumnType.integer,
+      TomSqlTypeFamily.decimal => TomColumnType.decimal,
+      TomSqlTypeFamily.boolean => TomColumnType.boolean,
+      TomSqlTypeFamily.dateTime ||
+      TomSqlTypeFamily.date ||
+      TomSqlTypeFamily.time =>
+        TomColumnType.timestamp,
+      TomSqlTypeFamily.text ||
+      TomSqlTypeFamily.binary ||
+      TomSqlTypeFamily.unknown =>
+        TomColumnType.text,
+    };
+    final dartType = column.column?.declaredDartType() ?? column.declaredType;
+    return candidate.dartType == dartType ? candidate : TomColumnType.text;
+  }
 }

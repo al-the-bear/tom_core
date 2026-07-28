@@ -23,7 +23,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../datasources/mariadb_sql_dialect.dart';
 import '../datasources/queries.dart';
 import '../datasources/sql_dialects.dart';
-import '../datasources/types_operator.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'db_migration.dart';
@@ -56,29 +55,6 @@ import 'schema_model.dart';
 /// * **Out of scope entirely** — seed data, generated columns, partitioning and
 ///   stored routines.
 class TomEntitySchemaReader {
-  /// The [TomDbType] boxes an entity may declare, mapped to their type family.
-  static const Map<Type, TomSqlTypeFamily> _boxFamilies = {
-    TomDbInt: TomSqlTypeFamily.integer,
-    TomDbDouble: TomSqlTypeFamily.decimal,
-    TomDbString: TomSqlTypeFamily.text,
-    TomDbBool: TomSqlTypeFamily.boolean,
-    TomDbDateTime: TomSqlTypeFamily.dateTime,
-    TomDbDate: TomSqlTypeFamily.date,
-    TomDbTime: TomSqlTypeFamily.time,
-  };
-
-  /// The Dart types a mapped field may have when no [TomDbType] box is declared.
-  static const Map<Type, TomSqlTypeFamily> _dartFamilies = {
-    int: TomSqlTypeFamily.integer,
-    double: TomSqlTypeFamily.decimal,
-    num: TomSqlTypeFamily.decimal,
-    String: TomSqlTypeFamily.text,
-    bool: TomSqlTypeFamily.boolean,
-    DateTime: TomSqlTypeFamily.dateTime,
-    TomZonedDate: TomSqlTypeFamily.date,
-    TomZonedTime: TomSqlTypeFamily.time,
-  };
-
   /// Every `@TomDbTable`-annotated type registered with `tomReflector`.
   ///
   /// The check discovers entities the same way the rest of the persistence layer
@@ -135,8 +111,8 @@ class TomEntitySchemaReader {
           table.table,
           TomSchemaColumn(
             name: column.getQueryFieldName(),
-            family: familyOf(column),
-            declaredType: describeDeclaredType(column),
+            family: TomAnnotationAnalyzer.familyOf(column),
+            declaredType: TomAnnotationAnalyzer.describeDeclaredType(column),
             origin: origin,
           ),
         );
@@ -144,33 +120,6 @@ class TomEntitySchemaReader {
       builder.setPrimaryKey(table.table, primaryKeyOf(info));
     }
     return builder.build();
-  }
-
-  /// The type family [column] is stored in.
-  ///
-  /// A JSON column is text whatever its Dart type — the value is encoded before
-  /// it reaches the database. Otherwise the declared [TomDbType] box decides,
-  /// and only when there is none does the Dart type stand in. An unrecognised
-  /// type (an enum behind a converter, say) yields [TomSqlTypeFamily.unknown],
-  /// which is compatible with everything: a gap in the check's knowledge must
-  /// not be reported as a defect in the schema.
-  static TomSqlTypeFamily familyOf(TomColumnInformation column) {
-    if (column.column?.isJson ?? false) return TomSqlTypeFamily.text;
-    final boxed = column.column?.declaredColumnType();
-    if (boxed != null) {
-      final family = _boxFamilies[boxed];
-      if (family != null) return family;
-    }
-    final dartType = column.column?.declaredDartType() ?? column.declaredType;
-    return _dartFamilies[dartType] ?? TomSqlTypeFamily.unknown;
-  }
-
-  /// How [column]'s type is spelled on the entity side, for reporting only.
-  static String describeDeclaredType(TomColumnInformation column) {
-    if (column.column?.isJson ?? false) return 'JSON';
-    final boxed = column.column?.declaredColumnType();
-    if (boxed != null && _boxFamilies.containsKey(boxed)) return '$boxed';
-    return '${column.column?.declaredDartType() ?? column.declaredType}';
   }
 
   /// The primary-key **column** names [info] declares, in declaration order.

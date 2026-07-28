@@ -15,6 +15,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [Overview](#overview)
 - [The Shape of the Design](#the-shape-of-the-design)
 - [The Input: A Tabular Result](#the-input-a-tabular-result)
+- [Columns Derived from the Entity](#columns-derived-from-the-entity)
 - [The Renderer Contract](#the-renderer-contract)
 - [Formats Are a Registry, Not a Switch](#formats-are-a-registry-not-a-switch)
 - [Format Choices and Licences](#format-choices-and-licences)
@@ -38,6 +39,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | ---- | ---- | ------- |
 | `TomTabularResult` | class | A titled document: metadata plus one or more sections |
 | `TomTabularSection` | class | One table: typed columns over a **stream** of rows |
+| `TomTabularSection.ofEntities` / `TomTabularResult.fromEntities` | static | The same, with the columns derived from a reflected entity |
 | `TomTabularColumn` / `TomColumnType` | class / enum | A named, typed, optionally width-hinted column |
 | `TomTabularRow` | class | Cell values positional to the section's columns |
 | `TomTabularRenderer` | abstract class | One format: a result in, a byte stream out |
@@ -110,6 +112,97 @@ Decisions in that shape worth knowing:
 `metadata` is the context that makes a downloaded file interpretable months
 later — the filter that produced it, who ran it, as of when. Formats that have a
 header block (PDF) render it; formats that do not (CSV) ignore it.
+
+## Columns Derived from the Entity
+
+For an export **of entities**, the projection above restates what
+`@TomDbColumn` already declares — and the two then drift in both directions: a
+column added to the entity never appears in the export, and a type changed on
+the entity leaves cells being formatted under a stale `TomColumnType`.
+`fromEntities` removes the second declaration:
+
+```dart
+final result = TomTabularResult.fromEntities<Task>(
+  repository.streamAll(),        // Stream<Task>
+  title: 'Open tasks',
+  metadata: {'Filter': 'state = open'},
+  exclude: {'internalRank'},
+  titles: {'dueAt': 'Due'},
+);
+```
+
+There are no columns in that call. Every `@TomDbColumn` field of `Task` becomes
+one, in declaration order, and both properties the tabular shape was designed
+around survive: `rows` stays a `Stream` — deriving the columns reads annotations,
+not rows, so nothing is pulled until a renderer subscribes — and cells stay a
+positional `List` parallel to the columns. A reflected projection that quietly
+turned every row into a map would give back exactly the per-row allocation the
+type exists to avoid.
+
+**Columns are keyed by declared field name**, not by database column: `createdAt`,
+not `created_at`. That is how the audit trail keys its own image, for the same
+reason — the column name is a mapping detail a spec author should not have to
+know — and `include`, `exclude` and `titles` all use the same key. A name none of
+them matches **throws**: a typo that silently drops a column is the drift this
+constructor exists to remove.
+
+### Two Kinds of Column That Are Not Exported
+
+| Kind | Default | Why |
+| ---- | ------- | --- |
+| A field named in `@TomAudited(redact: …)` | **Excluded**, and `include` cannot reach it | Redaction declares that the value must not exist in a *second* place at all. An export is a second place; answering the same question differently here would defeat the declaration |
+| A `@TomFileReference` column | **Excluded**; `includeFileReferences: true` exports the keys | The column holds an internal *storage key*, not content. A spreadsheet of them is a small information leak and is useless to the reader either way |
+
+`include` narrows the exportable set and never widens it, so naming a redacted
+field or — without the flag — a file column is an error rather than a quiet
+override. Which of the two rules applied would otherwise depend on which was
+written last.
+
+The alternative for file columns worth naming is exporting a **URL** rather than
+a key. That is not derived here, and deliberately: the public URL of a file is
+the mount path of the file endpoint plus the deployment's external origin, and
+this module knows neither. A guessed URL renders a dead link, which is worse than
+a key. An export that needs one builds that column explicitly, which is the
+route below.
+
+### What Keeps the Explicit Route
+
+`fromEntities` is bounded to the "these entities, these columns" case — the
+majority, and the one a declarative report definition can express. It is not for:
+
+- **a join** — the columns come from several types, and no one of them declares
+  the shape;
+- **an aggregate** — the columns are expressions (`SUM(amount) AS total`) that no
+  entity declares at all. `TomGroupedRow` already produces exactly the five cell
+  types, so `TomTabularSection.ofMaps` adapts it without a conversion;
+- **a computed or reformatted column** — a storage key turned into a URL, a code
+  turned into a label, two fields joined into one.
+
+Those keep `ofRows` / `ofMaps`, which are correct and are not deprecated by this.
+
+### Deriving the Column Type
+
+`TomAnnotationAnalyzer.familyOf` reduces a column's annotations to a
+`TomSqlTypeFamily`, and that family maps onto a `TomColumnType` — with one
+qualification. The family describes how a value is **stored**; an export cell
+holds the **Dart** value the getter returns, and the two diverge: a JSON column
+is text in the database and a `Map` in Dart, and an explicit `TomDbType` box can
+disagree with the field it annotates. So a family maps to a column type only when
+the declared Dart type can actually inhabit it — tested against
+`TomColumnType.dartType`, so the rule reuses the existing declaration instead of
+introducing a second type table — and otherwise the column is `text`, which every
+renderer formats through `tomFormatCellAsText`.
+
+A `TomZonedDate` field is the case that shows this: its storage family is `date`,
+but the value is not a `DateTime`, so declaring the column `timestamp` would
+describe a cell that can never occur. Being wrong here is cosmetic rather than
+fatal — every renderer falls back to text for a value that does not match its
+column — but a type that is merely never right is still a type worth not writing.
+
+`familyOf` lives on `TomAnnotationAnalyzer` rather than with either consumer
+because the schema-convergence check ([`db_migration.md`](db_migration.md#schema-convergence))
+asks the same question of the same annotations, and a second answer would be a
+second thing to keep in step.
 
 ## The Renderer Contract
 
@@ -453,6 +546,9 @@ where the bytes go.
 - **`TomTabularResult` / `TomTabularSection` / `TomTabularColumn` /
   `TomTabularRow` / `TomColumnType`** — the streaming tabular shape the
   renderers consume.
+- **`TomTabularResult.fromEntities` / `TomTabularSection.ofEntities`** — the
+  same shape with its columns derived from a reflected entity, so the export
+  has no second declaration to drift from.
 - **`TomTabularRenderer` / `TomExportFormats` / `tomFormatCellAsText`** — the
   format abstraction, its open registry, and the shared text rule.
 - **`TomCsvRenderer` / `TomXlsxRenderer` / `TomPdfRenderer`** — the three shipped
@@ -485,6 +581,11 @@ where the bytes go.
   by way of `TomExportException`.
 - The `file_storage` module — `TomBlobStore` and its registry, used only by
   `TomBlobExportStore`; the rest of the module does not know it exists.
+- The `object_persistence` module — `TomAnnotationAnalyzer` and
+  `TomColumnInformation`, read only by the reflected projection.
+- The `audit` module — `TomAuditTrail.policyFor`, so that the fields a trail
+  redacts are the fields an export omits. Consulting the same declaration is the
+  point; a second redaction list here would be a second thing to get wrong.
 - `pdf` (Apache-2.0) — the PDF document model and its layout engine.
 - `shelf` — the `Response` returned by the `apiResponse` channel.
 - `path` — key-to-path joining in `TomDirectoryExportStore`.
