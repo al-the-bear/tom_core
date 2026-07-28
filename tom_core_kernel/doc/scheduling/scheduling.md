@@ -11,6 +11,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Quick Start](#quick-start)
 - [The Execution Guarantee](#the-execution-guarantee)
 - [Schedules](#schedules)
+- [Declaring a Job](#declaring-a-job)
 - [Job Definitions](#job-definitions)
 - [The Job Store](#the-job-store)
 - [The Scheduler](#the-scheduler)
@@ -35,6 +36,9 @@ a restart.
 | Type | Role |
 | ---- | ---- |
 | `TomSchedule` | When a job should fire. Cron, calendar, interval, once or event |
+| `TomScheduledJob` | The annotation that makes a class its own registration |
+| `TomJobBase` | What a declared job extends; gives the body its `TomJobRun` |
+| `TomScheduledJobs` | Scans the annotated classes and registers what it finds |
 | `TomJobDefinition` | A schedule plus a body, retry policy, timeout and overlap rule |
 | `TomJobRun` | One attempt-carrying occurrence: window, next attempt, state, claim |
 | `TomJobStore` | Durable queue of runs. Memory and file implementations ship here |
@@ -45,30 +49,44 @@ a restart.
 
 ## Quick Start
 
+Write the job as a class and say when it runs:
+
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+@tomReflector
+@TomScheduledJob(
+  cron: '0 3 * * *',
+  retry: TomRetryPolicy(maxAttempts: 5),
+  timeout: Duration(minutes: 30),
+)
+class NightlyReport extends TomJobBase {
+  @override
+  Future<Object?> execute() async => buildReportFor(run.scheduledFor);
+}
+```
+
+Start-up then has nothing job-specific in it:
+
+```dart
 final scheduler = TomScheduler(
   store: TomFileJobStore('var/jobs.json'),
   dispatcher: const TomInlineJobDispatcher(),
   ownerId: 'api-1',
 );
 
-scheduler.register(TomJobDefinition(
-  name: 'nightly-report',
-  schedule: TomCronSchedule('0 3 * * *'),
-  body: (run) => BuildReportCommand(forDay: run.scheduledFor),
-  retryPolicy: const TomRetryPolicy(maxAttempts: 5),
-  timeout: const Duration(minutes: 30),
-));
-
+TomScheduledJobs.registerAll(scheduler);
 await scheduler.start();
 ```
 
-The body receives the `TomJobRun` it is executing, so it can work on
+The body knows the `TomJobRun` it is executing, so it can work on
 `run.scheduledFor` — the window — rather than on "now". That distinction is what
 makes a catch-up run produce the report for the day it *missed* rather than for
 the day it happens to run.
+
+See [Declaring a Job](#declaring-a-job) for the full annotation, and
+[Job Definitions](#job-definitions) for the hand-written form, which stays
+available for the jobs an annotation cannot express.
 
 ## The Execution Guarantee
 
@@ -157,7 +175,170 @@ Three behaviours worth knowing:
 each event on the stream enqueues a run carrying its payload. Two events at the
 same instant collapse into one run, since the window *is* the instant.
 
+## Declaring a Job
+
+**This is the recommended way to write a job.** A class annotated with
+`@TomScheduledJob` *is* its own registration: there is no second place where the
+job's name, schedule and policies are repeated, and therefore no way for the two
+to drift apart. A job class cannot exist and be unregistered; a registration
+cannot out-live the class it names; and a rename is just a rename.
+
+```dart
+@tomReflector
+@TomScheduledJob(cron: '0 3 * * *')
+class NightlyReconciliation extends TomJobBase {
+  @override
+  Future<Object?> execute() async => reconcile(run.scheduledFor);
+}
+```
+
+`@tomReflector` is not optional. The reflection substrate exposes only
+"every annotated class", with no by-annotation and no by-supertype query, so a
+job that is not in the application's reflection build is not discoverable at
+all.
+
+### Declaring the Trigger
+
+A `TomSchedule` is not a constant and so cannot be an annotation argument. The
+trigger is declared instead by four **mutually exclusive** fields, of which
+**exactly one** must be set:
+
+| Field | Builds | Example |
+| ----- | ------ | ------- |
+| `cron:` | `TomCronSchedule` | `cron: '0 3 * * *'`, `cron: '@daily'` |
+| `interval:` | `TomIntervalSchedule` | `interval: Duration(minutes: 15)` |
+| `calendar:` | `TomCalendarSchedule` | `calendar: 'day:-1 at:23:30'` |
+| `event: true` | `TomEventSchedule` | see [Event Jobs](#event-jobs) |
+
+The remaining fields map one-to-one onto `TomJobDefinition`: `retry`, `timeout`,
+`missedWindow`, `catchUpLimit` and `allowOverlap`, with the same defaults.
+
+`TomOnceSchedule` has no annotation field on purpose — a one-shot's instant is a
+`DateTime`, which is not a constant either, and a "fire in three days" that
+recomputed itself on every restart would never fire. Use a
+[hand-written definition](#job-definitions) for that.
+
+### Calendar Expressions
+
+`calendar:` is a string because the calendar rules — the month-relative ones
+cron cannot spell — need several values, and an annotation reads better with one
+field than with seven. Terms are whitespace-separated `key:value` pairs:
+
+| Term | Meaning | Default |
+| ---- | ------- | ------- |
+| `day:<n>` | day of month, `1`..`31`, or `-1`..`-31` counting from the month's end | — |
+| `weekday:<ordinal>/<day>` | ordinal `1`..`5` or `last`; day `mon`..`sun` | — |
+| `at:<HH:MM>` | time of day | `00:00` |
+| `every:<months>` | month interval, `1`..`12` | `1` |
+| `from:<month>` | the month `1`..`12` the interval is anchored on | `1` |
+
+Exactly one of `day:` and `weekday:` selects the rule.
+
+```dart
+@TomScheduledJob(calendar: 'day:-1 at:23:30')        // month end, 23:30
+@TomScheduledJob(calendar: 'weekday:2/tue at:09:00 every:3 from:2')
+```
+
+Parsing is strict: an unknown term, a repeated term or a malformed value is
+rejected at scan rather than ignored, because a silently dropped `at:` would
+move a month-end job to midnight and nothing would say so.
+
+### The Name Is the Store Key
+
+`name:` defaults to the class's simple name and stays overridable, and the
+reason matters.
+
+The name is what a `TomJobStore` keys runs by. Renaming the class of a job that
+already has stored runs therefore **orphans its history**: the old rows stay
+under the old name, and the job re-anchors as if it had never run — which, with
+`TomMissedWindowPolicy.runAll`, can mean a burst of catch-up work nobody asked
+for. Pin the old name when renaming a job that is already in production:
+
+```dart
+@TomScheduledJob(name: 'legacy-cleanup', interval: Duration(minutes: 15))
+class ExpiredSessionCleanup extends TomJobBase { ... }
+```
+
+### Reaching Collaborators
+
+A job body is instantiated per run by reflection, through the class's
+**no-argument constructor**. There is no call site to pass collaborators from,
+so resolve them — from the bean locator, in the constructor or in `execute`:
+
+```dart
+@tomReflector
+@TomScheduledJob(cron: '@daily')
+class ExpireSessions extends TomJobBase {
+  final TomBean<SessionService> _sessions = TomBean<SessionService>();
+
+  @override
+  Future<Object?> execute() async =>
+      _sessions.get().expireBefore(run.scheduledFor);
+}
+```
+
+This is not a workaround for the annotation. It is the wiring every other
+framework component uses, and it is the only form that survives dispatch to a
+worker isolate, where a captured reference would not have.
+
+Extending `TomJobBase` is what gives the body its `run`, and with it the window,
+the attempt number and any event payload. A plain `TomCommand` with a
+no-argument constructor is accepted too — it simply has no way to ask which
+occurrence it is.
+
+### Event Jobs
+
+`event: true` declares the job event-triggered. A `Stream` is not a constant
+either, so the source is supplied at scan time, keyed by job name:
+
+```dart
+TomScheduledJobs.registerAll(
+  scheduler,
+  eventSource: (name) => name == 'OnInvoiceIssued' ? invoices.stream : null,
+);
+```
+
+A job declared `event: true` whose source does not resolve is a **scan failure**,
+not a job that quietly never fires.
+
+### What the Scan Checks
+
+This is the point of the whole route, and it is worth being explicit about what
+it buys. Quartz stores a job's class as a *string* and resolves it when the
+trigger fires: a rename parks the trigger in `ERROR` permanently, and cluster
+recovery silently skips a firing whose class no longer resolves. Here the class
+is present at compile time, and every other way to get a declaration wrong is
+reported **at start-up**, naming the offending class:
+
+| Key | Raised when |
+| --- | ----------- |
+| `scheduled_job.no_schedule` | none of `cron:`/`interval:`/`calendar:`/`event:` is set |
+| `scheduled_job.multiple_schedules` | more than one of them is set |
+| `scheduled_job.invalid_cron` | the cron expression does not parse |
+| `scheduled_job.invalid_calendar` | the calendar expression does not parse, or is out of range |
+| `scheduled_job.invalid_interval` | the interval is not positive |
+| `scheduled_job.invalid_policy` | `catchUpLimit` or `timeout` is out of range |
+| `scheduled_job.not_a_command` | the class is not a `TomCommand` |
+| `scheduled_job.not_constructible` | the class has no usable no-argument constructor |
+| `scheduled_job.no_event_source` | `event: true` with no resolvable stream |
+| `scheduled_job.duplicate_name` | two classes claim one job name |
+| `scheduled_job.name_already_registered` | a discovered job would replace one already registered |
+
+Every declaration is validated before any of them is registered, so a start-up
+with one bad job registers *none* of them rather than half of them.
+
+`TomScheduledJobs.discover()` returns the definitions instead of registering
+them, and both it and `registerAll` take a `where:` predicate that narrows the
+scan — which is how one binary can run different jobs in different deployment
+profiles.
+
 ## Job Definitions
+
+A `TomJobDefinition` is what [discovery](#declaring-a-job) produces, and writing
+one by hand remains fully supported — it is the **escape hatch** for the jobs an
+annotation cannot express: a schedule computed from configuration, a body that
+must close over something, a `TomOnceSchedule` whose instant was loaded from a
+database. Hand-written and discovered jobs coexist in one scheduler.
 
 ```dart
 TomJobDefinition(
@@ -425,6 +606,11 @@ Three questions and where they are answered:
 
 ## Best Practices
 
+- **Declare jobs with `@TomScheduledJob`.** A hand-written definition is a second
+  place to keep in step with the class; reach for it only when the schedule or
+  the body genuinely cannot be a constant.
+- **Pin `name:` when renaming a job that is already running in production.** The
+  name is the store key, and a rename without it orphans the job's history.
 - **Write idempotent bodies keyed on `run.scheduledFor`.** This is the contract,
   not a precaution.
 - **Give every node a distinct `ownerId`.** Sharing one silently disables the

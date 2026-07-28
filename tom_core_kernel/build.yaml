@@ -16,6 +16,7 @@ targets:
           - test/observable_test.dart
           - test/reflection_test.dart
           - test/resources_test.dart
+          - test/scheduled_job_test.dart
           - test/security_test.dart
           - test/settings_test.dart
           - test/shutdown_cleanup_test.dart

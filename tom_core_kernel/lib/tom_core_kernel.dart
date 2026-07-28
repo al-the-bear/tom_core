@@ -33,6 +33,7 @@ export 'src/tombase/scheduling/job_definition.dart';
 export 'src/tombase/scheduling/job_store.dart';
 export 'src/tombase/scheduling/lease_lock.dart';
 export 'src/tombase/scheduling/schedule.dart';
+export 'src/tombase/scheduling/scheduled_job.dart';
 export 'src/tombase/scheduling/scheduler.dart';
 export 'src/tombase/scope_ids/scope_ids.dart';
 export 'src/tombase/security/access_controls.dart';
