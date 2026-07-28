@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.0
+
+- csra7: add the CE-NT notification model — `TomNotificationType`,
+  `TomNotificationChannelDeclaration`, `TomNotificationPreferences`,
+  `TomNotificationCatalog` and the `TomNotificationCategory` /
+  `TomNotificationUrgency` closed sets. CE-NT was promoted out of §4.3 because
+  its SOM section (`NotificationModel`) is a structured entry list, not free
+  text.
+- Only the *choosing* layer is new. `tom_core_server`'s `messaging` module
+  already delivers on a named channel (`TomMessage`, `TomMessageChannel`,
+  `TomMessageRouter`, `TomMessageOutbox`) and is reused as-is per pillar (b);
+  what it has no home for is which types exist, which channels each goes out
+  on, and how a user's preferences narrow that set.
+- Essentiality lives on the *type* (`isEssential`), so a preference object can
+  never be constructed into a state that silences something it must not. A
+  mute or a global opt-out silences a type outright and can only reach a
+  non-essential one — it is not a per-channel narrowing.
+
 ## 0.5.0
 
 - csra3: make CE-UP **single-moded** and close the second half of its gap.

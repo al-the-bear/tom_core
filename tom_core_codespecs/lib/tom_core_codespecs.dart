@@ -42,6 +42,15 @@
 /// **not** a gap: §4.1/§5.10/§5.20 record "no gap — full action implementation
 /// reused", and its closed trigger vocabulary is delivered as `TriggerKind` on
 /// `@CsTrigger` in `tom_code_specs` instead.
+///
+/// **CE-NT's promotion out of the deferred candidates.** `tom_core_server`'s
+/// `messaging` module delivers a composed message on a named channel, but takes
+/// the channel as already chosen. The layer that chooses — notification types,
+/// their channels, and the user preferences that narrow them — is the gap:
+/// [TomNotificationType], [TomNotificationChannelDeclaration],
+/// [TomNotificationPreferences] and [TomNotificationCatalog]. CE-LG is **not** a
+/// gap alongside it: `tom_core_server`'s `audit` module already carries the
+/// declaration (`TomAudited`) and the trail, so CE-LG is pure reuse.
 library;
 
 export 'src/client_application.dart';
@@ -50,5 +59,6 @@ export 'src/domain_enum.dart';
 export 'src/job_declaration.dart';
 export 'src/layout_node.dart';
 export 'src/message_key.dart';
+export 'src/notification_model.dart';
 export 'src/route_flow.dart';
 export 'src/user_settings.dart';

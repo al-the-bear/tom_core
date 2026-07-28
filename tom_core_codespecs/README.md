@@ -90,12 +90,31 @@ path, so a user's chosen preference had nowhere to be stored —
 `TomUserSettingsStore` is that seam, keyed by user in every method because the
 user key *is* the scope.
 
+**csra7 — CE-NT, promoted out of §4.3.** The §8.1 authored-input test decides
+which deferred candidates can be built at all: CE-NT's SOM section
+(`NotificationModel`) is a structured entry list rather than free text, so a
+generator has something to read, and the part was promoted. The sibling
+promotion CE-LG is a *reuse* verdict — `@CsAudited` marks the framework's own
+`@TomAudited` — so it needs no gap class here.
+
+| Class | Part | Purpose | Why the substrate does not cover it |
+|-------|------|---------|-------------------------------------|
+| `TomNotificationType`, `TomNotificationChannelDeclaration`, `TomNotificationPreferences`, `TomNotificationCatalog` (+ `TomNotificationCategory`, `TomNotificationUrgency`) | CE-NT Notification (§4.3.2) | The *choosing* layer: which notification types exist, which channels each goes out on, and how user preferences narrow that set. `channelsFor` resolves type constraints against preferences (mandatory first); `deliveryChannelsFor` adds the channel's own urgency ceiling. | `tom_core_server`'s `messaging` module (`TomMessage`, `TomMessageChannel`, `TomMessageRouter`, `TomMessageOutbox`) *delivers* — it takes an already-composed message on an already-chosen channel. It is reused as-is; the choosing is what a specification authors. |
+
+Essentiality is a property of the **type** (`isEssential`), not of the
+preferences: a type the user cannot configure, or one with a mandatory channel,
+survives a blanket opt-out whole. Silencing is therefore all-or-nothing per type
+and can only ever reach a non-essential one — never a per-channel narrowing of
+an essential type.
+
 ## Status
 
-csra3. CE-UP single-moded and its persistence seam added. Earlier: csra2 the
-four remaining catalogued gap classes (CE-LO / CE-TX / CE-NV / CE-JB) with CE-AC
-confirmed reuse; csm210-4-1 the CE-EN domain enum with CE-DB confirmed reuse and
-the entity-model placement decided (shared shape, server persistence
-projection); csm2r7 three gap classes for the four new parts (CE-CL / CE-CC /
-CE-UP; CE-AU and CE-CF reuse). Every part the §4.1 catalogue marks *gap* now has
-its class; later waves add classes only if a new part is promoted out of §4.3.
+csra7. CE-NT's notification model added on its promotion out of §4.3 (CE-LG,
+promoted in the same pass, is reuse and needs no class). Earlier: csra3 CE-UP
+single-moded and its persistence seam added; csra2 the four remaining catalogued
+gap classes (CE-LO / CE-TX / CE-NV / CE-JB) with CE-AC confirmed reuse;
+csm210-4-1 the CE-EN domain enum with CE-DB confirmed reuse and the entity-model
+placement decided (shared shape, server persistence projection); csm2r7 three
+gap classes for the four new parts (CE-CL / CE-CC / CE-UP; CE-AU and CE-CF
+reuse). Every part the §4.1 catalogue marks *gap* now has its class; later waves
+add classes only if a further part is promoted out of §4.3.

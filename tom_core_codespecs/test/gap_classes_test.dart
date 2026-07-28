@@ -490,4 +490,252 @@ void main() {
       expect(b.targetRefs, isEmpty);
     });
   });
+
+  group('csra7: CE-NT channel declarations', () {
+    // An unrestricted channel is the common case, so "no urgency list" must
+    // mean "carries everything" rather than "carries nothing".
+    test('an empty urgency list carries every urgency', () {
+      final channel = TomNotificationChannelDeclaration(channelId: 'email');
+      for (final urgency in TomNotificationUrgency.values) {
+        expect(channel.carries(urgency), isTrue);
+      }
+    });
+
+    test('a restricted channel carries only its declared urgencies', () {
+      final sms = TomNotificationChannelDeclaration(
+        channelId: 'sms',
+        urgencyLevels: {
+          TomNotificationUrgency.high,
+          TomNotificationUrgency.critical,
+        },
+      );
+      expect(sms.carries(TomNotificationUrgency.critical), isTrue);
+      expect(sms.carries(TomNotificationUrgency.high), isTrue);
+      expect(sms.carries(TomNotificationUrgency.low), isFalse);
+      expect(sms.carries(TomNotificationUrgency.medium), isFalse);
+    });
+
+    test('defaults own their urgency set (no shared mutable set)', () {
+      final a = TomNotificationChannelDeclaration(channelId: 'a');
+      final b = TomNotificationChannelDeclaration(channelId: 'b');
+      a.urgencyLevels.add(TomNotificationUrgency.low);
+      expect(b.urgencyLevels, isEmpty);
+    });
+
+    test('urgency is ordered least to most urgent', () {
+      expect(TomNotificationUrgency.values, [
+        TomNotificationUrgency.low,
+        TomNotificationUrgency.medium,
+        TomNotificationUrgency.high,
+        TomNotificationUrgency.critical,
+      ]);
+      expect(
+        TomNotificationUrgency.critical.index >
+            TomNotificationUrgency.low.index,
+        isTrue,
+      );
+    });
+
+    test('the category set is the closed four', () {
+      expect(TomNotificationCategory.values, [
+        TomNotificationCategory.transactional,
+        TomNotificationCategory.marketing,
+        TomNotificationCategory.system,
+        TomNotificationCategory.security,
+      ]);
+    });
+  });
+
+  group('csra7: CE-NT essentiality', () {
+    // The compliance surface: "essential" is decided on the TYPE, in one
+    // place, so no caller can define it differently.
+    test('a mandatory channel makes a type essential', () {
+      expect(
+        TomNotificationType(typeId: 't', mandatoryChannelIds: ['email'])
+            .isEssential,
+        isTrue,
+      );
+    });
+
+    test('a non-configurable type is essential', () {
+      expect(
+        TomNotificationType(typeId: 't', userConfigurable: false).isEssential,
+        isTrue,
+      );
+    });
+
+    test('an ordinary configurable type is not essential', () {
+      expect(TomNotificationType(typeId: 't').isEssential, isFalse);
+    });
+  });
+
+  group('csra7: CE-NT channelsFor preference resolution', () {
+    TomNotificationType shipped({
+      List<String>? defaults,
+      List<String>? mandatory,
+      bool configurable = true,
+    }) =>
+        TomNotificationType(
+          typeId: 'order.shipped',
+          defaultChannelIds: defaults ?? ['email', 'push'],
+          mandatoryChannelIds: mandatory ?? const [],
+          userConfigurable: configurable,
+        );
+
+    test('no preferences yields the declared defaults', () {
+      expect(shipped().channelsFor(null), ['email', 'push']);
+    });
+
+    // Rule 1: mandatory first, because every later rule is a narrowing.
+    test('mandatory channels come first and are never duplicated', () {
+      final type = shipped(defaults: ['email', 'push'], mandatory: ['push']);
+      expect(type.channelsFor(null), ['push', 'email']);
+    });
+
+    // Rule 2: !userConfigurable ignores preferences outright — stronger than
+    // listing every channel as mandatory.
+    test('a non-configurable type ignores preferences entirely', () {
+      final type = shipped(configurable: false);
+      final prefs = TomNotificationPreferences(
+        globalOptOut: true,
+        mutedTypeIds: {'order.shipped'},
+        channelsByTypeId: {
+          'order.shipped': ['sms']
+        },
+      );
+      expect(type.channelsFor(prefs), ['email', 'push']);
+    });
+
+    // Rule 3: silencing is all-or-nothing per TYPE, not a per-channel
+    // narrowing — only a non-essential type can be silenced, and it has no
+    // mandatory channels by definition, so it is left with nothing.
+    test('a muted non-essential type is left with no channels', () {
+      final prefs = TomNotificationPreferences(mutedTypeIds: {'order.shipped'});
+      expect(shipped().channelsFor(prefs), isEmpty);
+    });
+
+    test('an essential type is not silenced, and keeps its full set', () {
+      final type = shipped(mandatory: ['email']);
+      final muted = TomNotificationPreferences(mutedTypeIds: {'order.shipped'});
+      expect(type.channelsFor(muted), ['email', 'push']);
+      expect(
+        type.channelsFor(TomNotificationPreferences(globalOptOut: true)),
+        ['email', 'push'],
+      );
+    });
+
+    test('a global opt-out silences non-essential types only', () {
+      final prefs = TomNotificationPreferences(globalOptOut: true);
+      expect(shipped().channelsFor(prefs), isEmpty);
+      expect(shipped(mandatory: ['email']).channelsFor(prefs), isNotEmpty);
+    });
+
+    // Rule 4: a recorded selection REPLACES the defaults; no selection keeps
+    // them — which is why an empty list must not be conflated with absence.
+    test('a recorded selection replaces the defaults', () {
+      final prefs = TomNotificationPreferences(channelsByTypeId: {
+        'order.shipped': ['sms']
+      });
+      expect(shipped().channelsFor(prefs), ['sms']);
+    });
+
+    test('an empty selection is a choice, not an absence', () {
+      final prefs = TomNotificationPreferences(channelsByTypeId: {
+        'order.shipped': <String>[]
+      });
+      expect(shipped().channelsFor(prefs), isEmpty);
+      expect(shipped().channelsFor(TomNotificationPreferences()),
+          ['email', 'push'],
+          reason: 'no entry at all falls back to the declared defaults');
+    });
+
+    test('a selection cannot drop a mandatory channel', () {
+      final type = shipped(mandatory: ['email']);
+      final prefs = TomNotificationPreferences(channelsByTypeId: {
+        'order.shipped': ['sms']
+      });
+      expect(type.channelsFor(prefs), ['email', 'sms']);
+    });
+  });
+
+  group('csra7: CE-NT catalogue', () {
+    TomNotificationCatalog catalog() => TomNotificationCatalog(
+          channels: [
+            TomNotificationChannelDeclaration(
+                channelId: 'push', fallbackChannelId: 'email'),
+            TomNotificationChannelDeclaration(channelId: 'email'),
+            TomNotificationChannelDeclaration(
+              channelId: 'sms',
+              urgencyLevels: {TomNotificationUrgency.critical},
+            ),
+          ],
+          types: [
+            TomNotificationType(
+              typeId: 'order.shipped',
+              defaultChannelIds: ['email', 'sms'],
+            ),
+          ],
+        );
+
+    test('a fallback chain includes its own start, nearest first', () {
+      expect(catalog().fallbackChainFrom('push'), ['push', 'email']);
+    });
+
+    test('a declaration cycle terminates instead of hanging', () {
+      final looping = TomNotificationCatalog(channels: [
+        TomNotificationChannelDeclaration(
+            channelId: 'a', fallbackChannelId: 'b'),
+        TomNotificationChannelDeclaration(
+            channelId: 'b', fallbackChannelId: 'a'),
+      ]);
+      expect(looping.fallbackChainFrom('a'), ['a', 'b']);
+    });
+
+    // A dangling fallback is a spec defect for the validator to report — not a
+    // crash at delivery time.
+    test('an unknown channel id yields an empty chain rather than throwing', () {
+      expect(catalog().fallbackChainFrom('carrier-pigeon'), isEmpty);
+    });
+
+    // The whole CE-NT resolution in one call: type constraints, then user
+    // preference, then the channel's own urgency ceiling.
+    test('delivery filters out channels that cannot carry the urgency', () {
+      expect(catalog().deliveryChannelsFor('order.shipped', null), ['email'],
+          reason: 'sms only carries critical; the type is medium');
+    });
+
+    test('a critical type reaches the restricted channel', () {
+      final urgent = TomNotificationCatalog(
+        channels: [
+          TomNotificationChannelDeclaration(
+            channelId: 'sms',
+            urgencyLevels: {TomNotificationUrgency.critical},
+          ),
+        ],
+        types: [
+          TomNotificationType(
+            typeId: 'security.breach',
+            urgency: TomNotificationUrgency.critical,
+            defaultChannelIds: ['sms'],
+          ),
+        ],
+      );
+      expect(urgent.deliveryChannelsFor('security.breach', null), ['sms']);
+    });
+
+    test('an undeclared channel id is dropped from delivery', () {
+      final dangling = TomNotificationCatalog(
+        channels: [TomNotificationChannelDeclaration(channelId: 'email')],
+        types: [
+          TomNotificationType(
+              typeId: 't', defaultChannelIds: ['email', 'telegram']),
+        ],
+      );
+      expect(dangling.deliveryChannelsFor('t', null), ['email']);
+    });
+
+    test('an unknown type id yields no delivery channels', () {
+      expect(catalog().deliveryChannelsFor('nope', null), isEmpty);
+    });
+  });
 }
