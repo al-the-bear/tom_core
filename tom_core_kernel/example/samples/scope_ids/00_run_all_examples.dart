@@ -1,34 +1,40 @@
-/// Crypto Examples Runner
+/// Runner for all scope IDs examples.
 ///
-/// This file runs all crypto examples in sequence.
-/// Demonstrates RSA encryption, password hashing, key generation, and JWT tokens.
+/// Execute this file to run all scope IDs module examples:
+/// ```
+/// dart run example/samples/scope_ids/00_run_all_examples.dart
+/// ```
 ///
-/// To run this file:
+/// Or run all samples together:
 /// ```bash
-/// dart run example/tombase/crypto/00_run_all_examples.dart
+/// dart run example/run_all_samples.dart
 /// ```
 library;
 
-// Import all example files
-import '01_rsa_encryption_example.dart' as rsa_encryption;
-import '02_password_hashing_example.dart' as password_hashing;
-import '03_key_generation_example.dart' as key_generation;
-import '04_digital_signatures_example.dart' as digital_signatures;
-import '05_jwt_token_example.dart' as jwt_token;
+import '../../run_all_samples.reflection.dart';
 
+import '01_scope_basics_example.dart' as scope_basics;
+import '02_inscope_builder_example.dart' as inscope_builder;
+import '03_scope_mixin_example.dart' as scope_mixin;
+
+/// Standalone entry point for running scope IDs examples.
 void main() {
+  initializeReflection();
+  run();
+}
+
+/// Run all scope IDs examples.
+/// Called from run_all_samples.dart or can be run standalone via main().
+void run() {
   print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                  Tom Crypto System Examples                      ║');
+  print('║              Tom Scope IDs System Samples                        ║');
   print('╚══════════════════════════════════════════════════════════════════╝\n');
 
-  // Run all examples
-  rsa_encryption.run();
-  password_hashing.run();
-  key_generation.run();
-  digital_signatures.run();
-  jwt_token.run();
+  scope_basics.run();
+  inscope_builder.run();
+  scope_mixin.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Examples Complete!                        ║');
+  print('║                    All Samples Complete!                         ║');
   print('╚══════════════════════════════════════════════════════════════════╝');
 }

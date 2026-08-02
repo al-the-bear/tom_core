@@ -4,7 +4,7 @@
 ///
 /// To run this file:
 /// ```bash
-/// dart run example/samples/tombase/reflection/00_run_all_examples.dart
+/// dart run example/samples/reflection/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:

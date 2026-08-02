@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all logging module examples:
 /// ```
-/// dart run example/samples/tombase/logging/00_run_all_examples.dart
+/// dart run example/samples/logging/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -18,16 +18,17 @@ import '02_log_levels_example.dart' as log_levels;
 import '03_log_formatting_example.dart' as log_formatting;
 import '04_advanced_logging_example.dart' as advanced_logging;
 import '05_isolate_and_remote_logging_example.dart' as isolate_remote;
+import '06_log_replay_and_isolate_plumbing_example.dart' as log_replay_plumbing;
 
 /// Standalone entry point for running logging examples.
-void main() {
+Future<void> main() async {
   initializeReflection();
-  run();
+  await run();
 }
 
 /// Run all logging examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
-void run() {
+Future<void> run() async {
   print('Running Logging Examples...\n');
   print('=' * 60);
 
@@ -58,6 +59,11 @@ void run() {
   // exposed through that example's standalone main() only.
   isolate_remote.run();
   print('✓ Remote logging round-trip examples passed\n');
+
+  print('06: Log Replay and Isolate Plumbing Example');
+  print('-' * 40);
+  await log_replay_plumbing.run();
+  print('✓ Log replay and isolate plumbing examples passed\n');
 
   print('=' * 60);
   print('All logging examples completed successfully!');

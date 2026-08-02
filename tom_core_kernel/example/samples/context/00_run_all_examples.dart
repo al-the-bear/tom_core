@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all context module examples:
 /// ```
-/// dart run example/samples/tombase/context/00_run_all_examples.dart
+/// dart run example/samples/context/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -17,6 +17,7 @@ import '01_basic_context_example.dart' as basic_context;
 import '02_context_nesting_example.dart' as context_nesting;
 import '03_context_providers_example.dart' as context_providers;
 import '04_advanced_context_example.dart' as advanced_context;
+import '05_async_and_zonevalues_example.dart' as async_zonevalues;
 
 /// Standalone entry point for running context examples.
 Future<void> main() async {
@@ -49,6 +50,11 @@ Future<void> run() async {
   print('-' * 40);
   await advanced_context.run();
   print('✓ Advanced context examples passed\n');
+
+  print('05: Async and Zone Values Example');
+  print('-' * 40);
+  await async_zonevalues.run();
+  print('✓ Async and zone-values examples passed\n');
 
   print('=' * 60);
   print('All context examples completed successfully!');

@@ -4,7 +4,7 @@
 ///
 /// To run this file:
 /// ```bash
-/// dart run example/samples/tombase/observable/00_run_all_examples.dart
+/// dart run example/samples/observable/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -25,6 +25,7 @@ import '03_tom_class.dart' as tom_class;
 import '04_tom_list.dart' as tom_list;
 import '05_tom_map.dart' as tom_map;
 import '06_timezone_types.dart' as timezone_types;
+import '07_list_reset_lifecycle.dart' as list_reset_lifecycle;
 
 /// Standalone entry point for running observable examples.
 Future<void> main() async {
@@ -49,6 +50,7 @@ Future<void> run() async {
   tom_list.run();
   tom_map.run();
   timezone_types.run();
+  list_reset_lifecycle.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');

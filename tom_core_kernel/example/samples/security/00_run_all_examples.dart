@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all security module examples:
 /// ```
-/// dart run example/samples/tombase/security/00_run_all_examples.dart
+/// dart run example/samples/security/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -17,6 +17,8 @@ import '01_user_principal_example.dart' as user_principal;
 import '02_access_control_example.dart' as access_control;
 import '03_advanced_access_control_example.dart' as advanced_access;
 import '04_bearer_authentication_example.dart' as bearer_auth;
+import '05_ui_authorization_example.dart' as ui_authorization;
+import '06_graded_access_example.dart' as graded_access;
 
 /// Standalone entry point for running security examples.
 void main() {
@@ -35,6 +37,8 @@ void run() {
   access_control.run();
   advanced_access.run();
   bearer_auth.run();
+  ui_authorization.run();
+  graded_access.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');

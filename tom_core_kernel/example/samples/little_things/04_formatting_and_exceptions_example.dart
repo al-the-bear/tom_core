@@ -12,7 +12,7 @@
 ///
 /// Run with (asserts MUST be enabled so the invariants below are checked):
 /// ```bash
-/// dart run --enable-asserts example/little_things/03_formatting_and_exceptions_example.dart
+/// dart run --enable-asserts example/samples/little_things/04_formatting_and_exceptions_example.dart
 /// ```
 library;
 

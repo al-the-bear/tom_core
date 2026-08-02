@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all shutdown cleanup module examples:
 /// ```
-/// dart run example/samples/tombase/shutdown_cleanup/00_run_all_examples.dart
+/// dart run example/samples/shutdown_cleanup/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -15,16 +15,17 @@ import '../../run_all_samples.reflection.dart';
 
 import '01_shutdown_handler_example.dart' as shutdown_handler;
 import '02_advanced_shutdown_example.dart' as advanced_shutdown;
+import '03_shutdown_execution_example.dart' as shutdown_execution;
 
 /// Standalone entry point for running shutdown cleanup examples.
-void main() {
+Future<void> main() async {
   initializeReflection();
-  run();
+  await run();
 }
 
 /// Run all shutdown cleanup examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
-void run() {
+Future<void> run() async {
   print('Running Shutdown Cleanup Examples...\n');
   print('=' * 60);
 
@@ -37,6 +38,11 @@ void run() {
   print('-' * 40);
   advanced_shutdown.run();
   print('✓ Advanced shutdown examples passed\n');
+
+  print('03: Shutdown Execution Example');
+  print('-' * 40);
+  await shutdown_execution.run();
+  print('✓ Shutdown execution examples passed\n');
 
   print('=' * 60);
   print('All shutdown cleanup examples completed successfully!');

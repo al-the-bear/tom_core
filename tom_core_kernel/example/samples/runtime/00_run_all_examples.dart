@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all runtime module examples:
 /// ```
-/// dart run example/samples/tombase/runtime/00_run_all_examples.dart
+/// dart run example/samples/runtime/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:

@@ -12,7 +12,7 @@
 ///
 /// Run with (asserts MUST be enabled so the invariants below are checked):
 /// ```bash
-/// dart run --enable-asserts example/scope_ids/03_scope_mixin_example.dart
+/// dart run --enable-asserts example/samples/scope_ids/03_scope_mixin_example.dart
 /// ```
 library;
 

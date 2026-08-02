@@ -20,11 +20,10 @@ targets:
           - test/security_test.dart
           - test/settings_test.dart
           - test/shutdown_cleanup_test.dart
-          # Example entry points
-          - example/reflection/00_run_all_examples.dart
+          # Example entry point. `example/samples/` is a single reflection
+          # domain: every module runner imports the seed this entry point
+          # generates, so one generated file covers the whole sample tree.
           - example/run_all_samples.dart
-          - example/observable/00_run_all_examples.dart
-          - example/shutdown_cleanup/00_run_all_examples.dart
         options:
           formatted: true
 

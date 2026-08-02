@@ -27,7 +27,7 @@
 ///
 /// Run with:
 /// ```bash
-/// dart run --enable-asserts example/logging/04_isolate_and_remote_logging_example.dart
+/// dart run --enable-asserts example/samples/logging/06_log_replay_and_isolate_plumbing_example.dart
 /// ```
 library;
 

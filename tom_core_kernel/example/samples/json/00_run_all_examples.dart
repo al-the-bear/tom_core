@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all JSON module examples:
 /// ```
-/// dart run example/samples/tombase/json/00_run_all_examples.dart
+/// dart run example/samples/json/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -15,6 +15,7 @@ import '../../run_all_samples.reflection.dart';
 
 import '01_json_serialization_example.dart' as json_serialization;
 import '02_json_navigation_example.dart' as json_navigation;
+import '03_json_config_resolution_example.dart' as json_config_resolution;
 
 /// Standalone entry point for running JSON examples.
 void main() {
@@ -37,6 +38,11 @@ void run() {
   print('-' * 40);
   json_navigation.run();
   print('✓ JSON navigation examples passed\n');
+
+  print('03: JSON Config Resolution Example');
+  print('-' * 40);
+  json_config_resolution.run();
+  print('✓ JSON config resolution examples passed\n');
 
   print('=' * 60);
   print('All JSON examples completed successfully!');

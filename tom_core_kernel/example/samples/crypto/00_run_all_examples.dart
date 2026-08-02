@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all crypto module examples:
 /// ```
-/// dart run example/samples/tombase/crypto/00_run_all_examples.dart
+/// dart run example/samples/crypto/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:

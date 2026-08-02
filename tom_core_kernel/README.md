@@ -135,25 +135,28 @@ every change.
 
 ## Example projects
 
-Modules ship runnable sample folders under [`example/`](example/), and the
-top-level [`run_all_samples.dart`](example/run_all_samples.dart) runs the set in
-[`example/samples/`](example/samples/) in sequence.
+Every module ships a runnable sample folder under
+[`example/samples/`](example/samples/), and the top-level
+[`run_all_samples.dart`](example/run_all_samples.dart) runs the whole set in
+sequence. That is the only example tree — each folder's
+`00_run_all_examples.dart` both stands alone and is called by the master runner,
+so anything listed below is executed on every run.
 
 | Sample | Demonstrates |
 | ------ | ------------ |
-| [`example/observable/`](example/observable/) | Observable scalars, composites, and observers |
-| [`example/beanlocator/`](example/beanlocator/) | Registering and locating beans |
-| [`example/context/`](example/context/) | Execution context & context entries |
-| [`example/scope_ids/`](example/scope_ids/) | Hierarchical scope paths |
-| [`example/security/`](example/security/) | Access controls, authorization, bearer auth |
-| [`example/crypto/`](example/crypto/) | JWT / hashing helpers (via `tom_crypto`) |
-| [`example/runtime/`](example/runtime/) | Environment / platform detection (via `tom_basics`) |
-| [`example/isolate_pooling/`](example/isolate_pooling/) | Worker-pool execution |
-| [`example/logging/`](example/logging/) | Structured / isolate / remote logging |
-| [`example/resources/`](example/resources/) | Text & config resource providers |
+| [`example/samples/observable/`](example/samples/observable/) | Observable scalars, composites, and observers |
+| [`example/samples/beanlocator/`](example/samples/beanlocator/) | Registering and locating beans |
+| [`example/samples/context/`](example/samples/context/) | Execution context & context entries |
+| [`example/samples/scope_ids/`](example/samples/scope_ids/) | Hierarchical scope paths |
+| [`example/samples/security/`](example/samples/security/) | Access controls, authorization, bearer auth |
+| [`example/samples/crypto/`](example/samples/crypto/) | JWT / hashing helpers (via `tom_crypto`) |
+| [`example/samples/runtime/`](example/samples/runtime/) | Environment / platform detection (via `tom_basics`) |
+| [`example/samples/isolate_pooling/`](example/samples/isolate_pooling/) | Worker-pool execution |
+| [`example/samples/logging/`](example/samples/logging/) | Structured / isolate / remote logging |
+| [`example/samples/resources/`](example/samples/resources/) | Text & config resource providers |
 | [`example/samples/result/`](example/samples/result/) | The success-or-error envelope, error details, and its wire form |
 | [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, and what at-least-once asks of a job body |
-| [`example/json/`](example/json/) · [`example/timezoned/`](example/timezoned/) · [`example/settings/`](example/settings/) · [`example/shutdown_cleanup/`](example/shutdown_cleanup/) · [`example/http_connection/`](example/http_connection/) · [`example/little_things/`](example/little_things/) · [`example/reflection/`](example/reflection/) | The remaining utility modules |
+| [`example/samples/json/`](example/samples/json/) · [`example/samples/timezoned/`](example/samples/timezoned/) · [`example/samples/settings/`](example/samples/settings/) · [`example/samples/shutdown_cleanup/`](example/samples/shutdown_cleanup/) · [`example/samples/http_connection/`](example/samples/http_connection/) · [`example/samples/little_things/`](example/samples/little_things/) · [`example/samples/reflection/`](example/samples/reflection/) | The remaining utility modules |
 
 Run the whole set:
 

@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all isolate pooling module examples:
 /// ```
-/// dart run example/samples/tombase/isolate_pooling/00_run_all_examples.dart
+/// dart run example/samples/isolate_pooling/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -19,6 +19,7 @@ import '01_worker_basics_example.dart' as worker_basics;
 import '02_worker_pool_example.dart' as worker_pool;
 import '03_worker_creator_communication_example.dart' as worker_creator;
 import '04_worker_pool_supervision_example.dart' as worker_pool_supervision;
+import '05_creator_backchannel_example.dart' as creator_backchannel;
 
 /// Standalone entry point for running isolate pooling examples.
 ///
@@ -65,6 +66,11 @@ Future<void> run() async {
   print('-' * 40);
   await worker_pool_supervision.run();
   print('✓ Worker pool supervision examples passed\n');
+
+  print('05: Creator Backchannel Example');
+  print('-' * 40);
+  await creator_backchannel.run();
+  print('✓ Creator backchannel examples passed\n');
 
   print('=' * 60);
   print('All isolate pooling examples completed successfully!');

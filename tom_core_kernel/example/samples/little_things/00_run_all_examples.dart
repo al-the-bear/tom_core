@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all little_things module examples:
 /// ```
-/// dart run example/samples/tombase/little_things/00_run_all_examples.dart
+/// dart run example/samples/little_things/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
@@ -16,6 +16,7 @@ import '../../run_all_samples.reflection.dart';
 import '01_utility_functions_example.dart' as utility_functions;
 import '02_zone_helpers_example.dart' as zone_helpers;
 import '03_tom_exception_example.dart' as tom_exception;
+import '04_formatting_and_exceptions_example.dart' as formatting_exceptions;
 
 /// Standalone entry point for running little things examples.
 Future<void> main() async {
@@ -43,6 +44,11 @@ Future<void> run() async {
   print('-' * 40);
   tom_exception.run();
   print('✓ TomException examples passed\n');
+
+  print('04: Formatting and Exceptions Example');
+  print('-' * 40);
+  await formatting_exceptions.run();
+  print('✓ Formatting and exception examples passed\n');
 
   print('=' * 60);
   print('All little_things examples completed successfully!');

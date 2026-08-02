@@ -2,7 +2,7 @@
 ///
 /// Execute this file to run all settings module examples:
 /// ```
-/// dart run example/samples/tombase/settings/00_run_all_examples.dart
+/// dart run example/samples/settings/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
