@@ -12,7 +12,15 @@ import 'package:test/test.dart';
 // endpoint pipeline, TomArgs.fillFromArgs, and the health route. `main` is
 // hidden because this test declares its own.
 import 'fixtures/reflection_fixture.dart'
-    show FixtureApiServer, FixtureServerConfig;
+    show
+        FixtureAccessApiService,
+        FixtureApiServer,
+        FixtureConflictingAccessService,
+        FixtureServerConfig,
+        fixtureContractAccess,
+        fixtureHandlerAccess,
+        fixtureInlineAccess,
+        registerFixtureAccessApi;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// A GET request carrying the [TomRequestLogInfo] the pipeline reads from the
@@ -27,8 +35,15 @@ Request _get(String path) => Request(
 
 void main() {
   // One reflection bootstrap for the whole file (each test file is its own
-  // isolate, so this does not leak into other suites).
-  setUpAll(initializeReflection);
+  // isolate, so this does not leak into other suites). The fixture API contract
+  // is registered alongside it: FixtureAccessApiService is a
+  // @TomApiImplementation, so scanClasses finds it and getClassMethodMetadata
+  // resolves its endpoints through tomRemoteApis — which throws for an
+  // unregistered API rather than yielding null.
+  setUpAll(() {
+    initializeReflection();
+    registerFixtureAccessApi();
+  });
 
   group('reflection bootstrap', () {
     test('initializeReflection makes a fixture ClassMirror constructible', () {
@@ -71,6 +86,79 @@ void main() {
     });
   });
 
+  // C-12 / G-API-3: `final resolvedAccess = tea ?? ae?.access` — a handler-side
+  // TomAccessControl is a local override and wins; otherwise the contract's
+  // policy is extracted, so a registry-backed handler is gated without
+  // restating the policy inline.
+  //
+  // The extraction half is proven live by the advanced sample's 403s. The
+  // *override* half is not: no sample handler declares an inline annotation, so
+  // swapping the two operands would pass every test and every integration run
+  // in the workspace while silently making the contract beat a deliberate local
+  // tightening. Both directions are asserted here, with no router and no server.
+  //
+  // `same` (identity), not `equals`: TomAccessControl values are shared consts,
+  // so an equal policy from the wrong source would satisfy value-equality. The
+  // generated reflection emits annotations as const expressions, so the
+  // handler's annotation is canonically the same instance as the top-level
+  // const the fixture declares it with.
+  group('getClassMethodMetadata access resolution (C-12 / G-API-3)', () {
+    late List<TomMethodMetadata> metadata;
+
+    setUp(() {
+      final mirror =
+          tomReflector.reflectType(FixtureAccessApiService) as ClassMirror;
+      metadata = TomEndpointRouting().getClassMethodMetadata(mirror);
+    });
+
+    TomMethodMetadata methodNamed(String name) =>
+        metadata.firstWhere((m) => m.methodMirror.simpleName == name);
+
+    test('extracts the contract policy when the handler declares none', () {
+      final md = methodNamed('contractGated');
+      expect(md.access, same(fixtureContractAccess),
+          reason: 'the policy must come from TomApiEndpoint.access');
+      expect(md.apiEndpoint, isNotNull,
+          reason: 'a registry-backed endpoint resolves its contract entry');
+    });
+
+    test('a handler-side annotation overrides the contract policy', () {
+      final md = methodNamed('overridden');
+      // The branch with no coverage anywhere in the workspace before this test.
+      expect(md.access, same(fixtureHandlerAccess));
+      expect(md.access, isNot(same(fixtureContractAccess)),
+          reason: 'a local tightening must not be overwritten by the contract');
+      // The contract entry is still resolved — the handler outranks it, rather
+      // than the lookup being skipped, which is what makes this an override.
+      expect(md.apiEndpoint?.access, same(fixtureContractAccess));
+    });
+
+    test('an inline endpoint keeps the handler policy, with no contract', () {
+      final md = methodNamed('inlineGated');
+      expect(md.access, same(fixtureInlineAccess));
+      expect(md.apiEndpoint, isNull,
+          reason: 'an inline TomEndpoint has no registry entry to shadow it');
+    });
+
+    test('two TomAccessControl annotations on one method are rejected', () {
+      // The conflicting-tag guard sits three lines above the resolution and
+      // makes it well-defined: without it, "the handler's policy" would mean
+      // whichever annotation the mirror happened to list last.
+      final mirror = tomReflector.reflectType(FixtureConflictingAccessService)
+          as ClassMirror;
+      expect(
+        () => TomEndpointRouting().getClassMethodMetadata(mirror),
+        throwsA(
+          isA<TomEndpointPipelineException>().having(
+            (e) => e.key,
+            'key',
+            'endpoint_pipeline.get_class_method_metadata.multiple_access_control',
+          ),
+        ),
+      );
+    });
+  });
+
   group('initializeRouter + live requests', () {
     late Router router;
 
@@ -81,6 +169,7 @@ void main() {
       // endpoint methods, so both need a registered instance.
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -129,6 +218,7 @@ void main() {
       TomBean.resetBeanContext();
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       TomHealthServer.globalSettingsHealthAnalyzer = DefaultHealthAnalyzer();
       router = TomEndpointRouting().initializeRouter();
     });
@@ -161,6 +251,7 @@ void main() {
       TomBean.resetBeanContext();
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       publicHandler = TomEndpointRouting.routingInfo['/fixture/health']!.handler;
       unguardedHandler =
@@ -253,6 +344,7 @@ void main() {
       TomBean.resetBeanContext();
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
       sink = TomMemoryAuditSink();
       TomAuditTrail.install(sink);

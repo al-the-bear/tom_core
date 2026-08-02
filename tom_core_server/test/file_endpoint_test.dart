@@ -11,11 +11,13 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 import 'fixtures/reflection_fixture.dart'
     show
+        FixtureAccessApiService,
         FixtureAmbiguousSlotRecord,
         FixtureApiServer,
         FixtureDocumentRecord,
         FixtureFileSlotRecord,
-        FixtureUnmappedFileRecord;
+        FixtureUnmappedFileRecord,
+        registerFixtureAccessApi;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// CSFSB1 / CSEXC4 — the framework's HTTP file endpoint, end to end.
@@ -509,6 +511,12 @@ void main() {
       // get one, because a framework-shipped component with a no-argument
       // constructor must not force every application to register it.
       TomBean.withType(FixtureApiServer, FixtureApiServer());
+      // The registry-backed fixture is a @TomApiImplementation, so scanClasses
+      // finds it and the router mounts it: it needs both its contract in the
+      // API registry and a bean, or initializeRouter throws before this suite's
+      // own routes are reached.
+      registerFixtureAccessApi();
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
       final router = TomEndpointRouting().initializeRouter();
       var pipeline = Pipeline().addMiddleware(
         contextSetupMiddleware('file endpoint test', {

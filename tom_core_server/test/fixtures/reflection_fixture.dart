@@ -93,6 +93,145 @@ class FixtureApiServer implements FixtureApiService {
       <String, Object>{'audited': true};
 }
 
+// =============================================================================
+// C-12 / G-API-3: contract-declared access vs. handler-side override
+// =============================================================================
+
+/// The API id of the fixture contract used by the access-resolution fixtures.
+const fixtureAccessApiId = 'fixture_access';
+
+/// The policy declared on the **contract** (`TomApiEndpoint.access`).
+///
+/// A top-level const so a test can assert `identical(metadata.access, ...)`:
+/// `TomAccessControl` values are shared consts, so value-equality would not
+/// distinguish a policy that came from the contract from an equal one that came
+/// from the handler. Its roles are named for their *source*, not for a domain
+/// role, because which of the two objects arrives is the entire assertion.
+const fixtureContractAccess = TomRoleAccess(['fixture-contract-role']);
+
+/// The policy declared on the **handler**, overriding [fixtureContractAccess].
+const fixtureHandlerAccess = TomRoleAccess(['fixture-handler-role']);
+
+/// The policy on a handler whose endpoint is declared inline (no registry
+/// entry), so there is no contract policy that could shadow it.
+const fixtureInlineAccess = TomRoleAccess(['fixture-inline-role']);
+
+/// Registers the fixture API contract that [FixtureAccessApiService] implements.
+///
+/// Must run before anything reflects over that class: `getClassMethodMetadata`
+/// resolves a `@TomApiEndpointImplementation` through `tomRemoteApis[apiId]`,
+/// which **throws** `apis.api.not_found` for an unregistered API rather than
+/// yielding null. Since the class is a `@TomApiImplementation`, `scanClasses`
+/// finds it, so *every* test that boots a router needs this — call it in
+/// `setUpAll` next to `initializeReflection`, and register a bean for the class.
+///
+/// Idempotent, so repeated calls across suites (and across `setUp`s within one)
+/// are harmless.
+void registerFixtureAccessApi() {
+  if (tomRemoteApis.apis.containsKey(fixtureAccessApiId)) return;
+  tomRemoteApis[fixtureAccessApiId] = TomApi(
+    id: fixtureAccessApiId,
+    uri: '/fixture-access',
+    endpoints: [
+      // Case (a): a contract-declared policy with no handler annotation.
+      TomApiEndpoint<Object, Object>(
+        id: 'contractGated',
+        uri: '/contract-gated',
+        method: TomHttpMethod.get,
+        access: fixtureContractAccess,
+      ),
+      // Case (b): the same contract policy, which the handler overrides.
+      TomApiEndpoint<Object, Object>(
+        id: 'overridden',
+        uri: '/overridden',
+        method: TomHttpMethod.get,
+        access: fixtureContractAccess,
+      ),
+    ],
+  );
+}
+
+/// A registry-backed API implementation covering the three ways an endpoint can
+/// acquire (or fail to acquire) an access policy (C-12 / G-API-3).
+///
+/// The three methods are the three branches of
+/// `final resolvedAccess = tea ?? ae?.access`:
+///
+/// - [contractGated] declares **no** inline annotation, so the policy must be
+///   extracted from the contract — the half the advanced sample already relies
+///   on for every `/admin/*` route;
+/// - [overridden] declares one that **differs** from the contract's, so the
+///   handler must win — the half no test and no sample exercises, which is why
+///   reversing the two operands would pass the whole workspace today;
+/// - [inlineGated] is an inline `@TomEndpoint` with no registry entry, so there
+///   is no `ae` at all and the handler's policy stands unopposed.
+///
+/// It is a concrete `@tomComponent` + `@TomApiImplementation` class rather than
+/// the interface/implementation pair [FixtureApiService] uses, because that is
+/// the shape the registry-backed path actually has in the advanced sample
+/// (`AdvancedAdminApiService`) — and the suite had no fixture of that shape at
+/// all before, so the registry-mounting path went unmounted in every test.
+@tomReflector
+@tomComponent
+@TomApiImplementation(apiId: fixtureAccessApiId)
+class FixtureAccessApiService {
+  /// Case (a): gated purely by the contract.
+  @TomApiEndpointImplementation(
+    apiId: fixtureAccessApiId,
+    endpointId: 'contractGated',
+  )
+  Future<Map<String, Object>> contractGated() async =>
+      <String, Object>{'source': 'contract'};
+
+  /// Case (b): the handler's policy overrides the contract's.
+  @TomRoleAccess(['fixture-handler-role'])
+  @TomApiEndpointImplementation(
+    apiId: fixtureAccessApiId,
+    endpointId: 'overridden',
+  )
+  Future<Map<String, Object>> overridden() async =>
+      <String, Object>{'source': 'handler'};
+
+  /// Case (c): an inline endpoint, so no contract policy exists to shadow.
+  @TomRoleAccess(['fixture-inline-role'])
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture-access/inline',
+    produces: TomMimeType.json,
+  )
+  Future<Map<String, Object>> inlineGated() async =>
+      <String, Object>{'source': 'inline'};
+}
+
+/// A class whose endpoint method carries **two** `TomAccessControl` annotations
+/// — the shape `getClassMethodMetadata` rejects with
+/// `endpoint_pipeline.get_class_method_metadata.multiple_access_control`.
+///
+/// Deliberately annotated `@tomReflector` **only**: no `@tomService`,
+/// `@tomComponent` or `@TomApiImplementation`. `scanClasses` partitions on
+/// exactly those three annotations, so this class is invisible to
+/// `initializeRouter` while still being reflectable by name. That matters — the
+/// guard throws during metadata collection, so a router-visible fixture would
+/// make *every* suite that boots a router fail instead of the one test that
+/// asserts the throw.
+///
+/// The endpoint is declared inline so no API registry entry is needed: the
+/// conflict is detected while the tag set is being collected, before any
+/// contract is consulted.
+@tomReflector
+class FixtureConflictingAccessService {
+  /// Two policies on one method: ambiguous by construction.
+  @TomRoleAccess(['fixture-first-role'])
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture-access/conflicting',
+    produces: TomMimeType.json,
+  )
+  Future<Map<String, Object>> conflicting() async =>
+      <String, Object>{'unreachable': true};
+}
+
 /// A reflected configuration object for exercising [TomArgs.fillFromArgs]: its
 /// public fields are assigned by name from parsed `key=value` arguments.
 @tomReflector
