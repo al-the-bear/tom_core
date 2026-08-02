@@ -178,6 +178,31 @@ abstract class Tom2FAPolicy {
   static const Tom2FAPolicy _fallback = TomPrincipalFlag2FAPolicy();
 }
 
+/// What a [Tom2FAPolicy] implements when it grants **grace logins** and must
+/// therefore remember how many are left.
+///
+/// [Tom2FADecision.graceLogins] says how many logins a principal may still
+/// complete *without* setting up the factor they owe. Something has to spend
+/// them, and the only party that can is the one that counts them — a server
+/// that decremented a number it does not own would be keeping a second, silently
+/// divergent tally.
+///
+/// A separate interface rather than a method on [Tom2FAPolicy], for the reason
+/// `Tom2FAEnrolmentSupport` is separate from [Tom2FAService]: the shipped
+/// policies are stateless and grant no grace, so the only honest body they could
+/// give this method is an empty one — and a base contract whose implementations
+/// mostly ignore it teaches callers to ignore it too. `is` makes "does this
+/// policy do grace?" a question with a real answer.
+abstract class Tom2FAGraceAccounting {
+  /// Records that [context]'s principal has just spent one grace login by
+  /// declining an enrolment offer.
+  ///
+  /// Called at the moment the grace is *used*, not when it is offered: a user
+  /// who goes on to enrol has consumed nothing, and charging them for opening
+  /// the dialog would run the account down without cause.
+  Future<void> recordGraceLoginConsumed(Tom2FAContext context);
+}
+
 // =============================================================================
 // SHIPPED IMPLEMENTATIONS
 // =============================================================================

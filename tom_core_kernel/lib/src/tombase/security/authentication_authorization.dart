@@ -43,6 +43,7 @@ library;
 // =============================================================================
 
 import '../observable/tom_observable_objects.dart';
+import 'two_factor.dart';
 import 'user_principal_aci.dart';
 
 // =============================================================================
@@ -128,10 +129,25 @@ class TomAuthenticationMessage {
 ///
 /// ## Two-Factor Authentication
 ///
-/// If [requires2FA] is true, the client must:
-/// 1. Present the appropriate 2FA challenge based on [twoFactorType]
-/// 2. Submit the 2FA code to complete authentication
-/// 3. Receive new tokens upon successful 2FA
+/// A login that owes a second factor can be in one of *two* states, and they
+/// are answered by different calls, so they are reported by different flags:
+///
+/// - [requires2FA] — the user has a factor and must now **use** it. The
+///   challenge's mechanism is [twoFactorType]; the client collects the code and
+///   calls the server's second pass.
+/// - [requires2FAEnrolment] — the user has no usable factor and must first
+///   **set one up**. [availableTwoFactorMethods] is the choice to render, and
+///   [twoFactorEnrolmentSkippable] says whether declining is allowed.
+///
+/// The two are deliberately separate flags rather than one overloaded field. A
+/// client written before enrolment existed reads [requires2FA] and
+/// [twoFactorType] exactly as it always did; it simply never sees the enrolment
+/// state, and the interim token it would try to use is refused by the server —
+/// which is the safe way for an out-of-date client to fail.
+///
+/// In both states the result carries an **interim** token pair: it identifies
+/// the user for the next call in the flow but grants no session, because its
+/// claims still say a factor is owed.
 ///
 /// ## Example
 ///
@@ -143,7 +159,12 @@ class TomAuthenticationMessage {
 ///   return;
 /// }
 ///
-/// if (result.requires2FA) {
+/// if (result.requires2FAEnrolment) {
+///   showEnrolmentChooser(
+///     result.availableTwoFactorMethods,
+///     canSkip: result.twoFactorEnrolmentSkippable,
+///   );
+/// } else if (result.requires2FA) {
 ///   show2FADialog(result.twoFactorType);
 /// } else {
 ///   navigateToHome();
@@ -173,6 +194,35 @@ class TomAuthenticationResult {
 
   /// The type of 2FA required (e.g., 'totp', 'sms', 'email').
   String twoFactorType = "";
+
+  /// Indicates that the user owes a second factor but has none set up yet.
+  ///
+  /// Distinct from [requires2FA]: that one says *answer a challenge*, this one
+  /// says *choose a mechanism and enrol it*. They are never both true — a login
+  /// is either being challenged or being enrolled — and a client that
+  /// understands only [requires2FA] therefore cannot mistake one for the other.
+  bool requires2FAEnrolment = false;
+
+  /// The mechanisms offered for set-up, in preference order, when
+  /// [requires2FAEnrolment] is true; empty otherwise.
+  ///
+  /// Already narrowed to what this principal's policy permits *and* this
+  /// deployment can actually enrol, so the client renders the list as given
+  /// rather than filtering it — a client-side filter would be a second place
+  /// for the two answers to disagree.
+  ///
+  /// The entries carry resource keys, not text (G-RES-1): the tier that renders
+  /// resolves them against the user's locale.
+  List<Tom2FAMethodDescriptor> availableTwoFactorMethods = [];
+
+  /// Whether the user may decline the enrolment offer and complete the login
+  /// without a second factor.
+  ///
+  /// True under an `optional` policy, and under a `required` one while grace
+  /// logins remain. The client shows a "not now" affordance only when this is
+  /// set; the server checks the same fact again from its own signed token, so a
+  /// client that shows one anyway achieves nothing.
+  bool twoFactorEnrolmentSkippable = false;
 
   /// Creates an authentication result.
   ///

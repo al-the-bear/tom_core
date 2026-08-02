@@ -197,66 +197,6 @@ class Tom2FASubmission {
   });
 }
 
-/// How a mechanism names itself to a user who is being asked to choose one.
-///
-/// A mechanism *key* (`'totp'`, `'sms'`) is an identifier: it dispatches a
-/// challenge back to the right adaptor and it is stable across releases, which
-/// is exactly why it must never be shown to anyone. A user offered a choice of
-/// second factors needs a label, an explanation and something to render — and
-/// all three are user-facing text, so under G-RES-1 they are **resource keys**,
-/// resolved against the caller's locale by whichever tier does the rendering.
-///
-/// The descriptor is therefore three keys and an identifier, and deliberately
-/// carries no literal text at all. A descriptor holding `'Authenticator app'`
-/// would be a translation defect that no test could distinguish from a correct
-/// value, because it *looks* right in the one locale it was written in.
-class Tom2FAMethodDescriptor {
-  /// The scope every shipped mechanism's keys live under, so a resource bundle
-  /// can be searched for "everything the 2FA catalog needs" by prefix.
-  static const String resourceScope = 'two_factor';
-
-  /// The mechanism key this descriptor belongs to — the same value
-  /// [Tom2FARegistry.lookup] resolves and a challenge dispatches on.
-  final String type;
-
-  /// Resource key of the mechanism's short label ("Authenticator app").
-  final String displayNameKey;
-
-  /// Resource key of the one-sentence explanation shown beside the label.
-  final String descriptionKey;
-
-  /// Resource key of the icon to render. A key rather than an asset path
-  /// because the two client tiers (Flutter, web) name their assets
-  /// differently, and the mechanism must not have to know which one is asking.
-  final String iconKey;
-
-  /// Describes a mechanism with explicitly chosen keys.
-  ///
-  /// Prefer [Tom2FAMethodDescriptor.scoped] unless the mechanism's text really
-  /// does live outside the [resourceScope] convention — a deployment adapting a
-  /// vendor SDK whose strings already ship under another prefix, say.
-  const Tom2FAMethodDescriptor({
-    required this.type,
-    required this.displayNameKey,
-    required this.descriptionKey,
-    this.iconKey = '',
-  });
-
-  /// Describes a mechanism whose text lives under `two_factor.<type>.*`.
-  ///
-  /// Derives all three keys from [type], which is what makes the convention
-  /// structural rather than a matter of per-mechanism discipline: a mechanism
-  /// cannot half-follow it, and adding one cannot silently invent a fourth
-  /// naming scheme.
-  Tom2FAMethodDescriptor.scoped(this.type)
-      : displayNameKey = '$resourceScope.$type.name',
-        descriptionKey = '$resourceScope.$type.description',
-        iconKey = '$resourceScope.$type.icon';
-
-  @override
-  String toString() => 'Tom2FAMethodDescriptor($type -> $displayNameKey)';
-}
-
 /// The contract a second-factor mechanism implements.
 ///
 /// Two questions, and only two: *what challenge should this user be given?* and

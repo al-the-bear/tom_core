@@ -266,6 +266,195 @@ class Tom2FAEnrolmentOffer {
       'Tom2FAEnrolmentOffer($type${hint.isEmpty ? '' : ' "$hint"'})';
 }
 
+/// An enrolment in flight, as carried by an interim login token.
+///
+/// The counterpart of [Tom2FAChallenge] for the *other* thing a login can owe.
+/// Where a challenge says "answer this", a state says "you have no factor yet;
+/// here is what you may set up, and here is how far you have got".
+///
+/// It has two shapes, and the difference is [offer]:
+///
+/// - **offered** ([offer] is null) — the login has branched into enrolment and
+///   the user has been handed [offeredTypes] to choose from. Nothing mechanism-
+///   specific exists yet.
+/// - **begun** ([offer] is non-null) — a mechanism was chosen, the adaptor
+///   generated its material, and the user must now type back a confirmation.
+///   [expiresAt] and the attempt counter bound that window.
+///
+/// [offeredTypes] survives into the begun shape on purpose: a user who scanned
+/// nothing and wants a different method must be able to go back without
+/// restarting the login, and the list they may go back to is the one the server
+/// offered — not one the client remembers.
+class Tom2FAEnrolmentState {
+  /// The mechanism keys offered, in preference order.
+  final List<String> offeredTypes;
+
+  /// Whether the user may decline and complete the login with no factor.
+  final bool skippable;
+
+  /// Whether declining spends one of the principal's grace logins.
+  ///
+  /// False under an `optional` policy, where declining costs nothing; true
+  /// under a `required` one that is being softened by grace.
+  final bool skipSpendsGrace;
+
+  /// The chosen mechanism's material, or `null` while the user is still
+  /// choosing.
+  final Tom2FAEnrolmentOffer? offer;
+
+  /// The UTC instant after which [offer] can no longer be confirmed; `null` in
+  /// the offered shape, where nothing mechanism-specific is pending.
+  final DateTime? expiresAt;
+
+  /// How many confirmation attempts have already been consumed.
+  final int attempt;
+
+  /// Records an enrolment in flight. [expiresAt] is normalised to UTC so
+  /// comparisons are unambiguous regardless of who constructed it.
+  Tom2FAEnrolmentState({
+    List<String> offeredTypes = const [],
+    this.skippable = false,
+    this.skipSpendsGrace = false,
+    this.offer,
+    DateTime? expiresAt,
+    this.attempt = 0,
+  })  : offeredTypes = List.unmodifiable(offeredTypes),
+        expiresAt = expiresAt?.toUtc();
+
+  /// Whether a mechanism has been chosen and its material generated.
+  bool get hasOffer => offer != null;
+
+  /// Whether the confirmation window has closed as of [now] (default: the
+  /// current instant). Always false in the offered shape, which has no window.
+  bool isExpired([DateTime? now]) {
+    final deadline = expiresAt;
+    if (deadline == null) return false;
+    return !(now ?? DateTime.now().toUtc()).toUtc().isBefore(deadline);
+  }
+
+  /// How many confirmation attempts remain. Never negative.
+  int get attemptsRemaining {
+    final allowed = offer?.attemptsAllowed ?? 0;
+    final remaining = allowed - attempt;
+    return remaining < 0 ? 0 : remaining;
+  }
+
+  /// Whether every allowed confirmation attempt has been consumed.
+  bool get isExhausted => hasOffer && attemptsRemaining <= 0;
+
+  /// This state with one more confirmation attempt consumed.
+  Tom2FAEnrolmentState withConsumedAttempt() => Tom2FAEnrolmentState(
+        offeredTypes: offeredTypes,
+        skippable: skippable,
+        skipSpendsGrace: skipSpendsGrace,
+        offer: offer,
+        expiresAt: expiresAt,
+        attempt: attempt + 1,
+      );
+
+  /// This state advanced to the begun shape with [chosen]'s material.
+  ///
+  /// The attempt counter restarts: the attempts an offer allows belong to
+  /// *that* offer, and choosing a different mechanism is a different offer.
+  Tom2FAEnrolmentState withOffer(Tom2FAEnrolmentOffer chosen, {DateTime? now}) =>
+      Tom2FAEnrolmentState(
+        offeredTypes: offeredTypes,
+        skippable: skippable,
+        skipSpendsGrace: skipSpendsGrace,
+        offer: chosen,
+        expiresAt: (now ?? DateTime.now()).toUtc().add(chosen.validity),
+      );
+
+  /// Projects this state onto the interim token's **public** claims (see
+  /// [Tom2FAEnrolmentClaims]).
+  ///
+  /// The mechanism-specific claims appear only in the begun shape, so a client
+  /// cannot mistake an offer list for a pending confirmation.
+  Map<String, Object?> toClaims() {
+    final claims = <String, Object?>{
+      Tom2FAEnrolmentClaims.pendingEnrolment: 'true',
+      Tom2FAEnrolmentClaims.offeredTypes: offeredTypes,
+      Tom2FAEnrolmentClaims.skippable: skippable,
+      Tom2FAEnrolmentClaims.skipSpendsGrace: skipSpendsGrace,
+    };
+    final chosen = offer;
+    if (chosen == null) return claims;
+    return claims
+      ..addAll({
+        Tom2FAEnrolmentClaims.type: chosen.type,
+        Tom2FAEnrolmentClaims.hint: chosen.hint,
+        Tom2FAEnrolmentClaims.attempt: attempt,
+        Tom2FAEnrolmentClaims.attemptsAllowed: chosen.attemptsAllowed,
+        Tom2FAEnrolmentClaims.expiresAt: expiresAt?.toIso8601String(),
+        Tom2FAEnrolmentClaims.clientData: chosen.clientData,
+      });
+  }
+
+  /// The token's **encrypted** claims for this state, or `null` in the offered
+  /// shape.
+  ///
+  /// The whole offer, secret section included — which is precisely why it goes
+  /// in the encrypted half: the confirmation must be checked against material
+  /// the client could not have edited on the way past.
+  Map<String, Object?>? get secretClaims =>
+      offer == null ? null : {Tom2FAEnrolmentClaims.offerData: offer!.toClaim()};
+
+  /// Reads a state back from a token's public [payload] and its decrypted
+  /// [secretData], or returns `null` when the token carries no enrolment.
+  ///
+  /// Defensive throughout, for the reason [Tom2FAChallenge.fromClaims] is: the
+  /// input arrived from outside the process. A payload that claims a pending
+  /// enrolment but carries an unreadable offer yields the *offered* shape rather
+  /// than a half-built confirmation — the user is asked to choose again, which
+  /// is the only safe reading.
+  static Tom2FAEnrolmentState? fromClaims(
+    Map<String, dynamic>? payload, [
+    Map<String, dynamic>? secretData,
+  ]) {
+    if (payload == null) return null;
+    if (payload[Tom2FAEnrolmentClaims.pendingEnrolment] != 'true') return null;
+
+    final offeredRaw = payload[Tom2FAEnrolmentClaims.offeredTypes];
+    final offeredTypes = offeredRaw is List
+        ? offeredRaw.whereType<String>().toList()
+        : const <String>[];
+    final skippable = payload[Tom2FAEnrolmentClaims.skippable] == true;
+    final skipSpendsGrace =
+        payload[Tom2FAEnrolmentClaims.skipSpendsGrace] == true;
+
+    final offer = Tom2FAEnrolmentOffer.fromClaim(
+      secretData?[Tom2FAEnrolmentClaims.offerData],
+    );
+    if (offer == null) {
+      return Tom2FAEnrolmentState(
+        offeredTypes: offeredTypes,
+        skippable: skippable,
+        skipSpendsGrace: skipSpendsGrace,
+      );
+    }
+
+    final expiresAtRaw = payload[Tom2FAEnrolmentClaims.expiresAt];
+    final attempt = payload[Tom2FAEnrolmentClaims.attempt];
+    return Tom2FAEnrolmentState(
+      offeredTypes: offeredTypes,
+      skippable: skippable,
+      skipSpendsGrace: skipSpendsGrace,
+      offer: offer,
+      expiresAt:
+          expiresAtRaw is String ? DateTime.tryParse(expiresAtRaw) : null,
+      attempt: attempt is int ? attempt : 0,
+    );
+  }
+
+  /// Names the state without printing the offer's payloads — they carry the
+  /// secret being enrolled, and this value reaches log lines.
+  @override
+  String toString() => 'Tom2FAEnrolmentState(offered: $offeredTypes'
+      '${skippable ? ', skippable' : ''}'
+      '${offer == null ? '' : ', begun ${offer!.type} $attempt/'
+          '${offer!.attemptsAllowed}'})';
+}
+
 // =============================================================================
 // CONTRACT
 // =============================================================================

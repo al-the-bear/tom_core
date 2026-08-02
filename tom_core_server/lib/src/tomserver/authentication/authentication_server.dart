@@ -2,6 +2,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
 import 'two_factor.dart';
+import 'two_factor_enrolment.dart';
 import 'two_factor_policy.dart';
 
 /// Marks a class as an authentication adaptor and constrains which login flows
@@ -348,11 +349,21 @@ class TomAuthenticationServer {
   /// interim token plus [TomAuthenticationResult.requires2FA], to be completed
   /// by [authenticatePass2].
   ///
-  /// [Tom2FARequirement.optional] currently behaves as `required` — the factor
-  /// is challenged for. Letting a user *decline* an optional factor needs a
-  /// wire-level "skip" the message type does not carry, so the decision is
-  /// honoured to the extent the flow can honour it rather than being silently
-  /// treated as `disabled`, which would be the unsafe reading.
+  /// ## The four shapes a deployment can be in
+  ///
+  /// | Policy | User has a usable factor | Outcome |
+  /// | --- | --- | --- |
+  /// | `disabled` | — | tokens, no mention of 2FA |
+  /// | `required` / `optional` | yes | interim token + challenge, answered by [authenticatePass2] |
+  /// | `required` | no | interim token + **enrolment offer**, answered by [beginTwoFactorEnrolment] |
+  /// | `optional` (or `required` with grace left) | no | the same offer, additionally declinable via [skipTwoFactorEnrolment] |
+  ///
+  /// "Has a usable factor" is [Tom2FAEnrolmentStore]'s answer, narrowed to the
+  /// mechanisms the policy permits. A deployment that installed **no** store
+  /// keeps the pre-enrolment behaviour exactly — it is challenged for its
+  /// factor, and the adaptor remains the only authority on whether the user has
+  /// one — because there would be nowhere to record an enrolment, and offering
+  /// one that could not be saved would be a lie.
   ///
   /// A [LoginException] yields a failed result carrying its `key`; any other
   /// error yields a `"login.error.unknown"` result.
@@ -400,9 +411,24 @@ class TomAuthenticationServer {
                   'account may use: ${decision.allowedMechanisms.join(', ')}',
         );
       }
-      final type = offerable.first;
+      // What this user has actually set up, narrowed to what they may use.
+      // `null` means "no store installed", which is not the same as "none
+      // enrolled" and must not be treated as it: the first keeps the legacy
+      // challenge path, the second is what forces enrolment.
+      final enrolled = await _usableEnrolments(context, offerable);
+      if (enrolled != null && enrolled.isEmpty) {
+        return _offerEnrolment(authInfo, m, decision, offerable);
+      }
+
+      // The user's primary factor among the permitted ones — not simply the
+      // policy's first choice, so a user with several factors is challenged for
+      // the one they nominated rather than for whichever the policy happens to
+      // list first.
+      final type = enrolled == null || enrolled.isEmpty
+          ? offerable.first
+          : _primaryOf(enrolled).type;
       // Non-null by construction: `offerable` is the intersection with the
-      // registry's own keys, so every entry resolves.
+      // registry's own keys, and `enrolled` was filtered against it.
       final adaptor = Tom2FARegistry.lookup(type)!;
 
       final spec = await adaptor.issueChallenge(context);
@@ -425,18 +451,317 @@ class TomAuthenticationServer {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Enrolment passes
+  // ---------------------------------------------------------------------------
+
+  /// Enrolment pass 1: begins setting up the mechanism the user chose.
+  ///
+  /// The chosen mechanism key travels in [TomAuthenticationMessage.password] —
+  /// the message's one payload slot, used here exactly as [authenticatePass2]
+  /// uses it for the submitted code. Every pass in this flow carries a single
+  /// user-supplied value, and giving each its own wire field would say the
+  /// passes are more different than they are.
+  ///
+  /// The offer token is recovered from the **interim token the client
+  /// presents**, as everywhere else in this flow; [enrolmentToken] overrides
+  /// that lookup for tests running without a request zone.
+  ///
+  /// Returns an interim token whose public claims carry the mechanism's
+  /// [Tom2FAEnrolmentOffer.clientData] — for TOTP, the secret and the
+  /// `otpauth://` URI the user scans — and whose encrypted section carries the
+  /// whole offer, so [completeTwoFactorEnrolment] can check the typed code
+  /// against material the client could not have edited.
+  ///
+  /// Refuses a mechanism that was not in the offer this token was issued with:
+  /// the authority for what may be enrolled is the list *the server* named,
+  /// never the key the client sends back.
+  Future<TomAuthenticationResult> beginTwoFactorEnrolment(
+    TomAuthenticationMessage m, {
+    TomClientJwtToken? enrolmentToken,
+  }) async {
+    try {
+      final (token, state) = _pendingEnrolment(enrolmentToken);
+
+      final type = m.password.trim();
+      if (!state.offeredTypes.contains(type)) {
+        throw LoginException(
+          'login.error.2fa.enrolment-not-offered',
+          'Two-factor mechanism "$type" was not offered for enrolment',
+        );
+      }
+      final support = Tom2FARegistry.enrolmentSupportFor(type);
+      if (support == null) {
+        throw LoginException(
+          'login.error.2fa.unsupported-mechanism',
+          'No enrollable adaptor is registered for two-factor mechanism '
+              '"$type"',
+        );
+      }
+
+      final principal =
+          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final context = _contextFor(principal, m);
+      final offer = await support.beginEnrolment(context);
+
+      return _issueTokens(
+        principal,
+        null,
+        m,
+        enrolment: state.withOffer(offer),
+      );
+    } catch (ex, s) {
+      return _failedResult(ex, s);
+    }
+  }
+
+  /// Enrolment pass 2: confirms the offer and completes the login.
+  ///
+  /// The typed confirmation travels in [TomAuthenticationMessage.password].
+  ///
+  /// On success the factor is written to the [Tom2FAEnrolmentStore] and the
+  /// **full token pair is issued immediately**, with no further challenge. A
+  /// user who has just derived a code from the secret they were handed has
+  /// demonstrated possession of the factor; challenging them for a second code
+  /// a moment later would prove nothing that this pass has not already proved.
+  ///
+  /// A wrong code stores nothing and returns a retry — the same offer with one
+  /// attempt spent, exactly as [authenticatePass2] does for a wrong challenge
+  /// answer — until [Tom2FAEnrolmentOffer.attemptsAllowed] is exhausted.
+  Future<TomAuthenticationResult> completeTwoFactorEnrolment(
+    TomAuthenticationMessage m, {
+    TomClientJwtToken? enrolmentToken,
+  }) async {
+    try {
+      final (token, state) = _pendingEnrolment(enrolmentToken);
+
+      final offer = state.offer;
+      if (offer == null) {
+        throw LoginException(
+          'login.error.2fa.enrolment-offer-invalid',
+          'No two-factor enrolment has been begun on this token',
+        );
+      }
+      if (state.isExpired()) {
+        throw LoginException(
+          'login.error.2fa.enrolment-expired',
+          'The two-factor enrolment has expired',
+        );
+      }
+      if (state.isExhausted) {
+        throw LoginException(
+          'login.error.2fa.enrolment-attempts-exhausted',
+          'No two-factor enrolment attempts remain',
+        );
+      }
+
+      final support = Tom2FARegistry.enrolmentSupportFor(offer.type);
+      if (support == null) {
+        throw LoginException(
+          'login.error.2fa.unsupported-mechanism',
+          'No enrollable adaptor is registered for two-factor mechanism '
+              '"${offer.type}"',
+        );
+      }
+      final store = Tom2FAEnrolmentStore.resolve();
+      if (store == null) {
+        throw LoginException(
+          'login.error.2fa.enrolment-unavailable',
+          'This deployment has no two-factor enrolment store, so the factor '
+              'cannot be recorded',
+        );
+      }
+
+      final principal =
+          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final context = _contextFor(principal, m);
+      final consumed = state.withConsumedAttempt();
+
+      final Tom2FAEnrolment confirmed;
+      try {
+        confirmed = await support.confirmEnrolment(context, offer, m.password);
+      } on LoginException catch (ex) {
+        // The confirmation contract signals every failure by throwing, so a
+        // throw here is treated the way a `false` from `verifySubmission` is:
+        // one attempt spent, then the same offer handed back.
+        if (consumed.isExhausted) {
+          throw LoginException(
+            'login.error.2fa.enrolment-attempts-exhausted',
+            'No two-factor enrolment attempts remain',
+          );
+        }
+        final retry = _issueTokens(principal, null, m, enrolment: consumed);
+        retry.error = ex.key;
+        return retry;
+      }
+
+      // The user's first factor becomes their primary one, so the next login
+      // has something to challenge without anyone having to nominate it.
+      final existing = await store.enrolmentsFor(context);
+      await store.store(
+        context,
+        existing.isEmpty ? confirmed.copyWith(isPrimary: true) : confirmed,
+      );
+
+      return _issueTokens(principal, null, m, twoFactorSatisfied: true);
+    } catch (ex, s) {
+      return _failedResult(ex, s);
+    }
+  }
+
+  /// Declines a skippable enrolment offer and completes the login with no
+  /// factor.
+  ///
+  /// A pass of its own rather than a flag on [completeTwoFactorEnrolment],
+  /// because "I set up a factor" and "I chose not to" are different events with
+  /// different consequences — only the second spends a grace login — and a
+  /// boolean that switched between them would make the audit trail depend on a
+  /// parameter's default.
+  ///
+  /// Refuses unless the presented token says the offer was skippable. That flag
+  /// is one this server signed, so a client that decides for itself that it may
+  /// decline achieves nothing.
+  Future<TomAuthenticationResult> skipTwoFactorEnrolment(
+    TomAuthenticationMessage m, {
+    TomClientJwtToken? enrolmentToken,
+  }) async {
+    try {
+      final (token, state) = _pendingEnrolment(enrolmentToken);
+      if (!state.skippable) {
+        throw LoginException(
+          'login.error.2fa.enrolment-required',
+          'This two-factor enrolment cannot be declined',
+        );
+      }
+
+      final principal =
+          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final context = _contextFor(principal, m);
+
+      if (state.skipSpendsGrace) {
+        if (Tom2FAPolicy.resolve() case final Tom2FAGraceAccounting policy) {
+          await policy.recordGraceLoginConsumed(context);
+        }
+      }
+
+      return _issueTokens(principal, null, m, twoFactorSatisfied: true);
+    } catch (ex, s) {
+      return _failedResult(ex, s);
+    }
+  }
+
+  /// The interim token and the enrolment it carries, or a thrown
+  /// [LoginException] when it carries none.
+  ///
+  /// This is what stops the enrolment passes from being an unauthenticated way
+  /// to attach a factor to an account: a completed token has no pending
+  /// enrolment, so presenting one is refused here before any mechanism is
+  /// reached. Only a token this server minted while branching a login into
+  /// enrolment gets past.
+  (TomClientJwtToken, Tom2FAEnrolmentState) _pendingEnrolment(
+    TomClientJwtToken? presented,
+  ) {
+    final token = presented ?? getFromCurrentZone<TomClientJwtToken>();
+    if (token == null) {
+      throw LoginException(
+        'login.error.2fa.no-enrolment',
+        'No pending two-factor enrolment was presented',
+      );
+    }
+    final state =
+        Tom2FAEnrolmentState.fromClaims(token.payload, token.secretData);
+    if (state == null) {
+      throw LoginException(
+        'login.error.2fa.no-enrolment',
+        'The presented token carries no pending two-factor enrolment',
+      );
+    }
+    return (token, state);
+  }
+
+  /// Branches the login into enrolment: an interim token offering every
+  /// permitted mechanism this deployment can actually set up.
+  TomAuthenticationResult _offerEnrolment(
+    TomAuthenticationInfo authInfo,
+    TomAuthenticationMessage m,
+    Tom2FADecision decision,
+    List<String> offerable,
+  ) {
+    final enrollable = [
+      for (final type in offerable)
+        if (Tom2FARegistry.enrolmentSupportFor(type) != null) type,
+    ];
+    if (enrollable.isEmpty) {
+      throw LoginException(
+        'login.error.2fa.unsupported-mechanism',
+        'The account requires a second factor it has not set up, and none of '
+            'the mechanisms it may use can be enrolled here: '
+            '${offerable.join(', ')}',
+      );
+    }
+
+    // Grace softens `required` into a declinable offer; `optional` is
+    // declinable by definition and costs nothing.
+    final optional = decision.requirement == Tom2FARequirement.optional;
+    final onGrace = !optional && decision.graceLogins > 0;
+
+    return _issueTokens(
+      authInfo.principal,
+      authInfo.acd,
+      m,
+      enrolment: Tom2FAEnrolmentState(
+        offeredTypes: enrollable,
+        skippable: optional || onGrace,
+        skipSpendsGrace: onGrace,
+      ),
+    );
+  }
+
+  /// This principal's set-up factors among [offerable], or `null` when no
+  /// [Tom2FAEnrolmentStore] is installed.
+  ///
+  /// The three outcomes are deliberately distinguishable: `null` is *nobody
+  /// tracks enrolments here*, an empty list is *tracked, and this user has
+  /// none*, and a non-empty list names what to challenge. Collapsing the first
+  /// two would force enrolment on every deployment that never opted in.
+  Future<List<Tom2FAEnrolment>?> _usableEnrolments(
+    Tom2FAContext context,
+    List<String> offerable,
+  ) async {
+    final store = Tom2FAEnrolmentStore.resolve();
+    if (store == null) return null;
+    final enrolments = await store.enrolmentsFor(context);
+    return [
+      for (final enrolment in enrolments)
+        if (offerable.contains(enrolment.type)) enrolment,
+    ];
+  }
+
+  /// The enrolment to challenge: the one the user nominated, or the first if
+  /// none is nominated. [enrolments] must not be empty.
+  Tom2FAEnrolment _primaryOf(List<Tom2FAEnrolment> enrolments) =>
+      enrolments.firstWhere(
+        (enrolment) => enrolment.isPrimary,
+        orElse: () => enrolments.first,
+      );
+
   /// Projects [principal] onto the token pair of a [TomAuthenticationResult].
   ///
   /// The single point at which this server mints tokens, so a completed pass 2
   /// and a 2FA-free pass 1 provably produce the same claim set: the only
-  /// difference between them is the [challenge] / [twoFactorSatisfied] pair fed
-  /// into the projection.
+  /// difference between them is the [challenge] / [enrolment] /
+  /// [twoFactorSatisfied] triple fed into the projection.
+  ///
+  /// [challenge] and [enrolment] are mutually exclusive by construction — a
+  /// login is either answering a factor or setting one up — and each turns the
+  /// pair into an *interim* token that grants no session.
   TomAuthenticationResult _issueTokens(
     TomPrincipal principal,
     TomAccessControlDefinition? definition,
     TomAuthenticationMessage m, {
     Tom2FAChallenge? challenge,
     Map<String, Object?>? twoFactorVerification,
+    Tom2FAEnrolmentState? enrolment,
     bool twoFactorSatisfied = false,
   }) {
     var (
@@ -452,6 +777,18 @@ class TomAuthenticationServer {
       twoFactorSatisfied: twoFactorSatisfied,
     );
 
+    if (enrolment != null) {
+      // A pending enrolment must not grant a session either, and the claim that
+      // withholds one is the same claim a pending challenge sets: everything
+      // downstream asks "may this token act?", and for both states the answer
+      // is no. Set before the enrolment's own claims so neither can be
+      // shadowed by the projection's default.
+      publicInfo[Tom2FAClaims.requires2FA] = 'true';
+      publicInfo.addAll(enrolment.toClaims());
+      final secret = enrolment.secretClaims;
+      if (secret != null) privateInfo.addAll(secret);
+    }
+
     var result = TomAuthenticationResult();
     result.authenticationToken =
         TomServerJwtToken(publicInfo).getJWT(globalSettingJwtOrganization);
@@ -463,8 +800,27 @@ class TomAuthenticationServer {
       result.requires2FA = true;
       result.twoFactorType = challenge.type;
     }
+    if (enrolment != null) {
+      result.requires2FAEnrolment = true;
+      result.availableTwoFactorMethods =
+          _descriptorsFor(enrolment.offeredTypes);
+      result.twoFactorEnrolmentSkippable = enrolment.skippable;
+    }
     return result;
   }
+
+  /// How the offered mechanisms describe themselves, in the order they were
+  /// offered.
+  ///
+  /// Asks the registry rather than carrying descriptors in the token: the
+  /// catalog is a property of the running deployment, and a token minted before
+  /// a mechanism's resource keys were corrected would otherwise keep handing out
+  /// the old ones.
+  List<Tom2FAMethodDescriptor> _descriptorsFor(List<String> types) => [
+        for (final type in types)
+          if (Tom2FARegistry.lookup(type) case final adaptor?)
+            adaptor.descriptor,
+      ];
 
   /// Builds the adaptor-facing context from the principal and the request.
   Tom2FAContext _contextFor(

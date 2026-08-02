@@ -38,6 +38,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
+import '../reflection/reflection.dart';
 import 'authentication_authorization.dart';
 
 /// The claim names under which a pending 2FA challenge travels in a token.
@@ -106,6 +107,9 @@ class Tom2FAEnrolmentClaims {
   /// Public claim: a short, displayable hint for the factor being set up.
   static const String hint = 'enrolmentHint';
 
+  /// Public claim: how many confirmation attempts have already been consumed.
+  static const String attempt = 'enrolmentAttempt';
+
   /// Public claim: how many confirmation attempts the offer allows in total.
   static const String attemptsAllowed = 'enrolmentAttemptsAllowed';
 
@@ -123,6 +127,104 @@ class Tom2FAEnrolmentClaims {
   /// **Encrypted** claim: the whole offer, including the mechanism's server-only
   /// section, so any instance can confirm what another began.
   static const String offerData = 'enrolmentOffer';
+
+  /// Public claim: the mechanism keys this principal was offered, in preference
+  /// order.
+  ///
+  /// Carried rather than recomputed because the offer is what the *server*
+  /// permitted at the moment the login branched: a client that came back naming
+  /// a mechanism must be checked against the list it was actually given, not
+  /// against whatever the policy would answer on a second evaluation.
+  static const String offeredTypes = 'enrolmentOfferedTypes';
+
+  /// Public claim: `"true"` when the user may decline the offer and complete
+  /// the login without a second factor.
+  ///
+  /// Decided once, on the pass that made the offer, and carried — so the
+  /// authority for "may I skip?" is the token the server signed, never a flag
+  /// the client sends back.
+  static const String skippable = 'enrolmentSkippable';
+
+  /// Public claim: `"true"` when declining the offer spends one of the
+  /// principal's grace logins rather than being free.
+  ///
+  /// Recorded on the pass that made the offer because that pass is the one that
+  /// knows *why* skipping was allowed — an optional policy (free) or a required
+  /// one with grace left (charged). Re-deriving it at skip time would ask the
+  /// policy a second question whose answer had already been acted on.
+  static const String skipSpendsGrace = 'enrolmentSkipSpendsGrace';
+}
+
+/// How a mechanism names itself to a user who is being asked to choose one.
+///
+/// A mechanism *key* (`'totp'`, `'sms'`) is an identifier: it dispatches a
+/// challenge back to the right adaptor and it is stable across releases, which
+/// is exactly why it must never be shown to anyone. A user offered a choice of
+/// second factors needs a label, an explanation and something to render — and
+/// all three are user-facing text, so under G-RES-1 they are **resource keys**,
+/// resolved against the caller's locale by whichever tier does the rendering.
+///
+/// The descriptor is therefore three keys and an identifier, and deliberately
+/// carries no literal text at all. A descriptor holding `'Authenticator app'`
+/// would be a translation defect that no test could distinguish from a correct
+/// value, because it *looks* right in the one locale it was written in.
+///
+/// ## Why it lives in the kernel
+///
+/// It is produced by the server's mechanism registry but consumed by a client
+/// rendering a choice, and it travels between them inside
+/// [TomAuthenticationResult.availableTwoFactorMethods]. That makes it a wire
+/// type, and wire types live where both tiers can see them — beside
+/// [Tom2FAChallenge], which is client-visible for the same reason.
+@tomReflector
+class Tom2FAMethodDescriptor {
+  /// The scope every shipped mechanism's keys live under, so a resource bundle
+  /// can be searched for "everything the 2FA catalog needs" by prefix.
+  static const String resourceScope = 'two_factor';
+
+  /// The mechanism key this descriptor belongs to — the same value the
+  /// server's registry resolves and a challenge dispatches on.
+  String type = '';
+
+  /// Resource key of the mechanism's short label ("Authenticator app").
+  String displayNameKey = '';
+
+  /// Resource key of the one-sentence explanation shown beside the label.
+  String descriptionKey = '';
+
+  /// Resource key of the icon to render. A key rather than an asset path
+  /// because the two client tiers (Flutter, web) name their assets
+  /// differently, and the mechanism must not have to know which one is asking.
+  String iconKey = '';
+
+  /// Describes a mechanism with explicitly chosen keys.
+  ///
+  /// Prefer [Tom2FAMethodDescriptor.scoped] unless the mechanism's text really
+  /// does live outside the [resourceScope] convention — a deployment adapting a
+  /// vendor SDK whose strings already ship under another prefix, say.
+  ///
+  /// Every parameter is optional, and the fields are mutable, because this is a
+  /// wire DTO: reflection constructs it empty and fills it in (G-DTO-1/2).
+  Tom2FAMethodDescriptor({
+    this.type = '',
+    this.displayNameKey = '',
+    this.descriptionKey = '',
+    this.iconKey = '',
+  });
+
+  /// Describes a mechanism whose text lives under `two_factor.<type>.*`.
+  ///
+  /// Derives all three keys from [type], which is what makes the convention
+  /// structural rather than a matter of per-mechanism discipline: a mechanism
+  /// cannot half-follow it, and adding one cannot silently invent a fourth
+  /// naming scheme.
+  Tom2FAMethodDescriptor.scoped(this.type)
+      : displayNameKey = '$resourceScope.$type.name',
+        descriptionKey = '$resourceScope.$type.description',
+        iconKey = '$resourceScope.$type.icon';
+
+  @override
+  String toString() => 'Tom2FAMethodDescriptor($type -> $displayNameKey)';
 }
 
 /// A second-factor challenge awaiting an answer.
