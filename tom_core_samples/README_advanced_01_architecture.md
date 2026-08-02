@@ -28,6 +28,22 @@ The split is not just operational tidiness: it makes the authority store and the
 application store independently ownable, which is exactly the boundary a real
 deployment would draw.
 
+### The node that is not on this diagram
+
+A fifth runtime, [`advanced_ops_server`](advanced_ops_server/README.md), runs
+scheduled back-office work — a retention purge, a digest, a weekly export, an
+audit-anchor publisher — over `app_db`. It appears in none of the figures below
+because it participates in **none** of the flows they draw: it has no port, no
+database of its own, no client, and no share in the request or grant-propagation
+loops. Its only edges are to `app_db` and to the two servers' repositories, which
+it reuses rather than re-declares.
+
+That absence is the architectural statement. Recurring work is not a request
+without a caller; it is a *different node shape*, with its own identity (a
+service account under a deliberately narrow server cap), its own failure
+semantics (a retry policy per job rather than a status code), and its own
+scheduling boundary. [Part 14](README_advanced_14_operations.md) draws it.
+
 ## Layering and dependency arrows
 
 Three library packages sit beneath the four runtimes, and every dependency arrow
@@ -327,7 +343,7 @@ is the shared JWT signing key above.
 ## Primary sources
 
 - [`README_advanced_sample.md`](README_advanced_sample.md) — Architecture section + diagram, the suite map, and the quickstart.
-- The seven package READMEs, for per-node detail.
+- The eight package READMEs, for per-node detail.
 - `assets/architecture/` — the seven SVG figures embedded above (`advanced_01_layering`, `advanced_02_jwt_shared_key`, `advanced_03_grant_propagation`, `advanced_04_overall_architecture`, `advanced_05_call_api_service_routing`, `advanced_06_token_refresh`, `advanced_07_request_lifecycle`), each carrying an HTML-comment description and a mermaid equivalent alongside.
 
 ---

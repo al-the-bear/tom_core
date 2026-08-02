@@ -223,6 +223,96 @@ void main() {
       expect(back.detail, 'because');
     });
 
+    // Bug §75. `before`/`after` are filled straight from an entity's fields, so
+    // whatever a column holds arrives here — and the record is JSON-encoded
+    // three times over (the chain hash, the file sink's line, the SQL sink's
+    // column). A value `jsonEncode` cannot represent therefore did not merely
+    // spoil the record: `_audit` is deliberately uncaught, so the *mutation*
+    // raised. An audited entity with a `DateTime` column could not be updated
+    // or deleted at all.
+    group('non-encodable values in before/after (bug §75)', () {
+      test('a DateTime is normalised to its ISO-8601 form', () {
+        final at = DateTime.utc(2026, 8, 2, 5);
+        final record = _record('r1', before: {'createdAt': at});
+        expect(record.before['createdAt'], at.toIso8601String());
+        // The same encoding `timestamp` uses, so one record does not spell a
+        // moment two ways.
+        expect(() => jsonEncode(record.toJson()), returnsNormally);
+      });
+
+      test('a local DateTime is normalised as UTC', () {
+        final local = DateTime(2026, 8, 2, 5);
+        final record = _record('r1', after: {'dueAt': local});
+        expect(record.after['dueAt'], local.toUtc().toIso8601String());
+      });
+
+      test('an enum is normalised to its name', () {
+        final record = _record(
+          'r1',
+          before: {'action': TomAuditAction.delete},
+        );
+        expect(record.before['action'], 'delete');
+      });
+
+      test('nested lists and maps are normalised through', () {
+        final at = DateTime.utc(2026, 8, 2);
+        final record = _record(
+          'r1',
+          after: {
+            'tags': ['a', at],
+            'meta': {'seen': at},
+          },
+        );
+        expect(record.after['tags'], ['a', at.toIso8601String()]);
+        expect(record.after['meta'], {'seen': at.toIso8601String()});
+        expect(() => jsonEncode(record.toJson()), returnsNormally);
+      });
+
+      test('an arbitrary object falls back to toString rather than raising', () {
+        // Recording an approximation of a changed field beats refusing the
+        // mutation: the trail's job is to say *that* the field changed, and a
+        // throw here would make the framework delete the operation instead.
+        final record = _record(
+          'r1',
+          before: {'zone': TomZonedDate(year: 2026, month: 8, day: 2)},
+        );
+        expect(record.before['zone'], isA<String>());
+        expect(() => jsonEncode(record.toJson()), returnsNormally);
+      });
+
+      test('encodable values are left exactly as they are', () {
+        // The normalisation must stay a conversion of the values `jsonEncode`
+        // rejects, not a blanket stringification of every audited field.
+        final record = _record(
+          'r1',
+          before: {'n': 1, 'x': 1.5, 'b': true, 's': 'v', 'z': null},
+        );
+        expect(record.before, {
+          'n': 1,
+          'x': 1.5,
+          'b': true,
+          's': 'v',
+          'z': null,
+        });
+      });
+
+      test('normalising is idempotent, so a re-read record is unchanged', () {
+        // `fromJson` builds through the same constructor, so a record read back
+        // out of an archive is normalised a second time. It must be a no-op —
+        // otherwise a stored trail's hashes would not survive being re-read.
+        final record = _record('r1', before: {'createdAt': DateTime.utc(2026)});
+        final back = TomAuditRecord.fromJson(
+          (jsonDecode(jsonEncode(record.toJson())) as Map)
+              .cast<String, Object?>(),
+        );
+        expect(back.before, record.before);
+        expect(
+          TomAuditEntry.hashOf(back, 'x'),
+          TomAuditEntry.hashOf(record, 'x'),
+        );
+      });
+    });
+
     test('an unknown enum name does not make an old archive unreadable', () {
       final json = _record('r1').toJson();
       json['action'] = 'teleport';

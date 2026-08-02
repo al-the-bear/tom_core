@@ -133,7 +133,8 @@ class MariadbPreparedStatement<T extends Object>
 
   /// Marshals one bind [value] into a driver primitive: a [TomDbType] box is
   /// unwrapped to the Dart value it holds; a Dart `bool` becomes its MariaDB
-  /// integer encoding; every other value is bound as-is.
+  /// integer encoding; a UTC [DateTime] becomes its local equivalent; every
+  /// other value is bound as-is.
   ///
   /// MariaDB has no native boolean type — `BOOLEAN` is an alias for
   /// `TINYINT(1)` stored as `1`/`0`. The driver serializes a bound Dart `bool`
@@ -141,9 +142,26 @@ class MariadbPreparedStatement<T extends Object>
   /// integer column ("Incorrect integer value: 'false'", error 1366; bug §72).
   /// Translating `bool`→`int` here keeps that kernel→driver mapping at the
   /// single data-source boundary that already owns the [TomDbType] unwrap.
+  ///
+  /// MariaDB has no zone-aware `DATETIME` either, and the driver serializes a
+  /// bound [DateTime] through its `toString()` — which for a UTC instant ends in
+  /// `Z`. The server rejects the suffix ("Incorrect datetime value:
+  /// '2000-01-01 00:00:00.000Z'", error 1292; bug §73), so before this
+  /// conversion a `DateTime.utc(...)` could not be written to a datetime column
+  /// at all.
+  ///
+  /// Converted with [DateTime.toLocal] rather than by stripping the suffix,
+  /// because the two are not the same value. The read side parses a suffix-less
+  /// column through `DateTime.parse`, which yields a *local* `DateTime`;
+  /// stripping would therefore store a UTC wall clock and read it back as a
+  /// local one — the same text naming an instant off by the machine's offset.
+  /// `toLocal()` preserves the moment, so a write followed by a read is a round
+  /// trip. Callers keep whichever convention they like; only the value handed to
+  /// the driver is normalised.
   static Object? _toBindValue(Object? value) {
     final unwrapped = value is TomDbType ? value.get() : value;
     if (unwrapped is bool) return unwrapped ? 1 : 0;
+    if (unwrapped is DateTime && unwrapped.isUtc) return unwrapped.toLocal();
     return unwrapped;
   }
 

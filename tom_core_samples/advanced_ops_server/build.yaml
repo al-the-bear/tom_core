@@ -1,0 +1,16 @@
+# Reflection generator config. The live-boot entrypoint (bin/ops_server_start.dart)
+# is the reflection root: the generator follows its import graph to capture the
+# config class, the three @TomScheduledJob classes (a job that is not in the
+# reflection build is not discoverable at all), and — through the
+# advanced_app_server and advanced_auth_server barrels — the app_db and auth_db
+# records the jobs read, delete and address mail to. The anchor publisher is
+# deliberately absent from that list: it is not a job. See ops_anchoring.dart.
+# Emits bin/ops_server_start.reflection.dart.
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - bin/ops_server_start.dart
+        options:
+          formatted: true

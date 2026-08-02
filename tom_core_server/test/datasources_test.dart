@@ -285,6 +285,43 @@ void main() {
       );
       expect(bound, [null]);
     });
+
+    // Bug §73: the driver serializes a bound DateTime through `toString()`,
+    // which for a UTC instant appends `Z` — '2000-01-01 00:00:00.000Z'. MariaDB
+    // has no zone-aware DATETIME and rejects the suffix outright ("Incorrect
+    // datetime value", error 1292), so before this a `DateTime.utc(...)` could
+    // not be persisted at all.
+    //
+    // Converted rather than merely stripped of its `Z`: the read side parses a
+    // suffix-less column value as *local* (`DateTime.parse`), so stripping would
+    // store a UTC wall clock and read it back as a local one — the same text
+    // naming a different instant, silently off by the machine's offset. Only
+    // `toLocal()` round-trips.
+    test('a UTC DateTime binds as the local instant MariaDB can store', () {
+      final utc = DateTime.utc(2000, 1, 1, 12);
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['created_at'],
+        {'created_at': utc},
+      );
+
+      final value = bound.single as DateTime;
+      expect(value.isUtc, isFalse);
+      expect(value.toString(), isNot(endsWith('Z')));
+      // The same moment in time, so a write followed by a read is a round trip.
+      expect(value.isAtSameMomentAs(utc), isTrue);
+    });
+
+    test('a local DateTime is bound unchanged', () {
+      // The already-working case, asserted so the fix above stays a conversion
+      // of the UTC case and does not become a blanket re-anchoring of every
+      // DateTime that passes through.
+      final local = DateTime(2000, 1, 1, 12);
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['created_at'],
+        {'created_at': local},
+      );
+      expect(bound.single, same(local));
+    });
   });
 
   group('MariaDbDatasource.toPositionalStatement (RCA5)', () {

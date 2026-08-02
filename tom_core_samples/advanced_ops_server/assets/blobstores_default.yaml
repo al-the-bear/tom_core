@@ -1,0 +1,16 @@
+# Blob-store configuration — where the scheduled export writes.
+#
+# The same store the app server configures, over the same `app_db`. That is what
+# makes the export job's claim worth making: `TomBlobExportStore` wraps a
+# `TomBlobStore`, so a rendered report lands in the *same* `tom_blob` /
+# `tom_blob_chunk` pair as an item attachment, keyed under its own prefix. Export
+# and file storage meet at exactly one seam — `TomExportStore` — and nothing else
+# in either module had to know about the other.
+#
+# `createSchema: false` for the same reason as the app server's: the tables are
+# owned by the migration chain ([003]-app_blob_tables.sql), and a store that
+# provisioned its own would be a second, unversioned spelling of the same schema.
+files:
+  type: database
+  datasource: app_db
+  createSchema: false

@@ -327,6 +327,14 @@ per message; the scheduler does the rest:
 The outbox contributes only the *shape* of the run: a message as the payload, a
 body that hands it to a `TomMessageRouter`.
 
+**Worked example.** `advanced_ops_server`'s digest job composes a message and
+hands it over; a *second* scheduler delivers it. `test/ops_digest_test.dart`
+asserts the consequence that makes the split worth having — a failed send is
+redelivered **without recomposition**, so the digest a reader eventually receives
+is the one that was true when it was composed. The job itself therefore declares
+`TomRetryPolicy.none`: the retry budget belongs to the outbox, per message. See
+[`README_advanced_14_operations.md`](../../tom_core_samples/README_advanced_14_operations.md).
+
 Three consequences of that choice, each of which is a deliberate detail:
 
 **The outbox runs its own scheduler.** A scheduler has one dispatcher, and a

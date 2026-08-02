@@ -508,6 +508,13 @@ costs about two megabytes a year. `close()` publishes a final anchor, so the
 entries written since the last tick are not left unanchored by a graceful
 shutdown.
 
+**Worked example.** `advanced_ops_server` in the samples suite runs three
+scheduled jobs *and* this publisher in one process, so the difference is visible
+rather than asserted in prose: `test/ops_anchor_test.dart` checks the publisher's
+own timer and that **no `@TomScheduledJob` declares it**, which is the shape of
+the mistake this section exists to prevent. See
+[`README_advanced_14_operations.md`](../../tom_core_samples/README_advanced_14_operations.md).
+
 ## Failure Behaviour
 
 The trail is **fail-closed**: if the sink cannot store a record, the audited

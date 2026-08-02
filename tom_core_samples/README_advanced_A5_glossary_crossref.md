@@ -58,11 +58,12 @@ is explained *in the context of the whole system*.
 | [`advanced_app_server`](advanced_app_server/README.md) | [05 · Persistence & database](README_advanced_05_persistence_database.md) / [10 · Servers & endpoints](README_advanced_10_servers_endpoints.md) |
 | [`advanced_app_client`](advanced_app_client/README.md) | [09 · Forms & UI](README_advanced_09_forms_ui.md) / [11 · The two Flutter clients](README_advanced_11_clients_app_admin.md) |
 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | [09 · Forms & UI](README_advanced_09_forms_ui.md) / [11 · The two Flutter clients](README_advanced_11_clients_app_admin.md) |
+| [`advanced_ops_server`](advanced_ops_server/README.md) | [14 · Operations: scheduled work over live data](README_advanced_14_operations.md) |
 
 ## Primary sources
 
-- All seven package `README.md` files (the per-package descriptions)
-- The spine docs [00](README_advanced_00_introduction.md)–[13](README_advanced_13_file_transfer.md) and appendices [A1](README_advanced_A1_authorization_state_machine.md)–[A4](README_advanced_A4_implementation_rules_checklist.md) (each term's defining section)
+- All eight package `README.md` files (the per-package descriptions)
+- The spine docs [00](README_advanced_00_introduction.md)–[14](README_advanced_14_operations.md) and appendices [A1](README_advanced_A1_authorization_state_machine.md)–[A4](README_advanced_A4_implementation_rules_checklist.md) (each term's defining section)
 
 ---
 

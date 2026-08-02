@@ -414,6 +414,15 @@ narrow is what made `TomBlobExportStore` four delegating methods when the blob
 storage arrived (see [Every Backend at Once](#every-backend-at-once)); nothing
 that renders or delivers an export changed.
 
+**Worked example.** `advanced_ops_server` renders a weekly report into the *same*
+`tom_blob` pair that holds an item attachment, separated only by a key prefix —
+the seam in practice. `test/ops_live_test.dart` reads the stored bytes back out
+of the database through `open(key)` rather than through
+`TomStoredExport.location`, which is the retrieval the narrow interface actually
+offers: a database-backed store has no address to publish, so its `location` is
+legitimately `null`. See
+[`README_advanced_14_operations.md`](../../tom_core_samples/README_advanced_14_operations.md).
+
 Properties that are load-bearing rather than incidental:
 
 - **Streams on both sides.** An export large enough to be worth storing is large

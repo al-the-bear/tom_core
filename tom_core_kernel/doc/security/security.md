@@ -481,6 +481,17 @@ set, other principal — which is why server-level grants needed no new class.
 ladder, so a feature the deployment only partly licenses can still resolve to
 `read`.
 
+**Seeing it happen.** The advanced full-stack sample runs a back-office server
+whose service account holds one grant more than the process is capped for, and
+asserts both halves of the claim in a connection-free suite: the same principal,
+holding the same entitlement, refused under the cap and allowed the moment it is
+lifted. A refusal on its own proves nothing — it is indistinguishable from a
+missing entitlement — which is why the assertions come in pairs and the only
+thing that varies between them is the installed `TomServerPrincipal`. See
+`tom_core_samples/advanced_ops_server/test/ops_authorization_meet_test.dart` and
+the narrative in
+[`README_advanced_14_operations.md`](../../../tom_core_samples/README_advanced_14_operations.md).
+
 ---
 
 ## Usage Examples

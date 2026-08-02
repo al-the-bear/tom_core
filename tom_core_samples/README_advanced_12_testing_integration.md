@@ -14,7 +14,7 @@ matrix proves the same widget renders differently per principal.
 [Part 13](README_advanced_13_file_transfer.md) then follows a single feature —
 file transfer — through every layer this part tests.
 
-## Test strategy across the seven packages
+## Test strategy across the eight packages
 
 Each package carries its own suite, written against the layer it owns and
 against the seam directly below it — never against a live socket:
@@ -28,6 +28,7 @@ against the seam directly below it — never against a live socket:
 | `advanced_app_server` | the secured task API: the ownership-or-share resolver, the four-state field-grade resolver, the write enforcement, and the per-row column grade + file-column declarations behind the file slots |
 | `advanced_app_client` | the end-user widgets bound to the **in-memory** backend fake — the four-role render matrix, the sentinel render proof, and the graded attachment field |
 | `advanced_authadmin_client` | the admin console widgets against the **in-memory** admin fake — CRUD drafts, two-phase login, the grant-matrix editor |
+| `advanced_ops_server` | the back-office jobs against stand-in stores — the retention scan, digest composition and its redelivery, the export projection, every declared schedule, and `min(user, server)` as a *pair* of runs; plus a live suite reading the audit trail and the exported bytes back out of `app_db` ([Part 14](README_advanced_14_operations.md)) |
 
 The discipline that makes this work is the **injected backend seam**
 ([Part 11](README_advanced_11_clients_app_admin.md)): every client screen is
@@ -182,18 +183,29 @@ A change is done only when all three hold together:
 
 1. **`dart analyze` is clean** in every package (zero errors, zero warnings).
 2. **Every suite is green**, run serially (the Flutter packages with `-j 1`).
-3. **The cross-tier runner exits 0** with "All tests passed!" against a freshly
-   booted stack.
+3. **Both runners exit 0** with "All tests passed!" against freshly booted
+   infrastructure — the cross-tier runner over the whole stack, and
+   `advanced_ops_server/tool/run_ops_integration.sh` over the databases alone.
 
-This gate was last re-run live on 2026-07-28. Reaching it has so far surfaced
-and fixed **seven** real `tom_core_server` bugs: zone principal resolution, the
-nullable surrogate-key read, the MariaDB `bool`→`1`/`0` bind, query-string
-parameter binding, pipeline error logging, a streamed download that lost its
-principal (a shelf response body is lazy, so the read ran outside the request
-zone), and a file endpoint that declared no access policy at all — which, given
-that the framework's protection default is *open*, made every exposed file
-column world-readable. The suites are not decoration; they were the instrument
-that found framework defects, including two security-relevant ones.
+Reaching this gate has so far surfaced and fixed **ten** real `tom_core_server`
+bugs: zone principal resolution, the nullable surrogate-key read, the MariaDB
+`bool`→`1`/`0` bind, query-string parameter binding, pipeline error logging, a
+streamed download that lost its principal (a shelf response body is lazy, so the
+read ran outside the request zone), a file endpoint that declared no access
+policy at all — which, given that the framework's protection default is *open*,
+made every exposed file column world-readable — and then three `DateTime`
+defects the ops server reached first: a UTC timestamp MariaDB refused to bind, a
+timestamp column the query compiler declared untypeable, and an audit
+before-image that could not be JSON-encoded and so failed the *mutation* rather
+than the record.
+
+The suites are not decoration; they were the instrument that found framework
+defects, including two security-relevant ones. The `DateTime` cluster is the
+sharper lesson: those three had survived the entire prior suite because no sample
+entity had ever happened to query, audit or bind a timestamp. A whole type's
+worth of behaviour was untested behind an accident of the domain model, and only
+a *new kind* of sample — one with a retention window and an audited purge —
+could reach it.
 
 ## Test counts
 

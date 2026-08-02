@@ -64,7 +64,7 @@ collects the vocabulary in the [glossary](README_advanced_A5_glossary_crossref.m
 but if you have read the basic `core_*_sample` pair, this is the natural next
 step.
 
-## The seven packages at a glance
+## The eight packages at a glance
 
 | # | Package | What it is | Runtime |
 | --- | --- | --- | --- |
@@ -75,6 +75,7 @@ step.
 | 5 | [`advanced_app_server`](advanced_app_server/README.md) | The secured task API. Trusts the shared JWT key, validates the bearer on every request, resolves ownership + shares + four-state field grades, persists `app_db`. | HTTP `:8080`, `app_db` `:3308` |
 | 6 | [`advanced_app_client`](advanced_app_client/README.md) | The end-user Flutter app: login, a status-column board, a bound item editor with live per-field authorization, and cross-user sharing. | Flutter |
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, assignments, and the `projectRole` × field grant matrix. | Flutter |
+| 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over `app_db` — retention purge, digest into the messaging outbox, weekly export, audit anchors. No HTTP surface, no database of its own. | timers, `app_db` `:3308` |
 
 Part [02](README_advanced_02_project_layout_build.md) shows how they depend on
 one another and how to build and run them; part
@@ -100,7 +101,8 @@ the whole thing in order:
 > 03 Domain & reflection → 04 Wire contracts → 05 Persistence & databases →
 > 06 Authentication → 07 Authorization → 08 Resources & texts → 09 Forms & UI →
 > 10 Servers & endpoints → 11 Clients → 12 Testing & integration →
-> 13 File transfer under the authorization matrix.
+> 13 File transfer under the authorization matrix →
+> 14 Operations: scheduled work over live data.
 
 The last part is a **capstone**: rather than introducing a new layer, it follows
 one feature — a task's file attachment — down through every layer the preceding

@@ -1754,7 +1754,12 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       case DateTime:
       case TomZonedDateTime:
       case TomNDateTime:
-        DateTimeCol(column.tableType, field, column);
+        // The `return` is load-bearing (bug §74). Without it the node was
+        // constructed and dropped, control fell out of the switch, and a
+        // timestamp column with no explicit `columnType:` was reported as
+        // untypeable — so no query sentence could carry a date predicate
+        // unless the entity spelled the type out by hand.
+        return DateTimeCol(column.tableType, field, column);
       case TomZonedDate:
         return DateCol(column.tableType, field, column);
     }

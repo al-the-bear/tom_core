@@ -6,13 +6,14 @@
 This is the **secured, full-stack successor** to the basic
 [`core_server_sample`](core_server_sample/README.md) /
 [`core_client_sample`](core_client_sample/README.md) pair. Where those teach one
-server and one client in isolation, this suite is **two servers, two databases,
+server and one client in isolation, this suite is **three servers, two databases,
 and two Flutter clients** wired together end-to-end: a JWT auth/admin server, a
-secured task-manager app server, an end-user app, and an administrator console —
-all sharing one reflected domain and one wire contract, with live four-state
-field authorization and cross-user sharing.
+secured task-manager app server, an end-user app, an administrator console, and a
+back-office operations server running scheduled work over the app database — all
+sharing one reflected domain and one wire contract, with live four-state field
+authorization and cross-user sharing.
 
-> **Reading this map.** This document links the seven packages, draws the
+> **Reading this map.** This document links the eight packages, draws the
 > architecture, and gives the one quickstart that stands the whole system up.
 > Every package ships its own article-grade `README.md` with the depth — nothing
 > about a package's internals is re-documented here.
@@ -46,6 +47,7 @@ bottom; each links to the next.
 | 11 | [The two Flutter clients](README_advanced_11_clients_app_admin.md) | App client vs admin console; sessions; the in-memory vs live backend seam; bootstrap; the share flow and grant-matrix editor. |
 | 12 | [Testing & cross-tier integration](README_advanced_12_testing_integration.md) | Test strategy; serial-Flutter rule; the sentinel render proof; the four-role matrix; the cross-tier runner; the green gate. |
 | 13 | [File transfer under the authorization matrix](README_advanced_13_file_transfer.md) | One feature across every layer: the three column declarations; slots from annotations; the per-row C-4 grade; the three refusal layers; the client field; cascade delete; how it is proved. |
+| 14 | [Operations: scheduled work over live data](README_advanced_14_operations.md) | Scheduling, audit, messaging and export in one artifact: the retention purge through the repository chokepoint; the digest handed to the outbox; the weekly export; why the anchor publisher is *not* a job; `min(user, server)` as a test; two schedulers over one store; one migration chain, two packages. |
 
 ### Appendices (deep dives)
 
@@ -59,7 +61,7 @@ bottom; each links to the next.
 
 ---
 
-## The seven packages
+## The eight packages
 
 | # | Package | What it is | Runtime |
 | --- | --- | --- | --- |
@@ -70,6 +72,7 @@ bottom; each links to the next.
 | 5 | [`advanced_app_server`](advanced_app_server/README.md) | The secured task-manager API. Trusts the JWT signing key shared with the auth server, validates the bearer token on every request, resolves ownership + shares + four-state field grades, and persists `app_db`. | HTTP `:8080`, `app_db` `:3308` |
 | 6 | [`advanced_app_client`](advanced_app_client/README.md) | The end-user Flutter app: login, a status-column task board, a bound item-detail editor with per-field four-state authorization driven live over the wire, and cross-user sharing. | Flutter |
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, role assignments, and the `projectRole` × field grant matrix via the auth server's `/admin/*` API. | Flutter |
+| 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer. No HTTP surface and no database of its own. | timers, `app_db` `:3308` |
 
 ---
 
@@ -215,6 +218,15 @@ It boots both databases and both servers, runs the three live suites in
 A green run is a genuine live-stack pass — the runner converts a
 server-unreachable skip into a failure.
 
+The back-office server has its own runner, because its assertions need a database
+but no server: it boots `app_db` (and `auth_db`, which the boot's datasource
+initialization insists on), applies the migration this package contributes to the
+app chain, and runs both the live and the connection-free suites.
+
+```sh
+tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
+```
+
 ---
 
 ## Documentation index
@@ -241,6 +253,7 @@ tom_core_samples/
   advanced_app_server/           secured task-manager API              (HTTP 8080, app_db 3308)
   advanced_app_client/           end-user Flutter app (board + sharing + field grades)
   advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
+  advanced_ops_server/           scheduled back-office work           (no port, app_db 3308)
 ```
 
 ## License

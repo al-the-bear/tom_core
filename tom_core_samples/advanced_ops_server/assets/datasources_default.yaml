@@ -1,0 +1,46 @@
+# Datasource configuration with environment-variable substitution
+# (${VAR:default}). Deliberately the *same two connections* the app server
+# declares, at the same defaults: this server introduces no database of its own.
+#
+# That is the constraint the whole package is built around. A back-office server
+# with its own store would be a second system of record for the same tasks, and
+# the interesting claim — that a machine-initiated delete is audited exactly like
+# a human one, by the same repository, into the same trail — could not be made at
+# all.
+#
+# The map key MUST equal the migration folder name under database_migrations/,
+# so `app_db` here matches database_migrations/app_db/. This server contributes
+# one migration to that chain ([004]) creating the framework tables the scheduler
+# and the audit sink need; the app server's [000]–[003] are untouched.
+app_db:
+  type: mariadb
+  username: ${APP_DB_USER:app}
+  password: ${APP_DB_PASSWORD:app}
+  host: ${APP_DB_HOST:localhost}
+  port: ${APP_DB_PORT:3308}
+  databaseName: ${APP_DB_NAME:app_db}
+
+# The auth server's database, under the name its entities were annotated with.
+# `UserRecord` carries `@TomDbTable(datasource: 'auth_db', …)`, and the digest
+# resolves recipients through the auth server's own `userRepository` rather than
+# a local copy of that table — so the ops server must register the name the
+# annotation asks for, spelled exactly the same way.
+#
+# Read-only from here. The ops server never writes a user row; the admin console
+# owns that, and a back-office process that edited the directory as a side effect
+# of composing mail would be a second writer nobody expects.
+auth_db:
+  type: mariadb
+  username: ${AUTH_DB_USER:auth}
+  password: ${AUTH_DB_PASSWORD:auth}
+  host: ${AUTH_DB_HOST:localhost}
+  port: ${AUTH_DB_PORT:3307}
+  databaseName: ${AUTH_DB_NAME:auth_db}
+
+# The framework's graded-authorization store (`TomResourceGrant`) carries the
+# default datasource name `main` in its own annotation, and the grant matrix
+# lives in `auth_db`. Delegating rather than repeating the connection block is
+# what the auth server does too, and it makes the identity explicit: one physical
+# database, reached under two names because two annotations ask for two names.
+main:
+  delegateTo: auth_db

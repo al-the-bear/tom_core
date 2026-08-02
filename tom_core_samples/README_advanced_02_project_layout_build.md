@@ -3,14 +3,14 @@
 *Part 02 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 This part is the practical companion to the [architecture](README_advanced_01_architecture.md):
-how the seven packages are laid out on disk, how their pubspecs wire together,
+how the eight packages are laid out on disk, how their pubspecs wire together,
 why they are all `publish_to: none`, how reflection code is generated (and when a
 regen is actually required), and the exact steps to build and run the whole
 system locally.
 
-## The seven packages on disk
+## The eight packages on disk
 
-All seven packages live side by side under `tom_core_samples/`:
+All eight packages live side by side under `tom_core_samples/`:
 
 ```
 tom_core_samples/
@@ -22,11 +22,12 @@ tom_core_samples/
   advanced_app_server/           secured task-manager API         (HTTP 8080, app_db 3308)
   advanced_app_client/           end-user Flutter app (board + sharing + field grades)
   advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
+  advanced_ops_server/           scheduled back-office work       (no port, app_db 3308)
 ```
 
 Each package is an ordinary Dart/Flutter package with its own `pubspec.yaml`,
 `README.md`, and `LICENSE`. The two clients are Flutter packages (they depend on
-the Flutter SDK plus `tom_flutter_ui` / `tom_core_flutter`); the other five are
+the Flutter SDK plus `tom_flutter_ui` / `tom_core_flutter`); the other six are
 plain Dart packages.
 
 ## Pubspec wiring
@@ -49,6 +50,13 @@ The dependency arrows (verified against the real `dependencies:` blocks) are:
 | `advanced_app_server` | `advanced_todo_contracts`, `advanced_todo_domain`, `tom_core_server` (+ kernel) |
 | `advanced_app_client` | `advanced_client_core`, `advanced_todo_contracts`, `advanced_todo_domain`, `tom_flutter_ui`, `tom_core_flutter` (+ kernel) |
 | `advanced_authadmin_client` | `advanced_client_core`, `advanced_todo_contracts`, `tom_flutter_ui`, `tom_core_flutter` (+ kernel) |
+| `advanced_ops_server` | `advanced_app_server`, `advanced_auth_server`, `advanced_todo_domain`, `tom_core_server` (+ kernel) |
+
+`advanced_ops_server` is the only package that depends on **another server**, and
+deliberately so: it operates on the app server's data through the app server's
+own repositories, and resolves digest recipients through the auth server's
+`UserRepository`. A second entity model over the same tables would make its
+audit-chokepoint claim a claim about a copy nobody runs.
 
 > **`path:` is the monorepo convention, not a workaround.** These are sibling
 > packages built and versioned together inside one repository, so a relative
@@ -67,6 +75,7 @@ built (and its reflection generated) after the packages it imports:
 3. `advanced_client_core` (needs the contracts)
 4. `advanced_auth_server` and `advanced_app_server` (need contracts + domain; order between the two does not matter to the *build*, only at *runtime* — start auth first)
 5. `advanced_app_client` and `advanced_authadmin_client` (need `advanced_client_core` + contracts)
+6. `advanced_ops_server` (needs **both** servers, because it reuses their repositories)
 
 `dart pub get` (or `flutter pub get` for the two clients) in each package resolves
 the relative paths; running it bottom-up avoids resolving against a
@@ -83,7 +92,7 @@ prevents an accidental `dart pub publish`.
 
 ## Reflection generation
 
-Five of the seven packages reflect types; each has **exactly one reflection entry
+Six of the eight packages reflect types; each has **exactly one reflection entry
 point** and a `build.yaml` that emits a sibling `<entry>.reflection.dart`. Only
 real entry-points (the servers' `bin/` and the clients' `lib/`) ship a **runtime**
 seed; the two **libraries** carry a seed only for their own tests, rooted under
@@ -97,6 +106,7 @@ seed; the two **libraries** carry a seed only for their own tests, rooted under
 | `advanced_app_server` | `bin/app_server_start.dart` | `bin/app_server_start.reflection.dart` | runtime |
 | `advanced_app_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` | runtime |
 | `advanced_authadmin_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` | runtime |
+| `advanced_ops_server` | `bin/ops_server_start.dart` | `bin/ops_server_start.reflection.dart` | runtime |
 
 (`advanced_client_core` reflects nothing of its own — it consumes the combined
 client seed.)
@@ -197,7 +207,7 @@ socket-free widget tests inject (part
 
 ## Primary sources
 
-- The seven `pubspec.yaml` files; each package's `build.yaml`, `reflection_generation.sh`, and reflection entry/seed.
+- The eight `pubspec.yaml` files; each package's `build.yaml`, `reflection_generation.sh`, and reflection entry/seed.
 - [`README_advanced_sample.md`](README_advanced_sample.md) — the Repository-layout tree and the [Run the whole thing](README_advanced_sample.md#run-the-whole-thing) quickstart.
 
 ---

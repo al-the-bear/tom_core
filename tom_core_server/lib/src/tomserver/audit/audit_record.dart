@@ -232,8 +232,54 @@ class TomAuditRecord {
     Map<String, Object?> after = const {},
     this.detail,
   }) : timestamp = timestamp.toUtc(),
-       before = Map.unmodifiable(before),
-       after = Map.unmodifiable(after);
+       before = Map.unmodifiable(_encodableValues(before)),
+       after = Map.unmodifiable(_encodableValues(after));
+
+  /// [values] with every entry converted to something `jsonEncode` accepts
+  /// (bug §75).
+  ///
+  /// The images are filled straight from an entity's fields, so whatever a
+  /// column holds arrives here — and the record is JSON-encoded three times
+  /// over: the chain hash, the file sink's line, the SQL sink's column. That
+  /// makes encodability an invariant of the *record*, not of one writer, which
+  /// is why it is established in the constructor beside [timestamp]'s coercion
+  /// rather than in [toJson]. [TomAuditRecord.fromJson] builds through this
+  /// constructor too, so the conversion has to be idempotent — it is, because
+  /// everything it produces is already encodable and passes through untouched.
+  ///
+  /// Before this, an audited entity with a `DateTime` column could not be
+  /// updated or deleted at all: the repository's `_audit` is deliberately
+  /// uncaught, so a trail that could not encode the before-image did not lose
+  /// the record, it failed the mutation.
+  static Map<String, Object?> _encodableValues(Map<String, Object?> values) {
+    if (values.isEmpty) return const {};
+    return {
+      for (final entry in values.entries) entry.key: _encodable(entry.value),
+    };
+  }
+
+  /// One value, converted only if `jsonEncode` would refuse it.
+  ///
+  /// `DateTime` uses the same ISO-8601-in-UTC form as [timestamp], so a single
+  /// record does not spell a moment two ways. Anything else unrecognised falls
+  /// back to [Object.toString] rather than raising: the trail's job is to say
+  /// *that* a field changed, and refusing here would make the framework cancel
+  /// the operation instead of describing it approximately.
+  static Object? _encodable(Object? value) {
+    if (value == null || value is String || value is num || value is bool) {
+      return value;
+    }
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    if (value is Enum) return value.name;
+    if (value is Map) {
+      return {
+        for (final entry in value.entries)
+          entry.key.toString(): _encodable(entry.value),
+      };
+    }
+    if (value is Iterable) return value.map(_encodable).toList();
+    return value.toString();
+  }
 
   /// The record as a JSON map.
   ///

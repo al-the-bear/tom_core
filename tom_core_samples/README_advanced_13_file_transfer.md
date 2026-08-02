@@ -303,4 +303,4 @@ as checklist lines with their enforcement anchors.
 
 ---
 
-← Prev: [12 · Testing & cross-tier integration](README_advanced_12_testing_integration.md) · Next: [A1 · Four-state authorization deep dive](README_advanced_A1_authorization_state_machine.md) →
+← Prev: [12 · Testing & cross-tier integration](README_advanced_12_testing_integration.md) · Next: [14 · Operations: scheduled work over live data](README_advanced_14_operations.md) →
