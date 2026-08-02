@@ -374,6 +374,27 @@ fragment.
 | `dateTimeF` | `SqlString dateTimeF(String fieldName, DbCol column, Type dbType)` | Renders a qualified reference to a timestamp column as `table.column`. |
 | `dateF` | `SqlString dateF(String fieldName, DbCol column, Type dbType)` | Renders a qualified reference to a date column as `table.column`. |
 
+##### Methods — type classification
+
+The dialect's other job. Everything above renders SQL *out*; these three read a
+column type name *in*, reducing DDL text such as `VARCHAR(255)` or `BIGINT
+UNSIGNED` to a `TomSqlTypeFamily` so that a declared Dart type and a stored SQL
+type can be compared at all. The schema-convergence checks run both sides
+through `typeFamily`; `baseTypeName` and `typeArguments` are exposed so an
+overriding dialect need not re-tokenise the type itself.
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `typeFamily` | `TomSqlTypeFamily typeFamily(String sqlType)` | Classifies a DDL column type into the family it stores. The base word decides; parenthesised arguments and trailing attributes are ignored. An unrecognised type yields `TomSqlTypeFamily.unknown` rather than a guess. **The hook a driver overrides** — call `super.typeFamily` for the standard names. |
+| `baseTypeName` | `String baseTypeName(String sqlType)` | The upper-cased leading word of a DDL type — `VARCHAR(255)` → `VARCHAR`, `DOUBLE PRECISION` → `DOUBLE`, `` `int` `` → `INT` (backticks stripped). |
+| `typeArguments` | `List<String> typeArguments(String sqlType)` | The trimmed, comma-separated arguments of the type's parenthesis, or an empty list — `VARCHAR(255)` → `['255']`, `DECIMAL(10, 2)` → `['10', '2']`. |
+
+`typeFamily` yields `unknown` instead of guessing because the convergence check
+reads that as "no opinion" and stays silent, where a guess would report a
+divergence it cannot justify. Widths, precisions, signedness and defaults are
+deliberately not represented: the Dart side never states them, so there is
+nothing to compare them against.
+
 ##### Methods — aggregates
 
 The whole SQL surface a grouped query renders through. A database that spells
@@ -409,6 +430,17 @@ divergence.
 ```dart
 MariadbSqlDialect()
 ```
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `typeFamily` | `TomSqlTypeFamily typeFamily(String sqlType)` | *(override)* Classifies `TINYINT(1)` as `boolean`, delegating everything else to `super`. Only the exact `(1)` display width is boolean — a plain `TINYINT` or a `TINYINT(4)` really is a small integer. |
+
+This is the shape a driver's own dialect should copy: recognise the cases the
+database spells differently, then `return super.typeFamily(sqlType)`. Restating
+the standard names in the override would mean a name added to the base list
+never reaches the subclass.
 
 #### TomSqlDialect
 
@@ -1033,7 +1065,10 @@ The coarse type classes a stored column can belong to — `integer`, `decimal`,
 a Dart type and a SQL type name can be compared at all (the schema-convergence
 check reduces both sides to it), and is deliberately coarse: widths, precisions,
 signedness and defaults are not represented, because the Dart side never states
-them. A dialect classifies through `TomStandardSqlDialect.typeFamily`.
+them. A dialect classifies through `TomStandardSqlDialect.typeFamily` — see
+[Methods — type classification](#methods--type-classification) for that method
+and the two helpers an override reuses, and [Classifying Column
+Types](../datasources.md#classifying-column-types) for the reasoning.
 
 ### TomSqlFailureMode
 
@@ -1041,7 +1076,12 @@ What a failed data-source write says about whether it took effect —
 `definite` (the server answered with an error, so the statement did not apply)
 or `ambiguous` (the failure was on the way to or from the server, so the write
 may have been applied anyway). Ambiguous is the default because only a server
-answer is evidence; see `sql_failure_mode.dart`.
+answer is evidence: the set of transport failures is open-ended and grows with
+every driver and proxy, so enumerating it would make each omission a silent
+correctness bug, while "the server answered" is closed and recognisable. The
+costs are asymmetric too — a false `ambiguous` costs one wasted `SELECT`, a
+false `definite` is the bug the classifier exists to prevent. See [When a Write
+Fails](../datasources.md#when-a-write-fails).
 
 ## Global Functions and Constants
 

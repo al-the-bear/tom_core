@@ -62,6 +62,15 @@ void main() {
       expect(standard.baseTypeName('`decimal`(10, 2)'), 'DECIMAL');
       expect(standard.typeArguments('DECIMAL(10, 2)'), ['10', '2']);
       expect(standard.typeArguments('BIGINT'), isEmpty);
+      // A multi-word type ends at the space, so a trailing attribute cannot
+      // reach the family lookup. `baseTypeName` and `typeArguments` are public
+      // for overriding dialects, so these are documented behaviour, not
+      // incidental: see doc/datasources.md, "Classifying Column Types".
+      expect(standard.baseTypeName('DOUBLE PRECISION'), 'DOUBLE');
+      expect(standard.baseTypeName('BIGINT UNSIGNED'), 'BIGINT');
+      expect(standard.typeArguments('VARCHAR(255)'), ['255']);
+      expect(standard.typeFamily('BIGINT UNSIGNED'), TomSqlTypeFamily.integer);
+      expect(standard.typeFamily('DECIMAL(10,2)'), TomSqlTypeFamily.decimal);
     });
 
     test('MariaDB reads TINYINT(1) as a truth value, TINYINT as an int', () {

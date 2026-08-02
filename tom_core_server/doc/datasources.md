@@ -15,9 +15,11 @@ layer.
 - [SQL-Typed Values](#sql-typed-values)
 - [The Operator Tree](#the-operator-tree)
 - [The SQL Dialect](#the-sql-dialect)
+- [Classifying Column Types](#classifying-column-types)
 - [Aggregate Fragments](#aggregate-fragments)
 - [Query Objects](#query-objects)
 - [Data Sources and Drivers](#data-sources-and-drivers)
+- [When a Write Fails](#when-a-write-fails)
 - [The MariaDB Driver](#the-mariadb-driver)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -33,7 +35,10 @@ layer.
 | `SqlString` | typedef | A `String` that documents "this is a SQL fragment" |
 | `TomStandardSqlDialect` | class | Renders operator nodes to standard-SQL fragments |
 | `TomAggregateFunction` | enum | The aggregate vocabulary a dialect must render (`count`/`sum`/`avg`/`min`/`max`) |
+| `TomSqlTypeFamily` | enum | The coarse type classes a stored column can belong to — what a dialect reduces a SQL type name *to* |
 | `TomSqlDialect` | annotation | Binds a dialect subclass to a data-source type |
+| `TomSqlFailureMode` | enum | Whether a failed write is known not to have happened (`definite`) or unknown (`ambiguous`) |
+| `classifySqlFailure` / `sqlFailureCauses` | function | Classifies a write failure, and walks the `rootException` chain it reads |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | A query over a set of entity types |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect` | class | Concrete statements |
 | `TomTypePersistenceInfo` | reflected class | Per-type persistence metadata (table + columns) |
@@ -94,7 +99,72 @@ literals is a tracked follow-up — see the completion steps.)
 
 A driver supplies its own dialect by subclassing and annotating with
 `@TomSqlDialect("<type>")`; `MariadbSqlDialect` does this and inherits the
-standard generation unchanged.
+standard generation unchanged — its one override is on the *reading* side, below.
+
+## Classifying Column Types
+
+The dialect has a second job that renders no SQL at all: reading a column type
+*in*. `typeFamily(String sqlType)` reduces DDL text — `VARCHAR(255)`, `BIGINT
+UNSIGNED`, `DECIMAL(10,2)` — to one of the coarse `TomSqlTypeFamily` values
+(`integer`, `decimal`, `text`, `boolean`, `dateTime`, `date`, `time`, `binary`,
+`unknown`).
+
+It lives on the dialect because type *names* are dialect-specific in the same
+way SQL fragments are, and it exists because a Dart type and a SQL type name
+cannot be compared directly. [Schema
+Convergence](db_migration.md#schema-convergence) tells the other half of this
+story: the schema-convergence checks build a dialect-neutral `TomSchemaModel`
+from each side — the reflected `@TomDbColumn` declarations, and the DDL replayed
+out of the migration chain — and the only way those two meet is by reducing both
+to a family. Every type comparison in that check is a `typeFamily` call.
+
+```dart
+final d = MariadbSqlDialect();
+d.typeFamily('VARCHAR(255)');      // text
+d.typeFamily('DECIMAL(10,2)');     // decimal
+d.typeFamily('TINYINT(1)');        // boolean   ← the MariaDB override
+d.typeFamily('TINYINT');           // integer
+d.typeFamily('GEOGRAPHY');         // unknown  ← no opinion, not a guess
+```
+
+Two deliberate limits:
+
+- **The base word decides.** Parenthesised arguments and trailing attributes are
+  ignored, because no width, precision, signedness or default is expressible on
+  the Dart side, so there is nothing to compare them against. Representing them
+  would produce divergences no entity declaration could ever resolve.
+- **An unrecognised type yields `unknown`, never a guess.** The convergence
+  check reads `unknown` as "no opinion" and stays silent. A guess would report a
+  divergence it could not justify, and a false alarm in a check that gates
+  startup is worse than a gap in it.
+
+A dialect whose database spells types differently overrides `typeFamily`,
+recognises only its own special cases, and delegates the rest:
+
+```dart
+@override
+TomSqlTypeFamily typeFamily(String sqlType) {
+  if (baseTypeName(sqlType) == 'TINYINT') {
+    final arguments = typeArguments(sqlType);
+    if (arguments.length == 1 && arguments.first == '1') {
+      return TomSqlTypeFamily.boolean;
+    }
+  }
+  return super.typeFamily(sqlType);
+}
+```
+
+That is `MariadbSqlDialect` in full. MariaDB has no distinct boolean storage —
+`BOOLEAN` is a synonym for `TINYINT(1)`, and that is how a `bool` entity field
+reaches DDL — so calling it an integer would report every boolean column of
+every migration as a divergence. Only the exact `(1)` display width is boolean;
+a plain `TINYINT` or a `TINYINT(4)` really is a small integer.
+
+`baseTypeName` and `typeArguments` are public for exactly this: the override
+needs the same tokenisation the base class uses, and restating it would let the
+two drift. Delegating the rest to `super` matters for the same reason — a type
+name added to the standard list must reach every subclass without being copied
+into it.
 
 ## Aggregate Fragments
 
@@ -179,6 +249,68 @@ await TomDataSourceInfo.initializeDatasourceInfo({
 final ds = TomDataSourceInfo.getDataSourceInfo('main')!.datasource;
 ```
 
+## When a Write Fails
+
+A write that throws has two very different meanings, and the exception does not
+say which one it is.
+
+If the **server answered** — "duplicate key", "deadlock, transaction rolled
+back", "syntax error" — the statement definitively did not take effect, and the
+caller may treat the failure as a clean no-op. If the **connection** failed, the
+caller learned nothing: the statement may have been received, executed and
+committed, with only the acknowledgement lost. The write may well have happened.
+
+For most statements the distinction does not matter, because the caller retries
+or gives up either way. It matters wherever the affected-row count **is** the
+answer to a question — an exclusive claim, a compare-and-set takeover — because
+there "the write failed" and "I did not get it" become two different statements,
+and conflating them hands ownership to a node that believes it owns nothing.
+
+`classifySqlFailure(Object? error)` answers the question as a
+`TomSqlFailureMode`:
+
+| Value | Meaning | What a caller does with it |
+| ----- | ------- | -------------------------- |
+| `definite` | The server answered with an error; the statement did not take effect | Treat it as a clean no-op — rethrow, retry, or report, whichever the operation calls for |
+| `ambiguous` | The failure was on the way to or from the server; the write may have been applied | Do not assume. Re-read the state and believe what it says |
+
+### Why the test recognises the *definite* side
+
+The obvious implementation is a list of transport failures — socket closed,
+broken pipe, TLS reset, timeout — treated as ambiguous, everything else as
+definite. That list is open-ended: it grows with every driver, proxy, container
+runtime and platform, and each omission is a silent correctness bug that only
+appears under a network fault.
+
+The other side is closed and recognisable. "The server sent back an error" is
+exactly one thing — a `MySQLServerException`, carrying the server's own error
+code — and it is the only case in which the outcome is known. So the test is
+inverted: **definite when the server answered, ambiguous otherwise.** Every
+unrecognised failure, including one from a driver that did not exist when this
+was written, lands on the safe side by default rather than by enumeration.
+
+The asymmetry of the costs is what makes that the right default. Deciding
+`ambiguous` when the truth was `definite` costs one extra `SELECT` that finds
+nothing changed. Deciding `definite` when the truth was `ambiguous` is the bug
+the classifier exists to prevent.
+
+### Walking the chain
+
+`classifySqlFailure` does not inspect the exception it is handed — it walks the
+`rootException` chain, because the data source wraps driver failures and the
+`MySQLServerException` is typically a link or two down inside a
+`MariadbDatasourceException`. The walk is bounded (8 links) so a cyclic or
+pathologically nested chain cannot spin; wrapping is two links deep in practice.
+
+`sqlFailureCauses(Object? error)` exposes that same walk — `error` and every
+`rootException` beneath it, outermost first. It is public because a caller that
+has decided a failure is ambiguous usually wants to log *what* it was, and the
+driver exception worth naming is several wrappers down.
+
+The scheduler's job store is the module that needs all of this; see
+[`scheduling.md`](scheduling.md#when-the-answer-to-a-claim-is-lost) for the
+claim path that consumes it.
+
 ## The MariaDB Driver
 
 `MariaDbDatasource` (`@TomDatasourceDriver("mariadb")`) connects to MariaDB /
@@ -240,7 +372,13 @@ two-phase commit across multiple resources.
 - **`TomOperator<R>`** — the typed SQL expression node (`generate`, `getFields`,
   `getParameters`).
 - **`TomStandardSqlDialect`** (+ the `TomSqlDialect` annotation) — SQL-fragment
-  generation; `SqlString`.
+  generation; `SqlString`. Also the reading side: `typeFamily` / `baseTypeName` /
+  `typeArguments` reduce a DDL type name to a **`TomSqlTypeFamily`**, which is
+  how a declared Dart type and a stored SQL type are compared at all.
+- **`TomSqlFailureMode`** (+ `classifySqlFailure`, `sqlFailureCauses`) — whether
+  a failed write is known not to have happened or merely unknown. Ambiguous is
+  the default because the set of transport failures is open-ended and the set of
+  "the server answered" is not.
 - **`TomAggregateFunction`** and the aggregate fragments (`aggregate`,
   `aliased`, `groupByClause`, `havingClause`) — the whole SQL surface a grouped
   query renders through.
