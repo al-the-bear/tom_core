@@ -147,6 +147,125 @@ class Tom2FAEnrolment {
       '${hint.isEmpty ? '' : ' "$hint"'}${isPrimary ? ', primary' : ''})';
 }
 
+/// What an adaptor produces when asked to *begin* setting a factor up — the
+/// enrolment counterpart of [Tom2FAChallengeSpec].
+///
+/// The same split, for the same reason: [clientData] is what the user must be
+/// given (for TOTP the base32 secret and the `otpauth://` URI behind the QR
+/// code, for SMS the number a code was sent to), [enrolmentData] is what only
+/// the server may see. Confirmation checks the typed code against
+/// [enrolmentData], never against [clientData] — the latter travels in public
+/// claims, and a confirmation that trusted it would let a client enrol a secret
+/// of its own choosing and call it confirmed.
+///
+/// For TOTP the secret appears in *both*, deliberately: in [clientData] because
+/// handing it to the user is the entire point of enrolment, and in
+/// [enrolmentData] because the server must confirm against a copy the user's
+/// browser could not have edited on the way past.
+///
+/// Carried between [Tom2FAEnrolmentSupport.beginEnrolment] and
+/// [Tom2FAEnrolmentSupport.confirmEnrolment] in the interim token — see
+/// [Tom2FAEnrolmentClaims] — so enrolment is as stateless as verification and
+/// any instance can finish what another started. Nothing is written to the
+/// [Tom2FAEnrolmentStore] until confirmation succeeds.
+class Tom2FAEnrolmentOffer {
+  /// The mechanism key this offer is for — the same value
+  /// [Tom2FARegistry.lookup] resolves.
+  final String type;
+
+  /// A short displayable clue for the factor being set up, carried through to
+  /// [Tom2FAEnrolment.hint] on confirmation. Empty when the mechanism has
+  /// nothing worth showing.
+  final String hint;
+
+  /// The mechanism's client-visible enrolment payload; carried in the interim
+  /// token's public claims and interpreted only by the mechanism's own client
+  /// code.
+  final Map<String, Object?> clientData;
+
+  /// The mechanism's server-only enrolment payload; carried in the interim
+  /// token's encrypted section and handed back to
+  /// [Tom2FAEnrolmentSupport.confirmEnrolment].
+  final Map<String, Object?> enrolmentData;
+
+  /// How many confirmation attempts this offer tolerates before it is burned.
+  final int attemptsAllowed;
+
+  /// How long the offer stays confirmable.
+  ///
+  /// Bounded, not open-ended: an unconfirmed secret sitting in a token forever
+  /// is a credential nobody is watching, and the user who abandoned the setup
+  /// has no way to revoke it.
+  final Duration validity;
+
+  /// Describes a freshly begun enrolment.
+  const Tom2FAEnrolmentOffer({
+    required this.type,
+    this.hint = '',
+    this.clientData = const {},
+    this.enrolmentData = const {},
+    this.attemptsAllowed = 3,
+    this.validity = const Duration(minutes: 10),
+  });
+
+  /// The offer as a JSON-safe map, for [Tom2FAEnrolmentClaims.offerData].
+  ///
+  /// Whole, including [enrolmentData]: the claim it goes into is the encrypted
+  /// one, and an offer that round-tripped without its server section could not
+  /// be confirmed by the instance that received it.
+  Map<String, Object?> toClaim() => {
+        _claimType: type,
+        _claimHint: hint,
+        _claimClientData: clientData,
+        _claimEnrolmentData: enrolmentData,
+        _claimAttemptsAllowed: attemptsAllowed,
+        _claimValiditySeconds: validity.inSeconds,
+      };
+
+  /// Reads back what [toClaim] wrote, or `null` when [claim] is not a
+  /// well-formed offer.
+  ///
+  /// Nullable rather than throwing because the input is a decoded token: a
+  /// truncated, tampered-with or older-release claim is an ordinary thing to
+  /// meet, and the caller's response to all three is the same — refuse the
+  /// confirmation. Fields other than the type fall back to their defaults, so
+  /// an offer written before a field existed still confirms.
+  static Tom2FAEnrolmentOffer? fromClaim(Object? claim) {
+    if (claim is! Map) return null;
+    final type = claim[_claimType];
+    if (type is! String || type.isEmpty) return null;
+    final validitySeconds = claim[_claimValiditySeconds];
+    return Tom2FAEnrolmentOffer(
+      type: type,
+      hint: claim[_claimHint] is String ? claim[_claimHint] as String : '',
+      clientData: _mapOf(claim[_claimClientData]),
+      enrolmentData: _mapOf(claim[_claimEnrolmentData]),
+      attemptsAllowed:
+          claim[_claimAttemptsAllowed] is int ? claim[_claimAttemptsAllowed] as int : 3,
+      validity: Duration(
+        seconds: validitySeconds is int ? validitySeconds : 600,
+      ),
+    );
+  }
+
+  static Map<String, Object?> _mapOf(Object? value) => value is Map
+      ? {for (final entry in value.entries) '${entry.key}': entry.value}
+      : const {};
+
+  static const String _claimType = 'type';
+  static const String _claimHint = 'hint';
+  static const String _claimClientData = 'clientData';
+  static const String _claimEnrolmentData = 'enrolmentData';
+  static const String _claimAttemptsAllowed = 'attemptsAllowed';
+  static const String _claimValiditySeconds = 'validitySeconds';
+
+  /// Names the offer without printing either payload — [clientData] carries the
+  /// secret being enrolled, and this value reaches log lines.
+  @override
+  String toString() =>
+      'Tom2FAEnrolmentOffer($type${hint.isEmpty ? '' : ' "$hint"'})';
+}
+
 // =============================================================================
 // CONTRACT
 // =============================================================================
@@ -200,6 +319,59 @@ abstract class Tom2FAEnrolmentStore {
   /// other.
   static String principalKeyOf(Tom2FAContext context) =>
       context.principal.id.toString();
+}
+
+/// What a mechanism implements when a user can *set it up* — the third
+/// question, asked only of the mechanisms that have an answer.
+///
+/// ## Why this is not on [Tom2FAService]
+///
+/// [Tom2FAService] asks two questions and says so: issue a challenge, verify a
+/// submission. Enrolment is a third, and not every mechanism has one — a
+/// hardware token an administrator provisions, or a mechanism backed by a
+/// corporate directory, is *acquired* entirely outside the framework and has
+/// nothing to offer here. Widening the base contract would force those adaptors
+/// to implement a method whose only honest body is a throw, and every caller to
+/// treat that throw as a normal outcome. A separate interface makes "can this be
+/// enrolled?" an `is` check that [Tom2FARegistry.enrollableMethods] answers for
+/// the whole registry at once.
+///
+/// ## Why confirmation is not optional
+///
+/// The pair is `begin` then `confirm`, and nothing is stored in between. Storing
+/// an unconfirmed secret locks the user out of their own account whenever the QR
+/// scan silently failed: the server believes a factor is enrolled, the
+/// authenticator holds nothing, and the next login demands a code that cannot be
+/// produced. Making the user type back a derived code proves the secret arrived
+/// before it is allowed to become a login requirement.
+///
+/// Implementations must be stateless between the two calls, for the same reason
+/// [Tom2FAService] must be: they may run on different instances. Everything the
+/// confirmation needs travels in the [Tom2FAEnrolmentOffer].
+abstract class Tom2FAEnrolmentSupport {
+  /// Begins setting this mechanism up for [context]'s principal: generates
+  /// whatever the factor needs and returns it as an offer.
+  ///
+  /// Nothing is persisted. Throws [LoginException] when this user cannot enrol
+  /// this mechanism at all (no phone number on file, a quota reached).
+  Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context);
+
+  /// Confirms [offer] against what the user typed back, returning the enrolment
+  /// to store.
+  ///
+  /// Returns only on success — the return type is non-nullable precisely so that
+  /// "an enrolment came back" cannot mean anything but "confirmed". A wrong
+  /// [submitted] throws [LoginException]; the caller may re-offer the same
+  /// offer until [Tom2FAEnrolmentOffer.attemptsAllowed] is spent.
+  ///
+  /// Implementations must derive the expected answer from
+  /// [Tom2FAEnrolmentOffer.enrolmentData] and never from
+  /// [Tom2FAEnrolmentOffer.clientData].
+  Future<Tom2FAEnrolment> confirmEnrolment(
+    Tom2FAContext context,
+    Tom2FAEnrolmentOffer offer,
+    String submitted,
+  );
 }
 
 // =============================================================================

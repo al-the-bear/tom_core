@@ -9,6 +9,8 @@
 /// needs.
 library;
 
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -386,6 +388,45 @@ void main() {
         Tom2FARegistry.availableMethods.map((m) => m.type),
         Tom2FARegistry.registeredTypes,
       );
+    });
+
+    // "What can be verified here" and "what can the user be sent off to set up"
+    // are different questions. A forced-enrolment step that offered the first
+    // would present an option that cannot be acted on.
+    test('enrollableMethods is availableMethods minus what cannot be enrolled',
+        () {
+      initializeReflection();
+      Tom2FARegistry.reset();
+      Tom2FARegistry.register('fake', _FakeAdaptor());
+
+      expect(
+        Tom2FARegistry.availableMethods.map((m) => m.type),
+        containsAll(<String>['fake', TomTotp2FAService.mechanismType]),
+      );
+      expect(
+        Tom2FARegistry.enrollableMethods.map((m) => m.type),
+        contains(TomTotp2FAService.mechanismType),
+      );
+      expect(
+        Tom2FARegistry.enrollableMethods.map((m) => m.type),
+        isNot(contains('fake')),
+      );
+    });
+
+    test('enrolmentSupportFor resolves the enrollable and nothing else', () {
+      initializeReflection();
+      Tom2FARegistry.reset();
+      Tom2FARegistry.register('fake', _FakeAdaptor());
+
+      expect(
+        Tom2FARegistry.enrolmentSupportFor(TomTotp2FAService.mechanismType),
+        isA<TomTotp2FAService>(),
+      );
+      // Registered but not enrollable, and unknown entirely, answer alike: the
+      // caller's action is the same, so distinguishing them would only invite a
+      // branch with nothing behind it.
+      expect(Tom2FARegistry.enrolmentSupportFor('fake'), isNull);
+      expect(Tom2FARegistry.enrolmentSupportFor('carrier-pigeon'), isNull);
     });
   });
 
@@ -888,6 +929,336 @@ void main() {
         ),
         isFalse,
       );
+    });
+  });
+
+  // ===========================================================================
+  // ENROLMENT
+  // ===========================================================================
+
+  /// Setting an authenticator up, as opposed to answering one.
+  ///
+  /// The property these tests exist for is the one that cannot be recovered
+  /// afterwards: **no unconfirmed secret is ever handed back for storage**. A
+  /// QR scan that silently failed, followed by a stored secret, is an account
+  /// its owner can no longer reach — so `confirmEnrolment` returning at all has
+  /// to mean the user demonstrably holds the secret.
+  group('TomTotp2FAService enrolment', () {
+    late String savedIssuer;
+    late int savedSecretBytes;
+    late int savedWindow;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      savedIssuer = TomTotp2FAService.globalSettingIssuer;
+      savedSecretBytes = TomTotp2FAService.globalSettingSecretBytes;
+      savedWindow = TomTotp2FAService.globalSettingWindowSteps;
+    });
+
+    tearDown(() {
+      TomBean.resetBeanContext();
+      TomTotp2FAService.globalSettingIssuer = savedIssuer;
+      TomTotp2FAService.globalSettingSecretBytes = savedSecretBytes;
+      TomTotp2FAService.globalSettingWindowSteps = savedWindow;
+    });
+
+    Tom2FAContext context() => Tom2FAContext(
+          principal: _principalWithId(7),
+          application: 'console',
+        );
+
+    /// The base32 secret the offer is asking the user to install.
+    String offeredSecret(Tom2FAEnrolmentOffer offer) =>
+        offer.enrolmentData[TomTotp2FAService.secretDataKey] as String;
+
+    // ------------------------------------------------------------------
+    // The round trip
+    // ------------------------------------------------------------------
+
+    test('a generated secret round-trips base32 and its code confirms',
+        () async {
+      final adaptor = TomTotp2FAService();
+      final offer = await adaptor.beginEnrolment(context());
+      final secret = offeredSecret(offer);
+
+      // Decodable, and back to exactly the bytes the policy asked for — a
+      // secret the authenticator cannot decode is a lockout the server would
+      // only discover at the next login.
+      final key = TomTotp.decodeBase32(secret);
+      expect(key, hasLength(TomTotp2FAService.globalSettingSecretBytes));
+      expect(TomTotp.encodeBase32(key), secret);
+
+      final enrolment = await adaptor.confirmEnrolment(
+        context(),
+        offer,
+        TomTotp2FAService.expectedCode(secret),
+      );
+
+      expect(enrolment.type, TomTotp2FAService.mechanismType);
+      expect(enrolment.secretData[TomTotp2FAService.secretDataKey], secret);
+      expect(enrolment.enrolmentId, isNotEmpty);
+    });
+
+    // The confirmed secret must be the one the *verifier* will later resolve,
+    // not merely one that agrees with itself.
+    test('the confirmed enrolment answers a real challenge afterwards',
+        () async {
+      final adaptor = TomTotp2FAService();
+      final offer = await adaptor.beginEnrolment(context());
+      final secret = offeredSecret(offer);
+
+      final enrolment = await adaptor.confirmEnrolment(
+        context(),
+        offer,
+        TomTotp2FAService.expectedCode(secret),
+      );
+
+      final store = TomMemory2FAEnrolmentStore();
+      await store.store(context(), enrolment);
+      TomBean.withType(Tom2FAEnrolmentStore, store);
+
+      expect(
+        await adaptor.verifySubmission(
+          context(),
+          Tom2FASubmission(
+            submitted: TomTotp2FAService.expectedCode(secret),
+            challenge: Tom2FAChallenge(
+              type: TomTotp2FAService.mechanismType,
+              expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+            ),
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('confirmation tolerates the same clock skew the verifier does',
+        () async {
+      TomTotp2FAService.globalSettingWindowSteps = 1;
+      final adaptor = TomTotp2FAService();
+      final offer = await adaptor.beginEnrolment(context());
+      final secret = offeredSecret(offer);
+
+      // The code the user's slightly-behind phone is still showing.
+      final onePeriodAgo = DateTime.now().subtract(
+        TomTotp2FAService.globalSettingPeriod,
+      );
+      await expectLater(
+        adaptor.confirmEnrolment(
+          context(),
+          offer,
+          TomTotp2FAService.expectedCode(secret, at: onePeriodAgo),
+        ),
+        completes,
+      );
+    });
+
+    // ------------------------------------------------------------------
+    // Nothing unconfirmed is ever stored
+    // ------------------------------------------------------------------
+
+    test('a wrong code is refused and leaves nothing stored', () async {
+      final store = TomMemory2FAEnrolmentStore();
+      TomBean.withType(Tom2FAEnrolmentStore, store);
+
+      final adaptor = TomTotp2FAService();
+      final offer = await adaptor.beginEnrolment(context());
+
+      await expectLater(
+        adaptor.confirmEnrolment(context(), offer, '000000'),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.enrolment-code-invalid',
+          ),
+        ),
+      );
+
+      // Not merely "not stored by the failure" — nothing at all reached the
+      // store, because beginEnrolment writes nothing either.
+      expect(await store.enrolmentsFor(context()), isEmpty);
+    });
+
+    test('an offer with no server-side secret cannot be confirmed', () async {
+      await expectLater(
+        TomTotp2FAService().confirmEnrolment(
+          context(),
+          const Tom2FAEnrolmentOffer(type: TomTotp2FAService.mechanismType),
+          '000000',
+        ),
+        throwsA(
+          isA<LoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.enrolment-offer-invalid',
+          ),
+        ),
+      );
+    });
+
+    // The security invariant of the two-map split: clientData travels in public
+    // claims, so a confirmation that derived its expected code from there could
+    // be told which secret to accept.
+    test('confirmation derives the code from enrolmentData, never clientData',
+        () async {
+      final adaptor = TomTotp2FAService();
+      final genuine = await adaptor.beginEnrolment(context());
+      const attackerSecret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+
+      final tampered = Tom2FAEnrolmentOffer(
+        type: genuine.type,
+        clientData: {
+          ...genuine.clientData,
+          TomTotp2FAService.secretDataKey: attackerSecret,
+        },
+        enrolmentData: genuine.enrolmentData,
+      );
+
+      await expectLater(
+        adaptor.confirmEnrolment(
+          context(),
+          tampered,
+          TomTotp2FAService.expectedCode(attackerSecret),
+        ),
+        throwsA(isA<LoginException>()),
+      );
+
+      final enrolment = await adaptor.confirmEnrolment(
+        context(),
+        tampered,
+        TomTotp2FAService.expectedCode(offeredSecret(genuine)),
+      );
+      expect(
+        enrolment.secretData[TomTotp2FAService.secretDataKey],
+        offeredSecret(genuine),
+      );
+    });
+
+    // ------------------------------------------------------------------
+    // The secret itself
+    // ------------------------------------------------------------------
+
+    test('two enrolments never offer the same secret', () async {
+      final adaptor = TomTotp2FAService();
+      final secrets = <String>{};
+      // More than two: a generator seeded once per process would agree with
+      // itself on the first pair and only diverge later, which a two-sample
+      // test would call a pass.
+      for (var i = 0; i < 8; i++) {
+        secrets.add(offeredSecret(await adaptor.beginEnrolment(context())));
+      }
+      expect(secrets, hasLength(8));
+    });
+
+    test('the secret width follows the setting', () async {
+      TomTotp2FAService.globalSettingSecretBytes = 32;
+      final offer = await TomTotp2FAService().beginEnrolment(context());
+      expect(
+        TomTotp.decodeBase32(offeredSecret(offer)),
+        hasLength(32),
+      );
+    });
+
+    // ------------------------------------------------------------------
+    // The provisioning URI
+    // ------------------------------------------------------------------
+
+    test("the otpauth URI parses and carries this verifier's own policy",
+        () async {
+      TomTotp2FAService.globalSettingIssuer = 'Acme Corp';
+      final offer = await TomTotp2FAService().beginEnrolment(context());
+      final uri = Uri.parse(
+        offer.clientData[TomTotp2FAService.clientDataUriKey] as String,
+      );
+
+      expect(uri.scheme, 'otpauth');
+      expect(uri.host, 'totp');
+      // The label is `issuer:account`, both percent-decoded by Uri.
+      expect(uri.pathSegments.single, 'Acme Corp:user7');
+
+      expect(uri.queryParameters['secret'], offeredSecret(offer));
+      expect(uri.queryParameters['issuer'], 'Acme Corp');
+      // Stated, not left to the app's default: the derivation is HMAC-SHA1.
+      expect(uri.queryParameters['algorithm'], 'SHA1');
+      expect(
+        uri.queryParameters['digits'],
+        '${TomTotp2FAService.globalSettingDigits}',
+      );
+      expect(
+        uri.queryParameters['period'],
+        '${TomTotp2FAService.globalSettingPeriod.inSeconds}',
+      );
+    });
+
+    // A hardcoded issuer would put one word in every deployment's
+    // authenticator; the deployment already has a name for itself.
+    test('the issuer defaults to the application being logged into', () async {
+      TomTotp2FAService.globalSettingIssuer = '';
+      final offer = await TomTotp2FAService().beginEnrolment(context());
+      final uri = Uri.parse(
+        offer.clientData[TomTotp2FAService.clientDataUriKey] as String,
+      );
+      expect(uri.queryParameters['issuer'], 'console');
+      expect(uri.pathSegments.single, 'console:user7');
+    });
+
+    test('the client data carries the code shape a UI must render', () async {
+      final offer = await TomTotp2FAService().beginEnrolment(context());
+      expect(
+        offer.clientData['digits'],
+        TomTotp2FAService.globalSettingDigits,
+      );
+      expect(
+        offer.clientData['periodSeconds'],
+        TomTotp2FAService.globalSettingPeriod.inSeconds,
+      );
+      expect(offer.attemptsAllowed, greaterThan(0));
+      expect(offer.validity, greaterThan(Duration.zero));
+    });
+
+    // ------------------------------------------------------------------
+    // Carrying the offer between the two calls
+    // ------------------------------------------------------------------
+
+    test('an offer survives the claim round trip and still confirms', () async {
+      final adaptor = TomTotp2FAService();
+      final offer = await adaptor.beginEnrolment(context());
+
+      // Exactly what the interim token does to it: a JSON-safe map out, a
+      // decoded map back — possibly on another instance.
+      final carried = Tom2FAEnrolmentOffer.fromClaim(
+        jsonDecode(jsonEncode(offer.toClaim())),
+      );
+
+      expect(carried, isNotNull);
+      expect(carried!.type, offer.type);
+      expect(carried.attemptsAllowed, offer.attemptsAllowed);
+      expect(carried.validity, offer.validity);
+
+      final enrolment = await adaptor.confirmEnrolment(
+        context(),
+        carried,
+        TomTotp2FAService.expectedCode(offeredSecret(offer)),
+      );
+      expect(
+        enrolment.secretData[TomTotp2FAService.secretDataKey],
+        offeredSecret(offer),
+      );
+    });
+
+    test('a malformed claim yields no offer rather than a broken one', () {
+      expect(Tom2FAEnrolmentOffer.fromClaim(null), isNull);
+      expect(Tom2FAEnrolmentOffer.fromClaim('nonsense'), isNull);
+      expect(Tom2FAEnrolmentOffer.fromClaim(const {}), isNull);
+      expect(Tom2FAEnrolmentOffer.fromClaim(const {'type': ''}), isNull);
+    });
+
+    // This value reaches log lines; a helpful toString would put a live
+    // credential in the log the first time anyone debugged an enrolment.
+    test('the offer never prints the secret it carries', () async {
+      final offer = await TomTotp2FAService().beginEnrolment(context());
+      expect(offer.toString(), isNot(contains(offeredSecret(offer))));
     });
   });
 

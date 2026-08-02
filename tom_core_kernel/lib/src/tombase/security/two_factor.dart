@@ -80,6 +80,51 @@ class Tom2FAClaims {
   static const String verificationData = 'twoFactorVerification';
 }
 
+/// The claim names under which a pending 2FA *enrolment* travels in a token.
+///
+/// Deliberately a sibling of [Tom2FAClaims] rather than more entries in it: a
+/// token can be owed a second factor and be part-way through setting one up,
+/// and a single set of names could not express both at once — a forced
+/// enrolment is precisely the case where the two overlap.
+///
+/// The split follows [Tom2FAClaims] exactly. Everything but [offerData] is a
+/// public claim the enrolment UI reads; [offerData] is a key in the token's
+/// **encrypted** section, because it carries the freshly generated secret and
+/// the server must confirm the typed code against *its own* copy rather than
+/// against whatever came back from the client.
+class Tom2FAEnrolmentClaims {
+  Tom2FAEnrolmentClaims._();
+
+  /// Public claim: `"true"` while the token has an enrolment awaiting
+  /// confirmation. Encoded as a string for the same reason
+  /// [Tom2FAClaims.requires2FA] is.
+  static const String pendingEnrolment = 'pendingEnrolment';
+
+  /// Public claim: the mechanism key (e.g. `'totp'`) being enrolled.
+  static const String type = 'enrolmentType';
+
+  /// Public claim: a short, displayable hint for the factor being set up.
+  static const String hint = 'enrolmentHint';
+
+  /// Public claim: how many confirmation attempts the offer allows in total.
+  static const String attemptsAllowed = 'enrolmentAttemptsAllowed';
+
+  /// Public claim: ISO-8601 UTC instant at which the offer lapses.
+  static const String expiresAt = 'enrolmentExpiresAt';
+
+  /// Public claim: the mechanism's client-interpreted enrolment payload — for
+  /// TOTP the base32 secret and the `otpauth://` URI the user scans.
+  ///
+  /// Public because delivering it to the user *is* the enrolment; it is secret
+  /// from everyone except the account's owner, who is the party holding this
+  /// token.
+  static const String clientData = 'enrolmentClientData';
+
+  /// **Encrypted** claim: the whole offer, including the mechanism's server-only
+  /// section, so any instance can confirm what another began.
+  static const String offerData = 'enrolmentOffer';
+}
+
 /// A second-factor challenge awaiting an answer.
 ///
 /// Produced by the server at the end of pass 1 and carried in the interim

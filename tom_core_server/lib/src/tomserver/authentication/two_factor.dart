@@ -340,6 +340,43 @@ class Tom2FARegistry {
     );
   }
 
+  /// How every registered mechanism that a user can **set up** describes
+  /// itself — [availableMethods] narrowed to those implementing
+  /// [Tom2FAEnrolmentSupport].
+  ///
+  /// The distinction is not pedantry. "Which factors does this deployment
+  /// verify?" and "which can this user be told to go and enrol?" are different
+  /// questions with different answers: a hardware token an administrator hands
+  /// out is verifiable here and enrollable nowhere. A forced-enrolment step that
+  /// offered [availableMethods] would present the user a choice one of whose
+  /// options cannot be acted on.
+  ///
+  /// Derived by asking the adaptors rather than by a second registration, for
+  /// the reason [availableMethods] is derived: a list maintained beside the
+  /// registry drifts from it, and an adaptor that gains enrolment support in a
+  /// later release would have to be remembered in two places.
+  static List<Tom2FAMethodDescriptor> get enrollableMethods {
+    _ensureScanned();
+    return List.unmodifiable(
+      _adaptors.values
+          .whereType<Tom2FAEnrolmentSupport>()
+          .map((adaptor) => (adaptor as Tom2FAService).descriptor),
+    );
+  }
+
+  /// The enrolment support for [type], or `null` when the mechanism is unknown
+  /// here *or* known but not enrollable.
+  ///
+  /// One null for both, because the caller's response is the same — this
+  /// mechanism cannot be offered for set-up — and splitting them would only
+  /// invite a caller to distinguish two cases it has no different action for.
+  /// The wiring bug (a mechanism the client was offered but that vanished) is
+  /// caught by [lookup] returning null on the verification path.
+  static Tom2FAEnrolmentSupport? enrolmentSupportFor(String type) {
+    final Object? adaptor = lookup(type);
+    return adaptor is Tom2FAEnrolmentSupport ? adaptor : null;
+  }
+
   /// Registers [service] under [type], replacing nothing.
   ///
   /// Throws [Tom2FAException] if a *different* adaptor is already registered for
@@ -479,9 +516,19 @@ typedef TomTotpSecretResolver = FutureOr<String?> Function(
 /// stores nothing in
 /// [Tom2FAChallengeSpec.verificationData] — it re-resolves the secret on pass 2,
 /// so the secret never travels at all.
+///
+/// ## Enrolment
+///
+/// The adaptor also implements [Tom2FAEnrolmentSupport], so the framework can
+/// *create* an authenticator and not merely verify one that appeared from
+/// somewhere else. [beginEnrolment] generates a secret and hands back both the
+/// base32 string and an `otpauth://` URI built from **this verifier's own**
+/// digits and period, so the app is provisioned with the policy that will be
+/// applied to it; [confirmEnrolment] refuses to yield an enrolment until the
+/// user has typed back a code derived from that very secret.
 @tomReflector
 @Tom2FAAdaptor(TomTotp2FAService.mechanismType)
-class TomTotp2FAService implements Tom2FAService {
+class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
   /// The mechanism key this adaptor answers to.
   static const String mechanismType = 'totp';
 
@@ -525,6 +572,40 @@ class TomTotp2FAService implements Tom2FAService {
   /// a user who starts typing just before a rollover is not punished for it.
   static Duration globalSettingChallengeValidity = const Duration(minutes: 5);
 
+  /// The name the authenticator app files this account under, shown beside the
+  /// code — empty means *use the application being logged into*
+  /// ([Tom2FAContext.application]).
+  ///
+  /// A setting rather than a constant because the issuer is what the user reads
+  /// to tell one of a dozen six-digit codes from another; a framework that
+  /// hardcoded it would put the same word in every deployment's authenticator.
+  /// Defaulted from the application rather than left blank because that is
+  /// already the deployment's own name for itself, so the common case needs no
+  /// configuration and the uncommon one (a suite of applications sharing one
+  /// account) sets this once.
+  static String globalSettingIssuer = '';
+
+  /// How many bytes of entropy a generated secret carries.
+  ///
+  /// 20 bytes = 160 bits, RFC 4226 §4 R6's recommendation and the width of the
+  /// HMAC-SHA1 key the codes are derived with; more would be truncated into the
+  /// same strength by the hash, less would weaken it.
+  static int globalSettingSecretBytes = 20;
+
+  /// How many confirmation attempts one enrolment offer tolerates.
+  static int globalSettingEnrolmentAttemptsAllowed = 3;
+
+  /// How long an enrolment offer stays confirmable.
+  ///
+  /// Longer than a challenge, because the user has to install an app and scan a
+  /// code in between, and still bounded, because an unconfirmed secret is a
+  /// credential nobody is yet watching.
+  static Duration globalSettingEnrolmentValidity = const Duration(minutes: 10);
+
+  /// The key the `otpauth://` provisioning URI is filed under in
+  /// [Tom2FAEnrolmentOffer.clientData] — what a client renders as a QR code.
+  static const String clientDataUriKey = 'otpauthUri';
+
   /// Creates the adaptor. No-argument so the registry can reflect it into life.
   TomTotp2FAService();
 
@@ -563,26 +644,7 @@ class TomTotp2FAService implements Tom2FAService {
   ) async {
     final secret = await _resolveSecret(context);
     if (secret == null) return false;
-
-    final key = TomTotp.decodeBase32(secret);
-    if (key.isEmpty) return false;
-
-    final submitted = submission.submitted.trim();
-    // Checked before any HMAC: a submission of the wrong width can never match,
-    // and rejecting it here keeps a malformed input from costing a hash.
-    if (submitted.length != globalSettingDigits) return false;
-
-    if (globalSettingPeriod.inSeconds <= 0) return false;
-    final counter = TomTotp.counterFor(period: globalSettingPeriod);
-
-    for (var offset = -globalSettingWindowSteps;
-        offset <= globalSettingWindowSteps;
-        offset++) {
-      final expected =
-          TomTotp.generateCode(key, counter + offset, globalSettingDigits);
-      if (_constantTimeEquals(expected, submitted)) return true;
-    }
-    return false;
+    return _matchesWithinWindow(secret, submission.submitted);
   }
 
   /// The base32 secret for the user being challenged, or `null` when this user
@@ -612,6 +674,122 @@ class TomTotp2FAService implements Tom2FAService {
     return await resolver(context);
   }
 
+  // ---------------------------------------------------------------------------
+  // ENROLMENT
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context) async {
+    final secret = generateSecret();
+    return Tom2FAEnrolmentOffer(
+      type: mechanismType,
+      clientData: {
+        // Both forms, because a client shows the QR code *and* a typed-entry
+        // fallback for the user whose camera will not focus.
+        secretDataKey: secret,
+        clientDataUriKey: provisioningUri(secret, context),
+        'digits': globalSettingDigits,
+        'periodSeconds': globalSettingPeriod.inSeconds,
+      },
+      // The server's own copy, in the encrypted section. The confirmation
+      // derives the expected code from *this* one and never from the client
+      // data, which travels in public claims: a confirmation that trusted the
+      // public copy could be told to accept a secret the client chose.
+      enrolmentData: {secretDataKey: secret},
+      attemptsAllowed: globalSettingEnrolmentAttemptsAllowed,
+      validity: globalSettingEnrolmentValidity,
+    );
+  }
+
+  @override
+  Future<Tom2FAEnrolment> confirmEnrolment(
+    Tom2FAContext context,
+    Tom2FAEnrolmentOffer offer,
+    String submitted,
+  ) async {
+    final secret = offer.enrolmentData[secretDataKey];
+    if (secret is! String ||
+        secret.isEmpty ||
+        TomTotp.decodeBase32(secret).isEmpty) {
+      throw LoginException(
+        'login.error.2fa.enrolment-offer-invalid',
+        'This enrolment can no longer be completed; please start again',
+      );
+    }
+
+    if (!_matchesWithinWindow(secret, submitted)) {
+      // Throwing rather than returning a nullable enrolment: the only value this
+      // method can return is a *confirmed* one, so a caller cannot accidentally
+      // store an unconfirmed secret by forgetting a null check.
+      throw LoginException(
+        'login.error.2fa.enrolment-code-invalid',
+        'That code does not match the authenticator that was just set up',
+      );
+    }
+
+    return Tom2FAEnrolment(
+      type: mechanismType,
+      // One authenticator per user, deliberately: [_resolveSecret] answers a
+      // challenge with the *first* TOTP enrolment it finds, so a second row
+      // would make which secret works depend on storage order. A stable id makes
+      // re-enrolment an upsert instead — which is exactly what replacing a lost
+      // phone should do.
+      enrolmentId: mechanismType,
+      hint: offer.hint,
+      secretData: {secretDataKey: secret},
+    );
+  }
+
+  /// A fresh base32 secret, [globalSettingSecretBytes] bytes of cryptographically
+  /// secure randomness.
+  ///
+  /// Drawn from [RsaKeyHelper.getSecureRandom] — the framework's own CSPRNG —
+  /// and not from `dart:math`'s `Random()`, whose output is predictable from a
+  /// handful of observations. The value being generated is a permanent
+  /// credential: a guessable one is worse than no second factor, because it is
+  /// trusted.
+  static String generateSecret() => TomTotp.encodeBase32(
+        RsaKeyHelper.getSecureRandom().nextBytes(globalSettingSecretBytes),
+      );
+
+  /// The `otpauth://` provisioning URI for [secret], as an authenticator app
+  /// consumes it (the payload behind the QR code).
+  ///
+  /// Every parameter is taken from this adaptor's own settings, so the app is
+  /// provisioned with the policy this verifier will apply — an app told to
+  /// produce eight digits every sixty seconds while the server checks six every
+  /// thirty is a lockout that only shows up at the next login.
+  ///
+  /// `algorithm=SHA1` is stated rather than left to the app's default because
+  /// [TomTotp] derives with HMAC-SHA1; the default happens to agree, but an
+  /// implicit agreement is not one anybody can check.
+  static String provisioningUri(String secret, Tom2FAContext context) {
+    final issuer = issuerFor(context);
+    final account = context.principal.username;
+    final label = issuer.isEmpty
+        ? Uri.encodeComponent(account)
+        : '${Uri.encodeComponent(issuer)}:${Uri.encodeComponent(account)}';
+    final parameters = <String, String>{
+      'secret': secret,
+      if (issuer.isNotEmpty) 'issuer': issuer,
+      'algorithm': 'SHA1',
+      'digits': '$globalSettingDigits',
+      'period': '${globalSettingPeriod.inSeconds}',
+    };
+    // Assembled by hand rather than through `Uri(queryParameters:)`, which
+    // encodes a space as `+`; that is correct for a form body and wrong here,
+    // where an issuer of "Acme Corp" must arrive as "Acme%20Corp".
+    final query = parameters.entries
+        .map((entry) => '${entry.key}=${Uri.encodeComponent(entry.value)}')
+        .join('&');
+    return 'otpauth://totp/$label?$query';
+  }
+
+  /// The issuer name to provision, for a login in [context]: the configured
+  /// [globalSettingIssuer], else the application being logged into.
+  static String issuerFor(Tom2FAContext context) =>
+      globalSettingIssuer.isNotEmpty ? globalSettingIssuer : context.application;
+
   /// The code this verifier expects right now, for the base32 [secret] — the
   /// adaptor's own policy (digits, period) applied to [TomTotp].
   ///
@@ -623,6 +801,37 @@ class TomTotp2FAService implements Tom2FAService {
         digits: globalSettingDigits,
         period: globalSettingPeriod,
       );
+
+  /// Whether [submitted] is the code for [secret] at any time step within
+  /// [globalSettingWindowSteps] of now.
+  ///
+  /// The one place a submitted code is judged. Verification and enrolment
+  /// confirmation both come here, expressed through [expectedCode], so the two
+  /// cannot drift: a policy change that made an enrolment self-check accept
+  /// something the login would refuse is precisely how a user ends up locked out
+  /// of an account they just successfully set up. The tolerated skew is shared
+  /// for the same reason — a phone's clock is exactly as wrong at enrolment as
+  /// it is at the next login.
+  static bool _matchesWithinWindow(String secret, String submitted) {
+    final code = submitted.trim();
+    // Checked before any HMAC: a submission of the wrong width can never match,
+    // and rejecting it here keeps a malformed input from costing a hash.
+    if (code.length != globalSettingDigits) return false;
+    // [TomTotp.counterFor] throws on a non-positive period, and a misconfigured
+    // adaptor should fail every code rather than every request.
+    if (globalSettingPeriod.inSeconds <= 0) return false;
+
+    final now = DateTime.now();
+    for (var offset = -globalSettingWindowSteps;
+        offset <= globalSettingWindowSteps;
+        offset++) {
+      final expected = expectedCode(secret, at: now.add(globalSettingPeriod * offset));
+      // Empty means the secret was undecodable; no submission should match it.
+      if (expected.isEmpty) return false;
+      if (_constantTimeEquals(expected, code)) return true;
+    }
+    return false;
+  }
 
   /// Compares two codes without leaking, through timing, how much of the
   /// submission was right.
