@@ -3,11 +3,12 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-> **⚠️ Work in progress — pre-1.0.** The Tom Core packages are under active
-> development and not yet stable. They are versioned from `0.1.0` and the patch
-> number is bumped on every change — **including breaking changes** — until the
-> API settles enough for a `1.0.0` release. Expect the public surface to shift
-> without notice before then. Not recommended for production use yet.
+> **⚠️ Work in progress — unstable API.** The Tom Core packages are under active
+> development and not yet stable. Their version numbers carry no promise about
+> API maturity: they are publishing counters, not semver. The patch number is
+> bumped on every change — **including breaking changes** — so a patch bump may
+> break you. Expect the public surface to shift without notice. Not recommended
+> for production use yet.
 
 The **D4rt scripting tool with full Tom Framework bridge support** — an
 interactive REPL and headless script runner that exposes the core Tom packages

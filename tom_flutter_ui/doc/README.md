@@ -2,10 +2,12 @@
 
 *The index for everything under `tom_flutter_ui/doc/`. Start here.*
 
-> **⚠️ Work in progress — pre-1.0.** `tom_flutter_ui` is part of the Tom Core
-> stack, under active development and not yet stable. Design specifications
-> below mark which parts are **shipped** versus **proposed**; read each doc's
-> status line before treating a class or method name as a stable API.
+> **⚠️ Work in progress — unstable API.** `tom_flutter_ui` is part of the Tom
+> Core stack, under active development and not yet stable; its version number is
+> a publishing counter and carries no promise about API maturity. Design
+> specifications below mark which parts are **shipped** versus **proposed**;
+> read each doc's status line before treating a class or method name as a stable
+> API.
 
 This folder documents `tom_flutter_ui` at two levels:
 
