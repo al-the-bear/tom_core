@@ -39,6 +39,7 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
+import 'two_factor_enrolment.dart';
 
 // =============================================================================
 // ANNOTATION
@@ -196,6 +197,66 @@ class Tom2FASubmission {
   });
 }
 
+/// How a mechanism names itself to a user who is being asked to choose one.
+///
+/// A mechanism *key* (`'totp'`, `'sms'`) is an identifier: it dispatches a
+/// challenge back to the right adaptor and it is stable across releases, which
+/// is exactly why it must never be shown to anyone. A user offered a choice of
+/// second factors needs a label, an explanation and something to render — and
+/// all three are user-facing text, so under G-RES-1 they are **resource keys**,
+/// resolved against the caller's locale by whichever tier does the rendering.
+///
+/// The descriptor is therefore three keys and an identifier, and deliberately
+/// carries no literal text at all. A descriptor holding `'Authenticator app'`
+/// would be a translation defect that no test could distinguish from a correct
+/// value, because it *looks* right in the one locale it was written in.
+class Tom2FAMethodDescriptor {
+  /// The scope every shipped mechanism's keys live under, so a resource bundle
+  /// can be searched for "everything the 2FA catalog needs" by prefix.
+  static const String resourceScope = 'two_factor';
+
+  /// The mechanism key this descriptor belongs to — the same value
+  /// [Tom2FARegistry.lookup] resolves and a challenge dispatches on.
+  final String type;
+
+  /// Resource key of the mechanism's short label ("Authenticator app").
+  final String displayNameKey;
+
+  /// Resource key of the one-sentence explanation shown beside the label.
+  final String descriptionKey;
+
+  /// Resource key of the icon to render. A key rather than an asset path
+  /// because the two client tiers (Flutter, web) name their assets
+  /// differently, and the mechanism must not have to know which one is asking.
+  final String iconKey;
+
+  /// Describes a mechanism with explicitly chosen keys.
+  ///
+  /// Prefer [Tom2FAMethodDescriptor.scoped] unless the mechanism's text really
+  /// does live outside the [resourceScope] convention — a deployment adapting a
+  /// vendor SDK whose strings already ship under another prefix, say.
+  const Tom2FAMethodDescriptor({
+    required this.type,
+    required this.displayNameKey,
+    required this.descriptionKey,
+    this.iconKey = '',
+  });
+
+  /// Describes a mechanism whose text lives under `two_factor.<type>.*`.
+  ///
+  /// Derives all three keys from [type], which is what makes the convention
+  /// structural rather than a matter of per-mechanism discipline: a mechanism
+  /// cannot half-follow it, and adding one cannot silently invent a fourth
+  /// naming scheme.
+  Tom2FAMethodDescriptor.scoped(this.type)
+      : displayNameKey = '$resourceScope.$type.name',
+        descriptionKey = '$resourceScope.$type.description',
+        iconKey = '$resourceScope.$type.icon';
+
+  @override
+  String toString() => 'Tom2FAMethodDescriptor($type -> $displayNameKey)';
+}
+
 /// The contract a second-factor mechanism implements.
 ///
 /// Two questions, and only two: *what challenge should this user be given?* and
@@ -208,6 +269,14 @@ class Tom2FASubmission {
 /// adaptor needs to remember belongs in [Tom2FAChallengeSpec.verificationData].
 @tomReflector
 abstract class Tom2FAService {
+  /// How this mechanism presents itself in a list of options.
+  ///
+  /// On the service rather than on the registry because only the mechanism
+  /// knows what it is called: a registry that held the descriptions would have
+  /// to be edited every time an adaptor was added, which is precisely the
+  /// coupling the adaptor contract exists to remove.
+  Tom2FAMethodDescriptor get descriptor;
+
   /// Issues a challenge for [context], or throws [LoginException] when this
   /// user cannot be challenged at all (no enrolled device, no configured
   /// secret) — a condition the login must fail on rather than paper over.
@@ -243,9 +312,32 @@ class Tom2FARegistry {
   static bool _scanned = false;
 
   /// The mechanism keys currently resolvable, scanning if needed.
+  ///
+  /// Keys, not descriptions: this is what pass-2 dispatch and
+  /// [Tom2FADecision.offerableMechanisms] intersect against, and both want the
+  /// cheapest possible membership test. [availableMethods] is the presentable
+  /// form of the same registration.
   static Set<String> get registeredTypes {
     _ensureScanned();
     return _adaptors.keys.toSet();
+  }
+
+  /// How every registered mechanism describes itself, for a client that must
+  /// render a choice.
+  ///
+  /// The catalog is derived from the registry rather than configured beside it,
+  /// so "installed" and "offerable" cannot drift: a mechanism that is not
+  /// registered is not describable, and one that is registered describes itself
+  /// without anyone having to remember to add it here.
+  ///
+  /// Every principal sees the same list. Narrowing it to *this* user's permitted
+  /// mechanisms is [Tom2FADecision.offerableMechanisms]' job, because that needs
+  /// the policy's answer and a registry has no principal to ask about.
+  static List<Tom2FAMethodDescriptor> get availableMethods {
+    _ensureScanned();
+    return List.unmodifiable(
+      _adaptors.values.map((adaptor) => adaptor.descriptor),
+    );
   }
 
   /// Registers [service] under [type], replacing nothing.
@@ -376,10 +468,15 @@ typedef TomTotpSecretResolver = FutureOr<String?> Function(
 ///
 /// ## Where the secret comes from
 ///
-/// From [globalSettingSecretResolver], which a deployment supplies. It is
-/// deliberately *not* read from [TomUser.attributes]: those are projected into
-/// the token's **public** claims, so a secret parked there would be readable by
-/// anyone holding the token. For the same reason this adaptor stores nothing in
+/// From the installed [Tom2FAEnrolmentStore] — the user's own `'totp'`
+/// enrolment, whose [Tom2FAEnrolment.secretData] carries the base32 secret under
+/// [secretDataKey] — falling back to [globalSettingSecretResolver] when no store
+/// is installed or the store holds no TOTP enrolment for this user.
+///
+/// It is deliberately *not* read from [TomUser.attributes]: those are projected
+/// into the token's **public** claims, so a secret parked there would be
+/// readable by anyone holding the token. For the same reason this adaptor
+/// stores nothing in
 /// [Tom2FAChallengeSpec.verificationData] — it re-resolves the secret on pass 2,
 /// so the secret never travels at all.
 @tomReflector
@@ -388,9 +485,26 @@ class TomTotp2FAService implements Tom2FAService {
   /// The mechanism key this adaptor answers to.
   static const String mechanismType = 'totp';
 
-  /// Resolves a user's base32 TOTP secret. Unset by default, which makes every
-  /// TOTP challenge fail with `login.error.2fa.not-enrolled` — a deployment
-  /// that enables TOTP must wire this.
+  /// The key this adaptor's base32 secret is filed under in
+  /// [Tom2FAEnrolment.secretData].
+  ///
+  /// Named rather than inlined because an enrolment tool writes the map this
+  /// adaptor reads, and a typo on either side would present as *not enrolled* —
+  /// the one failure mode indistinguishable from the ordinary case.
+  static const String secretDataKey = 'secret';
+
+  /// How TOTP names itself in a list of options: resource keys under
+  /// `two_factor.totp.*`, no literal text (G-RES-1).
+  static final Tom2FAMethodDescriptor _descriptor =
+      Tom2FAMethodDescriptor.scoped(mechanismType);
+
+  /// Resolves a user's base32 TOTP secret when no [Tom2FAEnrolmentStore] is
+  /// installed.
+  ///
+  /// The store is the primary source; this hook is the fallback for a deployment
+  /// that keeps its secrets somewhere the framework does not own (an LDAP
+  /// attribute, a vault). With neither wired, every TOTP challenge fails with
+  /// `login.error.2fa.not-enrolled`.
   static TomTotpSecretResolver? globalSettingSecretResolver;
 
   /// Number of digits in a generated code (RFC 6238 default: 6).
@@ -413,6 +527,9 @@ class TomTotp2FAService implements Tom2FAService {
 
   /// Creates the adaptor. No-argument so the registry can reflect it into life.
   TomTotp2FAService();
+
+  @override
+  Tom2FAMethodDescriptor get descriptor => _descriptor;
 
   @override
   Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context) async {
@@ -468,7 +585,28 @@ class TomTotp2FAService implements Tom2FAService {
     return false;
   }
 
+  /// The base32 secret for the user being challenged, or `null` when this user
+  /// has no authenticator.
+  ///
+  /// The enrolment store is asked first and the hook is the fallback, not the
+  /// other way round: a deployment that has migrated to the store must not have
+  /// a stale resolver silently keep answering, and one that never installed a
+  /// store keeps exactly the behaviour it had. When both are present but the
+  /// store holds no TOTP enrolment for *this* user, the hook still answers —
+  /// which is what makes migrating a user at a time possible.
   Future<String?> _resolveSecret(Tom2FAContext context) async {
+    final store = Tom2FAEnrolmentStore.resolve();
+    if (store != null) {
+      final enrolments = await store.enrolmentsFor(context);
+      for (final enrolment in enrolments) {
+        if (enrolment.type != mechanismType) continue;
+        final secret = enrolment.secretData[secretDataKey];
+        // A non-string, or an empty one, is a malformed enrolment rather than a
+        // second candidate: keep looking, so one broken row cannot lock out a
+        // user who also holds a good one.
+        if (secret is String && secret.isNotEmpty) return secret;
+      }
+    }
     final resolver = globalSettingSecretResolver;
     if (resolver == null) return null;
     return await resolver(context);

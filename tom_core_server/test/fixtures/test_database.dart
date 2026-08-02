@@ -344,6 +344,42 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
         .executeCommand('DROP TABLE IF EXISTS ${schemaName}_versioning');
   }
 
+  /// Aliases the framework's conventional `main` data source onto this
+  /// fixture's connection.
+  ///
+  /// Framework entities — [TomUserTwoFactorEnrolment], the authorization grant
+  /// tables — declare `@TomDbTable(datasource: 'main')`, because that is the
+  /// name a deployment configures. A test cannot rename them without diverging
+  /// from what ships, and must not open a second connection to answer to the
+  /// second name, so it registers `main` as a *delegate* of the fixture source:
+  /// one connection, reachable under both names.
+  static Future<void> registerMainAlias() async {
+    await TomDataSourceInfo.initializeDatasourceInfo(<String, dynamic>{
+      'main': <String, Object?>{'delegateTo': datasourceName},
+    });
+  }
+
+  /// Creates the `tom_user_two_factor_enrolment` table from the entity's own
+  /// DDL, so the test and the shipped migration cannot describe different
+  /// tables.
+  static Future<void> ensureTwoFactorEnrolmentTable(
+    TomDataSourceInfo dsi,
+  ) async {
+    // The statement terminator belongs to a migration *file*, where several
+    // statements have to be told apart; the driver takes one statement and
+    // rejects the trailing `;`.
+    final ddl = TomUserTwoFactorEnrolment.createTableSql.trim();
+    await dsi.datasource.executeCommand(
+      ddl.endsWith(';') ? ddl.substring(0, ddl.length - 1) : ddl,
+    );
+  }
+
+  /// Empties `tom_user_two_factor_enrolment` between tests.
+  static Future<void> truncateTwoFactorEnrolment(TomDataSourceInfo dsi) async {
+    await dsi.datasource
+        .executeCommand('TRUNCATE TABLE tom_user_two_factor_enrolment');
+  }
+
   /// Closes every registered data source and clears the process-wide registry,
   /// so a torn-down suite leaves no open connection or stale registration for
   /// the next one.

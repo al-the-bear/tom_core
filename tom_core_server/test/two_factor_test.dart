@@ -79,6 +79,34 @@ TomPrincipal _principal(
   aci: TomAccessControlInformation(roles: roles),
 );
 
+/// A principal distinguished only by its user id, for the enrolment store —
+/// whose entire job is to keep one user's factors away from another's.
+TomPrincipal _principalWithId(int userId) => TomPrincipal(
+      authenticated: true,
+      context: {},
+      clientId: 0,
+      organization: 'acme',
+      organizationId: 0,
+      application: 'console',
+      applicationId: 0,
+      process: 'login',
+      processId: 0,
+      language: 'en',
+      country: 'US',
+      clientCountry: 'US',
+      clientLanguage: 'en',
+      clientTimezone: 'UTC',
+      user: TomUser(
+        id: userId,
+        username: 'user$userId',
+        firstname: 'Test',
+        lastname: 'User',
+        attributes: {},
+        timeZone: 'utc',
+      ),
+      aci: TomAccessControlInformation(roles: const ['user']),
+    );
+
 /// An authentication service that answers with a fixed principal shape.
 class _StubAuthService implements TomAuthenticationService {
   _StubAuthService({
@@ -119,6 +147,10 @@ class _FakeAdaptor implements Tom2FAService {
   int verified = 0;
   Tom2FAContext? lastVerifyContext;
   Tom2FASubmission? lastSubmission;
+
+  @override
+  Tom2FAMethodDescriptor get descriptor =>
+      Tom2FAMethodDescriptor.scoped('fake');
 
   @override
   Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context) async {
@@ -285,6 +317,208 @@ void main() {
   });
 
   // ===========================================================================
+  // THE CATALOG
+  // ===========================================================================
+
+  /// What a client is given when it must render "*choose a method*".
+  ///
+  /// The property under test throughout is that **no literal text escapes**: a
+  /// descriptor carrying `'Authenticator app'` would look right in English and
+  /// be a translation defect everywhere else, and no test that only checked the
+  /// list's *shape* could tell the two apart.
+  group('Tom2FAMethodDescriptor and the method catalog', () {
+    setUp(Tom2FARegistry.reset);
+    tearDown(Tom2FARegistry.reset);
+
+    test('scoped() derives all three keys from the mechanism key', () {
+      final descriptor = Tom2FAMethodDescriptor.scoped('sms');
+      expect(descriptor.type, 'sms');
+      expect(descriptor.displayNameKey, 'two_factor.sms.name');
+      expect(descriptor.descriptionKey, 'two_factor.sms.description');
+      expect(descriptor.iconKey, 'two_factor.sms.icon');
+    });
+
+    test('availableMethods reports the TOTP descriptor with resource keys',
+        () async {
+      initializeReflection();
+      Tom2FARegistry.reset();
+
+      final totp = Tom2FARegistry.availableMethods.singleWhere(
+        (m) => m.type == TomTotp2FAService.mechanismType,
+      );
+      expect(totp.displayNameKey, 'two_factor.totp.name');
+      expect(totp.descriptionKey, 'two_factor.totp.description');
+      expect(totp.iconKey, 'two_factor.totp.icon');
+    });
+
+    test('no descriptor carries anything that reads as user-facing text', () {
+      initializeReflection();
+      Tom2FARegistry.reset();
+
+      for (final descriptor in Tom2FARegistry.availableMethods) {
+        for (final key in [
+          descriptor.displayNameKey,
+          descriptor.descriptionKey,
+          descriptor.iconKey,
+        ]) {
+          // A resource key is a dotted identifier under the scope. Prose
+          // cannot satisfy both: it has no dots in that shape, and it has
+          // spaces.
+          expect(
+            key,
+            startsWith('${Tom2FAMethodDescriptor.resourceScope}.'),
+            reason: '$key must be a key under the 2FA resource scope',
+          );
+          expect(
+            key,
+            isNot(contains(' ')),
+            reason: '$key looks like literal text, not a resource key',
+          );
+        }
+      }
+    });
+
+    test('the catalog is derived from the registry, so the two cannot drift',
+        () {
+      Tom2FARegistry.reset();
+      Tom2FARegistry.register('fake', _FakeAdaptor());
+      expect(
+        Tom2FARegistry.availableMethods.map((m) => m.type),
+        Tom2FARegistry.registeredTypes,
+      );
+    });
+  });
+
+  // ===========================================================================
+  // ENROLMENT STORE
+  // ===========================================================================
+
+  /// The per-user half of the same question the catalog answers globally: *what
+  /// has **this** user set up?*
+  ///
+  /// Everything here runs against [TomMemory2FAEnrolmentStore]; the persistent
+  /// store's own round trip (and the fact that its `secret_data` column is
+  /// unreadable) needs a database and lives in
+  /// `two_factor_enrolment_db_test.dart`.
+  group('Tom2FAEnrolmentStore (in memory)', () {
+    late TomMemory2FAEnrolmentStore store;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      store = TomMemory2FAEnrolmentStore();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    Tom2FAContext contextFor(int userId) => Tom2FAContext(
+          principal: _principalWithId(userId),
+        );
+
+    Tom2FAEnrolment enrolment({
+      String type = 'totp',
+      String id = 'device-1',
+      String hint = 'iPhone',
+      bool isPrimary = false,
+      Map<String, Object?> secretData = const {'secret': _rfcSecretBase32},
+    }) =>
+        Tom2FAEnrolment(
+          type: type,
+          enrolmentId: id,
+          hint: hint,
+          isPrimary: isPrimary,
+          secretData: secretData,
+        );
+
+    test('resolve returns null when no store is installed', () {
+      expect(Tom2FAEnrolmentStore.resolve(), isNull);
+    });
+
+    test('resolve finds the installed store', () {
+      TomBean.withType(Tom2FAEnrolmentStore, store);
+      expect(identical(Tom2FAEnrolmentStore.resolve(), store), isTrue);
+    });
+
+    test('a stored enrolment round-trips', () async {
+      final context = contextFor(1);
+      await store.store(context, enrolment());
+
+      final loaded = await store.enrolmentsFor(context);
+      expect(loaded, hasLength(1));
+      expect(loaded.single.type, 'totp');
+      expect(loaded.single.enrolmentId, 'device-1');
+      expect(loaded.single.hint, 'iPhone');
+      expect(loaded.single.secretData['secret'], _rfcSecretBase32);
+    });
+
+    // The whole point of a store over a single resolver hook: a user may own
+    // more than one factor.
+    test('a user can hold several enrolments', () async {
+      final context = contextFor(1);
+      await store.store(context, enrolment(id: 'phone', type: 'sms'));
+      await store.store(context, enrolment(id: 'app', isPrimary: true));
+
+      final loaded = await store.enrolmentsFor(context);
+      expect(loaded.map((e) => e.enrolmentId), containsAll(['phone', 'app']));
+      expect(loaded.where((e) => e.isPrimary).map((e) => e.enrolmentId),
+          ['app']);
+    });
+
+    test('re-storing the same enrolment id replaces it', () async {
+      final context = contextFor(1);
+      await store.store(context, enrolment(hint: 'old phone'));
+      await store.store(context, enrolment(hint: 'new phone'));
+
+      final loaded = await store.enrolmentsFor(context);
+      expect(loaded, hasLength(1));
+      expect(loaded.single.hint, 'new phone');
+    });
+
+    test('enrolments are scoped to their principal', () async {
+      await store.store(contextFor(1), enrolment());
+      expect(await store.enrolmentsFor(contextFor(2)), isEmpty);
+    });
+
+    test('remove drops one enrolment and tolerates an absent id', () async {
+      final context = contextFor(1);
+      await store.store(context, enrolment(id: 'a'));
+      await store.store(context, enrolment(id: 'b'));
+
+      await store.remove(context, 'a');
+      expect((await store.enrolmentsFor(context)).map((e) => e.enrolmentId),
+          ['b']);
+
+      await expectLater(store.remove(context, 'ghost'), completes);
+    });
+
+    // "No store installed" and "installed, and this user has none" must not
+    // look alike: the first means *fall back to the legacy hook*, the second
+    // means *this user has genuinely enrolled nothing*.
+    test('an empty store is distinguishable from no store', () async {
+      expect(Tom2FAEnrolmentStore.resolve(), isNull);
+      TomBean.withType(Tom2FAEnrolmentStore, store);
+      expect(Tom2FAEnrolmentStore.resolve(), isNotNull);
+      expect(await store.enrolmentsFor(contextFor(1)), isEmpty);
+    });
+
+    test('toString never prints the secret', () {
+      final text = enrolment().toString();
+      expect(text, contains('device-1'));
+      expect(text, isNot(contains(_rfcSecretBase32)));
+    });
+
+    test('enrolledAt is normalised to UTC', () {
+      final local = DateTime(2026, 3, 4, 5, 6);
+      final stored = Tom2FAEnrolment(
+        type: 'totp',
+        enrolmentId: 'x',
+        enrolledAt: local,
+      );
+      expect(stored.enrolledAt.isUtc, isTrue);
+      expect(stored.enrolledAt, local.toUtc());
+    });
+  });
+
+  // ===========================================================================
   // WHAT THE SCAN REFUSES
   // ===========================================================================
 
@@ -418,12 +652,16 @@ void main() {
     late int savedWindow;
 
     setUp(() {
+      // No enrolment store installed unless a test installs one — these tests
+      // are about the adaptor's own policy, and the store is a separate seam.
+      TomBean.resetBeanContext();
       savedResolver = TomTotp2FAService.globalSettingSecretResolver;
       savedWindow = TomTotp2FAService.globalSettingWindowSteps;
       TomTotp2FAService.globalSettingSecretResolver = (_) => _rfcSecretBase32;
     });
 
     tearDown(() {
+      TomBean.resetBeanContext();
       TomTotp2FAService.globalSettingSecretResolver = savedResolver;
       TomTotp2FAService.globalSettingWindowSteps = savedWindow;
     });
@@ -499,6 +737,104 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    // ------------------------------------------------------------------
+    // Where the secret comes from
+    // ------------------------------------------------------------------
+
+    /// Installs an enrolment store holding [secret] for the test's principal.
+    Future<void> installStoreWith(String? secret, {String type = 'totp'}) async {
+      final store = TomMemory2FAEnrolmentStore();
+      if (secret != null) {
+        await store.store(
+          context(),
+          Tom2FAEnrolment(
+            type: type,
+            enrolmentId: 'device-1',
+            secretData: {TomTotp2FAService.secretDataKey: secret},
+          ),
+        );
+      }
+      TomBean.withType(Tom2FAEnrolmentStore, store);
+    }
+
+    // The store is the source of truth once installed; a stale resolver left
+    // over from before the migration must not keep answering.
+    test('prefers the enrolment store over the legacy resolver', () async {
+      TomTotp2FAService.globalSettingSecretResolver =
+          (_) => 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      await installStoreWith(_rfcSecretBase32);
+
+      expect(
+        await TomTotp2FAService()
+            .verifySubmission(context(), submission(currentCode())),
+        isTrue,
+      );
+    });
+
+    // Migrating one user at a time: a store that holds nothing for *this* user
+    // is not an answer, so the hook still gets asked.
+    test('falls back to the resolver when the store holds no TOTP enrolment',
+        () async {
+      await installStoreWith(_rfcSecretBase32, type: 'sms');
+      expect(
+        await TomTotp2FAService()
+            .verifySubmission(context(), submission(currentCode())),
+        isTrue,
+      );
+    });
+
+    test('with a store but no enrolment and no resolver, the login fails as '
+        'not-enrolled', () async {
+      TomTotp2FAService.globalSettingSecretResolver = null;
+      await installStoreWith(null);
+      await expectLater(
+        TomTotp2FAService().issueChallenge(context()),
+        throwsA(
+          isA<LoginException>()
+              .having((e) => e.key, 'key', 'login.error.2fa.not-enrolled'),
+        ),
+      );
+    });
+
+    // One malformed row must not lock out a user who also holds a good one.
+    test('skips a malformed enrolment and uses the next usable one', () async {
+      TomTotp2FAService.globalSettingSecretResolver = null;
+      final store = TomMemory2FAEnrolmentStore();
+      await store.store(
+        context(),
+        Tom2FAEnrolment(
+          type: 'totp',
+          enrolmentId: 'broken',
+          secretData: const {TomTotp2FAService.secretDataKey: ''},
+        ),
+      );
+      await store.store(
+        context(),
+        Tom2FAEnrolment(
+          type: 'totp',
+          enrolmentId: 'good',
+          secretData: const {
+            TomTotp2FAService.secretDataKey: _rfcSecretBase32,
+          },
+        ),
+      );
+      TomBean.withType(Tom2FAEnrolmentStore, store);
+
+      expect(
+        await TomTotp2FAService()
+            .verifySubmission(context(), submission(currentCode())),
+        isTrue,
+      );
+    });
+
+    test('describes itself with resource keys under two_factor.totp', () {
+      final descriptor = TomTotp2FAService().descriptor;
+      expect(descriptor.type, 'totp');
+      expect(descriptor.displayNameKey, 'two_factor.totp.name');
+      expect(descriptor.descriptionKey, 'two_factor.totp.description');
+      expect(descriptor.iconKey, 'two_factor.totp.icon');
     });
 
     test('rejects a wrong code', () async {
