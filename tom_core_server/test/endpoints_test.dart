@@ -315,12 +315,10 @@ void main() {
   });
 
   // G-API-2 / rework step 1: URL path parameters (`/items/{id}`) are bound to
-  // typed request-DTO fields via `urlParameterMapping` on the endpoint. The
-  // pipeline folds the matched path captures into the JSON map it instantiates
-  // the DTO from, renaming captures per the mapping (identity when unmapped).
-  // injectPathParameters owns that fold and is pure, so it is unit-testable
-  // without a live router or reflected DTO — the same pattern as
-  // coercePrimitiveParameter / shelfRoutePath above.
+  // typed request-DTO fields via `urlParameterMapping` on the endpoint. This
+  // group covers the annotation surface only — that the mapping is declarable
+  // and survives the conversion into a TomEndpoint. The group below covers the
+  // pipeline side, where the mapping is actually applied.
   group('urlParameterMapping', () {
     test('TomEndpoint defaults to an empty mapping', () {
       const endpoint = TomEndpoint();
@@ -370,6 +368,12 @@ void main() {
     });
   });
 
+  // The other half of G-API-2: the group above pins that the annotation
+  // *carries* the mapping; this one pins that the pipeline *applies* it. The
+  // two behaviours that carry real risk are the rename (capture name ≠ field
+  // name) and the identity fallback (capture absent from the mapping) — a
+  // regression in either surfaces as a confusing DTO-instantiation failure
+  // several layers away, and only against a live database.
   group('TomEndpointHandler.injectPathParameters', () {
     test('binds a path capture to the same-named DTO field (identity)', () {
       // `/items/{id}` with no mapping → `request.id`, no bare-String param.
@@ -421,7 +425,27 @@ void main() {
         _reqWithParams({'id': 'from-path'}),
         endpoint,
       );
+      // Precedence pinned deliberately: the URL is the addressed resource, so a
+      // body that disagrees with it does not get to redirect the call to a
+      // different row. The fold writes unconditionally, and that is the
+      // contract — not an accident of ordering.
       expect(json['id'], 'from-path');
+    });
+
+    test('a mapped capture overrides the body value under the mapped name', () {
+      const endpoint = TomEndpoint(
+        uri: '/items/{key}',
+        urlParameterMapping: {'key': 'id'},
+      );
+      final json = <String, dynamic>{'id': 'from-body'};
+      TomEndpointHandler.injectPathParameters(
+        json,
+        _reqWithParams({'key': 'from-path'}),
+        endpoint,
+      );
+      // Same precedence, reached through the rename — the collision is with the
+      // *mapped* name, which is the one a body could plausibly also carry.
+      expect(json, {'id': 'from-path'});
     });
 
     test('leaves the map unchanged when there are no path captures', () {
@@ -432,6 +456,25 @@ void main() {
         _reqWithParams({}),
         endpoint,
       );
+      expect(json, {'title': 'x'});
+    });
+
+    test('leaves the map unchanged when the request carries no params key', () {
+      const endpoint = TomEndpoint(
+        uri: '/items',
+        urlParameterMapping: {'key': 'id'},
+      );
+      final json = <String, dynamic>{'title': 'x'};
+      TomEndpointHandler.injectPathParameters(
+        json,
+        // No `shelf_router/params` context entry at all — a distinct branch of
+        // shelf_router's `Request.params` from the empty-map case above, and
+        // the shape a request has when it never passed through a Router.
+        Request('POST', Uri.parse('http://localhost/items')),
+        endpoint,
+      );
+      // A declared mapping must not manufacture a null field the DTO would then
+      // have to tolerate.
       expect(json, {'title': 'x'});
     });
   });
