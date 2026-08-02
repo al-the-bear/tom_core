@@ -768,11 +768,34 @@ class TomEndpointRouting {
       componentClasses: componentClasses,
     );
   }
+  /// Registers the API contracts the framework itself ships an implementation
+  /// of, so the router can resolve them without the application registering
+  /// anything.
+  ///
+  /// A registry-based handler is mounted by looking its contract up in
+  /// [tomRemoteApis], and the lookup throws when the contract is absent. For an
+  /// *application's* API that is right: the contract and the handler are both
+  /// the application's, and a handler whose contract was never registered is a
+  /// bootstrap the application got wrong. For the framework's own it would not
+  /// be: [TomUserPreferencesServer] is exported from the barrel, so it is
+  /// reflected — and therefore scanned — in every deployment, whether or not
+  /// that deployment has any interest in preferences. Leaving the registration
+  /// to the application would mean every server that forgot one line failed to
+  /// start, for an endpoint it never asked for.
+  ///
+  /// Registering is idempotent (the registry is keyed by API id), so repeated
+  /// router initialisations — which the test suite does per case — cost nothing
+  /// and cannot double-mount.
+  void registerFrameworkApis() {
+    registerTomUserPreferencesApi();
+  }
+
   /// Scans the annotated classes and mounts every endpoint method onto a fresh
   /// [Router], resolving each service's implementation instance, and returns the
   /// router.
   Router initializeRouter() {
     final Router router = Router();
+    registerFrameworkApis();
     var scanResult = scanClasses();
     // old style, for services based on interfaces
     for (var serviceType in scanResult.serviceInterfaces) {
@@ -788,6 +811,13 @@ class TomEndpointRouting {
     for( var serviceType in scanResult.apiImplementations ) {
       Object? serviceInstance = getReferencedComponent(serviceType);
       serviceInstance ??= TomBean.getBeanByType(serviceType.dynamicReflectedType);
+      // Same last resort as the interface branch above: an API implementation
+      // with a no-argument constructor is fully described by its declaration,
+      // so it need not be registered by hand. Without this the framework's own
+      // registry-based handlers (TomUserPreferencesServer) would make every
+      // application register a bean for an endpoint it never asked for — which
+      // is the case `instantiateComponent` was written for.
+      serviceInstance ??= instantiateComponent(serviceType);
       createRoutesForClassMirror(serviceType, serviceInstance, router);
     }
     return router;

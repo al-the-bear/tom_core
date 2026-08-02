@@ -1,6 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
+import '../preferences/user_preferences_service.dart';
 import 'two_factor.dart';
 import 'two_factor_enrolment.dart';
 import 'two_factor_policy.dart';
@@ -324,7 +325,7 @@ class TomAuthenticationServer {
 
       // Retry: hand back the same challenge with the attempt spent, so the next
       // submission is counted against a token the client cannot roll back.
-      final retry = _issueTokens(
+      final retry = await _issueTokens(
         principal,
         null,
         m,
@@ -380,7 +381,11 @@ class TomAuthenticationServer {
       language: m.clientLanguage,
       country: m.clientCountry,
       key: m.password,
-      // TODO: get timezone from somewhere. Maybe best from user preferences in app?
+      // The client's assertion, and necessarily so: this data is what
+      // *identifies* the user to the authentication service, so it is assembled
+      // before there is a principal — and without a principal there is no
+      // stored preference to read. The user's own timezone is resolved once the
+      // credentials have been accepted, in `_applyStoredTimezone`.
       timezone: m.clientTimezone,
     );
     try {
@@ -590,7 +595,12 @@ class TomAuthenticationServer {
             'No two-factor enrolment attempts remain',
           );
         }
-        final retry = _issueTokens(principal, null, m, enrolment: consumed);
+        final retry = await _issueTokens(
+          principal,
+          null,
+          m,
+          enrolment: consumed,
+        );
         retry.error = ex.key;
         return retry;
       }
@@ -681,7 +691,7 @@ class TomAuthenticationServer {
 
   /// Branches the login into enrolment: an interim token offering every
   /// permitted mechanism this deployment can actually set up.
-  TomAuthenticationResult _offerEnrolment(
+  Future<TomAuthenticationResult> _offerEnrolment(
     TomAuthenticationInfo authInfo,
     TomAuthenticationMessage m,
     Tom2FADecision decision,
@@ -755,7 +765,11 @@ class TomAuthenticationServer {
   /// [challenge] and [enrolment] are mutually exclusive by construction — a
   /// login is either answering a factor or setting one up — and each turns the
   /// pair into an *interim* token that grants no session.
-  TomAuthenticationResult _issueTokens(
+  ///
+  /// It is also where the principal's stored preferences are applied
+  /// ([_applyStoredTimezone]), for the same reason: every token this server
+  /// mints, on every pass, then carries the same resolved values.
+  Future<TomAuthenticationResult> _issueTokens(
     TomPrincipal principal,
     TomAccessControlDefinition? definition,
     TomAuthenticationMessage m, {
@@ -763,7 +777,9 @@ class TomAuthenticationServer {
     Map<String, Object?>? twoFactorVerification,
     Tom2FAEnrolmentState? enrolment,
     bool twoFactorSatisfied = false,
-  }) {
+  }) async {
+    await _applyStoredTimezone(principal, m);
+
     var (
       publicInfo,
       privateInfo,
@@ -807,6 +823,61 @@ class TomAuthenticationServer {
       result.twoFactorEnrolmentSkippable = enrolment.skippable;
     }
     return result;
+  }
+
+  /// Resolves [principal]'s effective timezone before it is minted into a
+  /// token: the preference stored for the user, else the one the client
+  /// asserted.
+  ///
+  /// The two are different claims and both survive.
+  /// [TomPrincipal.clientTimezone] is what the *device* says it is in — a fact
+  /// only the device knows, and one that changes when the user travels.
+  /// [TomPrincipal.timezone] is what the *user chose*, which follows them onto
+  /// the next device and is therefore the server's to answer. Before
+  /// server-stored preferences existed there was nowhere to read the second
+  /// from, so the client's assertion had to serve as both.
+  ///
+  /// The preference wins when it exists because it is the only one of the two
+  /// the user set deliberately; the device's assertion remains the fallback,
+  /// which is what makes a user who has never set the preference behave exactly
+  /// as before.
+  Future<void> _applyStoredTimezone(
+    TomPrincipal principal,
+    TomAuthenticationMessage m,
+  ) async {
+    principal.clientTimezone = m.clientTimezone;
+    principal.timezone = await _storedTimezone(principal) ?? m.clientTimezone;
+  }
+
+  /// [principal]'s stored timezone preference, or `null` when there is none to
+  /// be had.
+  ///
+  /// Read through [TomUserPreferences.getFor] because there is no request zone
+  /// carrying this principal yet — it has only just been authenticated — and
+  /// that method installs one, so the read is scoped like every other.
+  ///
+  /// Why: a failure here must not cost the user their login. A deployment that
+  /// has not run the preferences migration, or a preference someone stored as
+  /// the wrong type, would otherwise turn an unrelated data problem into "no
+  /// one can sign in". The failure is logged and the client's assertion is
+  /// used, which is exactly the behaviour of a deployment that stores no
+  /// preferences at all.
+  Future<String?> _storedTimezone(TomPrincipal principal) async {
+    final preferences = TomUserPreferences.resolve();
+    if (preferences == null) return null;
+    try {
+      return await preferences.getFor<String>(
+        principal,
+        TomUserPreferenceKeys.timezone,
+      );
+    } catch (error) {
+      tomLog.warn(
+        'TomAuthenticationServer: the stored timezone preference of '
+        '"${principal.username}" could not be read; falling back to the '
+        'timezone the client asserted. Cause: $error',
+      );
+      return null;
+    }
   }
 
   /// How the offered mechanisms describe themselves, in the order they were
