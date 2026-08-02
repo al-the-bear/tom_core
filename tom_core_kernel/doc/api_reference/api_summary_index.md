@@ -23,6 +23,7 @@ declarations are omitted.
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Kernel base exception, zone helpers, checked runners, stack-trace and offset formatting. |
 | Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers. |
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
+| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration. |
 | Reflection | [api_summary_reflection.md](api_summary_reflection.md) | The kernel reflector, reflection info, and JSON (de)serialization via mirrors. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Text and config resource providers over a JSON tree. |
 | Result | [api_summary_result.md](api_summary_result.md) | The canonical success-or-error envelope, structured error codes, and field-level details. |
@@ -170,6 +171,22 @@ declarations are omitted.
 | `TomListLifecycleListener` | abstract class | Lifecycle callbacks for `TomList` elements. |
 | `TomObservableEnum<E extends Enum>` | class | Boxed enum whose display text resolves from the text bundle under `<scope>.<enumName>.<value>`. |
 | `tomNull` | final | The shared null-object `TomObject<String>`. |
+
+### Preferences (`lib/src/tombase/preferences/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomUserPreferenceKeys` | class | Namespace of the preference keys the framework itself reads (`tom.timezone`, `tom.language`, `tom.country`, `tom.theme`). |
+| `TomUserPreferenceDto` | class | One stored preference on the wire: key, stored type name, JSON text, UTC write timestamp. |
+| `TomUserPreferenceWriteRequest` | class | Write request — the DTO's value fields without the timestamp. |
+| `TomUserPreferenceKeyRequest` | class | Read/delete request addressing one preference by key. |
+| `TomUserPreferencesApiService` | abstract class | The contract's Dart face, implemented by the server and by client callers. |
+| `TomUserPreferenceCodec` | class | Encodes/decodes preference values; refuses a type mismatch rather than coercing. |
+| `TomUserPreferenceCodecException` | class | Encode/decode failure (extends `TomException`). |
+| `tomUserPreferencesApi` | final | The `/preferences` API: list, read, write, delete — all `TomAuthenticatedAccess`. |
+| `tomUserPreferencesApiId` | const | The API id (`tomUserPreferences`) the server implementation binds to. |
+| `tomUserPreferencesListEndpointId`, `…ReadEndpointId`, `…WriteEndpointId`, `…DeleteEndpointId` | const | The four endpoint ids. |
+| `registerTomUserPreferencesApi()` | function | Registers the API with `tomRemoteApis`; idempotent. |
 
 ### Reflection (`lib/src/tombase/reflection/`)
 

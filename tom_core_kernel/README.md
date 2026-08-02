@@ -110,6 +110,7 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | `result` | `TomResult<T>`, `TomErrorResult`, `TomFieldError`, `TomErrorSeverity` | The canonical success-or-error envelope every operation returns |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
 | `settings` | client settings/authorization | Settings management |
+| `preferences` | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `tomUserPreferencesApi` | The contract both preference stores bind to: well-known keys, wire DTOs, the value codec, and the `/preferences` API |
 | `shutdown_cleanup` | `TomShutdownCleanup`, `TomDisposable`, `TomClosable` | Ordered shutdown / cleanup hooks |
 | `timezoned` | `DateTimestamp`, timezone tables | Timezone-aware date/time |
 | `http_connection` | server connection, endpoints, headers | HTTP connection helpers |
@@ -155,6 +156,7 @@ so anything listed below is executed on every run.
 | [`example/samples/logging/`](example/samples/logging/) | Structured / isolate / remote logging |
 | [`example/samples/resources/`](example/samples/resources/) | Text & config resource providers |
 | [`example/samples/result/`](example/samples/result/) | The success-or-error envelope, error details, and its wire form |
+| [`example/samples/preferences/`](example/samples/preferences/) | The preference codec's scalar, `DateTime` and reflected round-trips, and the `/preferences` contract |
 | [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, and what at-least-once asks of a job body |
 | [`example/samples/json/`](example/samples/json/) · [`example/samples/timezoned/`](example/samples/timezoned/) · [`example/samples/settings/`](example/samples/settings/) · [`example/samples/shutdown_cleanup/`](example/samples/shutdown_cleanup/) · [`example/samples/http_connection/`](example/samples/http_connection/) · [`example/samples/little_things/`](example/samples/little_things/) · [`example/samples/reflection/`](example/samples/reflection/) | The remaining utility modules |
 

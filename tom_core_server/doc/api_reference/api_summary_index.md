@@ -24,6 +24,7 @@ surface documented here.
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, data scoping, column authorization. |
+| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, request identity/logging, and middleware. |
@@ -357,6 +358,16 @@ surface documented here.
 | `TomColumnAuthorizationException` | class | Column-auth error. |
 | `TomAnnotationAnalyzer` | mixin | Persistence-annotation analysis (static). |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | Analyzer errors. |
+
+### Preferences (`lib/src/tomserver/preferences/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomUserPreference` | class | The `tom_user_preference` row; `@TomDbScope(field: 'principal_id', scope: 'owner')` is the whole ownership rule. |
+| `TomUserPreferenceRepository` | class | The CRUD repository for that entity. |
+| `TomUserPreferences` | class | Typed `get`/`set`/`getOr`/`read`/`all`/`remove` for the caller in the request zone, plus `getFor` for the login path. Installed as a bean. |
+| `TomUserPreferenceException` | class | An operation that cannot identify the caller (extends `TomServerException`). |
+| `TomUserPreferencesServer` | class | The `@TomApiImplementation` behind the kernel's `tomUserPreferencesApi`. |
 
 ### Resources (`lib/src/tomserver/resources/`)
 

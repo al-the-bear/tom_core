@@ -31,6 +31,7 @@ import 'samples/json/00_run_all_examples.dart' as json;
 import 'samples/little_things/00_run_all_examples.dart' as little_things;
 import 'samples/logging/00_run_all_examples.dart' as logging;
 import 'samples/observable/00_run_all_examples.dart' as observable;
+import 'samples/preferences/00_run_all_examples.dart' as preferences;
 import 'samples/reflection/00_run_all_examples.dart' as reflection;
 import 'samples/resources/00_run_all_examples.dart' as resources;
 import 'samples/result/00_run_all_examples.dart' as result;
@@ -123,70 +124,77 @@ Future<void> main() async {
     await observable.run();
     samplesRun++;
 
-    // 10. Reflection samples
+    // 10. Preferences samples
+    print('\n${'═' * 70}');
+    print('PREFERENCES SAMPLES');
+    print('═' * 70);
+    preferences.run();
+    samplesRun++;
+
+    // 11. Reflection samples
     print('\n${'═' * 70}');
     print('REFLECTION SAMPLES');
     print('═' * 70);
     await reflection.run();
     samplesRun++;
 
-    // 11. Resources samples
+    // 12. Resources samples
     print('\n${'═' * 70}');
     print('RESOURCES SAMPLES');
     print('═' * 70);
     resources.run();
     samplesRun++;
 
-    // 12. Result samples
+    // 13. Result samples
     print('\n${'═' * 70}');
     print('RESULT SAMPLES');
     print('═' * 70);
     result.run();
     samplesRun++;
 
-    // 13. Runtime samples
+    // 14. Runtime samples
     print('\n${'═' * 70}');
     print('RUNTIME SAMPLES');
     print('═' * 70);
     runtime.run();
     samplesRun++;
 
-    // 14. Scheduling samples
+    // 15. Scheduling samples
     print('\n${'═' * 70}');
     print('SCHEDULING SAMPLES');
     print('═' * 70);
     await scheduling.run();
     samplesRun++;
 
-    // 15. Scope IDs samples
+    // 16. Scope IDs samples
     print('\n${'═' * 70}');
     print('SCOPE IDS SAMPLES');
     print('═' * 70);
     scope_ids.run();
     samplesRun++;
 
-    // 16. Security samples
+    // 17. Security samples
     print('\n${'═' * 70}');
     print('SECURITY SAMPLES');
     print('═' * 70);
     security.run();
     samplesRun++;
 
-    // 17. Settings samples
+    // 18. Settings samples
     print('\n${'═' * 70}');
     print('SETTINGS SAMPLES');
     print('═' * 70);
     settings.run();
     samplesRun++;
 
-    // 18. Shutdown Cleanup samples
+    // 19. Shutdown Cleanup samples
     print('\n${'═' * 70}');
     print('SHUTDOWN CLEANUP SAMPLES');
     print('═' * 70);
     await shutdown_cleanup.run();
     samplesRun++;
 
-    // 19. Timezoned samples
+    // 20. Timezoned samples
     print('\n${'═' * 70}');
     print('TIMEZONED SAMPLES');
     print('═' * 70);

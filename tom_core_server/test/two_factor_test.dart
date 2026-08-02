@@ -1536,16 +1536,24 @@ void main() {
     /// [Tom2FADecision.offerableMechanisms] beside a non-empty
     /// `allowedMechanisms` says "this deployment installed none of them", which
     /// a null lookup ten frames later cannot say.
+    /// The "permitted but not installed" mechanisms below are `push` and
+    /// `carrier-pigeon`, deliberately — **not** `sms`.
+    ///
+    /// The registry's automatic scan walks the whole reflected program, and this
+    /// suite reflects the server barrel, which ships `@Tom2FAAdaptor`-annotated
+    /// adaptors for `totp`, `sms` and `email`. Those three are therefore
+    /// genuinely installed here, so naming one of them as the uninstallable
+    /// mechanism would assert the opposite of what the framework does.
     test('offerable mechanisms are the permitted ones that are registered',
         () async {
       Tom2FARegistry.register('fake', _FakeAdaptor());
       final policy = TomRole2FAPolicy(
         defaultRequirement: Tom2FARequirement.required,
-        mechanisms: ['sms', 'fake', 'push'],
+        mechanisms: ['carrier-pigeon', 'fake', 'push'],
       );
 
       final decision = await policy.decideFor(contextFor());
-      expect(decision.allowedMechanisms, ['sms', 'fake', 'push']);
+      expect(decision.allowedMechanisms, ['carrier-pigeon', 'fake', 'push']);
       expect(decision.offerableMechanisms, ['fake']);
     });
 
@@ -1554,11 +1562,11 @@ void main() {
       Tom2FARegistry.register('fake', _FakeAdaptor());
       final policy = TomRole2FAPolicy(
         defaultRequirement: Tom2FARequirement.required,
-        mechanisms: ['sms'],
+        mechanisms: ['push'],
       );
 
       final decision = await policy.decideFor(contextFor());
-      expect(decision.allowedMechanisms, ['sms'], reason: 'still permitted');
+      expect(decision.allowedMechanisms, ['push'], reason: 'still permitted');
       expect(decision.offerableMechanisms, isEmpty, reason: 'but unusable');
     });
 
@@ -1961,7 +1969,10 @@ void main() {
         Tom2FAPolicy,
         TomRole2FAPolicy(
           defaultRequirement: Tom2FARequirement.required,
-          mechanisms: ['sms'],
+          // 'push' rather than 'sms': the framework ships an sms adaptor, and
+          // the registry's scan finds it, so 'sms' names an *installed*
+          // mechanism in any program that reflects the server barrel.
+          mechanisms: ['push'],
         ),
       );
 
@@ -1978,9 +1989,9 @@ void main() {
         Tom2FAPolicy,
         TomRole2FAPolicy(
           defaultRequirement: Tom2FARequirement.required,
-          // 'sms' is permitted but not installed here, so preference order has
+          // 'push' is permitted but not installed here, so preference order has
           // to survive the intersection for 'fake' to be the one challenged.
-          mechanisms: ['sms', 'fake'],
+          mechanisms: ['push', 'fake'],
         ),
       );
 

@@ -850,3 +850,32 @@ class FixtureNullableRecord extends TomClass {
   @TomDbColumn(columnName: 'occurred_at')
   final occurredAt = TomNDateTime(null);
 }
+
+/// A reflected **preference value** — the object shape a user preference is
+/// stored as when it is not a scalar (TCCA10).
+///
+/// The point of [TomUserPreferences] taking `@tomReflector` values is that a
+/// preference can be a structured choice rather than a stringly-typed blob, and
+/// nothing proves that except a value that is genuinely reconstructed: the codec
+/// resolves `T` through `tomReflector.reflectType`, so a class the generator has
+/// not captured fails at the *decode*, not at the write. Declaring it here is
+/// therefore what makes the round-trip assertion meaningful.
+///
+/// The fields are plain and non-`final` because that is what
+/// `createInstanceFromJson` fills — it constructs a blank instance and assigns
+/// members, so a `final` field would come back at its default no matter what was
+/// stored. They cover the three JSON shapes a preference object realistically
+/// mixes (text, number, flag), so a decode that dropped one type would be
+/// visible.
+@tomReflector
+class FixtureDisplayPreference {
+  /// A text member — the theme the user picked.
+  String theme = '';
+
+  /// A numeric member, exercising the `int` branch inside an object rather than
+  /// as a top-level scalar.
+  int fontSize = 0;
+
+  /// A boolean member.
+  bool compact = false;
+}

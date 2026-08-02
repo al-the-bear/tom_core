@@ -107,8 +107,15 @@ class TomAuthenticationMessage {
   /// The client's country (ISO 3166-1 alpha-2 code).
   String clientCountry = "XX"; // none
 
-  /// The client's timezone identifier.
-  // TODO: get from preferences or device
+  /// The client's timezone identifier — what the *device* is set to.
+  ///
+  /// The device's own setting, not the user's choice: the two are separate
+  /// claims and both reach the token ([TomPrincipal.clientTimezone] and
+  /// [TomPrincipal.timezone]). A client fills this from the platform, and never
+  /// from a stored preference — the preference is server-side
+  /// ([TomUserPreferenceKeys.timezone]) and the server applies it after the
+  /// login has produced a principal, which is the earliest point at which it
+  /// can be read.
   String clientTimezone = "utc";
 }
 

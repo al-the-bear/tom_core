@@ -97,7 +97,7 @@ abstract, so other backends can be added.
 | `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `file_storage`, `scheduling`, `healthcheck`, `cmdline`, `little_things`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -110,6 +110,7 @@ abstract, so other backends can be added.
 | `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
 | `file_storage` | `TomBlobStore`, `TomDatabaseBlobStore`, `TomDirectoryBlobStore`, `TomS3BlobStore`, `TomMemoryBlobStore`, `TomBlobStoreInfo`, `TomFileReference` | Streaming blob storage behind one four-method contract, backends chosen in configuration, and entity columns that hold a storage key instead of the bytes |
 | `scheduling` | `TomSqlJobStore`, `TomSqlLeaseLock` | The kernel's job-store and lease-lock contracts over a shared database, so a cluster whose nodes share no filesystem still runs each window exactly once |
+| `preferences` | `TomUserPreference`, `TomUserPreferenceRepository`, `TomUserPreferences`, `TomUserPreferencesServer` | Per-principal preferences that follow the user across devices: one scoped table, a typed service that reads its caller from the request zone, and the `/preferences/*` endpoints behind the kernel's contract |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `HealthAnalyzer` | Health endpoints and analyzers |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException`, `LoginException` | Server exception base (extends kernel `TomException`) and the login failure it raises |

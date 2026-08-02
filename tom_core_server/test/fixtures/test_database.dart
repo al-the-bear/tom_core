@@ -380,6 +380,21 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
         .executeCommand('TRUNCATE TABLE tom_user_two_factor_enrolment');
   }
 
+  /// Creates the `tom_user_preference` table from the entity's own DDL, for the
+  /// same reason [ensureTwoFactorEnrolmentTable] does: the test and the shipped
+  /// migration must not be able to describe different tables.
+  static Future<void> ensureUserPreferenceTable(TomDataSourceInfo dsi) async {
+    final ddl = TomUserPreference.createTableSql.trim();
+    await dsi.datasource.executeCommand(
+      ddl.endsWith(';') ? ddl.substring(0, ddl.length - 1) : ddl,
+    );
+  }
+
+  /// Empties `tom_user_preference` between tests.
+  static Future<void> truncateUserPreference(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE tom_user_preference');
+  }
+
   /// Closes every registered data source and clears the process-wide registry,
   /// so a torn-down suite leaves no open connection or stale registration for
   /// the next one.
