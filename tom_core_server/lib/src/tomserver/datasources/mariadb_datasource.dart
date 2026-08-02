@@ -348,6 +348,85 @@ class MariaDbDatasource implements TomDataSource {
   static (String, List<String>) toPositionalStatement(String namedSql) =>
       SqlPlaceholderScan.toPositional(namedSql);
 
+  /// Reads [field] from [row] as a Dart `double`.
+  ///
+  /// **This is the only place that knows how this driver yields a double**, and
+  /// it exists because `typedColByName<double>` cannot be trusted to widen.
+  /// `mysql_client` converts a column to `double` only from a fixed whitelist of
+  /// protocol types — TINY, SHORT, LONG, LONGLONG, INT24, FLOAT, DOUBLE
+  /// (`mysql_column_type.dart`). `DECIMAL`/`NEWDECIMAL` (246) is in neither that
+  /// list nor the `int` one, so asking the driver for a `double` there *throws*
+  /// `MySQLProtocolException` instead of widening.
+  ///
+  /// That matters far beyond aggregates. `DECIMAL` is the correct SQL type for
+  /// money — exact where `DOUBLE` is approximate — so an ordinary business
+  /// entity hits this on its first select. `SUM`/`AVG` over an integer column
+  /// return `NEWDECIMAL` too, which is how the gap was first found (CSEXD1).
+  ///
+  /// Reading the raw text and parsing it here loses nothing: the driver's own
+  /// conversion starts from exactly this text (the whitelist is a gate, not a
+  /// decoder), and it reports `DECIMAL` as best-matching Dart `String`. The
+  /// exact text form ("1234.56", "43.0000") parses losslessly.
+  static double? _readDouble(ResultSetRow row, String field) {
+    final text = row.colByName(field);
+    if (text == null) {
+      return null;
+    }
+    final value = double.tryParse(text);
+    if (value == null) {
+      throw MariadbDatasourceException(
+        "error.result_processing.not_a_double",
+        "Column '$field' holds '$text', which is not readable as a double",
+        parameters: {"attribute": field, "value": text},
+      );
+    }
+    return value;
+  }
+
+  /// Reads [field] from [row] as a Dart `int`.
+  ///
+  /// The `int` whitelist has the same `NEWDECIMAL` gap as the `double` one, and
+  /// an `int`-declared field over a `DECIMAL` column is not automatically a
+  /// modelling error: `DECIMAL(n,0)` *is* an exact integer type, and wide
+  /// identifiers and counters are routinely declared that way. Rejecting the
+  /// read for being `DECIMAL` would therefore break a legitimate mapping.
+  ///
+  /// What must not happen is a silent truncation. Reading `DECIMAL(10,2)` into
+  /// an `int` and quietly dropping the cents turns a modelling mistake into
+  /// wrong money that no test would notice, so this **encodes the decision**
+  /// rather than leaving it to the driver: an exact integral value is read, and
+  /// a value with a fractional part is refused by name. Neither outcome is the
+  /// driver's raw `MySQLProtocolException`, which said only that a conversion
+  /// was unavailable and never which column it was reading.
+  static int? _readInt(ResultSetRow row, String field) {
+    final text = row.colByName(field);
+    if (text == null) {
+      return null;
+    }
+    final direct = int.tryParse(text);
+    if (direct != null) {
+      return direct;
+    }
+    final asDouble = double.tryParse(text);
+    if (asDouble == null) {
+      throw MariadbDatasourceException(
+        "error.result_processing.not_an_int",
+        "Column '$field' holds '$text', which is not readable as an int",
+        parameters: {"attribute": field, "value": text},
+      );
+    }
+    if (asDouble != asDouble.truncateToDouble()) {
+      throw MariadbDatasourceException(
+        "error.result_processing.fractional_int",
+        "Column '$field' holds the fractional value '$text' but is mapped to "
+            "an int. Reading it would silently discard the fraction; declare "
+            "the field as a double, or the column as an integer type.",
+        parameters: {"attribute": field, "value": text},
+      );
+    }
+    return asDouble.toInt();
+  }
+
   /// Maps one driver [row] of a grouped result into a [TomGroupedRow], reading
   /// each alias in [projection] as the Dart type the query declared for it.
   ///
@@ -363,21 +442,9 @@ class MariaDbDatasource implements TomDataSource {
       final alias = entry.key;
       switch (entry.value) {
         case int:
-          values[alias] = row.typedColByName<int>(alias);
+          values[alias] = _readInt(row, alias);
         case double:
-          // Read the raw text and parse it here rather than via
-          // `typedColByName<double>`: the driver converts to `double` only from
-          // a fixed whitelist of column types that does not include
-          // `NEWDECIMAL` (246), and `SUM`/`AVG` over an integer column is
-          // exactly what MariaDB returns as `NEWDECIMAL`. Asking the driver for
-          // a `double` there throws `MySQLProtocolException` instead of
-          // widening — which would make `Sum` and `Avg`, whose whole purpose is
-          // to absorb that widening, unusable against a real server. The text
-          // form ("43.0000") parses losslessly.
-          final decimalText = row.colByName(alias);
-          values[alias] = decimalText == null
-              ? null
-              : double.parse(decimalText);
+          values[alias] = _readDouble(row, alias);
         case String:
           values[alias] = row.typedColByName<String>(alias);
         case bool:
@@ -471,9 +538,9 @@ class MariaDbDatasource implements TomDataSource {
             Type t = entry.value.getType();
             switch (t) {
               case int:
-                entry.value.set(row.typedColByName<int>(entry.key));
+                entry.value.set(_readInt(row, entry.key));
               case double:
-                entry.value.set(row.typedColByName<double>(entry.key));
+                entry.value.set(_readDouble(row, entry.key));
               case String:
                 entry.value.set(row.typedColByName<String>(entry.key));
               case bool:
@@ -516,9 +583,9 @@ class MariaDbDatasource implements TomDataSource {
             var t = member!.getType();
             switch (t) {
               case int:
-                member.set(row.typedColByName<int>(col.field));
+                member.set(_readInt(row, col.field));
               case double:
-                member.set(row.typedColByName<double>(col.field));
+                member.set(_readDouble(row, col.field));
               case String:
                 member.set(row.typedColByName<String>(col.field));
               case bool:
@@ -573,12 +640,9 @@ class MariaDbDatasource implements TomDataSource {
           }
           switch (dm.reflectedType) {
             case int:
-              im.invokeSetter(dm.simpleName, row.typedColByName<int>(fieldName));
+              im.invokeSetter(dm.simpleName, _readInt(row, fieldName));
             case double:
-              im.invokeSetter(
-                dm.simpleName,
-                row.typedColByName<double>(fieldName),
-              );
+              im.invokeSetter(dm.simpleName, _readDouble(row, fieldName));
             case String:
               im.invokeSetter(
                 dm.simpleName,
@@ -641,15 +705,9 @@ class MariaDbDatasource implements TomDataSource {
           }
           switch (dm.reflectedType) {
             case int:
-              im.invokeSetter(
-                dm.simpleName,
-                row.typedColByName<int>(col.field),
-              );
+              im.invokeSetter(dm.simpleName, _readInt(row, col.field));
             case double:
-              im.invokeSetter(
-                dm.simpleName,
-                row.typedColByName<double>(col.field),
-              );
+              im.invokeSetter(dm.simpleName, _readDouble(row, col.field));
             case String:
               im.invokeSetter(
                 dm.simpleName,
@@ -757,9 +815,9 @@ class MariaDbDatasource implements TomDataSource {
     if (colType == null || colType == TomDbString) {
       return TomDbString.of(row.typedColByName<String>(field));
     } else if (colType == TomDbInt) {
-      return TomDbInt(row.typedColByName<int>(field));
+      return TomDbInt(_readInt(row, field));
     } else if (colType == TomDbDouble) {
-      return TomDbDouble(row.typedColByName<double>(field));
+      return TomDbDouble(_readDouble(row, field));
     } else if (colType == TomDbBool) {
       return TomDbBool(row.typedColByName<bool>(field));
     } else if (colType == TomDbDateTime) {

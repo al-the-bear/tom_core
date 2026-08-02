@@ -211,6 +211,34 @@ CREATE TABLE IF NOT EXISTS fixture_scoped_document (
     );
   }
 
+  /// The DDL for `FixtureAmountRecord`, the entity whose numeric columns are
+  /// `DECIMAL` rather than `INT`/`DOUBLE` (CSEXE1).
+  ///
+  /// `DECIMAL(10,2)` is what a money column actually is, and the driver reports
+  /// it as protocol type `NEWDECIMAL` (246) — the type its `double` and `int`
+  /// conversion whitelists both omit. `quantity` is `DECIMAL(10,0)`: the same
+  /// protocol type with scale 0, which is an exact integer and must still map
+  /// onto a Dart `int`.
+  static const String _fixtureAmountDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_amount (
+  id       BIGINT        NOT NULL AUTO_INCREMENT,
+  label    VARCHAR(255)  NULL,
+  amount   DECIMAL(10,2) NULL,
+  quantity DECIMAL(10,0) NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_amount` table if it does not already exist.
+  static Future<void> ensureFixtureAmountTable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(_fixtureAmountDdl);
+  }
+
+  /// Empties the `fixture_amount` table so each test starts from a known state.
+  static Future<void> truncateFixtureAmount(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_amount');
+  }
+
   /// Drops the blob store's two tables, so a `TomDatabaseBlobStore` test starts
   /// from an empty store regardless of what an earlier run left behind.
   ///

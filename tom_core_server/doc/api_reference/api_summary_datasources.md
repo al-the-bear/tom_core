@@ -810,11 +810,17 @@ decided by the query — so `prepareStatement` copies the query's
 `projectionTypes` onto the statement and `mapGroupedRow` runs before any mirror
 is taken.
 
-A `double` alias is read as raw text and parsed, not via the driver's typed
+Numeric columns are read as raw text and parsed, not via the driver's typed
 accessor: MariaDB types `SUM`/`AVG` over an integer column as `NEWDECIMAL`
-(protocol type 246), and `mysql_client` converts to `double` only from a
-whitelist of column types that omits it — asking for a `double` there throws
-`MySQLProtocolException` rather than widening. The text form parses losslessly.
+(protocol type 246) — as it does every `DECIMAL` column — and `mysql_client`
+converts to `double` (or to `int`) only from a whitelist of column types that
+omits it, so asking for a number there throws `MySQLProtocolException` rather
+than widening. The text form parses losslessly. This is not specific to grouped
+rows: `mapGroupedRow` and all four entity-mapping variants share the same two
+read helpers, so an entity with a `DECIMAL` money column reads on every path. An
+`int`-declared field over a `DECIMAL` column is read when the value is exactly
+integral and refused by name (`error.result_processing.fractional_int`) when it
+is not — never silently truncated.
 
 ##### Properties
 

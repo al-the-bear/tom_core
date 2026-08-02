@@ -534,3 +534,92 @@ class FixtureUnauditedRecord {
   /// An ordinary field; the type is never persisted, only reflected.
   String? note;
 }
+
+/// A reflected entity whose columns are `DECIMAL` (CSEXE1).
+///
+/// `DECIMAL` is the correct SQL type for money — it is exact where `DOUBLE` is
+/// approximate — so this is the shape an ordinary business entity has, not an
+/// exotic one. It is nonetheless the shape no fixture had: every other entity
+/// here stores fractional values in a column the driver already converts, which
+/// is why the driver's `NEWDECIMAL` gap stayed invisible on the entity-mapping
+/// paths long after it was found and fixed for grouped rows.
+///
+/// The two numeric columns are deliberately different declarations over the
+/// same SQL family:
+///
+/// - [amount] is `DECIMAL(10,2)` read into a Dart `double` — the money case;
+/// - [quantity] is `DECIMAL(10,0)` read into a Dart `int` — the exact-integer
+///   case, which is legitimate (`DECIMAL(n,0)` *is* an integer type, and wide
+///   identifiers are often declared that way) and must therefore not be
+///   rejected merely for being `DECIMAL`.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_amount',
+  primaryKeyField: 'id',
+)
+class FixtureAmountRecord {
+  /// Surrogate primary key, assigned by the database on insert.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A plain string column, so the entity has a non-numeric field to assert
+  /// against and the failure can be localised to the numeric ones.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+
+  /// The money column: `DECIMAL(10,2)` bound to a Dart `double`.
+  @TomDbColumn(columnName: 'amount')
+  double? amount;
+
+  /// The exact-integer column: `DECIMAL(10,0)` bound to a Dart `int`.
+  @TomDbColumn(columnName: 'quantity')
+  int? quantity;
+}
+
+/// The MariaDB-backed repository for [FixtureAmountRecord].
+class FixtureAmountRepository
+    extends TomSqlDatasourceRepository<FixtureAmountRecord, int> {}
+
+/// A **table-less reflected result holder** with a `double` field (CSEXE1).
+///
+/// Carries no `@TomDbTable` and no `@TomDbColumn`, so the row mapper populates
+/// it by matching *declared field names* against result-column names — the
+/// third of the four entity-mapping variants, and the one an aggregate query
+/// naturally lands on. `SUM(amount)` over a `DECIMAL` column is itself
+/// `NEWDECIMAL`, so this type reaches the same driver gap by a different route
+/// than [FixtureAmountRecord] does.
+@tomReflector
+class FixtureAmountSummary {
+  /// The aggregate, projected as `total`.
+  double? total;
+
+  /// A row count projected as `entries`, so the holder covers an `int` field
+  /// on the same path.
+  int? entries;
+}
+
+/// A [TomClass]-shaped result holder with a `double` member (CSEXE1).
+///
+/// The first two entity-mapping variants map a [TomClass] by its *observable
+/// members* rather than by reflected fields, and they are reached only by a
+/// [TomClass] result type — which no fixture previously provided. Without this
+/// type those two `typedColByName<double>` call sites are unreachable from any
+/// test, and a fix to them would be unverifiable.
+///
+/// The members are the **non-nullable** observables deliberately. `TomObject<T>`
+/// reports its element type as declared, so a `TomNDouble` answers `double?` —
+/// which the mapper's `case double:` never matches, making it reject *every*
+/// nullable observable member (a `TomNString` over a plain `VARCHAR` included).
+/// That is a real defect but a different one, with nothing to do with
+/// `DECIMAL`; it is tracked as CSEXF1. Using `TomDouble`/`TomInt` here keeps
+/// this fixture pointed at the driver gap it exists to expose.
+@tomReflector
+class FixtureAmountObservable extends TomClass {
+  /// The fractional member, matched to a result column named `amount`.
+  final amount = TomDouble(0);
+
+  /// An integer member, matched to a result column named `quantity`.
+  final quantity = TomInt(0);
+}

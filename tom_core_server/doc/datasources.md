@@ -198,13 +198,31 @@ mirror is taken; an alias whose declared type is outside
 `int`/`double`/`String`/`bool`/`DateTime` raises
 `error.result_processing_grouped.unknown_type`.
 
-> **`double` aliases are read as text, deliberately.** MariaDB types
-> `SUM`/`AVG` over an integer column as `NEWDECIMAL` (protocol type 246), and
-> `mysql_client` converts to `double` only from a whitelist of column types that
-> omits it — asking the driver for a `double` there throws
-> `MySQLProtocolException` rather than widening. `mapGroupedRow` therefore reads
-> the raw text and parses it, which is lossless. A driver for another database
-> should check the equivalent conversion before assuming its client widens.
+> **Numeric columns are read as text, deliberately — on every path.**
+> `mysql_client` converts a column to `double` only from a whitelist of protocol
+> types (TINY, SHORT, LONG, LONGLONG, INT24, FLOAT, DOUBLE), and to `int` from a
+> similar one. `DECIMAL`/`NEWDECIMAL` (protocol type 246) is in neither, so
+> asking the driver for a number there throws `MySQLProtocolException` rather
+> than widening. That is not an aggregate curiosity: `DECIMAL` is the correct SQL
+> type for money, so an ordinary entity hits it on its first select —
+> `SUM`/`AVG` over an integer column merely reach it first, which is how the gap
+> was found. The driver therefore reads the raw text and parses it in two shared
+> helpers, `_readDouble` and `_readInt`, used by `mapGroupedRow` and by all four
+> entity-mapping variants alike. Parsing here is lossless: the driver's own
+> conversion starts from exactly this text (the whitelist is a gate, not a
+> decoder) and it reports `DECIMAL` as best-matching Dart `String`.
+>
+> **An `int`-declared field over a `DECIMAL` column is decided here, not by the
+> driver.** `DECIMAL(n,0)` is a legitimate exact-integer mapping, so refusing
+> every `DECIMAL`→`int` read would break real models; but reading `DECIMAL(10,2)`
+> into an `int` and dropping the cents would turn a modelling mistake into wrong
+> money that nothing downstream would catch. The encoded rule: **an exactly
+> integral value is read, a fractional one is refused by name**
+> (`error.result_processing.fractional_int`, naming the column and the value).
+> Silent truncation never happens.
+>
+> A driver for another database should check the equivalent conversion before
+> assuming its client widens.
 
 `MariaDbXADatasource` (`@TomDatasourceDriver("mariadb_xa")`) inherits all of
 that but overrides the transaction lifecycle to use **XA** (`XA START` / `XA

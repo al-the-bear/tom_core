@@ -283,10 +283,16 @@ declared type, which is the only type information a grouped row has.
 That mapping is load-bearing for `SUM` and `AVG`. MariaDB types `SUM(<int
 column>)` as `NEWDECIMAL`, and `mysql_client` converts a column to `double` only
 from a fixed whitelist of protocol types that does not include it — asking the
-driver for a `double` there *throws* rather than widening. The mapper therefore
-reads a `double`-declared alias as raw text and parses it; the text form is
-lossless, so nothing is given up. A caller sees a `double` either way and does
-not need to know.
+driver for a `double` there *throws* rather than widening. The driver therefore
+reads numeric columns as raw text and parses them; the text form is lossless, so
+nothing is given up. A caller sees a `double` either way and does not need to
+know. The same applies to every entity-mapping path, not only to grouped rows:
+`DECIMAL` is the correct SQL type for money, so a plain entity with a money
+column meets the identical gap on its first select. See
+[`datasources.md`](datasources.md#the-mariadb-driver) for the shared read
+helpers and for the rule governing an `int`-declared field over a `DECIMAL`
+column (exactly integral values are read; fractional ones are refused by name,
+never truncated).
 
 The consequence worth remembering: **`SUM` over an integer column is a `double`,
 not an `int`.** Read it with `doubleValue`, and do not reach past the accessors
