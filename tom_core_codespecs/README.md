@@ -42,11 +42,23 @@ parts that had no `tom_core` holder:
 `tom_core_server` persistence classes (`@TomDbTable`, `@TomDbColumn`,
 `@TomEntityId`, `@TomDbScope`, `TomRepository<T,K>`,
 `TomSqlDatasourceRepository`, `query_builder`, `TomTransaction`), so CE-DB needs
-no gap class. Domain enums are a *gap*:
+no gap class. **Neither do domain enums** — `codespecs_mapping.md` §4.1 realises
+the `domainEnum` member kind as a **plain Dart `enum`**, so there is no class to
+build on and none to supply. An earlier reading of the survey ("`tom_core` has
+only mechanical enums, no domain-enum framework") produced a
+`TomDomainEnum`/`TomDomainEnumValue` holder here; it was removed in 0.9.0. The
+question the survey answers is *what does `tom_core` lack*, and the answer is
+nothing, because a domain enum has no authored attributes of its own to hold:
 
-| Class | Kind | Purpose |
-|-------|------|---------|
-| `TomDomainEnum` + `TomDomainEnumValue` | `domainEnum` (member kind) | Domain-enum holder (a business closed value set) a `@CsEnum` is built on — `tom_core_kernel` has only mechanical enums, no domain-enum framework. Stable `valueId` token separated from display `label`. |
+| Would-be attribute | Where it actually lives |
+|--------------------|-------------------------|
+| value token (`valueId`) | the enum constant's own identifier — no second string to drift from the name |
+| value label | CE-TX copy in the message-key registry, like every other label (`codespecs_mapping.md` §1.2 consequence 1, §5.21) |
+| description | the doc comment the generator writes above the enum and each constant (`codespecs_derivation_contract.md` §3.1.1) |
+| default value | the enum-typed *member* that has one (a CE-DB column, a CE-CF/CE-CC/CE-DS/CE-UP setting, a CE-ST field) — two members of the same type may default differently |
+
+A holder would hold nothing, and it would give value labels a **second** home,
+which the closed-vocabulary rule forbids.
 
 ### Entity-model placement (CE-DB) — decided
 

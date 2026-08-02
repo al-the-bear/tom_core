@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.0
+
+- **Breaking: remove `TomDomainEnum` / `TomDomainEnumValue` (the `domainEnum`
+  member kind).** `codespecs_mapping.md` §4.1 realises a domain enum as a
+  **plain Dart `enum`** — a member declaration of the part that introduces it,
+  with no `tom_core` basis to build on — and
+  `codespecs_derivation_contract.md` §3.1.1 emits exactly that. The holder was
+  authored from a different reading of the same survey ("`tom_core` has only
+  mechanical enums, no domain-enum framework") and the two sides then disagreed
+  about whether a class exists at all. The plain-enum arm stands, for a reason
+  stronger than precedence: the holder had nothing to hold. Each of its fields
+  belongs somewhere else, and belongs there exclusively — the value token is the
+  enum constant's own identifier (no second string to drift from the name), the
+  value label is CE-TX copy in the message-key registry like every other label
+  (§1.2 consequence 1, §5.21), the description is the doc comment the generator
+  writes, and a default belongs to the enum-typed *member*, since two members of
+  the same type may default differently. Keeping the holder would have given
+  value labels a second home, which the closed-vocabulary rule forbids.
+- `test/gap_class_inventory_test.dart` drops `domain_enum.dart` — with it, the
+  one entry that was marked *verdict contested* — and pins the removal the way
+  CE-CC's is pinned, so re-adding the class means arguing with a test.
+
 ## 0.8.0
 
 - **Breaking: remove `TomClientConfiguration` (CE-CC).** It was authored when

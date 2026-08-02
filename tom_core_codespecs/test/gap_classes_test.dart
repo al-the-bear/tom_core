@@ -87,48 +87,6 @@ void main() {
     });
   });
 
-  group('csm210-4-1: domainEnum TomDomainEnum', () {
-    test('defaults own their values list (no shared mutable list)', () {
-      final a = TomDomainEnum();
-      final b = TomDomainEnum();
-      a.values.add(TomDomainEnumValue(valueId: 'pending'));
-      expect(a.values.map((v) => v.valueId), ['pending']);
-      expect(b.values, isEmpty, reason: 'each instance owns its own list');
-    });
-
-    test('names a domain closed value set with stable tokens vs labels', () {
-      final e = TomDomainEnum(
-        enumId: 'order_status',
-        displayName: 'Order status',
-        values: [
-          TomDomainEnumValue(valueId: 'pending', label: 'Pending payment'),
-          TomDomainEnumValue(valueId: 'paid', label: 'Paid'),
-          TomDomainEnumValue(
-              valueId: 'shipped', label: 'Shipped', description: 'Left the warehouse'),
-        ],
-        defaultValueId: 'pending',
-      );
-      expect(e.enumId, 'order_status');
-      expect(e.values.map((v) => v.valueId), ['pending', 'paid', 'shipped']);
-      expect(e.values[2].description, 'Left the warehouse');
-      expect(e.defaultValueId, 'pending');
-    });
-
-    test('hasValue reports membership by valueId', () {
-      final e = TomDomainEnum(values: [
-        TomDomainEnumValue(valueId: 'pending'),
-        TomDomainEnumValue(valueId: 'paid'),
-      ]);
-      expect(e.hasValue('paid'), isTrue);
-      expect(e.hasValue('shipped'), isFalse);
-    });
-
-    test('defaultValueId is null when the enum has no default', () {
-      final e = TomDomainEnum(values: [TomDomainEnumValue(valueId: 'a')]);
-      expect(e.defaultValueId, isNull);
-    });
-  });
-
   group('csra2: CE-LO TomLayoutModel', () {
     test('the container-kind set is the closed codespecs_mapping.md §5.22 '
         'nine', () {

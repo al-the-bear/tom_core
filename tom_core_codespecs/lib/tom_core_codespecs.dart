@@ -26,13 +26,17 @@
 /// concrete classes: [TomClientApplication] (CE-CL) and [TomUserSettings]
 /// (CE-UP).
 ///
-/// **csm210-4-1 (wave-2 W10) — domain enums.** The csm4 code-basis survey
-/// (`codespecs_mapping.md` §5) flagged them as a *gap*: `tom_core` has only
-/// mechanical enums, no domain-enum framework. [TomDomainEnum] (+
-/// [TomDomainEnumValue]) is that thin holder — the class a `@CsEnum` CodeSpec
-/// is built on. CE-DB stays a *reuse* verdict:
+/// **CE-DB and domain enums are both *not* gaps.** CE-DB is a reuse verdict —
 /// `@CsTable`/`@CsColumn`/`@CsRepository` are built directly on
-/// `tom_core_server` persistence classes, so CE-DB needs no gap class here.
+/// `tom_core_server` persistence classes. A **domain enum needs no holder at
+/// all**: `codespecs_mapping.md` §4.1 realises it as a plain Dart `enum`, and
+/// every attribute a holder would have carried belongs elsewhere — the value
+/// token is the enum constant's own identifier, the value label is CE-TX copy
+/// in the message-key registry (§1.2 consequence 1, §5.21), the description is
+/// the generated doc comment (`codespecs_derivation_contract.md` §3.1.1), and a
+/// default belongs to the enum-typed member rather than the enum. A holder
+/// would therefore hold nothing, and it would give labels a second home — which
+/// the closed-vocabulary rule forbids.
 ///
 /// **csra2 — the remaining catalogued gaps.** The `codespecs_mapping.md` §4.1
 /// catalogue marks four further parts *gap*, and the csra2 cross-check
@@ -74,7 +78,6 @@
 library;
 
 export 'src/client_application.dart';
-export 'src/domain_enum.dart';
 export 'src/job_declaration.dart';
 export 'src/layout_node.dart';
 export 'src/message_key.dart';

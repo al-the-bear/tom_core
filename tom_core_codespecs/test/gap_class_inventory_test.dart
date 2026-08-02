@@ -24,10 +24,6 @@ import 'package:test/test.dart';
 /// noted on the entry.
 const Map<String, String> _expectedGapClassFiles = {
   'client_application.dart': 'CE-CL — no client-application descriptor root',
-  // Disputed: the barrel justifies this as "tom_core has only mechanical
-  // enums", while codespecs_mapping.md §4.1 records a domain enum as realised
-  // as a plain Dart `enum` with no class here. One arm has to go.
-  'domain_enum.dart': '@CsEnum — domain-enum holder (verdict contested)',
   'job_declaration.dart': 'CE-JB — no deployment/ownership envelope',
   'layout_node.dart': 'CE-LO — no base/override two-layer layout model',
   'message_key.dart': 'CE-TX — no closed message-key catalogue',
@@ -77,6 +73,19 @@ void main() {
       expect(
         File('lib/tom_core_codespecs.dart').readAsStringSync(),
         isNot(contains("export 'src/client_configuration.dart';")),
+      );
+    });
+
+    test('csrb7: domain enums have no gap class — they are a plain Dart enum',
+        () {
+      // codespecs_mapping.md §4.1 realises the domainEnum member kind as a
+      // plain Dart `enum`, so there is no class to build on. A holder would
+      // also give value labels a second home; they are CE-TX copy (§1.2
+      // consequence 1, §5.21).
+      expect(_expectedGapClassFiles.keys, isNot(contains('domain_enum.dart')));
+      expect(
+        File('lib/tom_core_codespecs.dart').readAsStringSync(),
+        isNot(contains('TomDomainEnum')),
       );
     });
   });
