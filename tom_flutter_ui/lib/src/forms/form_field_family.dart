@@ -32,6 +32,8 @@
 /// the abstract base, so callers code against `TomFormStringField` etc.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -53,6 +55,7 @@ import 'fields/tom_form_nullable_bool_field.dart';
 import 'fields/tom_form_nullable_inputs.dart';
 import 'fields/tom_form_search_lookup_fields.dart';
 import 'fields/tom_form_string_field.dart';
+import 'files/tom_file_picker_registry.dart';
 import 'selection/tom_enum_selectable_source.dart';
 import 'selection/tom_selectable_source.dart';
 import 'tom_form.dart';
@@ -706,6 +709,89 @@ class FormFieldFamily {
       tomId,
       initialValue,
       picker: picker,
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      allowedExtensions: allowedExtensions,
+      maxSizeBytes: maxSizeBytes,
+      form: form,
+      validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // File thumbnail
+  // ---------------------------------------------------------------------
+
+  /// File control that shows the file rather than describing it — a square
+  /// preview of the file's own content, falling back to the file-kind icon
+  /// for anything Flutter has no codec for.
+  ///
+  /// Two deliberate differences from [fileUpload]:
+  ///
+  ///  * `picker` is optional. A form built from a specification has no picker
+  ///    to pass; it relies on the one the application registered, and a
+  ///    `required` here would put that form out of reach.
+  ///  * the transfer wiring is exposed. Without it a re-opened form could
+  ///    never fetch the stored file's bytes, so the presentation would degrade
+  ///    to an icon in exactly the case it exists for.
+  ///
+  /// `pickKind` defaults to [TomFilePickKind.image]: a thumbnail that opened a
+  /// "choose any file" dialog would invite the one file it cannot show.
+  TomFormFileField fileThumbnail(
+    String tomId,
+    FileRef? initialValue, {
+    FilePicker? picker,
+    TomFilePickKind pickKind = TomFilePickKind.image,
+    TomFileTransferClient? transferClient,
+    String? storageSlot,
+    void Function(FileRef ref, Uint8List bytes)? onDownload,
+    double thumbnailSize = 96.0,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    List<String>? allowedExtensions,
+    int? maxSizeBytes,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    if (isCupertino) {
+      return TomCupertinoFormFileThumbnail(
+        tomId,
+        initialValue,
+        picker: picker,
+        pickKind: pickKind,
+        transferClient: transferClient,
+        storageSlot: storageSlot,
+        onDownload: onDownload,
+        thumbnailSize: thumbnailSize,
+        labelTextOverride: labelTextOverride,
+        descriptionTextOverride: descriptionTextOverride,
+        allowedExtensions: allowedExtensions,
+        maxSizeBytes: maxSizeBytes,
+        form: form,
+        validators: validators ?? const [],
+        autoValidate: autoValidate,
+        tomGroup: tomGroup,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
+    }
+    return TomFormFileThumbnail(
+      tomId,
+      initialValue,
+      picker: picker,
+      pickKind: pickKind,
+      transferClient: transferClient,
+      storageSlot: storageSlot,
+      onDownload: onDownload,
+      thumbnailSize: thumbnailSize,
       labelTextOverride: labelTextOverride,
       descriptionTextOverride: descriptionTextOverride,
       allowedExtensions: allowedExtensions,

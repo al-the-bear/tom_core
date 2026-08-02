@@ -20,11 +20,13 @@
 /// field re-opened later describes its slot and shows the stored file without
 /// downloading it.
 ///
-/// Two Material concretes ship:
+/// Three Material concretes ship:
 ///   * [TomFormFileUpload] — compact "Choose file…" button + selected
 ///     file caption.
 ///   * [TomFormFileDropzone] — large drop-target surface that also opens the
 ///     picker on tap.
+///   * [TomFormFileThumbnail] — square preview that paints the file's own
+///     content when it can, and the file-kind icon when it cannot.
 library;
 
 import 'dart:async';
@@ -253,7 +255,9 @@ mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
   void initState() {
     super.initState();
     _observer = field >> (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+      onFieldValueChanged();
     };
     field.validationListenable.addListener(_onValidationChanged);
     transferController = field.createTransferController();
@@ -267,6 +271,13 @@ mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
       }
     }
   }
+
+  /// Called after the field's value changed and the rebuild was scheduled.
+  ///
+  /// A hook rather than a second observer because the work it exists for —
+  /// fetching a preview — is asynchronous and so cannot happen inside the
+  /// `setState` callback. Empty by default; only the thumbnail overrides it.
+  void onFieldValueChanged() {}
 
   Future<void> _describeQuietly() async {
     try {
@@ -398,6 +409,149 @@ String tomHumanFileSize(int bytes) {
   if (bytes < 1024) return '$bytes B';
   if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
   return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+}
+
+// ===========================================================================
+// Thumbnails — deciding what can be painted, and getting the bytes to paint
+// ===========================================================================
+
+/// The extensions Flutter's own codecs can decode.
+///
+/// Deliberately not "every image format": SVG and friends need a package, and
+/// a field that promised to paint one would show a broken box instead of the
+/// icon the fallback exists for.
+const Set<String> _renderableImageExtensions = {
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'bmp',
+  'wbmp',
+};
+
+/// Whether [ref] names a file [TomFormFileThumbnail] can paint inline.
+///
+/// Three sources, consulted in order of how much they actually know:
+///
+///  1. the reported media type, when the picker or the server gave one;
+///  2. the file's extension, when the name carries one;
+///  3. [pickKind] — the last thing left to go on.
+///
+/// The order matters more than the sources do. `pickKind` states what the
+/// field *asked for*, not what the value *is*, so it must never overrule a
+/// media type or an extension: an `image` field holding a PDF would otherwise
+/// hand PDF bytes to an image codec.
+///
+/// A free function for the same reason as [tomHumanFileSize] — both widget
+/// families need it and neither owns it.
+bool tomFileIsRenderableImage(FileRef ref, TomFilePickKind pickKind) {
+  final mediaType = ref.mimeType;
+  if (mediaType != null && mediaType.isNotEmpty) {
+    return mediaType.startsWith('image/') &&
+        _renderableImageExtensions.contains(
+          mediaType.substring('image/'.length).toLowerCase(),
+        );
+  }
+  final extension = ref.extension;
+  if (extension.isNotEmpty) {
+    return _renderableImageExtensions.contains(extension);
+  }
+  return pickKind == TomFilePickKind.image;
+}
+
+/// The preview bytes behind a thumbnail, and the one fetch that gets them.
+///
+/// Layered on [TomFileFieldStateMixin] rather than folded into it: only the
+/// thumbnail presentation needs a file's *content*, and the other two would
+/// pay for a download they never paint.
+mixin TomFileThumbnailStateMixin<TWidget extends StatefulWidget>
+    on TomFileFieldStateMixin<TWidget> {
+  Uint8List? _fetchedPreview;
+
+  /// The storage key a fetch was already attempted for.
+  ///
+  /// Attempted, not succeeded — a slot that failed once must not be retried on
+  /// every rebuild.
+  String? _attemptedForKey;
+
+  /// The bytes to paint, or `null` when there is nothing paintable yet.
+  Uint8List? get previewBytes {
+    final ref = field.get();
+    if (ref == null || !tomFileIsRenderableImage(ref, field.pickKind)) {
+      return null;
+    }
+    return ref.bytes ?? _fetchedPreview;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ensurePreview());
+  }
+
+  @override
+  void onFieldValueChanged() {
+    super.onFieldValueChanged();
+    final key = field.get()?.storageKey;
+    if (key != _attemptedForKey) {
+      // A different file — anything fetched for the old one is not this one's
+      // content, and painting it would show the user the wrong picture.
+      _fetchedPreview = null;
+      _attemptedForKey = null;
+    }
+    unawaited(ensurePreview());
+  }
+
+  /// Reads the bytes of a stored, renderable file that carries none locally.
+  ///
+  /// Straight through the transfer *client*, not the controller: a preview is
+  /// the widget's own read, and a controller download publishes `running` and
+  /// `succeeded`, so the status row would announce "Downloading…" and
+  /// "Downloaded." for something the user never asked for.
+  Future<void> ensurePreview() async {
+    final ref = field.get();
+    final client = field.transferClient;
+    final slot = field.storageSlot;
+    if (ref == null || client == null || slot == null) return;
+    final key = ref.storageKey;
+    if (key == null || ref.hasLocalContent) return;
+    if (!tomFileIsRenderableImage(ref, field.pickKind)) return;
+    if (_attemptedForKey == key) return;
+    _attemptedForKey = key;
+
+    try {
+      final builder = BytesBuilder(copy: false);
+      await for (final chunk in client.download(slot)) {
+        builder.add(chunk);
+      }
+      final bytes = builder.takeBytes();
+      if (!mounted) return;
+      setState(() => _fetchedPreview = bytes);
+    } on Object {
+      // A preview is an optimisation, not the user's request: a file that
+      // cannot be fetched still renders as its file-kind icon. `_attemptedForKey`
+      // stays set, so the failure costs one read rather than one per frame.
+    }
+  }
+
+  /// The inline preview, or [fallback] when there is nothing to paint.
+  ///
+  /// [fallback] is also the codec's error branch: bytes that turn out not to
+  /// be an image after all land in the same place as a file that never claimed
+  /// to be one.
+  Widget previewOrFallback({required double size, required Widget fallback}) {
+    final bytes = previewBytes;
+    if (bytes == null) return fallback;
+    return Image.memory(
+      bytes,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      semanticLabel: field.get()?.name,
+      errorBuilder: (_, _, _) => fallback,
+    );
+  }
 }
 
 // ===========================================================================
@@ -663,6 +817,170 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
             onCancel: cancelTransfer,
             onRetry: retryTransfer,
             onDownload: canDownload ? download : null,
+          ),
+      ],
+    );
+
+    return f.decorateField(context, column);
+  }
+}
+
+// ===========================================================================
+// TomFormFileThumbnail — square preview of the file itself
+// ===========================================================================
+
+/// A file field that shows the file rather than describing it.
+///
+/// The third of `presentation`'s values, beside [TomFormFileUpload] (*link*)
+/// and [TomFormFileDropzone] (*dropzone*). It differs from those two in paint
+/// only: every constraint, picker, transfer and download behaviour is
+/// inherited from [TomFormFileField] unchanged.
+///
+/// "Shows the file" is a promise it can only sometimes keep, so it degrades
+/// rather than fails: a file Flutter has no codec for renders as the same
+/// file-kind icon the other presentations use. See [tomFileIsRenderableImage]
+/// for how that is decided.
+@tomReflector
+class TomFormFileThumbnail extends TomFormFileField
+    with TomGenericFieldDecorationMixin<FileRef?> {
+  /// Edge length of the square preview surface.
+  final double thumbnailSize;
+
+  TomFormFileThumbnail(
+    super.tomId,
+    super.initialValue, {
+    super.picker,
+    super.pickKind,
+    super.transferClient,
+    super.storageSlot,
+    super.autoUpload,
+    super.onDownload,
+    this.thumbnailSize = 96.0,
+    super.labelTextOverride,
+    super.descriptionTextOverride,
+    super.allowedExtensions,
+    super.maxSizeBytes,
+    super.form,
+    super.validators,
+    super.autoValidate,
+    super.tomGroup,
+    super.authorizer,
+    super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
+  });
+
+  @override
+  TomFieldStyle resolveStyle(BuildContext context) {
+    final form = TomFormStyleScope.of(context);
+    final width = TomFormStyleScope.widthOf(context);
+    return form.resolveFieldStyle(form.dropdownStyle, width);
+  }
+
+  @override
+  String? get labelText => resolvedLabelText;
+
+  @override
+  String? get descriptionText => resolvedDescriptionText;
+
+  @override
+  Widget get widget => TomFieldWidgetAdapter(
+    field: this,
+    child: _FileThumbnailWidget(field: this),
+  );
+}
+
+class _FileThumbnailWidget extends StatefulWidget {
+  final TomFormFileThumbnail field;
+  const _FileThumbnailWidget({required this.field});
+
+  @override
+  State<_FileThumbnailWidget> createState() => _FileThumbnailWidgetState();
+}
+
+class _FileThumbnailWidgetState extends State<_FileThumbnailWidget>
+    with
+        TomFileFieldStateMixin<_FileThumbnailWidget>,
+        TomFileThumbnailStateMixin<_FileThumbnailWidget> {
+  @override
+  TomFormFileThumbnail get field => widget.field;
+
+  @override
+  Future<void> showFileRejected(String errorKey) async {
+    TomMessenger.showSnackBarIfPresent(
+      context,
+      SnackBar(content: Text(rejectionMessage(errorKey))),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final f = widget.field;
+    final style = f.resolveStyle(context);
+    final scheme = Theme.of(context).colorScheme;
+    final v = f.get();
+    final size = f.thumbnailSize;
+
+    final placeholder = Icon(
+      v == null ? Icons.image_outlined : Icons.insert_drive_file_outlined,
+      size: size / 2.5,
+      color: scheme.onSurfaceVariant,
+    );
+
+    final preview = InkWell(
+      onTap: f.isEditable && f.canPick ? pick : null,
+      child: Container(
+        width: size,
+        height: size,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: scheme.outline),
+        ),
+        child: Center(
+          child: previewOrFallback(size: size, fallback: placeholder),
+        ),
+      ),
+    );
+
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            preview,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                v == null ? TomFileLabels.none(f.basePath) : selectedCaption(v),
+                style: style.inputStyle,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (canDownload)
+              IconButton(
+                tooltip: TomFileLabels.download(f.basePath),
+                icon: const Icon(Icons.download),
+                onPressed: download,
+              ),
+            if (v != null && f.isEditable)
+              IconButton(
+                tooltip: TomFileLabels.clear(f.basePath),
+                icon: const Icon(Icons.clear),
+                onPressed: clear,
+              ),
+          ],
+        ),
+        if (transferController != null)
+          TomFileTransferIndicator(
+            controller: transferController!,
+            basePath: f.basePath,
+            onCancel: cancelTransfer,
+            onRetry: retryTransfer,
           ),
       ],
     );

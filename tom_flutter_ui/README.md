@@ -116,7 +116,7 @@ The field catalogue spans a parallel Material/Cupertino set: **string**
 `TomFormDateRangeField`), **enum/object** (`TomFormEnumDropdown`,
 `TomFormEnumSegmented`, `TomFormObjectField`, `TomFormLookupField`,
 `TomFormSearchField`), **file** (`TomFormFileField`, `TomFormFileUpload`,
-`TomFormFileDropzone`), and **nullable** wrappers (`TomFormNStringInput`,
+`TomFormFileDropzone`, `TomFormFileThumbnail`), and **nullable** wrappers (`TomFormNStringInput`,
 `TomFormNIntInput`, `TomFormNDateInput`, `TomFormNEnumDropdown`).
 
 The file fields come with their own plumbing: `TomFilePickerRegistry` (one

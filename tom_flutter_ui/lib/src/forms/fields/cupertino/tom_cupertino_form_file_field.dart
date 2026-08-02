@@ -1,9 +1,12 @@
-/// Cupertino File concrete.
+/// Cupertino File concretes.
 ///
-/// One concrete that subclasses the same `TomFormFileField` abstract used
+/// Two concretes that subclass the same `TomFormFileField` abstract used
 /// by the Material side:
 ///   * [TomCupertinoFormFileUpload]  → `CupertinoButton.filled` + selected
 ///                                     file caption + clear icon.
+///   * [TomCupertinoFormFileThumbnail] → square preview of the file's own
+///                                     content, with the file-kind icon as
+///                                     the fallback.
 ///
 /// Picking errors surface through a `CupertinoAlertDialog` (Material's
 /// equivalent uses `ScaffoldMessenger`, which doesn't naturally exist in
@@ -134,6 +137,190 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
             v == null
                 ? TomFileLabels.none(f.basePath)
                 : selectedCaption(v),
+            style: style.inputStyle,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (canDownload)
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(28, 28),
+            onPressed: download,
+            child: const Icon(
+              CupertinoIcons.cloud_download,
+              size: 20,
+              color: CupertinoColors.activeBlue,
+            ),
+          ),
+        if (v != null && f.isEditable)
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(28, 28),
+            onPressed: clear,
+            child: const Icon(
+              CupertinoIcons.clear_circled_solid,
+              size: 20,
+              color: CupertinoColors.systemGrey,
+            ),
+          ),
+      ],
+    );
+
+    final controller = transferController;
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        row,
+        if (controller != null)
+          _CupertinoTransferStatus(
+            controller: controller,
+            basePath: f.basePath,
+            onCancel: cancelTransfer,
+            onRetry: retryTransfer,
+          ),
+      ],
+    );
+
+    return f.decorateField(context, column);
+  }
+}
+
+// ===========================================================================
+// TomCupertinoFormFileThumbnail — square preview of the file itself
+// ===========================================================================
+
+/// The Cupertino sibling of `TomFormFileThumbnail`.
+///
+/// Same abstract base, same preview logic — `TomFileThumbnailStateMixin`
+/// decides what can be painted and fetches a stored file's bytes once — and
+/// only the chrome differs: Cupertino icons, a `GestureDetector` where the
+/// Material side uses an `InkWell`, and the hand-built transfer status row.
+@tomReflector
+class TomCupertinoFormFileThumbnail extends TomFormFileField
+    with TomGenericFieldDecorationMixin<FileRef?> {
+  /// Edge length of the square preview surface.
+  final double thumbnailSize;
+
+  TomCupertinoFormFileThumbnail(
+    super.tomId,
+    super.initialValue, {
+    super.picker,
+    super.pickKind,
+    super.transferClient,
+    super.storageSlot,
+    super.autoUpload,
+    super.onDownload,
+    this.thumbnailSize = 96.0,
+    super.labelTextOverride,
+    super.descriptionTextOverride,
+    super.allowedExtensions,
+    super.maxSizeBytes,
+    super.form,
+    super.validators,
+    super.autoValidate,
+    super.tomGroup,
+    super.authorizer,
+    super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
+  });
+
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  @override
+  TomFieldStyle resolveStyle(BuildContext context) {
+    final form = TomFormStyleScope.of(context);
+    final width = TomFormStyleScope.widthOf(context);
+    return form.resolveFieldStyle(form.dropdownStyle, width);
+  }
+
+  @override
+  Widget get widget => TomFieldWidgetAdapter(
+    field: this,
+    child: _CupertinoFileThumbnailWidget(field: this),
+  );
+}
+
+class _CupertinoFileThumbnailWidget extends StatefulWidget {
+  final TomCupertinoFormFileThumbnail field;
+  const _CupertinoFileThumbnailWidget({required this.field});
+
+  @override
+  State<_CupertinoFileThumbnailWidget> createState() =>
+      _CupertinoFileThumbnailWidgetState();
+}
+
+class _CupertinoFileThumbnailWidgetState
+    extends State<_CupertinoFileThumbnailWidget>
+    with
+        TomFileFieldStateMixin<_CupertinoFileThumbnailWidget>,
+        TomFileThumbnailStateMixin<_CupertinoFileThumbnailWidget> {
+  @override
+  TomCupertinoFormFileThumbnail get field => widget.field;
+
+  @override
+  Future<void> showFileRejected(String errorKey) => showCupertinoDialog<void>(
+    context: context,
+    builder: (ctx) => CupertinoAlertDialog(
+      title: Text(TomFileLabels.rejectedTitle(field.basePath)),
+      content: Text(rejectionMessage(errorKey)),
+      actions: [
+        CupertinoDialogAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(TomFileLabels.rejectedDismiss(field.basePath)),
+        ),
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final f = widget.field;
+    final style = f.resolveStyle(context);
+    final v = f.get();
+    final size = f.thumbnailSize;
+
+    final placeholder = Icon(
+      v == null ? CupertinoIcons.photo : CupertinoIcons.doc,
+      size: size / 2.5,
+      color: CupertinoColors.systemGrey,
+    );
+
+    final preview = GestureDetector(
+      onTap: f.isEditable && f.canPick ? pick : null,
+      child: Container(
+        width: size,
+        height: size,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: CupertinoColors.systemGrey6.resolveFrom(context),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: CupertinoColors.systemGrey4.resolveFrom(context),
+          ),
+        ),
+        child: Center(
+          child: previewOrFallback(size: size, fallback: placeholder),
+        ),
+      ),
+    );
+
+    final row = Row(
+      children: [
+        preview,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            v == null ? TomFileLabels.none(f.basePath) : selectedCaption(v),
             style: style.inputStyle,
             overflow: TextOverflow.ellipsis,
           ),

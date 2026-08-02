@@ -34,12 +34,42 @@ separate path, which is why this module is more than a widget.
 | `TomFilePickers` | same | Ready-made `FilePicker` callbacks and the `TomPickedFile` → `FileRef` conversion. |
 | `TomFileTransferController` | `forms/files/tom_file_transfer_controller.dart` | The upload/download state machine: phase, progress, cancel, retry. |
 | `TomFileTransferIndicator` | `forms/files/tom_file_transfer_indicator.dart` | The progress / cancel / retry / error row. |
-| `TomFormFileField` | `forms/fields/tom_form_file_field.dart` | The abstract field; `TomFormFileUpload`, `TomFormFileDropzone`, `TomCupertinoFormFileUpload` are the concretes. |
+| `TomFormFileField` | `forms/fields/tom_form_file_field.dart` | The abstract field. |
 | `TomFileTransferClient` | `tom_core_kernel` | The transport contract — `TomHttpFileTransferClient` and `TomMemoryFileTransferClient` implement it. |
 
 The transport lives in **`tom_core_kernel`**, not here: the kernel owns
 `http_connection`, and a widget package is the wrong place for an HTTP client.
 `tom_flutter_ui` consumes the contract and adds the state and the chrome.
+
+### The three presentations
+
+All three differ in **paint only** — every constraint, picker, transfer and
+download behaviour is inherited from `TomFormFileField` unchanged, so a form
+can switch between them without rewiring anything.
+
+| Presentation | Material | Cupertino | Shows |
+| ------------ | -------- | --------- | ----- |
+| link | `TomFormFileUpload` | `TomCupertinoFormFileUpload` | A "Choose file…" button and the file's name and size. |
+| dropzone | `TomFormFileDropzone` | — | A tall drop-target surface that also opens the picker on tap. |
+| thumbnail | `TomFormFileThumbnail` | `TomCupertinoFormFileThumbnail` | A square preview of the file's own content. |
+
+`FormFieldFamily.fileUpload` and `FormFieldFamily.fileThumbnail` build the
+right side of the first and third rows for the family in force.
+
+**What the thumbnail can paint.** `tomFileIsRenderableImage` decides, from
+three sources consulted in order of how much they actually know: the reported
+media type, then the file's extension, then the field's `pickKind`. The order
+is the point — `pickKind` states what the field *asked for*, not what the value
+*is*, so it never overrules the other two. A file with no Flutter codec falls
+back to the same file-kind icon the other presentations show, which is why a
+non-image file stays authorable under this presentation.
+
+**Where the bytes come from.** A just-picked file carries its own; a re-opened
+form holds a stored reference that carries none, so the thumbnail reads them
+once — straight through the `TomFileTransferClient`, not the controller. A
+controller download publishes `running` and `succeeded`, and the status row
+would then announce "Downloading…" and "Downloaded." for a preview nobody
+asked for. A read that fails costs one request and leaves the icon in place.
 
 ## Wiring a picker, once
 

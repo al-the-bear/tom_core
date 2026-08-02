@@ -8,6 +8,7 @@ import 'package:tom_flutter_ui/src/forms/fields/cupertino/tom_cupertino_form_fil
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_file_field.dart';
 import 'package:tom_flutter_ui/src/forms/files/tom_file_labels.dart';
 import 'package:tom_flutter_ui/src/forms/files/tom_file_picker_registry.dart';
+import 'package:tom_flutter_ui/src/forms/form_field_family.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
 
 // ---------------------------------------------------------------------------
@@ -33,6 +34,46 @@ FileRef _localRef(String name, {int size = 4}) => FileRef(
   sizeBytes: size,
   bytes: Uint8List.fromList(List.filled(size, 1)),
 );
+
+/// A 1×1 transparent PNG.
+///
+/// A *decodable* image, not four filler bytes: the thumbnail hands these to
+/// `Image.memory`, and a payload the codec rejects would exercise the error
+/// path instead of the one under test.
+final Uint8List _pngBytes = Uint8List.fromList(const [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, //
+  0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+  0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+  0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+  0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+  0x42, 0x60, 0x82,
+]);
+
+FileRef _pngRef([String name = 'face.png']) => FileRef(
+  name: name,
+  sizeBytes: _pngBytes.length,
+  mimeType: 'image/png',
+  bytes: _pngBytes,
+);
+
+/// Stores [bytes] in [slot] and returns the stored-only reference a re-opened
+/// form would hold — metadata and a key, no local content.
+Future<FileRef> _seedStored(
+  TomMemoryFileTransferClient client,
+  String slot, {
+  required String name,
+  required Uint8List bytes,
+  String? mediaType,
+}) async {
+  final metadata = await client.upload(
+    slot: slot,
+    source: TomFileSource.bytes(name, bytes, mediaType: mediaType),
+  );
+  return FileRef.stored(metadata);
+}
 
 void main() {
   tearDown(TomFilePickerRegistry.clear);
@@ -420,6 +461,370 @@ void main() {
 
       expect(field.get()!.isStored, isTrue);
       expect(client.slots, contains('docs/1'));
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Thumbnail — what "renderable" means
+  // -------------------------------------------------------------------------
+
+  group('tomFileIsRenderableImage', () {
+    test('a reported image media type decides it', () {
+      final ref = FileRef(
+        name: 'scan',
+        sizeBytes: 1,
+        mimeType: 'image/jpeg',
+      );
+      expect(tomFileIsRenderableImage(ref, TomFilePickKind.any), isTrue);
+    });
+
+    test('a reported non-image media type decides it too', () {
+      // Even under `pickKind: image`: what the field *asked* for cannot
+      // overrule what the value turned out to be, and handing a PDF to
+      // `Image.memory` is exactly the mistake this ordering prevents.
+      final ref = FileRef(
+        name: 'invoice.png',
+        sizeBytes: 1,
+        mimeType: 'application/pdf',
+      );
+      expect(tomFileIsRenderableImage(ref, TomFilePickKind.image), isFalse);
+    });
+
+    test('without a media type the extension decides it', () {
+      expect(
+        tomFileIsRenderableImage(
+          const FileRef(name: 'face.WebP', sizeBytes: 1),
+          TomFilePickKind.any,
+        ),
+        isTrue,
+      );
+      expect(
+        tomFileIsRenderableImage(
+          const FileRef(name: 'report.pdf', sizeBytes: 1),
+          TomFilePickKind.image,
+        ),
+        isFalse,
+      );
+    });
+
+    test('a vector image is not renderable — Flutter has no codec for it', () {
+      expect(
+        tomFileIsRenderableImage(
+          const FileRef(name: 'logo.svg', sizeBytes: 1),
+          TomFilePickKind.image,
+        ),
+        isFalse,
+      );
+    });
+
+    test('with neither, the field\'s pick kind is all that is left', () {
+      expect(
+        tomFileIsRenderableImage(
+          const FileRef(name: 'scan', sizeBytes: 1),
+          TomFilePickKind.image,
+        ),
+        isTrue,
+      );
+      expect(
+        tomFileIsRenderableImage(
+          const FileRef(name: 'scan', sizeBytes: 1),
+          TomFilePickKind.any,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // TomFormFileThumbnail widget
+  // -------------------------------------------------------------------------
+
+  group('TomFormFileThumbnail widget', () {
+    testWidgets('shows the empty caption and no image while empty', (
+      tester,
+    ) async {
+      final field = TomFormFileThumbnail('doc', null);
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.text('— no file selected'), findsOneWidget);
+      expect(find.byType(Image), findsNothing);
+    });
+
+    testWidgets('paints the picked image inline', (tester) async {
+      final field = TomFormFileThumbnail(
+        'doc',
+        _pngRef(),
+        pickKind: TomFilePickKind.image,
+      );
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byIcon(Icons.insert_drive_file_outlined), findsNothing);
+    });
+
+    testWidgets('falls back to the file-kind icon for a non-image file', (
+      tester,
+    ) async {
+      final field = TomFormFileThumbnail('doc', _localRef('report.pdf'));
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.byType(Image), findsNothing);
+      expect(find.byIcon(Icons.insert_drive_file_outlined), findsOneWidget);
+    });
+
+    testWidgets('a re-opened form fetches the stored image to paint it', (
+      tester,
+    ) async {
+      final client = TomMemoryFileTransferClient();
+      final stored = await _seedStored(
+        client,
+        'photos/1',
+        name: 'face.png',
+        bytes: _pngBytes,
+        mediaType: 'image/png',
+      );
+      expect(stored.hasLocalContent, isFalse);
+
+      final field = TomFormFileThumbnail(
+        'doc',
+        stored,
+        transferClient: client,
+        storageSlot: 'photos/1',
+      );
+      await tester.pumpWidget(_wrap(field.widget));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Image), findsOneWidget);
+    });
+
+    testWidgets('the preview fetch is not announced as a download', (
+      tester,
+    ) async {
+      // A preview is the widget's own read, not the user's transfer: routing
+      // it through the controller would make the status row say "Downloaded."
+      // for something nobody asked for.
+      final client = TomMemoryFileTransferClient();
+      final stored = await _seedStored(
+        client,
+        'photos/1',
+        name: 'face.png',
+        bytes: _pngBytes,
+        mediaType: 'image/png',
+      );
+      final field = TomFormFileThumbnail(
+        'doc',
+        stored,
+        transferClient: client,
+        storageSlot: 'photos/1',
+      );
+      await tester.pumpWidget(_wrap(field.widget));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Downloaded.'), findsNothing);
+      expect(find.text('Downloading…'), findsNothing);
+    });
+
+    testWidgets('a stored file that cannot be fetched still shows its icon', (
+      tester,
+    ) async {
+      // Nothing was ever stored in the slot, so the fetch throws
+      // `file_transfer.not_found`. A failed preview must not take the field
+      // down with it.
+      final field = TomFormFileThumbnail(
+        'doc',
+        const FileRef(
+          name: 'face.png',
+          sizeBytes: 67,
+          mimeType: 'image/png',
+          storageKey: 'memory/0/face.png',
+        ),
+        transferClient: TomMemoryFileTransferClient(),
+        storageSlot: 'photos/missing',
+      );
+      await tester.pumpWidget(_wrap(field.widget));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Image), findsNothing);
+      expect(find.byIcon(Icons.insert_drive_file_outlined), findsOneWidget);
+    });
+
+    testWidgets('tapping the preview picks and uploads', (tester) async {
+      final client = TomMemoryFileTransferClient();
+      final field = TomFormFileThumbnail(
+        'doc',
+        null,
+        picker: TomFilePickers.fixed(_pngRef()),
+        pickKind: TomFilePickKind.image,
+        transferClient: client,
+        storageSlot: 'photos/1',
+      );
+      await tester.pumpWidget(_wrap(field.widget));
+
+      await tester.tap(find.byIcon(Icons.image_outlined));
+      await tester.pumpAndSettle();
+
+      expect(field.get()!.isStored, isTrue);
+      expect(client.slots, contains('photos/1'));
+      expect(find.byType(Image), findsOneWidget);
+    });
+
+    testWidgets('the download affordance stays derived, never authored', (
+      tester,
+    ) async {
+      // §5.18: whether a download affordance appears is derived from the field
+      // being wired for transfer *and* the file being stored — the same rule
+      // the other two presentations obey.
+      final client = TomMemoryFileTransferClient();
+      final stored = await _seedStored(
+        client,
+        'photos/1',
+        name: 'face.png',
+        bytes: _pngBytes,
+        mediaType: 'image/png',
+      );
+
+      final withoutCallback = TomFormFileThumbnail(
+        'doc',
+        stored,
+        transferClient: client,
+        storageSlot: 'photos/1',
+      );
+      await tester.pumpWidget(_wrap(withoutCallback.widget));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.download), findsNothing);
+
+      final withCallback = TomFormFileThumbnail(
+        'doc2',
+        stored,
+        transferClient: client,
+        storageSlot: 'photos/1',
+        onDownload: (_, _) {},
+      );
+      await tester.pumpWidget(_wrap(withCallback.widget));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.download), findsOneWidget);
+    });
+
+    testWidgets('renders its label and description', (tester) async {
+      _installResources({
+        'doc': {'label': 'Portrait', 'description': 'One picture, please.'},
+      });
+      final field = TomFormFileThumbnail('doc', null);
+      await tester.pumpWidget(_wrap(field.widget));
+
+      expect(find.text('Portrait'), findsWidgets);
+      expect(find.text('One picture, please.'), findsOneWidget);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // TomCupertinoFormFileThumbnail widget
+  // -------------------------------------------------------------------------
+
+  group('TomCupertinoFormFileThumbnail widget', () {
+    testWidgets('paints the picked image inline', (tester) async {
+      final field = TomCupertinoFormFileThumbnail(
+        'doc',
+        _pngRef(),
+        pickKind: TomFilePickKind.image,
+      );
+      await tester.pumpWidget(_wrapCupertino(field.widget));
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.doc), findsNothing);
+    });
+
+    testWidgets('falls back to the file-kind icon for a non-image file', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormFileThumbnail(
+        'doc',
+        _localRef('report.pdf'),
+      );
+      await tester.pumpWidget(_wrapCupertino(field.widget));
+
+      expect(find.byType(Image), findsNothing);
+      expect(find.byIcon(CupertinoIcons.doc), findsOneWidget);
+    });
+
+    testWidgets('a re-opened form fetches the stored image to paint it', (
+      tester,
+    ) async {
+      final client = TomMemoryFileTransferClient();
+      final stored = await _seedStored(
+        client,
+        'photos/1',
+        name: 'face.png',
+        bytes: _pngBytes,
+        mediaType: 'image/png',
+      );
+      final field = TomCupertinoFormFileThumbnail(
+        'doc',
+        stored,
+        transferClient: client,
+        storageSlot: 'photos/1',
+      );
+      await tester.pumpWidget(_wrapCupertino(field.widget));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.text('Downloaded.'), findsNothing);
+    });
+
+    testWidgets('a rejected file surfaces in a Cupertino dialog', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormFileThumbnail(
+        'doc',
+        null,
+        allowedExtensions: const ['png'],
+        picker: TomFilePickers.fixed(_localRef('report.pdf')),
+      );
+      await tester.pumpWidget(_wrapCupertino(field.widget));
+
+      await tester.tap(find.byIcon(CupertinoIcons.photo));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CupertinoAlertDialog), findsOneWidget);
+      expect(field.get(), isNull);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Family reachability
+  // -------------------------------------------------------------------------
+
+  group('FormFieldFamily.fileThumbnail', () {
+    test('the Material family builds the Material concrete', () {
+      final field = FormFieldFamily.material.fileThumbnail('doc', null);
+      expect(field, isA<TomFormFileThumbnail>());
+    });
+
+    test('the Cupertino family builds the Cupertino concrete', () {
+      final field = FormFieldFamily.cupertino.fileThumbnail('doc', null);
+      expect(field, isA<TomCupertinoFormFileThumbnail>());
+    });
+
+    test('a thumbnail asks the picker for an image by default', () {
+      // The presentation is the point of the field: a thumbnail that opened a
+      // "choose any file" dialog would invite exactly the file it cannot show.
+      expect(
+        FormFieldFamily.material.fileThumbnail('doc', null).pickKind,
+        TomFilePickKind.image,
+      );
+    });
+
+    test('the transfer wiring reaches the concrete', () {
+      // Without it the stored-preview path is unreachable through the family,
+      // which is the path a generated form takes when it re-opens.
+      final client = TomMemoryFileTransferClient();
+      final field = FormFieldFamily.material.fileThumbnail(
+        'doc',
+        null,
+        transferClient: client,
+        storageSlot: 'photos/1',
+      );
+      expect(field.canTransfer, isTrue);
     });
   });
 
