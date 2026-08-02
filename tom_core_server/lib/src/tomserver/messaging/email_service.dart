@@ -58,6 +58,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../resources/localized_text_resources.dart';
 import 'message.dart';
 import 'outbox.dart';
+import 'templated_message_service.dart';
 
 /// What to send, to whom, and with which values — but never *what it says*.
 ///
@@ -194,7 +195,7 @@ class TomEmailRequest {
 /// final emailService = TomEmailService(outbox: outbox, texts: texts);
 /// TomBean.withType(TomEmailService, emailService);
 /// ```
-class TomEmailService {
+class TomEmailService extends TomTemplatedMessageService<TomEmailRequest> {
   /// The sub-key holding a template's subject line.
   static const String subjectSubKey = 'subject';
 
@@ -204,16 +205,11 @@ class TomEmailService {
   /// The sub-key holding a template's HTML body.
   static const String htmlSubKey = 'html';
 
-  /// Where rendered messages are queued. Not owned: [TomMessageOutbox.close] is
-  /// the application's to call, because the outbox usually carries more than
-  /// this service's mail.
-  final TomMessageOutbox outbox;
-
-  /// The bundle set every template is resolved against.
-  final TomLocalizedTextResources texts;
-
   /// Creates the service over an [outbox] and a bundle set.
-  TomEmailService({required this.outbox, required this.texts});
+  const TomEmailService({required super.outbox, required super.texts});
+
+  @override
+  String get channelName => 'email';
 
   /// The service this deployment installed, or `null`.
   ///
@@ -227,10 +223,9 @@ class TomEmailService {
 
   /// Renders [request] into a message without queueing it.
   ///
-  /// Separate from [send] so that a caller can preview what will be sent — a
-  /// test, an admin "show me this template" screen, a digest that renders many
-  /// and queues one. It is also where every template fault surfaces, which is
-  /// why [send] calls it before touching the queue.
+  /// Resolves [subjectSubKey] and [textSubKey] as required, [htmlSubKey] as
+  /// optional — the asymmetry the library dartdoc explains.
+  @override
   TomMessage render(TomEmailRequest request) {
     final subject = requiredText(
       request.templateKey,
@@ -262,60 +257,4 @@ class TomEmailService {
     );
   }
 
-  /// Renders [request] and queues it. Returns once it is durably stored.
-  ///
-  /// `async` rather than a bare forwarding expression so that a template fault
-  /// arrives as a failed future, matching every other failure this call can
-  /// produce; a synchronous throw from an otherwise-asynchronous API is a trap
-  /// for callers that only guard the `await`.
-  Future<void> send(TomEmailRequest request) async =>
-      outbox.send(render(request));
-
-  /// Renders [request], queues it, and delivers immediately.
-  ///
-  /// For mail a human is waiting on — a password reset, a one-time code — where
-  /// the outbox's tick interval is felt. Retry behaviour is unchanged: only the
-  /// first attempt skips the wait.
-  Future<void> sendNow(TomEmailRequest request) async =>
-      outbox.sendNow(render(request));
-
-  /// Resolves `<templateKey>.<subKey>`, or explains precisely what is missing.
-  ///
-  /// Used internally for [subjectSubKey] and [textSubKey], and public for the
-  /// **conditional fragment**: a body that mentions an overdue count only when
-  /// there is one cannot express that in a single template, so it resolves the
-  /// optional sentence separately and passes the result as a parameter. Doing
-  /// that through this method rather than [TomLocalizedTextResources.textOrNull]
-  /// keeps one failure mode for one class of fault — a fragment nobody wrote
-  /// fails the send, naming the key, exactly as a missing subject does.
-  ///
-  /// Resolve fragments **fully** before passing them in. Substitution is a
-  /// single pass over the parameter map, so a fragment inserted with its own
-  /// placeholders still in it would be substituted or not depending on map
-  /// order.
-  String requiredText(
-    String templateKey,
-    String subKey, {
-    TomTextLocale? locale,
-    Map<String, Object?> parameters = const {},
-  }) {
-    final key = '$templateKey.$subKey';
-    final value = texts.textOrNull(
-      key,
-      locale: locale,
-      parameters: parameters,
-    );
-    if (value == null) {
-      throw TomMessagingException(
-        'messaging.email.template.missing',
-        'The email template has no $subKey.',
-        parameters: {
-          'templateKey': templateKey,
-          'resourceKey': key,
-          'locale': (locale ?? texts.defaultLocale).tag,
-        },
-      );
-    }
-    return value;
-  }
 }

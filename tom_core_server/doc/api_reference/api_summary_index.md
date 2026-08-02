@@ -22,7 +22,7 @@ surface documented here.
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`. |
-| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP and stand-ins), MIME encoding, the durable outbox, and resource-keyed email. |
+| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, data scoping, column authorization. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
@@ -302,10 +302,24 @@ surface documented here.
 | `TomSmtpConnection` | abstract class | The wire, behind an interface so the protocol is testable. |
 | `TomSocketSmtpConnection` | class | The `dart:io` socket implementation. |
 | `TomSmtpReply` | class | One SMTP reply and its classification. |
+| `TomSmsTransport` | class | Real delivery over an HTTP SMS gateway. |
+| `TomSmsGatewaySettings` | class | Everything needed to reach one SMS gateway. |
+| `TomSmsAuthScheme` | enum | `none`, `bearer`, `basic`. |
+| `TomSmsGatewayProtocol` | abstract class | One vendor's request/response shape, behind an interface. |
+| `TomFieldMappedSmsProtocol` | class | The configurable protocol: field names in, status/error paths out. |
+| `TomSmsGatewayRequest` | class | One gateway call, ready to send. |
+| `TomSmsGatewayAnswer` | class | What the gateway said, with a three-valued permanence. |
+| `TomSmsBodyFormat` | enum | `form`, `json`. |
+| `TomSmsSubmission` | class | One recipient's share of a message, as handed to a protocol. |
+| `TomSmsSegmentation` | class | What a text costs: encoding, units, segments. |
+| `TomSmsEncoding` | enum | `gsm7`, `ucs2`. |
 | `TomMimeEncoder` | class | Renders a message as an RFC 5322 / MIME document. |
 | `TomMessageOutbox` | class | The durable send queue in front of a router. |
+| `TomTemplatedMessageService` | abstract class | The rule every channel shares: a message is a template key plus parameters. |
 | `TomEmailRequest` | class | What to send, to whom, with which values — a template key, never a subject or body. |
 | `TomEmailService` | class | Renders resource-keyed email in the recipient's locale and queues it on the outbox. |
+| `TomSmsRequest` | class | What to send, to which number, with which values — a template key, never a text. |
+| `TomSmsService` | class | Renders resource-keyed SMS, caps its segments, and queues it on the outbox. |
 | `TomMessagingException` | class | The module's base error (extends `TomServerException`). |
 | `TomDeliveryException` | class | A delivery failure, classified transient or permanent. |
 | `TomPermanentDeliveryException` | class | A delivery failure the scheduler will not retry. |

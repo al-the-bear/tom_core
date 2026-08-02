@@ -421,6 +421,30 @@ class TomMessage {
     headers: headers,
   );
 
+  /// An SMS: one text body, no subject, and a sender that is an *id* rather
+  /// than an address.
+  ///
+  /// [senderId] goes into [metadata] rather than into [from], because it is not
+  /// a [TomRecipient] — nobody replies to a short code, and modelling it as one
+  /// would offer a `displayName` and a [TomRecipientKind] that mean nothing
+  /// here. Carrying a sender id is what [metadata] was documented for.
+  factory TomMessage.sms({
+    String? id,
+    required List<TomRecipient> to,
+    required String text,
+    String? senderId,
+    Map<String, Object?>? metadata,
+  }) => TomMessage(
+    id: id,
+    channel: TomMessageChannel.sms,
+    recipients: to,
+    bodies: [TomMessageBody.text(text)],
+    metadata: {
+      ...?metadata,
+      if (senderId != null && senderId.isNotEmpty) 'senderId': senderId,
+    },
+  );
+
   /// The recipients addressed as [kind].
   List<TomRecipient> recipientsOf(TomRecipientKind kind) =>
       recipients.where((r) => r.kind == kind).toList(growable: false);

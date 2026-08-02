@@ -1,10 +1,10 @@
 # Messaging Module
 
 The outbound message substrate: a channel-neutral message shape, a transport
-contract, an SMTP implementation, stand-in transports for tests and local runs,
-a durable outbox that queues delivery onto the kernel's job scheduler, and — for
-email — a service that composes the message from resource keys so no user-facing
-string is written in Dart.
+contract, two real implementations — SMTP and an HTTP SMS gateway — stand-in
+transports for tests and local runs, a durable outbox that queues delivery onto
+the kernel's job scheduler, and a templating layer that composes every message
+from resource keys so no user-facing string is written in Dart.
 
 This module does **not** model notification types, subscriptions or user
 preferences. That is a separate decision, and building the wire first is what
@@ -21,6 +21,10 @@ lets it be made on the merits rather than around a missing substrate.
 - [Routing](#routing)
 - [Stand-In Transports](#stand-in-transports)
 - [SMTP](#smtp)
+- [SMS: One Gateway Shape, No Vendor Names](#sms-one-gateway-shape-no-vendor-names)
+  - [Segments, not characters](#segments-not-characters)
+  - [Two layers of classification](#two-layers-of-classification)
+  - [Describing a gateway](#describing-a-gateway)
 - [Configuration and Secrets](#configuration-and-secrets)
 - [The MIME Document](#the-mime-document)
 - [Delivery Semantics: One Retry Mechanism](#delivery-semantics-one-retry-mechanism)
@@ -33,6 +37,10 @@ lets it be made on the merits rather than around a missing substrate.
   - [Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes)
   - [A missing key fails before anything is queued](#a-missing-key-fails-before-anything-is-queued)
   - [Always through the outbox](#always-through-the-outbox)
+- [Application SMS: The Same Rule, Plus a Length](#application-sms-the-same-rule-plus-a-length)
+  - [The shared base](#the-shared-base)
+  - [Two caps, deliberately](#two-caps-deliberately)
+  - [Addressing a principal](#addressing-a-principal)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -56,10 +64,16 @@ lets it be made on the merits rather than around a missing substrate.
 | `TomFileMessageTransport` | class | Writes each message to a `.eml` file |
 | `TomSmtpTransport` / `TomSmtpSettings` / `TomSmtpSecurity` | classes / enum | Real delivery over SMTP |
 | `TomSmtpConnection` / `TomSocketSmtpConnection` / `TomSmtpReply` | abstract class / classes | The wire, behind an interface so the protocol is testable |
+| `TomSmsTransport` / `TomSmsGatewaySettings` / `TomSmsAuthScheme` | classes / enum | Real delivery over an HTTP SMS gateway |
+| `TomSmsGatewayProtocol` / `TomFieldMappedSmsProtocol` | abstract class / class | The vendor mapping: field names in, status and error codes out |
+| `TomSmsSubmission` / `TomSmsGatewayRequest` / `TomSmsGatewayAnswer` / `TomSmsBodyFormat` | classes / enum | The values a protocol maps between, so `encode` and `decode` stay pure |
+| `TomSmsSegmentation` / `TomSmsEncoding` | class / enum | GSM 03.38 length arithmetic: the unit an SMS is actually billed in |
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |
 | `TomMessageOutbox` | class | The durable send queue in front of a router |
+| `TomTemplatedMessageService` | abstract class | The rule every channel shares: a message is a template key plus parameters |
 | `TomEmailRequest` | class | What to send and to whom: a template key and parameters, never a subject or body |
 | `TomEmailService` | class | Renders a template in the recipient's locale and queues it on the outbox |
+| `TomSmsRequest` / `TomSmsService` | classes | The same, for SMS — plus the segment budget email does not have |
 | `TomMessagingException` | class | The module's base error |
 
 ## Why Not Just Call a Mailer
@@ -252,6 +266,118 @@ asserts the branches that matter most — a relay that does not offer STARTTLS, 
 rejected credential, one dead address, a `4xx` deferral — which are precisely
 the ones a real relay will not produce on demand.
 
+## SMS: One Gateway Shape, No Vendor Names
+
+`TomSmsTransport` is the second implementation of `TomMessageTransport`, and
+writing it was the first real test of whether that contract was channel-agnostic
+or merely email-shaped. **It held.** Nothing in `TomMessage`,
+`TomDeliveryReceipt` or `TomMessageTransport` had to change:
+
+| What SMS needed | What was already there |
+| --- | --- |
+| a phone number instead of an address | `TomRecipient.address`, documented from the start as "for SMS it is a phone number" |
+| a sender that is an id, not an addressee | `TomMessage.metadata`, whose documented example was "an SMS sender id" |
+| one text body, no MIME | `TomMessageBody.text` and `TomMessage.textBody` |
+| no copies, no attachments | `supportsCopies` / `supportsAttachments` already default to `false`, and `checkSupported` already refuses both permanently |
+
+There is no `TomSmsConnection` interface as there is for SMTP, because SMS has
+no protocol — every gateway is an HTTP API of its own invention. The transport
+speaks HTTP through the kernel's `TomServerChannel` / `TomServerCall` layer and
+puts the vendor's vocabulary behind a `TomSmsGatewayProtocol`.
+
+One HTTP request per recipient. A gateway that accepts a list of numbers would
+save requests and cost the receipt its per-number outcome, and partial delivery
+is precisely the case that matters — one dead number must not cost the others
+their message, exactly as a refused `RCPT TO` does not over SMTP.
+
+### Segments, not characters
+
+An SMS is billed per *segment*, and `text.length` is the wrong number in three
+separate ways. `TomSmsSegmentation.of(text)` computes the right one:
+
+| Rule | Effect |
+| --- | --- |
+| one character outside GSM 03.38 moves the **whole message** to UCS-2 | capacity drops from 160 to 70 |
+| ten GSM characters — `^ { } \ [ ~ ] |`, form feed and `€` — live in an escape table | they cost **two** units each |
+| a message that does not fit one part spends seven bits per part on a concatenation header | capacity drops to 153 (GSM) or 67 (UCS-2) *per part* |
+
+The third rule is the counter-intuitive one: the 161st character does not add
+one character to a second segment, it adds *eight* — the message is repacked
+into 153-unit parts. And because a character never straddles a boundary, the
+packing is a greedy walk rather than a division.
+
+This is why a `{firstname}` that arrives as `Zoë` can triple the cost of every
+message a template sends, and why nothing in a green test run would say so.
+
+### Two layers of classification
+
+The transport's one job is deciding whether a failure is worth repeating, and
+SMS makes that harder than SMTP because a gateway answers on two levels that
+routinely disagree — an HTTP `200 OK` carrying `{"status":"failed","code":21211}`
+is an accepted *request* and a refused *message*.
+
+| Layer | Owner | Rule |
+| --- | --- | --- |
+| HTTP status | `TomSmsTransport.isTransientStatus` | `408`, `425`, `429` and `5xx` are transient; every other non-`2xx` is permanent |
+| provider payload | the deployment's `TomSmsGatewayProtocol` | named codes are classified explicitly; an unrecognised code returns `null` and defers to the layer above |
+
+`TomSmsGatewayAnswer.isPermanent` is deliberately **three-valued**. A protocol
+forced to choose for an unknown code would either guess *permanent* and turn a
+rate limit into a lost message, or guess *transient* and spend the retry budget
+on an invalid number.
+
+Two more decisions worth knowing:
+
+- **A transient answer stops the pass** rather than continuing down the
+  recipient list. A rate limit or an outage applies to the account, not to one
+  number; continuing would burn the remaining recipients on the same refusal,
+  and the retry would then deliver twice to the ones that had already gone.
+- **Over the segment cap is permanent, and never reaches the gateway.** The
+  text will not be shorter on a retry, and the alternative — send it anyway —
+  is a bill.
+
+### Describing a gateway
+
+`TomFieldMappedSmsProtocol` describes a gateway in configuration rather than in
+a subclass: which fields carry the number, the sender and the text; whether the
+body is form-encoded or JSON; where in the response the status, the id and the
+error code live; and which error codes are final.
+
+```dart
+final settings = TomSmsGatewaySettings.fromConfiguration(config); // null ⇒ no SMS
+router.register(settings == null
+    ? const TomNoOpMessageTransport(channel: TomMessageChannel.sms)
+    : TomSmsTransport(
+        settings,
+        const TomFieldMappedSmsProtocol(
+          format: TomSmsBodyFormat.form,
+          toField: 'To',
+          fromField: 'From',
+          textField: 'Body',
+          requiresSender: true,
+          statusPath: 'status',
+          acceptedStatuses: {'queued', 'accepted', 'sending', 'sent'},
+          remoteIdPath: 'sid',
+          errorCodePath: 'code',
+          errorMessagePath: 'message',
+          permanentErrorCodes: {'21211', '21610', '21614'},
+          transientErrorCodes: {'20429', '30001'},
+        ),
+      ));
+```
+
+**No vendor presets ship.** There is no `TomTwilioProtocol`, no
+`TomVonageProtocol`. A preset for an API this repository cannot test against is
+a plausible-looking guess, and when it fails the failure is attributed to the
+framework rather than to the guess. The mapping above is where a deployment
+records what it verified against its own account.
+
+The transport takes an injectable `openChannel`, the seam `TomSmtpTransport`
+provides with `connect`. That is how `test/sms_transport_test.dart` asserts a
+`429`, a `401`, a provider failure code on a `200`, a socket failure, a gateway
+that never answers, and one dead number among three — none of which a real
+gateway produces on demand.
+
 ## Configuration and Secrets
 
 The declarations live on `TomBaseServerConfiguration`:
@@ -294,6 +420,29 @@ delivers them, and that should not require a mail server to be reachable.
 `smtpSecurity` **fails closed** on a typo — an unrecognised value lands on
 `startTls`, not on `none`, so a misspelling cannot silently downgrade a
 deployment to plaintext.
+
+The SMS gateway follows the same shape:
+
+| Setting | Default | Meaning |
+| ------- | ------- | ------- |
+| `smsEndpoint` | *unset* | Unset means **this deployment sends no SMS**; must be `http` or `https` |
+| `smsApiKey` | *unset* | The gateway credential; **secret-bearing** |
+| `smsApiSecret` | *unset* | The second half of a pair; **secret-bearing**, required only by `basic` |
+| `smsSenderId` | *unset* | The default sender shown on the handset |
+| `smsAuthScheme` | `bearer` | `none` \| `bearer` \| `basic`; an unrecognised value falls back here |
+| `smsTimeoutSeconds` | `30` | A timeout is **transient** — the message may well have been accepted |
+| `smsMaxSegments` | `3` | The deployment's segment cap; `0` disables it |
+
+The credential is never presented to the gateway by accident and never carried
+to it from elsewhere: `TomServerCallSpecs.includeBearerAuthentication` is set to
+`false` on every gateway call, because the kernel call layer would otherwise
+inject the *caller's* bearer token — handing a user credential to a third party.
+`TomSmsGatewaySettings.toString()` never includes `smsApiKey` or `smsApiSecret`.
+
+`smsAuthScheme` also falls back rather than failing, but the direction is
+different from `smtpSecurity`'s: it lands on `bearer` rather than `none`, so an
+unrecognised value cannot silently drop the credential and send unauthenticated
+requests to a paid API. The worst outcome is a `401`.
 
 ## The MIME Document
 
@@ -564,6 +713,85 @@ request carrying the same id are one queued message. Supply one for anything a
 caller might retry without knowing whether the first attempt landed — a reset
 keyed by its token, an invoice keyed by its number.
 
+## Application SMS: The Same Rule, Plus a Length
+
+`TomSmsService` is to SMS what `TomEmailService` is to mail, and deliberately so:
+`TomSmsRequest` has **no text field**, for the same reason `TomEmailRequest` has
+no subject field. A request type that cannot express a literal is a resource rule
+the compiler enforces rather than one a reviewer has to remember.
+
+One sub-key instead of three. An SMS has a body and nothing else, so
+`<templateKey>.text` is the whole template — no subject to omit, no HTML
+alternative to offer.
+
+```dart
+await smsService.send(TomSmsRequest.toPrincipal(
+  templateKey: 'sms.two_factor',
+  principal: principal,
+  parameters: {'code': code, 'minutes': 5},
+  messageId: 'two-factor-$challengeId',
+));
+```
+
+```yaml
+sms:
+  two_factor:
+    text: "Your code is {code}. It expires in {minutes}m."
+```
+
+### The shared base
+
+`TomEmailService` and `TomSmsService` both extend
+`TomTemplatedMessageService<R>`, which owns `send`, `sendNow` and
+`requiredText`; a subclass supplies only `channelName` and `render`. So the two
+services are not merely alike — the shared parts are the same code.
+
+That matters because the repeated parts *are* the rule: resolve through resource
+keys, fail loudly before anything is queued, hand the result to the outbox rather
+than to a transport. A convention re-implemented per channel drifts invisibly — a
+third channel resolving through `TomLocalizedTextResources.textOrNull` instead of
+`requiredText` would silently gain the key-as-fallback behaviour messaging
+deliberately does not want.
+
+`channelName` exists so a missing SMS template raises
+`messaging.sms.template.missing` rather than reporting itself as an email fault
+and sending whoever is on call to the wrong bundle.
+
+The conditional-fragment technique described under
+[Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes)
+is inherited rather than reimplemented, and the single-pass substitution caveat
+applies unchanged.
+
+### Two caps, deliberately
+
+| Cap | Where | Applies to |
+| --- | --- | --- |
+| `TomSmsGatewaySettings.maxSegments` | deployment configuration (`smsMaxSegments`, default `3`) | every message reaching the transport, including ones composed elsewhere |
+| `TomSmsService.maxSegments` | the service, `null` by default | messages this application composes |
+
+The service cap is `null` rather than a number because two defaults that
+disagree produce a message refused by whichever is stricter and reported by
+whichever the operator did not set. An application sets it when its own traffic
+warrants something tighter — a two-factor code has no business being two
+segments long, whatever the deployment permits in general.
+
+`TomSmsService.segmentationOf(request)` renders and measures without sending or
+capping, for a preview screen or a test that wants to assert what a template
+costs. It deliberately does not throw: a measurement used to *decide* whether a
+message is too long cannot be one that raises when it is.
+
+### Addressing a principal
+
+`TomSmsRequest.toPrincipal` prefers `TomUser.mobile` and falls back to
+`TomUser.phone`. The fallback earns its place — many directories hold one number
+in whichever field the import happened to fill — and so does the ordering: a
+landline that silently swallows a two-factor code is a support call nobody can
+diagnose.
+
+A principal reachable by neither raises at composition, where the caller still
+knows *which user* it was reaching. A transport discovering it later can only
+report that a number was empty.
+
 ## Core Components
 
 - **`TomMessage` / `TomRecipient` / `TomRecipientKind` / `TomMessageBody` /
@@ -578,26 +806,45 @@ keyed by its token, an invoice keyed by its number.
 - **`TomSmtpTransport` / `TomSmtpSettings` / `TomSmtpSecurity` /
   `TomSmtpConnection` / `TomSocketSmtpConnection` / `TomSmtpReply`** — real
   delivery, with the wire behind an interface.
+- **`TomSmsTransport` / `TomSmsGatewaySettings` / `TomSmsAuthScheme`** — real
+  delivery over an HTTP gateway, with the connection behind an injectable seam.
+- **`TomSmsGatewayProtocol` / `TomFieldMappedSmsProtocol` / `TomSmsSubmission` /
+  `TomSmsGatewayRequest` / `TomSmsGatewayAnswer` / `TomSmsBodyFormat`** — the
+  vendor mapping, and the values it maps between.
+- **`TomSmsSegmentation` / `TomSmsEncoding`** — GSM 03.38 length arithmetic.
 - **`TomMimeEncoder`** — the RFC 5322 / MIME document.
 - **`TomMessageOutbox` / `tomOutboxJobName`** — the durable send queue.
+- **`TomTemplatedMessageService`** — the template-key rule every channel shares.
 - **`TomEmailRequest` / `TomEmailService`** — resource-keyed application email,
   rendered in the recipient's locale and queued on the outbox.
+- **`TomSmsRequest` / `TomSmsService`** — the same for SMS, plus the segment
+  budget.
 - **`TomMessagingException`** — the module's base error.
 
 ## Not Yet Implemented
 
-- **Transports for the other three channels.** `sms`, `push` and `webhook` are
-  named constants with no implementation; the contract is what they will
-  implement, and a `TomNoOpMessageTransport` registered on those channels makes
-  a spec that names them runnable in the meantime.
+- **Transports for the remaining channels.** `push` and `webhook` are named
+  constants with no implementation; the contract is what they will implement,
+  and a `TomNoOpMessageTransport` registered on those channels makes a spec that
+  names them runnable in the meantime. `email` and `sms` are implemented, and
+  the second one is the evidence that the contract carries a channel it was not
+  designed around.
+- **Delivery reports.** `TomDeliveryReceipt.remoteId` carries the gateway's id
+  precisely so an asynchronous status callback can be correlated with the
+  message that produced it, but nothing here consumes one. An SMS accepted by a
+  gateway is not an SMS that reached a handset, and this module currently knows
+  only the former.
+- **Vendor protocol presets.** `TomFieldMappedSmsProtocol` can express the
+  common gateways, but no per-vendor preset ships — see
+  [Describing a gateway](#describing-a-gateway) for why.
 - **The notification model.** Channels, notification types, per-user
   preferences and subscription resolution are a separate concern, deliberately
   not designed here.
 - **Inbound mail.** This module sends only.
-- **Templating for the other channels.** `TomEmailService` covers email;
-  `sms`, `push` and `webhook` have no equivalent yet, and will want a different
-  sub-key set (no subject, no HTML alternative) rather than a generalisation of
-  this one.
+- **Templating for the remaining channels.** `TomEmailService` and
+  `TomSmsService` cover their channels; `push` and `webhook` have no equivalent
+  yet. Each will extend `TomTemplatedMessageService` with its own sub-key set
+  rather than generalising either existing one.
 - **Markup in templates.** A template resolves to a string. Conditionals, loops
   and partials are not offered: a template that needs one renders the varying
   part in the caller — as its own resource key, through `requiredText` — and
@@ -610,9 +857,12 @@ keyed by its token, an invoice keyed by its number.
 
 - `tom_core_kernel` — `TomScheduler`, `TomJobStore`, `TomJobDefinition`,
   `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`,
-  `TomClosable`, `TomPrincipal`, `TomBean`, `tomLog`.
+  `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `tomLog`, and
+  `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call
+  layer `TomSmsTransport` reaches its gateway through, rather than a raw client.
 - `resources` — `TomLocalizedTextResources` and `TomTextLocale`, which
-  `TomEmailService` resolves its templates through (see `doc/resources.md`).
+  `TomTemplatedMessageService` resolves every template through (see
+  `doc/resources.md`).
 - `async` — `StreamQueue` drives the SMTP line protocol.
 - `path` — file naming in `TomFileMessageTransport`.
 - `dart:io` — `Socket` / `SecureSocket`.

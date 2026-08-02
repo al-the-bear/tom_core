@@ -347,6 +347,79 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// is strictly worse, since it sends [smtpPassword] in the clear.
   bool smtpAllowInsecureCertificate = false;
 
+  // ---------------------------------------------------------------------------
+  // Outbound SMS (HTTP gateway)
+  //
+  // The declarations behind `TomSmsGatewaySettings.fromConfiguration`, and the
+  // same bargain the SMTP block above strikes: [smsEndpoint] unset is how a
+  // deployment says "this server sends no SMS", answered with a no-op transport
+  // rather than a boot failure.
+  //
+  // Unlike SMTP there is no protocol here — every gateway is an HTTP API of its
+  // own invention. These settings carry only what all of them need (where, with
+  // which credential, as whom); the field names, body format and error codes of
+  // a particular vendor live in a `TomSmsGatewayProtocol`, which is code the
+  // deployment supplies rather than configuration.
+  //
+  // See `messaging/sms_transport.dart` and `doc/messaging.md`.
+  // ---------------------------------------------------------------------------
+
+  /// The gateway's submit URL; `null` or blank means this deployment sends no
+  /// SMS.
+  ///
+  /// Deployment-specific but not secret, like [smtpHost]
+  /// (`codespecs_mapping.md` §5.16, CE-CF). Must be `http` or `https`; anything
+  /// else is rejected when the settings are built, so a typo surfaces at
+  /// startup rather than as an unroutable request at 03:00.
+  String? smsEndpoint;
+
+  /// The gateway credential — **secret-bearing** per §5.16.
+  ///
+  /// Its *declaration* lives here; its **value is never authored**. Supplied
+  /// out-of-band at deploy time through the ordinary CE-CF precedence chain,
+  /// exactly as [smtpPassword] is.
+  String? smsApiKey;
+
+  /// The second half of a two-part gateway credential — **secret-bearing**.
+  ///
+  /// Required only by [smsAuthScheme] `basic`, where [smsApiKey] is the user
+  /// and this is the password. Gateways that authenticate with a single bearer
+  /// token leave it unset.
+  String? smsApiSecret;
+
+  /// The sender shown to the recipient — a short code, a long number, or an
+  /// alphanumeric sender id where the destination country permits one.
+  ///
+  /// A message may override it through [TomMessage.metadata]; this is the
+  /// default for the ones that do not.
+  String? smsSenderId;
+
+  /// How the credential is presented: `none`, `bearer` or `basic`.
+  ///
+  /// Defaults to `bearer`, and an unrecognised value falls back to it. That
+  /// fallback is safe in a way [smtpSecurity]'s is not — the worst outcome is a
+  /// `401` from the gateway, not a credential sent in the clear — but it is
+  /// still the setting to check first when a gateway rejects every request.
+  ///
+  /// Gateways that want the key *in the payload* rather than in a header use
+  /// `none` here and name the field on the protocol.
+  String smsAuthScheme = 'bearer';
+
+  /// How long to wait for the gateway before treating the attempt as deferred.
+  ///
+  /// A timeout is transient: the message may well have been accepted, and the
+  /// only honest answer is to retry and let the message id deduplicate.
+  int smsTimeoutSeconds = 30;
+
+  /// The most segments a single message may occupy, or `0` for no cap.
+  ///
+  /// Three is roughly a paragraph. The cap exists because segmentation is
+  /// invisible at composition time — a template that gains one sentence, or a
+  /// parameter that arrives with an umlaut in it, can quietly triple the cost
+  /// of every message the deployment sends. Over the cap fails *permanently*
+  /// at send: a message too long now is too long on the retry.
+  int smsMaxSegments = 3;
+
   /// The bind host. Empty (the default) makes [TomServer.start] listen on
   /// [InternetAddress.anyIPv4]; set a concrete host to bind a specific address.
   /// (The previous `"t"`/`"0"` defaults were invalid addresses — bug §63.)
