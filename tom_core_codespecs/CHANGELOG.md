@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.0
+
+- **Breaking: `TomJobDeclaration.targetRefs` (`List<String>`) is replaced by
+  `readEntities` / `writtenEntities` (`List<Type>`).** `codespecs_mapping.md`
+  §5.29 scope part 3 and §4.4.1 both required a job's targets to be
+  compiler-checked; the shipped member was a string list, so a renamed entity
+  silently stopped resolving. Entities are already Dart types, so they are cited
+  as `Type` literals — §5.23 gives them no `Cs*Ref` const **by design**, and a
+  `Type` needs nothing but `dart:core`, so the package stays dependency-free.
+- Read and written targets are **separate members**, not one union. `SCJOB-WORK`
+  authors them as two SOM fields and impact analysis needs the difference: a
+  schema change breaks a writer differently from a reader. `targetEntities` is
+  the deduplicated union for callers that only ask whether a job touches an
+  entity at all.
+- A job's **CE-RP report targets are not here** — they ride
+  `@CsJob(targetReports:)` in `tom_code_specs` as `CsReportRef` consts, because
+  `codespecs_mapping.md` §5.23 places the `Cs*Ref` family in the annotation
+  *parameter* vocabulary, beside the `CsMessageKey` that annotation already
+  carries for `failureAlert`.
+
 ## 0.9.0
 
 - **Breaking: remove `TomDomainEnum` / `TomDomainEnumValue` (the `domainEnum`

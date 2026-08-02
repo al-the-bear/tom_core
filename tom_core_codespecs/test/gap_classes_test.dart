@@ -412,12 +412,56 @@ void main() {
         jobId: 'nightly_settlement',
         serviceUnitId: 'billing',
         environments: ['staging', 'prod'],
-        targetRefs: ['Payment', 'SettlementReport'],
+        readEntities: [_Invoice],
+        writtenEntities: [_Payment],
       );
       expect(job.jobId, 'nightly_settlement');
       expect(job.serviceUnitId, 'billing');
       expect(job.environments, ['staging', 'prod']);
-      expect(job.targetRefs, ['Payment', 'SettlementReport']);
+      expect(job.readEntities, [_Invoice]);
+      expect(job.writtenEntities, [_Payment]);
+    });
+
+    // codespecs_mapping.md §5.29 scope part 3 / §4.4.1: a CE-DB target is a
+    // `Type` literal, so a renamed entity is a COMPILE error rather than a
+    // string that silently stops resolving. What is really being asserted is
+    // the static type — a `List<Type>` cannot hold `'Payment'` at all, which is
+    // the entire point of typing the member.
+    test('entity targets are Type literals, never strings', () {
+      final job = TomJobDeclaration(
+        jobId: 'j',
+        readEntities: [_Invoice],
+        writtenEntities: [_Payment, _Invoice],
+      );
+      expect(job.readEntities, isA<List<Type>>());
+      expect(job.writtenEntities, isA<List<Type>>());
+      expect(job.writtenEntities, contains(_Payment));
+    });
+
+    // SCJOB-WORK.readEntities and .writtenEntities are authored as two separate
+    // SOM fields, and impact analysis needs the difference — a schema change
+    // breaks a writer differently from a reader. Collapsing them into one union
+    // would drop authored information at the CodeSpecs boundary.
+    test('read and written targets stay separate', () {
+      final job = TomJobDeclaration(
+        jobId: 'j',
+        readEntities: [_Invoice],
+        writtenEntities: [_Payment],
+      );
+      expect(job.readEntities, isNot(contains(_Payment)));
+      expect(job.writtenEntities, isNot(contains(_Invoice)));
+      expect(job.targetEntities, containsAll(<Type>[_Invoice, _Payment]));
+    });
+
+    // An entity both read and written is one target, not two — the union is
+    // what a "which jobs touch this entity?" query wants.
+    test('targetEntities is the deduplicated union', () {
+      final job = TomJobDeclaration(
+        jobId: 'j',
+        readEntities: [_Invoice, _Payment],
+        writtenEntities: [_Payment],
+      );
+      expect(job.targetEntities, hasLength(2));
     });
 
     // Deployment gating is opt-out, not opt-in: a declared job runs unless the
@@ -445,9 +489,11 @@ void main() {
       final a = TomJobDeclaration(jobId: 'a');
       final b = TomJobDeclaration(jobId: 'b');
       a.environments.add('dev');
-      a.targetRefs.add('Payment');
+      a.readEntities.add(_Invoice);
+      a.writtenEntities.add(_Payment);
       expect(b.environments, isEmpty);
-      expect(b.targetRefs, isEmpty);
+      expect(b.readEntities, isEmpty);
+      expect(b.writtenEntities, isEmpty);
     });
   });
 
@@ -1117,3 +1163,13 @@ void main() {
     });
   });
 }
+
+/// Stand-in CE-DB entity types for the CE-JB target tests.
+///
+/// A `TomJobDeclaration` cites its entity targets as `Type` literals
+/// (`codespecs_mapping.md` §5.29 scope part 3), so the tests need real Dart
+/// types to cite. They are empty on purpose: what is under test is that the
+/// reference is a type at all, not anything the type carries.
+class _Invoice {}
+
+class _Payment {}

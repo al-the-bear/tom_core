@@ -24,6 +24,19 @@
 /// `TomJobDefinition` for the runtime half. CE-JB is a *server* part
 /// (`codespecs_mapping.md` §4.2), so the declaration lives in the server
 /// project of the three-project output trio.
+///
+/// **Why only the entity targets are here.** §5.29 scope part 3 is a job's
+/// target references — CE-DB entities *and* CE-RP reports — and the two kinds
+/// land in different places. Entities are already Dart types, so they are cited
+/// as `Type` literals ([readEntities] / [writtenEntities]) and need nothing but
+/// `dart:core`. Reports are cited as `CsReportRef` consts, and §5.23 places the
+/// `Cs*Ref` family in the **annotation parameter** vocabulary: they ride
+/// `@CsJob(targetReports:)` in `tom_code_specs`, beside the `CsMessageKey` that
+/// annotation already carries for `failureAlert`. That keeps this package
+/// dependency-free — the same property that decides `TomReportResult` does not
+/// extend `tom_core_server`'s `TomTabularResult` — and keeps ref consts out of
+/// `tom_core`-family classes, which hold plain ids (`TomReportDefinition`
+/// carries the `reportId` string a `CsReportRef` *wraps*).
 class TomJobDeclaration {
   /// Stable identifier of the job, unique within the system.
   String jobId;
@@ -47,11 +60,24 @@ class TomJobDeclaration {
   /// Id of the service unit that owns this job.
   String? serviceUnitId;
 
-  /// Names of the spec entities the job reads or writes.
+  /// The CE-DB entities the job reads, as `Type` literals.
   ///
   /// Declared so a change to an entity can find the jobs it affects — the
   /// runtime `TomJobDefinition.body` is an opaque closure and reveals nothing.
-  List<String> targetRefs;
+  ///
+  /// **`Type` literals, never strings** (`codespecs_mapping.md` §5.29 scope
+  /// part 3, §4.4.1). Entities are already Dart types, so §5.23 gives them no
+  /// `Cs*Ref` const **by design**: citing the class directly makes a renamed
+  /// entity a compile error, which a string could never be.
+  List<Type> readEntities;
+
+  /// The CE-DB entities the job writes, as `Type` literals.
+  ///
+  /// Separate from [readEntities] because `SCJOB-WORK` authors the two as
+  /// distinct fields and impact analysis needs the difference: a schema change
+  /// breaks a writer differently from a reader. [targetEntities] is the union
+  /// for callers that only ask "does this job touch the entity at all?".
+  List<Type> writtenEntities;
 
   /// Creates a job declaration.
   TomJobDeclaration({
@@ -60,9 +86,18 @@ class TomJobDeclaration {
     this.enabled = true,
     List<String>? environments,
     this.serviceUnitId,
-    List<String>? targetRefs,
+    List<Type>? readEntities,
+    List<Type>? writtenEntities,
   })  : environments = environments ?? <String>[],
-        targetRefs = targetRefs ?? <String>[];
+        readEntities = readEntities ?? <Type>[],
+        writtenEntities = writtenEntities ?? <Type>[];
+
+  /// Every entity the job touches, read or written, without duplicates.
+  ///
+  /// An entity that is both read and written is **one** target — this is the
+  /// set a "which jobs touch this entity?" query wants, and keeping the
+  /// deduplication here stops each caller from re-deriving it.
+  Set<Type> get targetEntities => {...readEntities, ...writtenEntities};
 
   /// Whether the job is deployed to [environment].
   bool runsIn(String environment) =>
