@@ -2,7 +2,8 @@
 
 The outbound message substrate: a channel-neutral message shape, a transport
 contract, an SMTP implementation, stand-in transports for tests and local runs,
-and a durable outbox that queues delivery onto the kernel's job scheduler.
+a durable outbox that queues delivery onto the kernel's job scheduler, and the
+templating layer above it that composes application email from resource keys.
 
 ## Table of Contents
 
@@ -27,6 +28,8 @@ and a durable outbox that queues delivery onto the kernel's job scheduler.
   - [TomFileMessageTransport](#tomfilemessagetransport)
   - [TomMimeEncoder](#tommimeencoder)
   - [TomMessageOutbox](#tommessageoutbox)
+  - [TomEmailRequest](#tomemailrequest)
+  - [TomEmailService](#tomemailservice)
   - [TomSmtpSecurity](#tomsmtpsecurity)
   - [TomSmtpSettings](#tomsmtpsettings)
   - [TomSmtpTransport](#tomsmtptransport)
@@ -37,7 +40,8 @@ and a durable outbox that queues delivery onto the kernel's job scheduler.
 
 ## Overview
 
-Source: `lib/src/tomserver/messaging/message.dart`,
+Source: `lib/src/tomserver/messaging/email_service.dart`,
+`lib/src/tomserver/messaging/message.dart`,
 `lib/src/tomserver/messaging/message_transport.dart`,
 `lib/src/tomserver/messaging/mime_encoder.dart`,
 `lib/src/tomserver/messaging/outbox.dart`,
@@ -74,6 +78,15 @@ never writing a `Bcc:` header.
 owns no retry logic: it enqueues one job run per message on an
 inline-dispatching scheduler of its own, and durability, backoff, at-most-one
 runner per message and failure alerting all remain the kernel scheduler's.
+
+*Templating* is `TomEmailService` and `TomEmailRequest`. A request names a
+template key and supplies parameters; it has **no subject and no body field**, so
+there is no way to spell a literal user-facing string through this API. The
+service resolves `<templateKey>.subject`, `.text` and (optionally) `.html`
+against a `TomLocalizedTextResources` bundle set in the recipient's locale,
+renders a `TomMessage`, and hands it to the outbox — never to a transport. A
+missing mandatory key raises before anything is queued.
+
 `TomMessagingException` is the module's base error, from which every failure
 above derives.
 
@@ -105,6 +118,8 @@ TomDeliveryReceipt
 TomMessageRouter
 TomMimeEncoder
 TomMessageOutbox
+TomEmailRequest
+TomEmailService
 TomSmtpSecurity  (enum)
 TomSmtpSettings
 TomSmtpReply
@@ -758,6 +773,99 @@ all — are routinely measured in minutes.
 | `start` | `void start()` | Begins delivering on the scheduler's tick interval. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Drops finished runs recorded before `before`, returning how many. Never called on your behalf: the completed runs are a delivery audit trail whose retention is a deployment's decision. |
 | `close` | `void close()` | *(override)* Stops delivery, releases the scheduler and closes the receipt stream. The `router` is left open. |
+
+### TomEmailRequest
+
+What to send, to whom, and with which values — but never *what it says*. There is
+deliberately no subject or body field: an application email is a template key
+plus parameters, so a literal user-facing string cannot be spelled through this
+API.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomEmailRequest({
+  required String templateKey,
+  required List<TomRecipient> to,
+  TomTextLocale? locale,
+  Map<String, Object?> parameters = const {},
+  TomRecipient? from,
+  TomRecipient? replyTo,
+  List<TomAttachment> attachments = const [],
+  Map<String, String>? headers,
+  String? messageId,
+})
+
+factory TomEmailRequest.toPrincipal({
+  required String templateKey,
+  required TomPrincipal principal,
+  Map<String, Object?> parameters = const {},
+  TomTextLocale? locale,
+  TomRecipient? from,
+  TomRecipient? replyTo,
+  List<TomAttachment> attachments = const [],
+  Map<String, String>? headers,
+  String? messageId,
+})
+```
+
+An empty template key or an empty recipient list raises
+`TomMessagingException`. `toPrincipal` derives the address from
+`TomUser.email`, the display name from the user's names, and the locale from
+`TomTextLocale.fromPrincipal`; a principal with no address raises rather than
+producing a message with nowhere to go.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `templateKey` | `String` | The resource key prefix the subject and bodies live under (final). |
+| `to` | `List<TomRecipient>` | Who receives it; copies are expressed by each recipient's own `TomRecipientKind` (final). |
+| `locale` | `TomTextLocale?` | The locale to render in; `null` uses the bundle set's default (final). |
+| `parameters` | `Map<String, Object?>` | Values for the template's `{name}` placeholders (final). |
+| `from` | `TomRecipient?` | The sender, when this mail needs one of its own. Normally `null` — the deployment default lives in `TomSmtpSettings.defaultFrom` (final). |
+| `replyTo` | `TomRecipient?` | Where replies should go, when that is not the sender (final). |
+| `attachments` | `List<TomAttachment>` | Files to attach (final). |
+| `headers` | `Map<String, String>?` | Additional email headers (final). |
+| `messageId` | `String?` | The message id, and therefore the idempotence key: two sends of a request carrying the same id are one queued message (final). |
+
+### TomEmailService
+
+Renders resource-keyed email in the recipient's locale and queues it on the
+outbox. A template key resolves three sub-keys: `.subject` and `.text` are
+mandatory, `.html` is optional. The asymmetry is deliberate — not every mail has
+markup, but a mail with no plain-text part is a deliverability problem.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomEmailService({
+  required TomMessageOutbox outbox,
+  required TomLocalizedTextResources texts,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `outbox` | `TomMessageOutbox` | Where rendered messages are queued. Not owned: closing it is the application's call (final). |
+| `texts` | `TomLocalizedTextResources` | The bundle set every template is resolved against (final). |
+| `subjectSubKey` / `textSubKey` / `htmlSubKey` | `static const String` | The sub-keys a template key is suffixed with: `subject`, `text`, `html`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `render` | `TomMessage render(TomEmailRequest request)` | Renders the request into a message without queueing it — for a preview, a test, or a digest that renders many and queues one. Raises `TomMessagingException` (`messaging.email.template.missing`) when `.subject` or `.text` does not resolve. |
+| `send` | `Future<void> send(TomEmailRequest request)` | Renders and queues. A template fault arrives as a failed future, before anything reaches the queue. |
+| `sendNow` | `Future<void> sendNow(TomEmailRequest request)` | Renders, queues and delivers immediately, for mail a human is waiting on. Retry behaviour is unchanged. |
+| `requiredText` | `String requiredText(String templateKey, String subKey, {TomTextLocale? locale, Map<String, Object?> parameters = const {}})` | Resolves `<templateKey>.<subKey>` or raises the same `messaging.email.template.missing` a missing subject does. Public for the **conditional fragment** — a sentence a body includes only sometimes, resolved on its own and passed in as a parameter. Resolve fragments fully before passing them in: substitution is one pass over the map. |
+| `resolve` | `static TomEmailService? resolve()` | The service this deployment installed, or `null`. Nullable with no fallback: mail sent through invented infrastructure goes nowhere while looking as though it went. |
 
 ### TomSmtpSecurity
 

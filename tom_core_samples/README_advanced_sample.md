@@ -47,7 +47,7 @@ bottom; each links to the next.
 | 11 | [The two Flutter clients](README_advanced_11_clients_app_admin.md) | App client vs admin console; sessions; the in-memory vs live backend seam; bootstrap; the share flow and grant-matrix editor. |
 | 12 | [Testing & cross-tier integration](README_advanced_12_testing_integration.md) | Test strategy; serial-Flutter rule; the sentinel render proof; the four-role matrix; the cross-tier runner; the green gate. |
 | 13 | [File transfer under the authorization matrix](README_advanced_13_file_transfer.md) | One feature across every layer: the three column declarations; slots from annotations; the per-row C-4 grade; the three refusal layers; the client field; cascade delete; how it is proved. |
-| 14 | [Operations: scheduled work over live data](README_advanced_14_operations.md) | Scheduling, audit, messaging and export in one artifact: the retention purge through the repository chokepoint; the digest handed to the outbox; the weekly export; why the anchor publisher is *not* a job; `min(user, server)` as a test; two schedulers over one store; one migration chain, two packages. |
+| 14 | [Operations: scheduled work over live data](README_advanced_14_operations.md) | Scheduling, audit, messaging and export in one artifact: the retention purge through the repository chokepoint; the digest named as a template key and handed to the outbox; the weekly export; why the anchor publisher is *not* a job; `min(user, server)` as a test; two schedulers over one store; one migration chain, two packages. |
 
 ### Appendices (deep dives)
 
@@ -72,7 +72,7 @@ bottom; each links to the next.
 | 5 | [`advanced_app_server`](advanced_app_server/README.md) | The secured task-manager API. Trusts the JWT signing key shared with the auth server, validates the bearer token on every request, resolves ownership + shares + four-state field grades, and persists `app_db`. | HTTP `:8080`, `app_db` `:3308` |
 | 6 | [`advanced_app_client`](advanced_app_client/README.md) | The end-user Flutter app: login, a status-column task board, a bound item-detail editor with per-field four-state authorization driven live over the wire, and cross-user sharing. | Flutter |
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, role assignments, and the `projectRole` × field grant matrix via the auth server's `/admin/*` API. | Flutter |
-| 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer. No HTTP surface and no database of its own. | timers, `app_db` `:3308` |
+| 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest rendered from a localised text bundle into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer. No HTTP surface and no database of its own. | timers, `app_db` `:3308` |
 
 ---
 

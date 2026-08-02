@@ -26,7 +26,8 @@ demonstrated from inside either one:
 | The claim | Where it is stated | Where it is now observable |
 | --- | --- | --- |
 | the anchor publisher must not be a scheduled job | `audit.md:496` | `ops_anchoring.dart`; `ops_anchor_test.dart` asserts no `@TomScheduledJob` declares it |
-| the outbox puts its retries on the job queue | `messaging.md:308` | a job composes; a *second* scheduler delivers; `ops_digest_test.dart` shows a failed send redelivered without recomposition |
+| the outbox puts its retries on the job queue | `messaging.md:317` | a job composes; a *second* scheduler delivers; `ops_digest_test.dart` shows a failed send redelivered without recomposition |
+| an application mail names a template key, not a body | `messaging.md:435` | the digest holds no sentence a recipient reads; `assets/text_{en,de}.yaml` do, and `ops_digest_test.dart` renders one digest in two languages |
 | an export's only real seam is storage | `export.md:394` | the weekly report is rows in the same `tom_blob` pair as an item attachment |
 | the repository is the audit chokepoint | `audit.md` | a machine's 03:00 delete produces the same trail a human's would |
 
@@ -185,6 +186,65 @@ and the outbox keys its queue row on it — so a second composition of the same
 window **replaces** the queued run rather than adding one. At-least-once
 delivery of a message that is its own key is exactly-once delivery of a digest.
 
+## The mail this job does not write
+
+`OpsDigestService` is handed a `TomEmailService`, not the outbox. That is a
+deliberate narrowing: given the outbox it *could* compose a `TomMessage`, and a
+subject line assembled in Dart is a sentence no translator will ever see. Given
+the service, the only thing it can produce is a `TomEmailRequest` — a template
+key, a recipient and a parameter map:
+
+```dart
+TomEmailRequest(
+  templateKey: opsDigestTemplateKey,          // 'email.ops_digest'
+  messageId: messageIdFor(summary.userId, window),
+  to: [TomRecipient(summary.emailAddress, displayName: summary.displayName)],
+  locale: summary.locale,
+  parameters: {'product': productName, 'openCount': summary.openCount, ...},
+);
+```
+
+Subject and body come out of `assets/text_en.yaml` and `assets/text_de.yaml`,
+resolved through the same `{name}` substitution the client bundles use, so one
+bundle format and one placeholder syntax serve both tiers. `OpsTexts.load()`
+runs at boot rather than at 06:00 — a malformed bundle should stop a server
+start, not surface as a blank mail somebody already received.
+
+The **locale is per recipient** (`OpsDigestSummary.locale`), not per process.
+One pass mails everybody, so there is no moment at which this job could
+meaningfully "switch to German". `RepositoryDigestAudience` leaves it null today
+because `auth_users` has no language column — a deployment that stores a
+preference supplies it here and the rest of the path already honours it.
+
+### A sentence a mail includes only sometimes
+
+The digest mentions an overdue count only when there is one, and a next due date
+only when something is ahead. A template cannot express "only when", and adding
+conditionals to the resource format is the first step of a second template
+engine beside the one the client already has. So each conditional sentence is
+**its own resource key**:
+
+```yaml
+email:
+  ops_digest:
+    text: |
+      You have {openCount} open item(s).
+      {overdueLine}{nextDueLine}
+    overdue_line: |
+      {overdueCount} of them are past their due date.
+```
+
+The job resolves each fragment through `TomEmailService.requiredText` and passes
+the finished string in as a parameter — empty when the condition does not hold.
+Going through `requiredText` rather than a nullable lookup is what keeps one
+failure mode for one class of fault: a fragment nobody translated fails the
+send naming the key, exactly as a missing subject does. Otherwise the optional
+sentence would be the one part of a mail that can silently render blank.
+
+Fragments must be resolved **fully** before being passed in. Substitution is a
+single pass over the parameter map, so a fragment still carrying its own
+placeholder would be substituted or not depending on map order.
+
 ## One chain, two packages
 
 `[004]-ops_framework_tables.sql` lives in **this** package and extends the app
@@ -244,7 +304,7 @@ Composing four modules over live data is what walked into it.
 | Level | Suite | What it settles |
 | --- | --- | --- |
 | retention | `ops_retention_test.dart` | one `destroy` per candidate, each carrying an entity; the terminal-status filter; the unscoped pass |
-| messaging | `ops_digest_test.dart` | composition, the message id as idempotence key, and a failed send redelivered *without* recomposition |
+| messaging | `ops_digest_test.dart` | composition from template keys in two languages, that the shipped bundles carry every key the digest resolves, that an unknown template fails before anything is queued, the message id as idempotence key, and a failed send redelivered *without* recomposition |
 | export | `ops_report_test.dart` | the rendered projection, the date-partitioned key, the window derived from `run.scheduledFor` |
 | audit anchoring | `ops_anchor_test.dart` | the publisher's schedule — and that no `@TomScheduledJob` declares it |
 | declarations | `ops_jobs_test.dart` | every schedule, retry policy, timeout and overlap flag, read back from the annotations |
@@ -301,12 +361,14 @@ authorization lines with their enforcement anchors.
 ## Primary sources
 
 - `advanced_ops_server/lib/src/ops_runtime.dart` (the assembly and its ordering),
-  `ops_identity.dart` (the two entitlement sets), `ops_anchoring.dart` (why not a job)
+  `ops_identity.dart` (the two entitlement sets), `ops_anchoring.dart` (why not a job),
+  `ops_texts.dart` + `assets/text_{en,de}.yaml` (the digest's text)
 - `advanced_ops_server/lib/src/jobs/` — `ops_jobs.dart` (the declarations),
   `retention_service.dart`, `digest_service.dart`, `report_service.dart`
 - `advanced_ops_server/bin/ops_server_start.dart` (the boot sequence and `--migrate-only`),
   `database_migrations/app_db/app_schema/[004]-ops_framework_tables.sql`
-- `tom_core_server/doc/` — `scheduling.md`, `audit.md` (§496), `messaging.md` (§308), `export.md` (§394)
+- `tom_core_server/doc/` — `scheduling.md`, `audit.md` (§496), `messaging.md`
+  (§317 delivery, §435 application email), `resources.md`, `export.md` (§394)
 - `advanced_ops_server/test/ops_live_test.dart`, `tool/run_ops_integration.sh`
 
 ---

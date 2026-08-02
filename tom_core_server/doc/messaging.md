@@ -2,12 +2,13 @@
 
 The outbound message substrate: a channel-neutral message shape, a transport
 contract, an SMTP implementation, stand-in transports for tests and local runs,
-and a durable outbox that queues delivery onto the kernel's job scheduler.
+a durable outbox that queues delivery onto the kernel's job scheduler, and — for
+email — a service that composes the message from resource keys so no user-facing
+string is written in Dart.
 
-This module is **transport only**. It carries a message someone else decided to
-send. It does not model notification types, subscriptions or user preferences —
-that is a separate decision, and building the wire first is what lets that
-decision be made on the merits rather than around a missing substrate.
+This module does **not** model notification types, subscriptions or user
+preferences. That is a separate decision, and building the wire first is what
+lets it be made on the merits rather than around a missing substrate.
 
 ## Table of Contents
 
@@ -26,6 +27,12 @@ decision be made on the merits rather than around a missing substrate.
 - [What "Queued" Guarantees](#what-queued-guarantees)
 - [Failure Reporting](#failure-reporting)
 - [Wiring a Server](#wiring-a-server)
+- [Application Email: A Template Key, Not a Body](#application-email-a-template-key-not-a-body)
+  - [The three sub-keys](#the-three-sub-keys)
+  - [Locale comes from the recipient, not the process](#locale-comes-from-the-recipient-not-the-process)
+  - [Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes)
+  - [A missing key fails before anything is queued](#a-missing-key-fails-before-anything-is-queued)
+  - [Always through the outbox](#always-through-the-outbox)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -51,6 +58,8 @@ decision be made on the merits rather than around a missing substrate.
 | `TomSmtpConnection` / `TomSocketSmtpConnection` / `TomSmtpReply` | abstract class / classes | The wire, behind an interface so the protocol is testable |
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |
 | `TomMessageOutbox` | class | The durable send queue in front of a router |
+| `TomEmailRequest` | class | What to send and to whom: a template key and parameters, never a subject or body |
+| `TomEmailService` | class | Renders a template in the recipient's locale and queues it on the outbox |
 | `TomMessagingException` | class | The module's base error |
 
 ## Why Not Just Call a Mailer
@@ -423,6 +432,138 @@ attempt does not wait.
 router open: a router shared with the rest of the application must not be torn
 down because the outbox stopped.
 
+## Application Email: A Template Key, Not a Body
+
+Everything above answers "send these bytes to this address". `TomEmailService`
+answers "send *the password-reset mail* to this user, in their language".
+
+Without that second layer, every caller composes its own subject and body —
+which puts user-facing text into Dart string literals, in direct violation of
+the rule the rest of the framework keeps, and makes each caller re-derive
+recipient formatting, sender identity and the locale to render in. The transport
+being good makes this worse rather than better: it is attractive enough to call
+directly, and every direct call site is a place the rule is quietly broken.
+
+So `TomEmailRequest` has **no subject and no body field**. It names a template
+and supplies values:
+
+```dart
+final emailService = TomEmailService(outbox: outbox, texts: texts);
+TomBean.withType(TomEmailService, emailService);
+
+await emailService.send(TomEmailRequest.toPrincipal(
+  templateKey: 'email.password_reset',
+  principal: principal,
+  parameters: {'firstname': principal.user.firstname, 'link': resetUrl},
+  messageId: 'reset-$resetToken',
+));
+```
+
+There is no way to spell a literal subject through this API, which is the point:
+a rule the type system enforces needs no reviewer to remember it.
+
+### The three sub-keys
+
+A template key resolves three resources:
+
+| Sub-key | Required | Becomes |
+| ------- | -------- | ------- |
+| `.subject` | yes | the subject line |
+| `.text` | yes | the `text/plain` body |
+| `.html` | no | the `text/html` alternative |
+
+```yaml
+email:
+  password_reset:
+    subject: "Reset your password, {firstname}"
+    text: "Open {link} to choose a new password."
+    html: "<p>Open <a href=\"{link}\">this link</a>.</p>"
+```
+
+The asymmetry is deliberate. Not every mail has markup, so a missing `.html` is
+an ordinary template rather than a fault. But a mail with *no plain-text part* is
+a deliverability problem — spam filters score it down and text-only clients
+render nothing — so `.text` is required rather than merely preferred. When both
+are present the bodies are ordered plain-text first, HTML last, and
+`TomMimeEncoder` builds the `multipart/alternative` part from them.
+
+### Locale comes from the recipient, not the process
+
+Templates resolve through `TomLocalizedTextResources` (see `doc/resources.md`),
+which holds one bundle per locale and picks by argument rather than by installed
+singleton — because a server is answering a German user and an English one in the
+same event loop. `TomEmailRequest.toPrincipal` derives the locale from the
+principal's stored language, falling back to the device's and then to the bundle
+set's default.
+
+### Sentences a mail includes only sometimes
+
+A digest that mentions an overdue count *when there is one* cannot express that
+in a single template. Rather than reintroducing conditionals into the resource
+format — which is how a template engine starts — the optional sentence is a
+resource key of its own, resolved separately and passed in as a parameter:
+
+```yaml
+email:
+  ops_digest:
+    text: |
+      You have {openCount} open item(s).
+      {overdueLine}
+    overdue_line: |
+      {overdueCount} of them are past their due date.
+```
+
+```dart
+parameters: {
+  'openCount': summary.openCount,
+  'overdueLine': summary.overdueCount == 0
+      ? ''
+      : emailService.requiredText(
+          'email.ops_digest', 'overdue_line',
+          locale: locale,
+          parameters: {'overdueCount': summary.overdueCount},
+        ),
+},
+```
+
+`requiredText` rather than `TomLocalizedTextResources.textOrNull` so a fragment
+nobody wrote fails the send exactly as a missing subject does — one failure mode
+for one class of fault, instead of the optional sentence being the one part of a
+mail that can silently render empty.
+
+Resolve fragments **fully**, with their own parameters, before passing them in.
+Substitution is a single pass over the parameter map, so a fragment inserted with
+`{overdueCount}` still in it would be substituted or not depending on map order.
+
+`advanced_ops_server`'s morning digest is the worked example
+(`jobs/digest_service.dart`, `assets/text_en.yaml`, `assets/text_de.yaml`).
+
+### A missing key fails before anything is queued
+
+`render` raises `TomMessagingException` when `.subject` or `.text` does not
+resolve, and `send` calls `render` before touching the outbox. So a template
+nobody wrote produces an error the *caller* sees, not a queued mail with an empty
+subject that a *recipient* sees.
+
+This is the one place the framework departs from
+`TomTextResourceProvider.getText`'s key-as-fallback. A button reading
+`two_factor.enrol.submit` is ugly, unmistakable, and gets fixed; a subject line
+reading `email.password_reset.subject` has already been read by the user by the
+time anyone notices.
+
+### Always through the outbox
+
+`send` hands the rendered message to a `TomMessageOutbox`, never to a transport.
+Retry, backoff, permanence classification, one-delivery-per-message and failure
+alerting already exist there, correctly, on the kernel's job scheduler. A service
+that reached past it would either lose mail on a transient relay failure or grow
+a second retry mechanism beside the working one.
+
+`TomEmailRequest.messageId` is the outbox's idempotence key: two sends of a
+request carrying the same id are one queued message. Supply one for anything a
+caller might retry without knowing whether the first attempt landed — a reset
+keyed by its token, an invoice keyed by its number.
+
 ## Core Components
 
 - **`TomMessage` / `TomRecipient` / `TomRecipientKind` / `TomMessageBody` /
@@ -439,6 +580,8 @@ down because the outbox stopped.
   delivery, with the wire behind an interface.
 - **`TomMimeEncoder`** — the RFC 5322 / MIME document.
 - **`TomMessageOutbox` / `tomOutboxJobName`** — the durable send queue.
+- **`TomEmailRequest` / `TomEmailService`** — resource-keyed application email,
+  rendered in the recipient's locale and queued on the outbox.
 - **`TomMessagingException`** — the module's base error.
 
 ## Not Yet Implemented
@@ -451,8 +594,15 @@ down because the outbox stopped.
   preferences and subscription resolution are a separate concern, deliberately
   not designed here.
 - **Inbound mail.** This module sends only.
-- **Templating.** A message body is a string; rendering one from a template with
-  a data context belongs above this layer.
+- **Templating for the other channels.** `TomEmailService` covers email;
+  `sms`, `push` and `webhook` have no equivalent yet, and will want a different
+  sub-key set (no subject, no HTML alternative) rather than a generalisation of
+  this one.
+- **Markup in templates.** A template resolves to a string. Conditionals, loops
+  and partials are not offered: a template that needs one renders the varying
+  part in the caller — as its own resource key, through `requiredText` — and
+  passes it in as a parameter. See
+  [Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes).
 - **DKIM signing**, and other outbound authentication beyond what the relay
   itself performs.
 
@@ -460,7 +610,9 @@ down because the outbox stopped.
 
 - `tom_core_kernel` — `TomScheduler`, `TomJobStore`, `TomJobDefinition`,
   `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`,
-  `TomClosable`, `tomLog`.
+  `TomClosable`, `TomPrincipal`, `TomBean`, `tomLog`.
+- `resources` — `TomLocalizedTextResources` and `TomTextLocale`, which
+  `TomEmailService` resolves its templates through (see `doc/resources.md`).
 - `async` — `StreamQueue` drives the SMTP line protocol.
 - `path` — file naming in `TomFileMessageTransport`.
 - `dart:io` — `Socket` / `SecureSocket`.

@@ -10,9 +10,10 @@
 ///
 ///  * a machine-initiated delete is audited exactly like a human one, because
 ///    it goes through the same repository (`jobs/retention_service.dart`);
-///  * a job that produces mail hands it to a queue rather than a transport, so
-///    composition and delivery retry on separate budgets
-///    (`jobs/digest_service.dart`);
+///  * a job that produces mail names a template rather than a subject, and
+///    hands the result to a queue rather than a transport — so the text is
+///    translatable and composition and delivery retry on separate budgets
+///    (`jobs/digest_service.dart`, `ops_texts.dart`);
 ///  * a rendered export lands in the same blob store the application's
 ///    attachments live in (`jobs/report_service.dart`); and
 ///  * the audit anchor publisher is pointedly **not** a scheduled job, because
@@ -35,3 +36,4 @@ export 'src/jobs/retention_service.dart';
 export 'src/ops_anchoring.dart';
 export 'src/ops_identity.dart';
 export 'src/ops_runtime.dart';
+export 'src/ops_texts.dart';

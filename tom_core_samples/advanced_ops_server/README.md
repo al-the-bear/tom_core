@@ -5,9 +5,9 @@ Back-office server for the **advanced Tom Core full-stack sample** (see
 
 A third server with **no HTTP surface and no database of its own**. It runs
 scheduled work against the app server's `app_db`: a nightly retention purge, a
-morning digest handed to the messaging outbox, a weekly report rendered into the
-blob store, and — deliberately *not* on the scheduler — an audit-anchor
-publisher on its own timer.
+morning digest rendered from a text bundle and handed to the messaging outbox, a
+weekly report rendered into the blob store, and — deliberately *not* on the
+scheduler — an audit-anchor publisher on its own timer.
 
 > **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
 > This package is documented in context by
@@ -24,7 +24,8 @@ demonstrated nowhere:
 | Seam | Stated in | Made observable here |
 | --- | --- | --- |
 | the anchor publisher is not a scheduled job | `audit.md:496` | `lib/src/ops_anchoring.dart` + `test/ops_anchor_test.dart` asserts that no `@TomScheduledJob` declares it |
-| the outbox puts retries on the job queue | `messaging.md:308` | a job composes, a *second* scheduler delivers; `test/ops_digest_test.dart` shows a failed send redelivered without recomposition |
+| the outbox puts retries on the job queue | `messaging.md:317` | a job composes, a *second* scheduler delivers; `test/ops_digest_test.dart` shows a failed send redelivered without recomposition |
+| a mail names a template key, never a subject | `messaging.md:435` | the digest holds no user-facing string; `assets/text_{en,de}.yaml` carry subject and body, and `ops_digest_test.dart` renders one digest in two languages |
 | an export's only seam is storage | `export.md:394` | the weekly report lands in the same `tom_blob` pair as an item attachment, under its own prefix |
 | the repository is the audit chokepoint | `audit.md` | a machine deleting rows at 03:00 produces the same trail a human's `DELETE` would |
 
@@ -65,6 +66,27 @@ start and stop in. The audit sink must be installed before the first job body
 runs and uninstalled after the last one stops; four independent `start()` calls
 in a `main` are four chances to get that wrong with the constraint living only
 in a comment.
+
+## The digest's text is not in the digest
+
+`OpsDigestService` holds no sentence a recipient reads. It builds a
+`TomEmailRequest` naming the template key `email.ops_digest` plus a parameter
+map, and `TomEmailService` resolves subject and body out of
+`assets/text_en.yaml` / `assets/text_de.yaml` (`lib/src/ops_texts.dart` loads
+them at boot, so a missing or malformed bundle stops the server rather than
+being discovered at 06:00 as a blank mail). It is handed the *service*, not the
+outbox, so there is no way for it to compose a subject even by accident.
+
+The locale is per recipient — `OpsDigestSummary.locale` — because one pass mails
+everybody and there is no moment at which the job could meaningfully "switch to
+German".
+
+The two sentences the digest includes only sometimes (an overdue count, a next
+due date) are **their own resource keys**, resolved separately and passed in as
+`{overdueLine}` / `{nextDueLine}`, empty when the condition does not hold. A
+template cannot express "only when", and the alternative — conditionals in the
+resource format — is the first step of a second template engine beside the one
+the client bundles already use.
 
 ## Identity: the narrow cap
 
@@ -142,7 +164,7 @@ Eight suites, seven of which need no socket at all.
 | Suite | What it settles |
 | --- | --- |
 | `ops_retention_test.dart` | one `destroy` per candidate, each carrying an entity; the terminal-status filter; the unscoped pass |
-| `ops_digest_test.dart` | composition, the message id as idempotence key, and a failed send redelivered *without* recomposition |
+| `ops_digest_test.dart` | composition from template keys in two languages, that the shipped bundles carry every key the digest resolves, that an unknown template fails before anything is queued, the message id as idempotence key, and a failed send redelivered *without* recomposition |
 | `ops_report_test.dart` | the rendered projection, the date-partitioned key, the window derived from `run.scheduledFor` |
 | `ops_anchor_test.dart` | the publisher's schedule — and that no `@TomScheduledJob` declares it |
 | `ops_jobs_test.dart` | every declared schedule, retry policy, timeout and overlap flag |

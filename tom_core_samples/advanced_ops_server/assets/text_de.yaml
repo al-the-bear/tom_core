@@ -1,0 +1,18 @@
+# The ops server's user-facing text, German.
+#
+# A second locale is here to be *used*, not to look complete: the digest picks
+# a bundle from the recipient's locale, and a suite that shipped one language
+# would demonstrate the selection with nothing to select between.
+email:
+  ops_digest:
+    subject: "{product}: {openCount} offene Vorgänge"
+    text: |
+      Guten Morgen {displayName},
+
+      Sie haben {openCount} offene Vorgänge.
+      {overdueLine}{nextDueLine}
+      — {product}, gesendet von {sender}
+    overdue_line: |
+      {overdueCount} davon sind überfällig.
+    next_due_line: |
+      Der nächste ist am {nextDue} fällig.

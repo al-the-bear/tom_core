@@ -32,6 +32,7 @@ OpsDigestSummary _summary(
   String email = 'user@example.com',
   int open = 3,
   int overdue = 1,
+  TomTextLocale? locale,
 }) =>
     OpsDigestSummary(
       userId: userId,
@@ -39,6 +40,18 @@ OpsDigestSummary _summary(
       emailAddress: email,
       openCount: open,
       overdueCount: overdue,
+      locale: locale,
+    );
+
+/// A digest pass over [outbox], rendering from the shipped `assets/text_*.yaml`.
+///
+/// The real bundles rather than fixtures: the claim under test is that the
+/// digest sends what this deployment actually ships, and a fixture bundle would
+/// let a broken asset pass every test in the file.
+OpsDigestService _service(OpsDigestAudience audience, TomMessageOutbox outbox) =>
+    OpsDigestService(
+      audience: audience,
+      email: TomEmailService(outbox: outbox, texts: OpsTexts.resources()),
     );
 
 /// An item due at [due], assigned to nobody in particular.
@@ -76,7 +89,7 @@ void main() {
 
     test('queueDigests returns before anything is delivered', () async {
       final audience = _FakeAudience([_summary(1), _summary(2)]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
 
       final report = await runAsOpsService(
         () => service.queueDigests(DateTime.utc(2026, 8, 2)),
@@ -91,7 +104,7 @@ void main() {
 
     test('a tick delivers what the pass queued', () async {
       final audience = _FakeAudience([_summary(1)]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
 
       await runAsOpsService(
         () => service.queueDigests(DateTime.utc(2026, 8, 2)),
@@ -107,7 +120,7 @@ void main() {
         'a transport that fails once redelivers without recomposing the digest',
         () async {
       final audience = _FakeAudience([_summary(1)]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
       transport.failNext = TomDeliveryException.transient(
         'smtp',
         'greylisted',
@@ -139,7 +152,7 @@ void main() {
     test('the message the second attempt sends is the one the first built',
         () async {
       final audience = _FakeAudience([_summary(1)]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
       transport.failNext = TomDeliveryException.transient('smtp', 'busy');
 
       await runAsOpsService(
@@ -162,7 +175,7 @@ void main() {
     test('recomposing the same window replaces the queued run rather than '
         'adding one', () async {
       final audience = _FakeAudience([_summary(1)]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
 
       // Two passes over one window — what a recovery-triggered re-run does.
       await runAsOpsService(
@@ -186,7 +199,7 @@ void main() {
         _summary(1),
         _summary(2, email: '   '),
       ]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
 
       final report = await runAsOpsService(
         () => service.queueDigests(DateTime.utc(2026, 8, 2)),
@@ -207,7 +220,7 @@ void main() {
       final sink = TomMemoryAuditSink();
       TomAuditTrail.install(sink);
       final audience = _FakeAudience([_summary(1), _summary(2), _summary(3)]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
 
       await runAsOpsService(
         () => service.queueDigests(DateTime.utc(2026, 8, 2)),
@@ -225,8 +238,7 @@ void main() {
     test('a pass that queued nothing records nothing', () async {
       final sink = TomMemoryAuditSink();
       TomAuditTrail.install(sink);
-      final service =
-          OpsDigestService(audience: _FakeAudience(const []), outbox: outbox);
+      final service = _service(_FakeAudience(const []), outbox);
 
       final report = await runAsOpsService(
         () => service.queueDigests(DateTime.utc(2026, 8, 2)),
@@ -247,7 +259,7 @@ void main() {
         ),
       );
       final audience = _FakeAudience([_summary(1)]);
-      final service = OpsDigestService(audience: audience, outbox: outbox);
+      final service = _service(audience, outbox);
 
       await expectLater(
         runAsOpsService(() => service.queueDigests(DateTime.utc(2026, 8, 2))),
@@ -361,10 +373,7 @@ void main() {
       router: TomMessageRouter([TomMemoryMessageTransport()]),
       store: TomMemoryJobStore(),
     );
-    final service = OpsDigestService(
-      audience: _FakeAudience(const []),
-      outbox: outbox,
-    );
+    final service = _service(_FakeAudience(const []), outbox);
 
     tearDownAll(outbox.close);
 
@@ -396,6 +405,98 @@ void main() {
       // Attribution in the body as well as the trail: the recipient of an
       // unexpected 06:00 mail should be able to tell what produced it.
       expect(message.textBody?.content, contains(opsServiceUsername));
+    });
+
+    test('mentions the next due date only when one is ahead', () {
+      final withNext = service.composeFor(
+        OpsDigestSummary(
+          userId: 1,
+          displayName: 'User 1',
+          emailAddress: 'user@example.com',
+          openCount: 3,
+          overdueCount: 0,
+          nextDue: DateTime.utc(2026, 8, 9),
+        ),
+        DateTime.utc(2026, 8, 2),
+      );
+      expect(withNext.textBody?.content, contains('falls due on 2026-08-09'));
+      expect(
+        service.composeFor(_summary(1), DateTime.utc(2026, 8, 2)).textBody
+            ?.content,
+        isNot(contains('falls due')),
+      );
+    });
+
+    test('renders in the recipient\'s language, not the process\'s', () {
+      // The point of routing through TomEmailService rather than composing a
+      // TomMessage: one pass mails everybody, so there is no moment at which
+      // this job could "switch to German". The locale rides on the summary.
+      final german = service.composeFor(
+        _summary(1, overdue: 2, locale: TomTextLocale('de')),
+        DateTime.utc(2026, 8, 2),
+      );
+      final english = service.composeFor(
+        _summary(2, overdue: 2),
+        DateTime.utc(2026, 8, 2),
+      );
+
+      expect(german.subject, contains('offene Vorgänge'));
+      expect(german.textBody?.content, contains('Guten Morgen'));
+      // The conditional fragment is localised too — it is a resource key like
+      // any other, not a sentence the Dart assembled.
+      expect(german.textBody?.content, contains('2 davon sind überfällig'));
+
+      expect(english.subject, contains('open item(s)'));
+      expect(english.textBody?.content, contains('Good morning'));
+    });
+
+    test('a template the bundles do not carry fails before it is queued',
+        () async {
+      final service = OpsDigestService(
+        audience: _FakeAudience(const []),
+        email: TomEmailService(
+          outbox: outbox,
+          // An empty bundle set: what a deployment that forgot its assets has.
+          texts: TomLocalizedTextResources(
+            bundles: const {'en': {}},
+            defaultLocale: TomTextLocale('en'),
+          ),
+        ),
+      );
+
+      // Loudly, and with nothing on the queue — a digest with a blank subject
+      // that was *delivered* cannot be taken back.
+      expect(
+        () => service.composeFor(_summary(1), DateTime.utc(2026, 8, 2)),
+        throwsA(isA<TomMessagingException>()),
+      );
+    });
+  });
+
+  group('the shipped text bundles', () {
+    test('carry every key the digest resolves, in every locale', () {
+      // The digest reads four keys; a bundle missing one fails a send rather
+      // than a build, so this is the test that turns a translation gap into a
+      // red suite instead of a blank line in somebody's mail.
+      final texts = OpsTexts.load();
+      for (final tag in OpsTexts.localeTags) {
+        final locale = TomTextLocale.parse(tag);
+        expect(texts.hasLocale(locale), isTrue, reason: 'no bundle for $tag');
+        for (final subKey in [
+          'subject',
+          'text',
+          opsDigestOverdueSubKey,
+          opsDigestNextDueSubKey,
+        ]) {
+          // `isTranslated`, not `exists`: the latter follows the fallback
+          // chain and would answer yes for an entirely empty German bundle.
+          expect(
+            texts.isTranslated('$opsDigestTemplateKey.$subKey', locale),
+            isTrue,
+            reason: '$tag is missing $opsDigestTemplateKey.$subKey',
+          );
+        }
+      }
     });
   });
 }

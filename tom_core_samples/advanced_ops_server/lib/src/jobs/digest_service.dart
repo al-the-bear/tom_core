@@ -41,6 +41,21 @@
 /// (`'<job>:<message id>'`), so a second composition of the same window
 /// *replaces* the queued run instead of adding one. At-least-once delivery of a
 /// message that is its own key is exactly-once delivery of a digest.
+///
+/// ## Why the text is not here
+///
+/// The digest names a **template key** and supplies values;
+/// [TomEmailService] resolves the subject and body from `assets/text_*.yaml`
+/// in the recipient's locale (`ops_texts.dart`). There is no sentence in this
+/// file that anybody reads.
+///
+/// That is not tidiness. The transport and the outbox are good enough to call
+/// directly, and a job that calls them directly composes its own subject —
+/// which is how user-facing text ends up in Dart literals, untranslatable and
+/// uneditable without a rebuild. The service exists to make the resource-keyed
+/// path the *convenient* one, and this job is the proof that it is: the same
+/// pass renders German for one recipient and English for the next, which
+/// per-process bundle state could not do at all.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
@@ -49,6 +64,7 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../ops_identity.dart';
+import '../ops_texts.dart';
 import 'retention_service.dart';
 
 /// The statuses that count as outstanding work.
@@ -72,6 +88,7 @@ class OpsDigestSummary {
     required this.openCount,
     required this.overdueCount,
     this.nextDue,
+    this.locale,
   });
 
   /// `auth_users.id` of the assignee.
@@ -91,6 +108,17 @@ class OpsDigestSummary {
 
   /// The earliest due date still ahead, or `null` when nothing is dated.
   final DateTime? nextDue;
+
+  /// The language to render this person's digest in, or `null` for the
+  /// deployment default.
+  ///
+  /// Per recipient rather than per process, because one pass mails everybody:
+  /// there is no moment at which the digest job could meaningfully "switch to
+  /// German". [RepositoryDigestAudience] leaves it `null` today — `auth_users`
+  /// has no language column, and adding one is a migration this sample does not
+  /// need to make its point — so a deployment that stores a preference supplies
+  /// it here and the rest of the path already honours it.
+  final TomTextLocale? locale;
 
   @override
   String toString() =>
@@ -246,7 +274,7 @@ class OpsDigestService {
   /// Creates a digest pass.
   OpsDigestService({
     required this.audience,
-    required this.outbox,
+    required this.email,
     this.sender,
     this.productName = 'Advanced Todo',
   });
@@ -254,14 +282,24 @@ class OpsDigestService {
   /// Where the facts come from.
   final OpsDigestAudience audience;
 
-  /// Where the messages go — a queue, never a transport.
-  final TomMessageOutbox outbox;
+  /// Where the messages go: a template renderer over a queue, never a
+  /// transport.
+  ///
+  /// The service rather than the outbox, because the outbox takes a composed
+  /// [TomMessage] — which means a caller holding one has already written the
+  /// subject line somewhere. Holding the service instead leaves this class no
+  /// way to spell a literal subject at all.
+  final TomEmailService email;
 
   /// The `From` address, or `null` to let the transport supply its configured
   /// default.
   final TomRecipient? sender;
 
-  /// The name the digest calls itself in the subject line.
+  /// The product name the digest calls itself by.
+  ///
+  /// Configuration rather than prose — it is a deployment's identity, the same
+  /// in every language — so it is a parameter the templates substitute rather
+  /// than a resource key they duplicate.
   final String productName;
 
   /// The id a digest for [userId] in the day of [window] is queued under.
@@ -299,7 +337,7 @@ class OpsDigestService {
         skipped++;
         continue;
       }
-      await outbox.send(composeFor(summary, window));
+      await email.send(requestFor(summary, window));
       queued++;
     }
     if (queued > 0) {
@@ -321,35 +359,63 @@ class OpsDigestService {
     );
   }
 
-  /// The message for one person.
+  /// What to send one person: a template key, an address, and values.
   ///
-  /// Plain text only. An operational digest is read on a phone at breakfast and
-  /// its whole content is four numbers; an HTML alternative would double the
-  /// surface that can be wrong for no reader who benefits.
-  TomMessage composeFor(OpsDigestSummary summary, DateTime window) {
-    final buffer = StringBuffer()
-      ..writeln('Good morning ${summary.displayName},')
-      ..writeln()
-      ..writeln('You have ${summary.openCount} open item(s).');
-    if (summary.overdueCount > 0) {
-      buffer.writeln('${summary.overdueCount} of them are past their due date.');
-    }
+  /// Deliberately has nowhere to put a subject line. The digest supplies four
+  /// numbers and a name; `assets/text_*.yaml` decides what is said about them,
+  /// in the recipient's language.
+  ///
+  /// Plain text only — no `.html` key. An operational digest is read on a phone
+  /// at breakfast and its whole content is four numbers; an HTML alternative
+  /// would double the surface that can be wrong for no reader who benefits.
+  TomEmailRequest requestFor(OpsDigestSummary summary, DateTime window) {
+    final locale = summary.locale;
     final next = summary.nextDue;
-    if (next != null) {
-      buffer.writeln('The next one falls due on ${_dateOnly(next)}.');
-    }
-    buffer
-      ..writeln()
-      ..writeln('— $productName, sent by $opsServiceUsername');
-
-    return TomMessage.email(
-      id: messageIdFor(summary.userId, window),
+    return TomEmailRequest(
+      templateKey: opsDigestTemplateKey,
+      messageId: messageIdFor(summary.userId, window),
       from: sender,
       to: [TomRecipient(summary.emailAddress, displayName: summary.displayName)],
-      subject: '$productName: ${summary.openCount} open item(s)',
-      text: buffer.toString(),
+      locale: locale,
+      parameters: {
+        'product': productName,
+        'sender': opsServiceUsername,
+        'displayName': summary.displayName,
+        'openCount': summary.openCount,
+        // The two conditional sentences are resolved here, fully, and passed in
+        // as finished text. A template cannot say "only when there is an
+        // overdue count", and resolving the fragment *with its own parameters*
+        // matters: substitution is one pass over the map, so a fragment
+        // inserted with `{overdueCount}` still in it would resolve or not
+        // depending on map order.
+        'overdueLine': summary.overdueCount == 0
+            ? ''
+            : email.requiredText(
+                opsDigestTemplateKey,
+                opsDigestOverdueSubKey,
+                locale: locale,
+                parameters: {'overdueCount': summary.overdueCount},
+              ),
+        'nextDueLine': next == null
+            ? ''
+            : email.requiredText(
+                opsDigestTemplateKey,
+                opsDigestNextDueSubKey,
+                locale: locale,
+                parameters: {'nextDue': _dateOnly(next)},
+              ),
+      },
     );
   }
+
+  /// The rendered message for one person, without queueing it.
+  ///
+  /// Kept as a named step so a test — or an operator asking "what does the
+  /// digest look like" — can see the mail without sending it. Sending goes
+  /// through [TomEmailService.send], which renders the same way and then
+  /// queues.
+  TomMessage composeFor(OpsDigestSummary summary, DateTime window) =>
+      email.render(requestFor(summary, window));
 
   static String _dateOnly(DateTime value) {
     final utc = value.toUtc();

@@ -246,7 +246,10 @@ void main() {
         retention: retention,
         digest: OpsDigestService(
           audience: _EmptyAudience(),
-          outbox: runtime.outbox,
+          email: TomEmailService(
+            outbox: runtime.outbox,
+            texts: OpsTexts.resources(),
+          ),
         ),
         report: OpsReportService(
           source: _EmptyReportSource(),

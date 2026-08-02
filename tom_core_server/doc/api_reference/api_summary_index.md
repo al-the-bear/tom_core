@@ -22,8 +22,9 @@ surface documented here.
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`. |
-| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP and stand-ins), MIME encoding, and the durable outbox. |
+| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP and stand-ins), MIME encoding, the durable outbox, and resource-keyed email. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, data scoping, column authorization. |
+| Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, request identity/logging, and middleware. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
@@ -303,6 +304,8 @@ surface documented here.
 | `TomSmtpReply` | class | One SMTP reply and its classification. |
 | `TomMimeEncoder` | class | Renders a message as an RFC 5322 / MIME document. |
 | `TomMessageOutbox` | class | The durable send queue in front of a router. |
+| `TomEmailRequest` | class | What to send, to whom, with which values — a template key, never a subject or body. |
+| `TomEmailService` | class | Renders resource-keyed email in the recipient's locale and queues it on the outbox. |
 | `TomMessagingException` | class | The module's base error (extends `TomServerException`). |
 | `TomDeliveryException` | class | A delivery failure, classified transient or permanent. |
 | `TomPermanentDeliveryException` | class | A delivery failure the scheduler will not retry. |
@@ -337,6 +340,14 @@ surface documented here.
 | `TomColumnAuthorizationException` | class | Column-auth error. |
 | `TomAnnotationAnalyzer` | mixin | Persistence-annotation analysis (static). |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | Analyzer errors. |
+
+### Resources (`lib/src/tomserver/resources/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomTextLocale` | class | A normalised language, optionally narrowed by a country; derivable from a principal. |
+| `TomLocalizedTextResources` | class | One `TomTextResourceProvider` per locale, plus the fallback chain that picks one. |
+| `TomResourceLocaleException` | class | A locale that cannot be formed (extends `TomServerException`). |
 
 ### Scheduling (`lib/src/tomserver/scheduling/`)
 

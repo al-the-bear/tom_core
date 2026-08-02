@@ -41,6 +41,7 @@ import 'jobs/report_service.dart';
 import 'jobs/retention_service.dart';
 import 'ops_anchoring.dart';
 import 'ops_identity.dart';
+import 'ops_texts.dart';
 
 /// How often the job scheduler looks for due work.
 ///
@@ -148,7 +149,11 @@ class OpsRuntime {
       retention: OpsRetentionService(store: const RepositoryRetentionStore()),
       digest: OpsDigestService(
         audience: const RepositoryDigestAudience(),
-        outbox: outbox,
+        // The service, not the outbox: the digest must have no way to write a
+        // subject line. `OpsTexts.resources()` reads `assets/text_*.yaml` here,
+        // at boot, so a missing or malformed bundle stops the server rather
+        // than being discovered at 06:00 as a blank mail.
+        email: TomEmailService(outbox: outbox, texts: OpsTexts.resources()),
         sender: digestSender,
       ),
       report: OpsReportService(

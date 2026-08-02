@@ -1,0 +1,20 @@
+# The ops server's user-facing text, English.
+#
+# Everything a recipient reads lives here rather than in Dart. `text` is the
+# whole body: the two conditional sentences are separate keys because a
+# template cannot express "only when there is an overdue count", so the digest
+# resolves them on their own and passes each in as `{overdueLine}` /
+# `{nextDueLine}` — an empty string when the condition does not hold.
+email:
+  ops_digest:
+    subject: "{product}: {openCount} open item(s)"
+    text: |
+      Good morning {displayName},
+
+      You have {openCount} open item(s).
+      {overdueLine}{nextDueLine}
+      — {product}, sent by {sender}
+    overdue_line: |
+      {overdueCount} of them are past their due date.
+    next_due_line: |
+      The next one falls due on {nextDue}.
