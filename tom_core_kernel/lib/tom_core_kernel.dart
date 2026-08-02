@@ -48,6 +48,7 @@ export 'src/tombase/settings/settings_client_authorization.dart';
 export 'src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart';
 export 'src/tombase/observable/tom_observable_objects.dart';
 export 'src/tombase/observable/tom_observable.dart';
+export 'src/tombase/observable/tom_observable_enum.dart';
 export 'src/tombase/reflection/reflection.dart';
 export 'src/tombase/timezoned/date_timestamp.dart';
 export 'src/tombase/timezoned/timezones.dart';

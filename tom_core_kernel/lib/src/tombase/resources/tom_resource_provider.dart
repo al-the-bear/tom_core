@@ -28,6 +28,7 @@ library;
 // =============================================================================
 
 import '../json/map_merge_and_process.dart';
+import '../observable/tom_observable_objects.dart';
 
 // =============================================================================
 // Shared Resolution Helpers
@@ -136,18 +137,47 @@ class TomTextResourceProvider {
   /// a custom resource loading mechanism (e.g., loading from JSON assets).
   static Map<String, dynamic> Function()? loader;
 
+  /// Observable revision counter for the application-wide text bundle.
+  ///
+  /// Incremented every time the installed bundle changes — either because
+  /// [setAppResourceProvider] installed a different provider, or because the
+  /// [resources] map of the installed provider was replaced. Observe it to
+  /// re-derive anything computed from the bundle (localised labels, in
+  /// particular) when the application switches locale:
+  ///
+  /// ```dart
+  /// // Retain the observer — observers are held weakly.
+  /// final observer = TomTextResourceProvider.appResourcesRevision
+  ///     >> (_) => rebuildLabels();
+  /// ```
+  ///
+  /// In-place *mutation* of the map (`resources['a'] = 'b'`) cannot be
+  /// detected; call [notifyAppResourcesChanged] after such an edit.
+  static final TomInt appResourcesRevision = TomInt(0);
+
   // ---------------------------------------------------------------------------
   // Static Methods
   // ---------------------------------------------------------------------------
 
+  /// Announces that the application-wide text bundle has changed.
+  ///
+  /// Bumps [appResourcesRevision], which notifies its observers. Call this
+  /// after mutating the installed provider's [resources] map in place;
+  /// installing a provider or assigning a new map does it automatically.
+  static void notifyAppResourcesChanged() {
+    appResourcesRevision | (~appResourcesRevision) + 1;
+  }
+
   /// Sets the application-wide text resource provider instance.
   ///
   /// Use this method to replace the default provider with a custom
-  /// pre-configured instance.
+  /// pre-configured instance. Bumps [appResourcesRevision] so that text
+  /// derived from the bundle can be re-resolved.
   ///
   /// [provider] - The provider instance to use application-wide.
   static void setAppResourceProvider(TomTextResourceProvider provider) {
     _resourceProvider = provider;
+    notifyAppResourcesChanged();
   }
 
   /// Returns the application-wide text resource provider.
@@ -166,10 +196,24 @@ class TomTextResourceProvider {
   // Instance Fields
   // ---------------------------------------------------------------------------
 
+  Map<String, dynamic> _resources = {};
+
   /// The map containing all text resources.
   ///
   /// Resources can be nested maps, with values accessed using dot notation.
-  Map<String, dynamic> resources = {};
+  ///
+  /// Assigning a new map to the *installed* provider bumps
+  /// [appResourcesRevision]; mutating the map in place cannot be observed, so
+  /// call [notifyAppResourcesChanged] after such an edit.
+  Map<String, dynamic> get resources => _resources;
+
+  set resources(Map<String, dynamic> value) {
+    _resources = value;
+    // Only the installed provider defines the application-wide bundle;
+    // populating a not-yet-installed one (including from a constructor body)
+    // must not announce a change.
+    if (identical(this, _resourceProvider)) notifyAppResourcesChanged();
+  }
 
   // ---------------------------------------------------------------------------
   // Constructors
@@ -195,7 +239,8 @@ class TomTextResourceProvider {
   /// Creates a new text resource provider from an existing map.
   ///
   /// [resources] - The pre-populated resource map.
-  TomTextResourceProvider.from(this.resources);
+  TomTextResourceProvider.from(Map<String, dynamic> resources)
+      : _resources = resources;
 
   // ---------------------------------------------------------------------------
   // Instance Methods

@@ -37,6 +37,7 @@ Cupertino sibling changes the rendering without touching the model.
 | `ValidationResult` | sealed | `ValidationPristine` / `ValidationSuccess` / `ValidationError` / `ValidationPending`. |
 | `FormValidationError` | value | A cross-field error spanning several `TomField`s. |
 | `SelectableItem<T>` / `TomSelectableSource<T>` | value / interface | Items for selection fields; `StaticSelectableSource` is the fixed-list implementation. |
+| `TomEnumSelectableSource<E extends Enum>` | source | Enum options whose labels come from the text bundle and re-emit on a locale change. |
 | `TomFormEvent` (+ subtypes) | events | Field/form/list lifecycle events fired on the bus. |
 | `TomFormEventListener` / `TomFormInspector` | mixin / collector | Typed event handling; the inspector buffers and filters events. |
 | `TomFormStyle` / `TomBreakpoint` / `LabelPlacement` … | style | The responsive, themeable decoration system and anatomy placement enums. |
@@ -114,6 +115,16 @@ optional `description`, and an `enabled` flag; equality is by `value`).
 `StaticSelectableSource` wraps a fixed list and returns an **unmodifiable**
 snapshot from `getItems()`; dynamic sources can additionally expose an
 `itemsStream` (static sources return `null`).
+
+`TomEnumSelectableSource<E extends Enum>` builds its options from `E.values` and
+takes each label from the application text bundle under
+`<scope>.<enumName>.<value>` — so enum options carry **no Dart-side label
+table**. It observes `TomTextResourceProvider.appResourcesRevision` and re-emits
+relabelled items on its `itemsStream`, which is what makes a locale switch
+re-render an enum field without the caller rebuilding it. A value with no
+resource key renders its raw enum name (and logs a warning) rather than nothing.
+`FormFieldFamily.enumPickerFor` is the convenience constructor that builds the
+source for you.
 
 ## The event bus
 

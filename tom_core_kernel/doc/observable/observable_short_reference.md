@@ -140,6 +140,29 @@ The generic observable wrapper that all other types extend.
 
 ---
 
+## Resource-Keyed Enum Wrapper (`tom_observable_enum.dart`)
+
+| Class | Wraps | Description |
+|-------|-------|-------------|
+| `TomObservableEnum<E extends Enum>` | `E` | Enum cell whose display text is resolved from the text bundle under `<scope>.<enumName>.<value>` |
+
+| Member | Description |
+|--------|-------------|
+| `values` | The enum's value list, in declaration order (unmodifiable) |
+| `scope` | The `TomScope` captured at construction, used for key resolution |
+| `displayText` / `displayTextOf(v)` | Bundle text for the current value / for `v` |
+| `displayKey` / `displayKeyOf(v)` | The key that resolved, else the `global` key |
+| `displayTexts` | Bundle text for every entry of `values` |
+| `detachFromResources()` | Stop reacting to bundle changes (value changes still notify) |
+| `resourceKeysFor(v, {scope})` | The candidate keys, most specific scope first, ending at `global` |
+| `resolveText(v, {scope})` | Bundle text, else the raw enum name (logs once per key per revision) |
+| `resolveTextOrNull(v, {scope})` | Bundle text, else `null` — for a caller-supplied fallback |
+
+Notifies on a **value change or a bundle change**; the bundle trigger is
+`TomTextResourceProvider.appResourcesRevision`.
+
+---
+
 ## Timezone-Aware Date/Time Types
 
 ### Non-Nullable
@@ -314,6 +337,7 @@ TomObservable (base class)
 └── TomObject<T>
     ├── TomString, TomInt, TomDouble, TomBool, TomDateTime
     ├── TomNString, TomNInt, TomNDouble, TomNBool, TomNDateTime
+    ├── TomObservableEnum<E>     — display text resolved from the text bundle
     ├── TomOTimezoned<TZ>
     │   ├── TomOZonedTime, TomOZonedDate, TomOZonedDateTime
     │   └── TomNOTimezoned<TZ>

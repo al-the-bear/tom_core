@@ -1,0 +1,111 @@
+import 'dart:async';
+
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import 'tom_selectable_source.dart';
+
+/// A [TomSelectableSource] over an enum whose option labels come from the
+/// application text bundle instead of a Dart-side label table.
+///
+/// Each option's label is resolved by [TomObservableEnum.resolveText] under
+/// `<scope>.<enumName>.<value>`, so the strings a picker shows are the ones
+/// the server sent. A value with no key in the bundle renders its raw enum
+/// name and logs a warning — the option is still selectable, never blank.
+///
+/// The source re-emits its items whenever the installed bundle changes
+/// (`TomTextResourceProvider.appResourcesRevision`), which is what makes a
+/// locale switch re-render a bound field: the selection widgets already
+/// listen to [itemsStream], so nothing on the widget side has to change and
+/// the caller does not rebuild the field.
+///
+/// ```dart
+/// final status = form.fields.enumPickerFor(
+///   'status',
+///   TodoStatus.open,
+///   values: TodoStatus.values,
+/// );
+/// ```
+///
+/// The scope used for resolution is the ambient [TomScope] at construction
+/// time — display resolution happens inside Flutter builder callbacks, which
+/// run outside the zone that installed the scope.
+class TomEnumSelectableSource<E extends Enum> extends TomSelectableSource<E> {
+  /// Creates a source offering [values], labelled from the text bundle.
+  ///
+  /// [scope] overrides the ambient [TomScope] used for key resolution.
+  /// [isEnabled] optionally disables individual options; by default every
+  /// value is selectable.
+  TomEnumSelectableSource(
+    List<E> values, {
+    TomScope? scope,
+    bool Function(E value)? isEnabled,
+  })  : values = List<E>.unmodifiable(values),
+        scope = scope ?? TomScope.current,
+        _isEnabled = isEnabled;
+
+  /// Creates a source offering the values of [cell], in [cell]'s scope.
+  ///
+  /// Use this when the bound value is already a [TomObservableEnum] so that
+  /// the picker and the cell resolve their labels identically.
+  TomEnumSelectableSource.of(
+    TomObservableEnum<E> cell, {
+    bool Function(E value)? isEnabled,
+  })  : values = cell.values,
+        scope = cell.scope,
+        _isEnabled = isEnabled;
+
+  /// The offered enum values, in declaration order. Unmodifiable.
+  final List<E> values;
+
+  /// The scope used to resolve option labels.
+  final TomScope scope;
+
+  final bool Function(E value)? _isEnabled;
+
+  StreamController<List<SelectableItem<E>>>? _controller;
+
+  /// Retains the bundle-revision subscription while anyone is listening.
+  ///
+  /// [TomObservable] holds observers weakly, so without this strong reference
+  /// re-emission would stop at a nondeterministic later time.
+  TomFunctionObserver<TomObservable>? _observer;
+
+  @override
+  Future<List<SelectableItem<E>>> getItems() async => buildItems();
+
+  @override
+  Stream<List<SelectableItem<E>>>? get itemsStream =>
+      (_controller ??= StreamController<List<SelectableItem<E>>>.broadcast(
+        onListen: _observeBundle,
+        onCancel: _stopObservingBundle,
+      ))
+          .stream;
+
+  /// Builds the current option list, resolving every label from the bundle.
+  List<SelectableItem<E>> buildItems() => List.unmodifiable([
+        for (final value in values)
+          SelectableItem<E>(
+            value: value,
+            label: TomObservableEnum.resolveText(value, scope: scope),
+            enabled: _isEnabled?.call(value) ?? true,
+          ),
+      ]);
+
+  void _observeBundle() {
+    _observer ??= TomTextResourceProvider.appResourcesRevision >>
+        (_) {
+          final controller = _controller;
+          if (controller != null && !controller.isClosed) {
+            controller.add(buildItems());
+          }
+        };
+  }
+
+  void _stopObservingBundle() {
+    final observer = _observer;
+    if (observer != null) {
+      TomTextResourceProvider.appResourcesRevision.removeObserver(observer);
+      _observer = null;
+    }
+  }
+}

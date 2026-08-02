@@ -58,19 +58,21 @@ TomTextResourceProvider.from(Map<String, dynamic> resources)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `loader` | `Map<String, dynamic> Function()?` | Optional loader invoked the first time `getAppResources` lazily creates a provider. |
+| `appResourcesRevision` | `TomInt` | Observable revision counter, incremented whenever the installed bundle changes. Observe it to re-derive text computed from the bundle (see `TomObservableEnum`). |
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `setAppResourceProvider` | `static void setAppResourceProvider(TomTextResourceProvider provider)` | Installs `provider` as the application-wide text resource provider. |
+| `setAppResourceProvider` | `static void setAppResourceProvider(TomTextResourceProvider provider)` | Installs `provider` as the application-wide text resource provider and bumps `appResourcesRevision`. |
 | `getAppResources` | `static TomTextResourceProvider getAppResources()` | Returns the application-wide provider, lazily creating one (using `loader` if set) on first access. |
+| `notifyAppResourcesChanged` | `static void notifyAppResourcesChanged()` | Bumps `appResourcesRevision`. Call after mutating the installed provider's `resources` map in place. |
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `resources` | `Map<String, dynamic>` | The map containing all text resources, possibly nested for dot-notation access. |
+| `resources` | `Map<String, dynamic>` | The map containing all text resources, possibly nested for dot-notation access. Assigning a new map to the *installed* provider bumps `appResourcesRevision`; in-place mutation cannot be detected. |
 
 #### Methods
 

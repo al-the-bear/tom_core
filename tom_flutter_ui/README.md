@@ -101,6 +101,7 @@ the full field catalogue behind a `FormFieldFamily` factory.
 | `TomFormStyle`, `TomFormStyleScope` | Presets (`material3`, `compact`, `bordered`) + inherited scoping |
 | `LabelPlacement`, `DescriptionPlacement`, `RequiredIndicator` | Field decoration controls |
 | `TomSelectableSource` | Pluggable option sources (sync / async / filtered) |
+| `TomEnumSelectableSource<E>` | Enum options labelled from the text bundle, relabelled on a locale change |
 | `TomFormEvent`, `TomFormEventSource`, `TomFormEventListener` | The form event bus |
 | `TomListForm`, `TomMasterDetailListForm`, `TomListFormToolbar` | Collection / master-detail forms |
 | `TomFormErrorBanner`, `TomFormInspector` | Error surfacing & debug inspection |

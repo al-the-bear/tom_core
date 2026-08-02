@@ -1061,16 +1061,14 @@ Multi-value concrete classes extend the per-type list field and bind to `TomList
 | Adapter | Source | Reactivity |
 |---------|--------|-----------|
 | `StaticSelectableSource<T>` | `List<SelectableItem<T>>` at construction | None — fixed list |
-| `EnumSelectableSource<T>` | `Enum.values` + label resolver (i18n) | None — labels may change with locale |
+| `TomEnumSelectableSource<E extends Enum>` | `Enum.values` + labels resolved from the text bundle | Reactive — re-emits relabelled items on a locale change |
 | `ObservableSelectableSource<T>` | `TomList<E extends TomObject>` + mapper | Reactive — updates when list changes |
 | `AsyncSelectableSource<T>` | `Future<List<SelectableItem<T>>> Function(String)` | Query-driven — re-fetches on input |
 
 ```dart
-// Static source from enum values
-final prioritySource = EnumSelectableSource<Priority>(
-  Priority.values,
-  labelResolver: (p) => p.displayName,
-);
+// Enum source — labels come from the text bundle, not from Dart
+// (keys: `<scope>.priority.<value>`, e.g. `global.priority.high`)
+final prioritySource = TomEnumSelectableSource<Priority>(Priority.values);
 
 // Observable source — updates when products change
 final productSource = ObservableSelectableSource<Product>(

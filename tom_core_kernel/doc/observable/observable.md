@@ -25,6 +25,10 @@ and complex objects with automatic change notification and propagation.
   - [Atomic Replacement with resetWith](#atomic-replacement-with-resetwith)
   - [Lifecycle Listeners](#lifecycle-listeners)
 - [TomMap (Observable Maps)](#tommap-observable-maps)
+- [TomObservableEnum (Resource-Keyed Enums)](#tomobservableenum-resource-keyed-enums)
+  - [Resource Keys and Scope](#resource-keys-and-scope)
+  - [Locale Changes](#locale-changes)
+  - [Missing Keys](#missing-keys)
 - [Muting Notifications](#muting-notifications)
 - [Error Handling](#error-handling)
 - [Class Hierarchy](#class-hierarchy)
@@ -859,6 +863,121 @@ map.clear();
 map.addAll({'a': TomInt(1)});  // ✓ OK
 ```
 
+## TomObservableEnum (Resource-Keyed Enums)
+
+`TomObservableEnum<E extends Enum>` is an ordinary `TomObject` holding an enum
+value, with one addition: it also resolves that value to display text through
+the application's text resource bundle. Enums therefore carry **no Dart-side
+label table** — no `extension TodoStatusText on TodoStatus { String get text …
+}`. The strings a user sees are the ones the server sent.
+
+```dart
+enum TodoStatus { open, inReview, done }
+
+final status = TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+
+print(~status);              // TodoStatus.open  — the value, as usual
+print(status.displayText);   // 'Open'           — resolved from the bundle
+print(status.displayTexts);  // ['Open', 'In review', 'Done']
+
+status | TodoStatus.done;
+print(status.displayText);   // 'Done'
+```
+
+The `values` argument is the enum's value list. It is what a picker enumerates
+to build its options; Dart cannot recover `E.values` from a type parameter, so
+it has to be passed.
+
+### Resource Keys and Scope
+
+The key for a value is `<scope>.<enumName>.<value>`, all lower case:
+
+```json
+{
+  "global": {
+    "todostatus": { "open": "Open", "inreview": "In review", "done": "Done" }
+  }
+}
+```
+
+The scope segment is **implicit** — it comes from the ambient `TomScope`, never
+from an argument at the call site, and there is no class cataloguing keys as
+constants. Resolution walks the scope chain from most specific to least
+specific and ends at `global`, so a label declared once under `global` works
+everywhere while a single scope can override just the labels it cares about:
+
+```dart
+TomScope.withScope('checkout', () {
+  final status = TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+
+  // Tries, in order:
+  //   checkout.todostatus.open
+  //   global.todostatus.open
+  //   → else the raw name 'open'
+  print(status.displayText);
+  print(status.displayKey);   // whichever key resolved
+});
+```
+
+In the default root scope the chain is the single key
+`global.todostatus.open`.
+
+The scope is captured **when the cell is constructed**, not when its text is
+read: display resolution frequently happens inside a Flutter builder callback,
+which runs outside the zone that installed the scope. Pass `scope:` explicitly
+only when the cell must be built outside the scope whose labels it should use.
+
+### Locale Changes
+
+A cell notifies its observers when *either* the value **or** the installed
+bundle changes. Switching locale therefore re-renders anything bound to it,
+with no rebuild on the caller's side:
+
+```dart
+final status = TomObservableEnum(TodoStatus.inReview, values: TodoStatus.values);
+
+// Retain the observer — observers are held weakly.
+final observer = status >> (_) => print(status.displayText);
+
+TomTextResourceProvider.setAppResourceProvider(germanBundle);  // 'In Prüfung'
+```
+
+The trigger is `TomTextResourceProvider.appResourcesRevision`, a `TomInt`
+bumped whenever the installed provider — or its `resources` map — is replaced.
+Mutating that map in place cannot be detected; call
+`TomTextResourceProvider.notifyAppResourcesChanged()` after such an edit.
+
+Call `detachFromResources()` to freeze a long-lived cell on the labels it
+already has; value changes still notify.
+
+### Missing Keys
+
+A value with no key in the bundle degrades to its **raw enum name**
+(`inReview` — recognisable, never blank) and logs a warning naming the keys
+that were tried:
+
+```text
+WARN No enum label resource for global.todostatus.done
+     (tried: global.todostatus.done) — rendering the raw enum name.
+```
+
+The warning is emitted once per key per bundle revision, so a missing label in
+a thousand-row list does not flood the log, while a locale switch reports it
+again. Degradation is per value: the labels that *are* present still resolve.
+
+Use `TomObservableEnum.resolveTextOrNull` when the caller wants to supply its
+own fallback rather than the raw name.
+
+### In Forms
+
+`tom_flutter_ui` exposes this as `TomEnumSelectableSource` and the
+`enumPickerFor` family helper, which builds a dropdown whose options are
+labelled from the bundle and which re-labels itself on a locale change:
+
+```dart
+family.enumPickerFor('status', TodoStatus.open, values: TodoStatus.values);
+```
+
 ## Muting Notifications
 
 When making multiple changes, you may want to suppress notifications until
@@ -974,6 +1093,7 @@ TomObservable (base class)
 └── TomObject<T>
     ├── TomString, TomInt, TomDouble, TomBool, TomDateTime
     ├── TomNString, TomNInt, TomNDouble, TomNBool, TomNDateTime
+    ├── TomObservableEnum<E>     — display text resolved from the text bundle
     ├── TomOTimezoned<TZ>
     │   ├── TomOZonedTime, TomOZonedDate, TomOZonedDateTime
     │   └── TomNOTimezoned<TZ>

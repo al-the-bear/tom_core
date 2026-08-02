@@ -41,6 +41,7 @@ JSON-serializable data models.
   - [TomListLifecycleListener](#tomlistlifecyclelistener)
   - [TomList](#tomlist)
   - [TomMap](#tommap)
+  - [TomObservableEnum](#tomobservableenum)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -49,6 +50,7 @@ Sources:
 
 - `lib/src/tombase/observable/tom_observable.dart`
 - `lib/src/tombase/observable/tom_observable_objects.dart`
+- `lib/src/tombase/observable/tom_observable_enum.dart`
 
 The Observable module provides `TomObservable`, an Observer-pattern base that
 holds its observers via `WeakReference` and supports muting during batch
@@ -63,6 +65,10 @@ observable members with reflection and adds JSON serialization; `TomList<E>` and
 `TomMap<K,V>` are observable collections that cascade element notifications, with
 `TomListLifecycleListener` receiving structural reset events. `TomDateRange`,
 `TomTimeRange`, and `TomDateTimeRange` are ready-made range `TomClass`es.
+`TomObservableEnum<E>` is an enum cell whose *display text* is derived rather
+than stored: it resolves from the application text bundle under
+`<scope>.<enumName>.<value>` and notifies on a bundle change as well as a value
+change, so enums need no Dart-side label table.
 
 ## Class Hierarchy
 
@@ -92,7 +98,8 @@ TomObservable
         │   ├── TomTimeRange
         │   └── TomDateTimeRange
         ├── TomList<E>  (implements TomObserver, Iterable<E>)
-        └── TomMap<K, V>  (implements TomObserver)
+        ├── TomMap<K, V>  (implements TomObserver)
+        └── TomObservableEnum<E extends Enum>
 
 TomObserver<T>
     └── TomFunctionObserver<T>  (implements TomObserver<T>)
@@ -852,6 +859,70 @@ TomMap.ofMap(Map<K, V> map)
 | `operator +(other)` | `TomMap<K, V>` | Merges two maps into a new one. |
 | `operator <<(newMap)` | `TomMap<K, V>` | *(override)* Replaces the whole map, re-observing, and notifies. |
 | `operator ==(other)` | `bool` | *(override)* Equal when backing maps are equal. |
+
+### TomObservableEnum
+
+Observable wrapper for an `Enum` value whose **display text** is resolved from
+the application text bundle instead of a Dart-side label table. Notifies its
+observers when either the value or the installed bundle changes, so a locale
+switch re-renders bound widgets without the caller rebuilding them.
+
+Keys are `<scope>.<enumName>.<value>`, all lower case. The scope segment is
+implicit — taken from the ambient `TomScope` **at construction time**, because
+display resolution typically runs inside a Flutter builder callback, outside
+the zone that installed the scope. Resolution walks the scope chain from most
+specific to least specific and ends at `global`, so a label declared once under
+`global` works everywhere while one scope can override just the labels it needs.
+
+A value with no key degrades to the raw enum name (never blank) and logs a
+warning naming the keys tried — once per key per bundle revision.
+
+- **Extends:** `TomObject<E>`
+
+#### Constructors
+
+```dart
+TomObservableEnum(E initialValue, {List<E>? values, TomScope? scope})
+```
+
+`values` is the enum's value list (`MyEnum.values`), used by pickers to
+enumerate options; it defaults to just `initialValue`. `scope` overrides the
+ambient scope.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `globalScopeId` | `String` | `'global'` — the least specific segment of every key chain. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `enumTypeSegment` | `static String enumTypeSegment(Enum value)` | The enum-type segment of a key: the runtime type, lower case. |
+| `valueSegment` | `static String valueSegment(Enum value)` | The value segment of a key: the constant name, lower case. |
+| `resourceKeysFor` | `static List<String> resourceKeysFor(Enum value, {TomScope? scope})` | The candidate keys, most specific scope first, ending at the `global` key. |
+| `resolveTextOrNull` | `static String? resolveTextOrNull(Enum value, {TomScope? scope})` | Bundle text for `value`, or `null` when no candidate resolves. |
+| `resolveText` | `static String resolveText(Enum value, {TomScope? scope})` | Bundle text for `value`, else its raw enum name (logging the miss). |
+| `resourceKeyFor` | `static String resourceKeyFor(Enum value, {TomScope? scope})` | The key that resolved, or the `global` key when none did. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `values` | `List<E>` | The enum's value list, in declaration order. Unmodifiable. |
+| `scope` | `TomScope` | The scope captured at construction, used for key resolution. |
+| `displayText` | `String` | Bundle text for the current value. |
+| `displayKey` | `String` | Resource key for the current value. |
+| `displayTexts` | `List<String>` | Bundle text for every entry of `values`, in order. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `displayTextOf` | `String displayTextOf(E value)` | Bundle text for `value`, resolved in this cell's scope. |
+| `displayKeyOf` | `String displayKeyOf(E value)` | Resource key for `value`, resolved in this cell's scope. |
+| `detachFromResources` | `void detachFromResources()` | Stops reacting to bundle changes; value changes still notify. |
 
 ## Global Functions and Constants
 

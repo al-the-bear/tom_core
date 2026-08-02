@@ -18,6 +18,7 @@ discard, validation, and authorization.
 | `TomFormStyle` / `TomFormStyleScope` | Presets (`material3`, `compact`, `bordered`) + inherited scoping |
 | `LabelPlacement` / `DescriptionPlacement` / `RequiredIndicator` | Field-chrome controls |
 | `TomSelectableSource` / `StaticSelectableSource` / `SelectableItem` | Pluggable option sources |
+| `TomEnumSelectableSource<E>` | Enum options labelled from the text bundle (`<scope>.<enumName>.<value>`), relabelled on a locale change |
 | `FormValidationError` | Cross-field validation result keyed by a resource error key |
 | `TomFormEvent` / `TomFormEventSource` / `TomFormEventListener` | The form event bus |
 | `TomListForm` / `TomMasterDetailListForm` | Collection / master-detail forms |

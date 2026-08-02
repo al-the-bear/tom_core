@@ -168,6 +168,7 @@ declarations are omitted.
 | `TomList<E>` | class | Observable list of `TomObject`s. |
 | `TomMap<K, V>` | class | Observable map of `TomObject` values. |
 | `TomListLifecycleListener` | abstract class | Lifecycle callbacks for `TomList` elements. |
+| `TomObservableEnum<E extends Enum>` | class | Boxed enum whose display text resolves from the text bundle under `<scope>.<enumName>.<value>`. |
 | `tomNull` | final | The shared null-object `TomObject<String>`. |
 
 ### Reflection (`lib/src/tombase/reflection/`)
@@ -184,7 +185,7 @@ declarations are omitted.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomTextResourceProvider` | class | Provides localized text over a JSON tree with key fallback. |
+| `TomTextResourceProvider` | class | Provides localized text over a JSON tree with key fallback; `appResourcesRevision` announces bundle changes. |
 | `TomConfigResourceProvider` | class | Provides config values over a JSON tree. |
 
 ### Result (`lib/src/tombase/result/`)

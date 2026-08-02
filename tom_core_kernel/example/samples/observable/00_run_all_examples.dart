@@ -26,6 +26,7 @@ import '04_tom_list.dart' as tom_list;
 import '05_tom_map.dart' as tom_map;
 import '06_timezone_types.dart' as timezone_types;
 import '07_list_reset_lifecycle.dart' as list_reset_lifecycle;
+import '08_observable_enum.dart' as observable_enum;
 
 /// Standalone entry point for running observable examples.
 Future<void> main() async {
@@ -51,6 +52,7 @@ Future<void> run() async {
   tom_map.run();
   timezone_types.run();
   list_reset_lifecycle.run();
+  observable_enum.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');

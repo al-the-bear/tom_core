@@ -18,6 +18,18 @@ development. The provider feeds the labels/hints used by the forms and UI layers
 The app-wide provider is installed once via
 `TomTextResourceProvider.setAppResourceProvider(...)`.
 
+## Announcing bundle changes
+
+Installing a provider — or assigning a new map to the installed provider's
+`resources` — bumps the observable `TomTextResourceProvider.appResourcesRevision`
+(a `TomInt`). Mutating the installed map *in place* cannot be detected, so call
+`TomTextResourceProvider.notifyAppResourcesChanged()` after doing so.
+
+This is what makes a locale switch visible to derived observables: an
+[`observable`](../observable/readme.md) `TomObservableEnum` observes the
+revision and re-notifies, so bound widgets re-render their labels without the
+caller rebuilding them.
+
 ## Quick start
 
 ```dart

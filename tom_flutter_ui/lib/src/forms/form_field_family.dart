@@ -53,6 +53,7 @@ import 'fields/tom_form_nullable_bool_field.dart';
 import 'fields/tom_form_nullable_inputs.dart';
 import 'fields/tom_form_search_lookup_fields.dart';
 import 'fields/tom_form_string_field.dart';
+import 'selection/tom_enum_selectable_source.dart';
 import 'selection/tom_selectable_source.dart';
 import 'tom_form.dart';
 
@@ -465,6 +466,45 @@ class FormFieldFamily {
       descriptionTextOverride: descriptionTextOverride,
       form: form,
       validators: validators ?? const [],
+      autoValidate: autoValidate,
+      tomGroup: tomGroup,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
+
+  /// Single-select enum picker whose option labels come from the text
+  /// bundle — the resource-keyed form of [enumPicker].
+  ///
+  /// Resolves each option under `<scope>.<enumName>.<value>` via
+  /// [TomEnumSelectableSource], so the picker carries no Dart-side label
+  /// table and re-renders when the application switches locale. Prefer this
+  /// over building a [StaticSelectableSource] of hardcoded labels.
+  ///
+  /// ```dart
+  /// family.enumPickerFor('status', TodoStatus.open, values: TodoStatus.values);
+  /// ```
+  TomFormEnumField<E> enumPickerFor<E extends Enum>(
+    String tomId,
+    E initialValue, {
+    required List<E> values,
+    String? labelTextOverride,
+    String? descriptionTextOverride,
+    TomForm? form,
+    List<Object>? validators,
+    bool autoValidate = true,
+    TomAuthorizationGroup? tomGroup,
+    TomAuthorizer? authorizer,
+    TomUIStateController? uiStateController,
+  }) {
+    return enumPicker<E>(
+      tomId,
+      initialValue,
+      source: TomEnumSelectableSource<E>(values),
+      labelTextOverride: labelTextOverride,
+      descriptionTextOverride: descriptionTextOverride,
+      form: form,
+      validators: validators,
       autoValidate: autoValidate,
       tomGroup: tomGroup,
       authorizer: authorizer,
