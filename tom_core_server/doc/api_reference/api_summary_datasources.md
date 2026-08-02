@@ -874,7 +874,7 @@ is not — never silently truncated.
 | ------ | --------- | ----------- |
 | `connect` | `Future<void> connect()` | Opens a connection using the configured settings; throws `MariadbDatasourceException` on failure. |
 | `prepareStatement` | `Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(TomQuery query, [Type? resultType])` | *(override)* Prepares a positional statement for `query`. |
-| `executeQuery` | `Future<List<T>> executeQuery<T extends Object>(String command, [Map<String, dynamic>? params, Type? resultType])` | *(override)* Runs a read command with reflection-based row→object mapping. |
+| `executeQuery` | `Future<List<T>> executeQuery<T extends Object>(String command, [Map<String, dynamic>? params, Type? resultType])` | *(override)* Runs a read command with reflection-based row→object mapping. A `TomClass` result type maps by observable member — by member name without `@TomDbTable`, by `@TomDbColumn` with it — supporting `int` / `double` / `String` / `bool` / `DateTime` members whether declared as the plain or the nullable (`TomN…`) observable, with a SQL `NULL` read as `null`. |
 | `initialize` | `Future<void> initialize(Map<String, dynamic> settings)` | *(override)* Binds `settings` by reflection and connects. |
 | `isOperational` | `bool isOperational()` | *(override)* Whether the connection exists and is connected. |
 | `executeCommand` | `Future<BigInt> executeCommand(String command, [Map<String, dynamic>? params])` | *(override)* Runs a write command and returns the affected-row count. |

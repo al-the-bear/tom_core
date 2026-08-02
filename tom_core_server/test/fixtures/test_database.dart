@@ -239,6 +239,44 @@ CREATE TABLE IF NOT EXISTS fixture_amount (
     await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_amount');
   }
 
+  /// The DDL for the nullable-observable fixtures (CSEXF1).
+  ///
+  /// Every column is deliberately a **plain, long-supported SQL type** — no
+  /// `DECIMAL`, no aggregate, no driver quirk. The defect this table exists to
+  /// expose is in the mapper's own type matching, so the columns must be ones
+  /// the driver converts without complaint; anything exotic here would make a
+  /// red step ambiguous between this defect and CSEXE1's `NEWDECIMAL` gap.
+  ///
+  /// `active` is `TINYINT(1)` rather than `INT` because the driver's `bool`
+  /// conversion requires protocol type `Tiny` *and* a column length of 1: an
+  /// `INT` column would come back unconvertible and, again, blur the red.
+  ///
+  /// Every value column is `NULL`-able, because a nullable observable's second
+  /// obligation — after mapping at all — is to carry an actual SQL `NULL`
+  /// through as `null`.
+  static const String _fixtureNullableDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_nullable (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  name        VARCHAR(255) NULL,
+  ratio       DOUBLE       NULL,
+  quantity    INT          NULL,
+  active      TINYINT(1)   NULL,
+  occurred_at DATETIME     NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_nullable` table if it does not already exist.
+  static Future<void> ensureFixtureNullableTable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(_fixtureNullableDdl);
+  }
+
+  /// Empties the `fixture_nullable` table so each test starts from a known
+  /// state.
+  static Future<void> truncateFixtureNullable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_nullable');
+  }
+
   /// Drops the blob store's two tables, so a `TomDatabaseBlobStore` test starts
   /// from an empty store regardless of what an earlier run left behind.
   ///

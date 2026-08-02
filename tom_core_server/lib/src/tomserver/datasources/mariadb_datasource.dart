@@ -348,6 +348,91 @@ class MariaDbDatasource implements TomDataSource {
   static (String, List<String>) toPositionalStatement(String namedSql) =>
       SqlPlaceholderScan.toPositional(namedSql);
 
+  /// The `Type` literal for [X], including a nullable one.
+  ///
+  /// A nullable type cannot be written where a `Type` value is expected — there
+  /// is no `double?` expression, and `case double?:` is not valid Dart — but it
+  /// *can* be named through a type argument. This is the only way to obtain the
+  /// `double?` / `String?` values that a nullable observable reports, and it
+  /// exists solely to build [_nonNullableElementTypes].
+  static Type _typeOf<X>() => X;
+
+  /// Maps each nullable element type an observable can report onto the
+  /// non-nullable type the row mapper dispatches on.
+  ///
+  /// `TomObject<T>.getType()` answers `T` exactly as declared, so a `TomNString`
+  /// reports `String?` and a `TomNDouble` reports `double?`. Dispatching on that
+  /// answer directly means a nullable member matches no case at all — and since
+  /// the nullable observables are the ordinary choice for a column that can be
+  /// `NULL`, that rejected most members of most result holders.
+  ///
+  /// Normalising once, here, is deliberate: the alternative — adding a nullable
+  /// case beside every existing one — doubles each switch and has to be
+  /// remembered again for every element type ever added.
+  static final Map<Type, Type> _nonNullableElementTypes = {
+    _typeOf<int?>(): int,
+    _typeOf<double?>(): double,
+    _typeOf<String?>(): String,
+    _typeOf<bool?>(): bool,
+    _typeOf<DateTime?>(): DateTime,
+  };
+
+  /// [type] with its nullability removed, or [type] unchanged if it has none.
+  static Type _nonNullableElementType(Type type) =>
+      _nonNullableElementTypes[type] ?? type;
+
+  /// Populates one observable [member] of a [TomClass] row from [row].
+  ///
+  /// Both `TomClass` mapping variants land here. They differ only in how they
+  /// find the column — the table-less one matches the member's own name, the
+  /// annotated one takes the `@TomDbColumn` name — so everything after that
+  /// point (which element types are supported, how each is read, how an
+  /// unsupported one is reported) is one decision, made once. They were
+  /// previously two copies of that decision, and the nullable-member defect
+  /// this method was extracted to fix was present in both.
+  ///
+  /// [field] is the result-column name to read; [memberName] and [errorCode]
+  /// only shape the failure, which stays distinguishable per variant.
+  ///
+  /// A `NULL` column yields `null` for every element type, including
+  /// `DateTime`. The `DateTime` branch used to skip the assignment instead,
+  /// which left the member holding whatever its field initialiser had put
+  /// there — a stale value presented as if it had been read.
+  static void _setObservableMember(
+    ResultSetRow row,
+    TomObject member,
+    String field, {
+    required String memberName,
+    required String errorCode,
+    required ClassMirror classMirror,
+  }) {
+    final Type declared = member.getType();
+    switch (_nonNullableElementType(declared)) {
+      case int:
+        member.set(_readInt(row, field));
+      case double:
+        member.set(_readDouble(row, field));
+      case String:
+        member.set(row.typedColByName<String>(field));
+      case bool:
+        member.set(row.typedColByName<bool>(field));
+      case DateTime:
+        final String? stringForm = row.typedColByName<String>(field);
+        member.set(stringForm == null ? null : DateTime.parse(stringForm));
+      default:
+        throw MariadbDatasourceException(
+          errorCode,
+          "Unexpected and unsupported type for TomObject value: $declared for "
+              "member $memberName in $classMirror",
+          parameters: {
+            "type": classMirror.reflectedType,
+            "fieldType": declared,
+            "attribute": memberName,
+          },
+        );
+    }
+  }
+
   /// Reads [field] from [row] as a Dart `double`.
   ///
   /// **This is the only place that knows how this driver yields a double**, and
@@ -535,32 +620,15 @@ class MariaDbDatasource implements TomDataSource {
         }
         for (var entry in rowResult.getMembers().entries) {
           if (qResult.cols.any((c) => c.name == entry.key)) {
-            Type t = entry.value.getType();
-            switch (t) {
-              case int:
-                entry.value.set(_readInt(row, entry.key));
-              case double:
-                entry.value.set(_readDouble(row, entry.key));
-              case String:
-                entry.value.set(row.typedColByName<String>(entry.key));
-              case bool:
-                entry.value.set(row.typedColByName<bool>(entry.key));
-              case DateTime:
-                String? stringForm = row.typedColByName<String>(entry.key);
-                if (stringForm != null) {
-                  entry.value.set(DateTime.parse(stringForm));
-                }
-              default:
-                throw MariadbDatasourceException(
-                  "error.result_processing_tcp.unknown_type",
-                  "Unexpected and unsupported type for TomObject value: $t for member ${entry.key} in $classMirror",
-                  parameters: {
-                    "type": classMirror.reflectedType,
-                    "fieldType": t,
-                    "attribute": entry.key,
-                  },
-                );
-            }
+            // Table-less: the member's own name *is* the column name.
+            _setObservableMember(
+              row,
+              entry.value,
+              entry.key,
+              memberName: entry.key,
+              errorCode: "error.result_processing_tcp.unknown_type",
+              classMirror: classMirror,
+            );
           }
         }
         result.add(rowResult as T);
@@ -579,33 +647,16 @@ class MariaDbDatasource implements TomDataSource {
         }
         for (var col in TomAnnotationAnalyzer.getPersistentColumns(rType)!) {
           if (qResult.cols.any((c) => c.name == col.field)) {
-            var member = rowResult.getMembers()[col.declaredName];
-            var t = member!.getType();
-            switch (t) {
-              case int:
-                member.set(_readInt(row, col.field));
-              case double:
-                member.set(_readDouble(row, col.field));
-              case String:
-                member.set(row.typedColByName<String>(col.field));
-              case bool:
-                member.set(row.typedColByName<bool>(col.field));
-              case DateTime:
-                String? stringForm = row.typedColByName<String>(col.field);
-                if (stringForm != null) {
-                  member.set(DateTime.parse(stringForm));
-                }
-              default:
-                throw MariadbDatasourceException(
-                  "error.result_processing_tc.unknown_type",
-                  "Unexpected and unsupported type for TomObject value: $t for member ${col.declaredName} in $classMirror",
-                  parameters: {
-                    "type": classMirror.reflectedType,
-                    "fieldType": t,
-                    "attribute": col.declaredName,
-                  },
-                );
-            }
+            // Annotated: the column name comes from `@TomDbColumn`, so it may
+            // differ from the member's declared name.
+            _setObservableMember(
+              row,
+              rowResult.getMembers()[col.declaredName]!,
+              col.field,
+              memberName: col.declaredName,
+              errorCode: "error.result_processing_tc.unknown_type",
+              classMirror: classMirror,
+            );
           }
         }
         result.add(rowResult as T);

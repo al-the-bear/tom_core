@@ -356,6 +356,24 @@ mirror is taken; an alias whose declared type is outside
 > A driver for another database should check the equivalent conversion before
 > assuming its client widens.
 
+> **A `TomClass` result holder maps by observable member, nullable or not.**
+> Two of the four entity-mapping variants take a `TomClass` rather than a
+> reflected entity: without `@TomDbTable` the member's own name is the column
+> name, with it the `@TomDbColumn` name is, and both then read the member
+> according to the element type it declares. `TomObject<T>` reports that type
+> *as declared*, so a `TomNString` answers `String?` rather than `String`, and
+> the element type is therefore **normalised to its non-nullable counterpart
+> before dispatch** — `int`, `double`, `String`, `bool` and `DateTime` are
+> supported whether the member is the plain or the `TomN…` observable, and
+> anything else raises `error.result_processing_tc[p].unknown_type` naming the
+> type it refused. Normalising once is what keeps the two variants a single
+> decision rather than two switches drifting apart.
+>
+> A SQL `NULL` reads as `null` for every one of those types. A member declared
+> non-nullable over a column that is `NULL` therefore fails loudly, which is the
+> intended outcome: the alternative — leaving the member holding whatever its
+> field initialiser put there — presents a stale value as if it had been read.
+
 `MariaDbXADatasource` (`@TomDatasourceDriver("mariadb_xa")`) inherits all of
 that but overrides the transaction lifecycle to use **XA** (`XA START` / `XA
 END` + `XA PREPARE` / `XA COMMIT` / `XA ROLLBACK`), so it can take part in a

@@ -608,13 +608,18 @@ class FixtureAmountSummary {
 /// type those two `typedColByName<double>` call sites are unreachable from any
 /// test, and a fix to them would be unverifiable.
 ///
-/// The members are the **non-nullable** observables deliberately. `TomObject<T>`
-/// reports its element type as declared, so a `TomNDouble` answers `double?` —
-/// which the mapper's `case double:` never matches, making it reject *every*
-/// nullable observable member (a `TomNString` over a plain `VARCHAR` included).
-/// That is a real defect but a different one, with nothing to do with
-/// `DECIMAL`; it is tracked as CSEXF1. Using `TomDouble`/`TomInt` here keeps
-/// this fixture pointed at the driver gap it exists to expose.
+/// The members are the **non-nullable** observables deliberately, and stay that
+/// way. `TomObject<T>` reports its element type as declared, so a `TomNDouble`
+/// answers `double?` while a `TomDouble` answers `double`; the row mapper
+/// normalises the former onto the latter before dispatching (CSEXF1). This
+/// fixture is therefore the one that covers the *un-normalised* half of that
+/// dispatch — the path where the declared type already matches and the
+/// normaliser passes it through untouched. Its nullable counterparts,
+/// [FixtureNullableObservable] and [FixtureNullableRecord], cover the other
+/// half. Switching this one to `TomNDouble`/`TomNInt` would leave the
+/// pass-through branch with no coverage at all, and would also blur the driver
+/// gap this fixture exists to expose with the type-matching concern that is not
+/// its subject.
 @tomReflector
 class FixtureAmountObservable extends TomClass {
   /// The fractional member, matched to a result column named `amount`.
@@ -622,4 +627,87 @@ class FixtureAmountObservable extends TomClass {
 
   /// An integer member, matched to a result column named `quantity`.
   final quantity = TomInt(0);
+}
+
+/// A **table-less** [TomClass] whose members are all *nullable* observables
+/// (CSEXF1).
+///
+/// `TomObject<T>.getType()` answers `T` as declared, so a [TomNString] reports
+/// `String?`. The row mapper switched on that answer with `case String:`, which
+/// a `String?` never matches — so every member of a holder like this one fell
+/// to the `default:` branch and was refused by name. The nullable observables
+/// are the ordinary choice for a column that can be `NULL`, which is most
+/// columns, so this is the shape an everyday result holder has.
+///
+/// It carries one member per supported element type, because the defect was in
+/// the *dispatch* rather than in any one conversion: a fix that handled
+/// `String?` and stopped there would leave the other four still refused.
+///
+/// Member names match the result-column names exactly — that is how the
+/// table-less variant binds. `occurredAt` is reached through a `SELECT
+/// occurred_at AS occurredAt`, keeping the Dart name lowerCamelCase without
+/// renaming the column.
+@tomReflector
+class FixtureNullableObservable extends TomClass {
+  /// Nullable text, over `VARCHAR(255)`.
+  final name = TomNString(null);
+
+  /// Nullable fractional value, over `DOUBLE`.
+  final ratio = TomNDouble(null);
+
+  /// Nullable integer, over `INT`.
+  final quantity = TomNInt(null);
+
+  /// Nullable boolean, over `TINYINT(1)`.
+  final active = TomNBool(null);
+
+  /// Nullable timestamp, over `DATETIME`.
+  final occurredAt = TomNDateTime(null);
+}
+
+/// The `@TomDbTable`-annotated counterpart of [FixtureNullableObservable]
+/// (CSEXF1).
+///
+/// The two [TomClass] mapping variants are near-duplicates that differ only in
+/// how they find the column for a member: the table-less one matches member
+/// name against result-column name, this one walks
+/// `TomAnnotationAnalyzer.getPersistentColumns` and looks the member up by
+/// `declaredName`. They carried the *same* defective switch, so a fix verified
+/// on only one of them would be half a fix — hence a fixture for each.
+///
+/// Being annotated also lets the member names differ from the column names
+/// ([occurredAt] over `occurred_at`), which is the normal case for an entity
+/// and the reason the annotated variant exists at all.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_nullable',
+  primaryKeyField: 'id',
+)
+class FixtureNullableRecord extends TomClass {
+  /// Surrogate primary key, assigned by the database on insert.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  final id = TomNInt(null);
+
+  /// Nullable text, over `VARCHAR(255)`.
+  @TomDbColumn(columnName: 'name')
+  final name = TomNString(null);
+
+  /// Nullable fractional value, over `DOUBLE`.
+  @TomDbColumn(columnName: 'ratio')
+  final ratio = TomNDouble(null);
+
+  /// Nullable integer, over `INT`.
+  @TomDbColumn(columnName: 'quantity')
+  final quantity = TomNInt(null);
+
+  /// Nullable boolean, over `TINYINT(1)`.
+  @TomDbColumn(columnName: 'active')
+  final active = TomNBool(null);
+
+  /// Nullable timestamp, over `DATETIME` — declared under a name that differs
+  /// from its column, which only the annotated variant can express.
+  @TomDbColumn(columnName: 'occurred_at')
+  final occurredAt = TomNDateTime(null);
 }
