@@ -846,7 +846,7 @@ void main() {
     }) =>
         TomReportDefinition(
           reportId: 'sales_by_region',
-          sourceEntityId: 'Order',
+          sourceEntity: _Order,
           dimensions: dimensions ??
               [
                 TomReportDimension(
@@ -976,7 +976,7 @@ void main() {
     test('a report with no dimensions is a valid single-row aggregate', () {
       final report = TomReportDefinition(
         reportId: 'totals',
-        sourceEntityId: 'Order',
+        sourceEntity: _Order,
         measures: [
           TomReportMeasure(
             key: 'orders',
@@ -998,7 +998,7 @@ void main() {
     test('a report with no measures is a plain listing', () {
       final report = TomReportDefinition(
         reportId: 'order_list',
-        sourceEntityId: 'Order',
+        sourceEntity: _Order,
         dimensions: [
           TomReportDimension(
             key: 'number',
@@ -1021,7 +1021,7 @@ void main() {
       expect(
         () => TomReportDefinition(
           reportId: 'nothing',
-          sourceEntityId: 'Order',
+          sourceEntity: _Order,
           columns: const [],
         ),
         throwsArgumentError,
@@ -1032,7 +1032,7 @@ void main() {
         () {
       final report = TomReportDefinition(
         reportId: 'r',
-        sourceEntityId: 'Order',
+        sourceEntity: _Order,
         dimensions: [
           TomReportDimension(
             key: 'k',
@@ -1060,6 +1060,63 @@ void main() {
         ],
       );
       expect(report.requiredParameters.map((p) => p.name), ['from']);
+    });
+  });
+
+  group('csrc3: CE-RP cross-part targets', () {
+    TomReportDefinition build({
+      String? scheduleExpression,
+      String? drillThroughRouteId,
+    }) =>
+        TomReportDefinition(
+          reportId: 'sales_by_region',
+          sourceEntity: _Order,
+          scheduleExpression: scheduleExpression,
+          dimensions: [
+            TomReportDimension(
+              key: 'region',
+              columnName: 'customer_region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+          columns: [
+            TomReportColumn(
+              name: 'region',
+              sourceKey: 'region',
+              valueKind: TomReportValueKind.string,
+              drillThroughRouteId: drillThroughRouteId,
+            ),
+          ],
+        );
+
+    // `codespecs_mapping.md` §5.23: an entity is already a Dart type, so it is
+    // cited as a `Type` literal and gets no `Cs*Ref` const. A renamed entity is
+    // then a compile error, which a string could never be.
+    test('the source entity is a Type literal, not an id string', () {
+      expect(build().sourceEntity, _Order);
+      expect(build().sourceEntity, isA<Type>());
+    });
+
+    // `codespecs_mapping.md` §5.29: a scheduled report is declared once, on the
+    // definition, and the CE-JB job is realised from that schedule. So what is
+    // carried is the recurrence expression the specification authored, verbatim
+    // — never a job id, which would be the second source that rule forbids.
+    test('the schedule is a recurrence expression carried verbatim', () {
+      expect(build(scheduleExpression: '0 6 1 * *').scheduleExpression,
+          '0 6 1 * *');
+    });
+
+    test('an unscheduled report simply has no schedule', () {
+      expect(build().scheduleExpression, isNull);
+    });
+
+    // The one CE-RP target that stays an open id string: §5.23's locus rule
+    // bars a server-owned definition from citing a client-owned route, so the
+    // compile-time edge is unavailable and check 18 replaces it.
+    test('the drill-through target stays an open route id string', () {
+      final column = build(drillThroughRouteId: 'orderDetail').columns.single;
+      expect(column.drillThroughRouteId, 'orderDetail');
+      expect(column.drillThroughRouteId, isA<String>());
     });
   });
 
@@ -1164,12 +1221,15 @@ void main() {
   });
 }
 
-/// Stand-in CE-DB entity types for the CE-JB target tests.
+/// Stand-in CE-DB entity types for the CE-JB and CE-RP target tests.
 ///
-/// A `TomJobDeclaration` cites its entity targets as `Type` literals
-/// (`codespecs_mapping.md` §5.29 scope part 3), so the tests need real Dart
-/// types to cite. They are empty on purpose: what is under test is that the
-/// reference is a type at all, not anything the type carries.
+/// A `TomJobDeclaration` cites its entity targets, and a `TomReportDefinition`
+/// its source entity, as `Type` literals (`codespecs_mapping.md` §5.23,
+/// §5.29 scope part 3), so the tests need real Dart types to cite. They are
+/// empty on purpose: what is under test is that the reference is a type at
+/// all, not anything the type carries.
 class _Invoice {}
 
 class _Payment {}
+
+class _Order {}

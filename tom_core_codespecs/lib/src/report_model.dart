@@ -287,6 +287,19 @@ class TomReportColumn {
 
   /// The CE-NV route a click on a cell navigates to, if the column drills
   /// through.
+  ///
+  /// **An open id string, permanently** — the one CE-RP target that stays one.
+  /// A `CsRouteRef` cannot carry it: `codespecs_mapping.md` §5.23's locus rule
+  /// bars a **server**-owned declaration from citing a **client**-owned
+  /// referent, and a report definition runs on the server while a route belongs
+  /// to the client project.
+  ///
+  /// That makes it unlike the four §5.23 string exemptions, which are exempt
+  /// *because their referent is not a Dart declaration*. A route **is** one, so
+  /// the compile-time edge is lost to locus rather than absent by nature, and
+  /// the lost guarantee is replaced by a named generation-time validator check
+  /// (`codespecs_derivation_contract.md` §6 check 18) — the same substitution
+  /// check 17 makes for a notification channel's fallback.
   final String? drillThroughRouteId;
 
   @override
@@ -436,7 +449,7 @@ class TomReportDefinition {
   /// code referring to something that does not exist.
   TomReportDefinition({
     required this.reportId,
-    required this.sourceEntityId,
+    required this.sourceEntity,
     required this.columns,
     this.displayName,
     this.dimensions = const [],
@@ -444,8 +457,7 @@ class TomReportDefinition {
     this.parameters = const [],
     this.charts = const [],
     this.deliveryChannels = const [TomReportDeliveryChannel.apiResponse],
-    this.scheduleJobId,
-    this.authorizationKey,
+    this.scheduleExpression,
   }) {
     if (reportId.isEmpty) {
       throw ArgumentError.value(
@@ -512,8 +524,15 @@ class TomReportDefinition {
   /// The CE-TX message key for the report's title.
   final String? displayName;
 
-  /// The CE-DB entity the projection selects from.
-  final String sourceEntityId;
+  /// The CE-DB entity the projection selects from, as a `Type` literal.
+  ///
+  /// **A `Type`, never a string** (`codespecs_mapping.md` §5.23, §4.4.1). An
+  /// entity is already a Dart type, so §5.23's `Cs*Ref` family gives it no ref
+  /// const **by design**: citing the class directly makes a renamed entity a
+  /// compile error, which a string could never be. It also needs nothing but
+  /// `dart:core`, so it keeps this package's `dependencies: {}` — the same
+  /// property that decides `TomJobDeclaration.readEntities`.
+  final Type sourceEntity;
 
   /// The grouping keys.
   ///
@@ -536,17 +555,32 @@ class TomReportDefinition {
   /// The channels this report is delivered on.
   final List<TomReportDeliveryChannel> deliveryChannels;
 
-  /// The CE-JB job that runs this report on a schedule, if it is scheduled.
+  /// When the report runs unattended — a recurrence expression, verbatim.
   ///
-  /// The definition **names** its schedule; the job realises it. Keeping the
-  /// scheduling here would duplicate a runtime CE-JB already owns.
-  final String? scheduleJobId;
-
-  /// The CE-AZ requirement a caller must satisfy to run the report.
+  /// `null` means the report is only ever run on demand.
   ///
-  /// Authorization is an attribute, never a leaf (`codespecs_mapping.md` §1.2),
-  /// so it is a field here rather than a part of its own.
-  final String? authorizationKey;
+  /// **A schedule, not a job id.** The specification authors a cron-like
+  /// expression (`codespecs_mapping.md` §5.28's *Report schedule* row, from the
+  /// report-schedule section's schedule-expression field); the CE-JB job that
+  /// runs the projection is **realised from** it. §5.29 makes that explicit —
+  /// "a scheduled report is declared once, on the CE-RP report definition; the
+  /// job that runs it is realised from that schedule, not from a second entry"
+  /// — so a field holding a *job* id would invite exactly the second source
+  /// that rule exists to prevent, and would point at a declaration the
+  /// generator had not written yet.
+  ///
+  /// This is therefore not a cross-part reference at all: a recurrence
+  /// expression names nothing declarable. The schedule's remaining authored
+  /// detail — time zone, effective dates, generation window and timeout —
+  /// lowers onto the derived job's own `TomJobDefinition`, where the substrate
+  /// already carries it, rather than being restated here.
+  ///
+  /// Authorization is **not** a field here. It rides a `@CsAuthorize` beside
+  /// the `@CsReport` marker, per `codespecs_mapping.md` §5.15's field-level
+  /// rule: the report's access level and permitted roles are exactly that
+  /// annotation's requirement kind and its typed `CsRoleRef` list, so the edge
+  /// is compile-checked instead of being an id string here.
+  final String? scheduleExpression;
 
   /// Whether the report aggregates rather than listing rows.
   bool get isAggregated => measures.isNotEmpty;
