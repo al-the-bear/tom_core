@@ -112,6 +112,77 @@ class AuthTokenService {
     );
   }
 
+  /// Starts enrolling the mechanism the user chose from
+  /// [LoginResult.availableTwoFactorMethods].
+  ///
+  /// Returns a fresh interim result whose token claims carry what the client
+  /// has to render — for TOTP the `otpauth://` URI and the base32 secret. The
+  /// server refuses a mechanism it did not itself offer on the presented token,
+  /// so [TwoFactorEnrolmentRequest.type] is a selection, never an assertion.
+  Future<LoginResult> beginEnrolment(TwoFactorEnrolmentRequest request) =>
+      _enrolmentPass(
+        request,
+        request.type,
+        (message, token) =>
+            _server.beginTwoFactorEnrolment(message, enrolmentToken: token),
+      );
+
+  /// Confirms the offer with the code the user derived from it and, on success,
+  /// completes the login with the final token pair.
+  ///
+  /// A wrong code throws [SecondFactorRetryException] carrying the re-issued
+  /// interim token with one attempt spent — the same retry contract
+  /// [submitSecondFactor] has, and for the same reason: the counter lives in
+  /// the token, so retrying against a stale copy would never spend anything.
+  Future<LoginResult> confirmEnrolment(TwoFactorEnrolmentRequest request) =>
+      _enrolmentPass(
+        request,
+        request.code,
+        (message, token) =>
+            _server.completeTwoFactorEnrolment(message, enrolmentToken: token),
+      );
+
+  /// Declines a skippable offer and completes the login with no factor.
+  ///
+  /// Carries no payload: the token alone says both who is declining and whether
+  /// declining was permitted, and the server re-checks the latter from its own
+  /// signature rather than trusting the client's decision to call this at all.
+  Future<LoginResult> skipEnrolment(TwoFactorEnrolmentRequest request) =>
+      _enrolmentPass(
+        request,
+        '',
+        (message, token) =>
+            _server.skipTwoFactorEnrolment(message, enrolmentToken: token),
+      );
+
+  /// The shape every enrolment pass shares: require the interim token, put the
+  /// pass's one user-supplied [payload] in the message's payload slot, run
+  /// [pass], and project the framework's answer onto the wire.
+  ///
+  /// Factored out because the three passes differ only in which framework
+  /// method they call and what goes in that slot — writing the token check, the
+  /// message build and the projection three times would make three places to
+  /// forget the check.
+  Future<LoginResult> _enrolmentPass(
+    TwoFactorEnrolmentRequest request,
+    String payload,
+    Future<TomAuthenticationResult> Function(
+      TomAuthenticationMessage message,
+      TomClientJwtToken token,
+    ) pass,
+  ) async {
+    if (request.enrolmentToken.isEmpty) {
+      throw LoginException(
+        'login.error.2fa.no-enrolment',
+        'No pending two-factor enrolment was presented',
+      );
+    }
+    final message = _messageFor(LoginRequest(username: '', password: payload));
+    return _resultFor(
+      await pass(message, TomClientJwtToken(request.enrolmentToken)),
+    );
+  }
+
   /// Re-issues a fresh token pair for an already-authenticated [principal]
   /// (the `/auth/refresh` path). The principal's existing access-control
   /// information is re-encoded; no definition-based inheritance resolution is
@@ -199,6 +270,9 @@ class AuthTokenService {
       expiresAt: DateTime.now().toUtc().add(tokenLifetime),
       requires2FA: result.requires2FA,
       twoFactorType: result.twoFactorType,
+      requires2FAEnrolment: result.requires2FAEnrolment,
+      availableTwoFactorMethods: result.availableTwoFactorMethods,
+      twoFactorEnrolmentSkippable: result.twoFactorEnrolmentSkippable,
     );
   }
 
@@ -333,6 +407,37 @@ class AdvancedAuthApiService implements AuthApiService {
   @override
   Future<LoginResult> submitSecondFactor(SecondFactorRequest request) =>
       _tokens.submitSecondFactor(request);
+
+  // The three enrolment passes, public for the same reason `authSecondFactor`
+  // is and answering refusals through the same 401 handler — a refused
+  // confirmation is a retryable second-factor failure and needs the re-issued
+  // token in the body to stay retryable.
+  @TomApiEndpointImplementation(
+    apiId: 'auth',
+    endpointId: 'authBeginEnrolment',
+    errorHandler: _loginErrorHandler,
+  )
+  @override
+  Future<LoginResult> beginEnrolment(TwoFactorEnrolmentRequest request) =>
+      _tokens.beginEnrolment(request);
+
+  @TomApiEndpointImplementation(
+    apiId: 'auth',
+    endpointId: 'authConfirmEnrolment',
+    errorHandler: _loginErrorHandler,
+  )
+  @override
+  Future<LoginResult> confirmEnrolment(TwoFactorEnrolmentRequest request) =>
+      _tokens.confirmEnrolment(request);
+
+  @TomApiEndpointImplementation(
+    apiId: 'auth',
+    endpointId: 'authSkipEnrolment',
+    errorHandler: _loginErrorHandler,
+  )
+  @override
+  Future<LoginResult> skipEnrolment(TwoFactorEnrolmentRequest request) =>
+      _tokens.skipEnrolment(request);
 
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authRefresh')
   @override

@@ -94,6 +94,20 @@ class LiveAppBackend implements AppBackend {
   Tom2FAChallenge? get pendingChallenge => _auth.pendingChallenge;
 
   @override
+  Tom2FAPendingEnrolment? get pendingEnrolment => _auth.pendingEnrolment;
+
+  @override
+  Future<LoginResult> beginEnrolment(String type) =>
+      _guard(() => _auth.beginEnrolment(type));
+
+  @override
+  Future<LoginResult> confirmEnrolment(String code) =>
+      _guard(() => _auth.confirmEnrolment(code));
+
+  @override
+  Future<LoginResult> skipEnrolment() => _guard(() => _auth.skipEnrolment());
+
+  @override
   Future<void> logout() => _guard(() => _auth.logout());
 
   @override

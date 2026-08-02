@@ -41,6 +41,10 @@ class AppSession extends ChangeNotifier {
   DateTime? _expiresAt;
   Map<String, String> _resourceRoles = const {};
   bool _awaitingSecondFactor = false;
+  bool _awaitingEnrolment = false;
+  List<Tom2FAMethodDescriptor> _availableTwoFactorMethods = const [];
+  String _pendingAccount = '';
+  String? _abandonedTwoFactorMessage;
 
   /// The provider contents captured just before [login] installed the full
   /// bundle, restored on logout so a re-login starts from the same chrome.
@@ -68,11 +72,55 @@ class AppSession extends ChangeNotifier {
   /// every call `401`s.
   bool get awaitingSecondFactor => _awaitingSecondFactor;
 
+  /// Whether a [login] verified the password but left a second factor to be
+  /// *set up* — the other half-finished login.
+  ///
+  /// Mutually exclusive with [awaitingSecondFactor]: a principal either holds a
+  /// factor and is challenged on it, or holds none and is offered one. Like the
+  /// challenge, it keeps [isLoggedIn] false, so the shell stays on the login
+  /// screen while the flow runs.
+  bool get awaitingEnrolment => _awaitingEnrolment;
+
+  /// Whether the login is part-way through the second factor at all — either
+  /// branch. The login screen switches to the framework flow panel on this.
+  bool get awaitingTwoFactor => _awaitingSecondFactor || _awaitingEnrolment;
+
   /// The outstanding challenge — mechanism, attempts remaining, expiry, and the
   /// `clientData` the code field sizes itself from. Null unless
   /// [awaitingSecondFactor].
   Tom2FAChallenge? get pendingChallenge =>
       _awaitingSecondFactor ? backend.pendingChallenge : null;
+
+  /// The outstanding enrolment offer — the mechanisms available, whether it may
+  /// be declined, and (once one is chosen) that mechanism's `clientData`. Null
+  /// unless [awaitingEnrolment].
+  Tom2FAPendingEnrolment? get pendingEnrolment =>
+      _awaitingEnrolment ? backend.pendingEnrolment : null;
+
+  /// How the offered mechanisms describe themselves, as the server sent them —
+  /// the chooser's labels. Empty unless [awaitingEnrolment].
+  List<Tom2FAMethodDescriptor> get availableTwoFactorMethods =>
+      _awaitingEnrolment ? _availableTwoFactorMethods : const [];
+
+  /// The username the half-finished login belongs to, shown beside an
+  /// enrolment's QR code so a user with several accounts in one authenticator
+  /// can tell them apart. Empty when no login is part-way through.
+  ///
+  /// Held separately from [user] on purpose: assigning [user] before the factor
+  /// is settled would flip [isLoggedIn] and route the shell onto a board whose
+  /// every call would `401`.
+  String get pendingAccount => _pendingAccount;
+
+  /// Why the second-factor phase ended without a session, or null when it did
+  /// not end that way.
+  ///
+  /// A spent challenge or a burned enrolment offer takes the flow panel off the
+  /// screen — and the panel's own error line goes with it. Without this the user
+  /// would land back at username/password with no account of what happened, so
+  /// the message outlives the phase it belongs to and the credentials screen
+  /// shows it. Cleared by the next [login] attempt and by a user-initiated
+  /// [cancelSecondFactor], which needs no explanation.
+  String? get abandonedTwoFactorMessage => _abandonedTwoFactorMessage;
 
   /// The identity bearer for authenticated calls; empty when logged out.
   String get authToken => _authToken;
@@ -133,12 +181,26 @@ class AppSession extends ChangeNotifier {
   /// [awaitingSecondFactor] goes true, [isLoggedIn] stays false, and the caller
   /// must finish with [submitSecondFactor].
   Future<void> login(LoginRequest request) async {
+    // A fresh attempt supersedes whatever ended the last one.
+    _abandonedTwoFactorMessage = null;
     final result = await backend.login(request);
     if (result.requires2FA) {
       // Deliberately store *nothing* from the interim result but the flag: its
       // token authorizes no call, and assigning `_user` here would flip
       // [isLoggedIn] and route the shell onto a board that cannot load.
       _awaitingSecondFactor = true;
+      _pendingAccount = result.user.username;
+      notifyListeners();
+      return;
+    }
+    if (result.requires2FAEnrolment) {
+      // The same rule, the other branch — plus the mechanism catalog, which is
+      // the one thing the interim result carries that the flow cannot get from
+      // the token: the descriptors are resolved from the *server's* registry, so
+      // a client that reconstructed them would be guessing.
+      _awaitingEnrolment = true;
+      _availableTwoFactorMethods = result.availableTwoFactorMethods;
+      _pendingAccount = result.user.username;
       notifyListeners();
       return;
     }
@@ -158,16 +220,58 @@ class AppSession extends ChangeNotifier {
     try {
       await _completeLogin(await backend.submitSecondFactor(code));
     } on AppBackendException catch (e) {
-      if (!e.canRetrySecondFactor) cancelSecondFactor();
+      if (!e.canRetrySecondFactor) cancelSecondFactor(reason: e.message);
       rethrow;
     }
   }
 
-  /// Abandons a half-finished two-factor login and returns to the credentials
-  /// screen. Also the path a spent challenge takes.
-  void cancelSecondFactor() {
-    if (!_awaitingSecondFactor) return;
+  /// Begins enrolment in the mechanism [type] the user picked, so the flow moves
+  /// from the chooser to that mechanism's set-up panel.
+  ///
+  /// Still not a session: the interim token is replaced by another interim
+  /// token, now carrying the mechanism's `clientData`. The `notifyListeners`
+  /// is what moves the panel on — the flow reads its position from the session
+  /// rather than holding one of its own.
+  Future<void> chooseTwoFactorMethod(String type) async {
+    await backend.beginEnrolment(type);
+    notifyListeners();
+  }
+
+  /// Confirms the half-built factor with [code], completing the login exactly
+  /// as [submitSecondFactor] does.
+  ///
+  /// A refusal is rethrown for the panel to surface; a *non*-retryable one means
+  /// the offer is burned, so the session drops back to the credentials screen —
+  /// the same rule the challenge follows, and for the same reason.
+  Future<void> confirmEnrolment(String code) async {
+    try {
+      await _completeLogin(await backend.confirmEnrolment(code));
+    } on AppBackendException catch (e) {
+      if (!e.canRetrySecondFactor) cancelSecondFactor(reason: e.message);
+      rethrow;
+    }
+  }
+
+  /// Declines the offer and completes the login without a factor. Reachable
+  /// only when the server marked the offer skippable.
+  Future<void> skipEnrolment() async =>
+      _completeLogin(await backend.skipEnrolment());
+
+  /// Abandons a half-finished two-factor login — challenge or enrolment — and
+  /// returns to the credentials screen. Also the path a spent challenge and a
+  /// burned offer take.
+  ///
+  /// [reason] is the message the credentials screen shows to explain why the
+  /// phase ended, and it is the whole difference between the two callers: the
+  /// user pressing "Back to sign in" already knows why, so the flow's own cancel
+  /// passes nothing and the message is cleared.
+  void cancelSecondFactor({String? reason}) {
+    if (!awaitingTwoFactor) return;
     _awaitingSecondFactor = false;
+    _awaitingEnrolment = false;
+    _availableTwoFactorMethods = const [];
+    _pendingAccount = '';
+    _abandonedTwoFactorMessage = reason;
     notifyListeners();
   }
 
@@ -176,6 +280,10 @@ class AppSession extends ChangeNotifier {
   /// same state behind.
   Future<void> _completeLogin(LoginResult result) async {
     _awaitingSecondFactor = false;
+    _awaitingEnrolment = false;
+    _availableTwoFactorMethods = const [];
+    _pendingAccount = '';
+    _abandonedTwoFactorMessage = null;
     _user = result.user;
     _authToken = result.authToken;
     _authzToken = result.authzToken;
@@ -233,6 +341,10 @@ class AppSession extends ChangeNotifier {
 
   void _clearSession() {
     _awaitingSecondFactor = false;
+    _awaitingEnrolment = false;
+    _availableTwoFactorMethods = const [];
+    _pendingAccount = '';
+    _abandonedTwoFactorMessage = null;
     _user = null;
     _authToken = '';
     _authzToken = '';

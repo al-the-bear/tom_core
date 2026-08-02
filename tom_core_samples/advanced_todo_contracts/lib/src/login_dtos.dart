@@ -69,6 +69,58 @@ class SecondFactorRequest {
   String toString() => 'SecondFactorRequest(code: ***)';
 }
 
+/// One pass of the first-login enrolment flow posted to `POST /auth/enrol/*`.
+///
+/// A single DTO for all three passes — begin, confirm, skip — because the
+/// framework's own enrolment API is shaped that way: every pass takes one
+/// `TomAuthenticationMessage` whose single payload slot carries either the
+/// chosen mechanism key or the typed confirmation code (see
+/// `TomAuthenticationServer.beginTwoFactorEnrolment`). Splitting the wire type
+/// three ways would assert a difference the server does not make, and would
+/// leave two of the three DTOs carrying an unused field anyway.
+///
+/// Which field each pass reads:
+///
+/// | pass | reads |
+/// | --- | --- |
+/// | `/auth/enrol/begin` | [type] — the mechanism the user chose |
+/// | `/auth/enrol/confirm` | [code] — the code proving the factor works |
+/// | `/auth/enrol/skip` | neither; the token alone says the offer was declined |
+///
+/// [enrolmentToken] rides in the body for exactly the reason
+/// [SecondFactorRequest.challengeToken] does: the interim token encodes an
+/// unauthenticated principal, so presenting it as a bearer would be rejected by
+/// the very gate the enrolment endpoints must stay outside of.
+///
+/// A reflection-first wire DTO (G-DTO): `@tomReflector`, plain non-`final`
+/// fields, no hand-written serializer.
+@tomReflector
+class TwoFactorEnrolmentRequest {
+  /// The mechanism key the user chose (e.g. `totp`); read by the begin pass.
+  ///
+  /// The server refuses a key it did not itself offer on this token, so this is
+  /// a selection from the server's list, never a claim about what may be set up.
+  String type;
+
+  /// The confirmation code derived from the freshly issued secret; read by the
+  /// confirm pass.
+  String code;
+
+  /// The pending login's interim authorization token, carrying the offer.
+  String enrolmentToken;
+
+  /// Creates an enrolment pass. All fields default to empty so a partially built
+  /// form maps cleanly and each pass fills only what it uses.
+  TwoFactorEnrolmentRequest({
+    this.type = '',
+    this.code = '',
+    this.enrolmentToken = '',
+  });
+
+  @override
+  String toString() => 'TwoFactorEnrolmentRequest(type: $type, code: ***)';
+}
+
 /// A user account projected onto the wire — the safe, password-free view the
 /// auth server returns from login and the admin API returns from
 /// `GET /admin/users`.
@@ -164,6 +216,36 @@ class LoginResult {
   /// kernel's `TomBearerAuthentication.pendingTwoFactorChallenge`.
   String twoFactorType;
 
+  /// Whether the login is half done for the *other* reason: the account owes a
+  /// second factor and has none set up, so it must enrol one before it can be
+  /// challenged for one.
+  ///
+  /// Never true at the same time as [requires2FA] — a login is either being
+  /// challenged or being enrolled. Mirrors
+  /// `TomAuthenticationResult.requires2FAEnrolment`, and the same interim,
+  /// non-authenticating token pair applies: its only use is to be echoed in
+  /// [TwoFactorEnrolmentRequest.enrolmentToken].
+  bool requires2FAEnrolment;
+
+  /// The mechanisms offered for set-up, in preference order, when
+  /// [requires2FAEnrolment] is true; empty otherwise.
+  ///
+  /// Already narrowed server-side to what this principal's policy permits *and*
+  /// this deployment can actually enrol, so a client renders the list as given
+  /// and never filters it. Each descriptor carries resource *keys*, not text —
+  /// the labels are resolved from the installed bundle (G-RES-5).
+  List<Tom2FAMethodDescriptor> availableTwoFactorMethods;
+
+  /// Whether the user may decline the offer and finish the login with no factor.
+  ///
+  /// Drives whether the client shows a "not now" affordance at all. The server
+  /// re-checks the same fact from its own signed token on the skip pass, so a
+  /// client that shows one regardless achieves nothing. Whether declining costs
+  /// a grace login is *not* restated here: like the rest of the offer's detail
+  /// it travels in the interim token's public claims, read through the kernel's
+  /// `TomBearerAuthentication.pendingTwoFactorEnrolment`.
+  bool twoFactorEnrolmentSkippable;
+
   /// Creates a login result. [user] defaults to an empty [UserDto] and
   /// [expiresAt] to the epoch so a reflection-built instance is fully
   /// initialised before its fields are filled.
@@ -174,12 +256,18 @@ class LoginResult {
     DateTime? expiresAt,
     this.requires2FA = false,
     this.twoFactorType = '',
+    this.requires2FAEnrolment = false,
+    List<Tom2FAMethodDescriptor>? availableTwoFactorMethods,
+    this.twoFactorEnrolmentSkippable = false,
   })  : user = user ?? UserDto(),
+        availableTwoFactorMethods = availableTwoFactorMethods ?? [],
         expiresAt =
             expiresAt ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
   @override
   String toString() => 'LoginResult(${user.username}, '
       'expiresAt: ${expiresAt.toUtc().toIso8601String()}'
-      '${requires2FA ? ', pending 2FA: $twoFactorType' : ''})';
+      '${requires2FA ? ', pending 2FA: $twoFactorType' : ''}'
+      '${requires2FAEnrolment ? ', pending 2FA enrolment: '
+          '${availableTwoFactorMethods.map((m) => m.type).join('/')}' : ''})';
 }

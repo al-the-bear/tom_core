@@ -1,18 +1,45 @@
 {
   "login": {
     "title": "Advanced Todo — Sign in",
-    "intro": "Try alice, bob or carol (any non-empty password), or dave for two-step verification.",
-    "username": { "label": "Username", "hint": "alice, bob, carol or dave" },
+    "intro": "Try alice, bob or carol (any non-empty password), dave to be challenged for a second factor, or erin to be offered one.",
+    "username": { "label": "Username", "hint": "alice, bob, carol, dave or erin" },
     "password": { "label": "Password" },
     "submit": "Sign in"
   },
   "twoFactor": {
-    "title": "Advanced Todo — Two-step verification",
-    "intro": "Enter the {digits}-digit code from your authenticator app.",
-    "code": { "label": "Verification code", "hint": "000000" },
-    "submit": "Verify",
-    "cancel": "Back to sign in",
-    "attemptsRemaining": "{count} attempt(s) remaining."
+    "title": "Advanced Todo — Two-step verification"
+  },
+  "two_factor": {
+    "choose": {
+      "title": "Set up two-step verification",
+      "intro": "Add a second step to your sign-in. Choose how you would like to confirm it is you."
+    },
+    "enrol": { "title": "Set up your authenticator" },
+    "challenge": { "title": "Two-step verification" },
+    "skip": {
+      "label": "Not now",
+      "spendsGrace": "You can only postpone this a few more times."
+    },
+    "cancel": { "label": "Back to sign in" },
+    "attemptsRemaining": "{count} attempt(s) remaining.",
+    "error": {
+      "noRenderableMethods": "This app cannot set up any of the offered methods. Please update it."
+    },
+    "totp": {
+      "name": "Authenticator app",
+      "description": "Use a code from Google Authenticator, 1Password or a similar app.",
+      "enrol": {
+        "intro": "Scan this code with your authenticator app, then type the code it shows to confirm.",
+        "qrLabel": "QR code containing your authenticator set-up link",
+        "manualEntry": "Cannot scan? Enter this key by hand:",
+        "codeLabel": "Code from your app",
+        "submit": "Confirm"
+      },
+      "challenge": {
+        "codeLabel": "Verification code",
+        "submit": "Verify"
+      }
+    }
   },
   "adminLogin": {
     "title": "Advanced Todo — Admin sign in",

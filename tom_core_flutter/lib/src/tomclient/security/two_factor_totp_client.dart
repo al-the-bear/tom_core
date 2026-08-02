@@ -148,6 +148,21 @@ class _TotpEnrolmentPanelState extends State<_TotpEnrolmentPanel> {
             semanticsLabel: Tom2FATexts.text(Tom2FATexts.totpEnrolQrLabel),
           ),
         ),
+        // The account the factor belongs to, under the code it is encoded in.
+        // A user with three work accounts in one authenticator scans three
+        // visually identical QR codes; without this they cannot tell which one
+        // they are adding until it is already in the list. Omitted entirely
+        // when the application did not supply a name — an empty caption would
+        // just be a gap.
+        if (widget.data.accountLabel.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Center(
+            child: TomText(
+              key: const Key('tom-2fa-totp-account'),
+              text: widget.data.accountLabel,
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         TomText(text: Tom2FATexts.text(Tom2FATexts.totpEnrolManualEntry)),
         const SizedBox(height: 4),

@@ -16,6 +16,8 @@
 /// live server enforces from the bearer token.
 library;
 
+import 'dart:math';
+
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -24,13 +26,22 @@ import 'app_backend.dart';
 
 /// An in-memory implementation of [AppBackend], seeded with demo data.
 class InMemoryAppBackend implements AppBackend {
-  /// Creates the backend and seeds its users, resource tree and shares.
-  /// Builds the seeded offline backend.
+  /// Builds the seeded offline backend — its users, resource tree, shares and
+  /// second-factor state.
   ///
   /// [files] replaces the blob store, which is what lets a caller hold the store
   /// it planted bytes in, or wrap it to suspend a transfer mid-flight. Left
   /// unset it is a fresh [TomMemoryFileTransferClient] — the shape `main`
   /// installs for the `test` environment, where nobody is holding it.
+  ///
+  /// Which accounts owe a second factor is **seed data, not a constructor
+  /// option**: [twoFactorSecrets] names the accounts that already hold one (so
+  /// their login is challenged) and [twoFactorEnrolling] the accounts that are
+  /// offered one (so their login shows the chooser). That mirrors the live
+  /// deployment, where those two facts are a secret column and a role row rather
+  /// than a switch on the server — and it is what keeps a test whose subject is
+  /// the board, an item or a share signing in as alice with no 2FA step in the
+  /// way.
   InMemoryAppBackend({TomFileTransferClient? files})
       : files = files ?? TomMemoryFileTransferClient() {
     _seed();
@@ -65,6 +76,26 @@ class InMemoryAppBackend implements AppBackend {
   Tom2FAChallenge? _pendingChallenge;
   String? _pendingUserId;
 
+  /// The enrolment offer a [login] left outstanding — the other half-finished
+  /// login state, and mutually exclusive with [_pendingChallenge]: a principal
+  /// either holds a factor to be challenged on or does not and is offered one.
+  Tom2FAPendingEnrolment? _pendingEnrolment;
+
+  /// The secret behind the outstanding offer, standing in for the server's
+  /// encrypted copy.
+  ///
+  /// Held apart from [_pendingEnrolment], whose `clientData` is what the live
+  /// server puts in *public* claims: the confirmation checks the typed code
+  /// against this copy, so the offline backend cannot be satisfied by a secret
+  /// the client chose either.
+  String? _offerSecret;
+
+  /// The factors accounts actually hold, seeded from [twoFactorSecrets] and
+  /// extended by a confirmed enrolment — so enrolling offline and signing in
+  /// again lands on the *challenge*, which is the round trip the flow exists
+  /// for. Per instance, because it is session state, not seed data.
+  final Map<String, String> _secrets = Map.of(twoFactorSecrets);
+
   /// The canned public login bundle, mirroring `advanced_auth_server`'s
   /// `AuthResourceBundles.loginBundle()` (D-A11) so the offline app installs the
   /// exact same sign-in chrome the live auth server serves — the widget tests
@@ -73,19 +104,49 @@ class InMemoryAppBackend implements AppBackend {
   static const Map<String, Object?> loginTexts = {
     'login.title': 'Advanced Todo — Sign in',
     'login.intro':
-        'Try alice, bob or carol (any non-empty password), or dave for two-step verification.',
+        'Try alice, bob or carol (any non-empty password), dave to be challenged '
+            'for a second factor, or erin to be offered one.',
     'login.username.label': 'Username',
-    'login.username.hint': 'alice, bob, carol or dave',
+    'login.username.hint': 'alice, bob, carol, dave or erin',
     'login.password.label': 'Password',
     'login.submit': 'Sign in',
+    // The app's own chrome for the two-factor phase is one key: the app-bar
+    // title, which belongs to the *screen*. Everything inside the phase is the
+    // framework flow panel's, and resolves from the `two_factor.*` keys below —
+    // which is why there is no `twoFactor.submit` or `twoFactor.cancel` here
+    // any more.
     'twoFactor.title': 'Advanced Todo — Two-step verification',
-    'twoFactor.intro': 'Enter the {digits}-digit code from your authenticator '
-        'app.',
-    'twoFactor.code.label': 'Verification code',
-    'twoFactor.code.hint': '000000',
-    'twoFactor.submit': 'Verify',
-    'twoFactor.cancel': 'Back to sign in',
-    'twoFactor.attemptsRemaining': '{count} attempt(s) remaining.',
+    // The framework-owned second-factor flow's text (`Tom2FATexts`). Mirrors
+    // the auth server's login bundle key for key: the panels are the same
+    // widgets either way, so a key missing from one bundle and not the other
+    // would show as a raw key offline and correct wording live.
+    'two_factor.choose.title': 'Set up two-step verification',
+    'two_factor.choose.intro':
+        'Add a second step to your sign-in. Choose how you would like to '
+            'confirm it is you.',
+    'two_factor.enrol.title': 'Set up your authenticator',
+    'two_factor.challenge.title': 'Two-step verification',
+    'two_factor.skip.label': 'Not now',
+    'two_factor.skip.spendsGrace':
+        'You can only postpone this a few more times.',
+    'two_factor.cancel.label': 'Back to sign in',
+    'two_factor.attemptsRemaining': '{count} attempt(s) remaining.',
+    'two_factor.error.noRenderableMethods':
+        'This app cannot set up any of the offered methods. Please update it.',
+    'two_factor.totp.name': 'Authenticator app',
+    'two_factor.totp.description':
+        'Use a code from Google Authenticator, 1Password or a similar app.',
+    'two_factor.totp.enrol.intro':
+        'Scan this code with your authenticator app, then type the code it '
+            'shows to confirm.',
+    'two_factor.totp.enrol.qrLabel':
+        'QR code containing your authenticator set-up link',
+    'two_factor.totp.enrol.manualEntry':
+        'Cannot scan? Enter this key by hand:',
+    'two_factor.totp.enrol.codeLabel': 'Code from your app',
+    'two_factor.totp.enrol.submit': 'Confirm',
+    'two_factor.totp.challenge.codeLabel': 'Verification code',
+    'two_factor.totp.challenge.submit': 'Verify',
     'adminLogin.title': 'Advanced Todo — Admin sign in',
     'adminLogin.intro':
         'Sign in as admin (password pw). A non-admin (alice, bob, carol) is rejected.',
@@ -206,9 +267,11 @@ class InMemoryAppBackend implements AppBackend {
     'bob': 'u-bob',
     'carol': 'u-carol',
     'dave': 'u-dave',
+    'erin': 'u-erin',
   };
 
-  /// The accounts enrolled in TOTP, by user id → base32 secret.
+  /// The accounts enrolled in TOTP *at seed time*, by user id → base32 secret.
+  /// A confirmed enrolment adds to [_secrets], not to this map.
   ///
   /// `dave` carries the same secret the auth server's
   /// `[005]-auth_two_factor_seed` migration seeds (RFC 6238's own test vector),
@@ -217,6 +280,16 @@ class InMemoryAppBackend implements AppBackend {
   static const Map<String, String> twoFactorSecrets = {
     'u-dave': 'JBSWY3DPEHPK3PXP',
   };
+
+  /// The accounts that owe a factor and hold none, so their login is *offered*
+  /// one rather than challenged for it — [twoFactorSecrets]' mirror image.
+  ///
+  /// `erin` is the account the same `[005]` migration seeds with the
+  /// `two_factor_optional` role and no secret. Membership is checked only for
+  /// users absent from [twoFactorSecrets]: an account cannot both hold a factor
+  /// and be offered its first one, and once an offline enrolment is confirmed
+  /// the user joins `_secrets` and is challenged from then on.
+  static const Set<String> twoFactorEnrolling = {'u-erin'};
 
   /// The TOTP policy, mirroring `TomTotp2FAService`'s `globalSetting*` statics.
   ///
@@ -246,6 +319,19 @@ class InMemoryAppBackend implements AppBackend {
   /// How long a challenge stays answerable.
   static const Duration totpChallengeValidity = Duration(minutes: 5);
 
+  /// How long an enrolment offer stays confirmable — longer than a challenge,
+  /// because the user has to install an app and scan a code in between
+  /// (`TomTotp2FAService.globalSettingEnrolmentValidity`).
+  static const Duration totpEnrolmentValidity = Duration(minutes: 10);
+
+  /// Bytes of a generated secret: 20 = 160 bits, the width of the HMAC-SHA1 key
+  /// the codes are derived with (RFC 4226 §4 R6).
+  static const int totpSecretBytes = 20;
+
+  /// The `otpauth://` issuer the provisioning URI is labelled with — what an
+  /// authenticator app shows above the code.
+  static const String totpIssuer = 'Advanced Todo';
+
   void _seed() {
     void user(String id, String username, String name) => _users.add(UserDto(
           id: id,
@@ -256,11 +342,14 @@ class InMemoryAppBackend implements AppBackend {
     user('u-alice', 'alice', 'Alice (owner)');
     user('u-bob', 'bob', 'Bob (editor)');
     user('u-carol', 'carol', 'Carol (viewer)');
-    // Dave owns nothing and is shared into nothing — deliberately, because the
-    // live `app_db` seeds him the same way. He exists here for the *second
-    // factor*, so signing in as him proves the two-pass flow and then lands on
-    // the board's empty state, exactly as it does against the real servers.
+    // Dave and Erin own nothing and are shared into nothing — deliberately,
+    // because the live `app_db` seeds them the same way. They exist here for the
+    // *second factor*: dave already holds one, so signing in as him proves the
+    // challenge; erin holds none and is offered one, so signing in as her proves
+    // enrolment and the decline. Both then land on the board's empty state,
+    // exactly as they do against the real servers.
     user('u-dave', 'dave', 'Dave Dijkstra (2FA)');
+    user('u-erin', 'erin', 'Erin Nakamura (2FA setup)');
 
     _workspaces.add(Workspace()
       ..id.set('w-1')
@@ -324,7 +413,7 @@ class InMemoryAppBackend implements AppBackend {
     final id = demoAccounts[key];
     if (id == null) {
       throw const AppBackendException(
-        'Unknown account. Try alice, bob, carol or dave.',
+        'Unknown account. Try alice, bob, carol, dave or erin.',
         key: 'auth.login.failed',
       );
     }
@@ -334,12 +423,11 @@ class InMemoryAppBackend implements AppBackend {
         key: 'auth.login.failed',
       );
     }
-    // A new login abandons whatever challenge was outstanding.
-    _pendingChallenge = null;
-    _pendingUserId = null;
+    // A new login abandons whatever half-finished one was outstanding.
+    _clearPendingLogin();
     final user = _users.firstWhere((u) => u.id == id);
 
-    if (twoFactorSecrets.containsKey(id)) {
+    if (_secrets.containsKey(id)) {
       // Pass 1 of two: the password was right, but this is *not* a session.
       // `_currentUserId` stays null, so every other method throws
       // `app.no_session` until [submitSecondFactor] completes the login —
@@ -364,17 +452,211 @@ class InMemoryAppBackend implements AppBackend {
       );
     }
 
-    _currentUserId = id;
-    return LoginResult(
-      user: user,
-      authToken: 'demo-auth-$key',
-      authzToken: 'demo-authz-$key',
-      expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
-    );
+    if (twoFactorEnrolling.contains(id)) {
+      // Pass 1 of two again, but the other branch: the account owes a factor
+      // and holds none, so it is offered one rather than challenged. Skippable
+      // and free, because the role this mirrors is `two_factor_optional` — a
+      // `required` one would let the offer be declined only while grace logins
+      // last, and charge one for each.
+      _pendingUserId = id;
+      _pendingEnrolment = Tom2FAPendingEnrolment(
+        offeredTypes: const [totpMechanism],
+        skippable: true,
+      );
+      return LoginResult(
+        user: user,
+        requires2FAEnrolment: true,
+        availableTwoFactorMethods: [
+          Tom2FAMethodDescriptor.scoped(totpMechanism),
+        ],
+        twoFactorEnrolmentSkippable: true,
+        authToken: 'demo-2fa-enrolment-$key',
+        authzToken: 'demo-2fa-enrolment-$key',
+        expiresAt: DateTime.now().toUtc().add(totpEnrolmentValidity),
+      );
+    }
+
+    return _openSession(id);
   }
 
   @override
   Tom2FAChallenge? get pendingChallenge => _pendingChallenge;
+
+  @override
+  Tom2FAPendingEnrolment? get pendingEnrolment => _pendingEnrolment;
+
+  @override
+  Future<LoginResult> beginEnrolment(String type) async {
+    final (offer, userId) = _pendingOffer();
+    if (!offer.offeredTypes.contains(type)) {
+      throw AppBackendException(
+        'Two-factor mechanism "$type" was not offered.',
+        key: 'login.error.2fa.enrolment-not-offered',
+      );
+    }
+    final secret = _generateSecret();
+    final username = _users.firstWhere((u) => u.id == userId).username;
+    _offerSecret = secret;
+    _pendingEnrolment = Tom2FAPendingEnrolment(
+      type: type,
+      offeredTypes: offer.offeredTypes,
+      skippable: offer.skippable,
+      skipSpendsGrace: offer.skipSpendsGrace,
+      attemptsAllowed: totpAttemptsAllowed,
+      expiresAt: DateTime.now().toUtc().add(totpEnrolmentValidity),
+      // The same keys `TomTotp2FAService.beginEnrolment` publishes, because the
+      // panel that renders them is the framework's and does not know which
+      // backend answered: the QR payload, the typed-entry fallback, and the
+      // code shape the field sizes itself from.
+      clientData: {
+        'secret': secret,
+        'otpauthUri': _provisioningUri(secret, username),
+        'digits': totpDigits,
+        'periodSeconds': totpPeriodSeconds,
+      },
+    );
+    return LoginResult(
+      user: _users.firstWhere((u) => u.id == userId),
+      requires2FAEnrolment: true,
+      availableTwoFactorMethods: [Tom2FAMethodDescriptor.scoped(type)],
+      twoFactorEnrolmentSkippable: offer.skippable,
+      authToken: 'demo-2fa-enrolment-$userId',
+      authzToken: 'demo-2fa-enrolment-$userId',
+      expiresAt: _pendingEnrolment!.expiresAt,
+    );
+  }
+
+  @override
+  Future<LoginResult> confirmEnrolment(String code) async {
+    final (offer, userId) = _pendingOffer();
+    final secret = _offerSecret;
+    if (!offer.hasOffer || secret == null) {
+      throw const AppBackendException(
+        'Choose a two-factor method first.',
+        key: 'login.error.2fa.no-enrolment',
+      );
+    }
+    if (offer.isExpired()) {
+      _clearPendingLogin();
+      throw const AppBackendException(
+        'The two-factor set-up has expired. Sign in again.',
+        key: 'login.error.2fa.enrolment-expired',
+      );
+    }
+
+    // Spend the attempt before verifying, for the reason [submitSecondFactor]
+    // does: the count must move whether or not the code turns out to be right.
+    final consumed = _withConsumedAttempt(offer);
+    if (_verifyTotp(secret, code)) {
+      _clearPendingLogin();
+      // The factor is now held, so the *next* sign-in is challenged rather than
+      // offered — the round trip the flow exists for.
+      _secrets[userId] = secret;
+      return _openSession(userId);
+    }
+
+    if (consumed.isExhausted) {
+      _clearPendingLogin();
+      throw const AppBackendException(
+        'No two-factor set-up attempts remain. Sign in again.',
+        key: 'login.error.2fa.attempts-exhausted',
+      );
+    }
+    _pendingEnrolment = consumed;
+    throw const AppBackendException(
+      'That code is not valid.',
+      key: 'login.error.2fa.invalid-code',
+      canRetrySecondFactor: true,
+    );
+  }
+
+  @override
+  Future<LoginResult> skipEnrolment() async {
+    final (offer, userId) = _pendingOffer();
+    if (!offer.skippable) {
+      throw const AppBackendException(
+        'This account must set up a second factor.',
+        key: 'login.error.2fa.enrolment-required',
+      );
+    }
+    _clearPendingLogin();
+    return _openSession(userId);
+  }
+
+  /// The outstanding offer and the user it belongs to, or a typed failure when
+  /// no login is part-way through enrolment.
+  (Tom2FAPendingEnrolment, String) _pendingOffer() {
+    final offer = _pendingEnrolment;
+    final userId = _pendingUserId;
+    if (offer == null || userId == null) {
+      throw const AppBackendException(
+        'No pending two-factor set-up — sign in first.',
+        key: 'login.error.2fa.no-enrolment',
+      );
+    }
+    return (offer, userId);
+  }
+
+  /// [offer] with one confirmation attempt spent. [Tom2FAPendingEnrolment] is a
+  /// read model of the token's claims and carries no `copyWith`, so the one
+  /// mutation this backend makes to it is spelled out here.
+  Tom2FAPendingEnrolment _withConsumedAttempt(Tom2FAPendingEnrolment offer) =>
+      Tom2FAPendingEnrolment(
+        type: offer.type,
+        hint: offer.hint,
+        attempt: offer.attempt + 1,
+        attemptsAllowed: offer.attemptsAllowed,
+        expiresAt: offer.expiresAt,
+        clientData: offer.clientData,
+        offeredTypes: offer.offeredTypes,
+        skippable: offer.skippable,
+        skipSpendsGrace: offer.skipSpendsGrace,
+      );
+
+  /// Establishes the session for [userId] and answers the token pair — the
+  /// shared tail of a plain login, a passed challenge, a confirmed enrolment and
+  /// a declined one, so all four leave exactly the same state behind.
+  LoginResult _openSession(String userId) {
+    _currentUserId = userId;
+    final user = _users.firstWhere((u) => u.id == userId);
+    return LoginResult(
+      user: user,
+      authToken: 'demo-auth-${user.username}',
+      authzToken: 'demo-authz-${user.username}',
+      expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+    );
+  }
+
+  /// A fresh base32 TOTP secret, from the platform's cryptographic generator.
+  ///
+  /// `Random.secure()` rather than the kernel's own helper: that one lives in
+  /// `tom_crypto`, which a Flutter client does not depend on, and the *encoding*
+  /// — the part a wrong answer would break — is the kernel's [TomTotp].
+  String _generateSecret() {
+    final random = Random.secure();
+    return TomTotp.encodeBase32(
+      List<int>.generate(totpSecretBytes, (_) => random.nextInt(256)),
+    );
+  }
+
+  /// The `otpauth://` provisioning URI an authenticator app consumes, built the
+  /// way `TomTotp2FAService.provisioningUri` builds it — every parameter stated,
+  /// so the app is provisioned with the policy [_verifyTotp] applies.
+  String _provisioningUri(String secret, String username) {
+    final label =
+        '${Uri.encodeComponent(totpIssuer)}:${Uri.encodeComponent(username)}';
+    final parameters = <String, String>{
+      'secret': secret,
+      'issuer': totpIssuer,
+      'algorithm': 'SHA1',
+      'digits': '$totpDigits',
+      'period': '$totpPeriodSeconds',
+    };
+    final query = parameters.entries
+        .map((entry) => '${entry.key}=${Uri.encodeComponent(entry.value)}')
+        .join('&');
+    return 'otpauth://totp/$label?$query';
+  }
 
   @override
   Future<LoginResult> submitSecondFactor(String code) async {
@@ -387,7 +669,7 @@ class InMemoryAppBackend implements AppBackend {
       );
     }
     if (challenge.isExpired()) {
-      _clearChallenge();
+      _clearPendingLogin();
       throw const AppBackendException(
         'The two-factor challenge has expired.',
         key: 'login.error.2fa.expired',
@@ -398,20 +680,13 @@ class InMemoryAppBackend implements AppBackend {
     // move whether or not the code turns out to be right, or a client could
     // retry forever.
     final consumed = challenge.withConsumedAttempt();
-    if (_verifyTotp(twoFactorSecrets[userId]!, code)) {
-      _clearChallenge();
-      _currentUserId = userId;
-      final user = _users.firstWhere((u) => u.id == userId);
-      return LoginResult(
-        user: user,
-        authToken: 'demo-auth-${user.username}',
-        authzToken: 'demo-authz-${user.username}',
-        expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
-      );
+    if (_verifyTotp(_secrets[userId]!, code)) {
+      _clearPendingLogin();
+      return _openSession(userId);
     }
 
     if (consumed.isExhausted) {
-      _clearChallenge();
+      _clearPendingLogin();
       throw const AppBackendException(
         'No two-factor attempts remain. Sign in again.',
         key: 'login.error.2fa.attempts-exhausted',
@@ -431,11 +706,14 @@ class InMemoryAppBackend implements AppBackend {
   @override
   Future<void> logout() async {
     _currentUserId = null;
-    _clearChallenge();
+    _clearPendingLogin();
   }
 
-  void _clearChallenge() {
+  /// Discards a half-finished login, whichever branch it was on.
+  void _clearPendingLogin() {
     _pendingChallenge = null;
+    _pendingEnrolment = null;
+    _offerSecret = null;
     _pendingUserId = null;
   }
 

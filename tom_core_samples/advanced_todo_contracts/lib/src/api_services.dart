@@ -40,6 +40,24 @@ abstract class AuthApiService {
   /// 2FA-free login would have produced.
   Future<LoginResult> submitSecondFactor(SecondFactorRequest request);
 
+  /// `authBeginEnrolment` — `POST /auth/enrol/begin` (public). Starts setting up
+  /// the mechanism the user picked from
+  /// `LoginResult.availableTwoFactorMethods`, returning an interim token whose
+  /// claims carry what the client must show (for TOTP: the `otpauth://` URI and
+  /// the base32 secret).
+  Future<LoginResult> beginEnrolment(TwoFactorEnrolmentRequest request);
+
+  /// `authConfirmEnrolment` — `POST /auth/enrol/confirm` (public). Proves the
+  /// factor works, records it, and completes the login with the final token
+  /// pair — no further challenge, because deriving a code from the just-issued
+  /// secret already demonstrated possession.
+  Future<LoginResult> confirmEnrolment(TwoFactorEnrolmentRequest request);
+
+  /// `authSkipEnrolment` — `POST /auth/enrol/skip` (public). Declines a
+  /// skippable offer and completes the login with no factor. Refused unless the
+  /// presented token itself says declining was permitted.
+  Future<LoginResult> skipEnrolment(TwoFactorEnrolmentRequest request);
+
   /// `authLoginResources` — `GET /auth/resources/login` (public). The small,
   /// genuinely-public set of login-screen texts (`login.*` / `adminLogin.*`
   /// keys) a client installs *before* anyone signs in, so the login form needs

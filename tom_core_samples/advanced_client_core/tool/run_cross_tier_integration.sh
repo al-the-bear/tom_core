@@ -7,7 +7,9 @@
 # One scripted command for the Phase-7 "scripted scenario passes end-to-end"
 # done bar: an admin grant edit reaching the end-user's field matrix, a share
 # revealing a project to a second user, and the same admin edit reaching the
-# file endpoint — one grant cell deciding whether bytes may be written.
+# file endpoint — one grant cell deciding whether bytes may be written. It also
+# carries tcca5's loop: a second factor enrolled mid-run, declined once, and
+# then challenged on the next login.
 #
 #   tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh
 #
@@ -195,10 +197,15 @@ wait_app_health
 #        back (TC-37-09). That beat is what makes file transfer part of this
 #        sample's authorization story rather than a feature bolted beside it.
 #      - auth_client_integration_test — the login paths themselves (step 22 +
-#        csex3), including dave's two-pass TOTP login. It is the only run in
-#        which the real client, the real server and a secret read from the
-#        database all take part, so it is the only one that can catch the two
-#        halves of the 2FA flow disagreeing on the wire.
+#        csex3 + tcca5): dave's two-pass TOTP login, and erin's *enrolment* —
+#        offered a factor, declining it, setting one up, and then being
+#        challenged on the factor she just created (TC-22-13). It is the only run
+#        in which the real client, the real server and a real secret all take
+#        part, so it is the only one that can catch the two halves of the 2FA
+#        flow disagreeing on the wire — and the only one where the secret under
+#        test is one the server minted mid-run rather than one a migration
+#        seeded. It needs no authenticator app: the codes are derived from the
+#        enrolment's own `clientData` with the kernel's TomTotp.
 #      - file_transfer_integration_test — bytes moving across both servers: an
 #        upload landing in each server's own blob store and being served back,
 #        the non-exposed file column staying unaddressable, and a principal whose

@@ -47,8 +47,8 @@ void main() {
     // After: the screen renders the server-delivered texts; the raw keys are gone.
     expect(find.text('Advanced Todo — Sign in'), findsOneWidget);
     expect(
-        find.text('Try alice, bob or carol (any non-empty password), or dave '
-            'for two-step verification.'),
+        find.text('Try alice, bob or carol (any non-empty password), dave to '
+            'be challenged for a second factor, or erin to be offered one.'),
         findsOneWidget);
     expect(find.text('login.title'), findsNothing);
     expect(find.text('login.intro'), findsNothing);

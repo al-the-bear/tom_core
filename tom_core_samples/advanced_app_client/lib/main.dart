@@ -80,6 +80,14 @@ Future<void> main() async {
 /// [AdvancedClientConfig] config bean; the `test` environment installs the seeded
 /// [InMemoryAppBackend]. Exactly one backend is built and registered — there is
 /// no runtime dispatcher.
+///
+/// The two run modes show the *same* sign-in, and they do so without a switch
+/// here: which accounts owe a second factor is seed data in both. Offline it is
+/// [InMemoryAppBackend]'s `_secrets` / `twoFactorEnrolling`; live it is the
+/// `two_factor_secret` column and the `two_factor_required` /
+/// `two_factor_optional` role rows the `[005]` migration seeds. So `dave` is
+/// challenged and `erin` is offered enrolment in either mode, and `alice` signs
+/// straight in in either mode.
 AppBackend _installBackend() => TomBean.installByEnvironment<AppBackend>(
       {
         'prod': LiveAppBackend.fromConfig,

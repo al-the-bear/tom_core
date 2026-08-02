@@ -93,6 +93,37 @@ abstract class AppBackend {
   /// mechanism with a different digit count needs no client change.
   Tom2FAChallenge? get pendingChallenge;
 
+  /// The second factor a [login] offered to set up, or null when none is owed.
+  ///
+  /// The other half of the two-pass login: a principal who owes a factor but
+  /// holds none is offered enrolment instead of a challenge, and this is the
+  /// offer — the mechanisms available, whether declining is permitted, and (once
+  /// [beginEnrolment] has picked one) the mechanism's own `clientData`. Like
+  /// [pendingChallenge] it is *not* a session.
+  Tom2FAPendingEnrolment? get pendingEnrolment;
+
+  /// Begins enrolment in the mechanism [type], returning the interim result
+  /// whose [pendingEnrolment] now carries that mechanism's set-up payload (for
+  /// TOTP the secret and the `otpauth://` URI).
+  ///
+  /// Only a mechanism the offer named is accepted — the authority for what may
+  /// be enrolled is the server's list, never the key the client sends back.
+  Future<LoginResult> beginEnrolment(String type);
+
+  /// Confirms the half-built factor with the [code] the user read off their
+  /// authenticator, completing the login exactly as [submitSecondFactor] does.
+  ///
+  /// Throws [AppBackendException] when the code is refused;
+  /// [AppBackendException.canRetrySecondFactor] distinguishes "wrong code, try
+  /// again" from "the offer is burned, start over".
+  Future<LoginResult> confirmEnrolment(String code);
+
+  /// Declines the offer and completes the login without a factor.
+  ///
+  /// Reachable only when the offer was [Tom2FAPendingEnrolment.skippable] — the
+  /// server decides that, and a client that asks anyway is refused.
+  Future<LoginResult> skipEnrolment();
+
   /// Ends the session and discards the stored token pair — including a
   /// half-finished two-factor login.
   Future<void> logout();

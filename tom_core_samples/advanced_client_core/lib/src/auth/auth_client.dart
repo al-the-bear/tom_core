@@ -131,8 +131,9 @@ class AuthClient {
     return result;
   }
 
-  /// Builds the exception for a refused second factor, first storing the
-  /// re-issued interim token when the server offered one.
+  /// Builds the exception for a refused second-factor pass — a wrong challenge
+  /// answer or a wrong enrolment confirmation — first storing the re-issued
+  /// interim token when the server offered one.
   ///
   /// Storing it is not a nicety: the attempt counter lives inside the token, so
   /// a client that kept retrying against its previous copy would never exhaust
@@ -140,6 +141,11 @@ class AuthClient {
   /// Overwriting the stored token is how an honest client spends its attempts.
   /// (It is not a brute-force defence — a stateless server cannot detect the
   /// replay; the challenge expiry is what bounds that.)
+  ///
+  /// Shared by both passes because the retry contract is genuinely the same one:
+  /// the server hands back the re-issued token under the same body key, and the
+  /// caller's next move is another call with a new code either way. The server's
+  /// own stable key (`login.error.2fa.*`) distinguishes which pass failed.
   AuthClientException _secondFactorFailure(HttpJsonResponse response) {
     final retryToken = _stringField(response, 'challengeToken');
     if (retryToken != null && retryToken.isNotEmpty) {
@@ -151,6 +157,80 @@ class AuthClient {
       statusCode: response.statusCode,
       canRetrySecondFactor: retryToken != null && retryToken.isNotEmpty,
     );
+  }
+
+  /// The enrolment the stored interim token is offering, or `null` when there is
+  /// no half-finished login waiting to set a factor up.
+  ///
+  /// Read out of the token's public claims by the kernel, exactly like
+  /// [pendingChallenge]: the offered mechanisms, whether declining is allowed,
+  /// what it costs, and — after [beginEnrolment] — the mechanism's own
+  /// `clientData` all come from the one place the server signed. Its
+  /// [Tom2FAPendingEnrolment.hasOffer] is what distinguishes "still choosing"
+  /// from "chose, and here is the secret to show".
+  Tom2FAPendingEnrolment? get pendingEnrolment =>
+      TomBearerAuthentication.pendingTwoFactorEnrolment;
+
+  /// Begins enrolling [type], one of `LoginResult.availableTwoFactorMethods`.
+  ///
+  /// On success the *new* interim token is stored, so [pendingEnrolment] then
+  /// carries what the user must be shown. Throws [AuthClientException] when the
+  /// mechanism was not offered on this token or the offer has lapsed.
+  Future<LoginResult> beginEnrolment(String type) =>
+      _enrolmentPass('/auth/enrol/begin', type: type);
+
+  /// Confirms the offer with [code] and completes the login.
+  ///
+  /// On success the stored pair is the real one — a confirmed enrolment issues
+  /// the final tokens outright, with no further challenge, because deriving a
+  /// code from the just-issued secret has already proved possession. A refused
+  /// code throws with [AuthClientException.canRetrySecondFactor] set and the
+  /// re-issued interim token already stored, so retrying is one more call here.
+  Future<LoginResult> confirmEnrolment(String code) =>
+      _enrolmentPass('/auth/enrol/confirm', code: code);
+
+  /// Declines a skippable offer and completes the login with no factor.
+  ///
+  /// Only meaningful when `LoginResult.twoFactorEnrolmentSkippable` (equivalently
+  /// [Tom2FAPendingEnrolment.skippable]) was set; the server refuses otherwise,
+  /// so a client that offers the affordance regardless achieves nothing.
+  Future<LoginResult> skipEnrolment() => _enrolmentPass('/auth/enrol/skip');
+
+  /// The shape all three enrolment passes share: require a stored interim token,
+  /// post it with the pass's one payload, store whatever comes back.
+  ///
+  /// Storing on success is what makes the passes chainable — begin hands back an
+  /// interim token carrying the offer, and confirm needs *that* one, not the one
+  /// login produced. It is the same reason [_secondFactorFailure] stores the
+  /// re-issued token on the failure path.
+  Future<LoginResult> _enrolmentPass(
+    String path, {
+    String type = '',
+    String code = '',
+  }) async {
+    final enrolmentToken = TomBearerAuthentication.authorizationToken;
+    if (enrolmentToken == null) {
+      throw AuthClientException(
+        'auth.no_token',
+        'No pending two-factor enrolment — log in first.',
+        statusCode: 0,
+      );
+    }
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(path),
+      body: dtoToJsonString(
+        TwoFactorEnrolmentRequest(
+          type: type,
+          code: code,
+          enrolmentToken: enrolmentToken,
+        ),
+      ),
+    );
+    if (!response.isSuccess) throw _secondFactorFailure(response);
+    final result = dtoFromJson<LoginResult>(response.jsonObject);
+    _store(result);
+    return result;
   }
 
   /// Fetches the public login resource bundle (`GET /auth/resources/login`),

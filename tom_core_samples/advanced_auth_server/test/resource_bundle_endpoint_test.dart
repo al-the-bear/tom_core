@@ -24,7 +24,7 @@ void main() {
     test('loginBundle carries the public login + adminLogin texts', () {
       final texts = AuthResourceBundles.loginBundle().texts;
       expect(texts['login.username.label'], 'Username');
-      expect(texts['login.username.hint'], 'alice, bob, carol or dave');
+      expect(texts['login.username.hint'], 'alice, bob, carol, dave or erin');
       expect(texts['login.password.label'], 'Password');
       expect(texts['adminLogin.username.hint'], 'admin');
       expect(texts['adminLogin.password.label'], 'Password');
@@ -36,12 +36,23 @@ void main() {
       // token does not provide. So the second-factor chrome ships here, as a
       // sibling scope of `login`/`adminLogin`, not in the console bundle.
       final texts = AuthResourceBundles.loginBundle().texts;
-      expect(texts['twoFactor.code.label'], 'Verification code');
-      expect(texts['twoFactor.submit'], 'Verify');
-      // The two parameterised texts the screens substitute into (G-RES: the
-      // bundle owns the wording, the screen owns the value).
-      expect(texts['twoFactor.intro'], contains('{digits}'));
-      expect(texts['twoFactor.attemptsRemaining'], contains('{count}'));
+      // The app client renders the phase with the framework's own flow panel,
+      // which resolves `two_factor.*` (Tom2FATexts) and the mechanism
+      // descriptor's `two_factor.<type>.*` — so those keys, not a per-app
+      // scope, are what the bundle must carry for it.
+      expect(texts['two_factor.challenge.title'], 'Two-step verification');
+      expect(texts['two_factor.totp.challenge.codeLabel'],
+          'Verification code');
+      expect(texts['two_factor.totp.challenge.submit'], 'Verify');
+      expect(texts['two_factor.attemptsRemaining'], contains('{count}'));
+      // Enrolment is the other half of the same flow: the chooser, the offer's
+      // decline affordance, and the TOTP set-up panel.
+      expect(texts['two_factor.choose.title'], 'Set up two-step verification');
+      expect(texts['two_factor.skip.label'], 'Not now');
+      expect(texts['two_factor.totp.name'], 'Authenticator app');
+      expect(texts['two_factor.totp.enrol.submit'], 'Confirm');
+      // The admin console still renders its own code form, so it keeps its own
+      // scope — including the `{digits}`/`{count}` texts it substitutes into.
       expect(texts['adminTwoFactor.code.label'], 'Verification code');
       expect(texts['adminTwoFactor.intro'], contains('{digits}'));
       expect(texts['adminTwoFactor.attemptsRemaining'], contains('{count}'));

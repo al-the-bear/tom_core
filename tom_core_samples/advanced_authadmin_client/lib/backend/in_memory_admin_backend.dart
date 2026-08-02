@@ -122,9 +122,10 @@ class InMemoryAdminBackend implements AdminBackend {
   static const Map<String, Object?> loginTexts = {
     'login.title': 'Advanced Todo — Sign in',
     'login.intro':
-        'Try alice, bob or carol (any non-empty password), or dave for two-step verification.',
+        'Try alice, bob or carol (any non-empty password), dave to be challenged '
+            'for a second factor, or erin to be offered one.',
     'login.username.label': 'Username',
-    'login.username.hint': 'alice, bob, carol or dave',
+    'login.username.hint': 'alice, bob, carol, dave or erin',
     'login.password.label': 'Password',
     'login.submit': 'Sign in',
     'adminLogin.title': 'Advanced Todo — Admin sign in',

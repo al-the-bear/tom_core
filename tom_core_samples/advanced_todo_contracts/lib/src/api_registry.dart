@@ -69,6 +69,33 @@ final TomApi authApi = TomApi(
       includeBearerAuthentication: false,
       access: TomPublicAccess(),
     ),
+    // The three enrolment passes. Public and bearer-free for exactly the reason
+    // `authSecondFactor` is: they are reached *during* a half-finished login,
+    // holding a token that by construction authenticates nobody. Three
+    // endpoints rather than one with a mode flag because the server treats them
+    // as three distinct events — only the skip spends a grace login, and an
+    // audit trail that depended on a request field's default would be no trail.
+    TomApiEndpoint<LoginResult, TwoFactorEnrolmentRequest>(
+      id: 'authBeginEnrolment',
+      uri: '/enrol/begin',
+      method: TomHttpMethod.post,
+      includeBearerAuthentication: false,
+      access: TomPublicAccess(),
+    ),
+    TomApiEndpoint<LoginResult, TwoFactorEnrolmentRequest>(
+      id: 'authConfirmEnrolment',
+      uri: '/enrol/confirm',
+      method: TomHttpMethod.post,
+      includeBearerAuthentication: false,
+      access: TomPublicAccess(),
+    ),
+    TomApiEndpoint<LoginResult, TwoFactorEnrolmentRequest>(
+      id: 'authSkipEnrolment',
+      uri: '/enrol/skip',
+      method: TomHttpMethod.post,
+      includeBearerAuthentication: false,
+      access: TomPublicAccess(),
+    ),
     TomApiEndpoint<ResourceBundleDto, Object?>(
       id: 'authLoginResources',
       uri: '/resources/login',
