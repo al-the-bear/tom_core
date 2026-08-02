@@ -555,6 +555,209 @@ void main() {
     });
   });
 
+  // ===========================================================================
+  // POLICY
+  // ===========================================================================
+
+  /// Whether a login owes a second factor is a [Tom2FAPolicy] decision, taken
+  /// before any mechanism is consulted. What these tests pin is that the
+  /// decision is *the* input to the branch — the shipped default reproduces the
+  /// principal's own flags exactly (so introducing the policy changed nothing),
+  /// and an installed policy overrides them (so the flags are no longer what
+  /// decides).
+  group('Tom2FAPolicy', () {
+    tearDown(() {
+      Tom2FARegistry.reset();
+      // The bean context is process-global; a policy left installed here would
+      // decide the next test's logins.
+      TomBean.resetBeanContext();
+    });
+
+    /// The context a policy is handed, for a principal with these flags/roles.
+    Tom2FAContext contextFor({
+      bool requires2FA = false,
+      String? twoFactorType,
+      List<String> roles = const [],
+    }) => Tom2FAContext(
+      principal: _principal(
+        TomAuthenticationData(
+          username: 'alice',
+          organization: 'acme',
+          application: 'console',
+          process: 'login',
+          language: 'en',
+          country: 'US',
+          timezone: 'UTC',
+          client: 'web',
+        ),
+        requires2FA: requires2FA,
+        twoFactorType: twoFactorType,
+        roles: roles,
+      ),
+    );
+
+    // -------------------------------------------------------------------------
+    // The default, which must be today's behaviour and nothing else
+    // -------------------------------------------------------------------------
+
+    test('the flag policy reads an exempt principal as disabled', () async {
+      final decision = await const TomPrincipalFlag2FAPolicy()
+          .decideFor(contextFor());
+
+      expect(decision.requirement, Tom2FARequirement.disabled);
+      expect(decision.isSatisfiedWithoutFactor, isTrue);
+      expect(decision.allowedMechanisms, isEmpty);
+    });
+
+    test('the flag policy reproduces requires2FA and twoFactorType', () async {
+      final decision = await const TomPrincipalFlag2FAPolicy()
+          .decideFor(contextFor(requires2FA: true, twoFactorType: 'totp'));
+
+      expect(decision.requirement, Tom2FARequirement.required);
+      expect(decision.allowedMechanisms, ['totp']);
+    });
+
+    // The dead end the flags cannot express: required, but naming nothing. The
+    // policy must not invent a mechanism — it reports the requirement with no
+    // way to satisfy it, and the login is what turns that into a clear refusal.
+    test('a principal that requires a factor but names none allows nothing',
+        () async {
+      final decision = await const TomPrincipalFlag2FAPolicy()
+          .decideFor(contextFor(requires2FA: true));
+
+      expect(decision.requirement, Tom2FARequirement.required);
+      expect(decision.allowedMechanisms, isEmpty);
+    });
+
+    test('resolve falls back to the flag policy when no bean is installed', () {
+      expect(Tom2FAPolicy.resolve(), isA<TomPrincipalFlag2FAPolicy>());
+    });
+
+    test('resolve returns the installed bean', () {
+      final installed = TomRole2FAPolicy();
+      TomBean.withType(Tom2FAPolicy, installed);
+
+      expect(identical(Tom2FAPolicy.resolve(), installed), isTrue);
+    });
+
+    // -------------------------------------------------------------------------
+    // Roles
+    // -------------------------------------------------------------------------
+
+    test('the role policy applies the default when no role matches', () async {
+      final policy = TomRole2FAPolicy(
+        requirementByRole: {'admin': Tom2FARequirement.required},
+        defaultRequirement: Tom2FARequirement.optional,
+        mechanisms: ['fake'],
+      );
+
+      final decision = await policy.decideFor(contextFor(roles: ['viewer']));
+      expect(decision.requirement, Tom2FARequirement.optional);
+    });
+
+    // The whole reason the requirement is an ordered enum: a principal holding
+    // two roles with different answers gets the stricter one, never the laxer.
+    test('two roles with different requirements yield the stricter', () async {
+      final policy = TomRole2FAPolicy(
+        requirementByRole: {
+          'staff': Tom2FARequirement.optional,
+          'admin': Tom2FARequirement.required,
+        },
+        mechanisms: ['fake'],
+      );
+
+      // Both orders, because "strictest" must not depend on which role the ACI
+      // happens to list first.
+      expect(
+        (await policy.decideFor(contextFor(roles: ['staff', 'admin'])))
+            .requirement,
+        Tom2FARequirement.required,
+      );
+      expect(
+        (await policy.decideFor(contextFor(roles: ['admin', 'staff'])))
+            .requirement,
+        Tom2FARequirement.required,
+      );
+    });
+
+    test('a role that disables loses to a role that requires', () async {
+      final policy = TomRole2FAPolicy(
+        requirementByRole: {
+          'service-account': Tom2FARequirement.disabled,
+          'admin': Tom2FARequirement.required,
+        },
+        mechanisms: ['fake'],
+      );
+
+      final decision =
+          await policy.decideFor(contextFor(roles: ['service-account', 'admin']));
+      expect(decision.requirement, Tom2FARequirement.required);
+    });
+
+    test('a null mechanism list means every registered mechanism', () async {
+      Tom2FARegistry.register('fake', _FakeAdaptor());
+      final policy = TomRole2FAPolicy(
+        defaultRequirement: Tom2FARequirement.required,
+      );
+
+      final decision = await policy.decideFor(contextFor());
+      expect(decision.allowedMechanisms, contains('fake'));
+    });
+
+    test('the grace count is carried onto every decision', () async {
+      final policy = TomRole2FAPolicy(
+        defaultRequirement: Tom2FARequirement.required,
+        mechanisms: ['fake'],
+        graceLogins: 3,
+      );
+
+      expect((await policy.decideFor(contextFor())).graceLogins, 3);
+    });
+
+    // -------------------------------------------------------------------------
+    // Permitted vs. installed
+    // -------------------------------------------------------------------------
+
+    /// A policy names *permissions*. Whether a permitted mechanism can actually
+    /// be used is a separate question, and answering it at the decision rather
+    /// than at the adaptor lookup is what makes the failure legible: an empty
+    /// [Tom2FADecision.offerableMechanisms] beside a non-empty
+    /// `allowedMechanisms` says "this deployment installed none of them", which
+    /// a null lookup ten frames later cannot say.
+    test('offerable mechanisms are the permitted ones that are registered',
+        () async {
+      Tom2FARegistry.register('fake', _FakeAdaptor());
+      final policy = TomRole2FAPolicy(
+        defaultRequirement: Tom2FARequirement.required,
+        mechanisms: ['sms', 'fake', 'push'],
+      );
+
+      final decision = await policy.decideFor(contextFor());
+      expect(decision.allowedMechanisms, ['sms', 'fake', 'push']);
+      expect(decision.offerableMechanisms, ['fake']);
+    });
+
+    test('a policy naming only unregistered mechanisms offers nothing',
+        () async {
+      Tom2FARegistry.register('fake', _FakeAdaptor());
+      final policy = TomRole2FAPolicy(
+        defaultRequirement: Tom2FARequirement.required,
+        mechanisms: ['sms'],
+      );
+
+      final decision = await policy.decideFor(contextFor());
+      expect(decision.allowedMechanisms, ['sms'], reason: 'still permitted');
+      expect(decision.offerableMechanisms, isEmpty, reason: 'but unusable');
+    });
+
+    test('a decision cannot be edited after the policy made it', () async {
+      final decision = await const TomPrincipalFlag2FAPolicy()
+          .decideFor(contextFor(requires2FA: true, twoFactorType: 'totp'));
+
+      expect(() => decision.allowedMechanisms.add('sms'), throwsUnsupportedError);
+    });
+  });
+
   // The two-pass flow end to end. These tests mutate global service settings, so
   // setUp/tearDown snapshot and restore them to keep the suite order-independent.
   group('TomAuthenticationServer two-pass flow', () {
@@ -583,6 +786,8 @@ void main() {
       TomResourceKeyProtection.globalSettingProtectionDefault =
           savedProtectionDefault;
       Tom2FARegistry.reset();
+      // A policy installed by one test must not decide the next one's logins.
+      TomBean.resetBeanContext();
     });
 
     /// Runs pass 1 and returns the interim token the client would present back.
@@ -890,6 +1095,87 @@ void main() {
             .payload?[Tom2FAClaims.requires2FA],
         'false',
       );
+    });
+
+    // -------------------------------------------------------------------------
+    // The policy, not the principal's flags, decides
+    // -------------------------------------------------------------------------
+
+    /// The four tests above all drive the branch through the principal's own
+    /// flags, which is what the default policy reports — so they would pass
+    /// whether or not the decision had been lifted out of the field read. These
+    /// two put the policy and the flags in *disagreement*, which is the only
+    /// arrangement in which the difference is observable at all.
+    test('an installed policy can require a factor the principal does not',
+        () async {
+      // Flags say exempt. The deployment's policy says every `admin` owes one.
+      TomAuthenticationServer.globalSettingUserAuthenticationService =
+          _StubAuthService();
+      TomBean.withType(
+        Tom2FAPolicy,
+        TomRole2FAPolicy(
+          requirementByRole: {'admin': Tom2FARequirement.required},
+          mechanisms: ['fake'],
+        ),
+      );
+
+      final result = await server.authenticatePass1(_message());
+
+      expect(result.error, isEmpty);
+      expect(result.requires2FA, isTrue);
+      expect(result.twoFactorType, 'fake');
+      expect(adaptor.issued, 1);
+    });
+
+    test('an installed policy can exempt a principal whose flag requires one',
+        () async {
+      // Flags say required (the group default). The policy says nobody is.
+      TomBean.withType(Tom2FAPolicy, TomRole2FAPolicy());
+
+      final result = await server.authenticatePass1(_message());
+
+      expect(result.error, isEmpty);
+      expect(result.requires2FA, isFalse);
+      expect(adaptor.issued, 0, reason: 'no challenge should be issued');
+    });
+
+    // The permitted-but-not-installed case, reached through a policy rather than
+    // through a principal naming a mechanism nobody implements. Same refusal,
+    // because the login rejects on what is *offerable*, not on where the
+    // permission came from.
+    test('a policy naming only unregistered mechanisms fails the login',
+        () async {
+      TomBean.withType(
+        Tom2FAPolicy,
+        TomRole2FAPolicy(
+          defaultRequirement: Tom2FARequirement.required,
+          mechanisms: ['sms'],
+        ),
+      );
+
+      final result = await server.authenticatePass1(_message());
+
+      expect(result.error, 'login.error.2fa.unsupported-mechanism');
+      expect(result.authenticationToken, isEmpty);
+      expect(adaptor.issued, 0);
+    });
+
+    test('the login challenges with the policy\'s first offerable mechanism',
+        () async {
+      TomBean.withType(
+        Tom2FAPolicy,
+        TomRole2FAPolicy(
+          defaultRequirement: Tom2FARequirement.required,
+          // 'sms' is permitted but not installed here, so preference order has
+          // to survive the intersection for 'fake' to be the one challenged.
+          mechanisms: ['sms', 'fake'],
+        ),
+      );
+
+      final result = await server.authenticatePass1(_message());
+
+      expect(result.error, isEmpty);
+      expect(result.twoFactorType, 'fake');
     });
   });
 }

@@ -2,6 +2,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
 import 'two_factor.dart';
+import 'two_factor_policy.dart';
 
 /// Marks a class as an authentication adaptor and constrains which login flows
 /// it participates in.
@@ -340,11 +341,18 @@ class TomAuthenticationServer {
   /// the guest or user service per [guestLogin], and encodes the principal into
   /// the authentication/authorization JWTs of the returned result.
   ///
-  /// When the resolved principal declares [TomPrincipal.requires2FA], the login
-  /// does **not** finish here: the mechanism's adaptor issues a challenge and
-  /// the returned result carries an interim token plus
-  /// [TomAuthenticationResult.requires2FA], to be completed by
-  /// [authenticatePass2].
+  /// Whether a second factor is owed is [Tom2FAPolicy]'s decision, not a field
+  /// read: the resolved policy is asked once, here, and anything but
+  /// [Tom2FARequirement.disabled] takes the login down the challenge path. The
+  /// mechanism's adaptor issues a challenge and the returned result carries an
+  /// interim token plus [TomAuthenticationResult.requires2FA], to be completed
+  /// by [authenticatePass2].
+  ///
+  /// [Tom2FARequirement.optional] currently behaves as `required` — the factor
+  /// is challenged for. Letting a user *decline* an optional factor needs a
+  /// wire-level "skip" the message type does not carry, so the decision is
+  /// honoured to the extent the flow can honour it rather than being silently
+  /// treated as `disabled`, which would be the unsafe reading.
   ///
   /// A [LoginException] yields a failed result carrying its `key`; any other
   /// error yields a `"login.error.unknown"` result.
@@ -372,28 +380,32 @@ class TomAuthenticationServer {
                   : globalSettingUserAuthenticationService)
               .authenticateUser(authData);
 
-      if (!authInfo.principal.requires2FA) {
+      final context = _contextFor(authInfo.principal, m);
+      final decision = await Tom2FAPolicy.resolve().decideFor(context);
+      if (decision.isSatisfiedWithoutFactor) {
         return _issueTokens(authInfo.principal, authInfo.acd, m);
       }
 
-      final type = authInfo.principal.twoFactorType;
-      if (type == null || type.isEmpty) {
+      // The first mechanism the policy permits *and* this deployment has an
+      // adaptor for. Both halves of that are needed: a policy names permissions,
+      // and permissions the deployment cannot honour must fail here rather than
+      // as a null adaptor further down.
+      final offerable = decision.offerableMechanisms;
+      if (offerable.isEmpty) {
         throw LoginException(
           'login.error.2fa.unsupported-mechanism',
-          'The account requires a second factor but names no mechanism',
+          decision.allowedMechanisms.isEmpty
+              ? 'The account requires a second factor but names no mechanism'
+              : 'No adaptor is registered for any two-factor mechanism this '
+                  'account may use: ${decision.allowedMechanisms.join(', ')}',
         );
       }
-      final adaptor = Tom2FARegistry.lookup(type);
-      if (adaptor == null) {
-        throw LoginException(
-          'login.error.2fa.unsupported-mechanism',
-          'No adaptor is registered for two-factor mechanism "$type"',
-        );
-      }
+      final type = offerable.first;
+      // Non-null by construction: `offerable` is the intersection with the
+      // registry's own keys, so every entry resolves.
+      final adaptor = Tom2FARegistry.lookup(type)!;
 
-      final spec = await adaptor.issueChallenge(
-        _contextFor(authInfo.principal, m),
-      );
+      final spec = await adaptor.issueChallenge(context);
       final challenge = Tom2FAChallenge(
         type: type,
         hint: spec.hint,
