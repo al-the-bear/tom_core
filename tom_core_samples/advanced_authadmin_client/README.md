@@ -60,6 +60,32 @@ runApp(AdminConsoleApp(session: session));
 // admin/pw → console shell; alice/pw → "Administrator access is required."
 ```
 
+### The second factor
+
+When the administrator's account owes a second factor, `login` returns
+`requires2FA` and an *interim* token that authorizes nothing — so the session
+stores only a flag, `isLoggedIn` stays false, and the login screen switches to a
+code phase over `AdminSecondFactorForm`/`AdminSecondFactorCode` (`formId:
+'adminTwoFactor'`, sized from the challenge's own `clientData['digits']`).
+
+This is why the `admin` probe lives in the *shared completion tail*
+(`_completeLogin`) rather than in `login`: it cannot run against an interim token
+that authorizes nothing, so an enrolled non-admin is refused one pass later
+rather than never. `submitSecondFactor` runs that same tail, so a two-factor
+sign-in and a plain one leave exactly the same state behind. A refusal keyed
+non-retryable (`AdminBackendException.canRetrySecondFactor` false) abandons the
+pending login and drops the screen back to username/password.
+
+The seeded `auth_db` enrols **no** administrator, so `InMemoryAdminBackend`
+enrols none either — an offline console that demanded a code the real one does
+not would teach the wrong thing. But an enrolment is an *account* property the
+console does not control: the day someone enrols `admin`, a console that ignored
+`requires2FA` would be unusable. So the fake takes the enrolment as a constructor
+argument, `InMemoryAdminBackend(twoFactorUsernames: {'admin'})`, and
+`test/admin_login_two_factor_test.dart` uses it to prove the console still works.
+The fake does not fake the crypto: it verifies with the kernel's own `TomTotp`
+against the same secret the auth server's `[005]` migration seeds.
+
 ## AdminBackend seam
 
 `lib/backend/backend.dart` is the barrel. Bind every screen against the
@@ -162,6 +188,12 @@ flutter test --concurrency=1
   Users destination), a signed-in non-admin is rejected with an access error, bad
   credentials and empty fields stay on the page, and sign-out routes back to
   login.
+- `test/admin_login_two_factor_test.dart` — the second pass (TC-33-07..11), over
+  a fake with `twoFactorUsernames` injected: an enrolled admin stops at the code
+  phase, a valid code opens the shell, a wrong code is retryable with the
+  attempts remaining, the third returns to the password screen, and an enrolled
+  non-admin is still refused — one pass later, by the probe that now runs after
+  the second factor.
 - `test/users_screen_test.dart` — the Users destination (TC-34-U01..05): lists
   the seeded accounts, creates one, blocks an empty username, edits a profile
   (username stays the read-only key), and deletes a row.

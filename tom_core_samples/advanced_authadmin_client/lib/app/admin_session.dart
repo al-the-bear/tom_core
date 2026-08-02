@@ -35,6 +35,7 @@ class AdminSession extends ChangeNotifier {
   String _authToken = '';
   String _authzToken = '';
   DateTime? _expiresAt;
+  bool _awaitingSecondFactor = false;
 
   /// The provider contents captured just before [login] installed the full
   /// bundle, restored on logout so a re-login starts from the same chrome.
@@ -49,7 +50,24 @@ class AdminSession extends ChangeNotifier {
 
   /// Whether an administrator is currently signed in (login + admin probe both
   /// passed).
+  ///
+  /// A half-finished two-factor login is **not** signed in — see
+  /// [awaitingSecondFactor].
   bool get isLoggedIn => _user != null;
+
+  /// Whether a [login] verified the password but left a second factor
+  /// outstanding.
+  ///
+  /// The login screen switches to its code phase on this. The `admin` probe has
+  /// *not* run yet — it cannot, because the interim token authorizes nothing —
+  /// so a non-admin with a second factor is still rejected, just one pass later.
+  bool get awaitingSecondFactor => _awaitingSecondFactor;
+
+  /// The outstanding challenge — mechanism, attempts remaining, expiry, and the
+  /// `clientData` the code field sizes itself from. Null unless
+  /// [awaitingSecondFactor].
+  Tom2FAChallenge? get pendingChallenge =>
+      _awaitingSecondFactor ? backend.pendingChallenge : null;
 
   /// The identity bearer for authenticated calls; empty when logged out.
   String get authToken => _authToken;
@@ -106,6 +124,50 @@ class AdminSession extends ChangeNotifier {
   /// onto the console.
   Future<void> login(LoginRequest request) async {
     final result = await backend.login(request);
+    if (result.requires2FA) {
+      // Pass 1 of two. Store nothing but the flag: the interim token authorizes
+      // no call, so the `admin` probe would fail for the wrong reason and
+      // assigning [_user] would open the shell onto a console that cannot load.
+      _awaitingSecondFactor = true;
+      notifyListeners();
+      return;
+    }
+    await _completeLogin(result);
+  }
+
+  /// Completes a two-pass login with the one-time [code], then runs the same
+  /// `admin` probe a single-pass login runs.
+  ///
+  /// Rethrows the [AdminBackendException] the backend raised. When the refusal
+  /// is final ([AdminBackendException.canRetrySecondFactor] false) the pending
+  /// login is abandoned first, so the screen falls back to its credentials
+  /// phase; a retryable refusal leaves the challenge in place, with its attempt
+  /// count already decremented.
+  Future<void> submitSecondFactor(String code) async {
+    try {
+      await _completeLogin(await backend.submitSecondFactor(code));
+    } on AdminBackendException catch (e) {
+      if (!e.canRetrySecondFactor) cancelSecondFactor();
+      rethrow;
+    }
+  }
+
+  /// Abandons a half-finished two-factor login and returns the screen to its
+  /// credentials phase. Also the path a spent challenge takes.
+  void cancelSecondFactor() {
+    if (!_awaitingSecondFactor) return;
+    _awaitingSecondFactor = false;
+    notifyListeners();
+  }
+
+  /// Establishes the session from a *completed* [result] — the shared tail of
+  /// both login paths, so a two-factor sign-in and a plain one leave exactly the
+  /// same state behind.
+  ///
+  /// The `admin` probe lives here rather than in [login] precisely so it runs
+  /// against a real token: after pass 2 for a 2FA account, immediately for
+  /// everyone else.
+  Future<void> _completeLogin(LoginResult result) async {
     try {
       // The role gate is per-operation, so confirm admin reach before opening
       // the shell. A non-admin reaches here authenticated but is refused.
@@ -114,8 +176,10 @@ class AdminSession extends ChangeNotifier {
       // Not an administrator (or the session was lost): undo the login so no
       // half-open session lingers, then surface the refusal to the screen.
       await _safeLogout();
+      _awaitingSecondFactor = false;
       rethrow;
     }
+    _awaitingSecondFactor = false;
     _user = result.user;
     _authToken = result.authToken;
     _authzToken = result.authzToken;
@@ -169,6 +233,7 @@ class AdminSession extends ChangeNotifier {
   }
 
   void _clearSession() {
+    _awaitingSecondFactor = false;
     _user = null;
     _authToken = '';
     _authzToken = '';

@@ -136,15 +136,23 @@ but carries `tomId: 'estimate'`, so it self-addresses as the graded key
 | --- | --- | --- | --- |
 | `LoginForm` | `LoginCredentials` | — · `login` | `login.<field>` |
 | `AdminLoginForm` | `AdminLoginCredentials` | — · `adminLogin` | `adminLogin.<field>` |
+| `SecondFactorForm` | `SecondFactorCode` | — · `twoFactor` | `twoFactor.<field>` |
+| `AdminSecondFactorForm` | `AdminSecondFactorCode` | — · `adminTwoFactor` | `adminTwoFactor.<field>` |
 | `TodoItemForm` | `TodoItem` | `todo` · `item` | `todo.item.<field>` |
 | `UserForm` / `RoleForm` / `GroupForm` | `UserDraft` / `RoleDraft` / `GroupDraft` | — · `user`/`role`/`group` | `user.<field>`, … |
 
 The app and admin login screens both bind a reflected `TomForm` and render
 `field.widget`; their distinct `formId`s (`login` vs `adminLogin`) give them the
 distinct public-bundle keys the auth server serves (part
-[08](README_advanced_08_resources_texts.md)). All bound forms are `@tomReflector`
-and captured in each client's `reflection_seed.dart`; regenerate only on a
-reflected-signature change (part
+[08](README_advanced_08_resources_texts.md)). The two second-factor forms follow
+the same rule one phase later: a login that returns `requires2FA` swaps the
+credentials form for the code form *on the same screen*, and the `twoFactor` /
+`adminTwoFactor` `formId`s address their own scopes in that same public bundle —
+which is why those texts ship with the **login** bundle rather than the
+authenticated one (the interim token buys no session to fetch it with). The code
+field is sized from the challenge's own `clientData['digits']`, never a hardcoded
+6. All bound forms are `@tomReflector` and captured in each client's
+`reflection_seed.dart`; regenerate only on a reflected-signature change (part
 [03](README_advanced_03_domain_reflection.md)).
 
 ## The `tom_flutter_ui` components

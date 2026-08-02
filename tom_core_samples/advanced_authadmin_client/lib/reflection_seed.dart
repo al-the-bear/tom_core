@@ -22,7 +22,11 @@ import 'domain/admin_drafts.dart';
 // ignore: unused_import
 import 'domain/admin_login_credentials.dart';
 // ignore: unused_import
+import 'domain/admin_second_factor_code.dart';
+// ignore: unused_import
 import 'forms/admin_login_form.dart';
+// ignore: unused_import
+import 'forms/admin_second_factor_form.dart';
 // ignore: unused_import
 import 'forms/user_form.dart';
 // ignore: unused_import
@@ -44,7 +48,9 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // implementation detail).
 export 'domain/admin_drafts.dart';
 export 'domain/admin_login_credentials.dart';
+export 'domain/admin_second_factor_code.dart';
 export 'forms/admin_login_form.dart';
+export 'forms/admin_second_factor_form.dart';
 export 'forms/user_form.dart';
 export 'forms/role_form.dart';
 export 'forms/group_form.dart';

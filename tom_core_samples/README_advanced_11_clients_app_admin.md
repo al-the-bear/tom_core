@@ -17,7 +17,7 @@ sample exists to teach.
 | Talks to | `advanced_app_server` (board) + `advanced_auth_server` (login) | `advanced_auth_server` (`/auth/*` + `/admin/*`) |
 | Session | `AppSession` | `AdminSession` |
 | Shell root | `AdvancedTodoApp` | `AdminConsoleApp` |
-| Login | single-phase (authenticate) | **two-phase** (authenticate + `admin` probe) |
+| Login | authenticate (plus a second factor when the account owes one) | the same, **plus an `admin` probe** once the login completes |
 | Home | status-column board | `NavigationRail` console shell |
 | Backend seam | `AppBackend` | `AdminBackend` |
 | In-memory fake | `InMemoryAppBackend` | `InMemoryAdminBackend` |
@@ -88,9 +88,22 @@ authenticates fine but is refused the moment they touch admin data. `AdminSessio
 therefore authenticates and then **probes** an admin call (`listUsers`); only if
 the probe succeeds is the principal stored and the shell allowed to open. A
 non-admin is undone (`_safeLogout`) and the refusal — `AdminBackendException`
-keyed `admin.access.forbidden` — is surfaced on the login screen
-(`admin_session.dart:106`). `AppSession.login` has no such probe; any valid
-principal may use the board (`app_session.dart:121`).
+keyed `admin.access.forbidden` — is surfaced on the login screen. `AppSession.login`
+has no such probe; any valid principal may use the board.
+
+**The second-factor phase.** When the account owes a second factor, `login`
+returns a `LoginResult` whose token pair is *interim* — a challenge carrier that
+authorizes nothing. Both sessions therefore store **nothing but a flag**
+(`awaitingSecondFactor`) and leave `isLoggedIn` false, so the shell keeps showing
+the login screen while it switches to a code phase; `submitSecondFactor(code)`
+then runs the shared completion tail that a single-pass login runs. In the
+console that tail carries the `admin` probe, which is exactly why the probe lives
+there and not in `login`: it cannot run against an interim token, so an enrolled
+non-admin is refused one pass later rather than never. A refusal keyed
+non-retryable (`AppBackendException.canRetrySecondFactor` false) abandons the
+pending login, dropping the screen back to username/password. The mechanics of
+the two passes — and why the challenge and its attempt counter live inside the
+token — are part [06](README_advanced_06_authentication.md#two-factor-login-the-second-pass).
 
 **The `guard` seam.** Every screen reaches the backend through `session.guard`,
 so "the session died" is handled in exactly one place: a backend failure keyed

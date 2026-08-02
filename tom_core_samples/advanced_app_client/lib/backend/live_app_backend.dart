@@ -87,6 +87,13 @@ class LiveAppBackend implements AppBackend {
       _guard(() => _auth.login(request));
 
   @override
+  Future<LoginResult> submitSecondFactor(String code) =>
+      _guard(() => _auth.submitSecondFactor(code));
+
+  @override
+  Tom2FAChallenge? get pendingChallenge => _auth.pendingChallenge;
+
+  @override
   Future<void> logout() => _guard(() => _auth.logout());
 
   @override
@@ -147,12 +154,22 @@ class LiveAppBackend implements AppBackend {
   /// Runs [op], translating the client core's typed transport failures into the
   /// single [AppBackendException] the UI catches (preserving the server's stable
   /// error key).
+  ///
+  /// [AuthClientException] is matched first for its one extra bit,
+  /// `canRetrySecondFactor` — dropping it here would leave the login screen
+  /// unable to tell "wrong code, try again" from "the challenge is spent".
   Future<T> _guard<T>(Future<T> Function() op) async {
     try {
       return await op();
+    } on AuthClientException catch (e) {
+      throw AppBackendException(
+        e.defaultUserMessage,
+        key: e.key,
+        canRetrySecondFactor: e.canRetrySecondFactor,
+      );
     } on TomException catch (e) {
-      // AuthClientException / AppApiException / TomAuthExpiredException all
-      // extend TomException and carry the server's stable key + message.
+      // AppApiException / TomAuthExpiredException also extend TomException and
+      // carry the server's stable key + message.
       throw AppBackendException(e.defaultUserMessage, key: e.key);
     }
   }

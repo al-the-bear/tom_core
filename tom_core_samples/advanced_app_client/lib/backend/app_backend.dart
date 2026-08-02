@@ -38,8 +38,22 @@ class AppBackendException implements Exception {
   /// `auth.login.failed`, `app.access.forbidden`), else null.
   final String? key;
 
+  /// Whether a refused [AppBackend.submitSecondFactor] may simply be tried
+  /// again with a new code.
+  ///
+  /// Carries `AuthClientException.canRetrySecondFactor` across the seam. It is
+  /// the *only* signal that distinguishes "wrong code, try again" from "the
+  /// challenge is spent, start over", and the two demand different screens — so
+  /// it travels as a field rather than being re-derived from [key], which would
+  /// scatter the mapping across every caller.
+  final bool canRetrySecondFactor;
+
   /// Creates the exception with a human [message] and an optional stable [key].
-  const AppBackendException(this.message, {this.key});
+  const AppBackendException(
+    this.message, {
+    this.key,
+    this.canRetrySecondFactor = false,
+  });
 
   @override
   String toString() =>
@@ -55,9 +69,32 @@ class AppBackendException implements Exception {
 abstract class AppBackend {
   /// Authenticates [request], stores the session, and returns the resolved
   /// principal + token pair. Throws [AppBackendException] when rejected.
+  ///
+  /// A [LoginResult] with `requires2FA` set is **not** a session: the stored
+  /// token is an interim challenge carrier that authorizes nothing, and the
+  /// caller must complete the login with [submitSecondFactor] before any other
+  /// method will succeed.
   Future<LoginResult> login(LoginRequest request);
 
-  /// Ends the session and discards the stored token pair.
+  /// Completes a two-pass login by submitting the one-time [code], returning
+  /// exactly the pair a 2FA-free [login] would have produced.
+  ///
+  /// Throws [AppBackendException] when the code is refused; its
+  /// [AppBackendException.canRetrySecondFactor] says whether the challenge
+  /// survived (submit another code) or is spent (start over from the password
+  /// screen). On a retryable refusal the re-issued challenge has *already* been
+  /// stored, so [pendingChallenge] reports the decremented attempt count.
+  Future<LoginResult> submitSecondFactor(String code);
+
+  /// The challenge a [login] left pending, or null when none is outstanding.
+  ///
+  /// Its `type`, `attemptsRemaining`, `expiresAt` and `clientData['digits']`
+  /// are what the code screen renders from — the field width included, so a
+  /// mechanism with a different digit count needs no client change.
+  Tom2FAChallenge? get pendingChallenge;
+
+  /// Ends the session and discards the stored token pair — including a
+  /// half-finished two-factor login.
   Future<void> logout();
 
   /// Fetches the public login resource bundle (screen texts) the app installs

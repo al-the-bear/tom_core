@@ -17,7 +17,11 @@
 // ignore: unused_import
 import 'domain/login_credentials.dart';
 // ignore: unused_import
+import 'domain/second_factor_code.dart';
+// ignore: unused_import
 import 'forms/login_form.dart';
+// ignore: unused_import
+import 'forms/second_factor_form.dart';
 // ignore: unused_import
 import 'forms/todo_item_form.dart';
 // ignore: unused_import
@@ -37,7 +41,9 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // `reflection_seed.reflection.dart` — do-not-edit, regenerate-only — an
 // implementation detail).
 export 'domain/login_credentials.dart';
+export 'domain/second_factor_code.dart';
 export 'forms/login_form.dart';
+export 'forms/second_factor_form.dart';
 export 'forms/todo_item_form.dart';
 // advanced_todo_domain is imported (above) for generator discovery but
 // intentionally NOT re-exported: its library carries its own

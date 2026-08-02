@@ -39,8 +39,20 @@ class AdminBackendException implements Exception {
   /// `auth.login.failed`, `admin.access.forbidden`), else null.
   final String? key;
 
+  /// Whether a refused [AdminBackend.submitSecondFactor] may simply be tried
+  /// again with a new code.
+  ///
+  /// Carries `AuthClientException.canRetrySecondFactor` across the seam — the
+  /// only signal separating "wrong code, try again" from "the challenge is
+  /// spent, start over", which are different screens.
+  final bool canRetrySecondFactor;
+
   /// Creates the exception with a human [message] and an optional stable [key].
-  const AdminBackendException(this.message, {this.key});
+  const AdminBackendException(
+    this.message, {
+    this.key,
+    this.canRetrySecondFactor = false,
+  });
 
   @override
   String toString() =>
@@ -62,9 +74,30 @@ abstract class AdminBackend {
   /// endpoint); the role gate is enforced on every administrative call below, so
   /// a signed-in non-admin is refused the moment they touch admin data. The
   /// admin shell (step 33) uses that to reject a non-admin at the login screen.
+  ///
+  /// A [LoginResult] with `requires2FA` set is **not** a session: the stored
+  /// token is an interim challenge carrier, so the shell's `admin` probe must
+  /// wait until [submitSecondFactor] completes the login.
   Future<LoginResult> login(LoginRequest request);
 
-  /// Ends the session and discards the stored token pair.
+  /// Completes a two-pass login by submitting the one-time [code], returning
+  /// exactly the pair a 2FA-free [login] would have produced.
+  ///
+  /// Throws [AdminBackendException] when the code is refused;
+  /// [AdminBackendException.canRetrySecondFactor] says whether the challenge
+  /// survived. The sample seeds no 2FA-enrolled administrator — but an
+  /// enrolment is an *account* property the console does not control, so
+  /// handling it is what keeps the console usable the day someone enrols
+  /// `admin`.
+  Future<LoginResult> submitSecondFactor(String code);
+
+  /// The challenge a [login] left pending, or null when none is outstanding —
+  /// mechanism, attempts remaining, expiry, and the `clientData['digits']` the
+  /// code field sizes itself from.
+  Tom2FAChallenge? get pendingChallenge;
+
+  /// Ends the session and discards the stored token pair — including a
+  /// half-finished two-factor login.
   Future<void> logout();
 
   /// Fetches the public login resource bundle (screen texts) the admin console

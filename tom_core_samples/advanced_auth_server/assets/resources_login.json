@@ -1,10 +1,18 @@
 {
   "login": {
     "title": "Advanced Todo — Sign in",
-    "intro": "Try alice, bob or carol (any non-empty password).",
-    "username": { "label": "Username", "hint": "alice, bob or carol" },
+    "intro": "Try alice, bob or carol (any non-empty password), or dave for two-step verification.",
+    "username": { "label": "Username", "hint": "alice, bob, carol or dave" },
     "password": { "label": "Password" },
     "submit": "Sign in"
+  },
+  "twoFactor": {
+    "title": "Advanced Todo — Two-step verification",
+    "intro": "Enter the {digits}-digit code from your authenticator app.",
+    "code": { "label": "Verification code", "hint": "000000" },
+    "submit": "Verify",
+    "cancel": "Back to sign in",
+    "attemptsRemaining": "{count} attempt(s) remaining."
   },
   "adminLogin": {
     "title": "Advanced Todo — Admin sign in",
@@ -12,5 +20,13 @@
     "username": { "label": "Username", "hint": "admin" },
     "password": { "label": "Password" },
     "submit": "Sign in"
+  },
+  "adminTwoFactor": {
+    "title": "Advanced Todo — Admin two-step verification",
+    "intro": "Enter the {digits}-digit code from your authenticator app.",
+    "code": { "label": "Verification code", "hint": "000000" },
+    "submit": "Verify",
+    "cancel": "Back to sign in",
+    "attemptsRemaining": "{count} attempt(s) remaining."
   }
 }

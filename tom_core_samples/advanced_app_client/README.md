@@ -83,6 +83,17 @@ swap to the board. The app's reflected graph (domain entities + the
 credentials/form) is captured by `lib/reflection_seed.dart` — regenerate with
 `./reflection_generation.sh` only when a reflected signature changes.
 
+**Two phases, one screen.** When the account owes a second factor the login
+returns `requires2FA` and an *interim* token that authorizes nothing, so the
+session stores only a flag, `isLoggedIn` stays false, and this same screen
+switches to a code phase over `SecondFactorForm`/`SecondFactorCode` — sized from
+the challenge's own `clientData['digits']`, never a hardcoded 6. A retryable
+refusal keeps the phase and re-reads the decremented attempt count from
+`pendingChallenge`; a spent challenge drops back to username/password. Sign in as
+`dave` / `dave-pass` and enter the code for `JBSWY3DPEHPK3PXP` (the offline
+backend verifies with the kernel's own `TomTotp`, so a code that works here works
+against the live server).
+
 ## Board screen
 
 `lib/screens/board_screen.dart` is the signed-in home. It cascades the reads in
@@ -161,7 +172,8 @@ flutter run
 The client boots against those local servers with no flags. Sign in with a demo
 account (`alice` / `bob` / `carol`, password `pw`): `alice` owns the seeded
 project and can share it; `bob` is a seeded editor; `carol` starts with no access
-until `alice` shares the project. To explore offline instead, run with
+until `alice` shares the project; `dave` owns nothing and is enrolled in TOTP, so
+he exercises the second pass. To explore offline instead, run with
 `--dart-define=TEST_MODE=true` — the client then boots on the seeded in-memory
 fake, whose board, item-detail field grades, and share rights follow the same
 ownership + four-state model the live servers enforce.
@@ -184,6 +196,11 @@ flutter test --concurrency=1
   on sign-in, a valid login proceeds to the board, a rejected login shows an
   inline error without leaving the page, and empty credentials fail validation
   without a backend call.
+- `test/login_two_factor_test.dart` — the second pass (TC-28-05..08): a 2FA
+  account stops at the code phase instead of the board, a valid code completes
+  the login, a wrong code shows a retryable error with the attempts remaining,
+  and the third wrong code returns to the password screen. The codes are derived
+  with `TomTotp`, not hardcoded, so they are the codes an authenticator shows.
 - `test/board_screen_test.dart` — the status-column board (TC-29-01..03): items
   render grouped by `status` (asserted per column with `find.descendant`),
   tapping a card opens its detail, and the picker shows the seeded workspace +

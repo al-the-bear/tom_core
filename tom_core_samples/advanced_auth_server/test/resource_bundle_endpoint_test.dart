@@ -24,10 +24,27 @@ void main() {
     test('loginBundle carries the public login + adminLogin texts', () {
       final texts = AuthResourceBundles.loginBundle().texts;
       expect(texts['login.username.label'], 'Username');
-      expect(texts['login.username.hint'], 'alice, bob or carol');
+      expect(texts['login.username.hint'], 'alice, bob, carol or dave');
       expect(texts['login.password.label'], 'Password');
       expect(texts['adminLogin.username.hint'], 'admin');
       expect(texts['adminLogin.password.label'], 'Password');
+    });
+
+    test('loginBundle carries the second-factor texts for both clients', () {
+      // The code phase is reached *mid-login*, when the only bundle in hand is
+      // this public one — the authenticated bundle needs a session the interim
+      // token does not provide. So the second-factor chrome ships here, as a
+      // sibling scope of `login`/`adminLogin`, not in the console bundle.
+      final texts = AuthResourceBundles.loginBundle().texts;
+      expect(texts['twoFactor.code.label'], 'Verification code');
+      expect(texts['twoFactor.submit'], 'Verify');
+      // The two parameterised texts the screens substitute into (G-RES: the
+      // bundle owns the wording, the screen owns the value).
+      expect(texts['twoFactor.intro'], contains('{digits}'));
+      expect(texts['twoFactor.attemptsRemaining'], contains('{count}'));
+      expect(texts['adminTwoFactor.code.label'], 'Verification code');
+      expect(texts['adminTwoFactor.intro'], contains('{digits}'));
+      expect(texts['adminTwoFactor.attemptsRemaining'], contains('{count}'));
     });
 
     test('the loginResources handler returns the login bundle', () async {

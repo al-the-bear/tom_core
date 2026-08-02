@@ -58,6 +58,13 @@ class InMemoryAppBackend implements AppBackend {
   int _nextId = 100;
   String? _currentUserId;
 
+  /// The challenge a two-factor [login] left outstanding, and the user it
+  /// belongs to. Both null unless a login is half finished — which is precisely
+  /// the state in which [_currentUserId] is still null, so no data call
+  /// succeeds.
+  Tom2FAChallenge? _pendingChallenge;
+  String? _pendingUserId;
+
   /// The canned public login bundle, mirroring `advanced_auth_server`'s
   /// `AuthResourceBundles.loginBundle()` (D-A11) so the offline app installs the
   /// exact same sign-in chrome the live auth server serves — the widget tests
@@ -65,11 +72,20 @@ class InMemoryAppBackend implements AppBackend {
   /// texts.
   static const Map<String, Object?> loginTexts = {
     'login.title': 'Advanced Todo — Sign in',
-    'login.intro': 'Try alice, bob or carol (any non-empty password).',
+    'login.intro':
+        'Try alice, bob or carol (any non-empty password), or dave for two-step verification.',
     'login.username.label': 'Username',
-    'login.username.hint': 'alice, bob or carol',
+    'login.username.hint': 'alice, bob, carol or dave',
     'login.password.label': 'Password',
     'login.submit': 'Sign in',
+    'twoFactor.title': 'Advanced Todo — Two-step verification',
+    'twoFactor.intro': 'Enter the {digits}-digit code from your authenticator '
+        'app.',
+    'twoFactor.code.label': 'Verification code',
+    'twoFactor.code.hint': '000000',
+    'twoFactor.submit': 'Verify',
+    'twoFactor.cancel': 'Back to sign in',
+    'twoFactor.attemptsRemaining': '{count} attempt(s) remaining.',
     'adminLogin.title': 'Advanced Todo — Admin sign in',
     'adminLogin.intro':
         'Sign in as admin (password pw). A non-admin (alice, bob, carol) is rejected.',
@@ -189,7 +205,46 @@ class InMemoryAppBackend implements AppBackend {
     'alice': 'u-alice',
     'bob': 'u-bob',
     'carol': 'u-carol',
+    'dave': 'u-dave',
   };
+
+  /// The accounts enrolled in TOTP, by user id → base32 secret.
+  ///
+  /// `dave` carries the same secret the auth server's
+  /// `[005]-auth_two_factor_seed` migration seeds (RFC 6238's own test vector),
+  /// so a code that satisfies the offline backend satisfies the live one and
+  /// the README's instructions hold either way.
+  static const Map<String, String> twoFactorSecrets = {
+    'u-dave': 'JBSWY3DPEHPK3PXP',
+  };
+
+  /// The TOTP policy, mirroring `TomTotp2FAService`'s `globalSetting*` statics.
+  ///
+  /// Restated here rather than imported because that adaptor lives in
+  /// `tom_core_server`, which a Flutter app cannot depend on. The *verification*
+  /// is not restated: [submitSecondFactor] runs the kernel's own [TomTotp], so
+  /// the offline backend accepts exactly the codes the server accepts instead of
+  /// approximating them.
+  static const int totpDigits = TomTotp.defaultDigits;
+
+  /// The mechanism key the challenge is issued under — `TomTotp2FAService`'s
+  /// `mechanismType`, which lives server-side.
+  static const String totpMechanism = 'totp';
+
+  /// One TOTP time step, in seconds (RFC 6238 default).
+  static const int totpPeriodSeconds = 30;
+
+  /// One TOTP time step (RFC 6238 default).
+  static const Duration totpPeriod = Duration(seconds: totpPeriodSeconds);
+
+  /// Steps either side of "now" accepted, tolerating clock skew.
+  static const int totpWindowSteps = 1;
+
+  /// Submissions one challenge tolerates before it is spent.
+  static const int totpAttemptsAllowed = 3;
+
+  /// How long a challenge stays answerable.
+  static const Duration totpChallengeValidity = Duration(minutes: 5);
 
   void _seed() {
     void user(String id, String username, String name) => _users.add(UserDto(
@@ -201,6 +256,11 @@ class InMemoryAppBackend implements AppBackend {
     user('u-alice', 'alice', 'Alice (owner)');
     user('u-bob', 'bob', 'Bob (editor)');
     user('u-carol', 'carol', 'Carol (viewer)');
+    // Dave owns nothing and is shared into nothing — deliberately, because the
+    // live `app_db` seeds him the same way. He exists here for the *second
+    // factor*, so signing in as him proves the two-pass flow and then lands on
+    // the board's empty state, exactly as it does against the real servers.
+    user('u-dave', 'dave', 'Dave Dijkstra (2FA)');
 
     _workspaces.add(Workspace()
       ..id.set('w-1')
@@ -264,7 +324,7 @@ class InMemoryAppBackend implements AppBackend {
     final id = demoAccounts[key];
     if (id == null) {
       throw const AppBackendException(
-        'Unknown account. Try alice, bob or carol.',
+        'Unknown account. Try alice, bob, carol or dave.',
         key: 'auth.login.failed',
       );
     }
@@ -274,8 +334,37 @@ class InMemoryAppBackend implements AppBackend {
         key: 'auth.login.failed',
       );
     }
-    _currentUserId = id;
+    // A new login abandons whatever challenge was outstanding.
+    _pendingChallenge = null;
+    _pendingUserId = null;
     final user = _users.firstWhere((u) => u.id == id);
+
+    if (twoFactorSecrets.containsKey(id)) {
+      // Pass 1 of two: the password was right, but this is *not* a session.
+      // `_currentUserId` stays null, so every other method throws
+      // `app.no_session` until [submitSecondFactor] completes the login —
+      // mirroring the live interim token, which authorizes nothing.
+      _pendingUserId = id;
+      _pendingChallenge = Tom2FAChallenge(
+        type: totpMechanism,
+        expiresAt: DateTime.now().toUtc().add(totpChallengeValidity),
+        attemptsAllowed: totpAttemptsAllowed,
+        clientData: const {
+          'digits': totpDigits,
+          'periodSeconds': totpPeriodSeconds,
+        },
+      );
+      return LoginResult(
+        user: user,
+        requires2FA: true,
+        twoFactorType: totpMechanism,
+        authToken: 'demo-2fa-challenge-$key',
+        authzToken: 'demo-2fa-challenge-$key',
+        expiresAt: _pendingChallenge!.expiresAt,
+      );
+    }
+
+    _currentUserId = id;
     return LoginResult(
       user: user,
       authToken: 'demo-auth-$key',
@@ -285,8 +374,86 @@ class InMemoryAppBackend implements AppBackend {
   }
 
   @override
+  Tom2FAChallenge? get pendingChallenge => _pendingChallenge;
+
+  @override
+  Future<LoginResult> submitSecondFactor(String code) async {
+    final challenge = _pendingChallenge;
+    final userId = _pendingUserId;
+    if (challenge == null || userId == null) {
+      throw const AppBackendException(
+        'No pending two-factor challenge — sign in first.',
+        key: 'login.error.2fa.no-challenge',
+      );
+    }
+    if (challenge.isExpired()) {
+      _clearChallenge();
+      throw const AppBackendException(
+        'The two-factor challenge has expired.',
+        key: 'login.error.2fa.expired',
+      );
+    }
+
+    // Spend the attempt *before* verifying, as the server does: the count must
+    // move whether or not the code turns out to be right, or a client could
+    // retry forever.
+    final consumed = challenge.withConsumedAttempt();
+    if (_verifyTotp(twoFactorSecrets[userId]!, code)) {
+      _clearChallenge();
+      _currentUserId = userId;
+      final user = _users.firstWhere((u) => u.id == userId);
+      return LoginResult(
+        user: user,
+        authToken: 'demo-auth-${user.username}',
+        authzToken: 'demo-authz-${user.username}',
+        expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+      );
+    }
+
+    if (consumed.isExhausted) {
+      _clearChallenge();
+      throw const AppBackendException(
+        'No two-factor attempts remain. Sign in again.',
+        key: 'login.error.2fa.attempts-exhausted',
+      );
+    }
+    // Retryable: keep the challenge with the attempt spent, so the next call
+    // counts against a state the caller cannot roll back — the same reason the
+    // live client stores the re-issued interim token before it throws.
+    _pendingChallenge = consumed;
+    throw const AppBackendException(
+      'That code is not valid.',
+      key: 'login.error.2fa.invalid-code',
+      canRetrySecondFactor: true,
+    );
+  }
+
+  @override
   Future<void> logout() async {
     _currentUserId = null;
+    _clearChallenge();
+  }
+
+  void _clearChallenge() {
+    _pendingChallenge = null;
+    _pendingUserId = null;
+  }
+
+  /// Whether [code] is a TOTP code for [secret] within the accepted skew
+  /// window, using the kernel's own generator so the offline backend accepts
+  /// exactly what the server does.
+  bool _verifyTotp(String secret, String code) {
+    final submitted = code.trim();
+    if (submitted.length != totpDigits) return false;
+    final key = TomTotp.decodeBase32(secret);
+    if (key.isEmpty) return false;
+    final counter = TomTotp.counterFor(period: totpPeriod);
+    for (var offset = -totpWindowSteps; offset <= totpWindowSteps; offset++) {
+      if (TomTotp.generateCode(key, counter + offset, totpDigits) == submitted) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @override

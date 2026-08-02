@@ -26,8 +26,8 @@ against the seam directly below it — never against a live socket:
 | `advanced_client_core` | the Flutter-free client core: auth/token storage, the shared transport, error normalisation (+ the live cross-tier, login and file-transfer scenarios, below) |
 | `advanced_auth_server` | the JWT issuer, the role gate, and the admin grant/assignment API against an in-process datasource |
 | `advanced_app_server` | the secured task API: the ownership-or-share resolver, the four-state field-grade resolver, the write enforcement, and the per-row column grade + file-column declarations behind the file slots |
-| `advanced_app_client` | the end-user widgets bound to the **in-memory** backend fake — the four-role render matrix, the sentinel render proof, and the graded attachment field |
-| `advanced_authadmin_client` | the admin console widgets against the **in-memory** admin fake — CRUD drafts, two-phase login, the grant-matrix editor |
+| `advanced_app_client` | the end-user widgets bound to the **in-memory** backend fake — the four-role render matrix, the sentinel render proof, the graded attachment field, and the two-pass second-factor sign-in |
+| `advanced_authadmin_client` | the admin console widgets against the **in-memory** admin fake — CRUD drafts, the login (credentials, the `admin` probe, and the second factor), the grant-matrix editor |
 | `advanced_ops_server` | the back-office jobs against stand-in stores — the retention scan, digest composition and its redelivery, the export projection, every declared schedule, and `min(user, server)` as a *pair* of runs; plus a live suite reading the audit trail and the exported bytes back out of `app_db` ([Part 14](README_advanced_14_operations.md)) |
 
 The discipline that makes this work is the **injected backend seam**
@@ -216,10 +216,10 @@ Current green-gate counts (runtime, the authoritative figure):
 | `advanced_todo_domain` | 24 |
 | `advanced_todo_contracts` | 45 |
 | `advanced_client_core` | 63 (+18 live-stack tests that skip without the servers) |
-| `advanced_auth_server` | 81 |
+| `advanced_auth_server` | 82 |
 | `advanced_app_server` | 115 |
-| `advanced_app_client` | 54 |
-| `advanced_authadmin_client` | 67 |
+| `advanced_app_client` | 58 |
+| `advanced_authadmin_client` | 72 |
 
 `advanced_client_core`'s 18 skips are not a shortfall — they are the suites that
 only a booted stack can answer, and the runner turns each of them green:

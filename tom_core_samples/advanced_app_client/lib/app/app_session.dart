@@ -40,6 +40,7 @@ class AppSession extends ChangeNotifier {
   String _authzToken = '';
   DateTime? _expiresAt;
   Map<String, String> _resourceRoles = const {};
+  bool _awaitingSecondFactor = false;
 
   /// The provider contents captured just before [login] installed the full
   /// bundle, restored on logout so a re-login starts from the same chrome.
@@ -53,7 +54,25 @@ class AppSession extends ChangeNotifier {
   UserDto? get user => _user;
 
   /// Whether a principal is currently signed in.
+  ///
+  /// A half-finished two-factor login is **not** signed in — see
+  /// [awaitingSecondFactor].
   bool get isLoggedIn => _user != null;
+
+  /// Whether a [login] verified the password but left a second factor
+  /// outstanding.
+  ///
+  /// The login screen switches to its code phase on this, and the shell keeps
+  /// showing the login screen because [isLoggedIn] is still false — the interim
+  /// token authorizes nothing, so routing to the board would show an app whose
+  /// every call `401`s.
+  bool get awaitingSecondFactor => _awaitingSecondFactor;
+
+  /// The outstanding challenge — mechanism, attempts remaining, expiry, and the
+  /// `clientData` the code field sizes itself from. Null unless
+  /// [awaitingSecondFactor].
+  Tom2FAChallenge? get pendingChallenge =>
+      _awaitingSecondFactor ? backend.pendingChallenge : null;
 
   /// The identity bearer for authenticated calls; empty when logged out.
   String get authToken => _authToken;
@@ -109,9 +128,54 @@ class AppSession extends ChangeNotifier {
   /// Authenticates [request] and stores the resolved principal + token pair.
   ///
   /// Throws [AppBackendException] on a rejected login; the session stays logged
-  /// out. On success the shell rebuilds onto the board.
+  /// out. On success the shell rebuilds onto the board — *unless* the account
+  /// owes a second factor, in which case the login is only half done:
+  /// [awaitingSecondFactor] goes true, [isLoggedIn] stays false, and the caller
+  /// must finish with [submitSecondFactor].
   Future<void> login(LoginRequest request) async {
     final result = await backend.login(request);
+    if (result.requires2FA) {
+      // Deliberately store *nothing* from the interim result but the flag: its
+      // token authorizes no call, and assigning `_user` here would flip
+      // [isLoggedIn] and route the shell onto a board that cannot load.
+      _awaitingSecondFactor = true;
+      notifyListeners();
+      return;
+    }
+    await _completeLogin(result);
+  }
+
+  /// Answers the outstanding challenge with the one-time [code].
+  ///
+  /// On success the session is fully established exactly as a 2FA-free [login]
+  /// would have left it. On refusal the [AppBackendException] is rethrown for
+  /// the screen to surface; when it is *not* retryable
+  /// ([AppBackendException.canRetrySecondFactor]) the challenge is spent, so the
+  /// session drops back to "awaiting credentials" and the shell shows the
+  /// password screen again. A retryable refusal leaves [awaitingSecondFactor]
+  /// set and [pendingChallenge] carrying the decremented attempt count.
+  Future<void> submitSecondFactor(String code) async {
+    try {
+      await _completeLogin(await backend.submitSecondFactor(code));
+    } on AppBackendException catch (e) {
+      if (!e.canRetrySecondFactor) cancelSecondFactor();
+      rethrow;
+    }
+  }
+
+  /// Abandons a half-finished two-factor login and returns to the credentials
+  /// screen. Also the path a spent challenge takes.
+  void cancelSecondFactor() {
+    if (!_awaitingSecondFactor) return;
+    _awaitingSecondFactor = false;
+    notifyListeners();
+  }
+
+  /// Establishes the session from a *completed* [result] — the shared tail of
+  /// both login paths, so a two-factor sign-in and a plain one leave exactly the
+  /// same state behind.
+  Future<void> _completeLogin(LoginResult result) async {
+    _awaitingSecondFactor = false;
     _user = result.user;
     _authToken = result.authToken;
     _authzToken = result.authzToken;
@@ -168,6 +232,7 @@ class AppSession extends ChangeNotifier {
       e.key != null && _sessionLostKeys.contains(e.key);
 
   void _clearSession() {
+    _awaitingSecondFactor = false;
     _user = null;
     _authToken = '';
     _authzToken = '';

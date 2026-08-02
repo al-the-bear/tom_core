@@ -383,16 +383,55 @@ third failure ends the challenge.
 Compare with `alice` / `alice-pass`, whose `two_factor_type` is NULL: the same
 `POST /auth/login` returns `requires2FA: false` and a usable pair immediately.
 
-> **Not yet wired into the Flutter clients.** `advanced_app_client` and
-> `advanced_authadmin_client` have no second-factor screen — their `login()`
-> paths do not check `requires2FA`, so signing in as `dave` there would store the
-> interim token and then fail every subsequent call. The second pass is exercised
-> from `advanced_client_core` and `curl`, and asserted by
-> `advanced_auth_server/test/two_factor_login_test.dart` (server side),
-> `advanced_client_core/test/auth_client_two_factor_test.dart` (client side) and
-> `auth_client_integration_test.dart`'s `TC-22-12`, which drives the whole
-> two-pass loop over a real socket against the running server. Use `alice` or
-> `bob` in the Flutter apps.
+### In the Flutter clients
+
+Both Flutter clients complete the second pass. `advanced_app_client`'s sign-in
+screen is **two phases on one screen**: `AppSession.login` branches on
+`requires2FA` and — deliberately storing nothing but a flag, because the interim
+token authorizes no call — leaves `isLoggedIn` false, so the shell keeps showing
+the login screen while it switches to a code phase. Staying on one screen rather
+than pushing a route is what keeps the shell's rule intact: the home is a pure
+function of `isLoggedIn`, with no navigator state to unwind when a spent
+challenge drops back to the credentials phase. The code field is sized from the
+challenge's own `clientData['digits']`, never from a hardcoded 6, so a mechanism
+with a different code width needs no client change. Sign in as `dave` /
+`dave-pass` and enter the code your authenticator shows for `JBSWY3DPEHPK3PXP`.
+
+The refusal path is the interesting half. `AuthClientException.canRetrySecondFactor`
+travels across the backend seam as `AppBackendException.canRetrySecondFactor`,
+and it is the only signal separating *wrong code, try again* from *the challenge
+is spent, start over* — two different screens. On a retryable refusal the client
+core has **already stored** the re-issued challenge token, so a retry is simply
+another `submitSecondFactor` call and the screen re-reads `pendingChallenge` for
+the decremented attempt count. When it is false the session abandons the pending
+login and the screen falls back to username/password.
+
+`advanced_authadmin_client` does the same, with one ordering consequence: its
+login *probes* an admin call, because the `admin` role gate is per-operation
+rather than on login. That probe moves to after pass 2 — it cannot run against an
+interim token that authorizes nothing — so an enrolled non-admin is still
+refused, just one pass later.
+
+No administrator is 2FA-enrolled in the seeded `auth_db`, so
+`InMemoryAdminBackend` enrols none either; an offline console that demanded a
+code the real one does not would teach the wrong thing. But an enrolment is an
+*account* property the console does not control, so the fake takes
+`twoFactorUsernames` as a constructor argument, and
+`advanced_authadmin_client/test/admin_login_two_factor_test.dart` uses it to
+prove the console still works the day someone enrols `admin`.
+
+Neither in-memory backend fakes the crypto: both verify with the kernel's own
+`TomTotp`, against the same secret the migration seeds — so the offline path
+accepts exactly what the server accepts, and the widget tests derive their code
+the way a human derives one.
+
+The second pass is asserted by `advanced_auth_server/test/two_factor_login_test.dart`
+(server side), `advanced_client_core/test/auth_client_two_factor_test.dart`
+(client side), `auth_client_integration_test.dart`'s `TC-22-12` (the whole
+two-pass loop over a real socket against the running server), and
+`advanced_app_client/test/login_two_factor_test.dart` +
+`advanced_authadmin_client/test/admin_login_two_factor_test.dart` (the two
+screens).
 
 ## The client auth layer
 
