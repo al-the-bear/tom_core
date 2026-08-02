@@ -9,6 +9,15 @@
 /// and so cannot be shown without one; it is asserted live in
 /// `test/scheduling_db_test.dart`.
 ///
+/// The arbitration itself — between *processes* rather than within one — is
+/// demonstrated by `example/scheduling/cluster/`: two real nodes against one
+/// MariaDB, asserting that a job fires once across the pair, that a stale
+/// fencing token no longer authorises a write, that a killed node's run returns
+/// to the queue when its lease expires and not before, and that a node which
+/// stops checking in is named failed. Run it with
+/// `./example/scheduling/cluster/run_cluster_demo.sh` (docker required); see
+/// `example/scheduling/cluster/readme.md`.
+///
 /// What this example does show, connection-free: the schema the pair relies on
 /// and why each part of it is load-bearing, the on-disk migration layout that
 /// creates it in a deployment, the UTC instant encoding both stores use, the two

@@ -502,6 +502,21 @@ is how the ambiguous commit is reproduced; it asserts the failure formula
 directly, including the stalled-accuser guard; and it asserts recovery in both
 opt-in states.
 
+One thing no test suite can substantiate, because a suite is one process:
+whether two *separately running* nodes actually arbitrate correctly through the
+database. `example/scheduling/cluster/run_cluster_demo.sh` is that experiment.
+It brings up MariaDB from a fresh volume, applies the shipped migrations, runs
+four scenarios as pairs of real processes, and has a third process judge the
+result from both the nodes' logs and the final database state — 30 checks over
+four claims: a job fires once across the pair, a stale fencing token no longer
+authorises a write, a killed node's run returns to the queue when its lease
+expires and not before, and a node that stops checking in is named failed from
+the one row it always occupied. It exits non-zero if any claim fails, and each
+claim was falsified before being trusted (see
+[`example/scheduling/cluster/readme.md`](../example/scheduling/cluster/readme.md)).
+It is a demonstration rather than a suite because it needs docker and a minute
+of wall clock, so it is run deliberately, not by `testkit :test`.
+
 ## Core Components
 
 | File | Contents |
@@ -513,6 +528,7 @@ opt-in states.
 | `lib/src/tomserver/datasources/sql_failure_mode.dart` | `classifySqlFailure` — definite or ambiguous |
 | `example/scheduling/scheduling_example.dart` | The connection-free surface, runnable |
 | `example/scheduling/migrations/main/tomcore/` | The shipped reference migrations |
+| `example/scheduling/cluster/` | The two-node demonstration: real processes, one database, four claims asserted by a third process |
 
 ## Dependencies
 
