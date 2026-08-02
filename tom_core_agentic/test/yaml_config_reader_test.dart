@@ -15,8 +15,8 @@ YamlConfigReader _reader({Map<String, String> env = const {}}) =>
     YamlConfigReader(env: env, errorFactory: _CfgException.new);
 
 /// The reader now operates on the **plain** map [loadYamlAsMap] produces at
-/// the parse boundary — never a `package:yaml` `YamlMap` (prototype-plan-2
-/// item 5). Every test builds its node through this helper.
+/// the parse boundary — never a `package:yaml` `YamlMap`. Every test builds
+/// its node through this helper.
 Map<Object?, Object?> _map(String yaml) => loadYamlAsMap(yaml);
 
 void main() {

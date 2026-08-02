@@ -1,5 +1,5 @@
 // Unit tests for the generic MCP transport-auth contract promoted from
-// tom_brain_memory (completion-plan item 8).
+// tom_brain_memory.
 //
 // These tests are kernel-free: the contract is parameterised over the
 // principal type, so a String stands in for the framework `TomPrincipal`

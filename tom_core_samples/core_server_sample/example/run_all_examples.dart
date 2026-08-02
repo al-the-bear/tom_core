@@ -6,8 +6,8 @@
 /// result, so this file doubles as a headless smoke test: it reports a pass/fail
 /// tally and exits non-zero on any failure. The live HTTP boot + persistence
 /// round-trip against the bundled Docker MariaDB is documented in the README and
-/// gated on the workspace's Docker integration step (`readme_and_example_plan`
-/// item 28).
+/// gated on the workspace's Docker integration step (`readme_and_example_plan.md`
+/// item 28 — the final QA gate).
 ///
 /// Run it with:
 ///

@@ -113,7 +113,7 @@ action is hidden and everything runs in memory.
                     └──────────────► TodoApi ◄─────────┴────────────────────┘
                                        │
                     ┌──────────────────┴───────────────────┐
-            InMemoryTodoApi                       (HTTP write/login — item 28)
+            InMemoryTodoApi                    (HTTP write/login — cross-tier)
           (default; tests)                   LiveTodoReadClient (live reads only)
 ```
 
@@ -155,7 +155,7 @@ exposes a *read-only* surface — it has no login or write endpoints. Pretending
 did (by throwing `UnimplementedError` from a half-written HTTP `TodoApi`) would
 be dishonest and untestable. Instead the writes and login run in memory, the
 live reads run over the wire, and the gap between them is documented as the
-cross-tier [item-28 work](#14-known-limitations-and-the-cross-tier-work). Swap
+[cross-tier work](#14-known-limitations-and-the-cross-tier-work). Swap
 the backend in exactly one place — `main.dart` — and the whole app follows.
 
 ---
@@ -467,12 +467,12 @@ This sample is honest about the seam it cannot yet cross:
   `GET /todos` and `GET /todos/field-states` — a genuine round-trip, but a read.
 
 Closing that gap — server-side login + write endpoints and a full HTTP
-`TodoApi` — is the cross-tier **item 28** work. When it lands, the single
+`TodoApi` — is the **cross-tier work**. When it lands, the single
 backend swap in `main.dart` is the only client change required: the screens,
 forms, session and authorization model are already written against the
 interface, not the transport.
 
-> **Item 28 is now realized — in a dedicated suite.** Rather than retrofit live
+> **The cross-tier work is now realized — in a dedicated suite.** Rather than retrofit live
 > login and writes onto this read-only pair, the secured, full-stack version is
 > built as its own series: the
 > [**Advanced Tom Core Full-Stack Sample**](../README_advanced_sample.md) — two
@@ -500,5 +500,5 @@ interface, not the transport.
   live path consumes
 - **Secured, full-stack successor:**
   [`README_advanced_sample.md`](../README_advanced_sample.md) — the advanced
-  suite that closes the cross-tier [item 28](#14-known-limitations-and-the-cross-tier-work)
+  suite that closes the [cross-tier gap](#14-known-limitations-and-the-cross-tier-work)
   with live login, writes, bearer auth, and cross-user sharing

@@ -102,7 +102,8 @@ helpers, and class-existence for `DocScanner`/`DocScannerFactory`/`Document`/
 > `d4rt -run-replay` (which registers *all* bridges at once) the two
 > `MarkdownParser` registrations collide unless deduplicated by source URI; that
 > is the **B2** cross-module duplicate-registration clash, deferred to the
-> analyze/replay gate (items 75-76). This bridge's `MarkdownParser` carries a
+> analyze/replay gate (`refactoring_plan.md` items 75-76). This bridge's
+> `MarkdownParser` carries a
 > distinct `sourceUri` (`package:tom_doc_scanner/src/markdown_parser.dart`), so
 > the dedup machinery has the information it needs once B2 is wired up — but note
 > the two `MarkdownParser`s are **different classes** (distinct upstream

@@ -1,5 +1,5 @@
 // Unit tests for the generic isolate-streaming machinery promoted from
-// tom_brain_memory's isolate adapter (Tom Brain completion plan item 7).
+// tom_brain_memory's isolate adapter.
 //
 // These exercise the mechanisms in isolation; the brain-memory isolate
 // boundary round-trips that consume them live in

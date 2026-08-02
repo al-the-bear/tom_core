@@ -2,7 +2,8 @@
 /// mapping is pure and total, so it verifies without a server or MariaDB.
 ///
 /// The live endpoint + persistence round-trip against Docker MariaDB is the
-/// gate of readme_and_example_plan item 28; these tests cover everything that
+/// final QA gate of `readme_and_example_plan.md` item 28; these tests cover
+/// everything that
 /// does not need a database.
 library;
 

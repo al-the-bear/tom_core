@@ -1,9 +1,9 @@
 import 'package:yaml_edit/yaml_edit.dart';
 
 /// The single sanctioned path for *mutating* YAML config text while
-/// preserving its on-disk layout (prototype-plan-2 item 6).
+/// preserving its on-disk layout.
 ///
-/// Reading config goes through `loadYamlAsMap` (item 4); writing it goes
+/// Reading config goes through `loadYamlAsMap`; writing it goes
 /// through this writer. It is a thin wrapper over `package:yaml_edit`'s
 /// [YamlEditor], which performs **surgical** edits: a [set] or [remove]
 /// rewrites only the bytes of the targeted node and leaves every comment,

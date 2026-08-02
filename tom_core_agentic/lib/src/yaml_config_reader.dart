@@ -17,7 +17,7 @@ typedef YamlConfigErrorFactory = Object Function(String message);
 /// The map is the plain `Map<Object?, Object?>` produced by [loadYamlAsMap]
 /// at the parse boundary — never a `package:yaml` `YamlMap`. This reader has
 /// no `package:yaml` import: the node types stay out of the read path
-/// entirely (prototype-plan-2 item 5). Nested maps and lists it returns are
+/// entirely. Nested maps and lists it returns are
 /// likewise plain `Map<Object?, Object?>` / `List<Object?>`, so a loader can
 /// descend through the whole document without ever meeting a `YamlMap`.
 ///

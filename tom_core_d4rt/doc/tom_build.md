@@ -140,4 +140,5 @@ carriers.
 > to this package.) The only remaining gate for the **full-binary**
 > `d4rt -run-replay` (which registers *all* bridges at once) is B2 — the
 > cross-module duplicate `MarkdownParser` registration clash — deferred to the
-> analyze/replay gate (items 75-76). `dart analyze lib/src/tom_build` clean.
+> analyze/replay gate (`refactoring_plan.md` items 75-76). `dart analyze
+> lib/src/tom_build` clean.

@@ -14,8 +14,8 @@
 /// | `disabled`     | shown, greyed-out         |
 /// | `none`         | hidden                    |
 ///
-/// This is the server half of the four-state story (item 17 + item 18): the
-/// server decides the grade, the client renders it.
+/// This is the server half of the four-state story: the server decides the
+/// grade, the client renders it.
 library;
 
 // tom_core_server re-exports tom_core_kernel, so `TomAuthState` and the graded

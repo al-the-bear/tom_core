@@ -111,5 +111,5 @@ converter types.
 > `d4rt -run-replay` (all bridges at once) the two registrations are the **B2**
 > cross-module duplicate-name clash. Because they are genuinely different types,
 > the resolution is a disambiguation by source URI (not a dedup-by-identity
-> collapse); deferred to the analyze/replay gate (items 75-76). `dart analyze
-> lib/src/tom_md2latex` clean.
+> collapse); deferred to the analyze/replay gate (`refactoring_plan.md`
+> items 75-76). `dart analyze lib/src/tom_md2latex` clean.

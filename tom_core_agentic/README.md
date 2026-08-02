@@ -52,7 +52,7 @@ analogue exists, why it is not reused.
 | **Shutdown** | **Own by tier-design** | `tom_core_kernel` ships `TomShutdownCleanup`, but it imports `dart:io` (`ProcessSignal`) and `tom_reflection/mirrors`, so it lives in the heavy kernel tier. `AsyncShutdownCoordinator` is the `dart:io`-free, async-await-correct, trigger-generic coordinator the lightweight tier needs. Depending on the kernel to share it would drag `dart:io` + reflection into `tom_brain_shared`; the bounded duplication is intentional. |
 | **Config read/write** | **Own** (no equivalent) | No YAML config loader/reader/writer exists in `tom_basics` or `tom_core_kernel`. `loadYamlAsMap` + `YamlConfigReader`/`MapFieldReader` own the read path (plain maps, no `YamlMap` leak); `YamlConfigWriter` owns the AST-preserving write path. |
 
-**Audit result (prototype-plan-2 item 7):** no divergent re-implementation
+**Audit result:** no divergent re-implementation
 of a `tom_core_kernel`-owned primitive was found. Logging is reused;
 clock and config helpers have no `tom_core_*` equivalent; the shutdown
 coordinator is a deliberate lightweight-tier alternative to the kernel's

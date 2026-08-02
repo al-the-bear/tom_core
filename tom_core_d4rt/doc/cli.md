@@ -98,6 +98,7 @@ editing this file.
 because it links in `lib/src/tom_core_server/tom_core_server_bridges.b.dart`,
 which carries a generated callback-type defect (`withConnection` —
 `FutureOr<Object?>` vs `FutureOr<Object>`). This is the pre-existing **B3**
-blocker tracked for the registration/analyze-replay gate (refactoring-plan
-items 75-76); it is a `tom_core_server` codegen defect, not a CLI-wiring issue,
+blocker tracked for the registration/analyze-replay gate
+(`refactoring_plan.md` items 75-76); it is a `tom_core_server` codegen defect,
+not a CLI-wiring issue,
 and the analyzer does not surface it (only the CFE does).

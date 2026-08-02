@@ -1,10 +1,10 @@
-// Tests for the canonical YAML -> plain-Map loader (prototype-plan-2 item 4).
+// Tests for the canonical YAML -> plain-Map loader.
 //
 // `loadYamlAsMap` is the single, domain-free entry point the brain config
 // loaders standardize on: it parses a YAML document and returns plain
 // `Map<String, Object?>` / `List<Object?>` / scalar values — never a
 // `YamlMap` or `YamlList`. Downstream type-safe reads then go through
-// `MapFieldReader` (item 5), which operates on plain maps.
+// `MapFieldReader`, which operates on plain maps.
 //
 // Environment expansion is no longer a free function here: the single
 // `${env:NAME}` engine is `PlaceholderResolver` (in
@@ -15,7 +15,7 @@
 // What this file pins:
 //   1. Round-trip: nested maps/lists/scalars convert to plain collections.
 //   2. No `YamlMap`/`YamlList`/`YamlScalar` survives anywhere in the output
-//      (recursive type walk — the item-4 verification gate).
+//      (recursive type walk).
 //   3. Type-error messages: a non-map document and a non-string key fail
 //      with located, engineer-readable messages.
 

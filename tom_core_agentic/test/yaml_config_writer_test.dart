@@ -1,4 +1,4 @@
-// Tests for the AST-preserving config writer (prototype-plan-2 item 6).
+// Tests for the AST-preserving config writer.
 //
 // `YamlConfigWriter` is the single sanctioned path for mutating YAML config
 // text. It wraps `package:yaml_edit`, so a surgical `set`/`remove` rewrites

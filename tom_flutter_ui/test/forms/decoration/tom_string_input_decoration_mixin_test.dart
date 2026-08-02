@@ -429,8 +429,8 @@ void main() {
     testWidgets(
         'disabled and read render distinct opacities '
         '(disabled is not conflated with read-only)', (tester) async {
-      // Item-18 regression: the four auth states must each render
-      // distinctly. Historically `disabled` was conflated with `read-only`;
+      // Four-state rendering regression: the four auth states must each
+      // render distinctly. Historically `disabled` was conflated with `read-only`;
       // this pins the guarantee that the rendered dim differs between them.
       adapter.setRule('name', TomAuthState.disabled);
       await tester.pumpWidget(_wrap(

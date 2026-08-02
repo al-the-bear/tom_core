@@ -9,10 +9,10 @@
 /// counterparts. `todo_mapping.dart` converts between the two worlds.
 ///
 /// Keeping the DB mapping here (rather than annotating the domain entities)
-/// settles the blueprint's open question in the only direction item 14's
-/// realised shape allows: the domain model is the client's observable form
-/// model, the records are the server's relational model, and the boundary is
-/// explicit and tested. See `core_server_sample_design.md` (Open decision #1).
+/// settles the blueprint's open question in the only direction the shared
+/// `todo_domain` package allows: the domain model is the client's observable
+/// form model, the records are the server's relational model, and the boundary
+/// is explicit and tested. See `core_server_sample_design.md` (Open decision #1).
 library;
 
 // tom_core_server re-exports tom_core_kernel, so `@tomReflector` and the

@@ -15,7 +15,7 @@ typedef YamlMapErrorFactory = Object Function(String message);
 /// `Map<String, Object?>` — never a `YamlMap`, `YamlList`, or `YamlScalar`.
 ///
 /// This is the one canonical YAML→Map entry point for the brain's config
-/// layer (prototype-plan-2 item 4). `package:yaml`'s [loadYaml] yields a tree
+/// layer. `package:yaml`'s [loadYaml] yields a tree
 /// of `YamlMap`/`YamlList` nodes that are read-only and leak their node types
 /// through every typed access. Routing every load through this helper
 /// converts that tree, once, at the parse boundary into the mutable

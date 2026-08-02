@@ -5,8 +5,7 @@
 /// [LiveTodoReadClient] is configured, the app-bar refresh pulls the same list
 /// from the running `core_server_sample` over HTTP — an honest live read that
 /// swaps the view to server data and labels it as such, without pretending the
-/// in-memory edits round-trip to the server (that is the cross-tier item-28
-/// work).
+/// in-memory edits round-trip to the server (that is the cross-tier work).
 library;
 
 import 'package:flutter/material.dart';

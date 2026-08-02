@@ -1,13 +1,12 @@
 // Generic MCP transport-auth contract.
 //
-// Promoted out of `tom_brain_memory`'s MCP server (Tom Brain
-// completion-plan item 8). The bearer-token gate that every MCP server
-// in the framework needs is a transport concern with nothing
-// domain-specific in it, so it lives here alongside the rest of the
-// shared, `tom_basics`-only agentic infrastructure. Future
-// thinking / planning / creation / procedure MCP servers reuse this one
-// contract rather than each re-deriving a failure taxonomy and an error
-// code.
+// Promoted out of `tom_brain_memory`'s MCP server. The bearer-token
+// gate that every MCP server in the framework needs is a transport
+// concern with nothing domain-specific in it, so it lives here
+// alongside the rest of the shared, `tom_basics`-only agentic
+// infrastructure. Future thinking / planning / creation / procedure MCP
+// servers reuse this one contract rather than each re-deriving a
+// failure taxonomy and an error code.
 //
 // What stays domain-specific (and therefore does *not* live here): the
 // concrete authenticators that turn a token into a framework principal
