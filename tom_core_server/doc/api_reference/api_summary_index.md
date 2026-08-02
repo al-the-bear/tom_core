@@ -87,6 +87,9 @@ surface documented here.
 | `Tom2FASubmission` | class | One answer to a challenge, as presented to the adaptor. |
 | `TomTotp2FAService` | class | The shipped RFC 6238 authenticator-app mechanism. |
 | `TomTotpSecretResolver` | typedef | Resolves a user's base32 TOTP secret. |
+| `TomDeliveredCode2FAService` | abstract class | The shape every *delivered* one-time code shares: generate, seal into `verificationData`, send, recognise, and prove the destination by enrolment. |
+| `TomEmailCode2FAService` | class | A one-time code mailed through `TomEmailService`. |
+| `TomSmsCode2FAService` | class | A one-time code texted through `TomSmsService`. |
 | `Tom2FAException` | class | 2FA configuration fault (extends `TomServerException`). |
 | `TomAuthenticationAdaptor` | class | Reflection marker for auth adaptors. |
 | `Tom2FAAdaptor` | class | Reflection marker for 2FA adaptors. |
@@ -520,6 +523,7 @@ surface documented here.
 | `TomAuditException` | Audit |
 | `tomAuditGenesisHash` | Audit |
 | `TomAuditHeadRow` | Audit |
+| `TomAuditOutcome` | Audit |
 | `TomAuditPolicy` | Audit |
 | `TomAuditRecord` | Audit |
 | `tomAuditRedactedPlaceholder` | Audit |
@@ -600,10 +604,12 @@ surface documented here.
 | `TomDbTime` | Datasources |
 | `TomDbType` | Datasources |
 | `TomDbVersion` | Database Migration |
+| `tomDefaultAuthenticationMiddleware` | Server |
 | `TomDefaultErrorHandler` | Endpoints |
 | `TomDelegationMode` | Authorization |
 | `TomDelegationResolver` | Authorization |
 | `TomDelete` | Datasources |
+| `TomDeliveredCode2FAService` | Authentication |
 | `TomDeliveryException` | Messaging |
 | `TomDeliveryOutcome` | Messaging |
 | `TomDeliveryReceipt` | Messaging |
@@ -611,6 +617,9 @@ surface documented here.
 | `TomDirectoryExportStore` | Export |
 | `TomDoubleConfig` | Configuration |
 | `TomDummyAuthenticationService` | Authentication |
+| `TomEmailCode2FAService` | Authentication |
+| `TomEmailRequest` | Messaging |
+| `TomEmailService` | Messaging |
 | `TomEndpoint` | Endpoints |
 | `TomEndpointBase` | Endpoints |
 | `TomEndpointHandler` | Endpoints |
@@ -625,6 +634,7 @@ surface documented here.
 | `TomExportFormats` | Export |
 | `TomExportService` | Export |
 | `TomExportStore` | Export |
+| `TomFieldMappedSmsProtocol` | Messaging |
 | `TomFileAuditAnchorStore` | Audit |
 | `TomFileAuditSink` | Audit |
 | `TomFileMessageTransport` | Messaging |
@@ -640,6 +650,8 @@ surface documented here.
 | `TomJoinTable` | Object Persistence |
 | `TomLeaseRow` | Scheduling |
 | `TomLiteralSelect` | Datasources |
+| `TomLocalizedTextResources` | Resources |
+| `tomLoggingMiddleware` | Server |
 | `TomMemoryAuditAnchorStore` | Audit |
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |
@@ -679,6 +691,9 @@ surface documented here.
 | `TomRequestId` | Server |
 | `TomRequestLogInfo` | Server |
 | `TomResourceGrant` | Authorization |
+| `TomResourceLocaleException` | Resources |
+| `TomRowColumnAuthorization` | Object Persistence |
+| `TomRowColumnAuthResolver` | Object Persistence |
 | `TomRsaAuditAnchorSigner` | Audit |
 | `TomRsaAuditAnchorVerifier` | Audit |
 | `TomS3BlobStore` | File Storage |
@@ -695,6 +710,19 @@ surface documented here.
 | `TomServiceCredential` | Authentication |
 | `TomServiceLoginResponse` | Authentication |
 | `TomServiceLoginTransport` | Authentication |
+| `TomSmsAuthScheme` | Messaging |
+| `TomSmsBodyFormat` | Messaging |
+| `TomSmsCode2FAService` | Authentication |
+| `TomSmsEncoding` | Messaging |
+| `TomSmsGatewayAnswer` | Messaging |
+| `TomSmsGatewayProtocol` | Messaging |
+| `TomSmsGatewayRequest` | Messaging |
+| `TomSmsGatewaySettings` | Messaging |
+| `TomSmsRequest` | Messaging |
+| `TomSmsSegmentation` | Messaging |
+| `TomSmsService` | Messaging |
+| `TomSmsSubmission` | Messaging |
+| `TomSmsTransport` | Messaging |
 | `TomSmtpConnection` | Messaging |
 | `TomSmtpReply` | Messaging |
 | `TomSmtpSecurity` | Messaging |
@@ -717,6 +745,8 @@ surface documented here.
 | `TomTabularResult` | Export |
 | `TomTabularRow` | Export |
 | `TomTabularSection` | Export |
+| `TomTemplatedMessageService` | Messaging |
+| `TomTextLocale` | Resources |
 | `TomTotp2FAService` | Authentication |
 | `TomTotpSecretResolver` | Authentication |
 | `TomTransaction` | Transactions |

@@ -23,6 +23,9 @@ server's own self-login against an auth server.
   - [Tom2FARegistry](#tom2faregistry)
   - [TomTotpSecretResolver](#tomtotpsecretresolver)
   - [TomTotp2FAService](#tomtotp2faservice)
+  - [TomDeliveredCode2FAService](#tomdeliveredcode2faservice)
+  - [TomEmailCode2FAService](#tomemailcode2faservice)
+  - [TomSmsCode2FAService](#tomsmscode2faservice)
   - [TomAuthenticationInfo](#tomauthenticationinfo)
   - [TomDummyAuthenticationService](#tomdummyauthenticationservice)
   - [TomAuthenticationServer](#tomauthenticationserver)
@@ -38,6 +41,7 @@ server's own self-login against an auth server.
 
 Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/two_factor.dart`,
+`lib/src/tomserver/authentication/two_factor_delivered_code.dart`,
 `lib/src/tomserver/authentication/server_self_login.dart`.
 
 The module orchestrates the server-side login flow. `TomAuthenticationServer`
@@ -62,9 +66,18 @@ verification blob in the encrypted section. `authenticatePass2` recovers the
 challenge from the presented bearer, hands the submitted factor to the same
 adaptor as a `Tom2FASubmission`, and on success re-issues the token pair without
 the challenge. Nothing is stored server-side between the passes.
-`TomTotp2FAService` is the one mechanism that ships (RFC 6238 authenticator
-app); `Tom2FAException` reports a mis-wired adaptor set and is never
-client-facing.
+`Tom2FAException` reports a mis-wired adaptor set and is never client-facing.
+
+Three mechanisms ship. `TomTotp2FAService` (RFC 6238 authenticator app) needs no
+delivery channel and stores nothing in `verificationData`, re-deriving its answer
+from the shared secret. `TomEmailCode2FAService` and `TomSmsCode2FAService` are
+*delivered* codes — both thin subclasses of `TomDeliveredCode2FAService`, which
+generates a code, seals it as a salt plus a SHA-256 into `verificationData`,
+sends it synchronously through the Messaging module's `TomEmailService` /
+`TomSmsService`, and recognises it again with a constant-time compare. They are
+the mechanisms that exercise the encrypted half of the challenge split, and they
+also implement `Tom2FAEnrolmentSupport`: enrolling a delivered code means proving
+the user can read what is sent to the destination.
 
 `TomServerSelfLogin` covers the separate case of the deployment authenticating
 *as itself*: it presents a `TomServiceCredential` over a
@@ -85,7 +98,10 @@ TomAuthenticationService  (abstract)
     └── TomDummyAuthenticationService  (implements)
 
 Tom2FAService  (@tomReflector, abstract)
-    └── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'))
+    ├── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'))
+    └── TomDeliveredCode2FAService  (implements, + Tom2FAEnrolmentSupport)
+            ├── TomEmailCode2FAService  (extends, @Tom2FAAdaptor('email'))
+            └── TomSmsCode2FAService    (extends, @Tom2FAAdaptor('sms'))
 
 TomServiceLoginTransport  (abstract)
     └── TomHttpServiceLoginTransport  (extends)
@@ -416,6 +432,147 @@ TomTotp2FAService()
 | `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | *(override)* Resolves the secret — throwing `LoginException('login.error.2fa.not-enrolled')` when there is none — and returns a spec whose `clientData` names the code shape (`digits`, `periodSeconds`) so a UI can size its input field. |
 | `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | *(override)* Re-resolves the secret and compares the trimmed submission against the codes in the skew window, in constant time. Rejects a submission of the wrong width before hashing. |
 | `expectedCode` | `static String expectedCode(String secret, {DateTime? at})` | The code this verifier expects right now for the base32 `secret` — the adaptor's own policy applied to `TomTotp`. For enrolment self-checks and tests. |
+
+### TomDeliveredCode2FAService
+
+The shape shared by every second factor that **sends a code somewhere**. Unlike
+TOTP there is nothing to re-derive on pass 2, so this is the mechanism family
+that actually uses `Tom2FAChallengeSpec.verificationData`: it carries a random
+salt and the SHA-256 of `salt + code`, never the code, because the map travels
+in a token the client holds. Delivery happens *before* the spec is built and
+synchronously (`TomTemplatedMessageService.deliverNow`, not the outbox) — a code
+that outlives its challenge is worse than none, so an undelivered code fails the
+login rather than becoming a prompt nobody can answer. Subclasses supply four
+things: `type`, `destinationOnRecord`, `maskDestination` and `deliver`.
+
+- **Implements:** `Tom2FAService`, `Tom2FAEnrolmentSupport`
+- **Abstract**
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `destinationKey` | `String` | Key the destination is filed under in `Tom2FAEnrolment.secretData` and `Tom2FAEnrolmentOffer.enrolmentData`: `'destination'`. |
+| `saltKey` | `String` | Key the code's random salt is filed under: `'salt'`. |
+| `hashKey` | `String` | Key the salted hash is filed under: `'codeHash'` — named for the hash so that filing the code here would be visible at the assignment. |
+| `maskedDestinationKey` | `String` | Key the *masked* destination is filed under in the client payload: `'destination'`. |
+| `digitsKey` | `String` | Key the code's length is filed under in the client payload, so a UI can size its input: `'digits'`. |
+| `saltBytes` | `int` | Bytes of salt per sealed code: `16` — enough that no two challenges share a salt, which is what stops a table of hashes of every six-digit code being precomputed once. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `type` | `String` | *(abstract)* The mechanism key, and the scope its resource keys live under (`two_factor.<type>.*`). |
+| `codeDigits` | `int` | *(abstract)* How many digits a generated code carries. |
+| `attemptsAllowed` | `int` | *(abstract)* How many submissions one challenge tolerates. |
+| `challengeValidity` | `Duration` | *(abstract)* How long a challenge stays answerable. |
+| `challengeTemplateKey` | `String` | *(abstract)* Resource key prefix of the message carrying a login code. |
+| `enrolmentTemplateKey` | `String` | *(abstract)* Resource key prefix of the message carrying an enrolment code. |
+| `enrolmentAttemptsAllowed` | `int` | *(abstract)* How many confirmation attempts one enrolment offer tolerates. |
+| `enrolmentValidity` | `Duration` | *(abstract)* How long an enrolment offer stays confirmable. |
+| `descriptor` | `Tom2FAMethodDescriptor` | *(override)* `Tom2FAMethodDescriptor.scoped(type)` — resource keys only, no literal text. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `destinationOnRecord` | `String? destinationOnRecord(Tom2FAContext context)` | *(abstract)* The destination on the **user record**, or `null`. The asserted address; enrolment is what turns it into a proven one. |
+| `maskDestination` | `String maskDestination(String destination)` | *(abstract)* `destination` reduced to what is safe to show a caller who has not yet proved anything. |
+| `deliver` | `Future<void> deliver(Tom2FAContext context, {required String destination, required String code, required String templateKey, required Duration validity})` | *(abstract)* Sends `code` through this adaptor's channel. Must complete only once a transport has accepted the message, and must throw otherwise. |
+| `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | *(override)* Resolves the destination (throwing `login.error.2fa.not-enrolled` when there is none), delivers a fresh code, then returns a spec whose `clientData` holds the masked destination and the digit count and whose `verificationData` holds the sealed code. |
+| `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | *(override)* Re-hashes the trimmed submission against the seal, in constant time. |
+| `resolveDestination` | `Future<String?> resolveDestination(Tom2FAContext context)` | The destination a challenge goes to: the **confirmed** enrolment first, then the record — so an attacker who can edit a profile field cannot redirect the second factor. A malformed enrolment row is skipped rather than treated as an answer. |
+| `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | *(override)* Sends a code to the destination **on record** (not the confirmed one — that would be a tautology) and returns an offer carrying the sealed code and the destination in its encrypted half. Throws `login.error.2fa.no-destination` when the record names none. |
+| `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | *(override)* Yields an enrolment only when `submitted` matches; throws `login.error.2fa.enrolment-code-invalid` (or `.enrolment-offer-invalid` for an offer with no destination) rather than returning a nullable, so an unproven destination cannot be stored by forgetting a check. `enrolmentId` is the mechanism type, making re-confirmation an upsert. |
+| `deliverOrFail` | `Future<void> deliverOrFail(Tom2FAContext context, {required String destination, required String code, required String templateKey, required Duration validity})` | Calls `deliver` and turns an unclassified failure into `LoginException('login.error.2fa.delivery-failed')`, logged, with the cause attached. `LoginException` and `Tom2FAException` pass through unchanged — both are already classified, and a wiring fault has a different owner from a relay that is down. |
+| `localeFor` | `TomTextLocale? localeFor(Tom2FAContext context)` | The principal's stored language first, then the login attempt's client locale, then `null` so the bundle set applies its own default. |
+| `templateParameters` | `Map<String, Object?> templateParameters(Tom2FAContext context, {required String code, required Duration validity})` | `code`, `minutes`, `username`, `firstname`, `lastname`, `application` — supplied whether or not a template mentions them. |
+| `generateNumericCode` | `static String generateNumericCode(int digits)` | A decimal code from `RsaKeyHelper.getSecureRandom()`, rejection-sampled so `0`–`5` are no likelier than `6`–`9`. |
+| `sealCode` | `static Map<String, Object?> sealCode(String code)` | `code` reduced to a fresh salt and a SHA-256 — the only form of it that may travel. |
+| `matchesSealedCode` | `static bool matchesSealedCode(Map<String, Object?> sealed, String submitted)` | Whether `submitted` is the code `sealed` was built from. `false`, never a throw, for a malformed or absent seal. |
+| `constantTimeEquals` | `static bool constantTimeEquals(String a, String b)` | Compares without leaking, through timing, how much of a submission was right. |
+
+### TomEmailCode2FAService
+
+A one-time code delivered by email (`@Tom2FAAdaptor('email')`, `@tomReflector`).
+Resolves `TomEmailService` from the bean locator at call time; a deployment that
+registered none gets `Tom2FAException('authentication.2fa.email.no_service')`,
+which is a wiring fault and not a delivery failure. The address comes from the
+user's confirmed `'email'` enrolment, falling back to `TomUser.email`.
+
+- **Extends:** `TomDeliveredCode2FAService`
+
+#### Constructors
+
+```dart
+TomEmailCode2FAService()
+```
+
+*(no-argument, so the registry can reflect it into life)*
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `mechanismType` | `String` | The mechanism key: `'email'`. |
+| `globalSettingCodeDigits` | `int` | Digits per code. Defaults to `6`, matching TOTP — the user types into the same field. |
+| `globalSettingAttemptsAllowed` | `int` | Submissions one challenge tolerates. Defaults to `3`. |
+| `globalSettingChallengeValidity` | `Duration` | Defaults to 10 minutes — longer than TOTP's five, because a mail may be greylisted and then has to be found in an inbox. |
+| `globalSettingChallengeTemplateKey` | `String` | Resource key prefix of the login-code mail. Defaults to `'email.two_factor_code'`. |
+| `globalSettingEnrolmentTemplateKey` | `String` | Resource key prefix of the enrolment mail. Defaults to `'email.two_factor_enrolment'` — a separate template, because "here is your sign-in code" and "confirm this address" are different sentences. |
+| `globalSettingEnrolmentAttemptsAllowed` | `int` | Defaults to `3`. |
+| `globalSettingEnrolmentValidity` | `Duration` | Defaults to 15 minutes. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `destinationOnRecord` | `String? destinationOnRecord(Tom2FAContext context)` | *(override)* `TomUser.email`. |
+| `maskDestination` | `String maskDestination(String destination)` | *(override)* Delegates to `maskEmailAddress`. |
+| `deliver` | `Future<void> deliver(Tom2FAContext context, {...})` | *(override)* Renders `templateKey` through `TomEmailService.deliverNow`, addressed with the user's display name when the record has one. |
+| `maskEmailAddress` | `static String maskEmailAddress(String address)` | `alice@example.com` → `a***e@example.com`. The domain is kept whole — it is what tells a user *which* inbox to open — and a local part of two characters or fewer collapses to `***`. A value with no `@` is masked opaquely rather than rejected. |
+
+### TomSmsCode2FAService
+
+A one-time code delivered by SMS (`@Tom2FAAdaptor('sms')`, `@tomReflector`).
+Resolves `TomSmsService` from the bean locator at call time
+(`authentication.2fa.sms.no_service` when absent). The number comes from the
+user's confirmed `'sms'` enrolment, falling back to `TomUser.mobile` and then
+`TomUser.phone` — the same order `TomSmsRequest.toPrincipal` uses, so a code and
+a notification reach the same handset.
+
+- **Extends:** `TomDeliveredCode2FAService`
+
+#### Constructors
+
+```dart
+TomSmsCode2FAService()
+```
+
+*(no-argument, so the registry can reflect it into life)*
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `mechanismType` | `String` | The mechanism key: `'sms'`. |
+| `globalSettingCodeDigits` | `int` | Digits per code. Defaults to `6`. |
+| `globalSettingAttemptsAllowed` | `int` | Defaults to `3`. |
+| `globalSettingChallengeValidity` | `Duration` | Defaults to 5 minutes — a text arrives in seconds, and a one-time code should live no longer than it needs to. |
+| `globalSettingChallengeTemplateKey` | `String` | Defaults to `'sms.two_factor_code'`. |
+| `globalSettingEnrolmentTemplateKey` | `String` | Defaults to `'sms.two_factor_enrolment'`. |
+| `globalSettingEnrolmentAttemptsAllowed` | `int` | Defaults to `3`. |
+| `globalSettingEnrolmentValidity` | `Duration` | Defaults to 10 minutes. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `destinationOnRecord` | `String? destinationOnRecord(Tom2FAContext context)` | *(override)* The first non-blank of `TomUser.mobile`, `TomUser.phone`. |
+| `maskDestination` | `String maskDestination(String destination)` | *(override)* Delegates to `maskPhoneNumber`. |
+| `deliver` | `Future<void> deliver(Tom2FAContext context, {...})` | *(override)* Renders `templateKey` through `TomSmsService.deliverNow`. |
+| `maskPhoneNumber` | `static String maskPhoneNumber(String number)` | `+41791234567` → `+*******4567`. The last four **digits** are kept and non-digits are preserved, so `+41 79 …` and `0041 79 …` still look like the same handset. Counted over digits rather than characters, so spacing does not change which part survives. |
 
 ### TomAuthenticationInfo
 

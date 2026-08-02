@@ -13,6 +13,7 @@ export 'src/tomserver/audit/sql_audit_sql.dart';
 export 'src/tomserver/authentication/authentication_server.dart';
 export 'src/tomserver/authentication/server_self_login.dart';
 export 'src/tomserver/authentication/two_factor.dart';
+export 'src/tomserver/authentication/two_factor_delivered_code.dart';
 export 'src/tomserver/authentication/two_factor_enrolment.dart';
 export 'src/tomserver/authentication/two_factor_policy.dart';
 export 'src/tomserver/authorization/authorization_cache.dart';

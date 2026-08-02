@@ -29,6 +29,7 @@ library;
 
 import '../resources/localized_text_resources.dart';
 import 'message.dart';
+import 'message_transport.dart';
 import 'outbox.dart';
 
 /// Renders resource-keyed messages of one channel and queues them on the
@@ -81,6 +82,27 @@ abstract class TomTemplatedMessageService<R> {
   /// where the outbox's tick interval is felt. Retry behaviour is unchanged:
   /// only the first attempt skips the wait.
   Future<void> sendNow(R request) async => outbox.sendNow(render(request));
+
+  /// Renders [request] and delivers it **now, reporting the outcome** — no
+  /// queue, no retry.
+  ///
+  /// The deliberate exception to "always through the outbox", for the one class
+  /// of message the outbox's guarantees do not fit: a payload whose value
+  /// expires before the retry budget would, and whose non-arrival the caller
+  /// must therefore learn about *now*. A second-factor code is the case this
+  /// exists for — it is worthless ten minutes later, and a user waiting for one
+  /// that was never sent cannot tell that from a slow relay.
+  ///
+  /// The trade is explicit: [send] and [sendNow] cannot fail for a transport
+  /// reason (they hand that to the queue, which retries and alerts), and this
+  /// one can and will. A caller that wants durability wants [sendNow]; a caller
+  /// that wants the truth about the first attempt wants this.
+  ///
+  /// Returns the transport's own receipt, so a caller can see a partial
+  /// delivery — some recipients accepted, others refused — which is neither a
+  /// success nor a throw.
+  Future<TomDeliveryReceipt> deliverNow(R request) =>
+      outbox.router.send(render(request));
 
   /// Resolves `<templateKey>.<subKey>`, or explains precisely what is missing.
   ///

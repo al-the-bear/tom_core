@@ -37,6 +37,9 @@ principal into an authentication token and an authorization token.
 | `Tom2FAChallengeSpec` | class | What an adaptor returns from `issueChallenge` — hint, client blob, verification blob, attempts, validity |
 | `Tom2FASubmission` | class | What an adaptor is handed on `verifySubmission` — the submitted factor plus its challenge |
 | `TomTotp2FAService` | class (`@Tom2FAAdaptor('totp')`) | The shipped authenticator-app (RFC 6238 TOTP) mechanism |
+| `TomDeliveredCode2FAService` | abstract | The shape every *delivered* code shares: generate, seal, send, recognise, and prove the destination by enrolment |
+| `TomEmailCode2FAService` | class (`@Tom2FAAdaptor('email')`) | A one-time code mailed through the Messaging module |
+| `TomSmsCode2FAService` | class (`@Tom2FAAdaptor('sms')`) | A one-time code texted through the Messaging module |
 | `Tom2FAException` | exception | A mis-wired 2FA deployment; never client-facing |
 | `TomServerSelfLogin` | class (statics only) | Logs the deployment in as itself and installs its principal |
 | `TomServiceCredential` | class | The deployment's own credential and where to present it |
@@ -223,7 +226,7 @@ return TomAuthenticationInfo(
 A deployment that composes its adaptors explicitly registers them instead:
 
 ```dart
-Tom2FARegistry.register('sms', MySmsService());
+Tom2FARegistry.register('webauthn', MyWebAuthnService());
 ```
 
 Both routes fill the same map; `Tom2FARegistry.registeredTypes` reports it. A
@@ -243,6 +246,11 @@ TOTP challenge with `login.error.2fa.not-enrolled` rather than accepting
 anything. Note the secret is read from your own store, deliberately **not**
 from `TomUser.attributes` — those are projected into the token's *public*
 claims.
+
+For the mailed and texted codes there is no resolver to set: the destination is
+already on the user record, and what a deployment supplies instead is the
+message the code arrives in — see
+[Codes delivered by email or SMS](#codes-delivered-by-email-or-sms).
 
 **4 — Drive it from the client.** Pass 1's result tells the client what
 happened; the kernel reads the challenge out of the token for it:
@@ -274,21 +282,161 @@ has advanced — so the loop above simply repeats. On a wrong code with no
 attempts left, or a lapsed challenge, there is no token and the client must
 restart at pass 1.
 
+### Codes delivered by email or SMS
+
+Two mechanisms ship alongside TOTP: `TomEmailCode2FAService` (`'email'`) and
+`TomSmsCode2FAService` (`'sms'`). Both send a one-time numeric code to an
+address the user already controls, and both are thin skins over
+`TomDeliveredCode2FAService` — code generation, sealing, the constant-time
+compare, destination masking, the enrolment round trip and the delivery-failure
+rule live there once. A subclass supplies only its channel.
+
+**Wiring.** Install the messaging service the adaptor will use, and write the
+templates. Nothing else:
+
+```dart
+TomBean.withType(TomEmailService, TomEmailService(outbox: outbox, texts: texts));
+TomBean.withType(TomSmsService, TomSmsService(outbox: outbox, texts: texts));
+```
+
+```yaml
+# The four templates, resource-keyed like all user-facing text (G-RES-1).
+email.two_factor_code.subject: "Your {application} sign-in code"
+email.two_factor_code.text: "Your code is {code}. It expires in {minutes} minutes."
+email.two_factor_enrolment.subject: "Confirm this address"
+email.two_factor_enrolment.text: "Enter {code} to confirm this address."
+sms.two_factor_code.text: "{code} is your {application} code."
+sms.two_factor_enrolment.text: "Enter {code} to confirm this number."
+```
+
+Every template is rendered with `code`, `minutes`, `username`, `firstname`,
+`lastname` and `application` in scope, whether or not it mentions them — an
+unreferenced parameter costs nothing, while a template that wants `{firstname}`
+and finds no parameter renders the placeholder.
+
+**Where the destination comes from.** A *confirmed* enrolment first, then the
+user record — `TomUser.email` for mail, `TomUser.mobile` then `TomUser.phone`
+for SMS. The ordering is the point: an attacker who can edit a profile field
+must not thereby redirect the second factor, so a proven address outranks an
+asserted one. A user with neither fails the challenge with
+`login.error.2fa.not-enrolled` rather than being silently let through.
+
+**What travels where.** This is the mechanism the encrypted split exists for:
+
+| Blob | Contents | Who reads it |
+| ---- | -------- | ------------ |
+| `clientData` (public claims) | the **masked** destination (`a***e@example.com`, `+*******4567`) and the code's length | the client's UI, to prompt |
+| `verificationData` (encrypted claims) | a 16-byte random **salt** and the SHA-256 of `salt + code` | pass 2, to compare |
+
+The code itself appears in neither. It exists in memory long enough to be sent
+and is never written down, so the interim token the client carries while typing
+cannot be made to yield the answer — not by reading it, and not by decrypting
+it, since what is inside is a salted hash and not the code.
+
+**A code that was not sent is not a challenge.** Delivery happens *before* the
+challenge spec is built, and synchronously — through
+`TomTemplatedMessageService.deliverNow`, which reports the transport's own
+outcome, rather than through the outbox. That is a deliberate exception to
+"everything goes through the outbox": a one-time code expires with the
+challenge, so the outbox's retry budget outlives the message's usefulness and
+would only hide that the first attempt failed. A user staring at a prompt for a
+code that is never coming cannot tell that from a slow relay, so a failed
+delivery fails the login with `login.error.2fa.delivery-failed`. The retry this
+message actually wants is the user pressing *resend*, which issues a fresh
+challenge with a fresh code.
+
+A missing messaging service is a different fault and reports as one: it raises
+`Tom2FAException` (`authentication.2fa.email.no_service` /
+`…sms.no_service`), which passes through the delivery wrapper unchanged so that
+whoever is on call is not sent to the logs of a relay that was never asked.
+
+**Enrolment is proof of control.** Both adaptors implement
+`Tom2FAEnrolmentSupport`. There is no secret to hand over here, so enrolment
+sends a code to the destination *on record* and refuses to yield a
+`Tom2FAEnrolment` until it comes back — `confirmEnrolment` throws
+`login.error.2fa.enrolment-code-invalid` rather than returning something
+nullable, so a caller cannot store an unproven address by forgetting a check.
+The confirmed destination is stored under a stable `enrolmentId` (the mechanism
+type), which makes re-confirmation an upsert — what changing your phone number
+should do.
+
+**Tuning.** Static settings, per adaptor: `globalSettingCodeDigits` (6),
+`globalSettingAttemptsAllowed` (3), `globalSettingChallengeValidity`
+(10 minutes for mail, 5 for SMS — a mail may be greylisted; a text is not),
+`globalSettingChallengeTemplateKey` / `globalSettingEnrolmentTemplateKey`,
+`globalSettingEnrolmentAttemptsAllowed` and `globalSettingEnrolmentValidity`.
+
 ### Writing your own mechanism
 
-Implement `Tom2FAService`:
+For another *delivered* channel — a push notification, a voice call — extend
+`TomDeliveredCode2FAService` and supply the four things that differ:
 
 ```dart
 @tomReflector
-@Tom2FAAdaptor('sms')
-class MySmsService implements Tom2FAService {
+@Tom2FAAdaptor('push')
+class MyPushCode2FAService extends TomDeliveredCode2FAService {
+  @override
+  String get type => 'push';
+
+  // From your own store, not TomUser.attributes — those are projected into the
+  // token's public claims.
+  @override
+  String? destinationOnRecord(Tom2FAContext context) =>
+      deviceTokens[context.principal.username];
+
+  @override
+  String maskDestination(String destination) => '***${destination.substring(
+        destination.length - 4,
+      )}';
+
+  @override
+  Future<void> deliver(
+    Tom2FAContext context, {
+    required String destination,
+    required String code,
+    required String templateKey,
+    required Duration validity,
+  }) =>
+      // Throws if the gateway refuses — which is what makes the challenge fail
+      // instead of a code silently never arriving.
+      myPushGateway.send(
+        destination,
+        text: myTexts.text(
+          '$templateKey.text',
+          locale: localeFor(context),
+          parameters: templateParameters(
+            context,
+            code: code,
+            validity: validity,
+          ),
+        ),
+      );
+  // ... plus the seven getters naming digits, attempts, validity and templates.
+}
+```
+
+The salted seal, the constant-time compare, the enrolment round trip and the
+delivery-failure rule all come with the base — which is the point of extending
+it rather than reimplementing them.
+
+For a mechanism that is *not* a delivered code — a hardware key, a push
+approval the user taps rather than reads — implement `Tom2FAService` directly:
+
+```dart
+@tomReflector
+@Tom2FAAdaptor('webauthn')
+class MyWebAuthnService implements Tom2FAService {
+  @override
+  Tom2FAMethodDescriptor get descriptor =>
+      Tom2FAMethodDescriptor.scoped('webauthn'); // two_factor.webauthn.*
+
   @override
   Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context) async {
-    final code = _random6();
-    await _send(context.principal, code);
+    final nonce = _randomNonce();
     return Tom2FAChallengeSpec(
-      hint: _maskedNumber(context.principal),
-      verificationData: {'hash': _hash(code)}, // encrypted; server-only
+      hint: _credentialLabel(context.principal),
+      clientData: {'challenge': nonce},   // public; the browser signs it
+      verificationData: {'challenge': nonce}, // encrypted; server-only
       validity: const Duration(minutes: 5),
     );
   }
@@ -297,13 +445,20 @@ class MySmsService implements Tom2FAService {
   Future<bool> verifySubmission(
     Tom2FAContext context,
     Tom2FASubmission submission,
-  ) async =>
-      submission.verificationData['hash'] == _hash(submission.submitted);
+  ) async => _verifySignature(
+        context.principal,
+        signature: submission.submitted,
+        expectedChallenge: submission.verificationData['challenge'] as String,
+      );
 }
 ```
 
-Two rules make the rest of the flow work:
+Three rules make the rest of the flow work:
 
+- **A descriptor names the mechanism in resource keys, never in literal text.**
+  `Tom2FAMethodDescriptor.scoped('webauthn')` points at
+  `two_factor.webauthn.name` / `.description` / `.icon`, which is what an
+  enrolment picker renders.
 - **The two blobs are yours; the framework never looks inside either.**
   `clientData` travels in the token's **public** claims, for your own client
   UI. `verificationData` travels in the **encrypted** section, for your own
@@ -313,8 +468,11 @@ Two rules make the rest of the flow work:
 - **Adaptors must be stateless between the two calls.** Pass 1 and pass 2 may
   run in different isolates or on different server instances. Anything you need
   to remember belongs in `verificationData`; a field on the adaptor will not be
-  there. (`TomTotp2FAService` stores nothing at all — it re-resolves the secret
-  on pass 2, so the secret never travels.)
+  there. The two shipped families sit at the ends of that range:
+  `TomTotp2FAService` stores nothing at all, re-resolving the secret on pass 2
+  so it never travels, while `TomDeliveredCode2FAService` has nothing to
+  re-derive from and therefore stores a salted hash of the code — which is what
+  `verificationData` was designed for.
 
 Expiry, the attempt counter and adaptor dispatch are generic and handled once in
 `TomAuthenticationServer`; a mechanism never implements them.
@@ -329,7 +487,11 @@ Expiry, the attempt counter and adaptor dispatch are generic and handled once in
 | `login.error.2fa.expired` | The challenge lapsed | None — restart at pass 1 |
 | `login.error.2fa.no-challenge` | No interim token was presented, or it carries none | None |
 | `login.error.2fa.unsupported-mechanism` | No adaptor registered for the mechanism | None |
-| `login.error.2fa.not-enrolled` | TOTP: no secret resolves for this principal | None |
+| `login.error.2fa.not-enrolled` | Nothing to challenge against: no TOTP secret resolves, or no address is on record for a delivered code | None |
+| `login.error.2fa.delivery-failed` | A delivered code could not be handed to its transport, so no challenge was issued | None |
+| `login.error.2fa.no-destination` | Enrolment was begun for a delivered code with no address on record to confirm | None |
+| `login.error.2fa.enrolment-code-invalid` | The confirmation code did not match the one just sent; nothing is stored | None |
+| `login.error.2fa.enrolment-offer-invalid` | The enrolment offer carried no destination and cannot be completed | None |
 
 A wrong code is an ordinary outcome and yields a failed
 `TomAuthenticationResult`. A *mis-wired deployment* — a duplicate adaptor, an
@@ -509,6 +671,27 @@ Its statics configure digits, period, clock-skew window, attempts and challenge
 validity; `globalSettingSecretResolver` — unset by default — says where a user's
 base32 secret lives.
 
+### `TomDeliveredCode2FAService`
+
+The shape every second factor that *sends* a code shares: generate a code from
+the framework's CSPRNG (rejection-sampled, so no modulo bias), seal it as a
+salt plus a SHA-256 into `verificationData`, deliver it synchronously, and
+recognise it again with a constant-time compare. It also implements
+`Tom2FAEnrolmentSupport`, where enrolment means proving the user can read what
+is sent to the destination. A subclass supplies four things: `type`,
+`destinationOnRecord`, `maskDestination` and `deliver`. The statics
+`generateNumericCode`, `sealCode`, `matchesSealedCode` and `constantTimeEquals`
+are public because two adaptors and their tests use them.
+
+### `TomEmailCode2FAService` / `TomSmsCode2FAService`
+
+The two shipped delivered-code mechanisms, registered under `'email'` and
+`'sms'`. They resolve `TomEmailService` / `TomSmsService` from the bean locator
+at call time and render `email.two_factor_code.*` / `sms.two_factor_code.*`
+(and the matching `…_enrolment` templates). A missing service is a
+`Tom2FAException`, not a delivery failure. See
+[Codes delivered by email or SMS](#codes-delivered-by-email-or-sms).
+
 ### Adaptor annotations
 
 `TomAuthenticationAdaptor` (with `guestOnly` / `userOnly`) and `Tom2FAAdaptor`
@@ -528,10 +711,16 @@ it, and installs the result into the kernel's `TomServerPrincipal` — returning
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
   non-`GUEST` login. Replace it before any test or production use.
-- **One second-factor mechanism ships**: `TomTotp2FAService` (authenticator
-  app). SMS, email and WebAuthn are application-supplied — the mechanism set is
-  deliberately outside the framework, and adding one needs no change here (see
+- **Three second-factor mechanisms ship**: `TomTotp2FAService` (authenticator
+  app), `TomEmailCode2FAService` and `TomSmsCode2FAService` (delivered codes).
+  WebAuthn and anything else remain application-supplied — the mechanism set is
+  open by design, and adding one needs no change here (see
   [Writing your own mechanism](#writing-your-own-mechanism)).
+- **A delivered code's transport is not retried.** Delivery is synchronous and
+  a failure fails the login, because a code that outlives its challenge is worse
+  than none. The retry is the user asking for a new code. A deployment whose
+  relay is unreliable therefore sees failed logins rather than late ones — which
+  is the intended trade, not an oversight.
 - **The attempt counter is not a brute-force defence on its own.** It bounds a
   cooperative client; the challenge's short validity is what bounds an
   uncooperative one. A deployment needing a hard per-challenge cap must add the
@@ -548,5 +737,11 @@ it, and installs the result into the kernel's `TomServerPrincipal` — returning
   service-account fields `TomServiceCredential.fromConfiguration` reads.
 - **Server** (this package): `TomServerChannel` carries the default self-login
   transport, and `TomServer` calls `loginAndInstall` before binding its socket.
+- **Messaging** (this package): `TomEmailService` and `TomSmsService` deliver
+  the one-time codes, through `TomTemplatedMessageService.deliverNow` rather
+  than the outbox. A deployment that registers neither can still run TOTP.
+- **Resources** (this package): `TomLocalizedTextResources` renders every
+  delivered message and every mechanism name — no user-facing text originates
+  in this module.
 - **Little Things** (this package): `TomServerException`, the base of
   `LoginException`, `Tom2FAException` and `TomServerSelfLoginException`.
