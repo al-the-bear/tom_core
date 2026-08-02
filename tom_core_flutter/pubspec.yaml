@@ -4,7 +4,9 @@ version: 1.2.1
 publish_to: none
 
 environment:
-  sdk: ^3.10.4
+  # Raised to match tom_flutter_ui, which this package now depends on for the
+  # widgets its second-factor panels are built from.
+  sdk: ^3.11.0
 
 # Add regular dependencies here.
 dependencies:
@@ -17,6 +19,18 @@ dependencies:
   tom_reflection: ">=1.0.1"
   tom_core_kernel:
     path: ../tom_core_kernel
+  # The widget library the framework-owned second-factor panels render with, so
+  # an application gets the same look and the same resource/authorization
+  # plumbing here as it does everywhere else. A sibling of this package over the
+  # kernel (tom_flutter_ui does not depend on tom_core_flutter), so the edge
+  # adds no cycle — and every existing consumer already depends on it.
+  tom_flutter_ui:
+    path: ../tom_flutter_ui
+  # Pure-Dart QR *encoding* for the TOTP enrolment panel. Deliberately the
+  # encoder only and not a rendering package: the modules are painted by a
+  # CustomPainter here, so the widget inherits this framework's theming rather
+  # than a third party's.
+  qr: ^3.0.2
 
 dev_dependencies:
   flutter_test:

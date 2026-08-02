@@ -2491,6 +2491,144 @@ void main() {
         expect(TomBearerAuthentication.pendingTwoFactorChallenge, isNull);
       });
     });
+
+    // The client-visible half of a pending *enrolment* — the step before a
+    // challenge exists at all. Read from the same interim token and, like the
+    // challenge, defensively: it arrived from outside the process.
+    group('two-factor enrolment claims', () {
+      // Mirrors Tom2FAEnrolmentState.toClaims exactly: JSON booleans for the
+      // two flags, and the mechanism-specific claims (including the expiry)
+      // present only once a mechanism has been chosen.
+      Map<String, dynamic> claims({
+        String type = '',
+        List<String> offeredTypes = const ['totp', 'sms'],
+        bool skippable = true,
+        bool skipSpendsGrace = false,
+        Map<String, Object?> clientData = const {},
+        Duration validIn = const Duration(minutes: 10),
+      }) {
+        final base = <String, dynamic>{
+          Tom2FAEnrolmentClaims.pendingEnrolment: 'true',
+          Tom2FAEnrolmentClaims.offeredTypes: offeredTypes,
+          Tom2FAEnrolmentClaims.skippable: skippable,
+          Tom2FAEnrolmentClaims.skipSpendsGrace: skipSpendsGrace,
+        };
+        if (type.isEmpty) return base;
+        return base
+          ..addAll({
+            Tom2FAEnrolmentClaims.type: type,
+            Tom2FAEnrolmentClaims.hint: '',
+            Tom2FAEnrolmentClaims.attempt: 0,
+            Tom2FAEnrolmentClaims.attemptsAllowed: 3,
+            Tom2FAEnrolmentClaims.expiresAt:
+                DateTime.now().toUtc().add(validIn).toIso8601String(),
+            Tom2FAEnrolmentClaims.clientData: clientData,
+          });
+      }
+
+      test('the choosing stop carries the offer but no mechanism', () {
+        final pending = Tom2FAPendingEnrolment.fromClaims(claims());
+
+        expect(pending, isNotNull);
+        expect(pending!.hasOffer, isFalse,
+            reason: 'no mechanism picked yet, so the client renders a chooser');
+        expect(pending.offeredTypes, equals(['totp', 'sms']));
+        expect(pending.skippable, isTrue);
+        expect(pending.skipSpendsGrace, isFalse);
+        // Nothing has been generated yet, so nothing can go stale.
+        expect(pending.expiresAt, isNull);
+        expect(pending.isExpired(), isFalse);
+      });
+
+      test('the confirming stop carries the mechanism and its client data', () {
+        final pending = Tom2FAPendingEnrolment.fromClaims(claims(
+          type: 'totp',
+          clientData: const {
+            'secret': 'GEZDGNBVGY3TQOJQ',
+            'otpauthUri': 'otpauth://totp/App:alice?secret=GEZDGNBVGY3TQOJQ',
+            'digits': 6,
+          },
+        ));
+
+        expect(pending, isNotNull);
+        expect(pending!.hasOffer, isTrue);
+        expect(pending.type, equals('totp'));
+        expect(pending.clientData['digits'], equals(6));
+        expect(pending.clientData['otpauthUri'], startsWith('otpauth://'));
+        expect(pending.attemptsRemaining, equals(3));
+        expect(pending.isExpired(), isFalse);
+      });
+
+      test('skipSpendsGrace distinguishes a charged skip from a free one', () {
+        final free = Tom2FAPendingEnrolment.fromClaims(claims());
+        final charged =
+            Tom2FAPendingEnrolment.fromClaims(claims(skipSpendsGrace: true));
+
+        expect(free!.skipSpendsGrace, isFalse);
+        expect(charged!.skipSpendsGrace, isTrue);
+      });
+
+      // Same fail-safe reading as the challenge: a payload that announces an
+      // enrolment but describes nothing renderable is "no enrolment", not a
+      // half-built one whose gaps an attacker chooses.
+      test('fromClaims rejects payloads it cannot trust', () {
+        expect(Tom2FAPendingEnrolment.fromClaims(null), isNull);
+        expect(Tom2FAPendingEnrolment.fromClaims(<String, dynamic>{}), isNull);
+        expect(
+          Tom2FAPendingEnrolment.fromClaims(
+            claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = 'false',
+          ),
+          isNull,
+        );
+        expect(
+          Tom2FAPendingEnrolment.fromClaims(
+            claims(type: 'totp')
+              ..[Tom2FAEnrolmentClaims.expiresAt] = 'not-a-date',
+          ),
+          isNull,
+          reason: 'a begun offer with no readable expiry could be confirmed '
+              'forever, and its panel could not say when it lapses',
+        );
+        expect(
+          Tom2FAPendingEnrolment.fromClaims(claims(offeredTypes: const [])),
+          isNull,
+          reason: 'neither a mechanism in flight nor a list to choose from',
+        );
+      });
+
+      // The two flags cross the wire as JSON booleans today, but the sibling
+      // requires2FA claim is a string; a client that read only one encoding
+      // would silently drop the skip button against the other tier's version.
+      test('the boolean flags are read in either wire encoding', () {
+        final asStrings = claims()
+          ..[Tom2FAEnrolmentClaims.skippable] = 'true'
+          ..[Tom2FAEnrolmentClaims.skipSpendsGrace] = 'true';
+
+        final pending = Tom2FAPendingEnrolment.fromClaims(asStrings);
+        expect(pending!.skippable, isTrue);
+        expect(pending.skipSpendsGrace, isTrue);
+      });
+
+      test('a completed session has no pending enrolment', () {
+        final jwt = _makeJwt({
+          'username': 'alice',
+          Tom2FAClaims.requires2FA: 'false',
+        });
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+
+        expect(TomBearerAuthentication.pendingTwoFactorEnrolment, isNull);
+      });
+
+      test('pendingTwoFactorEnrolment reads the stored interim token', () {
+        final interim = _makeJwt(claims(type: 'totp')..['username'] = 'alice');
+        TomBearerAuthentication.setTokens(interim, interim, false);
+
+        final pending = TomBearerAuthentication.pendingTwoFactorEnrolment;
+        expect(pending, isNotNull);
+        expect(pending!.type, equals('totp'));
+        expect(pending.skippable, isTrue);
+      });
+    });
   });
 
   // The one-time-password primitives every tier shares. Anchored on the RFC's

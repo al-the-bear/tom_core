@@ -196,6 +196,26 @@ class TomBearerAuthentication {
     return t == null ? null : Tom2FAChallenge.fromClaims(t.payload);
   }
 
+  /// The second-factor **enrolment** the stored token is part-way through, or
+  /// `null` when the login owes no set-up (the ordinary case).
+  ///
+  /// The sibling of [pendingTwoFactorChallenge], read the same way and for the
+  /// same reason: a client drives its enrolment screen from this — which
+  /// mechanisms were offered, which one is half-built, whether declining is
+  /// permitted — without decoding the token itself. Returns `null` once the
+  /// completed token pair is stored, which is the signal that the login is
+  /// done.
+  ///
+  /// Both getters can answer non-null at once: a principal whose policy forces
+  /// enrolment *and* who already holds a factor is being asked for both, and
+  /// the client renders the challenge first.
+  static Tom2FAPendingEnrolment? get pendingTwoFactorEnrolment {
+    var t =
+        bearerAuthentication._clientAuthorizationJwtToken ??
+        bearerAuthentication._clientJwtToken;
+    return t == null ? null : Tom2FAPendingEnrolment.fromClaims(t.payload);
+  }
+
   /// Converts JWT token payloads to a [TomPrincipal] object.
   ///
   /// Extracts user information, context, and access control data from

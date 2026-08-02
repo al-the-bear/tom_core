@@ -137,16 +137,19 @@ class Tom2FAEnrolmentClaims {
   /// against whatever the policy would answer on a second evaluation.
   static const String offeredTypes = 'enrolmentOfferedTypes';
 
-  /// Public claim: `"true"` when the user may decline the offer and complete
-  /// the login without a second factor.
+  /// Public claim: `true` when the user may decline the offer and complete the
+  /// login without a second factor. A JSON boolean, unlike the string-encoded
+  /// [Tom2FAClaims.requires2FA] — this claim is newer and has no tokens in
+  /// flight to stay compatible with.
   ///
   /// Decided once, on the pass that made the offer, and carried — so the
   /// authority for "may I skip?" is the token the server signed, never a flag
   /// the client sends back.
   static const String skippable = 'enrolmentSkippable';
 
-  /// Public claim: `"true"` when declining the offer spends one of the
-  /// principal's grace logins rather than being free.
+  /// Public claim: `true` when declining the offer spends one of the
+  /// principal's grace logins rather than being free. A JSON boolean, like
+  /// [skippable].
   ///
   /// Recorded on the pass that made the offer because that pass is the one that
   /// knows *why* skipping was allowed — an optional policy (free) or a required
@@ -349,6 +352,187 @@ class Tom2FAChallenge {
   String toString() =>
       'Tom2FAChallenge $type hint: $hint attempt: $attempt/$attemptsAllowed '
       'expires: ${expiresAt.toIso8601String()}';
+}
+
+/// A second-factor **enrolment** awaiting the user's next move — the exact
+/// analogue of [Tom2FAChallenge], one step earlier in the story.
+///
+/// Where a challenge says "prove you hold the factor you already set up", a
+/// pending enrolment says "you have none; here are the mechanisms you may set
+/// up, and here is the one you picked, half-built". Both ride in an interim
+/// token's public claims and both leave the principal unauthenticated, so the
+/// client's job is the same shape in each case: read the claims, render the
+/// mechanism's panel, post an answer.
+///
+/// ## Two states, one type
+///
+/// The flow has two stops and this type covers both, distinguished by
+/// [hasOffer]:
+///
+/// * **Choosing** — [offeredTypes] is populated and [type] is empty. The client
+///   renders a chooser (or skips straight past it when only one mechanism is on
+///   offer) and posts the chosen key back.
+/// * **Confirming** — [type] names the mechanism and [clientData] carries what
+///   the user needs to set it up (for TOTP: the `otpauth://` URI and the base32
+///   secret). The client renders that mechanism's enrolment panel and posts the
+///   confirmation code.
+///
+/// One type rather than two because a single token claim set carries whichever
+/// stop the login is at, and a client that had to pick between two readers
+/// before knowing which it held would only be re-deriving [hasOffer].
+///
+/// ## Why the client gets its own view
+///
+/// The server has a richer reading of the same token — it can also decrypt
+/// [Tom2FAEnrolmentClaims.offerData] and recover the secret it generated. That
+/// reading necessarily lives server-side. The client needs, and may have, only
+/// the public half; giving it a type of its own means a client tier never
+/// imports a server type to read a token it legitimately holds.
+class Tom2FAPendingEnrolment {
+  /// The mechanism being enrolled, or empty while the user is still choosing.
+  final String type;
+
+  /// A short, displayable hint for the factor being set up; empty when the
+  /// mechanism has nothing useful to show.
+  final String hint;
+
+  /// How many confirmation attempts have already been consumed.
+  final int attempt;
+
+  /// How many confirmation attempts this offer allows before it is burned.
+  final int attemptsAllowed;
+
+  /// The UTC instant after which this offer is no longer answerable, or `null`
+  /// while the user is still choosing.
+  ///
+  /// Nullable because the deadline belongs to the *mechanism's* offer, not to
+  /// the choice: nothing has been generated yet at the choosing stop, so there
+  /// is nothing that could go stale. The server projects this claim only once a
+  /// mechanism has been picked.
+  final DateTime? expiresAt;
+
+  /// The mechanism's opaque, client-interpreted enrolment payload — passed
+  /// through untouched by the framework, understood only by the mechanism's own
+  /// client code. Empty while the user is still choosing.
+  final Map<String, Object?> clientData;
+
+  /// The mechanism keys this principal was offered, in preference order.
+  final List<String> offeredTypes;
+
+  /// Whether the user may decline and complete the login without a factor.
+  final bool skippable;
+
+  /// Whether declining spends one of the principal's grace logins.
+  final bool skipSpendsGrace;
+
+  /// Creates a pending enrolment.
+  Tom2FAPendingEnrolment({
+    this.expiresAt,
+    this.type = '',
+    this.hint = '',
+    this.attempt = 0,
+    this.attemptsAllowed = 3,
+    this.clientData = const {},
+    this.offeredTypes = const [],
+    this.skippable = false,
+    this.skipSpendsGrace = false,
+  });
+
+  /// Whether a mechanism has been chosen and its enrolment begun — i.e. whether
+  /// the client should render the mechanism's panel rather than the chooser.
+  bool get hasOffer => type.isNotEmpty;
+
+  /// Whether the offer has lapsed as of [now] (defaults to the current
+  /// instant). A lapsed offer can no longer be answered; the client must
+  /// restart at pass 1.
+  ///
+  /// Always false while the user is still choosing — there is no generated
+  /// material to go stale, so a chooser left open is a UX question, not a
+  /// security one.
+  bool isExpired([DateTime? now]) {
+    final deadline = expiresAt;
+    if (deadline == null) return false;
+    return !(now ?? DateTime.now().toUtc()).toUtc().isBefore(deadline.toUtc());
+  }
+
+  /// How many confirmation attempts are still available. Never negative.
+  int get attemptsRemaining {
+    final remaining = attemptsAllowed - attempt;
+    return remaining < 0 ? 0 : remaining;
+  }
+
+  /// Whether every allowed confirmation attempt has been consumed.
+  bool get isExhausted => attemptsRemaining <= 0;
+
+  /// Reads a pending enrolment back from a token's public [payload], or returns
+  /// `null` when the payload carries none.
+  ///
+  /// Read as defensively as [Tom2FAChallenge.fromClaims], and for the same
+  /// reason: the payload came from outside the process. A token that says it
+  /// has a pending enrolment but carries neither a chosen mechanism nor an
+  /// offer to choose from yields `null` — there is nothing a client could
+  /// render, and pretending otherwise would strand the login on a blank panel.
+  ///
+  /// A *begun* enrolment whose expiry is unreadable is likewise `null`: the
+  /// deadline is what stops a generated secret being confirmable forever, so a
+  /// panel that could not tell the user when the offer lapses must not be
+  /// rendered at all.
+  static Tom2FAPendingEnrolment? fromClaims(Map<String, dynamic>? payload) {
+    if (payload == null) return null;
+    if (payload[Tom2FAEnrolmentClaims.pendingEnrolment] != 'true') return null;
+
+    final typeRaw = payload[Tom2FAEnrolmentClaims.type];
+    final type = typeRaw is String ? typeRaw : '';
+
+    final offeredRaw = payload[Tom2FAEnrolmentClaims.offeredTypes];
+    final offeredTypes = offeredRaw is List
+        ? offeredRaw.whereType<String>().where((e) => e.isNotEmpty).toList()
+        : const <String>[];
+
+    // Neither a mechanism in flight nor a list to choose from: unrenderable.
+    if (type.isEmpty && offeredTypes.isEmpty) return null;
+
+    final expiresAtRaw = payload[Tom2FAEnrolmentClaims.expiresAt];
+    final expiresAt =
+        expiresAtRaw is String ? DateTime.tryParse(expiresAtRaw) : null;
+    // The choosing stop legitimately carries no deadline; a begun one must.
+    if (type.isNotEmpty && expiresAt == null) return null;
+
+    final hint = payload[Tom2FAEnrolmentClaims.hint];
+    final attempt = payload[Tom2FAEnrolmentClaims.attempt];
+    final attemptsAllowed = payload[Tom2FAEnrolmentClaims.attemptsAllowed];
+    final clientData = payload[Tom2FAEnrolmentClaims.clientData];
+
+    return Tom2FAPendingEnrolment(
+      type: type,
+      hint: hint is String ? hint : '',
+      attempt: attempt is int ? attempt : 0,
+      attemptsAllowed: attemptsAllowed is int ? attemptsAllowed : 0,
+      expiresAt: expiresAt?.toUtc(),
+      clientData: clientData is Map
+          ? clientData.cast<String, Object?>()
+          : const <String, Object?>{},
+      offeredTypes: offeredTypes,
+      skippable: _claimIsTrue(payload[Tom2FAEnrolmentClaims.skippable]),
+      skipSpendsGrace:
+          _claimIsTrue(payload[Tom2FAEnrolmentClaims.skipSpendsGrace]),
+    );
+  }
+
+  /// Reads a boolean claim that may have crossed the wire either way.
+  ///
+  /// The enrolment flags are projected as JSON booleans, but the sibling
+  /// [Tom2FAClaims.requires2FA] is a string for historical reasons, and a
+  /// deployment mixing framework versions can plausibly present either. Reading
+  /// both costs one comparison and removes an entire class of "the skip button
+  /// vanished after the upgrade" report.
+  static bool _claimIsTrue(Object? raw) => raw == true || raw == 'true';
+
+  @override
+  String toString() => 'Tom2FAPendingEnrolment '
+      '${hasOffer ? type : 'choosing from $offeredTypes'} '
+      'attempt: $attempt/$attemptsAllowed skippable: $skippable '
+      'expires: ${expiresAt?.toIso8601String() ?? '-'}';
 }
 
 /// The RFC 4226 (HOTP) / RFC 6238 (TOTP) derivation primitives, and the base32
