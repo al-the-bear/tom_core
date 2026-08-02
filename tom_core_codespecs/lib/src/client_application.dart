@@ -30,6 +30,13 @@ class TomClientApplication {
   /// The route id the client opens on launch (a `TomPageRoute` id — CE-NV).
   String entryRoute;
 
+  /// The screens this client comprises, by screen id (CE-EL / CE-FM).
+  ///
+  /// A client is more than its entry route: two clients over the same route
+  /// registry differ by which screens they ship. Empty for a client that has
+  /// no screens at all — a command-line client, or another server calling in.
+  List<String> screenIds;
+
   /// The base URL of the server this client talks to. Empty until wired by the
   /// client configuration (CE-CC — a `TomSetting<String>` declared on the
   /// client's `TomBaseClientConfiguration`, `tom_core_flutter`).
@@ -41,6 +48,8 @@ class TomClientApplication {
     this.displayName = '',
     List<String>? platforms,
     this.entryRoute = '',
+    List<String>? screenIds,
     this.serverBaseUrl = '',
-  }) : platforms = platforms ?? <String>[];
+  })  : platforms = platforms ?? <String>[],
+        screenIds = screenIds ?? <String>[];
 }

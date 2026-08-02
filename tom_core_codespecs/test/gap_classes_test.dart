@@ -7,8 +7,11 @@ void main() {
       final a = TomClientApplication();
       final b = TomClientApplication();
       a.platforms.add('web');
+      a.screenIds.add('dashboard');
       expect(a.platforms, ['web']);
+      expect(a.screenIds, ['dashboard']);
       expect(b.platforms, isEmpty, reason: 'each instance owns its own list');
+      expect(b.screenIds, isEmpty, reason: 'each instance owns its own list');
     });
 
     test('carries the spec-authorable client descriptor fields', () {
@@ -17,12 +20,23 @@ void main() {
         displayName: 'Admin Console',
         platforms: ['web', 'macos'],
         entryRoute: 'dashboard',
+        screenIds: ['dashboard', 'userList'],
         serverBaseUrl: 'https://api.example.com',
       );
       expect(app.clientId, 'admin_console');
       expect(app.platforms, ['web', 'macos']);
       expect(app.entryRoute, 'dashboard');
+      expect(app.screenIds, ['dashboard', 'userList']);
       expect(app.serverBaseUrl, 'https://api.example.com');
+    });
+
+    test('a client with no screens is representable', () {
+      // CLIAPP's `clientKind` admits a command-line client and another server
+      // calling in; neither ships a screen, so the empty set is the answer,
+      // not a missing one.
+      final cli = TomClientApplication(clientId: 'importer');
+      expect(cli.screenIds, isEmpty);
+      expect(cli.entryRoute, isEmpty);
     });
   });
 
