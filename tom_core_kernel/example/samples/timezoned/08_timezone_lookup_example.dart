@@ -12,7 +12,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // ============================================================================
 
 void run() {
-  print('=== 05: Timezone Lookup Example ===\n');
+  print('=== 08: Timezone Lookup Example ===\n');
 
   // -------------------------------------------------------------------------
   // Example 1: Lookup by exact IANA name
@@ -99,6 +99,8 @@ void run() {
   final allTimezones = TomTimezone.timezones;
   final totalTimezones = allTimezones.length;
   print('   Total available: $totalTimezones timezones');
+  print('   (the count comes from the IANA database bundled with');
+  print('    package:timezone, so it shifts when that package is updated)');
   
   // Group by region
   final regions = <String, int>{};
@@ -197,8 +199,18 @@ void run() {
   assert(utcValid!.timezone == 'UTC');
   assert(invalidOffsetThrew == true);
   
-  // Example 5: All timezones
-  assert(totalTimezones > 400); // Should have many timezones
+  // Example 5: All timezones. The exact count is a property of the IANA
+  // database bundled with `package:timezone` (341 locations at 0.11.1, plus
+  // the UTC entry TomTimezone adds), so it moves whenever that package is
+  // updated. Assert what is actually invariant: the catalogue is a full one
+  // rather than a stub, it contains the zones looked up above, and it groups
+  // into the IANA regions. The floor of 100 is far below any real tzdb and
+  // far above an empty or partially-loaded database, which is the failure
+  // this is here to catch.
+  assert(totalTimezones > 100);
+  assert(allTimezones.containsKey('ASIA/TOKYO'));
+  assert(allTimezones.containsKey('AMERICA/LOS_ANGELES'));
+  assert(regions.length > 5);
   assert(topRegions.isNotEmpty);
   
   // Example 6: Timezone existence

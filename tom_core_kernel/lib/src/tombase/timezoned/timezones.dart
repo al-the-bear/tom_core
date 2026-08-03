@@ -2,6 +2,10 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:tom_basics/tom_basics.dart';
 
 import '../little_things/exception_base.dart';
+// Prefixed: the top-level `convertMinutesToUtcOffset` shares its name with the
+// static member below, and an unprefixed call from inside the class would
+// resolve to that member and recurse.
+import '../little_things/formatting.dart' as formatting;
 
 import 'init_tz.dart'
     if (dart.library.io) 'init_tz_flutter.dart'
@@ -362,17 +366,12 @@ class TomTimezone {
   /// print(TomTimezone.convertMinutesToUtcOffset(-300)); // '-05:00'
   /// print(TomTimezone.convertMinutesToUtcOffset(330));  // '+05:30'
   /// ```
-  static String convertMinutesToUtcOffset(int totalMinutes) {
-    if (totalMinutes == 0) {
-      return "Z";
-    }
-    String sign = totalMinutes < 0 ? "-" : "+";
-    int absMinutes = totalMinutes.abs();
-    int hours = absMinutes ~/ 60;
-    int minutes = absMinutes % 60;
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    return "$sign${twoDigits(hours)}:${twoDigits(minutes)}";
-  }
+  ///
+  /// Delegates to the top-level [formatting.convertMinutesToUtcOffset] so the
+  /// two entry points cannot drift apart; this one exists because offsets are
+  /// most often formatted from a timezone.
+  static String convertMinutesToUtcOffset(int totalMinutes) =>
+      formatting.convertMinutesToUtcOffset(totalMinutes);
 
   /// Returns the UTC offset in minutes for this timezone at a specific date/time.
   ///

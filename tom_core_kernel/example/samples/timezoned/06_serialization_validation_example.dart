@@ -12,7 +12,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // ============================================================================
 
 void run() {
-  print('=== 03: Serialization Example ===\n');
+  print('=== 06: Serialization Validation Example ===\n');
 
   final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
   final newYork = TomTimezone.fromName('America/New_York')!;

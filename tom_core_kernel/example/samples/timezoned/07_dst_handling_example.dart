@@ -12,7 +12,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // ============================================================================
 
 void run() {
-  print('=== 04: DST Handling Example ===\n');
+  print('=== 07: DST Handling Example ===\n');
 
   final newYork = TomTimezone.fromName('America/New_York')!;
   final london = TomTimezone.fromName('Europe/London')!;
@@ -84,7 +84,10 @@ void run() {
   
   print('   London:');
   print('   - Summer offset (BST): $londonSummerOffset');
-  print('   - Winter offset (GMT): $londonWinterOffset\n');
+  print('   - Winter offset (GMT): $londonWinterOffset');
+  print('   - GMT is zero offset, and a zero offset renders as "Z"');
+  print('     (the ISO 8601 UTC designator), not "+00:00". London is the');
+  print('     one common DST zone where this shows up.\n');
 
   // -------------------------------------------------------------------------
   // Example 4: Creating TomZonedDateTime across DST
@@ -185,9 +188,11 @@ void run() {
   assert(beforeSpringOffset == '-05:00'); // Still EST
   assert(afterSpringOffset == '-04:00'); // Now EDT
   
-  // Example 3: European DST
+  // Example 3: European DST. London in winter sits at zero offset, which
+  // `convertMinutesToUtcOffset` renders as the ISO 8601 designator 'Z' — the
+  // same value example 7 below asserts for 0 minutes. It is not '+00:00'.
   assert(londonSummerOffset == '+01:00'); // BST
-  assert(londonWinterOffset == '+00:00'); // GMT
+  assert(londonWinterOffset == 'Z'); // GMT — zero offset, so 'Z'
   
   // Example 4: Serialization with DST offsets
   // Note: The offset in serialization reflects the current system offset for display

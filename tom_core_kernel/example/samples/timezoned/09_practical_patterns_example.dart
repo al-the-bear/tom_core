@@ -12,7 +12,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // ============================================================================
 
 void run() {
-  print('=== 06: Practical Patterns Example ===\n');
+  print('=== 09: Practical Patterns Example ===\n');
 
   // -------------------------------------------------------------------------
   // Example 1: Scheduling a meeting across timezones
