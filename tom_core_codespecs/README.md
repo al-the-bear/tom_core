@@ -28,13 +28,12 @@ classes, so they need no gap class. Neither does **CE-CC**
 holder — typed declaration through `declareSettings()`, baselines resolved from
 `TomConfigResourceProvider`, overrides persisted and *only* overrides, and
 observation both per field and holder-wide — with no user in the key, which is
-the whole CE-CC discriminator (`codespecs_mapping.md` §4.1, §5.16, §11). The two
-parts that had no `tom_core` holder:
+the whole CE-CC discriminator (`codespecs_mapping.md` §4.1, §5.16, §11). Of the
+four, the one part that had no `tom_core` holder is CE-CL:
 
 | Class | Part | Purpose |
 |-------|------|---------|
 | `TomClientApplication` | CE-CL Client | Client-application descriptor (id, platforms, entry route, server URL). |
-| `TomUserSettings` + `TomUserSettingsStore` | CE-UP UserSettings | The typed user-settings holder and the server-side per-user persistence seam — both halves of the gap `codespecs_mapping.md` §4.1 names. Single-moded: user-scoped and server-persisted, because `codespecs_mapping.md` §11 lets the scope key alone decide where a value lives (csra3, below). |
 
 **csm210-4-1 (wave-2 W10) — CE-DB / domain enums** (survey:
 `../../ai_build/tom_specs_model/doc/codespecs_mapping.md` §3). CE-DB is a
@@ -68,8 +67,8 @@ server (as persistence). The entity's **field shape is authored once in the
 §4.2) as the canonical entity; the server-only
 `@CsTable`/`@CsColumn`/`@CsRepository` persistence projection and the
 client-only DTO/view both derive from that shared shape. This keeps the client
-free of any dependency on a server-authored type and mirrors the CE-UP `roaming`
-pattern (a shared shape with a server-side persistence facet). The persistence
+free of any dependency on a server-authored type and mirrors CE-UP, whose key
+and value type are shared while only its persistence is server-side. The persistence
 markers themselves remain **server-side** parts (`service_annotations.dart`).
 
 > Naming note: an earlier survey wrote "CsDbTable"; the annotations-only
@@ -99,18 +98,30 @@ configuration and settings into four parts, **one per scope key, each
 single-moded**: CE-CF (server/system), CE-CC (client app + machine, no user),
 CE-DS (user + device, device-persisted), CE-UP (user, server-persisted). The
 scope key alone decides where a value lives, so no part carries a persistence
-discriminator — the choice is *which part you use*. `TomUserSettings`
-accordingly lost its `local`/`roaming` enum: the `local` arm is CE-DS, which
-`codespecs_mapping.md` §4.1 marks *reuse — no new class* and which is therefore
-deliberately **not** re-created here.
+discriminator — the choice is *which part you use*. A `local`/`roaming` mode on
+a CE-UP class would therefore be a second way to say what the part already says:
+the `local` arm is CE-DS, which `codespecs_mapping.md` §4.1 marks *reuse — no new
+class*.
 
-The same pass closed the second half of the CE-UP gap. `codespecs_mapping.md`
-§4.1 names it as "typed user-settings holder **+** server-side per-user
-persistence"; only the holder existed. The reused kernel carrier
-(`TomGetSettingsMessage` / `TomGetSettingsResult`) is a read-only bootstrap
-payload with no write-back path, so a user's chosen preference had nowhere to be
-stored — `TomUserSettingsStore` is that seam, keyed by user in every method
-because the user key *is* the scope.
+**CE-UP is not a gap.** Its whole surface resolves onto shipped `tom_core`
+classes and onto the annotated member itself, so a holder here would hold
+nothing:
+
+| CE-UP surface | Where it lives |
+|---------------|----------------|
+| the setting's key | `@CsUserSetting('user.preferredLanguage')`'s own argument, against `TomUserPreferenceKeys` (`tom_core_kernel`) |
+| its type and default | **the annotated member** — `String preferredLanguage = 'de'` (`codespecs_mapping.md` §5.16), exactly as a domain enum's default belongs to the member that has one |
+| the user's persisted value | `TomUserPreferences` (`tom_core_server`) over `TomUserPreferenceRepository`, scoped by `@TomDbScope(field: 'principal_id')` |
+| the wire | `tomUserPreferencesApi`'s four endpoints and `TomUserPreferenceDto` (`tom_core_kernel`) |
+| §5.16's persisted-value → default order | `TomUserPreferences.getOr(key, <the member's initialiser>)` |
+| the setting's display name | CE-TX copy in the message-key registry (§1.2 consequence 1, §5.21) — a label has one home |
+
+A persistence seam here would also be strictly worse than the shipped one: an
+in-memory map with no scope and no rows, standing in front of a persistent,
+principal-scoped service. Note that `TomGetSettingsMessage` /
+`TomGetSettingsResult` is **not** that seam and never was — it is the client
+bootstrap payload (texts, config, groups, roles, entitlements), read-only and
+not per-user-preference.
 
 **csra7 — CE-NT, promoted out of `codespecs_mapping.md` §4.3.** The
 `codespecs_mapping.md` §8.1 authored-input test decides which deferred
@@ -161,11 +172,12 @@ and a chart plotting a column the report does not project.
 csra8. CE-RP's report model added on its promotion out of `codespecs_mapping.md`
 §4.3, leaving CE-WF as the sole deferred candidate. Earlier: csra7 CE-NT's
 notification model (CE-LG, promoted in the same pass, is reuse and needs no
-class); csra3 CE-UP single-moded and its persistence seam added; csra2 the four
+class); csra3 CE-UP confirmed single-moded and confirmed reuse of the
+preferences plane; csra2 the four
 remaining catalogued gap classes (CE-LO / CE-TX / CE-NV / CE-JB) with CE-AC
 confirmed reuse; csm210-4-1 the `domainEnum` holder with CE-DB confirmed reuse
 and the entity-model placement decided (shared shape, server persistence
-projection); csm2r7 three gap classes for the four new parts (CE-CL / CE-CC /
-CE-UP; CE-AU and CE-CF reuse). Every part the `codespecs_mapping.md` §4.1
+projection); csm2r7 one gap class for the four new parts (CE-CL; CE-AU, CE-CF
+and CE-CC reuse). Every part the `codespecs_mapping.md` §4.1
 catalogue marks *gap* now has its class; later waves add classes only if a
 further part is promoted out of `codespecs_mapping.md` §4.3.

@@ -22,9 +22,30 @@
 /// `TomBaseClientConfiguration` / `TomSetting<T>` /
 /// `TomClientConfigurationStore` (`codespecs_mapping.md` §4.1/§5.16), which is
 /// the (client app, machine) holder with no user in the key — so it needs no
-/// gap class either. The two parts that had no `tom_core` holder land here as
-/// concrete classes: [TomClientApplication] (CE-CL) and [TomUserSettings]
-/// (CE-UP).
+/// gap class either. Of the four, only CE-CL had no `tom_core` holder, and it
+/// lands here as [TomClientApplication].
+///
+/// **CE-UP is not a gap either — it is full reuse of the preferences plane.**
+/// A user setting needs no holder here at all: every part of its surface
+/// resolves onto a shipped `tom_core` class or onto the annotated member
+/// itself.
+///
+/// | CE-UP surface | Where it lives |
+/// |---------------|----------------|
+/// | the setting's key | `@CsUserSetting('user.preferredLanguage')`'s own argument, against `TomUserPreferenceKeys` (`tom_core_kernel`) |
+/// | its type and default | **the annotated member** — `String preferredLanguage = 'de'` (`codespecs_mapping.md` §5.16), exactly as a domain enum's default belongs to the member that has one |
+/// | the user's persisted value | `TomUserPreferences` (`tom_core_server`) over `TomUserPreferenceRepository`, scoped by `@TomDbScope(field: 'principal_id')` |
+/// | the wire | `tomUserPreferencesApi`'s four endpoints and `TomUserPreferenceDto` (`tom_core_kernel`) |
+/// | §5.16's persisted-value → default order | `TomUserPreferences.getOr(key, <the member's initialiser>)` |
+/// | the setting's display name | CE-TX copy in the message-key registry (§1.2 consequence 1, §5.21) — a label has one home |
+///
+/// A holder here would therefore hold nothing that is not already held, and a
+/// persistence seam here would be strictly worse than the shipped one — an
+/// in-memory map with no scope and no rows, standing in front of a persistent,
+/// principal-scoped service. Note that the setting's *scope* is what separates
+/// CE-UP from its three siblings: `(user)` alone, so it travels with the
+/// account across every device, which is exactly what `TomUserPreferences`
+/// stores and what `tom_core_flutter`'s device store deliberately does not.
 ///
 /// **CE-DB and domain enums are both *not* gaps.** CE-DB is a reuse verdict —
 /// `@CsTable`/`@CsColumn`/`@CsRepository` are built directly on
@@ -84,4 +105,3 @@ export 'src/message_key.dart';
 export 'src/notification_model.dart';
 export 'src/report_model.dart';
 export 'src/route_flow.dart';
-export 'src/user_settings.dart';

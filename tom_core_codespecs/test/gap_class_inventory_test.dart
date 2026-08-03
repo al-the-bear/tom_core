@@ -30,7 +30,6 @@ const Map<String, String> _expectedGapClassFiles = {
   'notification_model.dart': 'CE-NT — no channel-choosing layer',
   'report_model.dart': 'CE-RP — no authorable grouped-projection shape',
   'route_flow.dart': 'CE-NV — no route-id registry / screen-flow model',
-  'user_settings.dart': 'CE-UP — no user-keyed holder and no persistence seam',
 };
 
 void main() {
@@ -87,6 +86,21 @@ void main() {
         File('lib/tom_core_codespecs.dart').readAsStringSync(),
         isNot(contains('TomDomainEnum')),
       );
+    });
+
+    test('tspcmp2: CE-UP has no gap class — it reuses the preferences plane',
+        () {
+      // The second drift of the same shape as CE-CC's. A TomUserSettings
+      // holder and a TomUserSettingsStore seam were authored here on the
+      // premise that tom_core had neither; tom_core_server's
+      // TomUserPreferences (over TomUserPreferenceRepository, principal-scoped)
+      // is the seam, and the holder was never needed — §5.16 puts a setting's
+      // type and default on the annotated member and its key on
+      // @CsUserSetting's own argument.
+      expect(_expectedGapClassFiles.keys, isNot(contains('user_settings.dart')));
+      final barrel = File('lib/tom_core_codespecs.dart').readAsStringSync();
+      expect(barrel, isNot(contains("export 'src/user_settings.dart';")));
+      expect(barrel, isNot(contains('TomUserSettingsStore')));
     });
   });
 }

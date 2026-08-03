@@ -40,67 +40,6 @@ void main() {
     });
   });
 
-  group('csra3: CE-UP TomUserSettings is single-moded', () {
-    test('carries value and default independently', () {
-      final s = TomUserSettings(
-        settingId: 'theme',
-        value: 'dark',
-        defaultValue: 'light',
-      );
-      expect(s.value, 'dark');
-      expect(s.defaultValue, 'light');
-    });
-
-    test(
-        'effectiveValue applies the codespecs_mapping.md §5.16 '
-        'persisted-value → default order', () {
-      expect(
-        TomUserSettings(settingId: 'theme', defaultValue: 'light')
-            .effectiveValue,
-        'light',
-        reason: 'an unset setting resolves to its declared default',
-      );
-      expect(
-        TomUserSettings(settingId: 'theme', value: 'dark', defaultValue: 'light')
-            .effectiveValue,
-        'dark',
-        reason: "the user's persisted choice wins over the default",
-      );
-    });
-  });
-
-  group('csra3: CE-UP server-side per-user persistence', () {
-    test('the store is keyed by user — two users never share values', () async {
-      final store = TomMemoryUserSettingsStore();
-      await store.write('alice', {'theme': 'dark'});
-      await store.write('bob', {'theme': 'light'});
-      expect(await store.read('alice'), {'theme': 'dark'});
-      expect(await store.read('bob'), {'theme': 'light'});
-    });
-
-    test('an unknown user reads empty rather than failing', () async {
-      expect(await TomMemoryUserSettingsStore().read('nobody'), isEmpty);
-    });
-
-    test('a write replaces that user\'s map, and empty clears it', () async {
-      final store = TomMemoryUserSettingsStore();
-      await store.write('alice', {'theme': 'dark', 'lang': 'de'});
-      await store.write('alice', {'lang': 'en'});
-      expect(await store.read('alice'), {'lang': 'en'},
-          reason: 'write replaces, it does not merge');
-      await store.write('alice', {});
-      expect(await store.read('alice'), isEmpty);
-    });
-
-    test('read returns a copy — mutating it cannot corrupt the store',
-        () async {
-      final store = TomMemoryUserSettingsStore();
-      await store.write('alice', {'theme': 'dark'});
-      (await store.read('alice'))['theme'] = 'tampered';
-      expect(await store.read('alice'), {'theme': 'dark'});
-    });
-  });
-
   group('csra2: CE-LO TomLayoutModel', () {
     test('the container-kind set is the closed codespecs_mapping.md §5.22 '
         'nine', () {

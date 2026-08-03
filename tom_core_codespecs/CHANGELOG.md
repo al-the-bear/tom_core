@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.11.0
+
+- **Breaking: remove `TomUserSettings`, `TomUserSettingsStore` and
+  `TomMemoryUserSettingsStore` (CE-UP).** They were authored on the premise that
+  `tom_core` had neither a typed user-settings holder nor a server-side per-user
+  persistence seam. `tom_core` now ships the whole preferences plane —
+  `TomUserPreferences` over `TomUserPreferenceRepository` scoped by
+  `@TomDbScope(field: 'principal_id')` in `tom_core_server`, with
+  `TomUserPreferenceDto`, `TomUserPreferenceKeys` and `tomUserPreferencesApi`'s
+  four endpoints in `tom_core_kernel` — so the seam here was a second, worse
+  home for it: an in-memory map with no scope and no rows.
+- **The holder was never needed either.** `codespecs_mapping.md` §5.16 authors a
+  user setting as `@CsUserSetting('user.preferredLanguage') String
+  preferredLanguage = 'de';` — the key is the annotation's own argument and the
+  **type and default are the member**, exactly as a domain enum's default
+  belongs to the member that has one. `effectiveValue`'s persisted-value →
+  default order is `TomUserPreferences.getOr(key, <the member's initialiser>)`,
+  and `displayName` was a label's second home, which the closed-vocabulary rule
+  forbids (§1.2 consequence 1, §5.21). CE-UP is a **reuse** verdict, not a gap.
+- `csrb2`'s pinned gap-class inventory drops `user_settings.dart` and gains a
+  CE-UP absence test, the shape `csrb7` uses for domain enums.
+
 ## 0.10.0
 
 - **Breaking: `TomJobDeclaration.targetRefs` (`List<String>`) is replaced by
