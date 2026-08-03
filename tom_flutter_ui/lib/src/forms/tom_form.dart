@@ -1144,10 +1144,20 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     }
   }
 
-  /// Programmatically writes [text] into the controller without triggering an
-  /// input-validation pass (used to revert an invalid keystroke). The guard
-  /// keeps the just-set error message from being wiped by the re-entrant
-  /// listener call. See bug §75.
+  /// Programmatically writes [text] into the controller, with the caret at the
+  /// end, without triggering an input-validation pass. This is the *only* way
+  /// this class writes the controller: writing it fires [_onTextChanged], which
+  /// treats what it finds as a keystroke — validating it, publishing the
+  /// text-derived value, and possibly reverting the very text just written.
+  ///
+  /// Callers stay responsible for the value and the error message, because the
+  /// two programmatic writers need opposite things from the error: the revert
+  /// path ([_onTextChanged]) has just set the message this write exists to
+  /// preserve (bug §75), while [set] and [reset] must clear a message that now
+  /// refers to text no longer on screen.
+  ///
+  /// [text] becomes the revert target of the next rejected keystroke, since it
+  /// is by construction the last text this field accepted.
   void _setControllerText(String text) {
     _suppressInputListener = true;
     _textEditingController.value = TextEditingValue(
@@ -1155,6 +1165,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
       selection: TextSelection.collapsed(offset: text.length),
     );
     _suppressInputListener = false;
+    currentRawValue = text;
   }
 
   void _onTextChanged() {
@@ -1226,28 +1237,20 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     );
   }
 
-  @override
-  void reset() {
-    super.reset();
-    String textValue = _valueToTextConverter(initialValue);
-    _textEditingController.value = TextEditingValue(
-      text: textValue,
-      selection: TextSelection.fromPosition(
-        TextPosition(offset: textValue.length),
-      ),
-    );
-  }
-
+  // `reset()` is deliberately not overridden: `TomField.reset` resets to the
+  // initial value through the virtual `set` below, so the controller write and
+  // the error clearing happen there. The override this class used to carry
+  // wrote the controller a second time, unguarded.
   @override
   T set(T value) {
-    String textValue = _valueToTextConverter(value);
-    _textEditingController.value = TextEditingValue(
-      text: textValue,
-      selection: TextSelection.fromPosition(
-        TextPosition(offset: textValue.length),
-      ),
-    );
-    return super.set(value);
+    _setControllerText(_valueToTextConverter(value));
+    // The value is published from `value`, never from the text: converting back
+    // out of the text form would publish whatever the round trip lands on.
+    final result = super.set(value);
+    // A programmatic write replaces the text an input error was reported
+    // against, so the error no longer has a subject.
+    _errorText.value = null;
+    return result;
   }
 }
 
