@@ -234,7 +234,7 @@ verifyNotNull(logger.toString(), 'TomLogger.toString produces a string');
 # statics; its only member is the `logRepresentation` getter, which requires a
 # concrete TomLoggable instance not constructable connection-free here. Its
 # registration is still validated by bridge load; direct-member coverage is
-# deferred (see completion_steps.tom_core.md).
+# deferred (see deferred.tom_core.md).
 
 # =============================================================================
 # Summary

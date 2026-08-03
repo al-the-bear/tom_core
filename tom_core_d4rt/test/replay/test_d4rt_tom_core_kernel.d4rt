@@ -260,7 +260,7 @@ verifyEquals(cleanup.silent, true, 'silent setter round-trips');
 # TomZonedTime/TomZonedDate/TomTimezoned default their timezone to
 # TomTimezone.utc, which wraps the `timezone` package's predefined `tz.UTC`
 # Location constant — so they construct without initializeTimeZones(). The
-# deferred surface in completion_steps.tom_core.md is now covered directly.
+# deferred surface in deferred.tom_core.md is now covered directly.
 # =============================================================================
 
 var zonedTime = TomZonedTime(hour: 14, minute: 30);

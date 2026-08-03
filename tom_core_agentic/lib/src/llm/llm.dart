@@ -5,7 +5,7 @@
 // brain (the TomSpecs editor consumes them through the VS Code bridge). The
 // substrate-coupled HTTP / stub providers (Ollama, OpenAI passthrough, Stub) are
 // intentionally NOT migrated here — they depend on brain-domain packages that
-// sit above this layer; see `completion_steps.tom_specs.md`.
+// sit above this layer; see `deferred.tom_specs.md`.
 library;
 
 export 'agent_sdk_llm_provider.dart';

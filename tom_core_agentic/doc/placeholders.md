@@ -142,7 +142,7 @@ caller can route on the code without string-matching the message:
   This is the package's **only** `dart:io` import and is at odds with the
   package's otherwise `dart:io`-free design; removing it (by injecting the
   environment the way `async_shutdown` injects `exit`) is tracked as deferred
-  work in `completion_steps.tom_core.md`. Until then, pass an explicit
+  work in `deferred.tom_core.md`. Until then, pass an explicit
   `environment:` map to keep a resolver `dart:io`-decoupled in practice — which
   every config-layer call site and every test already does.
 - No other `tom_core_agentic` module.
