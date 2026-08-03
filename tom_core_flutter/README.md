@@ -32,6 +32,9 @@ What it adds on top of the kernel is deliberately small:
 - **Client configuration** — a machine-scoped settings holder that resolves
   from the shipped config resources, persists this install's overrides, and is
   observable per field and as a whole.
+- **Device preferences** — machine-local user preferences behind one
+  platform-independent API, with the storage backend chosen by DI rather than by
+  an `if (kIsWeb)` at the call site.
 - **Client platform detection** — the Flutter/web/IO variant selector for the
   kernel's `TomPlatformUtils`.
 - **Client security** — the `TomClient2FAAdaptor` annotation for two-factor
@@ -108,6 +111,24 @@ Only the install's **overrides** are persisted, so shipping a new default in an
 app update still reaches installs that never touched that key. See
 [`doc/configuration.md`](doc/configuration.md).
 
+### Device preferences (`preferences`)
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomDevicePreferences` | The typed API for this **device's** preferences — resolved as a bean, never constructed at the call site |
+| `TomStoredDevicePreferences` | The shipped implementation: the typed API over a store, holding the single encode/decode decision |
+| `TomDevicePreferenceStore` | Two-method (`read` / `write`) backend interface — the only platform-specific part |
+| `TomPlatformDevicePreferenceStore` | The backend for the current target (JSON file / `localStorage` / loud failure), selected at compile time |
+| `TomMemoryDevicePreferenceStore` | A store that persists nothing beyond the process |
+| `TomDevicePreferenceJson` | The stored JSON document, written once for every persistent backend |
+| `TomDevicePreferenceException` | Module failures, with stable dotted keys |
+
+Preferences that must **not** follow the user — the last account used *here*,
+whether biometric unlock is on *this* device. The keys, the DTO and the codec
+are the kernel's, so this store and the server-side one share one vocabulary and
+a preference can move between them without a call site changing. See
+[`doc/preferences.md`](doc/preferences.md).
+
 ### Runtime (`runtime`)
 
 | Type | What it is |
@@ -155,6 +176,7 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | [`example/observing/`](example/observing/observing_example.dart) | `ValueListenableObserver` bridging a `TomObservable` to a Flutter listener |
 | [`example/resources/`](example/resources/resources_example.dart) | Resolving typed config via `TomProperty` subclasses and `.withDefault` |
 | [`example/configuration/`](example/configuration/configuration_example.dart) | Declaring a client settings holder, loading overrides, observing, and persisting only what changed |
+| [`example/preferences/`](example/preferences/preferences_example.dart) | Registering a device store once, typed reads/writes, persistence across a restart, and the device-over-server precedence |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils` and querying its predicates |
 | [`example/security/`](example/security/security_example.dart) | Applying the `TomClient2FAAdaptor` marker annotation and reading back its `type` |
 | [`example/little_things/`](example/little_things/little_things_example.dart) | The two client exception types and the type-based discrimination pattern |
@@ -208,6 +230,26 @@ config.darkMode | true;  // observers fire, per field and holder-wide
 await config.save();     // persist the overrides — and only those
 ```
 
+### Storing a preference on this device
+
+```dart
+// The one line in an application that knows where machine-local state lives.
+TomBean.withType(
+  TomDevicePreferences,
+  TomStoredDevicePreferences(TomPlatformDevicePreferenceStore(location)),
+);
+
+final preferences = TomDevicePreferences.resolve()!;
+await preferences.set('device.biometricUnlock', true);
+
+// Device value wins while it exists; the account value is the cross-device
+// default, consulted only for a key this device has never written.
+final theme = await preferences.getPreferred<String>(
+  TomUserPreferenceKeys.theme,
+  () => userPreferencesClient.get<String>(TomUserPreferenceKeys.theme),
+);
+```
+
 ### Selecting the client platform utils
 
 ```dart
@@ -222,11 +264,13 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
              │
    import 'package:tom_core_flutter/tom_core_flutter.dart'
              │  (re-exports the kernel + tom_reflection)
-   ┌─────────┼───────────┬───────────┬──────────────┐
- observing  resources   runtime     security   configuration
- (rebuild) (TomProperty) (platform) (2FA marker) (install settings)
+   ┌─────────┼───────────┬───────────┬───────────────┬──────────────┐
+ observing  resources   runtime     security   configuration   preferences
+ (rebuild) (TomProperty) (platform) (2FA marker) (install       (device-local
+                                                  settings)      values)
              │
-       tom_core_kernel  (TomObservable, TomObject, TomPlatformUtils, …)
+       tom_core_kernel  (TomObservable, TomObject, TomPlatformUtils,
+                         TomUserPreferenceDto / Keys / Codec, …)
 ```
 
 | Type | Responsibility |
@@ -237,6 +281,8 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
 | `TomBaseClientConfiguration` | Owns the machine-scoped settings of one install |
 | `TomSetting<T>` | One observable, persistable setting |
 | `TomClientConfigurationStore` | Persists the install's overrides |
+| `TomDevicePreferences` | The typed, platform-independent API for this device's preferences |
+| `TomDevicePreferenceStore` | Persists the device's preferences (file / `localStorage`) |
 | `clientPlatformUtils` | Selects the concrete `TomPlatformUtils` for Flutter |
 | `TomClient2FAAdaptor` | Marks a client two-factor adaptor class |
 | `TomClientException` | Base client-side exception type |
@@ -264,7 +310,8 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 
 - Per-module guides under [`doc/`](doc/) — one markdown file per module
   (`doc/observing.md`, `doc/resources.md`, `doc/configuration.md`,
-  `doc/runtime.md`, `doc/security.md`, `doc/little_things.md`).
+  `doc/preferences.md`, `doc/runtime.md`, `doc/security.md`,
+  `doc/little_things.md`).
 - Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
   start at
   [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md)
@@ -278,5 +325,5 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 ## Status
 
 - **Version:** 1.2.1
-- **Tests:** 82 tests across 6 module suites (run with `flutter test`).
+- **Tests:** 141 tests across 7 module suites (run with `flutter test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
