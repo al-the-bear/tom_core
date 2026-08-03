@@ -9,12 +9,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart' show TomObservableEnum;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:todo_domain/todo_domain.dart';
 
 import '../api/live_todo_read_client.dart';
 import '../app/app_session.dart';
-import '../domain/enum_text.dart';
 import 'todo_detail_screen.dart';
 
 /// Lists the session's todo items with create / open / refresh actions.
@@ -161,8 +161,10 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
                             ),
                             titleText: item.title.get(),
                             subtitle: TomText(
-                              text: '${enumText(item.priorityValue)} · '
-                                  '${enumText(item.labelValue)}',
+                              text:
+                                  '${TomObservableEnum.resolveText(item.priorityValue)}'
+                                  ' · '
+                                  '${TomObservableEnum.resolveText(item.labelValue)}',
                             ),
                             onTap: _showingLive ? null : () => _openDetail(item),
                           );

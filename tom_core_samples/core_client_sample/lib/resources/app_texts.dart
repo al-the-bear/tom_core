@@ -6,7 +6,9 @@
 /// first frame (and the widget tests install it in their `setUp`), so a form
 /// field's label resolves from `<scope>.<tomId>.label`, a screen resolves its
 /// copy through [TomCtr.text], and a domain enum resolves its display text from
-/// its `global.<enumtype>.<value>` key ([EnumResourceKey.resourceKey], G-RES-5).
+/// its `global.<enumtype>.<value>` key — derived and resolved by the framework's
+/// `TomObservableEnum` (G-RES-5), so no Dart-side label table stands between the
+/// enum and this bundle.
 ///
 /// The keys are flat dotted paths (the provider looks a flat key up directly);
 /// their **values are byte-identical** to the literals they replaced, so nothing

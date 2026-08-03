@@ -24,8 +24,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:todo_domain/todo_domain.dart';
 
-import '../domain/enum_text.dart';
-
 /// The single resource scope every [TodoItemForm] field derives its identity
 /// from: label key `todo.item.<tomId>.label` and authz/wire key
 /// `todo.item.<tomId>` are both composed from this one string. It is the
@@ -116,12 +114,10 @@ ValidationResult _noSurroundingSpace(String value) => value.trim() != value
     ? const ValidationError('error.titleWhitespace')
     : const ValidationSuccess();
 
-/// The priority options, labelled through [enumText] (which resolves each value's
-/// `global.todopriority.<value>` resource key, G-RES-5) and valued by the enum
-/// name the entity stores.
-final TomSelectableSource<String> _prioritySource = StaticSelectableSource(
-  [
-    for (final p in TodoPriority.values)
-      SelectableItem<String>(value: p.name, label: enumText(p)),
-  ],
-);
+/// The priority options: valued by the enum name the entity stores, labelled
+/// from `global.todopriority.<value>` in the installed bundle (G-RES-5). The
+/// source resolves each label on read and re-emits when the bundle changes, so
+/// there is no Dart-side label table and a locale switch relabels the dropdown
+/// without rebuilding the form.
+final TomSelectableSource<String> _prioritySource =
+    TomEnumNameSelectableSource(TodoPriority.values);

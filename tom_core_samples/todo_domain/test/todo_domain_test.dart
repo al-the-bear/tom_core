@@ -44,11 +44,16 @@ void main() {
       expect(project.lists[0].items[0].title.get(), 'Ship todo_domain');
     });
 
-    test('enum values expose a global.<enumtype>.<value> resource key', () {
-      // G-RES-5: enums carry no hardcoded display text — only a resource key
-      // resolved through the installed bundle at the point of display.
-      expect(TodoPriority.critical.resourceKey, 'global.todopriority.critical');
-      expect(TodoLabel.docs.resourceKey, 'global.todolabel.docs');
+    test('enum values resolve under a global.<enumtype>.<value> resource key',
+        () {
+      // G-RES-5: enums carry no hardcoded display text — the framework derives
+      // the key and the installed bundle supplies the text at the point of
+      // display. Asserted here because these are the keys the bundle must carry.
+      String keyOf(Enum value) =>
+          TomObservableEnum.resourceKeysFor(value).single;
+
+      expect(keyOf(TodoPriority.critical), 'global.todopriority.critical');
+      expect(keyOf(TodoLabel.docs), 'global.todolabel.docs');
     });
   });
 

@@ -16,11 +16,11 @@ library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart' show TomObservableEnum;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../actions/app_actions.dart';
 import '../app/app_session.dart';
-import '../domain/enum_text.dart';
 
 /// Opens the share dialog for [projectId] over [session].
 ///
@@ -113,7 +113,9 @@ class _ShareDialogState extends State<_ShareDialog> {
                 items: [
                   for (final role in ProjectRole.values)
                     DropdownMenuItem(
-                        value: role, child: Text(enumText(role))),
+                      value: role,
+                      child: Text(TomObservableEnum.resolveText(role)),
+                    ),
                 ],
                 onChanged: _busy
                     ? null

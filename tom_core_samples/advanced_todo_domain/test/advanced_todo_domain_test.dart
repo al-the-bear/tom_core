@@ -1,6 +1,10 @@
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart'
-    show TomAuthState, TomResourceRoleRegistry, TomString;
+    show
+        TomAuthState,
+        TomObservableEnum,
+        TomResourceRoleRegistry,
+        TomString;
 import 'package:test/test.dart';
 
 // The single test-only reflection seed for this package (G-REFL-2).
@@ -252,12 +256,17 @@ void main() {
 
     test('enum display text resolves as a global.<enumtype>.<value> key '
         '(G-RES-5), carrying no hardcoded string', () {
-      // The enum names the concept; the text lives in the resource bundle.
-      expect(TodoStatus.inReview.resourceKey, 'global.todostatus.inreview');
-      expect(TodoPriority.critical.resourceKey, 'global.todopriority.critical');
-      expect(TodoLabel.docs.resourceKey, 'global.todolabel.docs');
-      expect(UserStatus.suspended.resourceKey, 'global.userstatus.suspended');
-      expect(ProjectRole.commenter.resourceKey, 'global.projectrole.commenter');
+      // The enum names the concept; the text lives in the resource bundle, and
+      // the key is derived by the framework — this domain owns no label table.
+      // Asserted here because these are the keys the served bundle must carry.
+      String keyOf(Enum value) =>
+          TomObservableEnum.resourceKeysFor(value).single;
+
+      expect(keyOf(TodoStatus.inReview), 'global.todostatus.inreview');
+      expect(keyOf(TodoPriority.critical), 'global.todopriority.critical');
+      expect(keyOf(TodoLabel.docs), 'global.todolabel.docs');
+      expect(keyOf(UserStatus.suspended), 'global.userstatus.suspended');
+      expect(keyOf(ProjectRole.commenter), 'global.projectrole.commenter');
     });
   });
 

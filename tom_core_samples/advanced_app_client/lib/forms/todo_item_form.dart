@@ -25,8 +25,6 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart' show tomReflector;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-import '../domain/enum_text.dart';
-
 /// A bound editor for a single [TodoItem]; authorization grades are stamped onto
 /// its fields by the screen, not held on the form.
 @tomReflector
@@ -40,10 +38,12 @@ class TodoItemForm extends TomForm<TodoItem> {
   /// the installed full bundle.
   late final TomFormStringInput title;
 
-  /// Workflow status — a dropdown over the [TodoStatus] names.
+  /// Workflow status — a dropdown valued by the [TodoStatus] names the entity
+  /// stores, labelled from `global.todostatus.*` in the bundle (G-RES-5).
   late final TomFormStringDropdown status;
 
-  /// Priority — a dropdown over the [TodoPriority] names.
+  /// Priority — a dropdown valued by the [TodoPriority] names the entity
+  /// stores, labelled from `global.todopriority.*` in the bundle (G-RES-5).
   late final TomFormStringDropdown priority;
 
   /// Assignee id — free text (gated; an editor sees this read-only).
@@ -81,13 +81,13 @@ class TodoItemForm extends TomForm<TodoItem> {
       'status',
       TodoStatus.backlog.name,
       form: this,
-      source: _enumSource(TodoStatus.values),
+      source: TomEnumNameSelectableSource(TodoStatus.values),
     );
     priority = TomFormStringDropdown(
       'priority',
       TodoPriority.medium.name,
       form: this,
-      source: _enumSource(TodoPriority.values),
+      source: TomEnumNameSelectableSource(TodoPriority.values),
     );
     assigneeId = TomFormStringInput('assigneeId', '', form: this);
     dueDate = TomFormNDateInput(
@@ -101,16 +101,3 @@ class TodoItemForm extends TomForm<TodoItem> {
     description = TomFormStringInput('description', '', form: this, maxLines: 3);
   }
 }
-
-/// Builds a dropdown source over [values]: each option is valued by the enum
-/// [Enum.name] the entity stores and labelled from the resource bundle via
-/// [enumText] (G-RES-5). The source is built when the form's field is
-/// constructed — i.e. after the session installs the server-sent bundle — so the
-/// options render server-delivered text rather than any hardcoded string.
-TomSelectableSource<String> _enumSource(List<Enum> values) =>
-    StaticSelectableSource(
-      [
-        for (final v in values)
-          SelectableItem<String>(value: v.name, label: enumText(v)),
-      ],
-    );

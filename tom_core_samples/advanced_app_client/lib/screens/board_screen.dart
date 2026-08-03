@@ -20,11 +20,11 @@ library;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart' show TomObservableEnum;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
-import '../domain/enum_text.dart';
 import 'item_detail_screen.dart';
 import 'share_dialog.dart';
 
@@ -349,7 +349,8 @@ class _BoardScreenState extends State<BoardScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: TomText(
-              text: '${enumText(status)} (${items.length})',
+              text: '${TomObservableEnum.resolveText(status)} '
+                  '(${items.length})',
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
@@ -367,7 +368,8 @@ class _BoardScreenState extends State<BoardScreen> {
       child: TomListTile(
         titleText: item.title.get(),
         subtitle: TomText(
-          text: '${enumText(item.priorityValue)} · ${enumText(item.labelValue)}',
+          text: '${TomObservableEnum.resolveText(item.priorityValue)} · '
+              '${TomObservableEnum.resolveText(item.labelValue)}',
         ),
         // The paperclip is the whole point of fetching descriptors: presence,
         // type and size are on the card before anyone asks for a byte.

@@ -110,8 +110,12 @@ item.priorityValue = TodoPriority.high;      // writes 'high' to priority
 final p = item.priorityValue;                // reads 'high' → TodoPriority.high
 ```
 
-The `label` getter on each enum (`TodoPriority.high.label == 'High'`) supplies
-the human-facing text the UI renders.
+The human-facing text is **not** in this package (G-RES-5). A value's display
+string is addressed by a `global.<enumtype>.<value>` key that the framework
+derives and resolves against the installed bundle —
+`TomObservableEnum.resolveText(TodoPriority.high)` yields whatever
+`global.todopriority.high` holds — so a different bundle relabels the same
+stored value with no change here.
 
 ---
 
@@ -168,7 +172,7 @@ todo_domain/
       entities.dart                entity barrel (exports the entity files)
       reflection_entry.dart        generator entrypoint (has a main(); build target)
       reflection_entry.reflection.dart  generated — do not edit
-      enums.dart                   TodoPriority, TodoLabel (+ label extensions)
+      enums.dart                   TodoPriority, TodoLabel (values only; text is a resource)
       user.dart                    User
       project.dart                 Project
       todo_list.dart               TodoList

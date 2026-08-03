@@ -8,7 +8,7 @@ a headless smoke test.
 | Sample | Demonstrates |
 | ------ | ------------ |
 | [`build_hierarchy_example.dart`](build_hierarchy_example.dart) | Nesting `Project → TodoList → TodoItem` and walking it back |
-| [`enum_round_trip_example.dart`](enum_round_trip_example.dart) | Storing an enum as its name and reading it back typed, with fallback |
+| [`enum_round_trip_example.dart`](enum_round_trip_example.dart) | Storing an enum as its name, reading it back typed (with fallback), and resolving its display text from the bundle |
 | [`assign_and_complete_example.dart`](assign_and_complete_example.dart) | The `User ↔ TodoItem` link (`assigneeId`, `role`) and completing a task |
 
 Run a single example:

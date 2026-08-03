@@ -386,8 +386,7 @@ core_client_sample/
 │   │   ├── in_memory_todo_api.dart     # seeded offline backend + grant matrix
 │   │   └── live_todo_read_client.dart  # HTTP read client + pure parsers
 │   ├── domain/
-│   │   ├── login_credentials.dart      # client-local @tomReflector entity
-│   │   └── enum_text.dart              # resolves a domain enum's display text (G-RES-5)
+│   │   └── login_credentials.dart      # client-local @tomReflector entity
 │   ├── resources/
 │   │   └── app_texts.dart              # the installed user-facing text bundle (G-RES-1)
 │   ├── forms/
