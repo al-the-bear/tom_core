@@ -10,6 +10,14 @@ targets:
       tom_reflection_generator:reflection_generator:
         generate_for:
           - test/beanlocator_test.dart
+          # Interface selection lives in three separate reflection domains:
+          # discovery walks every annotated class in a domain and aborts the
+          # whole pass on the first unresolvable interface, so the deliberately
+          # ambiguous and the deliberately excluded fixtures cannot share a
+          # domain with the resolvable ones.
+          - test/beanlocator_selection_test.dart
+          - test/beanlocator_ambiguous_selection_test.dart
+          - test/beanlocator_excluded_selection_test.dart
           - test/crypto_test.dart
           - test/http_connection_test.dart
           - test/little_things_test.dart

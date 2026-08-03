@@ -55,6 +55,8 @@ import '../reflection/reflection.dart';
 /// - `beanlocator.bean_access.bean_not_found_by_type`: Type mismatch for named bean
 /// - `beanlocator.bean_access.no_bean_found_uninitialized`: Unresolved bean
 /// - `beanlocator.initialization.no_matching_implementation_found`: No implementation
+/// - `beanlocator.initialization.ambiguous_implementation`: Two implementations
+///   qualify equally for one interface
 class TomBeanLocatorException extends TomException {
   /// Creates a new bean locator exception.
   ///
@@ -714,6 +716,10 @@ class _TomImplementationInfo {
   ///
   /// Each tier reuses the same single-winner scan ([_findSingleMatch]); only
   /// the candidate predicate differs. Returns null if no tier matches.
+  ///
+  /// The tiers are tried in order and the first one with a match wins, so a
+  /// lower tier never overrides a higher one. A tier with *two* matches is an
+  /// error rather than a reason to fall through — see [_findSingleMatch].
   static ClassMirror? _findImplementation(
     List<_TomImplementationInfo> infos,
     TomComponent tc,
@@ -755,10 +761,14 @@ class _TomImplementationInfo {
 
   /// Returns the single candidate satisfying [matches], or null if none does.
   ///
-  /// When more than one candidate matches, the first is returned and each
-  /// extra match is logged as a warning — an ambiguous binding is a wiring
-  /// problem the caller should see, but it must not crash discovery.
-  /// [matchDescription] names the tier for the trace log.
+  /// Throws [TomBeanLocatorException] when two candidates satisfy [matches]:
+  /// within one tier the selectors carry no further information, so there is
+  /// no principled way to prefer one over the other. Picking either would
+  /// silently bind a deployment to an arbitrary implementation — the failure
+  /// mode where the code runs, the tests pass, and production misbehaves. An
+  /// ambiguous binding is a wiring bug, and it must surface as one.
+  ///
+  /// [matchDescription] names the tier for the trace log and the error.
   static ClassMirror? _findSingleMatch(
     List<_TomImplementationInfo> infos,
     TomComponent tc,
@@ -776,9 +786,19 @@ class _TomImplementationInfo {
         );
         result = info.classMirror;
       } else {
-        tomLog.warn(
-          "Found two implementations for ${tc.getType()}: "
-          "${result.qualifiedName} and ${info.classMirror.qualifiedName}",
+        throw TomBeanLocatorException(
+          "beanlocator.initialization.ambiguous_implementation",
+          "Ambiguous implementation for ${tc.getType()}: both "
+              "${result.qualifiedName} and ${info.classMirror.qualifiedName} "
+              "qualify by $matchDescription. Distinguish them with a "
+              "@TomEnvironment or @TomPlatform annotation, or remove one.",
+          parameters: {
+            "type": tc.getType(),
+            "match": matchDescription,
+            "first": result.qualifiedName,
+            "second": info.classMirror.qualifiedName,
+          },
+          autoLog: true,
         );
       }
     }

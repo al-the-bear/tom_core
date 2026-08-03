@@ -37,13 +37,14 @@ class AmbiguousServiceB implements AmbiguousService {}
 // bean. This exercises initializeBeanContext -> _discoverAndInstantiateBeans
 // -> _instantiateConcreteBean, registered under its runtime type.
 //
-// Interface-based discovery and the four-tier env/platform selection are NOT
-// covered here: the reflection generator emits Type-valued @TomComponent(...)
-// arguments that point at an input-file-local interface unqualified (the same
-// limitation is visible in the committed example/run_all_samples.reflection.dart
-// at `const prefix1.TomComponent(EmailService)`), so such a generated file does
-// not compile. Fixing the generator is owned by the reflection/d4rt quest; see
-// completion_steps.tom_core.md.
+// Interface-based discovery and the four-tier env/platform selection are
+// covered by the dedicated selection suites, which need their own reflection
+// domains: discovery walks *every* annotated class in the domain and is
+// all-or-nothing, so a deliberately-unresolvable fixture would abort the pass
+// for the fixtures around it. See beanlocator_selection_test.dart (the four
+// tiers, precedence and the environment selector),
+// beanlocator_ambiguous_selection_test.dart and
+// beanlocator_excluded_selection_test.dart (the failure modes).
 // ----------------------------------------------------------------------------
 
 @tomReflector
