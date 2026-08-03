@@ -211,8 +211,25 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
     final f = field;
     final style = f.resolveStyle(context);
 
+    // `Autocomplete` seeds its internal `TextEditingController` from
+    // `initialValue` exactly once, when its State is created, and never
+    // reconsults it. That is a problem here for two reasons: the source
+    // resolves asynchronously, so the first build has an empty `_items`
+    // and `_label` falls back to `value.toString()` (for a non-String
+    // value type, a visibly wrong display that never corrected itself);
+    // and a programmatic `setValue` likewise left the old text in place.
+    // Keying the widget by the resolved display forces a fresh State —
+    // and therefore a re-seeded controller — whenever the label the model
+    // implies actually changes. Same remedy as `TomFormDateCalendar`.
+    //
+    // Typing does not trigger it: the key tracks `f.get()`, which only
+    // moves when an option is selected, and `onSelected` already rewrites
+    // the controller to that option's display string.
+    final display = _label(f.get());
+
     final autocomplete = Autocomplete<SelectableItem<T>>(
-      initialValue: TextEditingValue(text: _label(f.get())),
+      key: ValueKey<String>(display),
+      initialValue: TextEditingValue(text: display),
       displayStringForOption: (it) => it.label,
       optionsBuilder: (input) {
         final q = input.text;
@@ -373,6 +390,21 @@ class TomFormLookupDialog<T> extends TomFormLookupField<T>
     super.actionIconTooltip,
     super.onActionIconPressed,
   });
+
+  // `TomDropdownDecorationMixin` declares `labelText`/`descriptionText`
+  // returning null, and a mixin applied over a superclass wins over that
+  // superclass's members — so without these overrides the mixin silently
+  // shadowed `TomFormLookupField`'s implementations and both constructor
+  // overrides were dead: no floating label on the row, and a dialog
+  // titled "Lookup" instead of the field's label. `TomFormSearchInput`
+  // already re-declares them for the same reason.
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   @override
   Widget get widget => TomFieldWidgetAdapter(

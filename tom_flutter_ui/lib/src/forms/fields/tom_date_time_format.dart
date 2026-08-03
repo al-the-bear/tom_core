@@ -104,12 +104,29 @@ class TomDateTimeFormat {
   // ── Formatting ────────────────────────────────────────────────────────────
 
   /// Formats [d] using the date tokens in [pattern].
-  String formatDate(DateTime d) =>
-      _render(year: d.year, month: d.month, day: d.day);
+  ///
+  /// The clock components are supplied as well even though the method is named
+  /// for dates: a [DateTime] genuinely carries them, and a pattern that mixes
+  /// in `HH:mm` — which a `dateFormat` resource is free to do — would otherwise
+  /// render the token names as literal text and produce output that cannot be
+  /// parsed back. A pure date pattern is unaffected.
+  String formatDate(DateTime d) => _render(
+        year: d.year,
+        month: d.month,
+        day: d.day,
+        hour: d.hour,
+        minute: d.minute,
+        second: d.second,
+      );
 
   /// Formats [t] using the time tokens in [pattern].
+  ///
+  /// Seconds are zero rather than absent: a [TimeOfDay] is a whole-minute
+  /// value, so its second *is* known to be `0`. Leaving it unset made the
+  /// shipped [time24WithSeconds] preset render `09:03:ss`. Date tokens stay
+  /// unfilled because a time carries no date to fill them with.
   String formatTime(TimeOfDay t) =>
-      _render(hour: t.hour, minute: t.minute);
+      _render(hour: t.hour, minute: t.minute, second: 0);
 
   /// Formats [d] using all tokens in [pattern].
   String formatDateTime(DateTime d) => _render(

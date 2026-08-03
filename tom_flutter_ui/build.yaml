@@ -1,0 +1,18 @@
+# Build configuration for tom_flutter_ui.
+#
+# A `TomForm` is a `TomClass`, and `TomClass` discovers its members through
+# kernel reflection — so the `forms/list/` tests cannot construct a form
+# without a generated mirror. `test/support/list_form_fixtures.dart` is the
+# single seed that supplies one.
+#
+# `generate_for` is restricted to that seed on purpose. Without it the
+# generator would walk every Dart file in the package, and reflecting a form
+# also reflects its field types — which here means the entire widget library.
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - test/support/list_form_fixtures.dart
+        options:
+          formatted: true

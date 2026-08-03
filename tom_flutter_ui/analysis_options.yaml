@@ -1,4 +1,12 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # Generated reflection mirror for the form test fixtures — emitted by the
+    # reflection generator from `test/support/list_form_fixtures.dart`. It
+    # mirrors the whole Flutter surface, so it carries every deprecation the
+    # SDK still exposes; none of that is actionable here.
+    - test/support/list_form_fixtures.reflection.dart
+
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
