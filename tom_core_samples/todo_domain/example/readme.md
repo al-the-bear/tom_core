@@ -23,6 +23,11 @@ Run the whole set (smoke test, non-zero exit on failure):
 dart run example/run_all_examples.dart
 ```
 
+The same set also runs under `dart test` — see
+[`test/examples_test.dart`](../test/examples_test.dart) — so a broken example
+fails the suite rather than waiting to be noticed by hand. A new example must be
+listed in both places.
+
 Every example calls `initializeReflection()` once before constructing an
 entity — see the package [`readme.md`](../readme.md) for why. The form- and
 widget-level samples that *render* this model live in the Flutter showcases

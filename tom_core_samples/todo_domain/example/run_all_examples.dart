@@ -5,6 +5,11 @@
 // the example/ tree into a headless smoke test (todo_domain is pure Dart).
 //
 // Run with: dart run example/run_all_examples.dart
+//
+// This is the hand-run entry point. `test/examples_test.dart` runs the same set
+// under `dart test`, because reporting failure with exit(1) makes this file
+// uncallable from a test. Adding an example means listing it in both — the
+// second listing is what keeps it from silently going unguarded.
 
 import 'dart:io';
 

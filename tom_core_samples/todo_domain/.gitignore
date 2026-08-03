@@ -4,3 +4,6 @@ pubspec.lock
 
 # Reflection generator analyzer-summary cache
 .tom/
+
+# testkit baselines and raw run output — machine-local, regenerated per run
+testlog/
