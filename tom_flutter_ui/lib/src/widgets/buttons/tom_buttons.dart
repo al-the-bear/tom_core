@@ -55,7 +55,7 @@ class TomElevatedButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -151,7 +151,7 @@ class TomTextButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -246,7 +246,7 @@ class TomOutlinedButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -343,7 +343,7 @@ class TomFilledButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -901,7 +901,7 @@ class TomMenuItemButton extends TomButtonBase {
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedStyle = style ?? _resolveStyle();
   }
 
@@ -983,7 +983,7 @@ class TomSubmenuButton extends TomButtonBase {
         onClose = InScopeBuilder(scope: scope).wrap0n(onClose),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedStyle = style ?? _resolveStyle();
     _resolvedMenuStyle = menuStyle ?? _resolveMenuStyle();
     _resolvedAlignmentOffset = alignmentOffset ?? _resolveOffset('alignmentOffset');
@@ -1114,7 +1114,7 @@ class TomIconButton extends TomButtonBase {
   final _IconButtonVariant _variant;
 
   // Pre-resolved resource values
-  late final String _resolvedTooltip;
+  late final String? _resolvedTooltip;
   late final Widget _resolvedIcon;
   late final double? _resolvedIconSize;
   late final double? _resolvedSplashRadius;
@@ -1265,7 +1265,7 @@ class TomIconButton extends TomButtonBase {
   }
 
   void _initResolvedFields() {
-    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
     _resolvedIcon = _resolveIconWidget();
     _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize');
     _resolvedSplashRadius = splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
@@ -1593,7 +1593,7 @@ class TomCupertinoButton extends TomButtonBase {
     this.alignment = Alignment.center,
     this.filled = false,
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedMinSize = minSize ?? TomCtr.doubleVal(basePath, 'minSize');
@@ -1672,7 +1672,7 @@ class TomCheckboxMenuButton extends TomButtonBase {
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
   }
 
   @override
@@ -1730,7 +1730,7 @@ class TomRadioMenuButton<T> extends TomButtonBase {
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
   }
 
   @override
@@ -2061,7 +2061,7 @@ class TomMaterialButton extends TomButtonBase {
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHighlightChanged = InScopeBuilder(scope: scope).wrap1n(onHighlightChanged) {
-    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label', supersededBy: child);
     _resolvedTextColor = textColor ?? TomCtr.color(basePath, 'textColor');
     _resolvedDisabledTextColor = disabledTextColor ?? TomCtr.color(basePath, 'disabledTextColor');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');

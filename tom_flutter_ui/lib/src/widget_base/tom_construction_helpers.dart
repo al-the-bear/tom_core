@@ -74,7 +74,18 @@ class TomCtr {
   /// Throws [StateError] if [basePath] is null.
   /// If tomId is set but no resource exists, returns the key for development
   /// visibility.
-  static String textOrFail(String? basePath, String suffix) {
+  ///
+  /// Pass [supersededBy] when the caller offers a widget slot that renders
+  /// *instead of* this text (e.g. `title` beside `titleText`). A non-null
+  /// widget makes the text unread, so demanding a resource for it would reject
+  /// a perfectly complete widget; the result is then the unused empty string.
+  /// Omitting [supersededBy] keeps the text unconditionally required.
+  static String textOrFail(
+    String? basePath,
+    String suffix, {
+    Widget? supersededBy,
+  }) {
+    if (supersededBy != null) return '';
     if (basePath == null) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a tomId for '

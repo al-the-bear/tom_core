@@ -365,7 +365,7 @@ class TomSwitchListTile extends TomToggleBase {
     this.enableFeedback,
     this.hoverColor,
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
-    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedIsThreeLine = TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
@@ -497,7 +497,7 @@ class TomCheckboxListTile extends TomToggleBase {
     this.focusNode,
     this.checkboxShape,
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
-    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedIsThreeLine = TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
     _resolvedTristate = TomCtr.boolVal(basePath, 'tristate') ?? tristate;
@@ -629,7 +629,7 @@ class TomRadioListTile<T> extends TomToggleBase {
     this.shape,
     this.fillColor,
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
-    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedTileColor = tileColor ?? TomCtr.color(basePath, 'tileColor');
     _resolvedSelectedTileColor = selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');

@@ -91,7 +91,7 @@ class TomFilterChip extends TomChipBase {
     this.deleteButtonTooltipMessage,
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
-    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _chipLabel = label ?? Text(_resolvedLabel);
     _resolvedCheckmarkColor = checkmarkColor ?? TomCtr.color(basePath, 'checkmarkColor');
     _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
@@ -232,7 +232,7 @@ class TomChoiceChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected) {
-    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _chipLabel = label ?? Text(_resolvedLabel);
     _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
     _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
@@ -318,7 +318,7 @@ class TomActionChip extends TomChipBase {
 
   // Pre-resolved resource values
   late final String _resolvedLabel;
-  late final String _resolvedTooltip;
+  late final String? _resolvedTooltip;
   late final Widget _chipLabel;
   late final Color? _resolvedBackgroundColor;
   late final Color? _resolvedShadowColor;
@@ -358,8 +358,8 @@ class TomActionChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
   }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
-    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
     _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
@@ -452,7 +452,7 @@ class TomInputChip extends TomChipBase {
 
   // Pre-resolved resource values
   late final String _resolvedLabel;
-  late final String _resolvedTooltip;
+  late final String? _resolvedTooltip;
   late final Widget _chipLabel;
   late final Color? _resolvedDeleteIconColor;
   late final Color? _resolvedCheckmarkColor;
@@ -511,8 +511,8 @@ class TomInputChip extends TomChipBase {
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
        onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
-    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
     _resolvedDeleteIconColor = deleteIconColor ?? TomCtr.color(basePath, 'deleteIconColor');
     _resolvedCheckmarkColor = checkmarkColor ?? TomCtr.color(basePath, 'checkmarkColor');
@@ -624,7 +624,7 @@ class TomRawChip extends TomChipBase {
 
   // Pre-resolved resource values
   late final String _resolvedLabel;
-  late final String _resolvedTooltip;
+  late final String? _resolvedTooltip;
   late final Widget _chipLabel;
   late final Color? _resolvedDeleteIconColor;
   late final double? _resolvedPressElevation;
@@ -685,8 +685,8 @@ class TomRawChip extends TomChipBase {
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
        onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
-    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
     _resolvedDeleteIconColor = deleteIconColor ?? TomCtr.color(basePath, 'deleteIconColor');
     _resolvedPressElevation = pressElevation ?? TomCtr.doubleVal(basePath, 'pressElevation');

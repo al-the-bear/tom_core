@@ -392,7 +392,7 @@ class TomBadge extends TomLabelBase {
     this.smallSize,
     this.largeSize,
   }) {
-    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedTextColor = textColor ?? TomCtr.color(basePath, 'textColor');
     _resolvedSmallSize = smallSize ?? TomCtr.doubleVal(basePath, 'smallSize');
@@ -549,7 +549,7 @@ class TomListTile extends TomLabelBase {
     this.mouseCursor,
   })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress) {
-    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedIsThreeLine = TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
     _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
@@ -698,7 +698,7 @@ class TomChip extends TomLabelBase {
     this.iconTheme,
     this.color,
   })  : onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
-    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _resolvedDeleteIconColor = deleteIconColor ?? TomCtr.color(basePath, 'deleteIconColor');
     _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');

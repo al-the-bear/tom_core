@@ -565,7 +565,7 @@ class TomCupertinoListTile extends TomListBase {
     this.leadingSize,
     this.leadingToTitle,
   })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
-    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedLeadingSize = leadingSize ?? TomCtr.doubleVal(basePath, 'leadingSize') ?? 28.0;

@@ -168,7 +168,7 @@ class TomExpansionTile extends TomContainerBase {
     this.dense = false,
     this.showTrailingIcon = true,
   })  : onExpansionChanged = InScopeBuilder(scope: scope).wrap1n(onExpansionChanged) {
-    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedCollapsedBackgroundColor = collapsedBackgroundColor ?? TomCtr.color(basePath, 'collapsedBackgroundColor');
     _resolvedTextColor = textColor ?? TomCtr.color(basePath, 'textColor');
@@ -1649,7 +1649,7 @@ class TomSliverAppBar extends TomContainerBase {
     this.forceMaterialTransparency = false,
     this.clipBehavior,
   }) {
-    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedScrolledUnderElevation = scrolledUnderElevation ?? TomCtr.doubleVal(basePath, 'scrolledUnderElevation');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
@@ -4155,7 +4155,7 @@ class TomCupertinoExpansionTile extends TomContainerBase {
     this.controller,
     this.transitionMode = ExpansionTileTransitionMode.fade,
   }) {
-    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
   }
 
   @override

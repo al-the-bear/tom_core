@@ -182,7 +182,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   final Clip clipBehavior;
 
   // Pre-resolved resource values
-  late final String _resolvedTooltip;
+  late final String? _resolvedTooltip;
   late final double? _resolvedElevation;
   late final Color? _resolvedShadowColor;
   late final Color? _resolvedSurfaceTintColor;
@@ -226,7 +226,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onCanceled = InScopeBuilder(scope: scope).wrap0n(onCanceled),
        itemBuilder = InScopeBuilder(scope: scope).wrap1(itemBuilder) {
-    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
     _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
@@ -532,7 +532,6 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   final AutovalidateMode? autovalidateMode;
 
   // Pre-resolved resource values
-  late final String _resolvedLabel;
   late final InputDecoration? _effectiveDecoration;
   late final int _resolvedElevation;
   late final Color? _resolvedIconDisabledColor;
@@ -591,8 +590,12 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
         onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
         onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
         validator = InScopeBuilder(scope: scope).wrap1n(validator) {
-    _resolvedLabel = TomCtr.textOrFail(basePath, 'label');
-    _effectiveDecoration = decoration ?? _resolveInputDecoration() ?? InputDecoration(labelText: _resolvedLabel);
+    // The label resource is only needed for the fallback decoration, so it is
+    // resolved lazily at the end of the chain — an explicit decoration already
+    // carries its own label.
+    _effectiveDecoration = decoration ??
+        _resolveInputDecoration() ??
+        InputDecoration(labelText: TomCtr.textOrFail(basePath, 'label'));
     _resolvedElevation = elevation ?? TomCtr.intVal(basePath, 'elevation') ?? 8;
     _resolvedIconDisabledColor = iconDisabledColor ?? TomCtr.color(basePath, 'iconDisabledColor');
     _resolvedIconEnabledColor = iconEnabledColor ?? TomCtr.color(basePath, 'iconEnabledColor');

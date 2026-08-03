@@ -243,10 +243,7 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
                     TomDataCell(child: TomText(text: '${p.id}')),
                     TomDataCell(child: TomText(text: p.name)),
                     TomDataCell(
-                      child: TomChip(
-                        labelText: p.category,
-                        label: Text(p.category),
-                      ),
+                      child: TomChip(label: Text(p.category)),
                     ),
                     TomDataCell(
                       child: TomText(
