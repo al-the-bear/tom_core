@@ -10,7 +10,7 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
-| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the authentication server, and the server's own self-login. |
+| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, and the server's own self-login. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
@@ -91,6 +91,21 @@ surface documented here.
 | `TomDeliveredCode2FAService` | abstract class | The shape every *delivered* one-time code shares: generate, seal into `verificationData`, send, recognise, and prove the destination by enrolment. |
 | `TomEmailCode2FAService` | class | A one-time code mailed through `TomEmailService`. |
 | `TomSmsCode2FAService` | class | A one-time code texted through `TomSmsService`. |
+| `Tom2FAPolicy` | abstract class | Decides, per login, whether a second factor is owed and which mechanisms may satisfy it. |
+| `Tom2FARequirement` | enum | How strongly a factor is owed: `disabled`, `optional`, `required`. |
+| `Tom2FADecision` | class | One policy verdict: requirement, permitted mechanisms, grace logins left. |
+| `TomPrincipalFlag2FAPolicy` | class | The default policy: reads `TomPrincipal.requires2FA` / `twoFactorType`. |
+| `TomRole2FAPolicy` | class | Policy driven by role rules, folded to the strictest match. |
+| `Tom2FAGraceAccounting` | abstract class | Optional bean that records a grace login being spent. |
+| `Tom2FAEnrolmentStore` | abstract class | Where a principal's set-up factors live; deployment-supplied, no fallback. |
+| `TomMemory2FAEnrolmentStore` | class | In-memory enrolment store, for tests and dev servers. |
+| `TomPersistent2FAEnrolmentStore` | class | Enrolment store over a repository, with `secretData` encrypted at rest. |
+| `TomUserTwoFactorEnrolment` | class | The persisted row behind `TomPersistent2FAEnrolmentStore`. |
+| `TomUserTwoFactorEnrolmentRepository` | class | SQL repository for `TomUserTwoFactorEnrolment`. |
+| `Tom2FAEnrolment` | class | One factor a principal has set up. |
+| `Tom2FAEnrolmentSupport` | abstract class | The extra contract a mechanism implements to be enrollable through a login. |
+| `Tom2FAEnrolmentOffer` | class | What a mechanism returns when starting an enrolment. |
+| `Tom2FAEnrolmentState` | class | The enrolment leg carried across passes in the interim token. |
 | `Tom2FAException` | class | 2FA configuration fault (extends `TomServerException`). |
 | `TomAuthenticationAdaptor` | class | Reflection marker for auth adaptors. |
 | `Tom2FAAdaptor` | class | Reflection marker for 2FA adaptors. |

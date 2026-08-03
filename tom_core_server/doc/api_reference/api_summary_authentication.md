@@ -21,6 +21,21 @@ server's own self-login against an auth server.
   - [Tom2FASubmission](#tom2fasubmission)
   - [Tom2FAService](#tom2faservice)
   - [Tom2FARegistry](#tom2faregistry)
+  - [Tom2FARequirement](#tom2farequirement)
+  - [Tom2FADecision](#tom2fadecision)
+  - [Tom2FAPolicy](#tom2fapolicy)
+  - [TomPrincipalFlag2FAPolicy](#tomprincipalflag2fapolicy)
+  - [TomRole2FAPolicy](#tomrole2fapolicy)
+  - [Tom2FAGraceAccounting](#tom2fagraceaccounting)
+  - [Tom2FAEnrolment](#tom2faenrolment)
+  - [Tom2FAEnrolmentOffer](#tom2faenrolmentoffer)
+  - [Tom2FAEnrolmentSupport](#tom2faenrolmentsupport)
+  - [Tom2FAEnrolmentState](#tom2faenrolmentstate)
+  - [Tom2FAEnrolmentStore](#tom2faenrolmentstore)
+  - [TomMemory2FAEnrolmentStore](#tommemory2faenrolmentstore)
+  - [TomUserTwoFactorEnrolment](#tomusertwofactorenrolment)
+  - [TomUserTwoFactorEnrolmentRepository](#tomusertwofactorenrolmentrepository)
+  - [TomPersistent2FAEnrolmentStore](#tompersistent2faenrolmentstore)
   - [TomTotpSecretResolver](#tomtotpsecretresolver)
   - [TomTotp2FAService](#tomtotp2faservice)
   - [TomDeliveredCode2FAService](#tomdeliveredcode2faservice)
@@ -63,6 +78,8 @@ server's own self-login against an auth server.
 
 Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/two_factor.dart`,
+`lib/src/tomserver/authentication/two_factor_policy.dart`,
+`lib/src/tomserver/authentication/two_factor_enrolment.dart`,
 `lib/src/tomserver/authentication/two_factor_delivered_code.dart`,
 `lib/src/tomserver/authentication/server_self_login.dart`,
 `lib/src/tomserver/authentication/oauth_provider.dart`,
@@ -84,16 +101,45 @@ caught and turned into a failed result. `TomAuthenticationAdaptor`,
 reflection-discoverable (`@tomReflector`) so a runtime can enumerate and route
 to the registered adaptors.
 
-When the resolved principal declares `TomPrincipal.requires2FA`, the login runs
-in two passes. Pass 1 asks the `Tom2FAService` registered in `Tom2FARegistry`
-for the principal's `twoFactorType` to issue a `Tom2FAChallengeSpec`, and
-answers with an *interim* token carrying the challenge — its client-visible
-half in the public claims (as the kernel's `Tom2FAChallenge`), its server-only
-verification blob in the encrypted section. `authenticatePass2` recovers the
-challenge from the presented bearer, hands the submitted factor to the same
-adaptor as a `Tom2FASubmission`, and on success re-issues the token pair without
-the challenge. Nothing is stored server-side between the passes.
-`Tom2FAException` reports a mis-wired adaptor set and is never client-facing.
+Whether a login owes a second factor is `Tom2FAPolicy`'s answer, taken once per
+login as a `Tom2FADecision` (a `Tom2FARequirement`, the permitted mechanism keys
+in preference order, and any grace logins). `Tom2FAPolicy.resolve()` returns the
+installed bean or the default `TomPrincipalFlag2FAPolicy`, which reads
+`TomPrincipal.requires2FA` / `twoFactorType` and so reproduces the behaviour that
+predates policies; `TomRole2FAPolicy` states a requirement per role and takes the
+strictest match. `Tom2FADecision.offerableMechanisms` intersects the permitted
+keys with `Tom2FARegistry.registeredTypes`, so a policy naming an unregistered
+mechanism fails at the branch that decides the login rather than as a null
+adaptor later. A policy that also implements `Tom2FAGraceAccounting` is told
+when a grace login is spent.
+
+Anything but `Tom2FARequirement.disabled` runs the login in two passes. Pass 1
+asks the `Tom2FAService` registered in `Tom2FARegistry` for the chosen mechanism
+to issue a `Tom2FAChallengeSpec`, and answers with an *interim* token carrying
+the challenge — its client-visible half in the public claims (as the kernel's
+`Tom2FAChallenge`), its server-only verification blob in the encrypted section.
+`authenticatePass2` recovers the challenge from the presented bearer, hands the
+submitted factor to the same adaptor as a `Tom2FASubmission`, and on success
+re-issues the token pair without the challenge. Nothing is stored server-side
+between the passes. `Tom2FAException` reports a mis-wired adaptor set and is
+never client-facing.
+
+A user who owes a factor but has none set up is branched into **enrolment**
+instead. `Tom2FAEnrolmentStore` is where a principal's `Tom2FAEnrolment`s live;
+`resolve()` on it is nullable **with no fallback**, and the three outcomes are
+distinguished deliberately — `null` means no store is installed (the mechanism
+stays the only authority on whether the user has a factor, exactly as before),
+an empty list means a store is installed and this user has enrolled nothing
+(branch into the offer), a non-empty list names what to challenge. Enrolment
+itself is `Tom2FAEnrolmentSupport`, a contract separate from `Tom2FAService`
+because not every mechanism can be set up through a login: `beginEnrolment`
+returns a `Tom2FAEnrolmentOffer`, `confirmEnrolment` either yields the
+`Tom2FAEnrolment` to store or throws. The pending setup rides in the interim
+token as a `Tom2FAEnrolmentState` — offered types and attempt counter public,
+the offer's server-only `enrolmentData` encrypted — so the round trip is as
+stateless as the challenge one, and nothing is written until a confirmation
+succeeds. `TomMemory2FAEnrolmentStore` and `TomPersistent2FAEnrolmentStore`
+(over `TomUserTwoFactorEnrolment`, secrets encrypted at rest) ship.
 
 Three mechanisms ship. `TomTotp2FAService` (RFC 6238 authenticator app) needs no
 delivery channel and stores nothing in `verificationData`, re-deriving its answer
@@ -142,10 +188,28 @@ TomSqlDatasourceRepository<TomExternalIdentityLink, int>
     └── TomExternalIdentityLinkRepository  (extends)
 
 Tom2FAService  (@tomReflector, abstract)
-    ├── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'))
+    ├── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'),
+    │                       + Tom2FAEnrolmentSupport)
     └── TomDeliveredCode2FAService  (implements, + Tom2FAEnrolmentSupport)
             ├── TomEmailCode2FAService  (extends, @Tom2FAAdaptor('email'))
             └── TomSmsCode2FAService    (extends, @Tom2FAAdaptor('sms'))
+
+Tom2FAEnrolmentSupport  (abstract, mixed into an enrollable Tom2FAService)
+    ├── TomTotp2FAService           (implements)
+    └── TomDeliveredCode2FAService  (implements)
+
+Tom2FAPolicy  (abstract)
+    ├── TomPrincipalFlag2FAPolicy  (implements, const, the default)
+    └── TomRole2FAPolicy           (implements)
+
+Tom2FAGraceAccounting  (abstract, second interface on a policy that counts grace)
+
+Tom2FAEnrolmentStore  (abstract)
+    ├── TomMemory2FAEnrolmentStore      (implements)
+    └── TomPersistent2FAEnrolmentStore  (implements)
+
+TomSqlDatasourceRepository<TomUserTwoFactorEnrolment, int>
+    └── TomUserTwoFactorEnrolmentRepository  (extends)
 
 TomServiceLoginTransport  (abstract)
     └── TomHttpServiceLoginTransport  (extends)
@@ -156,6 +220,12 @@ Tom2FAContext              (standalone)
 Tom2FAChallengeSpec        (standalone)
 Tom2FASubmission           (standalone)
 Tom2FARegistry             (standalone, statics only)
+Tom2FARequirement          (enum)
+Tom2FADecision             (standalone, immutable)
+Tom2FAEnrolment            (standalone, immutable)
+Tom2FAEnrolmentOffer       (standalone, immutable)
+Tom2FAEnrolmentState       (standalone, immutable)
+TomUserTwoFactorEnrolment  (@tomReflector, @TomDbTable entity)
 TomAuthenticationData      (@tomReflector, standalone)
 TomAuthenticationInfo      (standalone)
 TomAuthenticationServer    (@tomReflector, standalone)
@@ -400,9 +470,16 @@ be given, and is this submission correct? Expiry, attempt counting, dispatch and
 token issuance are the framework's job. Implementations must be stateless
 between calls — pass 1 and pass 2 may run in different isolates or on different
 server instances, so anything the adaptor needs to remember belongs in
-`Tom2FAChallengeSpec.verificationData`.
+`Tom2FAChallengeSpec.verificationData`. An adaptor that can also be *set up*
+through a login implements `Tom2FAEnrolmentSupport` in addition.
 
 - **Abstract**
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `descriptor` | `Tom2FAMethodDescriptor` | How this mechanism presents itself in a list of options — an identifier plus three resource keys, never literal text. On the service rather than on the registry because only the mechanism knows what it is called; a registry holding the descriptions would need editing every time an adaptor was added. |
 
 #### Methods
 
@@ -424,6 +501,8 @@ Statics only — the constructor is private.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `registeredTypes` | `Set<String>` | The mechanism keys currently resolvable, scanning if needed. |
+| `availableMethods` | `List<Tom2FAMethodDescriptor>` | How every registered mechanism describes itself, for a client that must render a choice. Derived from the registry rather than configured beside it, so "installed" and "describable" cannot drift. Every principal sees the same list — narrowing it to one user's permitted mechanisms is `Tom2FADecision.offerableMechanisms`' job. |
+| `enrollableMethods` | `List<Tom2FAMethodDescriptor>` | The subset of `availableMethods` whose adaptors implement `Tom2FAEnrolmentSupport`. "Verifiable here" and "enrollable here" are different questions: a hardware token an administrator hands out is the first and not the second, and an enrolment step offering it would present a choice that cannot be acted on. |
 
 #### Methods
 
@@ -431,8 +510,388 @@ Statics only — the constructor is private.
 | ------ | --------- | ----------- |
 | `register` | `static void register(String type, Tom2FAService service)` | Registers `service` under `type`. Throws `Tom2FAException` (`authentication.2fa.duplicate_adaptor`) if a different adaptor is already registered for `type`; re-registering the identical instance is a no-op. |
 | `lookup` | `static Tom2FAService? lookup(String type)` | The adaptor for `type`, or `null` when the mechanism is unknown here. Triggers the annotation scan on first use. |
+| `enrolmentSupportFor` | `static Tom2FAEnrolmentSupport? enrolmentSupportFor(String type)` | The adaptor for `type` when it can also be enrolled, else `null` — the one place the `is` check is made, so callers ask "can this be set up here?" rather than reproducing the test. |
 | `registerAnnotated` | `static void registerAnnotated(Iterable<ClassMirror> candidates)` | Registers every class in `candidates` carrying a `Tom2FAAdaptor` annotation. Throws `Tom2FAException` on the first unusable candidate (`authentication.2fa.adaptor_instantiation_failed`, `authentication.2fa.adaptor_does_not_implement_service`), naming it — an adaptor set that is wrong is wrong at start-up. |
 | `reset` | `static void reset()` | Drops every registration and forces a re-scan on next use. For tests. |
+
+### Tom2FARequirement
+
+How much second factor a login owes. Ordered, so that a principal matching
+several rules can be given the strictest of them.
+
+| Value | Meaning |
+| ----- | ------- |
+| `disabled` | No second factor. The login completes on the primary credential alone. |
+| `optional` | Offered, but the login can complete without one — a user with no factor is offered enrolment and may decline at no cost. |
+| `required` | Must be satisfied before an authorization token is issued. A user with no factor is offered enrolment and may decline only against a grace login. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `strictest` | `Tom2FARequirement strictest(Tom2FARequirement other)` | Whichever of the two demands more, by declaration order. What lets a policy fold several matched roles into one answer without spelling out the comparison. |
+
+### Tom2FADecision
+
+One policy answer about one login: how much is required, which mechanisms may
+answer for it, and how much grace remains. Immutable — `allowedMechanisms` is
+wrapped unmodifiable at construction.
+
+#### Constructors
+
+```dart
+Tom2FADecision({
+  required Tom2FARequirement requirement,
+  List<String> allowedMechanisms = const [],
+  int graceLogins = 0,
+})
+```
+
+*(asserts `graceLogins >= 0`)*
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `requirement` | `Tom2FARequirement` | What this login owes. |
+| `allowedMechanisms` | `List<String>` | The mechanism keys this principal may use, in **preference order** — the first is chosen when nothing else narrows it. Unmodifiable. |
+| `graceLogins` | `int` | How many more times this principal may decline a `required` factor. `0` means none. |
+| `offerableMechanisms` | `List<String>` | `allowedMechanisms` intersected with `Tom2FARegistry.registeredTypes`. Permission and availability are separate questions — a policy says what a user *may* use, the registry says what this process *can* run — and intersecting them here turns a wiring fault into `login.error.2fa.unsupported-mechanism` at the login rather than a null adaptor further on. |
+| `isSatisfiedWithoutFactor` | `bool` | `true` only for `disabled`. The single test the server makes, so a policy meaning "no factor" says it once. |
+
+### Tom2FAPolicy
+
+Decides, per login, whether a second factor is owed. A decision and not a field
+read: `TomPrincipal.requires2FA` can say *this user must* and *this user need
+not*, but not *everyone in role `admin` must*, not *offer it but let them
+decline*, and not *insist, after three more logins*.
+
+- **Abstract**
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `resolve` | `static Tom2FAPolicy resolve()` | The policy bean registered for `Tom2FAPolicy`, else `TomPrincipalFlag2FAPolicy`. Non-nullable with a meaningful fallback — unlike `Tom2FAEnrolmentStore.resolve()`, because "behave as this deployment did before policies existed" is a real answer here and "nobody records enrolments" is not one a store could give. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `decideFor` | `Future<Tom2FADecision> decideFor(Tom2FAContext context)` | The decision for this login. Called once per login, after the primary credential has been accepted. |
+
+### TomPrincipalFlag2FAPolicy
+
+The default policy, and the one that makes installing none a no-op: it reads
+`TomPrincipal.requires2FA` and `twoFactorType` off the principal, exactly as the
+server did before policies existed. `const`, so the fallback costs no
+allocation. A principal that requires a factor but names no type yields
+`required` with **no** allowed mechanism — the login then fails with
+`login.error.2fa.unsupported-mechanism`, which is the honest outcome for an
+account that has been told it must use a mechanism nobody named.
+
+- **Implements:** `Tom2FAPolicy`
+
+#### Constructors
+
+```dart
+const TomPrincipalFlag2FAPolicy()
+```
+
+### TomRole2FAPolicy
+
+States the requirement per **role** rather than per user, which is the shape
+most deployments actually want: "everyone in `admin`", not a flag maintained on
+every account. Roles are read from `context.principal.aci.roles`, and a
+principal holding several gets the **strictest** of their requirements. Carries
+no `@TomComponent` — installing it is a deliberate `TomBean.withType`, because a
+policy picked up by a component scan would silently start demanding second
+factors from a deployment that only added a dependency.
+
+- **Implements:** `Tom2FAPolicy`
+
+#### Constructors
+
+```dart
+TomRole2FAPolicy({
+  Map<String, Tom2FARequirement> requirementByRole = const {},
+  Tom2FARequirement defaultRequirement = Tom2FARequirement.disabled,
+  List<String>? mechanisms,
+  int graceLogins = 0,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `requirementByRole` | `Map<String, Tom2FARequirement>` | Role name → requirement. Unmodifiable. |
+| `defaultRequirement` | `Tom2FARequirement` | What a principal matching no listed role owes. `disabled` unless stated, so adding the policy changes nothing for anyone not named. |
+| `mechanisms` | `List<String>?` | Which mechanisms the permitted logins may use. **`null` means the policy does not restrict the choice** — every registered mechanism is offered; a non-empty list means those, in that order; `[]` means none is permitted, which makes a `required` decision unsatisfiable. |
+| `graceLogins` | `int` | Carried into every non-`disabled` decision. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `decideFor` | `Future<Tom2FADecision> decideFor(Tom2FAContext context)` | *(override)* Folds the principal's matched roles with `strictest`, then returns a decision. A `disabled` outcome carries no mechanisms at all — naming them for a login that will never be challenged only suggests they matter. |
+
+### Tom2FAGraceAccounting
+
+The second interface a `Tom2FAPolicy` implements when its `graceLogins` are
+meant to run out. `graceLogins` is a number the policy supplies, so only the
+policy can know how it is spent; a policy that does not implement this grants
+the same grace on every login, which is a valid "warn, do not enforce yet"
+deployment rather than an error.
+
+- **Abstract**
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `recordGraceLoginConsumed` | `Future<void> recordGraceLoginConsumed(Tom2FAContext context)` | Called at the moment grace is **spent** — a user declining an offer that was declinable because of grace — and never when the offer was merely made, nor for an `optional` decline, which costs nothing. |
+
+### Tom2FAEnrolment
+
+One second factor a principal has set up: what mechanism it is, how to name it
+to the user, and whatever the mechanism needs to verify it later.
+
+#### Constructors
+
+```dart
+Tom2FAEnrolment({
+  required String type,
+  required String enrolmentId,
+  String hint = '',
+  DateTime? enrolledAt,
+  bool isPrimary = false,
+  Map<String, Object?> secretData = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `type` | `String` | The mechanism key — the same value `Tom2FARegistry.lookup` resolves. |
+| `enrolmentId` | `String` | Identifies this enrolment among the principal's own. Chosen by whoever enrolled, not by the store, so a mechanism can make re-enrolment an upsert by reusing a stable id (`TomTotp2FAService` uses its `mechanismType`). |
+| `hint` | `String` | What to show the user about this factor — a masked address, a device name. User *data*, deliberately not a resource key: a resource bundle cannot contain one entry per user's phone. |
+| `enrolledAt` | `DateTime` | When it was set up, normalised to UTC. |
+| `isPrimary` | `bool` | Whether this is the factor a login challenges by default. The first factor a user confirms is stored primary, so the next login has something to challenge without anyone nominating it. |
+| `secretData` | `Map<String, Object?>` | The mechanism's own material. Treated as secret **in full** — encrypted at rest by `TomPersistent2FAEnrolmentStore` and never printed by `toString`. Unmodifiable. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `copyWith` | `Tom2FAEnrolment copyWith({String? type, String? enrolmentId, String? hint, DateTime? enrolledAt, bool? isPrimary, Map<String, Object?>? secretData})` | A copy with the named fields replaced. |
+
+### Tom2FAEnrolmentOffer
+
+What a mechanism proposes when a user begins setting it up — everything the
+client needs to act on, plus everything the server needs to check the answer,
+and **no stored state**. Nothing is written until the offer is confirmed.
+
+#### Constructors
+
+```dart
+const Tom2FAEnrolmentOffer({
+  required String type,
+  String hint = '',
+  Map<String, Object?> clientData = const {},
+  Map<String, Object?> enrolmentData = const {},
+  int attemptsAllowed = 3,
+  Duration validity = const Duration(minutes: 10),
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `type` | `String` | The mechanism being set up. |
+| `hint` | `String` | What to tell the user about the destination or device. |
+| `clientData` | `Map<String, Object?>` | Public — travels in the interim token's public claims. For TOTP, the secret and the `otpauth://` URI to scan. |
+| `enrolmentData` | `Map<String, Object?>` | Server-only — travels in the **encrypted** section, and is what the confirmation checks against. A confirmation that trusted the public copy could be told to accept a secret the client chose. |
+| `attemptsAllowed` | `int` | How many confirmations may be attempted. Defaults to `3`. |
+| `validity` | `Duration` | How long the offer stays confirmable. Defaults to 10 minutes. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toClaim` | `Map<String, Object?> toClaim()` | The offer as one encrypted claim value. |
+| `fromClaim` | `static Tom2FAEnrolmentOffer? fromClaim(Object? claim)` | Reads back what `toClaim` wrote, or `null` when the claim is not one — an unreadable offer degrades the pending state to *choose a mechanism* rather than throwing. |
+
+### Tom2FAEnrolmentSupport
+
+What an adaptor adds to become **enrollable**: begin an offer, confirm it.
+
+A contract separate from `Tom2FAService` rather than two more methods on it,
+because not every mechanism can be set up through a login — a hardware token an
+administrator provisions is verifiable here and enrollable nowhere — and
+widening the base contract would force such an adaptor to carry a throw-only
+body. Keeping them apart makes "can this be enrolled?" a real question, answered
+by `Tom2FARegistry.enrolmentSupportFor` for one mechanism and
+`enrollableMethods` for the catalog.
+
+- **Abstract**
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | Proposes a setup for `context`, or throws `LoginException` when this principal cannot enrol this mechanism at all (`login.error.2fa.no-destination` for a delivered code with no address on record). |
+| `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | Checks `submitted` against `offer` and yields the enrolment to store. **Throws** rather than returning a nullable enrolment, so a caller cannot store an unconfirmed factor by forgetting a null check. |
+
+### Tom2FAEnrolmentState
+
+The server's view of one pending enrolment, carried in an interim token: which
+mechanisms were offered, whether declining is permitted, and — once one is
+chosen — the offer itself and how many attempts it has left. Immutable; every
+transition returns a new state.
+
+#### Constructors
+
+```dart
+Tom2FAEnrolmentState({
+  List<String> offeredTypes = const [],
+  bool skippable = false,
+  bool skipSpendsGrace = false,
+  Tom2FAEnrolmentOffer? offer,
+  DateTime? expiresAt,
+  int attempt = 0,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `offeredTypes` | `List<String>` | The mechanism keys offered, in preference order. The **server's** list — a chosen type not in it is refused with `login.error.2fa.enrolment-not-offered`. |
+| `skippable` | `bool` | Whether the offer may be declined. Server-signed, so a client that decides for itself that it may decline achieves nothing. |
+| `skipSpendsGrace` | `bool` | Whether declining costs a grace login — true for a `required` decision softened by grace, false for an `optional` one. |
+| `offer` | `Tom2FAEnrolmentOffer?` | The chosen mechanism's offer, or `null` while the user is still choosing. |
+| `expiresAt` | `DateTime?` | When the offer stops being confirmable. |
+| `attempt` | `int` | How many confirmations have been spent. |
+| `hasOffer` | `bool` | Whether a mechanism has been chosen — the two states a client renders differently. |
+| `attemptsRemaining` | `int` | `offer.attemptsAllowed - attempt`, floored at zero. |
+| `isExhausted` | `bool` | Whether an offer exists and has no attempts left. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `isExpired` | `bool isExpired({DateTime? now})` | Whether the offer has lapsed. |
+| `withOffer` | `Tom2FAEnrolmentState withOffer(Tom2FAEnrolmentOffer chosen, {DateTime? now})` | The state after a mechanism is chosen. Restarts the attempt counter — the attempts belong to the offer, so choosing a different mechanism starts a fresh budget. |
+| `withConsumedAttempt` | `Tom2FAEnrolmentState withConsumedAttempt()` | The state after one confirmation has been spent. |
+| `toClaims` | `Map<String, Object?> toClaims()` | The public half, for the interim token's claims. |
+| `secretClaims` | `Map<String, Object?>?` | The encrypted half — the offer's `enrolmentData` — or `null` when nothing has been chosen. |
+| `fromClaims` | `static Tom2FAEnrolmentState? fromClaims(Map<String, dynamic>? payload, [Map<String, dynamic>? secretData])` | Reads a pending enrolment back out of a token, or `null` when it carries none. An offer that cannot be decrypted degrades to the *offered* shape rather than throwing, so an undecryptable token sends the user back to the choice instead of failing the login. |
+
+### Tom2FAEnrolmentStore
+
+Where a principal's set-up factors live. Deployment-supplied: the framework
+knows what an enrolment *is* but not where this deployment keeps its user data.
+
+**`resolve()` is nullable and has no fallback, deliberately.** An empty fallback
+store would be indistinguishable from a real store holding nothing, and the
+server draws exactly that distinction: `null` means *no store is installed*, so
+the login is challenged as it was before enrolment existed and the mechanism
+stays the only authority on whether the user has a factor; an empty list means
+*a store is installed and this user has enrolled nothing*, which routes the
+login into the enrolment offer. Collapsing the two would force enrolment on
+every deployment that never opted in.
+
+- **Abstract**
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `resolve` | `static Tom2FAEnrolmentStore? resolve()` | The store bean registered for `Tom2FAEnrolmentStore`, or `null` when none is installed. |
+| `principalKeyOf` | `static String principalKeyOf(Tom2FAContext context)` | The key a store files a principal's enrolments under — `context.principal.id`, stringified, matching `TomPrincipalResourceGrant.principalId`. One place, so the memory store and the persistent store cannot disagree on what "this user" means. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `enrolmentsFor` | `Future<List<Tom2FAEnrolment>> enrolmentsFor(Tom2FAContext context)` | This principal's factors; empty when they have none. |
+| `store` | `Future<void> store(Tom2FAContext context, Tom2FAEnrolment enrolment)` | Saves `enrolment`, **upserting on `enrolmentId`** — so re-enrolling a mechanism replaces the old factor instead of accumulating one per attempt. |
+| `remove` | `Future<void> remove(Tom2FAContext context, String enrolmentId)` | Deletes an enrolment. An id that is not there is a no-op, so a double-delete is not an error. |
+
+### TomMemory2FAEnrolmentStore
+
+Enrolments in a map, for tests and single-process development. Everything is
+lost on restart, which is the right behaviour for a store whose purpose is to be
+predictable rather than durable.
+
+- **Implements:** `Tom2FAEnrolmentStore`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `clear` | `void clear()` | Drops every enrolment. For tests. |
+
+### TomUserTwoFactorEnrolment
+
+One persisted enrolment row (`@tomReflector`,
+`@TomDbTable(datasource: 'main', table: 'tom_user_two_factor_enrolment',
+primaryKeyField: 'id')`). Columns: `id`, `principal_id`, `enrolment_id`,
+`mechanism`, `hint`, `enrolled_at`, `is_primary`, `secret_data` — the last held
+as `secretDataCipher`, base64 of RSA-OAEP over the secret map's JSON, never
+readable from the row alone. A `UNIQUE KEY (principal_id, enrolment_id)` makes
+the upsert the database's rule and not only the store's; without it, which
+secret answers a login would depend on row order. Every field defaults, because
+the repository instantiates a blank entity and fills it column by column.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `createTableSql` | `String` | The table's DDL, for a deployment's migration to run. The framework creates no tables of its own. |
+
+### TomUserTwoFactorEnrolmentRepository
+
+`TomSqlDatasourceRepository<TomUserTwoFactorEnrolment, int>` — an ordinary
+repository with no added behaviour, because the mapping is ordinary.
+
+### TomPersistent2FAEnrolmentStore
+
+The durable store: rows in `tom_user_two_factor_enrolment`, with `secretData`
+JSON-encoded and **encrypted at rest** — RSA-OAEP through
+`TomJwtConfiguration.encrypt`, base64-wrapped for a `TEXT` column. By default
+that is the same key pair protecting a token's encrypted claims, so a deployment
+configures one secret and not two; passing `cipher` decouples them, which a
+deployment rotating its signing key often will want, since an enrolment secret
+outlives it. An empty map is stored as an empty string rather than as ciphertext
+of `{}`. A row that cannot be decrypted — written under a key since rotated away
+— yields an **empty** secret map rather than throwing: the honest reading is
+*this factor cannot answer a challenge*, and throwing would fail the whole
+login, including the user's other, perfectly good factors.
+
+- **Implements:** `Tom2FAEnrolmentStore`
+
+#### Constructors
+
+```dart
+const TomPersistent2FAEnrolmentStore(
+  TomSqlDatasourceRepository<TomUserTwoFactorEnrolment, int> repository, {
+  TomJwtConfiguration? cipher,
+})
+```
+
+*(`cipher` is resolved **per call**, falling back to
+`TomJwtConfiguration.defaultSignConfiguration`, so production keys installed
+after boot are obeyed)*
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `repository` | `TomSqlDatasourceRepository<TomUserTwoFactorEnrolment, int>` | Where rows are read and written. |
 
 ### TomTotpSecretResolver
 
@@ -453,12 +912,21 @@ The built-in RFC 6238 time-based one-time-password adaptor
 the whole path — challenge, submission, verification, retry — is exercisable
 without an SMS gateway or mail server. The derivation itself is the kernel's
 `TomTotp`; what lives here is only policy: which secret, how many digits, how
-much clock skew to tolerate, how many attempts. The secret is read from
-`globalSettingSecretResolver`, deliberately *not* from `TomUser.attributes`
-(those are projected into the token's public claims), and nothing is stored in
+much clock skew to tolerate, how many attempts. The secret is read from the
+installed `Tom2FAEnrolmentStore` under `secretDataKey`, falling back to
+`globalSettingSecretResolver` when no store is installed or it holds no TOTP
+enrolment for this user — which is what makes migrating one user at a time
+possible. It is deliberately *not* read from `TomUser.attributes` (those are
+projected into the token's public claims), and nothing is stored in
 `verificationData` — the secret is re-resolved on pass 2, so it never travels.
 
-- **Implements:** `Tom2FAService`
+It is also enrollable: `beginEnrolment` generates a secret and hands back both
+the base32 string and an `otpauth://` URI built from **this verifier's own**
+digits and period, so the authenticator is provisioned with the policy that will
+be applied to it, and `confirmEnrolment` refuses to yield an enrolment until the
+user has typed back a code derived from that very secret.
+
+- **Implements:** `Tom2FAService`, `Tom2FAEnrolmentSupport`
 
 #### Constructors
 
@@ -473,12 +941,24 @@ TomTotp2FAService()
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `mechanismType` | `String` | The mechanism key this adaptor answers to: `'totp'`. |
-| `globalSettingSecretResolver` | `TomTotpSecretResolver?` | Resolves a user's base32 TOTP secret. Unset by default, which makes every TOTP challenge fail with `login.error.2fa.not-enrolled`. |
+| `secretDataKey` | `String` | The key this adaptor's base32 secret is filed under in `Tom2FAEnrolment.secretData`: `'secret'`. Named rather than inlined because an enrolment tool writes the map this adaptor reads, and a typo on either side presents as *not enrolled* — the one failure mode indistinguishable from the ordinary case. |
+| `clientDataUriKey` | `String` | The key the `otpauth://` URI travels under in an offer's `clientData`: `'otpauthUri'`. |
+| `globalSettingSecretResolver` | `TomTotpSecretResolver?` | Resolves a user's base32 TOTP secret. Consulted only when the enrolment store has nothing; unset by default, so with neither, every TOTP challenge fails with `login.error.2fa.not-enrolled`. |
 | `globalSettingDigits` | `int` | Number of digits in a generated code. Defaults to `TomTotp.defaultDigits` (6). |
 | `globalSettingPeriod` | `Duration` | Length of one time step. Defaults to `TomTotp.defaultPeriod` (30 s). |
 | `globalSettingWindowSteps` | `int` | How many time steps either side of "now" are accepted, to tolerate clock skew. Defaults to `1`. |
 | `globalSettingAttemptsAllowed` | `int` | How many submissions one challenge tolerates. Defaults to `3`. |
 | `globalSettingChallengeValidity` | `Duration` | How long a challenge stays answerable. Defaults to 5 minutes. |
+| `globalSettingIssuer` | `String` | The name the authenticator app files this account under, shown beside the code. Empty (the default) means *use the application being logged into* — a framework that hardcoded it would put the same word in every deployment's authenticator. |
+| `globalSettingSecretBytes` | `int` | How much entropy a generated secret carries, in bytes. Defaults to `20`. |
+| `globalSettingEnrolmentAttemptsAllowed` | `int` | How many confirmation attempts one enrolment offer tolerates. Defaults to `3`. |
+| `globalSettingEnrolmentValidity` | `Duration` | How long an enrolment offer stays confirmable. Defaults to 10 minutes. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `descriptor` | `Tom2FAMethodDescriptor` | *(override)* `Tom2FAMethodDescriptor.scoped('totp')` — the keys `two_factor.totp.name` / `.description` / `.icon`. |
 
 #### Methods
 
@@ -486,6 +966,11 @@ TomTotp2FAService()
 | ------ | --------- | ----------- |
 | `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | *(override)* Resolves the secret — throwing `LoginException('login.error.2fa.not-enrolled')` when there is none — and returns a spec whose `clientData` names the code shape (`digits`, `periodSeconds`) so a UI can size its input field. |
 | `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | *(override)* Re-resolves the secret and compares the trimmed submission against the codes in the skew window, in constant time. Rejects a submission of the wrong width before hashing. |
+| `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | *(override)* Generates a secret and offers it as `clientData` — the base32 string plus the `otpauth://` URI under `clientDataUriKey` — with the secret also held in the offer's server-only `enrolmentData`. |
+| `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | *(override)* Checks `submitted` against the offered secret and yields the enrolment to store, filed under `enrolmentId: mechanismType` so re-enrolling replaces the old authenticator instead of accumulating one per attempt. Throws `LoginException` otherwise. |
+| `generateSecret` | `static String generateSecret()` | A fresh base32 secret of `globalSettingSecretBytes` bytes from the framework's CSPRNG. |
+| `provisioningUri` | `static String provisioningUri(String secret, Tom2FAContext context)` | The `otpauth://totp/...` URI an authenticator app scans, carrying this verifier's own digits and period. |
+| `issuerFor` | `static String issuerFor(Tom2FAContext context)` | `globalSettingIssuer`, or the application being logged into when it is empty. |
 | `expectedCode` | `static String expectedCode(String secret, {DateTime? at})` | The code this verifier expects right now for the base32 `secret` — the adaptor's own policy applied to `TomTotp`. For enrolment self-checks and tests. |
 
 ### TomDeliveredCode2FAService

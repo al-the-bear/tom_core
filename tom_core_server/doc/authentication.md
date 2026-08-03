@@ -41,6 +41,21 @@ principal into an authentication token and an authorization token.
 | `TomDeliveredCode2FAService` | abstract | The shape every *delivered* code shares: generate, seal, send, recognise, and prove the destination by enrolment |
 | `TomEmailCode2FAService` | class (`@Tom2FAAdaptor('email')`) | A one-time code mailed through the Messaging module |
 | `TomSmsCode2FAService` | class (`@Tom2FAAdaptor('sms')`) | A one-time code texted through the Messaging module |
+| `Tom2FAPolicy` | abstract | Decides per login whether a second factor is owed and which mechanisms may answer for it |
+| `Tom2FARequirement` | enum | `disabled` / `optional` / `required` — what a policy concluded |
+| `Tom2FADecision` | class | One policy answer: the requirement, the permitted mechanisms, and any grace logins |
+| `TomPrincipalFlag2FAPolicy` | class (const) | The default policy: reads `requires2FA` / `twoFactorType` off the principal |
+| `TomRole2FAPolicy` | class | A requirement per role; the strictest matched role wins |
+| `Tom2FAGraceAccounting` | abstract | Implemented *by a policy* that wants to be told when a grace login is spent |
+| `Tom2FAEnrolmentStore` | abstract | Where a principal's set-up factors live. **No default** — see [Enrolment](#enrolment) |
+| `TomMemory2FAEnrolmentStore` | class | In-memory store, for tests and single-process development |
+| `TomPersistent2FAEnrolmentStore` | class | Store over `TomUserTwoFactorEnrolment`, secrets encrypted at rest |
+| `TomUserTwoFactorEnrolment` | entity (`@TomDbTable`) | One persisted enrolment row (`tom_user_two_factor_enrolment`) |
+| `TomUserTwoFactorEnrolmentRepository` | class | The repository over that table |
+| `Tom2FAEnrolment` | class | One set-up factor: type, id, hint, primary flag, and the mechanism's secret data |
+| `Tom2FAEnrolmentSupport` | abstract | What an adaptor adds to become *enrollable*: begin an offer, confirm it |
+| `Tom2FAEnrolmentOffer` | class | What `beginEnrolment` returns — client blob, server blob, attempts, validity |
+| `Tom2FAEnrolmentState` | class | The server's view of a pending enrolment, carried in the interim token |
 | `Tom2FAException` | exception | A mis-wired 2FA deployment; never client-facing |
 | `TomServerSelfLogin` | class (statics only) | Logs the deployment in as itself and installs its principal |
 | `TomServiceCredential` | class | The deployment's own credential and where to present it |
@@ -141,17 +156,30 @@ error on every call — acceptable only while scaffolding.
 ## Two-Factor Authentication
 
 A login that needs a second factor runs in **two passes**. Pass 1 checks the
-primary credential exactly as above; if the resolved principal declares
-`TomPrincipal.requires2FA`, the login does not finish there. The adaptor
-registered for the principal's `twoFactorType` **issues a challenge**, and the
-server answers with an *interim* token carrying it. The client answers the
-challenge; pass 2 hands the submitted factor back to the same adaptor to
-**verify**, and on success re-issues the token pair without the challenge.
+primary credential exactly as above, then asks the resolved [`Tom2FAPolicy`](#the-policy-decides)
+whether a factor is owed. If one is, the login does not finish there: the
+adaptor registered for the mechanism **issues a challenge**, and the server
+answers with an *interim* token carrying it. The client answers the challenge;
+pass 2 hands the submitted factor back to the same adaptor to **verify**, and on
+success re-issues the token pair without the challenge.
 
 That final pair is byte-for-byte what a 2FA-free login would have produced for
 the same user: both passes mint tokens through the one private helper
 (`_issueTokens`), so the only difference between a completed pass 2 and a
 single-pass login is the cleared `requires2FA` claim.
+
+A user who owes a factor but has not set one up is not turned away. Pass 1
+branches instead into an **[enrolment offer](#enrolment)**, carried by the same
+interim token, and the user sets the factor up as part of the login that
+demanded it. Which of the two branches a login takes is decided in one place,
+and the four shapes a deployment can be in are these:
+
+| Policy says | User has a usable factor | Pass 1 answers with |
+| --- | --- | --- |
+| `disabled` | — | the completed token pair, with no mention of 2FA |
+| `required` / `optional` | yes | an interim token + a **challenge**, answered by pass 2 |
+| `required` | no | an interim token + an **enrolment offer** |
+| `optional`, or `required` with grace left | no | the same offer, additionally **declinable** |
 
 ### The whole path, across both packages
 
@@ -218,12 +246,273 @@ There is no server-side "pending login" record anywhere in this flow. Any
 server instance can complete a login another instance started, and a deployment
 adds no session store to switch 2FA on.
 
+### The policy decides
+
+Whether a login owes a second factor is **a decision, not a field read**.
+`TomAuthenticationServer` asks `Tom2FAPolicy.resolve().decideFor(context)` once
+per login and does what the answer says.
+
+```dart
+abstract class Tom2FAPolicy {
+  Future<Tom2FADecision> decideFor(Tom2FAContext context);
+  static Tom2FAPolicy resolve();     // the installed bean, else the default
+}
+```
+
+`resolve()` returns whatever bean is registered for `Tom2FAPolicy`, and
+`TomPrincipalFlag2FAPolicy` when none is. That default reproduces the behaviour
+that existed before policies did: `TomPrincipal.requires2FA` maps to `required`
+or `disabled`, and `TomPrincipal.twoFactorType` names the one mechanism allowed.
+A deployment that installs nothing therefore sees no change.
+
+**What a decision says.** `Tom2FADecision` carries three things:
+
+| Field | Meaning |
+| ----- | ------- |
+| `requirement` | `Tom2FARequirement.disabled`, `optional` or `required` |
+| `allowedMechanisms` | The mechanism keys this login may use, in **preference order**. Unmodifiable |
+| `graceLogins` | How many more times this user may decline a `required` factor. Default `0` |
+
+and derives two more:
+
+- `isSatisfiedWithoutFactor` — true only for `disabled`. This is the test the
+  server actually makes, so a policy that means "no factor" says it once.
+- `offerableMechanisms` — `allowedMechanisms` **intersected with**
+  `Tom2FARegistry.registeredTypes`. Permission and availability are different
+  questions: a policy states what a user *may* use, the registry states what
+  this process *can* run. Intersecting them at the branch that decides the login
+  is what turns a wiring fault — a policy naming `'webauthn'` in a deployment
+  that registers no such adaptor — into `login.error.2fa.unsupported-mechanism`
+  at the login, rather than a null adaptor ten frames further on.
+
+**What each requirement does to a login with no enrolment** is the part that is
+not visible from the enum:
+
+| Requirement | Has a factor | Has none |
+| ----------- | ------------ | -------- |
+| `disabled` | never asked | never asked — the login completes on the primary credential |
+| `optional` | challenged | offered enrolment, **declinable** at no cost |
+| `required` (no grace) | challenged | offered enrolment, **not** declinable — the login cannot complete otherwise |
+| `required` with `graceLogins > 0` | challenged | offered enrolment, declinable — and declining **spends one grace login** |
+
+`optional` therefore means *offer it, but let them in either way*, which is
+exactly the state the principal flags could never express: `requires2FA` is a
+boolean, and a boolean cannot distinguish "may use a factor" from "must".
+
+**`TomRole2FAPolicy`** is the shipped alternative, and states the requirement
+per role rather than per user:
+
+```dart
+TomBean.withType(
+  Tom2FAPolicy,
+  TomRole2FAPolicy(
+    requirementByRole: const {
+      'admin':   Tom2FARequirement.required,
+      'auditor': Tom2FARequirement.optional,
+    },
+    defaultRequirement: Tom2FARequirement.disabled,
+    mechanisms: const [TomTotp2FAService.mechanismType],
+    graceLogins: 3,
+  ),
+);
+```
+
+Roles are read from `context.principal.aci.roles`, and a principal holding
+several **gets the strictest** of their requirements — `Tom2FARequirement`
+orders `disabled < optional < required` and `strictest` folds along that order.
+An unmatched principal gets `defaultRequirement`, which is `disabled` unless
+stated. A `disabled` outcome returns a bare decision with no mechanisms at all,
+because naming mechanisms for a login that will never be challenged only invites
+a reader to think they matter.
+
+`mechanisms` has a third state that is easy to miss:
+
+| `mechanisms` | Means |
+| ------------ | ----- |
+| `null` (default) | the policy **does not restrict** the choice — every registered mechanism is permitted |
+| a non-empty list | only these, in this order |
+| `[]` | **no** mechanism is permitted. A `required` decision then has nothing to satisfy it and the login fails with `login.error.2fa.unsupported-mechanism` |
+
+Neither shipped policy carries `@TomComponent`. Installing one is a deliberate
+act — `TomBean.withType(Tom2FAPolicy, ...)` — because a policy that got picked
+up by a component scan would silently start demanding second factors from a
+deployment that only added a dependency.
+
+**Grace accounting.** `graceLogins` is a number the *policy* supplies, so only
+the policy can know how it is spent. A policy that wants to be told implements
+`Tom2FAGraceAccounting` as well:
+
+```dart
+class MyPolicy implements Tom2FAPolicy, Tom2FAGraceAccounting {
+  @override
+  Future<void> recordGraceLoginConsumed(Tom2FAContext context) =>
+      _users.decrementRemainingGraceLogins(context.principal);
+  // ...
+}
+```
+
+The server calls it **only at the moment grace is actually spent** — a user
+declining an offer that was declinable *because* of grace — never when the offer
+was merely made, and never for an `optional` decline, which costs nothing. A
+policy that does not implement the interface simply grants the same grace every
+time, which is a valid deployment: "warn, do not enforce yet".
+
+### Enrolment
+
+A user who owes a factor and has not got one is offered the chance to set one up
+**inside the login that demanded it**. That needs two things, supplied by two
+different parties.
+
+**What the adaptor supplies: `Tom2FAEnrolmentSupport`.**
+
+```dart
+abstract class Tom2FAEnrolmentSupport {
+  Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context);
+  Future<Tom2FAEnrolment> confirmEnrolment(
+    Tom2FAContext context,
+    Tom2FAEnrolmentOffer offer,
+    String submitted,
+  );
+}
+```
+
+It is a **separate** contract from `Tom2FAService`, not two more methods on it,
+because not every mechanism can be enrolled through a login — a hardware token
+an administrator provisions is set up somewhere else entirely, and widening the
+base contract would force such an adaptor to carry a throw-only body. Keeping
+them apart makes "can this be enrolled?" a real question, answered by an `is`
+check in one place: `Tom2FARegistry.enrolmentSupportFor(type)` for one
+mechanism, `Tom2FARegistry.enrollableMethods` for the whole catalog. All three
+shipped mechanisms implement it.
+
+`beginEnrolment` returns an **offer**, never a stored factor:
+
+| `Tom2FAEnrolmentOffer` | Purpose |
+| ---------------------- | ------- |
+| `type` | The mechanism being set up |
+| `hint` | What to show the user about the destination or device |
+| `clientData` | Public — travels in the interim token's public claims. For TOTP, the secret and the `otpauth://` URI to scan |
+| `enrolmentData` | Server-only — travels **encrypted**, and is what `confirmEnrolment` checks the typed answer against |
+| `attemptsAllowed` | Default 3 |
+| `validity` | Default 10 minutes |
+
+`confirmEnrolment` either returns the `Tom2FAEnrolment` to store or **throws a
+`LoginException`**. There is no `false` return: a wrong code and an unusable
+offer are both failures, and the exception's `key` is what the client is told.
+
+**What the deployment supplies: `Tom2FAEnrolmentStore`.**
+
+```dart
+abstract class Tom2FAEnrolmentStore {
+  Future<List<Tom2FAEnrolment>> enrolmentsFor(Tom2FAContext context);
+  Future<void> store(Tom2FAContext context, Tom2FAEnrolment enrolment);
+  Future<void> remove(Tom2FAContext context, String enrolmentId);
+  static Tom2FAEnrolmentStore? resolve();   // nullable — and deliberately so
+}
+```
+
+`store` is an **upsert on `enrolmentId`**, so re-enrolling a mechanism replaces
+the old factor rather than accumulating one per attempt; `remove` on an id that
+is not there is a no-op, so a double-delete is not an error.
+`Tom2FAEnrolmentStore.principalKeyOf(context)` is the one place the persistent
+store derives its key from, so a store keying rows differently only has one
+method to disagree with.
+
+Two implementations ship: `TomMemory2FAEnrolmentStore` (plus a `clear()` for
+tests) and `TomPersistent2FAEnrolmentStore`, which stores rows in
+`tom_user_two_factor_enrolment` through `TomUserTwoFactorEnrolmentRepository` and
+**encrypts `secretData` at rest** with the JWT configuration's RSA key. A row
+whose secret cannot be decrypted yields an *empty* secret map rather than
+throwing, so one unreadable row costs that factor and not the whole login.
+
+**The rule that is invisible from the signatures.** `resolve()` is nullable and
+has no fallback, where `Tom2FAPolicy.resolve()` has one. That is not an
+oversight — an empty fallback store would be indistinguishable from a real store
+holding nothing, and the server draws exactly that distinction:
+
+| What the store lookup yields | Means | Pass 1 does |
+| ---------------------------- | ----- | ----------- |
+| `null` | **No store is installed.** Nobody tracks enrolments here | Challenges the mechanism, exactly as before enrolment existed. The adaptor remains the only authority on whether the user has a factor |
+| `[]` | A store **is** installed, and this user has enrolled nothing | Branches into the enrolment offer |
+| a non-empty list | These are the user's factors | Challenges the primary one |
+
+Collapsing the first two would force enrolment on every deployment that never
+opted in, and offering an enrolment that could not then be saved would be a lie.
+So: **installing a store changes what pass 1 means by "this user has a factor"**
+— before, the question went to the mechanism; after, the store is the authority.
+Migrating a deployment therefore does not have to be done all at once. A store
+may report a legacy flag as one synthetic enrolment while it has nothing of its
+own for that principal, which keeps already-provisioned users on the challenge
+path while everyone else enrols; `TomTotp2FAService` cooperates by asking the
+store for a secret first and falling back to
+`globalSettingSecretResolver` only when it has none.
+
+**The round trip.** Three passes, each answering the interim token from the one
+before, and **nothing is written until a confirmation succeeds**:
+
+```text
+pass 1  → offer:   Tom2FAEnrolmentState(offeredTypes: [...], skippable: ...)
+                   ─ interim token; result.requires2FAEnrolment = true
+                   ─ result.availableTwoFactorMethods = the descriptors
+                   ─ result.twoFactorEnrolmentSkippable
+beginTwoFactorEnrolment(message..password = chosenType)
+                   → support.beginEnrolment(context) → Tom2FAEnrolmentOffer
+                   ─ interim token: offer.clientData public,
+                     the whole offer encrypted
+completeTwoFactorEnrolment(message..password = typedCode)
+                   → support.confirmEnrolment(context, offer, typed)
+                   → store.store(context, enrolment)   ← the first write
+                   ─ the FULL token pair, with no further challenge
+   or
+skipTwoFactorEnrolment(message)    (only when the token says skippable)
+                   ─ the full token pair; grace spent if the token says so
+```
+
+The client reads its side through the kernel:
+`TomBearerAuthentication.pendingTwoFactorEnrolment` yields a
+`Tom2FAPendingEnrolment`, whose `hasOffer` distinguishes the two states — *choose
+a mechanism* (`offeredTypes` populated, no offer yet) from *confirm this one*
+(an offer with its `clientData` and attempt counter).
+
+Four properties of the round trip are worth stating outright, because each one
+is a decision that could have gone the other way:
+
+- **It is stateless.** The pending enrolment lives entirely in the interim
+  token's claims — the offered types and the attempt counter publicly, the
+  offer's server-only `enrolmentData` in the encrypted section. Any instance can
+  finish what another began, and switching enrolment on adds no session store.
+- **The server names what may be enrolled, not the client.**
+  `beginTwoFactorEnrolment` refuses a type that was not in the offer *this token
+  was issued with* (`login.error.2fa.enrolment-not-offered`), and the offer was
+  built from `decision.offerableMechanisms` narrowed to those that are
+  enrollable.
+- **A skip must have been permitted by the server.**
+  `skipTwoFactorEnrolment` refuses unless the presented — server-signed — token
+  says `skippable`, so a client that decides for itself that it may decline
+  achieves nothing (`login.error.2fa.enrolment-required`).
+- **Confirming completes the login outright.** A user who has just derived a
+  code from the secret they were handed has demonstrated possession; challenging
+  them for a second code a moment later would prove nothing. A wrong code spends
+  one attempt and hands the same offer back, exactly as a wrong challenge answer
+  does.
+
+The first factor a user confirms is stored with `isPrimary: true`, so the next
+login has something to challenge without anyone having to nominate it.
+
+**No store, but an offer reached anyway?** That cannot happen from pass 1 —
+without a store the login is never routed to enrolment. It can happen if a store
+is removed between the passes, and `completeTwoFactorEnrolment` answers
+`login.error.2fa.enrolment-unavailable` rather than confirming a factor it has
+nowhere to put.
+
 ### Wiring a second factor
 
-Four steps, all of them in application code:
+Five steps, all of them in application code, and only the first two are
+mandatory:
 
-**1 — Mark the principal.** Your `TomAuthenticationService` decides, per user,
-that a second factor is owed and which mechanism answers for it:
+**1 — Say who owes a factor.** With no `Tom2FAPolicy` installed this is a per-user
+flag your `TomAuthenticationService` sets on the principal, naming the one
+mechanism that answers for it:
 
 ```dart
 return TomAuthenticationInfo(
@@ -235,6 +524,21 @@ return TomAuthenticationInfo(
     // ...
   ),
   acd,
+);
+```
+
+Install a [policy](#the-policy-decides) instead as soon as the answer is not
+per-user — "everyone in role `admin`", "offer it to anyone but insist for
+nobody", "insist, but allow three more logins first". The flags cannot express
+any of those; a policy is one bean:
+
+```dart
+TomBean.withType(
+  Tom2FAPolicy,
+  TomRole2FAPolicy(
+    requirementByRole: const {'admin': Tom2FARequirement.required},
+    mechanisms: const [TomTotp2FAService.mechanismType],
+  ),
 );
 ```
 
@@ -250,26 +554,43 @@ Both routes fill the same map; `Tom2FARegistry.registeredTypes` reports it. A
 duplicate registration for one type is a `Tom2FAException` at start-up rather
 than a surprise at the login that happens to need the other one.
 
-**3 — Configure the mechanism.** For the shipped TOTP adaptor that means
-telling it where a user's secret lives:
+**3 — Install an enrolment store**, so users can set a factor up themselves:
+
+```dart
+TomBean.withType(
+  Tom2FAEnrolmentStore,
+  TomPersistent2FAEnrolmentStore(TomUserTwoFactorEnrolmentRepository()),
+);
+```
+
+Skipping this step is a supported choice, not an omission: with no store the
+login is only ever *challenged*, never routed to enrolment, and whether a user
+has a factor stays the mechanism's own question. Read [Enrolment](#enrolment)
+before installing one — it changes what pass 1 means by "this user has a
+factor".
+
+**4 — Configure the mechanism.** For the shipped TOTP adaptor, an installed
+store already answers where a user's secret lives. What the resolver is still
+for is the accounts that predate the store:
 
 ```dart
 TomTotp2FAService.globalSettingSecretResolver =
     (context) => secretStore.lookup(context.principal.username);
 ```
 
-The resolver is unset by default, so an unconfigured deployment fails every
-TOTP challenge with `login.error.2fa.not-enrolled` rather than accepting
-anything. Note the secret is read from your own store, deliberately **not**
-from `TomUser.attributes` — those are projected into the token's *public*
-claims.
+The adaptor asks the store first and the resolver only when the store has
+nothing, which is what lets a deployment migrate one user at a time. With
+neither, every TOTP challenge fails with `login.error.2fa.not-enrolled` rather
+than accepting anything. Note the secret is read from your own store,
+deliberately **not** from `TomUser.attributes` — those are projected into the
+token's *public* claims.
 
 For the mailed and texted codes there is no resolver to set: the destination is
 already on the user record, and what a deployment supplies instead is the
 message the code arrives in — see
 [Codes delivered by email or SMS](#codes-delivered-by-email-or-sms).
 
-**4 — Drive it from the client.** Pass 1's result tells the client what
+**5 — Drive it from the client.** Pass 1's result tells the client what
 happened; the kernel reads the challenge out of the token for it:
 
 ```dart
@@ -291,6 +612,25 @@ if (challenge != null) {
   );
 }
 // pendingTwoFactorChallenge == null → the login is complete.
+```
+
+The enrolment branch is read from the same token through its own accessor, and
+answers the three enrolment passes rather than pass 2:
+
+```dart
+var enrolment = TomBearerAuthentication.pendingTwoFactorEnrolment;
+if (enrolment != null && !enrolment.hasOffer) {
+  // No offer yet: the user picks from result.availableTwoFactorMethods, whose
+  // descriptors carry resource keys — never literal names — to render.
+  result = await api.beginEnrolment(message..password = chosenType);
+  // ... setTokens, then re-read pendingTwoFactorEnrolment
+}
+if (enrolment != null && enrolment.hasOffer) {
+  // enrolment.clientData carries what the user must act on — for TOTP the
+  // secret and the otpauth:// URI to scan.
+  result = await api.completeEnrolment(message..password = typedCode);
+}
+// enrolment.skippable → api.skipEnrolment(message) completes the login instead.
 ```
 
 On a **wrong** code with attempts left, pass 2 answers with
@@ -383,6 +723,53 @@ should do.
 `globalSettingChallengeTemplateKey` / `globalSettingEnrolmentTemplateKey`,
 `globalSettingEnrolmentAttemptsAllowed` and `globalSettingEnrolmentValidity`.
 
+### How a mechanism names itself
+
+A user choosing between second factors reads words: *Authenticator app*,
+*Code by email*. Those words are **never** in the adaptor. Every
+`Tom2FAService` supplies a `Tom2FAMethodDescriptor` instead, which is four
+strings — an identifier and three resource keys:
+
+```dart
+@override
+Tom2FAMethodDescriptor get descriptor =>
+    Tom2FAMethodDescriptor.scoped('webauthn');
+```
+
+`scoped(type)` derives all three keys under the one scope
+(`Tom2FAMethodDescriptor.resourceScope`, `'two_factor'`), so a resource bundle
+can be searched by prefix and no adaptor has to spell the convention out:
+
+| Field | For `scoped('webauthn')` | Rendered as |
+| ----- | ------------------------ | ----------- |
+| `type` | `'webauthn'` | Not shown — the key the client sends back |
+| `displayNameKey` | `two_factor.webauthn.name` | The option's label |
+| `descriptionKey` | `two_factor.webauthn.description` | The sentence under it |
+| `iconKey` | `two_factor.webauthn.icon` | Whatever the client's icon set calls it |
+
+The unnamed constructor exists for a mechanism whose keys do not follow the
+convention — a deployment fitting an adaptor into an existing resource
+bundle — but `scoped` is the one to use.
+
+**Why the descriptor sits on the service and not on the registry.** Only the
+mechanism knows what it is called. A registry that held the descriptions would
+have to be edited every time an adaptor was added, which is the exact coupling
+the adaptor contract exists to remove. Deriving it the other way costs nothing
+and cannot drift: `Tom2FARegistry.availableMethods` maps the registered adaptors
+to their descriptors, and `enrollableMethods` does the same for the subset that
+implements `Tom2FAEnrolmentSupport`. A mechanism that is not registered is not
+describable, and one that is registered describes itself without anyone
+remembering to list it.
+
+Both catalogs are the same for every principal. Narrowing them to *this* user's
+permitted mechanisms is `Tom2FADecision.offerableMechanisms`' job — that needs
+the policy's answer, and a registry has no principal to ask about. What reaches
+the client is narrower still: `TomAuthenticationResult.availableTwoFactorMethods`
+carries the descriptors of exactly the types the enrolment offer named, looked
+up from the registry at the moment the result is built rather than carried in
+the token, so a token minted before a mechanism's resource keys were corrected
+cannot keep handing out the old ones.
+
 ### Writing your own mechanism
 
 For another *delivered* channel — a push notification, a voice call — extend
@@ -472,10 +859,10 @@ class MyWebAuthnService implements Tom2FAService {
 
 Three rules make the rest of the flow work:
 
-- **A descriptor names the mechanism in resource keys, never in literal text.**
-  `Tom2FAMethodDescriptor.scoped('webauthn')` points at
-  `two_factor.webauthn.name` / `.description` / `.icon`, which is what an
-  enrolment picker renders.
+- **A descriptor names the mechanism in resource keys, never in literal text** —
+  see [How a mechanism names itself](#how-a-mechanism-names-itself). Implement
+  `Tom2FAEnrolmentSupport` as well if the mechanism can be *set up* through a
+  login and not only verified; see [Enrolment](#enrolment).
 - **The two blobs are yours; the framework never looks inside either.**
   `clientData` travels in the token's **public** claims, for your own client
   UI. `verificationData` travels in the **encrypted** section, for your own
@@ -507,8 +894,21 @@ Expiry, the attempt counter and adaptor dispatch are generic and handled once in
 | `login.error.2fa.not-enrolled` | Nothing to challenge against: no TOTP secret resolves, or no address is on record for a delivered code | None |
 | `login.error.2fa.delivery-failed` | A delivered code could not be handed to its transport, so no challenge was issued | None |
 | `login.error.2fa.no-destination` | Enrolment was begun for a delivered code with no address on record to confirm | None |
-| `login.error.2fa.enrolment-code-invalid` | The confirmation code did not match the one just sent; nothing is stored | None |
-| `login.error.2fa.enrolment-offer-invalid` | The enrolment offer carried no destination and cannot be completed | None |
+| `login.error.2fa.enrolment-code-invalid` | The confirmation code did not match the one just sent; nothing is stored | A re-issued offer, until attempts run out |
+| `login.error.2fa.enrolment-offer-invalid` | The enrolment offer is unusable — no destination for a delivered code, or a confirmation on a token on which nothing was begun | None |
+
+The enrolment passes add their own, all of them from
+`TomAuthenticationServer` rather than from a mechanism:
+
+| Key | Meaning | Token returned |
+| --- | ------- | -------------- |
+| `login.error.2fa.no-enrolment` | No interim token was presented, or the one presented carries no pending enrolment. This is what stops the enrolment passes from being an unauthenticated way to attach a factor to an account | None |
+| `login.error.2fa.enrolment-not-offered` | The chosen mechanism was not among the types *this token* was issued offering | None |
+| `login.error.2fa.unsupported-mechanism` | No **enrollable** adaptor is registered for the chosen mechanism, or none of the permitted mechanisms can be enrolled here | None |
+| `login.error.2fa.enrolment-unavailable` | There is no `Tom2FAEnrolmentStore`, so a confirmed factor could not be recorded | None |
+| `login.error.2fa.enrolment-expired` | The offer lapsed (default 10 minutes) | None — restart at pass 1 |
+| `login.error.2fa.enrolment-attempts-exhausted` | The confirmation was wrong once too often | None — restart at pass 1 |
+| `login.error.2fa.enrolment-required` | A skip was attempted on an offer the server did not mark skippable | None |
 
 A wrong code is an ordinary outcome and yields a failed
 `TomAuthenticationResult`. A *mis-wired deployment* — a duplicate adaptor, an
@@ -902,17 +1302,53 @@ A mutable carrier for one attempt; the server builds it from the wire message.
 ### `Tom2FAService` / `Tom2FARegistry`
 
 The second-factor contract and the map from mechanism `type` to the adaptor
-implementing it. `Tom2FARegistry` scans `@Tom2FAAdaptor`-annotated classes the
-first time it is consulted; `register` / `lookup` / `registeredTypes` /
-`registerAnnotated` drive it explicitly. See
+implementing it. An adaptor supplies a `descriptor`, issues a challenge and
+verifies a submission; nothing else. `Tom2FARegistry` scans
+`@Tom2FAAdaptor`-annotated classes the first time it is consulted; `register` /
+`lookup` / `registeredTypes` / `registerAnnotated` drive it explicitly, and
+`availableMethods` / `enrollableMethods` / `enrolmentSupportFor` derive the
+catalogs from what is registered. See
 [Two-Factor Authentication](#two-factor-authentication).
+
+### `Tom2FAPolicy` / `Tom2FADecision` / `Tom2FARequirement`
+
+Whether a login owes a second factor, which mechanisms may answer for it, and
+how many grace logins remain. `Tom2FAPolicy.resolve()` returns the installed
+bean or the default `TomPrincipalFlag2FAPolicy`, which reproduces the
+principal-flag behaviour that predates policies; `TomRole2FAPolicy` states the
+requirement per role and takes the strictest match. `Tom2FAGraceAccounting` is
+the optional second interface a policy implements to be told when a grace login
+is spent. See [The policy decides](#the-policy-decides).
+
+### `Tom2FAEnrolmentStore` / `Tom2FAEnrolmentSupport`
+
+The two halves of enrolment: the deployment supplies the store a confirmed
+factor is written to, the adaptor supplies the offer/confirm round trip.
+`Tom2FAEnrolment` is one set-up factor, `Tom2FAEnrolmentOffer` is one pending
+setup and `Tom2FAEnrolmentState` is the server's view of it inside an interim
+token. `resolve()` on the store is **nullable with no fallback**, and that null
+is load-bearing — see [Enrolment](#enrolment).
+
+### `TomMemory2FAEnrolmentStore` / `TomPersistent2FAEnrolmentStore`
+
+The two shipped stores. The first keeps enrolments in a map (plus `clear()`) for
+tests and single-process development; the second persists them as
+`TomUserTwoFactorEnrolment` rows through
+`TomUserTwoFactorEnrolmentRepository`, encrypting `secretData` at rest with the
+JWT configuration's RSA key and degrading an undecryptable row to an empty
+secret rather than failing the login.
 
 ### `TomTotp2FAService`
 
-The shipped RFC 6238 authenticator-app mechanism, registered under `'totp'`.
-Its statics configure digits, period, clock-skew window, attempts and challenge
-validity; `globalSettingSecretResolver` — unset by default — says where a user's
-base32 secret lives.
+The shipped RFC 6238 authenticator-app mechanism, registered under `'totp'`, and
+enrollable: it also implements `Tom2FAEnrolmentSupport`, generating a secret and
+an `otpauth://` URI in `beginEnrolment` and refusing to yield an enrolment until
+the user types back a code derived from it. Its statics configure digits,
+period, clock-skew window, attempts, challenge validity, issuer, secret length
+and the enrolment attempt/validity budget. The secret is read from the enrolment
+store first and from `globalSettingSecretResolver` — unset by default — only
+when the store has none, which is what lets a deployment migrate one user at a
+time.
 
 ### `TomDeliveredCode2FAService`
 
@@ -989,6 +1425,22 @@ resolves the pending record for its context and calls
   WebAuthn and anything else remain application-supplied — the mechanism set is
   open by design, and adding one needs no change here (see
   [Writing your own mechanism](#writing-your-own-mechanism)).
+- **Two policies ship, and neither is a component.** `TomPrincipalFlag2FAPolicy`
+  is the default and `TomRole2FAPolicy` is installed by hand. Neither carries
+  `@TomComponent`, so a deployment that adds a dependency does not silently
+  acquire a 2FA requirement; anything richer than "per role" or "per principal
+  flag" is a `Tom2FAPolicy` the deployment writes.
+- **No enrolment store is installed by default**, deliberately.
+  `Tom2FAEnrolmentStore.resolve()` returns `null` rather than an empty store,
+  because "nobody tracks enrolments here" and "this user has enrolled nothing"
+  must lead to different logins — see [Enrolment](#enrolment). A deployment
+  installs `TomPersistent2FAEnrolmentStore` (and runs the DDL in
+  `TomUserTwoFactorEnrolment.createTableSql`) to switch enrolment on.
+- **`graceLogins` is counted by the policy, not by the framework.** The server
+  reports each spend through `Tom2FAGraceAccounting`; a policy that does not
+  implement it grants the same grace on every login, which is a "warn, do not
+  enforce yet" deployment and not an error. Nothing in this module persists a
+  remaining-grace counter.
 - **A delivered code's transport is not retried.** Delivery is synchronous and
   a failure fails the login, because a code that outlives its challenge is worse
   than none. The retry is the user asking for a new code. A deployment whose
@@ -1023,9 +1475,15 @@ resolves the pending record for its context and calls
 
 - **`tom_core_kernel`**: `TomPrincipal`, `TomAccessControlDefinition`,
   `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types
-  `Tom2FAChallenge` / `Tom2FAClaims`, the `TomTotp` derivation primitives,
-  `TomServerPrincipal` (the holder server self-login installs into), and the
-  wire types `TomAuthenticationMessage` / `TomAuthenticationResult`.
+  `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` /
+  `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes
+  itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the
+  holder server self-login installs into), and the wire types
+  `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live
+  there and not here because the server writes them and the client reads them.
+- **Crypto** (kernel): `TomJwtConfiguration`'s RSA key encrypts an enrolment's
+  `secretData` before `TomPersistent2FAEnrolmentStore` writes it, so the same
+  key that protects a token's encrypted claims protects a stored factor.
 - **Configuration** (this package): `TomBaseServerConfiguration` supplies the
   service-account fields `TomServiceCredential.fromConfiguration` reads.
 - **Server** (this package): `TomServerChannel` carries the default self-login
@@ -1042,8 +1500,13 @@ resolves the pending record for its context and calls
 - **Endpoints** (this package): `TomOAuthServer` implements the kernel's
   `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()`
   registers the contract.
-- **Object Persistence** (this package): `TomExternalIdentityLink` is an
-  ordinary entity over `TomSqlDatasourceRepository`.
+- **Object Persistence** (this package): `TomExternalIdentityLink` and
+  `TomUserTwoFactorEnrolment` are ordinary entities over
+  `TomSqlDatasourceRepository`. Neither table is created by the framework; each
+  entity carries its own `createTableSql` for a deployment's migration to run.
+- **Bean Locator** (kernel): `Tom2FAPolicy` and `Tom2FAEnrolmentStore` are
+  resolved by type through `TomBean`, which is what makes both of them
+  swappable without a configuration key.
 - **Configuration** (this package): the provider set is read through
   `TomServerConfigResourceProvider`, which already performs `${...}` env-var
   substitution.

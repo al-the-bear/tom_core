@@ -95,11 +95,12 @@ class Tom2FADecision {
   /// How many further logins this principal may complete before an unsatisfied
   /// [required] becomes blocking.
   ///
-  /// Zero — the default — means "no grace". The login flow does not currently
-  /// postpone anything, so nothing reads this yet; it is part of the decision
-  /// because the grace count is a property of the *policy*, and a policy that
-  /// could not express it would have to be replaced rather than extended once
-  /// the flow honours it.
+  /// Zero — the default — means "no grace". A positive count softens a
+  /// [Tom2FARequirement.required] login that has nothing enrolled: instead of
+  /// insisting, the flow offers enrolment *and* lets the user decline it, and
+  /// spends one grace login through [Tom2FAGraceAccounting] when they do.
+  /// Grace is charged only when it is actually used — declining an `optional`
+  /// offer costs nothing, and neither does merely being shown one.
   final int graceLogins;
 
   /// Records a policy's conclusion.
