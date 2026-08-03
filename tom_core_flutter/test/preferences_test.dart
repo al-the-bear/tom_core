@@ -309,6 +309,86 @@ void main() {
     });
   });
 
+  group('scope', () {
+    // The module's documented position is that a store belongs to its
+    // `location`, not to a user, and that an application with two accounts on
+    // one machine keeps them apart by giving each its own location. That makes
+    // location isolation the property applications are told to rely on — so it
+    // is asserted here rather than assumed from the backend's shape.
+
+    test('two locations are two independent key spaces', () async {
+      final alex = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(
+          '${temporaryDirectory.path}/preferences/alex.json',
+        ),
+      );
+      final robin = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(
+          '${temporaryDirectory.path}/preferences/robin.json',
+        ),
+      );
+
+      await alex.set('device.biometricUnlock', true);
+      await alex.set('device.lastAccount', 'alex@example.com');
+
+      // Robin's store must not answer what Alex wrote — not with Alex's value,
+      // and not with a value at all.
+      expect(await robin.get<bool>('device.biometricUnlock'), isNull);
+      expect(await robin.all(), isEmpty);
+
+      // And writing the same key on both keeps two values, rather than the
+      // later write winning over the earlier one.
+      await robin.set('device.biometricUnlock', false);
+      expect(await alex.get<bool>('device.biometricUnlock'), isTrue);
+      expect(await robin.get<bool>('device.biometricUnlock'), isFalse);
+    });
+
+    test('clearing one location leaves the other untouched', () async {
+      // Sign-out on one account must not wipe the other's device settings —
+      // `clear` is documented as the sign-out operation, so this is the case in
+      // which a shared location would do visible damage.
+      final alex = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(
+          '${temporaryDirectory.path}/preferences/alex.json',
+        ),
+      );
+      final robin = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(
+          '${temporaryDirectory.path}/preferences/robin.json',
+        ),
+      );
+      await alex.set('device.theme', 'dark');
+      await robin.set('device.theme', 'light');
+
+      await alex.clear();
+
+      expect(await alex.all(), isEmpty);
+      expect(await robin.get<String>('device.theme'), 'light');
+    });
+
+    test('one location is one key space, however often it is opened', () async {
+      // The other half of the same rule, and the reason a shared install that
+      // does *not* qualify its location shares its preferences: two stores over
+      // one location are one store. A backend that isolated per instance would
+      // make the documented failure mode impossible — and the persistence
+      // guarantee with it.
+      final location = '${temporaryDirectory.path}/shared.json';
+      final first = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(location),
+      );
+      final second = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(location),
+      );
+
+      await first.set('device.lastAccount', 'alex@example.com');
+      expect(
+        await second.get<String>('device.lastAccount'),
+        'alex@example.com',
+        reason: 'the location, not the instance, is what scopes a store',
+      );
+    });
+  });
+
   group('TomDevicePreferenceJson', () {
     test('round-trips a document', () {
       final written = DateTime.utc(2026, 3, 14, 9, 26, 53);

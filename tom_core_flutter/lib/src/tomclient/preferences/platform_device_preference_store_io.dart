@@ -24,6 +24,10 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
   /// directory on a Flutter client, a temporary directory in a test. Missing
   /// parent directories are created on the first [write].
   ///
+  /// It is also what scopes the store: two locations are two independent key
+  /// spaces, which is how an application with more than one account on one
+  /// machine keeps their preferences apart. See [TomDevicePreferences].
+  ///
   /// The parameter is named `location` rather than `path` because it is the
   /// *same* parameter on every platform: a filesystem path here, a
   /// `localStorage` entry name on the web. One name is what lets an application

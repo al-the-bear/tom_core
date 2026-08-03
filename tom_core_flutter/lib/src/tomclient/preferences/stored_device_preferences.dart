@@ -27,6 +27,12 @@ import 'device_preferences.dart';
 /// matters: a second browser tab, a background isolate or a platform settings
 /// panel writing the same store would leave the cache holding a value the user
 /// no longer has.
+///
+/// It is also what makes an account switch a one-line affair: an application
+/// that keeps its accounts apart by giving each its own store location (see
+/// [TomDevicePreferences]) only has to install the new store — there is no
+/// retained state to invalidate, so the next read already answers from the new
+/// account's document.
 class TomStoredDevicePreferences extends TomDevicePreferences {
   /// The backend preferences are persisted in.
   final TomDevicePreferenceStore store;

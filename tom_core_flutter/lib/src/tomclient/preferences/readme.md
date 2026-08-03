@@ -53,6 +53,39 @@ Future<void> main() async {
 filesystem path where there is a filesystem, a `localStorage` entry name in the
 browser — so the construction above is written once and never branches.
 
+## Scope — a store belongs to its location, not to a user
+
+Nothing in this module knows who is signed in; one store is one flat key space.
+So **an application on which more than one account can sign in separates them by
+construction** — it gives the store a `location` naming the signed-in account
+and installs a new store when the account changes:
+
+```dart
+TomBean.withType(
+  TomDevicePreferences,
+  TomStoredDevicePreferences(
+    TomPlatformDevicePreferenceStore(
+      '$supportDirectory/preferences/$accountId.json',
+    ),
+  ),
+);
+```
+
+The account part must be a single path (or entry-name) segment and stable — a
+surrogate id, or an address hashed or percent-encoded, never a display name. An
+install that gives every account one location gives them one set of
+preferences: the second sign-in reads the first user's last-used account,
+biometric flag and layout, and nothing here detects it.
+
+That is also what decides which configuration scope the store occupies
+(`codespecs_mapping.md` §11): at a fixed location it is `(client app, machine)`
+— CE-CC's scope — and at a per-account location `(user, device)`, CE-DS. Same
+class, different address. The API stays principal-free under both, which is what
+keeps it swappable with the server-side `TomUserPreferences`.
+
+Switching accounts costs nothing beyond the new bean: `TomStoredDevicePreferences`
+holds no cache, so the next read already answers from the new document.
+
 ## Precedence
 
 Where a key exists in both stores, **the device value wins for as long as it

@@ -29,8 +29,61 @@
 /// out to belong to the user rather than the device — without a single call
 /// site changing.
 ///
-/// There is no `getFor`: a device store has one user by definition, so a
-/// principal parameter would have nothing to select.
+/// ## Whose preferences: the scope of one store
+///
+/// **A store is scoped to its location, not to a user.** Everything reached
+/// through one [TomDevicePreferenceStore] — one JSON file, one `localStorage`
+/// entry — is a single flat key space, and nothing in this module inspects who
+/// is signed in. That is why the API takes no principal and there is no
+/// `getFor`: a store holds no second user's values for one to select between.
+///
+/// So **the application separates users, and it does so by construction rather
+/// than by a parameter**: an application on which more than one account can
+/// sign in gives the store a `location` that names the signed-in account, and
+/// installs a new store when that account changes.
+///
+/// ```dart
+/// // On sign-in. One location per account, so two accounts on one machine
+/// // keep two documents and never read each other's keys.
+/// TomBean.withType(
+///   TomDevicePreferences,
+///   TomStoredDevicePreferences(
+///     TomPlatformDevicePreferenceStore(
+///       '$supportDirectory/preferences/$accountId.json',
+///     ),
+///   ),
+/// );
+/// ```
+///
+/// The account part must be **one path segment** (one `localStorage`
+/// entry-name segment on the web) and stable for the life of the account: a
+/// surrogate id, or an address percent-encoded or hashed — never a raw display
+/// name. A value carrying a separator addresses a different store than the one
+/// intended, silently.
+///
+/// Two consequences, stated rather than discovered:
+///
+/// - **A shared install that skips this shares its preferences.** Two people
+///   signing into one copy of the application against one location write one
+///   key space, so the second sees the first's last-used account, biometric
+///   flag and layout. Nothing here detects it, because nothing here is told a
+///   user changed.
+/// - **Replacing the installed bean is the whole of the switch.**
+///   [TomStoredDevicePreferences] keeps no in-memory cache — every read reaches
+///   the store — so a store swapped at sign-in is in force from the next call,
+///   with no invalidation step that can be forgotten.
+///
+/// In the four-scope configuration vocabulary (`codespecs_mapping.md` §11) that
+/// makes this one class serve two scopes, decided entirely by the `location`
+/// it is given: at a fixed location it is `(client app, machine)` — CE-CC's
+/// scope, the same one `TomClientConfigurationStore` occupies — and at a
+/// per-account location it is `(user, device)`, CE-DS. The user is bound the
+/// same way the device already is: implicitly, by which store was opened.
+///
+/// The API stays principal-free under both, deliberately. It is what keeps the
+/// method set identical to `TomUserPreferences` above, so a preference can move
+/// between the two stores untouched; the user dimension lives in the store's
+/// address, where it costs the call sites nothing.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -78,6 +131,14 @@ class TomDevicePreferenceException extends TomClientException {
 /// final preferences = TomDevicePreferences.resolve()!;
 /// await preferences.set('device.lastAccount', 'alex@example.com');
 /// ```
+///
+/// That `path` is also what scopes the store: this interface knows nothing
+/// about who is signed in, so on an installation where more than one account
+/// can sign in it is the **application** that keeps them apart, by giving the
+/// store a per-account location and installing a new one when the account
+/// changes. A shared install that gives every account the same location gives
+/// them the same preferences. See the library documentation for the worked
+/// form and the constraints on the account part.
 ///
 /// ## Precedence against the server store
 ///

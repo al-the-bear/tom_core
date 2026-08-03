@@ -28,6 +28,10 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
   /// everything the app serves from it, and only the app knows which name is
   /// free.
   ///
+  /// It is also what scopes the store: two entry names are two independent key
+  /// spaces, which is how an application with more than one account on one
+  /// machine keeps their preferences apart. See [TomDevicePreferences].
+  ///
   /// The parameter is named `location` rather than `entryName` because it is
   /// the *same* parameter on every platform: a `localStorage` entry name here,
   /// a filesystem path on desktop and mobile. One name is what lets an
