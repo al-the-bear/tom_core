@@ -50,6 +50,7 @@ import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'oauth_flow.dart';
 import 'oauth_provider.dart';
+import 'oauth_tokens.dart';
 
 /// One external identity bound to one local account.
 @tomReflector
@@ -164,6 +165,22 @@ abstract class TomExternalIdentityStore {
   /// lists, and what a deployment checks before removing the last credential.
   Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername);
 
+  /// Removes the link for `(issuer, subject)` **and every provider token held
+  /// through it**; removing one that is not there is a no-op, not an error.
+  ///
+  /// The cascade is part of the contract rather than a caller's responsibility,
+  /// and this is the method that makes "a third-party credential never outlives
+  /// the link it was granted through" true. The alternative — leaving the two
+  /// deletions to whoever wrote the account-settings page — fails in the one
+  /// direction that matters: the user pressed *disconnect*, the page said
+  /// *disconnected*, and the deployment still holds a live refresh token for
+  /// their mailbox.
+  ///
+  /// Implementations delete through the installed [TomOAuthTokenStore]; a
+  /// deployment that holds no tokens has none installed and the cascade is a
+  /// no-op it never has to think about.
+  Future<void> unlink(String issuer, String subject);
+
   /// The installed [TomExternalIdentityStore] bean, or `null` when none is
   /// registered.
   ///
@@ -183,8 +200,17 @@ class TomPersistentExternalIdentityStore implements TomExternalIdentityStore {
   /// The repository links are read and written through.
   final TomSqlDatasourceRepository<TomExternalIdentityLink, int> repository;
 
+  final TomOAuthTokenStore? _tokenStore;
+
   /// Creates the store over [repository].
-  const TomPersistentExternalIdentityStore(this.repository);
+  ///
+  /// [tokenStore] is the store [unlink] cascades into; unset, it follows the
+  /// installed [TomOAuthTokenStore] bean at *call* time, so a deployment that
+  /// wires its token store after its identity store still gets the cascade.
+  const TomPersistentExternalIdentityStore(
+    this.repository, {
+    TomOAuthTokenStore? tokenStore,
+  }) : _tokenStore = tokenStore;
 
   @override
   Future<String?> localUsernameFor(TomExternalIdentity identity) async {
@@ -225,6 +251,19 @@ class TomPersistentExternalIdentityStore implements TomExternalIdentityStore {
     return List.unmodifiable(rows);
   }
 
+  @override
+  Future<void> unlink(String issuer, String subject) async {
+    // Tokens first. If the link delete failed after the tokens were removed the
+    // user has an intact link and must re-consent — annoying. The other order
+    // leaves a live third-party credential with nothing pointing at it, which
+    // nothing will ever clean up.
+    await (_tokenStore ?? TomOAuthTokenStore.resolve())?.delete(issuer, subject);
+    await repository.deleteByQuerySentence(
+      'DELETE BY issuer = :issuer AND subject = :subject',
+      {'issuer': issuer, 'subject': subject},
+    );
+  }
+
   /// The row for [identity], or `null`.
   Future<TomExternalIdentityLink?> _rowFor(TomExternalIdentity identity) async {
     final matches = await repository.findByQuerySentence(
@@ -244,8 +283,12 @@ class TomPersistentExternalIdentityStore implements TomExternalIdentityStore {
 class TomMemoryExternalIdentityStore implements TomExternalIdentityStore {
   final Map<String, TomExternalIdentityLink> _links = {};
 
-  /// Creates an empty in-memory store.
-  TomMemoryExternalIdentityStore();
+  final TomOAuthTokenStore? _tokenStore;
+
+  /// Creates an empty in-memory store, optionally cascading [unlink] into
+  /// [tokenStore] rather than into the installed [TomOAuthTokenStore] bean.
+  TomMemoryExternalIdentityStore({TomOAuthTokenStore? tokenStore})
+    : _tokenStore = tokenStore;
 
   @override
   Future<String?> localUsernameFor(TomExternalIdentity identity) async =>
@@ -275,6 +318,12 @@ class TomMemoryExternalIdentityStore implements TomExternalIdentityStore {
   ) async => List.unmodifiable(
     _links.values.where((row) => row.localUsername == localUsername),
   );
+
+  @override
+  Future<void> unlink(String issuer, String subject) async {
+    await (_tokenStore ?? TomOAuthTokenStore.resolve())?.delete(issuer, subject);
+    _links.remove(_keyOf(issuer, subject));
+  }
 
   /// The map key.
   ///

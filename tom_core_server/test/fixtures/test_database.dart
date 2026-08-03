@@ -371,20 +371,29 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     });
   }
 
-  /// Creates the `tom_user_two_factor_enrolment` table from the entity's own
-  /// DDL, so the test and the shipped migration cannot describe different
-  /// tables.
-  static Future<void> ensureTwoFactorEnrolmentTable(
+  /// Runs a framework entity's own `createTableSql`.
+  ///
+  /// Every framework table below is created from the entity's constant rather
+  /// than from a copy of its DDL, so a test and the shipped migration cannot
+  /// describe different tables. The statement terminator belongs to a migration
+  /// *file*, where several statements have to be told apart; the driver takes
+  /// one statement and rejects the trailing `;`.
+  static Future<void> _ensureEntityTable(
     TomDataSourceInfo dsi,
+    String createTableSql,
   ) async {
-    // The statement terminator belongs to a migration *file*, where several
-    // statements have to be told apart; the driver takes one statement and
-    // rejects the trailing `;`.
-    final ddl = TomUserTwoFactorEnrolment.createTableSql.trim();
+    final ddl = createTableSql.trim();
     await dsi.datasource.executeCommand(
       ddl.endsWith(';') ? ddl.substring(0, ddl.length - 1) : ddl,
     );
   }
+
+  /// Creates the `tom_user_two_factor_enrolment` table from the entity's own
+  /// DDL.
+  static Future<void> ensureTwoFactorEnrolmentTable(
+    TomDataSourceInfo dsi,
+  ) async =>
+      _ensureEntityTable(dsi, TomUserTwoFactorEnrolment.createTableSql);
 
   /// Empties `tom_user_two_factor_enrolment` between tests.
   static Future<void> truncateTwoFactorEnrolment(TomDataSourceInfo dsi) async {
@@ -392,19 +401,40 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
         .executeCommand('TRUNCATE TABLE tom_user_two_factor_enrolment');
   }
 
-  /// Creates the `tom_user_preference` table from the entity's own DDL, for the
-  /// same reason [ensureTwoFactorEnrolmentTable] does: the test and the shipped
-  /// migration must not be able to describe different tables.
-  static Future<void> ensureUserPreferenceTable(TomDataSourceInfo dsi) async {
-    final ddl = TomUserPreference.createTableSql.trim();
-    await dsi.datasource.executeCommand(
-      ddl.endsWith(';') ? ddl.substring(0, ddl.length - 1) : ddl,
-    );
-  }
+  /// Creates the `tom_user_preference` table from the entity's own DDL.
+  static Future<void> ensureUserPreferenceTable(TomDataSourceInfo dsi) async =>
+      _ensureEntityTable(dsi, TomUserPreference.createTableSql);
 
   /// Empties `tom_user_preference` between tests.
   static Future<void> truncateUserPreference(TomDataSourceInfo dsi) async {
     await dsi.datasource.executeCommand('TRUNCATE TABLE tom_user_preference');
+  }
+
+  /// Creates the `tom_external_identity` link table from the entity's own DDL
+  /// (TCCB7).
+  static Future<void> ensureExternalIdentityTable(
+    TomDataSourceInfo dsi,
+  ) async =>
+      _ensureEntityTable(dsi, TomExternalIdentityLink.createTableSql);
+
+  /// Empties `tom_external_identity` between tests.
+  static Future<void> truncateExternalIdentity(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE tom_external_identity');
+  }
+
+  /// Creates the `tom_external_identity_token` table from the entity's own DDL
+  /// (TCCB7).
+  static Future<void> ensureExternalIdentityTokenTable(
+    TomDataSourceInfo dsi,
+  ) async =>
+      _ensureEntityTable(dsi, TomExternalIdentityToken.createTableSql);
+
+  /// Empties `tom_external_identity_token` between tests.
+  static Future<void> truncateExternalIdentityToken(
+    TomDataSourceInfo dsi,
+  ) async {
+    await dsi.datasource
+        .executeCommand('TRUNCATE TABLE tom_external_identity_token');
   }
 
   /// Closes every registered data source and clears the process-wide registry,

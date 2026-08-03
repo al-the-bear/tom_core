@@ -41,6 +41,7 @@ import 'authentication_server.dart';
 import 'oauth_flow.dart';
 import 'oauth_identity.dart';
 import 'oauth_provider.dart';
+import 'oauth_tokens.dart';
 
 /// The credential an external login carries in [TomAuthenticationData.key].
 ///
@@ -133,12 +134,20 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
   /// installed [TomExternalIdentityStore] bean.
   final TomExternalIdentityStore? identityStore;
 
+  /// Where the provider's own tokens are kept for the providers that ask for it
+  /// ([TomOAuthProviderConfig.storeTokens]). Defaults to the installed
+  /// [TomOAuthTokenStore] bean, of which there usually is none — see the
+  /// `oauth_tokens.dart` library documentation for why keeping nothing is the
+  /// default.
+  final TomOAuthTokenStore? tokenStore;
+
   /// Creates the service.
   const TomOAuthAuthenticationService({
     required this.directory,
     this.delegate,
     this.flow,
     this.identityStore,
+    this.tokenStore,
   });
 
   @override
@@ -191,10 +200,43 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
         );
       }
       await store.recordLogin(identity);
+      await _retainTokens(exchange);
       return info;
     }
 
-    return _firstLogin(identity, authData, store);
+    return _firstLogin(identity, authData, store, exchange);
+  }
+
+  /// Hands the provider's grant to the token store, when this provider asks for
+  /// it to be kept.
+  ///
+  /// Called only on the success paths, and only *after* a link exists. A refused
+  /// login must leave nothing behind: storing at exchange time would file a live
+  /// third-party credential under an identity the deployment just declined to
+  /// admit, and nothing would ever come back for it.
+  Future<void> _retainTokens(TomOAuthExchange exchange) async {
+    final grant = exchange.tokens;
+    if (grant == null) return;
+    final provider = (flow ?? TomOAuthFlow.fromBeans()).providers.lookup(
+      exchange.pending.providerId,
+    );
+    if (provider == null || !provider.storeTokens) return;
+    final store = tokenStore ?? TomOAuthTokenStore.resolve();
+    if (store == null) {
+      // Configuration asked for tokens and the wiring cannot honour it. Loud,
+      // because the failure is otherwise invisible: every login succeeds and the
+      // first delegated call, days later, finds nothing.
+      tomLog.error(
+        "OAuth provider '${provider.id}' is configured with storeTokens, but no "
+        'TomOAuthTokenStore is installed; the provider grant was discarded.',
+      );
+      return;
+    }
+    await store.store(
+      exchange.identity.issuer,
+      exchange.identity.subject,
+      grant,
+    );
   }
 
   /// A successful external login for which no link exists yet.
@@ -202,6 +244,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
     TomExternalIdentity identity,
     TomAuthenticationData authData,
     TomExternalIdentityStore store,
+    TomOAuthExchange exchange,
   ) async {
     final provider = _providerFor(identity);
 
@@ -222,6 +265,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
       if (existing != null) {
         await store.link(identity, identity.username);
         await store.recordLogin(identity);
+        await _retainTokens(exchange);
         return existing;
       }
     }
@@ -246,6 +290,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
     authData.username = username;
     await store.link(identity, username);
     await store.recordLogin(identity);
+    await _retainTokens(exchange);
     return provisioned;
   }
 

@@ -17,6 +17,7 @@ export 'src/tomserver/authentication/oauth_flow.dart';
 export 'src/tomserver/authentication/oauth_identity.dart';
 export 'src/tomserver/authentication/oauth_provider.dart';
 export 'src/tomserver/authentication/oauth_state_sql.dart';
+export 'src/tomserver/authentication/oauth_tokens.dart';
 export 'src/tomserver/authentication/server_self_login.dart';
 export 'src/tomserver/authentication/sql_oauth_state_store.dart';
 export 'src/tomserver/authentication/two_factor.dart';

@@ -65,6 +65,68 @@ or its own principal-to-claims projection is a regression of this design even if
 every test still passes, because the two copies will drift and the copy that
 drifts is the one that stops asking for a second factor.
 
+### The provider's tokens: kept only when a provider is told to keep them
+
+A provider's token response carries more than the claims a login needs. It
+carries an **access token** — a credential for calling that provider's API as
+the user — and usually a **refresh token**, which mints new access tokens for
+months. Authentication needs neither: the framework has already learned who the
+user is and issues its own session. So there is a real question about what to do
+with them, and the answer is a decision rather than an oversight.
+
+**The decision: the framework keeps nothing by default, and keeps the whole
+grant properly when a provider opts in.** Both halves matter.
+
+*Keeping nothing is the default* because most deployments want "Sign in with …"
+and nothing else, and for them a stored refresh token is pure liability. A
+framework session token is minted here and revocable here; a provider refresh
+token is a long-lived credential **against a third party** that outlives the
+session, is useful to anyone who obtains it, and is revocable only by the user
+noticing. A deployment that never asked for delegated access must never end up
+holding one, so `TomOAuthProviderConfig.storeTokens` defaults to `false` and
+retention is opt-in per provider, exactly as scopes are.
+
+*Keeping nothing as the only answer* was rejected, though it was tempting and is
+the smaller surface. An application that genuinely needs to read the user's
+calendar has to hold that credential somewhere, and refusing to hold it does not
+remove the requirement — it pushes encryption at rest, retention limits and
+refresh onto every application in turn. That is worse in a specific and
+predictable way: the application that has to solve refresh reaches for the login
+path, because the login path is the code that already knows how to talk to the
+provider. Refreshing a token would then run the 2FA policy, touch the session and
+mint claims — which is precisely the drift the seam decision above exists to
+prevent. Better to own the capability and keep it off that path.
+
+What that ownership consists of:
+
+* **Always surfaced, retained only on request.** `TomOAuthExchange.tokens`
+  carries the grant out of every exchange, so a caller that wants to use it for
+  the duration of *this* request always may. "Keeps nothing" is therefore a
+  statement about storage, not a capability the framework withholds.
+* **Encrypted at rest, never in the clear.** `TomPersistentOAuthTokenStore`
+  writes the whole grant through `TomJwtConfiguration.encrypt` into
+  `tom_external_identity_token.token_data` — the same at-rest primitive behind a
+  2FA enrolment secret. The scopes and the timestamps sit beside it unencrypted
+  on purpose: an operator must be able to ask "is this grant live and what does
+  it cover?" without the private key, and none of those three columns is
+  authoritative.
+* **Deleted with the link.** `TomExternalIdentityStore.unlink` deletes the grant
+  *before* the link it belongs to. A third-party credential never outlives the
+  link it was granted through, and the other order would leave an orphaned live
+  credential behind.
+* **Refreshed through the flow, never through the service.**
+  `TomOAuthFlow.refreshGrant` and `TomOAuthFlow.accessTokenFor` are one HTTP call
+  to a token endpoint on behalf of a user who consented some time ago. They
+  consult no `TomAuthenticationService`, ask no 2FA policy, touch no session and
+  produce no principal. Refreshing is not a login; a change that makes it reach
+  `_completeLogin` is a regression of the seam decision above.
+
+A deployment that opts in usually has to say so to the provider as well — Google
+returns no refresh token without `access_type=offline` — which is what
+`TomOAuthProviderConfig.authorizationParameters` is for. Those extras are applied
+*before* the flow's own parameters, so a configuration typo cannot replace
+`state`, `redirect_uri` or the PKCE challenge.
+
 ### The pending authorization is *shared state*, not process state
 
 An authorization-code flow is **two HTTP requests**, and the second one is not
@@ -124,6 +186,9 @@ a test suite keep the in-memory store and need no database at all.
 | `TomOAuthTokenTransport` | The one HTTP call to a provider's token endpoint — the seam a stub provider replaces in tests. |
 | `TomExternalIdentityStore` · `TomExternalIdentityLink` | The linking table: (issuer, subject) → local account, many per account. |
 | `TomExternalIdentityDirectory` | What the deployment supplies: local principal lookup, and provisioning for a first external login. |
+| `TomOAuthTokenGrant` | One provider grant: access token, refresh token, scopes, lifetime. Never prints either token. |
+| `TomOAuthTokenStore` · `TomMemoryOAuthTokenStore` | Where a grant lives, keyed `(issuer, subject)`. Unregistered means nothing is ever stored. |
+| `TomPersistentOAuthTokenStore` · `TomExternalIdentityToken` | The grant over `tom_external_identity_token`, encrypted at rest. |
 
 ## Quick start
 

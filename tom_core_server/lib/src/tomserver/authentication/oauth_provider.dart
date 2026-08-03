@@ -33,6 +33,37 @@
 /// environment before the tree is handed over, so a client secret never has to
 /// be written into a file that is checked in.
 ///
+/// ## Delegated access is two more keys, and both are opt-in
+///
+/// A deployment that only wants "Sign in with …" writes nothing further: the
+/// framework retains no provider credential unless a provider asks it to.
+/// One that genuinely needs to call a provider's API *as the user* adds
+/// [storeTokens] and whatever the provider demands before it will issue a
+/// refresh token at all:
+///
+/// ```yaml
+/// oauth:
+///   providers:
+///     google:
+///       # … the login configuration above, plus:
+///       scopes: [openid, email, https://www.googleapis.com/auth/calendar.readonly]
+///       storeTokens: true
+///       authorizationParameters:
+///         access_type: offline     # Google returns no refresh token without it
+///         prompt: consent          # … and repeats it only under this
+/// ```
+///
+/// [storeTokens] governs *storage*, not capability: the grant is surfaced on
+/// `TomOAuthExchange.tokens` from every exchange regardless, so a caller that
+/// wants it for the duration of this request always may. Retention is the part
+/// that needs a decision, because a stored provider refresh token is a
+/// long-lived credential against a *third party* that outlives the session — see
+/// `readme.md` in this folder.
+///
+/// [authorizationParameters] are applied **before** the flow's own parameters,
+/// so a configuration typo cannot replace `state`, `redirect_uri` or the PKCE
+/// challenge.
+///
 /// ## What is deliberately *not* configurable
 ///
 /// The [redirectUri] is configuration; it is **not** a request parameter. A
@@ -184,6 +215,38 @@ class TomOAuthProviderConfig {
   /// Resource key of the provider's icon.
   final String iconKey;
 
+  /// Whether the provider's own tokens are retained after the login.
+  ///
+  /// **Off by default, and that is the framework's position rather than a
+  /// conservative guess** — see the `oauth_tokens.dart` library documentation.
+  /// Authentication needs no provider token once the claims are read, so a
+  /// deployment that only wants "Sign in with …" acquires no third-party
+  /// credential at all. Turning it on is a statement that this application acts
+  /// *as* the user against this provider's API, and it is per provider because
+  /// that is the granularity the statement is true at: an app may hold a
+  /// calendar grant from one provider and nothing but a login from another.
+  ///
+  /// When on, [TomOAuthAuthenticationService] hands the grant to the installed
+  /// [TomOAuthTokenStore] once the login has produced an identity link — never
+  /// before, so a refused login leaves no orphaned credential.
+  final bool storeTokens;
+
+  /// Extra query parameters added to the authorization redirect.
+  ///
+  /// The escape hatch every real provider needs and no two need identically:
+  /// Google returns a refresh token only under `access_type=offline` and
+  /// re-issues one only under `prompt=consent`, Microsoft wants a `tenant`,
+  /// others want `audience` or `resource`. Modelling each as a named field would
+  /// mean a framework release per provider quirk; a map means an operator adds
+  /// one line of YAML.
+  ///
+  /// The flow's own parameters (`response_type`, `client_id`, `redirect_uri`,
+  /// `scope`, `state`, the PKCE pair) are applied *after* these and therefore
+  /// win: they are the ones the handshake's security rests on, and a
+  /// configuration typo must not be able to replace the `state` handle or point
+  /// the redirect somewhere else.
+  final Map<String, String> authorizationParameters;
+
   /// Creates a provider configuration.
   const TomOAuthProviderConfig({
     required this.id,
@@ -202,6 +265,8 @@ class TomOAuthProviderConfig {
     this.provisioning = TomOAuthProvisioning.refuse,
     this.displayNameKey = '',
     this.iconKey = '',
+    this.storeTokens = false,
+    this.authorizationParameters = const {},
   });
 
   /// Reads one provider from its configuration map.
@@ -254,7 +319,42 @@ class TomOAuthProviderConfig {
       iconKey:
           optional('iconKey') ??
           '${TomOAuthProviderDto.resourceScope}.$id.icon',
+      storeTokens: '${map['storeTokens']}' == 'true',
+      authorizationParameters: _parametersOf(
+        id,
+        map['authorizationParameters'],
+      ),
     );
+  }
+
+  /// Reads the extra authorization parameters, which must be a map of scalars.
+  ///
+  /// A nested map or list throws rather than being stringified: `tenant: {a: b}`
+  /// is a mistake, and silently sending `{a: b}` as a query parameter value
+  /// would produce a provider error whose text says nothing about the YAML that
+  /// caused it.
+  static Map<String, String> _parametersOf(String id, Object? raw) {
+    if (raw == null) return const {};
+    if (raw is! Map) {
+      throw TomOAuthException(
+        'oauth.config.parameters_not_a_map',
+        "OAuth provider '$id' must declare 'authorizationParameters' as a map "
+            'of name to value, but it was a ${raw.runtimeType}.',
+      );
+    }
+    final parsed = <String, String>{};
+    raw.forEach((key, value) {
+      if (value is Map || value is List) {
+        throw TomOAuthException(
+          'oauth.config.parameter_not_a_scalar',
+          "OAuth provider '$id' declares the authorization parameter '$key' as "
+              'a ${value.runtimeType}; a query parameter can only carry a '
+              'scalar value.',
+        );
+      }
+      parsed['$key'] = '$value';
+    });
+    return Map.unmodifiable(parsed);
   }
 
   /// Accepts scopes as a YAML list *or* as a single space-separated string,

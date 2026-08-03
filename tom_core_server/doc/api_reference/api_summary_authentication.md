@@ -67,6 +67,12 @@ server's own self-login against an auth server.
   - [TomExternalIdentity](#tomexternalidentity)
   - [TomOAuthExchange](#tomoauthexchange)
   - [TomOAuthFlow](#tomoauthflow)
+  - [TomOAuthTokenGrant](#tomoauthtokengrant)
+  - [TomOAuthTokenStore](#tomoauthtokenstore)
+  - [TomMemoryOAuthTokenStore](#tommemoryoauthtokenstore)
+  - [TomExternalIdentityToken](#tomexternalidentitytoken)
+  - [TomExternalIdentityTokenRepository](#tomexternalidentitytokenrepository)
+  - [TomPersistentOAuthTokenStore](#tompersistentoauthtokenstore)
   - [TomExternalIdentityLink](#tomexternalidentitylink)
   - [TomExternalIdentityLinkRepository](#tomexternalidentitylinkrepository)
   - [TomExternalIdentityStore](#tomexternalidentitystore)
@@ -91,6 +97,7 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/oauth_state_sql.dart`,
 `lib/src/tomserver/authentication/sql_oauth_state_store.dart`,
 `lib/src/tomserver/authentication/oauth_identity.dart`,
+`lib/src/tomserver/authentication/oauth_tokens.dart`,
 `lib/src/tomserver/authentication/oauth_authentication_service.dart`,
 `lib/src/tomserver/authentication/oauth_endpoints.dart`.
 
@@ -189,10 +196,17 @@ TomExternalIdentityStore  (abstract)
     ├── TomPersistentExternalIdentityStore  (implements)
     └── TomMemoryExternalIdentityStore      (implements)
 
+TomOAuthTokenStore  (abstract, no default — unregistered means nothing is kept)
+    ├── TomMemoryOAuthTokenStore      (implements)
+    └── TomPersistentOAuthTokenStore  (implements, encrypted at rest)
+
 TomExternalIdentityDirectory  (abstract, deployment-supplied)
 
 TomSqlDatasourceRepository<TomExternalIdentityLink, int>
     └── TomExternalIdentityLinkRepository  (extends)
+
+TomSqlDatasourceRepository<TomExternalIdentityToken, int>
+    └── TomExternalIdentityTokenRepository  (extends)
 
 Tom2FAService  (@tomReflector, abstract)
     ├── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'),
@@ -250,7 +264,9 @@ TomOAuthStateStoreSettings (standalone, immutable)
 TomExternalIdentity        (standalone, immutable)
 TomOAuthExchange           (standalone, immutable)
 TomOAuthFlow               (standalone, immutable)
+TomOAuthTokenGrant         (standalone, immutable)
 TomExternalIdentityLink    (@tomReflector, @TomDbTable entity)
+TomExternalIdentityToken   (@tomReflector, @TomDbTable entity)
 TomOAuthCredential         (standalone, immutable)
 TomOAuthServer             (@tomReflector, @TomApiImplementation)
 ```
@@ -1388,6 +1404,8 @@ const TomOAuthProviderConfig({
   TomOAuthProvisioning provisioning = TomOAuthProvisioning.refuse,
   String displayNameKey = '',
   String iconKey = '',
+  bool storeTokens = false,
+  Map<String, String> authorizationParameters = const {},
 })
 
 factory TomOAuthProviderConfig.fromMap(String id, Map<Object?, Object?> map)
@@ -1398,6 +1416,13 @@ missing its token endpoint is a configuration error, and one that must fail at
 startup rather than as a failed login weeks later. `scopes` is accepted as a
 YAML list *or* a single space-separated string, which is how every provider's
 own documentation writes them.
+
+Two fields exist for delegated access rather than for login:
+
+| Field | Notes |
+| ----- | ----- |
+| `storeTokens` | Whether a completed exchange's `TomOAuthTokenGrant` is *retained*. `false` by default, and opt-in per provider exactly as scopes are: a deployment that only wanted "Sign in with …" must never end up holding a third-party refresh token. The grant is always *surfaced* on `TomOAuthExchange.tokens` regardless — this governs storage, not capability. |
+| `authorizationParameters` | Extra query parameters merged into the authorization redirect, for the provider-specific opt-ins a grant needs (Google returns no refresh token without `access_type=offline`). Applied **before** the flow's own parameters, so a configuration typo cannot replace `state`, `redirect_uri` or the PKCE challenge. Must be a map of scalars — `oauth.config.parameters_not_a_map` / `oauth.config.parameter_not_a_scalar` otherwise. |
 
 #### Methods
 
@@ -1629,6 +1654,12 @@ identity — a subject is only unique within its issuer.
 The result of a completed handshake: the `identity` and the `pending` record it
 completed, so the caller can replay the login context the flow captured.
 
+| Field | Type | Notes |
+| ----- | ---- | ----- |
+| `identity` | `TomExternalIdentity` | Who the provider says this is. |
+| `pending` | `TomOAuthAuthorizationState` | The record the exchange spent, carrying the login context. |
+| `tokens` | `TomOAuthTokenGrant?` | The provider's grant, or `null` when the response carried no access token (an `id_token`-only OIDC response). Surfaced on **every** exchange, whatever `storeTokens` says — retention is a storage decision, and a caller that wants the grant for the duration of *this* request may always have it. |
+
 ### TomOAuthFlow
 
 The authorization-code + PKCE handshake. Immutable; holds `providers`,
@@ -1652,7 +1683,133 @@ factory TomOAuthFlow.fromBeans()
 | ------ | --------- | ----------- |
 | `beginAuthorization` | `Future<TomOAuthAuthorizationDto> beginAuthorization(TomOAuthAuthorizationRequest request)` | Records the pending authorization and answers where to send the browser. Preserves any query the provider's authorization endpoint already carries (some tenanted providers encode the tenant there). |
 | `completeAuthorization` | `Future<TomOAuthExchange> completeAuthorization({required String code, required String state})` | Spends the pending record, exchanges the code, verifies the claims, and answers who the provider says this is. |
+| `refreshGrant` | `Future<TomOAuthTokenGrant> refreshGrant({required String providerId, required TomOAuthTokenGrant grant})` | Exchanges the grant's refresh token for a fresh one. **Not a login**: no `TomAuthenticationService`, no 2FA policy, no session, no principal. Throws `oauth.flow.no_refresh_token` when the grant carries none — the caller must send the user through consent again, which is a different action rather than a slower one. |
+| `accessTokenFor` | `Future<TomOAuthTokenGrant?> accessTokenFor({required String providerId, required String subject, Duration minimumValidity = const Duration(seconds: 30), TomOAuthTokenStore? store})` | A live access token for the identity, refreshed and written back when it is within `minimumValidity` of expiry. `null` when nothing is held, when the held grant expired unrefreshably, or when no store is installed — the cue to send the user through consent. A failed *refresh* throws, because a provider rejecting a token it issued is an event an operator needs to see rather than an empty answer a job retries forever. |
 | `decodeIdTokenClaims` | `static Map<String, Object?> decodeIdTokenClaims(String idToken)` | The `id_token` payload. The **signature is not verified** — see [Status and Limitations](../authentication.md#status-and-limitations). |
+
+### TomOAuthTokenGrant
+
+One provider grant: the credential an application presents to call a provider's
+API *as the user*. Immutable; both instants are normalised to UTC on
+construction, because the value crosses a storage boundary and a local-time
+instant read back on a server in another zone is silently wrong.
+
+#### Constructors
+
+```dart
+TomOAuthTokenGrant({
+  required String accessToken,
+  String? refreshToken,
+  String tokenType = 'Bearer',
+  String scope = '',
+  DateTime? expiresAt,
+  DateTime? obtainedAt,
+})
+
+factory TomOAuthTokenGrant.fromTokenResponse(
+  Map<String, Object?> response, {
+  TomOAuthTokenGrant? previous,
+  DateTime? now,
+})
+```
+
+`fromTokenResponse` turns the provider's relative `expires_in` into an instant,
+because the duration was only ever meaningful relative to a response that is long
+gone by the time anything reads it back. `previous` is what keeps the long-lived
+credential alive across a refresh: RFC 6749 §6 permits omitting `refresh_token`
+from a refresh response, meaning *keep the one you have*, and a reader that took
+the omission literally would work perfectly until the access token expired.
+
+#### Fields
+
+| Field | Type | Notes |
+| ----- | ---- | ----- |
+| `accessToken` | `String` | The bearer token to present to the provider's API. |
+| `refreshToken` | `String?` | Mints a new access token, or `null`. Absent far more often than deployments expect — most providers return one only when explicitly asked. |
+| `tokenType` | `String` | `Bearer` in every practical case. |
+| `scope` | `String` | The *granted* scopes, which may be narrower than the requested ones. What an application must check before assuming a capability, not `TomOAuthProviderConfig.scopes`. |
+| `expiresAt` | `DateTime?` | When the access token stops being accepted (UTC), or `null` when the provider declared no lifetime. |
+| `obtainedAt` | `DateTime` | When the grant was obtained (UTC). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `hasRefreshToken` | `bool get hasRefreshToken` | Whether the grant can mint a fresh access token by itself. |
+| `isExpired` | `bool isExpired([DateTime? now])` | Whether the access token has expired. A grant with no declared lifetime is never expired — the provider said nothing, and guessing would throw away a working token. |
+| `expiresWithin` | `bool expiresWithin(Duration margin, [DateTime? now])` | The question a caller actually has: not "is it still valid?" but "will it still be valid when the request arrives?". |
+| `toJson` | `Map<String, Object?> toJson()` | The JSON that goes into the encrypted column. |
+| `fromJson` | `static TomOAuthTokenGrant? fromJson(Object? json)` | Reads it back, or `null` for anything malformed. Nullable rather than throwing: the input has been through storage and possibly a key rotation, and "unreadable" has one sane response — treat the user as having granted nothing. |
+| `toString` | `String toString()` | Names the grant **without printing either token**. Both are credentials and this value reaches log lines. |
+
+### TomOAuthTokenStore
+
+Where a grant lives, keyed `(issuer, subject)` — the same key as the identity
+link, because a grant belongs to the external identity that consented to it.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `read` | `Future<TomOAuthTokenGrant?> read(String issuer, String subject)` | The held grant, or `null`. |
+| `store` | `Future<void> store(String issuer, String subject, TomOAuthTokenGrant grant)` | Records or replaces it. One row per identity — a second would make which credential an application presents depend on row order. |
+| `delete` | `Future<void> delete(String issuer, String subject)` | Removes it. A no-op when nothing is held. |
+| `resolve` | `static TomOAuthTokenStore? resolve()` | The installed bean, or `null`. There is deliberately **no default**: unregistered means nothing is ever stored, which is the state a deployment that only wanted "Sign in with …" must land in without configuring anything. |
+
+### TomMemoryOAuthTokenStore
+
+A map-backed store for tests and single-process bring-up. Not a production
+default — a grant that vanishes on restart is a user sent through consent again.
+
+### TomExternalIdentityToken
+
+One persisted grant. `@tomReflector`,
+`@TomDbTable(table: 'tom_external_identity_token')`.
+
+| Field | Column | Notes |
+| ----- | ------ | ----- |
+| `id` | `id` | Surrogate key, `-1` until persisted. |
+| `issuer` | `issuer` | The provider's issuer identifier. |
+| `subject` | `subject` | The provider's stable identifier for the user, within `issuer`. |
+| `tokenData` | `token_data` | The **whole grant, encrypted** — `TomOAuthTokenGrant.toJson` through `TomJwtConfiguration.encrypt`. Neither token is ever written in the clear. |
+| `tokenScope` | `token_scope` | The granted scopes, deliberately **not** encrypted. |
+| `obtainedAt` | `obtained_at` | When the grant was obtained, deliberately **not** encrypted. |
+| `expiresAt` | `expires_at` | When the access token expires, deliberately **not** encrypted. |
+
+The three cleartext columns are the *operator projection*: "is this grant live,
+and what does it cover?" must be answerable by a query, because an operator who
+has to hold the private key to answer it defeats the point of encrypting the
+rest. None of the three is authoritative — the values the code decides from live
+inside `token_data` — so a projection that drifted could not cause a stale token
+to be presented.
+
+`createTableSql` makes `(issuer, subject)` unique, matching the key of
+`tom_external_identity`. There is deliberately **no foreign key** to that table,
+because a deployment may keep its identity links in a table of its own and still
+let the framework hold the credentials; the retention bound is enforced in code
+by `TomExternalIdentityStore.unlink` instead.
+
+### TomExternalIdentityTokenRepository
+
+`TomSqlDatasourceRepository<TomExternalIdentityToken, int>`.
+
+### TomPersistentOAuthTokenStore
+
+The production implementation, over a
+`TomSqlDatasourceRepository<TomExternalIdentityToken, int>`.
+
+```dart
+const TomPersistentOAuthTokenStore(
+  TomSqlDatasourceRepository<TomExternalIdentityToken, int> repository, {
+  TomJwtConfiguration? cipher,
+})
+```
+
+`cipher` is resolved per call, falling back to
+`TomJwtConfiguration.defaultSignConfiguration` — the same at-rest primitive
+behind a 2FA enrolment secret. Requires the `tom_external_identity_token` table;
+the reference migration is
+`example/authentication/migrations/main/tomcore/[3]-create_tom_external_identity_token.sql`.
 
 ### TomExternalIdentityLink
 
@@ -1687,6 +1844,7 @@ The linking table.
 | ------ | --------- | ----------- |
 | `localUsernameFor` | `Future<String?> localUsernameFor(TomExternalIdentity identity)` | The linked account, or `null`. |
 | `link` | `Future<void> link(TomExternalIdentity identity, String localUsername)` | Creates or updates the link. Relinking updates rather than duplicating. |
+| `unlink` | `Future<void> unlink(String issuer, String subject)` | Removes the link **and every provider token held through it**, in that order. The cascade is part of the contract rather than the caller's responsibility: leaving the two deletions to whoever wrote the account-settings page fails in the one direction that matters — the user pressed *disconnect*, the page said *disconnected*, and the deployment still holds a live refresh token for their mailbox. Removing a link that is not there is a no-op. |
 | `recordLogin` | `Future<void> recordLogin(TomExternalIdentity identity)` | Stamps `lastLoginAt`. |
 | `identitiesOf` | `Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername)` | Every identity linked to an account — the account-settings question. |
 | `resolve` | `static TomExternalIdentityStore? resolve()` | The installed bean, or `null`. There is deliberately **no in-memory default**: a link that vanishes on restart sends a returning user through provisioning again. |
@@ -1697,13 +1855,20 @@ The production implementation, over a
 `TomSqlDatasourceRepository<TomExternalIdentityLink, int>`.
 
 ```dart
-const TomPersistentExternalIdentityStore(TomSqlDatasourceRepository<TomExternalIdentityLink, int> repository)
+const TomPersistentExternalIdentityStore(
+  TomSqlDatasourceRepository<TomExternalIdentityLink, int> repository, {
+  TomOAuthTokenStore? tokenStore,
+})
 ```
+
+`tokenStore` is what `unlink` cascades into; left unset it follows the installed
+`TomOAuthTokenStore` bean at *call* time, so a deployment that wires its token
+store after its identity store still gets the cascade.
 
 ### TomMemoryExternalIdentityStore
 
 A map-backed store for tests. Not a production default — see
-`TomExternalIdentityStore.resolve`.
+`TomExternalIdentityStore.resolve`. Takes the same optional `tokenStore`.
 
 ### TomOAuthCredential
 
@@ -1749,6 +1914,7 @@ const TomOAuthAuthenticationService({
   TomAuthenticationService? delegate,
   TomOAuthFlow? flow,
   TomExternalIdentityStore? identityStore,
+  TomOAuthTokenStore? tokenStore,
 })
 ```
 
@@ -1756,6 +1922,11 @@ const TomOAuthAuthenticationService({
 authentication service, so any credential that is not a `TomOAuthCredential`
 passes straight through. `null` makes external identity the only way in — a
 legitimate choice, and not the default one.
+
+`tokenStore` is where a retained grant goes, following the installed
+`TomOAuthTokenStore` bean when unset. Retention happens only where the provider
+declared `storeTokens: true`, and the service still issues no token and makes no
+session decision — it writes the provider's grant and stops.
 
 #### Methods
 

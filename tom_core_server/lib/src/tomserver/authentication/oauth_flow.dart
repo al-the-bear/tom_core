@@ -54,6 +54,7 @@ import 'package:http/http.dart' as http;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'oauth_provider.dart';
+import 'oauth_tokens.dart';
 
 /// A PKCE verifier / challenge pair (RFC 7636).
 ///
@@ -366,8 +367,25 @@ class TomOAuthExchange {
   /// must be issued in.
   final TomOAuthAuthorizationState pending;
 
+  /// What the provider's token endpoint returned, or `null` when it returned no
+  /// usable access token.
+  ///
+  /// Surfaced **always**, and retained only on request. The grant is already in
+  /// memory for the duration of this request — the flow needed it to reach the
+  /// claims — so handing it over costs nothing and lengthens nothing, and it is
+  /// what makes the framework's "keeps nothing by default" position usable
+  /// rather than merely restrictive: a deployment with its own credential vault
+  /// can take the grant here and never touch [TomOAuthTokenStore]. What it must
+  /// not do is start a *second* authorization flow to obtain what this one
+  /// already had.
+  ///
+  /// Whether the framework itself keeps a copy is
+  /// [TomOAuthProviderConfig.storeTokens], and that decision is made after the
+  /// login succeeds — not here.
+  final TomOAuthTokenGrant? tokens;
+
   /// Pairs an identity with the flow it completes.
-  const TomOAuthExchange(this.identity, this.pending);
+  const TomOAuthExchange(this.identity, this.pending, {this.tokens});
 }
 
 /// Drives the authorization-code + PKCE handshake.
@@ -437,6 +455,10 @@ class TomOAuthFlow {
         // existing query is preserved and the flow's parameters are added to it
         // rather than replacing it.
         ...Uri.parse(provider.authorizationEndpoint).queryParameters,
+        // Configured extras next — `access_type=offline`, `prompt=consent`, a
+        // tenant — and deliberately *before* the flow's own, so a typo in
+        // configuration cannot replace the state handle or the redirect URI.
+        ...provider.authorizationParameters,
         'response_type': 'code',
         'client_id': provider.clientId,
         'redirect_uri': provider.redirectUri,
@@ -482,22 +504,122 @@ class TomOAuthFlow {
     final provider = providers[pending.providerId];
     final tokens = await _exchangeCode(provider, pending, code);
     final claims = await _claimsFor(provider, tokens);
-    return TomOAuthExchange(_identityFor(provider, claims), pending);
+    final grant = TomOAuthTokenGrant.fromTokenResponse(tokens);
+    return TomOAuthExchange(
+      _identityFor(provider, claims),
+      pending,
+      // A grant with no access token is not a grant: an OIDC provider that
+      // answered with an `id_token` alone has authenticated the user and
+      // delegated nothing, and handing back an empty bearer token would let a
+      // caller present `Authorization: Bearer ` to an API.
+      tokens: grant.accessToken.isEmpty ? null : grant,
+    );
   }
 
-  /// The token-endpoint call.
+  /// Exchanges [grant]'s refresh token for a fresh one at [providerId].
+  ///
+  /// **This is not a login.** It consults no [TomAuthenticationService], asks no
+  /// 2FA policy, touches no session and produces no principal — it is one HTTP
+  /// call to a token endpoint on behalf of a user who consented some time ago.
+  /// Reusing the login path here is the drift the C-9 seam exists to prevent:
+  /// the login path's job is to decide *who someone is*, and a background job
+  /// refreshing a calendar token has already had that decided for it.
+  ///
+  /// Throws when the grant carries no refresh token — the caller cannot recover
+  /// by retrying and must send the user through consent again, which is a
+  /// different action, not a slower one.
+  Future<TomOAuthTokenGrant> refreshGrant({
+    required String providerId,
+    required TomOAuthTokenGrant grant,
+  }) async {
+    final provider = providers[providerId];
+    final refreshToken = grant.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      throw TomOAuthException(
+        'oauth.flow.no_refresh_token',
+        "The grant for provider '$providerId' carries no refresh token, so a "
+            'new access token can only be obtained by asking the user to '
+            'authorize again.',
+      );
+    }
+    final response = await _postTokenRequest(provider, <String, String>{
+      'grant_type': 'refresh_token',
+      'refresh_token': refreshToken,
+      'client_id': provider.clientId,
+      // The scope is echoed so a provider that narrows an unrequested refresh
+      // cannot silently hand back less than the application already relies on.
+      if (grant.scope.isNotEmpty) 'scope': grant.scope,
+    }, 'token refresh');
+    // `previous` is what keeps the long-lived credential alive: RFC 6749 §6
+    // permits omitting `refresh_token` from the response, and taking that
+    // omission literally would work perfectly until the access token expired.
+    return TomOAuthTokenGrant.fromTokenResponse(response, previous: grant);
+  }
+
+  /// A live access token for `(issuer, subject)` at [providerId], refreshing it
+  /// when it is within [minimumValidity] of expiry.
+  ///
+  /// The method an application actually calls before reaching a provider's API,
+  /// and the reason [refreshGrant] alone would not have been enough: "is this
+  /// still valid, and if not, renew it and remember the renewal" is three steps
+  /// that every caller would otherwise write, and the caller that writes them
+  /// wrong writes back nothing — so every call refreshes, and the provider's
+  /// rate limiter eventually says so.
+  ///
+  /// Answers `null` when nothing is held for the identity, when the held grant
+  /// has expired and cannot be refreshed, or when no [TomOAuthTokenStore] is
+  /// installed at all — the deployment's cue to send the user through consent.
+  /// A failed *refresh* throws, because a provider that rejected a refresh token
+  /// it issued is an event an operator needs to see rather than an empty answer
+  /// a job retries forever.
+  Future<TomOAuthTokenGrant?> accessTokenFor({
+    required String providerId,
+    required String subject,
+    Duration minimumValidity = const Duration(seconds: 30),
+    TomOAuthTokenStore? store,
+  }) async {
+    final provider = providers[providerId];
+    final tokenStore = store ?? TomOAuthTokenStore.resolve();
+    if (tokenStore == null) return null;
+
+    final held = await tokenStore.read(provider.issuer, subject);
+    if (held == null) return null;
+    if (!held.expiresWithin(minimumValidity)) return held;
+    if (!held.hasRefreshToken) return null;
+
+    final refreshed = await refreshGrant(providerId: providerId, grant: held);
+    await tokenStore.store(provider.issuer, subject, refreshed);
+    return refreshed;
+  }
+
+  /// The authorization-code exchange.
   Future<Map<String, Object?>> _exchangeCode(
     TomOAuthProviderConfig provider,
     TomOAuthAuthorizationState pending,
     String code,
+  ) => _postTokenRequest(provider, <String, String>{
+    'grant_type': 'authorization_code',
+    'code': code,
+    'redirect_uri': provider.redirectUri,
+    'client_id': provider.clientId,
+    if (pending.pkce != null) 'code_verifier': pending.pkce!.verifier,
+  }, 'code exchange');
+
+  /// One call to the provider's token endpoint, with client authentication.
+  ///
+  /// Shared by the code exchange and the refresh because the two differ only in
+  /// their form: the endpoint, the `client_secret_basic` header and the
+  /// error-shaped-200 handling are identical, and a second copy of them is a
+  /// second place for the client secret to be presented differently. [what]
+  /// names the grant this call performs, and appears in both failures — which
+  /// is the difference between a five-minute and a one-hour investigation when a
+  /// provider answers `200` with an HTML error page, or rejects a refresh and
+  /// the log says "code exchange".
+  Future<Map<String, Object?>> _postTokenRequest(
+    TomOAuthProviderConfig provider,
+    Map<String, String> form,
+    String what,
   ) async {
-    final form = <String, String>{
-      'grant_type': 'authorization_code',
-      'code': code,
-      'redirect_uri': provider.redirectUri,
-      'client_id': provider.clientId,
-      if (pending.pkce != null) 'code_verifier': pending.pkce!.verifier,
-    };
     final headers = <String, String>{'Accept': 'application/json'};
     final secret = provider.clientSecret;
     if (secret != null) {
@@ -514,11 +636,11 @@ class TomOAuthFlow {
       form,
       headers,
     );
-    final decoded = _decodeJsonObject(body, 'token response');
+    final decoded = _decodeJsonObject(body, '$what response');
     if (decoded['error'] != null) {
       throw TomOAuthException(
         'oauth.flow.token_exchange_rejected',
-        "The provider rejected the code exchange: ${decoded['error']} "
+        "The provider rejected the $what: ${decoded['error']} "
             "${decoded['error_description'] ?? ''}",
       );
     }

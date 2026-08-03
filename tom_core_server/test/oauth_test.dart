@@ -12,6 +12,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -1104,6 +1105,593 @@ void main() {
           '(local_username)',
         ),
       );
+    });
+  });
+
+  // ===========================================================================
+  // PROVIDER TOKEN RETENTION (TCCB7)
+  // ===========================================================================
+  //
+  // Delegated authorization, not authentication: what the framework may *do* as
+  // the user at a third party, rather than who the user is. The framework's
+  // position is that it holds nothing unless a provider opts in — so the tests
+  // that matter most here are the ones asserting the *absence* of a stored
+  // credential, and the one asserting a stored credential dies with its link.
+
+  group('TomOAuthTokenGrant', () {
+    test('turns the provider expires_in into an instant', () {
+      final at = DateTime.utc(2026, 5, 6, 7, 8, 9);
+      final grant = TomOAuthTokenGrant.fromTokenResponse(const {
+        'access_token': 'at-1',
+        'refresh_token': 'rt-1',
+        'token_type': 'Bearer',
+        'scope': 'calendar.read',
+        'expires_in': 3600,
+      }, now: at);
+
+      expect(grant.accessToken, 'at-1');
+      expect(grant.refreshToken, 'rt-1');
+      expect(grant.scope, 'calendar.read');
+      expect(grant.obtainedAt, at);
+      expect(grant.expiresAt, at.add(const Duration(hours: 1)));
+    });
+
+    // A few providers send the lifetime as a string; a lifetime nobody can
+    // parse is treated as unstated rather than as already expired.
+    test('accepts a numeric-string lifetime and ignores an unparseable one', () {
+      final at = DateTime.utc(2026, 5, 6);
+      expect(
+        TomOAuthTokenGrant.fromTokenResponse(const {
+          'access_token': 'at-1',
+          'expires_in': '900',
+        }, now: at).expiresAt,
+        at.add(const Duration(minutes: 15)),
+      );
+      expect(
+        TomOAuthTokenGrant.fromTokenResponse(const {
+          'access_token': 'at-1',
+          'expires_in': 'soon',
+        }, now: at).expiresAt,
+        isNull,
+      );
+    });
+
+    // RFC 6749 §6: omitting `refresh_token` from a refresh response means "keep
+    // the one you have". Taking the omission literally would discard the
+    // long-lived credential on the first refresh and work perfectly until the
+    // access token expired.
+    test('a refresh response that omits the refresh token keeps it', () {
+      final previous = TomOAuthTokenGrant(
+        accessToken: 'at-1',
+        refreshToken: 'rt-1',
+        scope: 'calendar.read',
+      );
+      final refreshed = TomOAuthTokenGrant.fromTokenResponse(const {
+        'access_token': 'at-2',
+      }, previous: previous);
+
+      expect(refreshed.accessToken, 'at-2');
+      expect(refreshed.refreshToken, 'rt-1');
+      expect(refreshed.scope, 'calendar.read');
+    });
+
+    // The question a caller has is not "is it valid now?" but "will it still be
+    // valid when the request arrives?".
+    test('expiresWithin answers for the moment the token will be used', () {
+      final now = DateTime.utc(2026, 5, 6, 12);
+      final grant = TomOAuthTokenGrant(
+        accessToken: 'at-1',
+        expiresAt: now.add(const Duration(seconds: 20)),
+      );
+
+      expect(grant.isExpired(now), isFalse);
+      expect(grant.expiresWithin(const Duration(seconds: 10), now), isFalse);
+      expect(grant.expiresWithin(const Duration(seconds: 30), now), isTrue);
+    });
+
+    // The provider said nothing about a lifetime; guessing one throws away a
+    // working token.
+    test('a grant with no declared lifetime never expires', () {
+      final grant = TomOAuthTokenGrant(accessToken: 'at-1');
+      expect(grant.isExpired(), isFalse);
+      expect(grant.expiresWithin(const Duration(days: 365)), isFalse);
+    });
+
+    // This value reaches log lines, and both fields are bearer credentials.
+    test('toString names the grant without printing either token', () {
+      final text = TomOAuthTokenGrant(
+        accessToken: 'at-secret',
+        refreshToken: 'rt-secret',
+        scope: 'calendar.read',
+      ).toString();
+
+      expect(text, isNot(contains('at-secret')));
+      expect(text, isNot(contains('rt-secret')));
+      expect(text, contains('refreshable'));
+      expect(text, contains('calendar.read'));
+    });
+
+    test('survives the JSON round trip that storage uses', () {
+      final grant = TomOAuthTokenGrant(
+        accessToken: 'at-1',
+        refreshToken: 'rt-1',
+        tokenType: 'Bearer',
+        scope: 'calendar.read mail.send',
+        expiresAt: DateTime.utc(2026, 5, 6, 8),
+        obtainedAt: DateTime.utc(2026, 5, 6, 7),
+      );
+
+      final read = TomOAuthTokenGrant.fromJson(
+        jsonDecode(jsonEncode(grant.toJson())),
+      )!;
+
+      expect(read.accessToken, grant.accessToken);
+      expect(read.refreshToken, grant.refreshToken);
+      expect(read.tokenType, grant.tokenType);
+      expect(read.scope, grant.scope);
+      expect(read.expiresAt, grant.expiresAt);
+      expect(read.obtainedAt, grant.obtainedAt);
+    });
+
+    // A row written under a key that has since been rotated away decodes to
+    // rubbish, and "the user granted nothing" is the only sane reading of it.
+    test('fromJson refuses a payload that carries no access token', () {
+      expect(TomOAuthTokenGrant.fromJson(null), isNull);
+      expect(TomOAuthTokenGrant.fromJson('not json'), isNull);
+      expect(TomOAuthTokenGrant.fromJson(const {'tokenType': 'Bearer'}), isNull);
+      expect(TomOAuthTokenGrant.fromJson(const {'accessToken': ''}), isNull);
+    });
+  });
+
+  group('TomOAuthTokenStore', () {
+    test('stores, reads back and deletes a grant', () async {
+      final store = TomMemoryOAuthTokenStore();
+      expect(await store.read(_issuer, 'sub-1'), isNull);
+
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(accessToken: 'at-1', refreshToken: 'rt-1'),
+      );
+      expect((await store.read(_issuer, 'sub-1'))!.accessToken, 'at-1');
+
+      await store.delete(_issuer, 'sub-1');
+      expect(await store.read(_issuer, 'sub-1'), isNull);
+    });
+
+    // The subject is unique only within its issuer, exactly as for the link.
+    test('the key is the (issuer, subject) pair, not the subject', () async {
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(_issuer, 'sub-1', TomOAuthTokenGrant(accessToken: 'a'));
+      expect(await store.read('https://other.example.test', 'sub-1'), isNull);
+    });
+
+    // A second grant for the same identity would make which credential an
+    // application presents depend on row order — and the older row is by
+    // definition the one whose refresh token may already have been rotated away.
+    test('the entity DDL keys the pair uniquely', () {
+      expect(
+        TomExternalIdentityToken.createTableSql,
+        contains(
+          'UNIQUE KEY uq_tom_external_identity_token (issuer, '
+          'subject)',
+        ),
+      );
+    });
+
+    // No store installed is the ordinary state, and the safe one: nothing can
+    // be written where there is nowhere to write it.
+    test('resolves to null when no store bean is installed', () {
+      expect(TomOAuthTokenStore.resolve(), isNull);
+    });
+  });
+
+  group('reference db_migration SQL for retained tokens', () {
+    final file = File(
+      'example/authentication/migrations/main/tomcore/'
+      '[3]-create_tom_external_identity_token.sql',
+    );
+
+    test('ships under the db_migration directory convention', () {
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason: 'the reference migration must exist under example/',
+      );
+    });
+
+    test('filename matches the migration discovery regex', () {
+      // Mirrors db_migration.dart: RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').
+      final name = file.uri.pathSegments.last.replaceAll('.sql', '');
+      final match = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').firstMatch(name);
+      expect(match, isNotNull);
+      expect(match!.group(1), '3');
+      expect(match.group(2), 'create_tom_external_identity_token');
+    });
+
+    // A migration that described a different table from the entity would fail
+    // at the first read, in production, having applied cleanly.
+    test('reproduces the entity DDL verbatim', () {
+      expect(
+        file.readAsStringSync(),
+        contains(TomExternalIdentityToken.createTableSql.trim()),
+      );
+    });
+  });
+
+  group('TomOAuthFlow provider tokens', () {
+    /// A provider that opts in to retention, optionally with extra
+    /// authorization parameters.
+    TomOAuthProviderConfig delegating({
+      Map<String, String> authorizationParameters = const {},
+    }) => TomOAuthProviderConfig(
+      id: 'stub',
+      issuer: _issuer,
+      authorizationEndpoint: '$_issuer/authorize',
+      tokenEndpoint: '$_issuer/token',
+      clientId: _clientId,
+      clientSecret: 'sh-sh-secret',
+      redirectUri: 'https://app.example.test/oauth/callback',
+      scopes: const ['openid', 'email'],
+      storeTokens: true,
+      authorizationParameters: authorizationParameters,
+    );
+
+    /// The token response of a provider that also delegated something.
+    Map<String, Object?> delegatingResponse({
+      String accessToken = 'at-1',
+      String? refreshToken = 'rt-1',
+      Object? expiresIn = 3600,
+    }) => <String, Object?>{
+      'access_token': accessToken,
+      if (refreshToken != null) 'refresh_token': refreshToken,
+      'token_type': 'Bearer',
+      'scope': 'openid email',
+      if (expiresIn != null) 'expires_in': expiresIn,
+      'id_token': _idToken(_claims()),
+    };
+
+    /// Runs the handshake to the point where the exchange is available.
+    Future<TomOAuthExchange> complete(
+      TomOAuthProviderConfig provider,
+      _StubTransport transport,
+    ) async {
+      final flow = _flow(provider, transport);
+      final begun = await flow.beginAuthorization(_authorizationRequest());
+      return flow.completeAuthorization(code: 'c', state: begun.state);
+    }
+
+    // Always surfaced, so "keeps nothing" is a retention decision rather than a
+    // capability the framework withholds: a caller that wants to use the grant
+    // for the duration of this request may, without any store at all.
+    test('completeAuthorization surfaces the provider grant', () async {
+      final exchange = await complete(
+        _oidcProvider(),
+        _StubTransport(tokenResponse: delegatingResponse()),
+      );
+
+      expect(exchange.tokens, isNotNull);
+      expect(exchange.tokens!.accessToken, 'at-1');
+      expect(exchange.tokens!.refreshToken, 'rt-1');
+      expect(exchange.tokens!.scope, 'openid email');
+    });
+
+    // An OIDC provider that answered with an `id_token` alone authenticated the
+    // user and delegated nothing; an empty bearer token is not a grant.
+    test('an id_token-only response surfaces no grant', () async {
+      final exchange = await complete(
+        _oidcProvider(),
+        _StubTransport(
+          tokenResponse: <String, Object?>{'id_token': _idToken(_claims())},
+        ),
+      );
+      expect(exchange.tokens, isNull);
+    });
+
+    // Opting in on Google without `access_type=offline` yields no refresh token
+    // at all, so the opt-in needs a way to say what the provider requires.
+    test('configured authorization parameters reach the redirect', () async {
+      final flow = _flow(
+        delegating(
+          authorizationParameters: const {
+            'access_type': 'offline',
+            'prompt': 'consent',
+          },
+        ),
+        _StubTransport(),
+      );
+
+      final uri = Uri.parse(
+        (await flow.beginAuthorization(_authorizationRequest())).authorizationUri,
+      );
+
+      expect(uri.queryParameters['access_type'], 'offline');
+      expect(uri.queryParameters['prompt'], 'consent');
+    });
+
+    // Configured extras are applied before the flow's own parameters, so a typo
+    // in deployment configuration cannot unpick the CSRF handle or send the
+    // provider's redirect somewhere else.
+    test('a configured parameter cannot override the flow parameters', () async {
+      final flow = _flow(
+        delegating(
+          authorizationParameters: const {
+            'state': 'attacker-chosen',
+            'redirect_uri': 'https://evil.example.test/collect',
+          },
+        ),
+        _StubTransport(),
+      );
+
+      final dto = await flow.beginAuthorization(_authorizationRequest());
+      final uri = Uri.parse(dto.authorizationUri);
+
+      expect(uri.queryParameters['state'], dto.state);
+      expect(uri.queryParameters['state'], isNot('attacker-chosen'));
+      expect(
+        uri.queryParameters['redirect_uri'],
+        'https://app.example.test/oauth/callback',
+      );
+    });
+
+    // Refreshing is not a login. The proof is that it works with no
+    // authorization state, no code, no PKCE verifier and no directory — none of
+    // which a login can do without — and answers a grant rather than a
+    // principal.
+    test('refreshGrant renews a token without running a login', () async {
+      final transport = _StubTransport(
+        tokenResponse: <String, Object?>{
+          'access_token': 'at-2',
+          'token_type': 'Bearer',
+          'expires_in': 3600,
+        },
+      );
+      final flow = _flow(delegating(), transport);
+
+      final refreshed = await flow.refreshGrant(
+        providerId: 'stub',
+        grant: TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          refreshToken: 'rt-1',
+          scope: 'openid email',
+        ),
+      );
+
+      expect(refreshed, isA<TomOAuthTokenGrant>());
+      expect(refreshed.accessToken, 'at-2');
+      // Kept, because the provider omitted it.
+      expect(refreshed.refreshToken, 'rt-1');
+
+      expect(transport.postedForm!['grant_type'], 'refresh_token');
+      expect(transport.postedForm!['refresh_token'], 'rt-1');
+      expect(transport.postedForm!['scope'], 'openid email');
+      expect(transport.postedForm, isNot(contains('code')));
+      expect(transport.postedForm, isNot(contains('code_verifier')));
+    });
+
+    // The caller cannot recover by retrying; it has to send the user through
+    // consent again, which is a different action rather than a slower one.
+    test('refreshGrant refuses a grant with no refresh token', () async {
+      final flow = _flow(delegating(), _StubTransport());
+      await expectLater(
+        flow.refreshGrant(
+          providerId: 'stub',
+          grant: TomOAuthTokenGrant(accessToken: 'at-1'),
+        ),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.flow.no_refresh_token',
+          ),
+        ),
+      );
+    });
+
+    test('accessTokenFor answers the held token while it is live', () async {
+      final transport = _StubTransport();
+      final flow = _flow(delegating(), transport);
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          refreshToken: 'rt-1',
+          expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+        ),
+      );
+
+      final live = await flow.accessTokenFor(
+        providerId: 'stub',
+        subject: 'sub-1',
+        store: store,
+      );
+
+      expect(live!.accessToken, 'at-1');
+      // A live token must not cost a round trip; a caller that refreshed on
+      // every call would meet the provider's rate limiter.
+      expect(transport.postedForm, isNull);
+    });
+
+    test('accessTokenFor refreshes near expiry and writes the result back', () async {
+      final transport = _StubTransport(
+        tokenResponse: <String, Object?>{
+          'access_token': 'at-2',
+          'token_type': 'Bearer',
+          'expires_in': 3600,
+        },
+      );
+      final flow = _flow(delegating(), transport);
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          refreshToken: 'rt-1',
+          expiresAt: DateTime.now().toUtc().add(const Duration(seconds: 5)),
+        ),
+      );
+
+      final live = await flow.accessTokenFor(
+        providerId: 'stub',
+        subject: 'sub-1',
+        store: store,
+      );
+
+      expect(live!.accessToken, 'at-2');
+      expect(transport.postedForm!['grant_type'], 'refresh_token');
+      // Written back, or the next call refreshes again and the one after that.
+      expect((await store.read(_issuer, 'sub-1'))!.accessToken, 'at-2');
+    });
+
+    test('accessTokenFor answers null when nothing is held', () async {
+      final flow = _flow(delegating(), _StubTransport());
+      expect(
+        await flow.accessTokenFor(
+          providerId: 'stub',
+          subject: 'sub-1',
+          store: TomMemoryOAuthTokenStore(),
+        ),
+        isNull,
+      );
+    });
+
+    // The deployment's cue to send the user through consent again.
+    test('accessTokenFor answers null for an unrefreshable expired grant', () async {
+      final flow = _flow(delegating(), _StubTransport());
+      final store = TomMemoryOAuthTokenStore();
+      await store.store(
+        _issuer,
+        'sub-1',
+        TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          expiresAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+        ),
+      );
+
+      expect(
+        await flow.accessTokenFor(
+          providerId: 'stub',
+          subject: 'sub-1',
+          store: store,
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('provider token retention', () {
+    /// Runs a whole external login, answering the token store it ran against.
+    Future<TomMemoryOAuthTokenStore> login({
+      required bool storeTokens,
+      required TomExternalIdentityStore identityStore,
+      TomMemoryOAuthTokenStore? tokenStore,
+    }) async {
+      final flow = _flow(
+        TomOAuthProviderConfig(
+          id: 'stub',
+          issuer: _issuer,
+          authorizationEndpoint: '$_issuer/authorize',
+          tokenEndpoint: '$_issuer/token',
+          clientId: _clientId,
+          redirectUri: 'https://app.example.test/oauth/callback',
+          storeTokens: storeTokens,
+        ),
+        _StubTransport(
+          tokenResponse: <String, Object?>{
+            'access_token': 'at-1',
+            'refresh_token': 'rt-1',
+            'token_type': 'Bearer',
+            'expires_in': 3600,
+            'id_token': _idToken(_claims()),
+          },
+        ),
+      );
+      final tokens = tokenStore ?? TomMemoryOAuthTokenStore();
+      final begun = await flow.beginAuthorization(_authorizationRequest());
+      final service = TomOAuthAuthenticationService(
+        directory: _StubDirectory(accounts: {'alice'}),
+        flow: flow,
+        identityStore: identityStore,
+        tokenStore: tokens,
+      );
+      final data = _authData()
+        ..key = TomOAuthCredential(code: 'c', state: begun.state);
+      await service.authenticateUser(data);
+      return tokens;
+    }
+
+    Future<TomMemoryExternalIdentityStore> linkedStore(
+      TomOAuthTokenStore tokens,
+    ) async {
+      final store = TomMemoryExternalIdentityStore(tokenStore: tokens);
+      await store.link(
+        const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+        'alice',
+      );
+      return store;
+    }
+
+    // The framework's position, asserted rather than merely written down: a
+    // deployment that only wants "Sign in with …" never acquires a third-party
+    // credential it did not ask for, even with a store installed.
+    test('a provider that did not opt in has nothing retained', () async {
+      final tokens = TomMemoryOAuthTokenStore();
+      await login(
+        storeTokens: false,
+        identityStore: await linkedStore(tokens),
+        tokenStore: tokens,
+      );
+      expect(await tokens.read(_issuer, 'sub-1'), isNull);
+    });
+
+    test('a provider that opts in has its grant retained', () async {
+      final tokens = TomMemoryOAuthTokenStore();
+      await login(
+        storeTokens: true,
+        identityStore: await linkedStore(tokens),
+        tokenStore: tokens,
+      );
+
+      final held = await tokens.read(_issuer, 'sub-1');
+      expect(held, isNotNull);
+      expect(held!.accessToken, 'at-1');
+      expect(held.refreshToken, 'rt-1');
+      expect(held.expiresAt, isNotNull);
+    });
+
+    // The retention bound: a third-party credential must never outlive the link
+    // it was granted through, and this is the method that makes that true.
+    test('unlinking an identity deletes the grant with it', () async {
+      final tokens = TomMemoryOAuthTokenStore();
+      final identities = await linkedStore(tokens);
+      await login(
+        storeTokens: true,
+        identityStore: identities,
+        tokenStore: tokens,
+      );
+      expect(await tokens.read(_issuer, 'sub-1'), isNotNull);
+
+      await identities.unlink(_issuer, 'sub-1');
+
+      expect(await tokens.read(_issuer, 'sub-1'), isNull);
+      expect(
+        await identities.localUsernameFor(
+          const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+        ),
+        isNull,
+      );
+    });
+
+    // Unlinking an identity nobody linked is a no-op, not an error: a cascade
+    // that threw would make deleting an account depend on the order it was
+    // taken apart in.
+    test('unlinking an identity that was never linked is a no-op', () async {
+      final tokens = TomMemoryOAuthTokenStore();
+      final identities = TomMemoryExternalIdentityStore(tokenStore: tokens);
+      await identities.unlink(_issuer, 'nobody');
     });
   });
 

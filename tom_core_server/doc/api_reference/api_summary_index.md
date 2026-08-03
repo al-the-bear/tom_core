@@ -142,6 +142,12 @@ surface documented here.
 | `TomMemoryExternalIdentityStore` | class | In-memory linking table, for tests and dev servers. |
 | `TomExternalIdentityLink` | class | One persisted link row. |
 | `TomExternalIdentityLinkRepository` | class | SQL repository for `TomExternalIdentityLink`. |
+| `TomOAuthTokenGrant` | class | One provider grant — access token, refresh token, scopes, lifetime. Prints neither token. |
+| `TomOAuthTokenStore` | abstract class | Where a grant lives, keyed (issuer, subject). Unregistered means nothing is ever stored. |
+| `TomMemoryOAuthTokenStore` | class | In-memory grant store, for tests and dev servers. |
+| `TomPersistentOAuthTokenStore` | class | Grant store over `tom_external_identity_token`, encrypted at rest. |
+| `TomExternalIdentityToken` | class | One persisted grant row: the encrypted grant plus its operator projection. |
+| `TomExternalIdentityTokenRepository` | class | SQL repository for `TomExternalIdentityToken`. |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints. |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake (extends `TomServerException`). |
 
@@ -695,6 +701,8 @@ surface documented here.
 | `TomExternalIdentityLink` | Authentication |
 | `TomExternalIdentityLinkRepository` | Authentication |
 | `TomExternalIdentityStore` | Authentication |
+| `TomExternalIdentityToken` | Authentication |
+| `TomExternalIdentityTokenRepository` | Authentication |
 | `TomFieldMappedSmsProtocol` | Messaging |
 | `TomFileAuditAnchorStore` | Audit |
 | `TomFileAuditSink` | Audit |
@@ -720,6 +728,7 @@ surface documented here.
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
 | `TomMemoryMessageTransport` | Messaging |
+| `TomMemoryOAuthTokenStore` | Authentication |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
 | `TomMessageChannel` | Messaging |
@@ -749,6 +758,8 @@ surface documented here.
 | `TomOAuthStateStore` | Authentication |
 | `TomOAuthStateStoreSettings` | Authentication |
 | `TomOAuthStateStoreType` | Authentication |
+| `TomOAuthTokenGrant` | Authentication |
+| `TomOAuthTokenStore` | Authentication |
 | `TomOAuthTokenTransport` | Authentication |
 | `TomOperator` | Datasources |
 | `tomOutboxJobName` | Messaging |
@@ -756,6 +767,7 @@ surface documented here.
 | `TomPermanentDeliveryException` | Messaging |
 | `TomPersistenceEventHandler` | Object Persistence |
 | `TomPersistentExternalIdentityStore` | Authentication |
+| `TomPersistentOAuthTokenStore` | Authentication |
 | `TomPreparedStatement` | Datasources |
 | `TomPrincipalDelegation` | Authorization |
 | `TomPrincipalResourceGrant` | Authorization |

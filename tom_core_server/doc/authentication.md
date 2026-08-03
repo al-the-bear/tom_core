@@ -1244,6 +1244,89 @@ anonymous identity.
 `oauth_test.dart` does — leaves every other line of the flow executing exactly
 as it does against a real provider.
 
+### Delegated access: the provider's tokens
+
+Authentication asks *who the user is*; delegated authorization asks *what this
+application may do as them*. The token response answers both, and the framework
+treats the two answers very differently.
+
+**Nothing is retained unless a provider opts in.** `storeTokens` defaults to
+`false`, because a framework session token is minted here and revocable here
+while a provider refresh token is a long-lived credential against a **third
+party** — one that outlives the session, is useful to anyone who obtains it, and
+is revocable only by the user noticing. A deployment that only wants "Sign in
+with …" must never end up holding one.
+
+The grant is nonetheless handed back on every exchange, so "keeps nothing" is a
+statement about *storage* and not a capability withheld:
+
+```dart
+final exchange = await flow.completeAuthorization(code: code, state: state);
+final grant = exchange.tokens;      // null when the provider delegated nothing
+grant?.accessToken;                 // usable for the rest of this request
+```
+
+A deployment that needs the credential *later* opts the provider in and installs
+a store:
+
+```yaml
+oauth:
+  providers:
+    google:
+      # …issuer, endpoints, clientId, clientSecret, redirectUri, scopes…
+      scopes: [openid, email, https://www.googleapis.com/auth/calendar.readonly]
+      storeTokens: true
+      # Google returns no refresh token without these two.
+      authorizationParameters:
+        access_type: offline
+        prompt: consent
+```
+
+```dart
+TomBean.withType(
+  TomOAuthTokenStore,
+  TomPersistentOAuthTokenStore(TomExternalIdentityTokenRepository()),
+);
+```
+
+`authorizationParameters` are merged into the authorization redirect **before**
+the flow's own parameters, so a configuration typo cannot replace `state`,
+`redirect_uri` or the PKCE challenge.
+
+What the store guarantees:
+
+| Guarantee | How |
+| --------- | --- |
+| Neither token is readable in the row | The whole grant is JSON, encrypted through `TomJwtConfiguration.encrypt` into `token_data` |
+| An operator can still triage | `token_scope`, `obtained_at`, `expires_at` sit beside it in the clear; none of them is authoritative |
+| One grant per identity | `UNIQUE KEY (issuer, subject)` — a second row would make which credential is presented depend on row order |
+| A credential never outlives its link | `TomExternalIdentityStore.unlink` deletes the grant *before* the link |
+
+Using it later is one call, and it is deliberately **not** on the authentication
+service:
+
+```dart
+final grant = await flow.accessTokenFor(
+  providerId: 'google',
+  subject: identity.subject,
+);
+if (grant == null) {
+  // Nothing held, or expired past refreshing: send the user through consent.
+}
+```
+
+`accessTokenFor` reads the held grant, answers it when it is still live, and
+otherwise refreshes it and writes the result back — the three steps every caller
+would otherwise write, where the caller that writes them wrong writes back
+nothing and refreshes on every call until the provider's rate limiter objects.
+`refreshGrant` is the lower-level form for a caller holding a grant already.
+
+**Refreshing is not a login.** Neither method consults a
+`TomAuthenticationService`, asks the 2FA policy, touches a session or produces a
+principal. That separation is the point: reusing the login path to renew a
+background job's calendar token would run a second-factor decision for a user who
+is not present.
+
 ### Where pending authorizations live
 
 The handshake is **two HTTP requests**, and the second one is not issued by the
@@ -1492,7 +1575,27 @@ see [Where pending authorizations live](#where-pending-authorizations-live).
 
 The linking table. `TomPersistentExternalIdentityStore` for production,
 `TomMemoryExternalIdentityStore` for tests, and no default — see
-[The linking table](#the-linking-table).
+[The linking table](#the-linking-table). `unlink` is the method that removes a
+link, and it cascades into the token store: a provider credential never outlives
+the link it was granted through.
+
+### `TomOAuthTokenGrant`
+
+One provider grant — `accessToken`, `refreshToken`, `tokenType`, `scope`,
+`expiresAt`, `obtainedAt`. `expiresWithin` answers "will this still be valid when
+the request arrives?", which is the question a caller actually has;
+`fromTokenResponse` carries a previous grant's refresh token and scope forward,
+because RFC 6749 §6 lets a provider omit them from a refresh response. `toString`
+prints neither token.
+
+### `TomOAuthTokenStore` / `TomPersistentOAuthTokenStore` / `TomExternalIdentityToken`
+
+Where a grant lives, keyed `(issuer, subject)`. `resolve()` answers `null` when
+no store is installed, which is the ordinary and safe state — nothing can be
+written where there is nowhere to write it. `TomPersistentOAuthTokenStore` writes
+the grant encrypted into `tom_external_identity_token`;
+`TomMemoryOAuthTokenStore` is for tests and bring-up. See
+[Delegated access](#delegated-access-the-providers-tokens).
 
 ### `TomOAuthServer`
 
@@ -1558,10 +1661,25 @@ resolves the pending record for its context and calls
   [Where pending authorizations live](#where-pending-authorizations-live).
 - **The identity *store* has no default at all**, deliberately — see
   [The linking table](#the-linking-table).
-- **Token refresh is not implemented.** The provider's access token is used once
-  to fetch claims and then discarded; the session is the framework's own JWT
-  pair. A deployment that needs to call the provider's API *on behalf of the
-  user* later must retain and refresh that token itself.
+- **The framework retains no provider token unless a provider opts in.**
+  `storeTokens` defaults to `false`, so a deployment that only wants "Sign in
+  with …" never acquires a third-party credential. The grant is still handed to
+  the caller on every exchange; what is opt-in is *storing* it. See
+  [Delegated access](#delegated-access-the-providers-tokens).
+- **A retained grant needs a `TomOAuthTokenStore` and its table.** Opting a
+  provider in without installing a store retains nothing and logs it — the two
+  halves are separate on purpose, so a deployment can hold its identity links in
+  a table of its own and still let the framework hold credentials, or the
+  reverse. `TomPersistentOAuthTokenStore` needs
+  `TomExternalIdentityToken.createTableSql`, shipped as
+  `example/authentication/migrations/main/tomcore/[3]-create_tom_external_identity_token.sql`.
+- **Provider token *revocation* is not implemented.** Deleting the identity link
+  deletes the framework's copy of the grant, but nothing calls the provider's
+  revocation endpoint — the credential stops being reachable from here and
+  remains valid at the provider until it expires or the user withdraws consent.
+  A deployment that must revoke on unlink calls the provider's endpoint itself
+  (RFC 7009), which is one provider-specific HTTP call this module deliberately
+  does not model.
 
 ## Dependencies
 

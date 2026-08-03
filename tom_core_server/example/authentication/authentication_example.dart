@@ -26,6 +26,17 @@ TomAuthenticationData _login(String username, {Object? password}) =>
       client: 'web',
     );
 
+/// The endpoints and credentials every provider needs, so the examples below
+/// can vary only the part they are about.
+const Map<String, Object> _providerConfig = {
+  'issuer': 'https://accounts.example.com',
+  'authorizationEndpoint': 'https://accounts.example.com/authorize',
+  'tokenEndpoint': 'https://accounts.example.com/token',
+  'clientId': 'example-client',
+  'clientSecret': 'example-secret',
+  'redirectUri': 'https://app.example.com/oauth/callback',
+};
+
 /// A minimal service: one known user, everything else rejected.
 class DemoAuthService implements TomAuthenticationService {
   @override
@@ -91,6 +102,63 @@ Future<void> run() async {
   print('clustered state store:     ${clustered.type.name} '
       'on "${clustered.datasourceName}"/${clustered.table}');
 
+  // Example 6: holding a provider's tokens is opt-in, per provider. "Sign in
+  // with X" needs nothing; an application that calls X's API on the user's
+  // behalf says so — and usually has to say so to the provider too, which is
+  // what `authorizationParameters` carries.
+  final providers = TomOAuthProviders.fromConfiguration(
+    TomServerConfigResourceProvider.from({
+      'oauth': {
+        'providers': {
+          'login_only': _providerConfig,
+          'calendar': {
+            ..._providerConfig,
+            'storeTokens': true,
+            'authorizationParameters': {
+              'access_type': 'offline',
+              'prompt': 'consent',
+            },
+          },
+        },
+      },
+    }),
+  );
+  print('login_only keeps tokens:   ${providers['login_only'].storeTokens}');
+  print('calendar keeps tokens:     ${providers['calendar'].storeTokens} '
+      '${providers['calendar'].authorizationParameters}');
+
+  // Example 7: a grant is held against the external identity that consented to
+  // it, and it never outlives the link. `unlink` deletes both — the user
+  // pressed "disconnect", so the deployment must not still hold a live
+  // credential for their mailbox.
+  final tokens = TomMemoryOAuthTokenStore();
+  final identities = TomMemoryExternalIdentityStore(tokenStore: tokens);
+  const identity = TomExternalIdentity(
+    issuer: 'https://accounts.example.com',
+    subject: 'user-42',
+  );
+  await identities.link(identity, 'alice');
+  await tokens.store(
+    identity.issuer,
+    identity.subject,
+    TomOAuthTokenGrant(
+      accessToken: 'at-live',
+      refreshToken: 'rt-long-lived',
+      scope: 'calendar.readonly',
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 55)),
+    ),
+  );
+  final held = await tokens.read(identity.issuer, identity.subject);
+  // Neither token is printed: `toString` names the grant instead, because this
+  // value reaches log lines and both fields are credentials.
+  print('held grant:                $held');
+  print('needs refresh in an hour:  '
+      '${held!.expiresWithin(const Duration(hours: 1))}');
+
+  await identities.unlink(identity.issuer, identity.subject);
+  print('grant after unlink:        '
+      '${await tokens.read(identity.issuer, identity.subject)}');
+
   // Assertions
   assert(guest.principal.authenticated == false);
   assert(user.principal.authenticated == true);
@@ -100,6 +168,14 @@ Future<void> run() async {
   assert(singleNode.type == TomOAuthStateStoreType.memory);
   assert(clustered.type == TomOAuthStateStoreType.sql);
   assert(clustered.table == defaultOAuthStateTable);
+  assert(providers['login_only'].storeTokens == false);
+  assert(providers['calendar'].storeTokens == true);
+  assert(providers['calendar'].authorizationParameters.length == 2);
+  assert(held.hasRefreshToken);
+  assert(!held.isExpired());
+  assert(!'$held'.contains('rt-long-lived'));
+  assert(await tokens.read(identity.issuer, identity.subject) == null);
+  assert(await identities.localUsernameFor(identity) == null);
 }
 
 void main() => run();
