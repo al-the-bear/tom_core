@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 6 files
-// Generated: 2026-07-18T18:30:26.766820
+// Generated: 2026-08-03T11:44:32.267183
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -87,7 +87,7 @@ class TomDocScannerBridge {
   /// Fed to `BridgedClass.registerSupertypes` so interpreted subclasses
   /// of bridged classes pass `is`/subtype checks against bridged
   /// ancestors and the interface-proxy supertype walk resolves up the
-  /// chain (MCI#1 / A1).
+  /// chain.
   static Map<String, List<String>> classSupertypes() {
     return {
       'Document': ['Section'],
@@ -147,6 +147,12 @@ class TomDocScannerBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/doc_scanner.dart', show: {'DocScanner'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/doc_scanner_factory.dart', show: {'DocScannerFactory'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/markdown_parser.dart', show: {'ParsedHeadline', 'MarkdownParser'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/models/document.dart', show: {'Document'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/models/document_folder.dart', show: {'DocumentFolder'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/models/section.dart', show: {'Section'}, hide: null),
     ];
   }
 
@@ -171,10 +177,15 @@ class TomDocScannerBridge {
       );
     }
 
-    // MCI#1 / A1: Register the flattened native supertype table so
+    // Register the flattened native supertype table so
     // interpreted subclasses pass subtype checks against bridged
     // ancestors. Idempotent — safe to call per barrel.
     BridgedClass.registerSupertypes(classSupertypes());
+
+    // GEN-107: Register library re-exports
+    for (final r in bridgeReExports()) {
+      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+    }
   }
 
   /// Returns a map of global function names to their native implementations.

@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 31 files
-// Generated: 2026-07-18T18:30:22.111810
+// Generated: 2026-08-03T11:44:22.666611
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -233,7 +233,7 @@ class TomProcessMonitorBridge {
   /// Fed to `BridgedClass.registerSupertypes` so interpreted subclasses
   /// of bridged classes pass `is`/subtype checks against bridged
   /// ancestors and the interface-proxy supertype walk resolves up the
-  /// chain (MCI#1 / A1).
+  /// chain.
   static Map<String, List<String>> classSupertypes() {
     return {
       'ProcessMonitorException': ['Exception'],
@@ -325,6 +325,35 @@ class TomProcessMonitorBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_config.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_entry.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_state.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/process_status.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/monitor_status.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/restart_policy.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/aliveness_check.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/startup_check.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/remote_access_config.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/partner_discovery_config.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/models/registry.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/process_monitor_exception.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/lock_timeout_exception.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/process_not_found_exception.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/process_disabled_exception.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/exceptions/permission_denied_exception.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/registry_lock.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/registry_service.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/process_control.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/aliveness_server.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/aliveness_checker.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/aliveness_server_helper.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/services/log_manager.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_basics_network/tom_basics_network.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/client/process_monitor_base.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/client/local_process_monitor_client.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/client/remote_process_monitor_client.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/http/remote_api_server.dart', show: null, hide: null),
+      (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/process_monitor.dart', show: null, hide: null),
       (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/http_retry.dart', show: null, hide: null),
       (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/server_discovery.dart', show: null, hide: null),
     ];
@@ -351,7 +380,7 @@ class TomProcessMonitorBridge {
       );
     }
 
-    // MCI#1 / A1: Register the flattened native supertype table so
+    // Register the flattened native supertype table so
     // interpreted subclasses pass subtype checks against bridged
     // ancestors. Idempotent — safe to call per barrel.
     BridgedClass.registerSupertypes(classSupertypes());

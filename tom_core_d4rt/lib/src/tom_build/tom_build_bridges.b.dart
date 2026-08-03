@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 17 files
-// Generated: 2026-07-18T18:30:24.087610
+// Generated: 2026-08-03T11:44:25.984438
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -303,7 +303,7 @@ class TomBuildBridge {
   /// Fed to `BridgedClass.registerSupertypes` so interpreted subclasses
   /// of bridged classes pass `is`/subtype checks against bridged
   /// ancestors and the interface-proxy supertype walk resolves up the
-  /// chain (MCI#1 / A1).
+  /// chain.
   static Map<String, List<String>> classSupertypes() {
     return {
       'TomEnvironmentException': ['Exception'],
@@ -388,6 +388,26 @@ class TomBuildBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/analyzer/workspace_analyzer.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/reflection_generator/reflection_generator.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/env.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/fs.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/glob.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/maps.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/path.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/shell.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/text.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/workspace.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/yaml.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/scripting/zone.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tom/file_object_model/file_object_model.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tom/file_object_model/workspace_parser.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tom/tom_context.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tools/tool_context.dart', show: null, hide: null),
+      (source: 'package:tom_build/tom_build.dart', target: 'package:tom_build/src/tools/workspace_info.dart', show: null, hide: null),
+      (source: 'package:tom_build/src/tools/tool_context.dart', target: 'package:tom_build/src/tools/workspace_info.dart', show: null, hide: null),
+      (source: 'package:tom_build/src/scripting/workspace.dart', target: 'package:tom_build/src/tools/tool_context.dart', show: {'PlatformInfo', 'OperatingSystem', 'CpuArchitecture'}, hide: null),
+      (source: 'package:tom_build/src/scripting/workspace.dart', target: 'package:tom_build/src/tools/workspace_info.dart', show: {'WorkspaceInfo', 'WorkspaceGroup', 'WorkspaceProject', 'MetadataModes', 'MetadataMode'}, hide: null),
     ];
   }
 
@@ -412,7 +432,7 @@ class TomBuildBridge {
       );
     }
 
-    // MCI#1 / A1: Register the flattened native supertype table so
+    // Register the flattened native supertype table so
     // interpreted subclasses pass subtype checks against bridged
     // ancestors. Idempotent — safe to call per barrel.
     BridgedClass.registerSupertypes(classSupertypes());
@@ -433,6 +453,11 @@ class TomBuildBridge {
     final funcSigs = globalFunctionSignatures();
     for (final entry in funcs.entries) {
       interpreter.registertopLevelFunction(entry.key, entry.value, importPath, sourceUri: funcSources[entry.key], signature: funcSigs[entry.key]);
+    }
+
+    // GEN-107: Register library re-exports
+    for (final r in bridgeReExports()) {
+      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
     }
   }
 
