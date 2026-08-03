@@ -1,8 +1,9 @@
 # Preferences Module
 
-Device-stored user preferences: one typed API, one backend per platform, and the
-backend chosen by dependency injection rather than by an `if (kIsWeb)` where the
-value is read.
+Both halves of a user's preferences, from the client side: the **device** store
+— one typed API, one backend per platform, chosen by dependency injection rather
+than by an `if (kIsWeb)` where the value is read — and the **account** store,
+reached over the kernel's `/preferences/*` contract by a typed client.
 
 ## Table of Contents
 
@@ -10,6 +11,7 @@ value is read.
 - [Why the Framework Owns This](#why-the-framework-owns-this)
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
+- [Reaching the Account Store](#reaching-the-account-store)
 - [Precedence Against the Server Store](#precedence-against-the-server-store)
 - [The Stored Document](#the-stored-document)
 - [Core Components](#core-components)
@@ -27,7 +29,9 @@ value is read.
 | `TomPlatformDevicePreferenceStore` | class | The backend for the current target (file / `localStorage` / loud failure) |
 | `TomMemoryDevicePreferenceStore` | class | A store that persists nothing beyond the process |
 | `TomDevicePreferenceJson` | class | The stored JSON document, written once for every persistent backend |
-| `TomDevicePreferenceException` | exception | Module failures, keyed by stable dotted codes |
+| `TomDevicePreferenceException` | exception | Device-store failures, keyed by stable dotted codes |
+| `TomUserPreferencesClient` | class | The **account** store: the same typed API, over the server's `/preferences/*` routes |
+| `TomUserPreferencesClientException` | exception | Client failures, keyed by stable dotted codes |
 
 The *keys*, the *wire DTO* and the *value codec* are not here. `TomUserPreferenceKeys`,
 `TomUserPreferenceDto` and `TomUserPreferenceCodec` live in `tom_core_kernel`'s
@@ -137,6 +141,57 @@ what this module refuses.
 application that has not wired a device store should fall back to its defaults
 rather than fail to start.
 
+## Reaching the Account Store
+
+`TomUserPreferencesClient` is the account half. The kernel declares the contract
+(`tomUserPreferencesApi`) and `tom_core_server` implements it, but a preference
+exists to *follow a user across devices*, which makes it a capability only once a
+device can reach it. Without a framework client every application writes the four
+HTTP calls itself: four spellings of the same URIs, four decodings of the same
+DTO, four chances to read a broken server as "no such preference" — the same
+G-DI-3 failure the device store removes, one layer up.
+
+It carries the device store's method set — `all` / `read` / `get` / `getOr` /
+`set` / `remove` — over the same DTO and the same codec, so a call site reads
+identically whichever store it addresses:
+
+```dart
+final account = TomUserPreferencesClient(
+  baseUri: Uri.parse('https://api.example.com'),
+);
+
+await account.set(TomUserPreferenceKeys.theme, 'dark');
+final theme = await account.getOr(TomUserPreferenceKeys.theme, 'system');
+```
+
+**No URI is written by the caller, or by the client.** Every request is built by
+`TomApiEndpoint.resolveUri` from the endpoint's own declaration — its method, its
+path template, its `urlParameterMapping` — so the address the client calls and
+the route the server serves are two readings of one declaration rather than two
+spellings that agree by inspection. A key containing `/` addresses one path
+segment rather than smuggling a route past the server.
+
+There is no `clear()`: it is absent from the contract, and a loop over `all()`
+that failed half way would leave an account in a state no user asked for.
+`remove` returns `void` where the device store answers a `bool`, because the
+delete endpoint is idempotent by design and the server does not report whether a
+row existed — a `bool` invented here could only be a second round trip
+pretending to be an answer.
+
+**A miss is `404`, and only `404` is a miss.** `read` and `get` answer `null`,
+`getOr` answers its fallback. Every other failure throws
+`TomUserPreferencesClientException`, because a deployment whose preference store
+is unreachable must not be indistinguishable from a user who has set nothing —
+an application that could not tell them apart would paper the outage over with a
+default and never learn. A *value* failure — a preference stored as the wrong
+type — arrives as the kernel's `TomUserPreferenceCodecException` instead, since
+it means the same thing in both stores.
+
+Requests carry the signed-in bearer token from `TomBearerAuthentication`. An
+`Authorization` supplied through `headers` or `headerProvider` **suppresses** it,
+so exactly one credential reaches the server; `headerProvider` is the seam for a
+credential that rotates, which a constructor argument would capture once.
+
 ## Precedence Against the Server Store
 
 A key normally belongs to exactly one store. Where the same key exists in both,
@@ -157,14 +212,17 @@ The rule is stated once on `TomDevicePreferences` and applied once in
 ```dart
 final theme = await preferences.getPreferred<String>(
   TomUserPreferenceKeys.theme,
-  () => userPreferencesClient.get<String>(TomUserPreferenceKeys.theme),
+  () => account.get<String>(TomUserPreferenceKeys.theme),
 );
 ```
 
-The server side arrives as a **callback** rather than a dependency for two
-reasons: this package must not depend on the server package, and the callback is
-only invoked when this device has no answer — a device that has written the key
-never pays for the round trip.
+The server side arrives as a **callback** rather than a dependency, and stays one
+now that `TomUserPreferencesClient` ships in this package. Two reasons: a
+device-only app must not be made to carry an HTTP client to read a local setting,
+and the callback is only invoked when this device has no answer — a device that
+has written the key never pays for the round trip. The client is simply what an
+application that has one closes over, which is why the pairing is written at the
+application layer and shown in `example/preferences/preferences_example.dart`.
 
 ## The Stored Document
 
@@ -216,12 +274,25 @@ instant the server can store unchanged.
 - **`TomPlatformDevicePreferenceStore`** — the compile-time selected backend.
 - **`TomMemoryDevicePreferenceStore`** — for tests, examples, and clients that
   deliberately keep no machine-local state.
+- **`TomUserPreferencesClient`** — the account store. Not a bean and not
+  resolved: it needs a `baseUri`, which only the application knows, and unlike
+  the device store there is nothing to select between. Holds no cache, for the
+  device store's reason and one more — the account store is shared with the
+  user's other devices, so a cached value is stale the moment one of them writes.
 
 ## Dependencies
 
 - `tom_core_kernel` — `TomUserPreferenceKeys`, `TomUserPreferenceDto`,
-  `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`
+  `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`, and for the client
+  `tomUserPreferencesApi`, `TomApiEndpoint.resolveUri`, `TomServerChannel`,
+  `TomBearerAuthentication`
   (see `../../tom_core_kernel/doc/preferences/preferences.md`).
 - The little-things module — `TomClientException` (see
   [little_things.md](little_things.md)).
 - `dart:io` / `package:web` — in the respective compile-time variants only.
+
+The client reaches the network through `TomPlatformUtils.current.httpClient()`,
+so an application must register its platform
+(`TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)`) at startup. The
+neutral fallback throws rather than guessing, so a missing registration fails on
+the first call instead of silently choosing a client.

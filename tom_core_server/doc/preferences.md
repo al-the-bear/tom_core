@@ -180,6 +180,31 @@ Reporting a missing key distinctly is safe precisely because the scope makes
 another principal. A delete of something absent has already achieved its purpose,
 so a client clearing a preference twice is not a client doing anything wrong.
 
+### A miss is a 404, and nothing else is
+
+`preferences.not_found` only helps a client if it *arrives* as something a client
+can branch on, and by default every handler failure leaves as a `500`. So the
+read endpoint is served under `TomUserPreferencesErrorHandler`:
+
+```dart
+@TomApiEndpointImplementation(
+  apiId: tomUserPreferencesApiId,
+  endpointId: tomUserPreferencesReadEndpointId,
+  errorHandler: TomUserPreferencesErrorHandler(),
+)
+```
+
+It maps that **one** key to a `404` and leaves everything else to
+`handleErrorDefault`. The narrowness is the design: a client must be able to tell
+"you have no such preference" from "the server is broken", and a client that
+cannot must either treat every failure as a miss or every miss as a failure.
+Mapping `preferences.not_configured` — a deployment fault — the same way would
+let a client read an outage as absence and paper it over with a default.
+
+`TomUserPreferencesClient` (`tom_core_flutter`) is the counterpart: `404` is the
+only status it reads as absence, so `read` and `get` answer `null` and `getOr`
+answers its fallback, while every other status throws.
+
 The write path validates the declared type against the JSON text before storing.
 The request carries the value already encoded, so nothing on the way in has
 proved the two agree — and a disagreeing pair costs nothing to store and fails

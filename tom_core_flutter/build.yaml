@@ -1,6 +1,6 @@
 # Build configuration for tom_core_flutter
 #
-# Reflection generator configuration for the tests that need a generated
+# Reflection generator configuration for the files that need a generated
 # *.reflection.dart companion:
 #
 #   - security_test      verifies that @TomClient2FAAdaptor is
@@ -8,6 +8,12 @@
 #   - preferences_test   round-trips a reflected preference value and resolves
 #                        the platform-annotated @TomComponent implementations
 #                        of TomDevicePreferences through the bean locator.
+#   - example/reflection_seed
+#                        the one entry point every example shares. An example
+#                        that makes a real HTTP call encodes framework DTOs
+#                        through reflection, so it must initialise it first;
+#                        generating for the seed rather than for each example
+#                        keeps that multi-megabyte companion paid for once.
 #
 # The generator is restricted to those files; without `generate_for` it would
 # attempt to generate for every Dart file in the package.
@@ -19,5 +25,6 @@ targets:
         generate_for:
           - test/security_test.dart
           - test/preferences_test.dart
+          - example/reflection_seed.dart
         options:
           formatted: true

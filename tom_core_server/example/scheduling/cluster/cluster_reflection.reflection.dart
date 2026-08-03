@@ -21847,6 +21847,7 @@ final _data = <r.Reflection, r.ReflectorData>{
           const prefix58.TomApiEndpointImplementation(
             apiId: prefix26.tomUserPreferencesApiId,
             endpointId: prefix26.tomUserPreferencesReadEndpointId,
+            errorHandler: const prefix70.TomUserPreferencesErrorHandler(),
           ),
           override,
         ],

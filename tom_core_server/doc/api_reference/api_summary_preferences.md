@@ -14,6 +14,7 @@ endpoint implementation.
   - [TomUserPreferences](#tomuserpreferences)
   - [TomUserPreferenceException](#tomuserpreferenceexception)
   - [TomUserPreferencesServer](#tomuserpreferencesserver)
+  - [TomUserPreferencesErrorHandler](#tomuserpreferenceserrorhandler)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -36,7 +37,7 @@ repository permits it to store cannot disagree.
 
 ## Class Hierarchy
 
-```
+```text
 TomUserPreference                                   (@tomReflector, @TomDbTable, @TomDbScope)
 
 TomSqlDatasourceRepository<TomUserPreference, int>
@@ -49,6 +50,9 @@ TomServerException
 
 TomUserPreferencesApiService                        (kernel contract)
 └── TomUserPreferencesServer                        (@tomReflector, @tomComponent, @TomApiImplementation)
+
+TomErrorHandler
+└── TomUserPreferencesErrorHandler                  (const; annotation argument)
 ```
 
 ## Classes
@@ -200,7 +204,7 @@ carries an inline access annotation: the contract declares
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
 | `listPreferences()` | `listPreferences` — `GET /preferences` | Every preference of the caller. |
-| `readPreference(TomUserPreferenceKeyRequest request)` | `readPreference` — `GET /preferences/{key}` | One preference; throws `TomEndpointHandlerException('preferences.not_found')` when absent. Reporting a miss distinctly is safe because the scope makes "not yours" indistinguishable from "not there". |
+| `readPreference(TomUserPreferenceKeyRequest request)` | `readPreference` — `GET /preferences/{key}` | One preference; throws `TomEndpointHandlerException('preferences.not_found')` when absent, and is served under `TomUserPreferencesErrorHandler` so that miss reaches the client as a `404`. Reporting a miss distinctly is safe because the scope makes "not yours" indistinguishable from "not there". |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `writePreference` — `PUT /preferences/{key}` | Validates the encoded pair, then upserts. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `deletePreference` — `DELETE /preferences/{key}` | Deletes; the absent case is not an error. |
 
@@ -209,6 +213,47 @@ All four resolve the store per call and throw
 `TomUserPreferences` bean is installed. Resolving per call rather than holding it
 means a deployment that installs its own bean after the pipeline constructed the
 handler is obeyed.
+
+### TomUserPreferencesErrorHandler
+
+The error handler the read endpoint is served under: it maps
+`preferences.not_found` — and *only* that key — to a `404`, and leaves every
+other failure to `handleErrorDefault`.
+
+- **Extends:** `TomErrorHandler`.
+
+#### Constructors
+
+```dart
+const TomUserPreferencesErrorHandler()
+```
+
+`const` so it can be written as an annotation argument:
+
+```dart
+@TomApiEndpointImplementation(
+  apiId: tomUserPreferencesApiId,
+  endpointId: tomUserPreferencesReadEndpointId,
+  errorHandler: TomUserPreferencesErrorHandler(),
+)
+```
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `notFoundKey` | `String` | `'preferences.not_found'` — the one key that becomes a `404`. |
+
+Why only that key: a client must be able to tell **"you have no such
+preference"** from **"the server is broken"**, and a client that cannot must
+either treat every failure as a miss or every miss as a failure. Mapping
+`preferences.not_configured` — a deployment fault — to a `404` would let a client
+read it as absence and paper the outage over with a default. So the mapping is
+one key wide, deliberately.
+
+The `404` body carries the usual error envelope (`errorType`, `errorKey`, `uuid`,
+`autoLog`, `requestUuid`) and the `x-tom-error: true` header, so a client
+branches on the key rather than on message text.
 
 ## Global Functions and Constants
 

@@ -24,11 +24,65 @@
 /// contract that nothing implements.
 library;
 
+import 'dart:convert';
+
+import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../endpoints/endpoint_annotation.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import 'user_preferences_service.dart';
+
+/// Answers `404` for a preference that was never written, and nothing else.
+///
+/// The default handler turns every failure into an opaque `500`, which is right
+/// for a fault and wrong for a miss: a client that cannot tell them apart must
+/// either treat every failure as "no such preference" — papering a broken server
+/// over with a default — or every miss as a failure, which makes reading an
+/// unset key an error. So exactly one key gets a status of its own.
+///
+/// Only `preferences.not_found` is translated. `preferences.not_configured` is
+/// a deployment fault, not the client's business, and stays opaque along with
+/// everything else.
+class TomUserPreferencesErrorHandler extends TomErrorHandler {
+  /// Const constructor so the handler can be used as an annotation argument.
+  const TomUserPreferencesErrorHandler();
+
+  /// The error key a read raises for a key the caller has never written.
+  static const String notFoundKey = 'preferences.not_found';
+
+  @override
+  Response handleInvocationError(Object error, Object stacktrace, Request r) {
+    if (error is TomException && error.key == notFoundKey) {
+      // The body follows the framework's error shape (`TomServer.errorHandler`)
+      // so a client branches on `errorKey`, not on a message or a status alone.
+      return Response.notFound(
+        jsonEncode({
+          'errorType': error.runtimeType.toString(),
+          'errorKey': error.key,
+          'uuid': error.uuid,
+          'autoLog': error.autoLog,
+          'requestUuid': error.requestUuid,
+        }),
+        headers: const {'x-tom-error': 'true'},
+      );
+    }
+    return handleErrorDefault(error, stacktrace, r, null);
+  }
+
+  @override
+  Response handleErrorDefault(
+    Object error,
+    Object stacktrace,
+    Request r,
+    Object? result,
+  ) => const TomDefaultErrorHandler().handleErrorDefault(
+    error,
+    stacktrace,
+    r,
+    result,
+  );
+}
 
 /// The default [TomUserPreferencesApiService] implementation.
 ///
@@ -51,6 +105,7 @@ class TomUserPreferencesServer implements TomUserPreferencesApiService {
   @TomApiEndpointImplementation(
     apiId: tomUserPreferencesApiId,
     endpointId: tomUserPreferencesReadEndpointId,
+    errorHandler: TomUserPreferencesErrorHandler(),
   )
   @override
   Future<TomUserPreferenceDto> readPreference(

@@ -383,6 +383,7 @@ surface documented here.
 | `TomUserPreferences` | class | Typed `get`/`set`/`getOr`/`read`/`all`/`remove` for the caller in the request zone, plus `getFor` for the login path. Installed as a bean. |
 | `TomUserPreferenceException` | class | An operation that cannot identify the caller (extends `TomServerException`). |
 | `TomUserPreferencesServer` | class | The `@TomApiImplementation` behind the kernel's `tomUserPreferencesApi`. |
+| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` — and only that key — to a `404`, so a client can tell a miss from an outage. |
 
 ### Resources (`lib/src/tomserver/resources/`)
 

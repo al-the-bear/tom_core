@@ -1,8 +1,10 @@
 # Tom Core Flutter API Reference: Preferences Module
 
-Device-stored user preferences: the typed API, its shipped implementation, the
-narrow per-platform backend, and the JSON document every persistent backend
-writes.
+Both halves of a user's preferences from the client side: the **device** store —
+its typed API, its shipped implementation, the narrow per-platform backend and
+the JSON document every persistent backend writes — and
+`TomUserPreferencesClient`, the typed client for the **account** store the server
+holds.
 
 ## Table of Contents
 
@@ -16,6 +18,8 @@ writes.
   - [TomPlatformDevicePreferenceStore](#tomplatformdevicepreferencestore)
   - [TomDevicePreferenceJson](#tomdevicepreferencejson)
   - [TomDevicePreferenceException](#tomdevicepreferenceexception)
+  - [TomUserPreferencesClient](#tomuserpreferencesclient)
+  - [TomUserPreferencesClientException](#tomuserpreferencesclientexception)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -23,14 +27,20 @@ writes.
 Sources: `lib/src/tomclient/preferences/device_preferences.dart`,
 `stored_device_preferences.dart`, `device_preference_store.dart`,
 `device_preference_json.dart`,
-`platform_device_preference_store{,_io,_web,_neutral}.dart`.
+`platform_device_preference_store{,_io,_web,_neutral}.dart`,
+`user_preferences_client.dart`.
 
 Preferences that must **not** follow the user — the last account used on this
-device, whether biometric unlock is on here, a per-device layout — stored
-through one platform-independent API. The keys, the wire DTO and the value codec
-are the kernel's (`TomUserPreferenceKeys`, `TomUserPreferenceDto`,
-`TomUserPreferenceCodec`), the same three the server-side store uses, so the two
-stores share one vocabulary and one encoding.
+device, whether biometric unlock is on here, a per-device layout — are stored
+through one platform-independent API. The ones that *should* follow the user live
+server-side (`TomUserPreferences`, `tom_core_server`) and are reached from here
+through `TomUserPreferencesClient`.
+
+The keys, the wire DTO and the value codec are the kernel's
+(`TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`), so
+the two stores share one vocabulary and one encoding rather than two that agree
+by inspection — and both carry the same method set, which is what lets a
+preference *move* between them without a call site changing.
 
 Backend selection happens twice and never at the call site: a conditional export
 picks the storage the target *can* use, and the bean locator picks the
@@ -38,7 +48,7 @@ picks the storage the target *can* use, and the bean locator picks the
 
 ## Class Hierarchy
 
-```
+```text
 TomDevicePreferences                                (interface; bean-resolved)
 └── TomStoredDevicePreferences
 
@@ -48,9 +58,13 @@ TomDevicePreferenceStore                            (interface)
 
 TomDevicePreferenceJson                             (namespace of statics)
 
+TomUserPreferencesApiService                        (kernel contract face)
+└── TomUserPreferencesClient
+
 TomException
 └── TomClientException
-    └── TomDevicePreferenceException
+    ├── TomDevicePreferenceException
+    └── TomUserPreferencesClientException
 ```
 
 ## Classes
@@ -236,8 +250,137 @@ unparseable JSON in a preference value) arrives as the kernel's
 `TomUserPreferenceCodecException` instead, because it means the same thing in
 both stores and is already named there.
 
+### TomUserPreferencesClient
+
+Typed access to the calling principal's **server-stored** preferences — the
+account half of the pair, and the counterpart of `TomDevicePreferences`.
+
+- **Implements:** `TomUserPreferencesApiService` (kernel). The client and the
+  server are two implementations of one interface.
+
+Without it every application writes the four HTTP calls itself: four spellings
+of the same URIs, four decodings of the same DTO, four chances to read a broken
+server as "no such preference" — the same G-DI-3 failure the device store was
+built to remove, one layer up.
+
+#### Constructors
+
+```dart
+TomUserPreferencesClient({
+  required Uri baseUri,
+  TomServerChannel? channel,
+  Map<String, String> headers = const {},
+  Map<String, String> Function()? headerProvider,
+})
+```
+
+| Parameter | Meaning |
+| --------- | ------- |
+| `baseUri` | The server **root**, not the `/preferences` path — the API's own `uri` is part of the contract and is appended from it. A base that already carries a path (a gateway prefix) keeps it. |
+| `channel` | Optional; one is created for `baseUri`'s host and port when omitted. Pass an existing channel to share a connection pool — `close()` then leaves it alone, because it belongs to whoever passed it in. |
+| `headers` | Sent with every request. |
+| `headerProvider` | Supplies the headers that must be computed **per request** — a credential that rotates would otherwise be captured once at construction. |
+
+The constructor calls `registerTomUserPreferencesApi()` (idempotent) rather than
+leaving it to the application: every request is resolved from the registered
+contract, so a client built before anyone registered it would fail on its first
+call for a reason that has nothing to do with the call.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `baseUri` | `Uri` | The server root endpoint paths are resolved against. |
+| `channel` | `TomServerChannel` | The channel providing the pooled HTTP client. |
+| `headers` | `Map<String, String>` | The unmodifiable per-client header set. |
+
+#### Methods — the store face
+
+The same six the device store carries, so a call site reads identically
+whichever store it addresses.
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference stored for the calling principal. |
+| `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` when the server has never been given one. |
+| `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` on a stored-type mismatch. |
+| `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
+| `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes and writes, returning the stored DTO. |
+| `remove(String key)` | `Future<void>` | Deletes. Returns nothing where the device store answers a `bool` — the delete endpoint is idempotent by design, so the server does not report whether a row existed, and a `bool` invented here could only be a second round trip pretending to be an answer. |
+| `close()` | `void` | Releases the HTTP client, when this client created it. |
+
+There is no `clear()`. The contract declares no bulk delete, and a loop over
+`all()` that failed half way would leave an account in a state no user asked for
+— exactly the failure the device store's atomic `clear` exists to prevent.
+
+#### Methods — the contract face
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | The list endpoint; decodes the bare JSON array the pipeline produces. |
+| `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | Throws `preferences.client.not_found` on a miss, because the contract's result type is not nullable. `read` is the same call with the miss expressed as `null`, and is what an application should use. |
+| `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | The write endpoint. |
+| `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | The delete endpoint; a `404` is success, the same rule the server applies. |
+
+#### Addressing
+
+**No URI is written here.** Every request is built by
+`TomApiEndpoint.resolveUri` from the endpoint's own declaration — its method, its
+path template and its `urlParameterMapping` — so the address the client calls and
+the route the server serves are two readings of one declaration.
+
+#### What a miss looks like
+
+The server answers `404` for a key the caller has never written
+(`TomUserPreferencesErrorHandler`, `tom_core_server`) and that is the **only**
+status this client reads as absence: `read` and `get` answer `null`, `getOr`
+answers its fallback. Every other failure throws, because a deployment whose
+preference store is unreachable must not be indistinguishable from a user who has
+set nothing.
+
+#### Credentials
+
+The bearer token from `TomBearerAuthentication` is sent by default. An
+`Authorization` header supplied through `headers` or `headerProvider`
+**suppresses** it — case-insensitively, because HTTP header names are — so a
+request carries one credential rather than two spellings of one.
+
+The client reaches the network through `TomPlatformUtils.current.httpClient()`,
+so an application must have registered its platform
+(`TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)`); the neutral
+fallback throws rather than guessing an implementation.
+
+### TomUserPreferencesClientException
+
+A failure raised by the server-preferences client —
+`preferences.client.not_found`, `preferences.client.rejected`,
+`preferences.client.invalid_response`.
+
+- **Extends:** `TomClientException`.
+
+#### Constructors
+
+```dart
+TomUserPreferencesClientException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog,
+})
+```
+
+Parameters mirror `TomException`. A rejection carries the `statusCode` and, when
+non-empty, the `response` body in `parameters`, so a caller diagnosing a failure
+does not need the log. As with the device store, a *value* failure arrives as the
+kernel's `TomUserPreferenceCodecException`.
+
 ## Global Functions and Constants
 
 None — this module exposes no top-level functions or constants. The preference
-keys it is addressed with are the kernel's `TomUserPreferenceKeys` (see
-`tom_core_kernel/doc/api_reference/api_summary_preferences.md`).
+keys it is addressed with are the kernel's `TomUserPreferenceKeys`, and so are
+the API and endpoint ids the client resolves its URIs from
+(`tomUserPreferencesApi`, `tomUserPreferences{List,Read,Write,Delete}EndpointId`,
+`registerTomUserPreferencesApi`) — see
+`tom_core_kernel/doc/api_reference/api_summary_preferences.md`.

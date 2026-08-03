@@ -32,9 +32,10 @@ What it adds on top of the kernel is deliberately small:
 - **Client configuration** — a machine-scoped settings holder that resolves
   from the shipped config resources, persists this install's overrides, and is
   observable per field and as a whole.
-- **Device preferences** — machine-local user preferences behind one
+- **Preferences** — machine-local user preferences behind one
   platform-independent API, with the storage backend chosen by DI rather than by
-  an `if (kIsWeb)` at the call site.
+  an `if (kIsWeb)` at the call site, plus the typed client for the account-level
+  preferences the server holds.
 - **Client platform detection** — the Flutter/web/IO variant selector for the
   kernel's `TomPlatformUtils`.
 - **Client security** — the `TomClient2FAAdaptor` annotation for two-factor
@@ -111,7 +112,7 @@ Only the install's **overrides** are persisted, so shipping a new default in an
 app update still reaches installs that never touched that key. See
 [`doc/configuration.md`](doc/configuration.md).
 
-### Device preferences (`preferences`)
+### Preferences (`preferences`)
 
 | Type | What it is |
 | ---- | ---------- |
@@ -121,12 +122,18 @@ app update still reaches installs that never touched that key. See
 | `TomPlatformDevicePreferenceStore` | The backend for the current target (JSON file / `localStorage` / loud failure), selected at compile time |
 | `TomMemoryDevicePreferenceStore` | A store that persists nothing beyond the process |
 | `TomDevicePreferenceJson` | The stored JSON document, written once for every persistent backend |
-| `TomDevicePreferenceException` | Module failures, with stable dotted keys |
+| `TomDevicePreferenceException` | Device-store failures, with stable dotted keys |
+| `TomUserPreferencesClient` | The typed client for the **account's** preferences — the same method set, over the server's `/preferences/*` routes |
+| `TomUserPreferencesClientException` | Client failures, with stable dotted keys |
 
-Preferences that must **not** follow the user — the last account used *here*,
-whether biometric unlock is on *this* device. The keys, the DTO and the codec
-are the kernel's, so this store and the server-side one share one vocabulary and
-a preference can move between them without a call site changing. See
+Two stores, one vocabulary. Preferences that must **not** follow the user — the
+last account used *here*, whether biometric unlock is on *this* device — stay on
+the device; the ones that should follow the user live server-side and are reached
+through `TomUserPreferencesClient`. The keys, the DTO and the codec are the
+kernel's and both stores carry the same method set, so a preference can move
+between them without a call site changing. The client writes no URIs: every
+request is resolved from the kernel's `tomUserPreferencesApi` declaration, so it
+and the server are two readings of one contract. See
 [`doc/preferences.md`](doc/preferences.md).
 
 ### Runtime (`runtime`)
@@ -176,7 +183,7 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | [`example/observing/`](example/observing/observing_example.dart) | `ValueListenableObserver` bridging a `TomObservable` to a Flutter listener |
 | [`example/resources/`](example/resources/resources_example.dart) | Resolving typed config via `TomProperty` subclasses and `.withDefault` |
 | [`example/configuration/`](example/configuration/configuration_example.dart) | Declaring a client settings holder, loading overrides, observing, and persisting only what changed |
-| [`example/preferences/`](example/preferences/preferences_example.dart) | Registering a device store once, typed reads/writes, persistence across a restart, and the device-over-server precedence |
+| [`example/preferences/`](example/preferences/preferences_example.dart) | Registering a device store once, typed reads/writes, persistence across a restart, reading and writing the account store over a real socket, and the device-over-server precedence |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils` and querying its predicates |
 | [`example/security/`](example/security/security_example.dart) | Applying the `TomClient2FAAdaptor` marker annotation and reading back its `type` |
 | [`example/little_things/`](example/little_things/little_things_example.dart) | The two client exception types and the type-based discrimination pattern |
@@ -230,7 +237,7 @@ config.darkMode | true;  // observers fire, per field and holder-wide
 await config.save();     // persist the overrides — and only those
 ```
 
-### Storing a preference on this device
+### Storing a preference on this device, and on the account
 
 ```dart
 // The one line in an application that knows where machine-local state lives.
@@ -242,11 +249,16 @@ TomBean.withType(
 final preferences = TomDevicePreferences.resolve()!;
 await preferences.set('device.biometricUnlock', true);
 
+// The account store: the same method set, no URI written by the caller.
+final account = TomUserPreferencesClient(baseUri: Uri.parse(serverRoot));
+await account.set(TomUserPreferenceKeys.theme, 'dark');
+
 // Device value wins while it exists; the account value is the cross-device
-// default, consulted only for a key this device has never written.
+// default, consulted only for a key this device has never written. The account
+// side stays a callback so a device-only app need not carry an HTTP client.
 final theme = await preferences.getPreferred<String>(
   TomUserPreferenceKeys.theme,
-  () => userPreferencesClient.get<String>(TomUserPreferenceKeys.theme),
+  () => account.get<String>(TomUserPreferenceKeys.theme),
 );
 ```
 

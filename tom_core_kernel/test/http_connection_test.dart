@@ -960,6 +960,217 @@ void main() {
         );
       });
     });
+
+    // The client-side inverse of the server pipeline's URL-parameter binding:
+    // the server folds path captures and named query parameters *into* a request
+    // DTO, this builds the URL those values came from. The two are asserted
+    // against the same rules on purpose — a second spelling of either would
+    // agree with the other only by inspection.
+    group('resolveUri', () {
+      TomApiEndpoint endpointIn(TomApi api, String endpointId) =>
+          api[endpointId];
+
+      TomApi itemsApi({
+        String? apiUri = '/api/items',
+        String? endpointUri = '/{id}',
+        Map<String, String> mapping = const {'id': 'id'},
+      }) => TomApi(
+        id: 'items-${apiUri}-$endpointUri-${mapping.length}',
+        uri: apiUri,
+        endpoints: [
+          TomApiEndpoint(
+            id: 'byId',
+            uri: endpointUri,
+            method: TomHttpMethod.get,
+            urlParameterMapping: mapping,
+          ),
+        ],
+      );
+
+      test('joins the API base, the endpoint path and the host base', () {
+        final endpoint = endpointIn(itemsApi(endpointUri: ''), 'byId');
+
+        expect(
+          endpoint.resolveUri(Uri.parse('https://api.example.com')).toString(),
+          equals('https://api.example.com/api/items'),
+        );
+      });
+
+      test('keeps a path already carried by the base URI', () {
+        // The base may itself be mounted under a prefix; concatenating the raw
+        // strings would produce `/gateway/preferences` → `/gatewaypreferences`.
+        final endpoint = endpointIn(
+          itemsApi(apiUri: '/preferences', endpointUri: ''),
+          'byId',
+        );
+
+        expect(
+          endpoint
+              .resolveUri(Uri.parse('https://api.example.com/gateway'))
+              .toString(),
+          equals('https://api.example.com/gateway/preferences'),
+        );
+      });
+
+      test('substitutes a path capture from its mapped field', () {
+        final endpoint = endpointIn(
+          itemsApi(mapping: const {'id': 'itemId'}),
+          'byId',
+        );
+
+        expect(
+          endpoint
+              .resolveUri(
+                Uri.parse('https://api.example.com'),
+                parameters: {'itemId': 4711},
+              )
+              .toString(),
+          equals('https://api.example.com/api/items/4711'),
+        );
+      });
+
+      test('substitutes an unmapped path capture by its own name', () {
+        // The identity fallback the server applies to path captures: a capture
+        // is part of the route, so binding it by its own name is safe.
+        final endpoint = endpointIn(itemsApi(mapping: const {}), 'byId');
+
+        expect(
+          endpoint
+              .resolveUri(
+                Uri.parse('https://api.example.com'),
+                parameters: {'id': 'a-key'},
+              )
+              .toString(),
+          equals('https://api.example.com/api/items/a-key'),
+        );
+      });
+
+      test('escapes a value that would otherwise change the path', () {
+        final endpoint = endpointIn(itemsApi(), 'byId');
+
+        expect(
+          endpoint
+              .resolveUri(
+                Uri.parse('https://api.example.com'),
+                parameters: {'id': 'tom/theme?x=1'},
+              )
+              .toString(),
+          // `=` is legal inside a path segment and stays as it is; the two
+          // characters that would have changed the *address* — the separator
+          // and the query introducer — are escaped, so the value addresses one
+          // segment of one route.
+          equals('https://api.example.com/api/items/tom%2Ftheme%3Fx=1'),
+        );
+      });
+
+      test('refuses a capture no parameter answers', () {
+        final endpoint = endpointIn(itemsApi(), 'byId');
+
+        expect(
+          () => endpoint.resolveUri(Uri.parse('https://api.example.com')),
+          throwsA(
+            isA<TomEndpointException>().having(
+              (error) => error.key,
+              'key',
+              'apis.endpoint.missing_url_parameter',
+            ),
+          ),
+        );
+      });
+
+      test('appends a mapped parameter that is not a path capture', () {
+        // The query half of the same mapping: `state` is declared, so it binds.
+        final api = TomApi(
+          id: 'callbackApi',
+          uri: '/oauth',
+          endpoints: [
+            TomApiEndpoint(
+              id: 'callback',
+              uri: '/callback',
+              method: TomHttpMethod.get,
+              urlParameterMapping: const {
+                'code': 'code',
+                'error_description': 'errorDescription',
+              },
+            ),
+          ],
+        );
+
+        expect(
+          endpointIn(api, 'callback')
+              .resolveUri(
+                Uri.parse('https://api.example.com'),
+                parameters: {'code': 'abc', 'errorDescription': 'no such user'},
+              )
+              .toString(),
+          equals(
+            'https://api.example.com/oauth/callback'
+            '?code=abc&error_description=no+such+user',
+          ),
+        );
+      });
+
+      test('omits a mapped query parameter with no value', () {
+        final api = TomApi(
+          id: 'optionalQueryApi',
+          uri: '/oauth',
+          endpoints: [
+            TomApiEndpoint(
+              id: 'callback',
+              uri: '/callback',
+              method: TomHttpMethod.get,
+              urlParameterMapping: const {'code': 'code', 'state': 'state'},
+            ),
+          ],
+        );
+
+        expect(
+          endpointIn(api, 'callback')
+              .resolveUri(
+                Uri.parse('https://api.example.com'),
+                parameters: {'code': 'abc'},
+              )
+              .toString(),
+          equals('https://api.example.com/oauth/callback?code=abc'),
+        );
+      });
+
+      test('binds a parameter that is both capture and query only as the '
+          'capture', () {
+        // The server documents that a path capture wins over a query parameter
+        // mapped to the same field; sending both would be the client asserting
+        // the same value twice.
+        final endpoint = endpointIn(itemsApi(), 'byId');
+
+        final resolved = endpoint.resolveUri(
+          Uri.parse('https://api.example.com'),
+          parameters: {'id': 'x'},
+        );
+
+        expect(resolved.path, equals('/api/items/x'));
+        expect(resolved.hasQuery, isFalse);
+      });
+
+      test('resolves the preferences contract exactly as the server mounts '
+          'it', () {
+        // The contract this whole resolver exists to serve, asserted against the
+        // real declaration rather than a stand-in.
+        final read =
+            tomUserPreferencesApi[tomUserPreferencesReadEndpointId]
+                as TomApiEndpoint<TomUserPreferenceDto,
+                    TomUserPreferenceKeyRequest>;
+
+        expect(
+          read
+              .resolveUri(
+                Uri.parse('http://localhost:8080'),
+                parameters: {'key': TomUserPreferenceKeys.theme},
+              )
+              .toString(),
+          equals('http://localhost:8080/preferences/tom.theme'),
+        );
+      });
+    });
   });
 
   // ==========================================================================
@@ -1828,6 +2039,41 @@ void main() {
           includeBearerAuthentication: false,
         );
 
+    group('bearer authentication header', () {
+      TomServerCallSpecs authenticatedSpecs() => TomServerCallSpecs(
+            'GET',
+            Uri.parse('https://api.example.com/data'),
+          );
+
+      tearDown(TomBearerAuthentication.clearTokens);
+
+      test('omits the header entirely when no one has signed in', () {
+        // An absent header is a clean 401; a header reading "Bearer null" is a
+        // credential the server has to fail to parse, which is the same
+        // rejection dressed as a malformed request.
+        TomBearerAuthentication.clearTokens();
+
+        final call = TomServerCall(
+          _MockClient((_) async => _streamed('x')),
+          authenticatedSpecs(),
+        );
+
+        expect(call.abortableRequest.headers.containsKey('Authorization'), isFalse);
+      });
+
+      test('sends the stored token when someone has signed in', () {
+        final jwt = _bearerJwt({'username': 'dana', 'userId': 3});
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+
+        final call = TomServerCall(
+          _MockClient((_) async => _streamed('x')),
+          authenticatedSpecs(),
+        );
+
+        expect(call.abortableRequest.headers['Authorization'], equals('Bearer $jwt'));
+      });
+    });
+
     group('send', () {
       test('sends the request through the client and stores the response', () {
         final client = _MockClient((_) async => _streamed('hello'));
@@ -2323,4 +2569,14 @@ class _ScriptedRefresher implements TomAuthRefresher {
     }
     return succeeds;
   }
+}
+
+/// A syntactically valid, unsigned JWT carrying [payload].
+///
+/// Signed tokens are the security suite's business; here the token only has to
+/// be *parseable*, because what is under test is which header carries it.
+String _bearerJwt(Map<String, dynamic> payload) {
+  String segment(Map<String, dynamic> claims) =>
+      base64Url.encode(utf8.encode(jsonEncode(claims))).replaceAll('=', '');
+  return '${segment({'alg': 'HS256', 'typ': 'JWT'})}.${segment(payload)}.sig';
 }

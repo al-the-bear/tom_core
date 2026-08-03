@@ -14,7 +14,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Machine-scoped client settings (`TomBaseClientConfiguration`, `TomSetting`, stores). |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Client-side exception types (`TomClientException`, `TomClientUIException`). |
 | Observing | [api_summary_observing.md](api_summary_observing.md) | Kernel-observable → Flutter bridges (`TomObservingWidget`, `ValueListenableObserver`). |
-| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Device-stored preferences (`TomDevicePreferences`, per-platform stores). |
+| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Device-stored preferences (`TomDevicePreferences`, per-platform stores) and the account store's client (`TomUserPreferencesClient`). |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Typed config properties (`TomProperty` and typed subclasses). |
 | Runtime | [api_summary_runtime.md](api_summary_runtime.md) | Compile-time platform selection (`clientPlatformUtils`, `TomFlutterPlatformUtils`). |
 | Security | [api_summary_security.md](api_summary_security.md) | Client 2FA annotation (`TomClient2FAAdaptor`). |
@@ -59,6 +59,8 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomPlatformDevicePreferenceStore` | class | Compile-time selected backend (file / `localStorage` / loud failure). |
 | `TomDevicePreferenceJson` | class | The stored JSON document, written once for every persistent backend. |
 | `TomDevicePreferenceException` | class | Module failures, keyed by stable dotted codes. |
+| `TomUserPreferencesClient` | class | The account store: the same method set over the server's `/preferences/*` contract, addressed from the endpoint declarations. |
+| `TomUserPreferencesClientException` | class | Client-side failures, keyed by stable dotted codes. |
 
 ### Resources (`lib/src/tomclient/resources/`)
 
@@ -115,4 +117,6 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomSetting<T>` | Configuration |
 | `TomStoredDevicePreferences` | Preferences |
 | `TomStringProperty` | Resources |
+| `TomUserPreferencesClient` | Preferences |
+| `TomUserPreferencesClientException` | Preferences |
 | `ValueListenableObserver<T>` | Observing |

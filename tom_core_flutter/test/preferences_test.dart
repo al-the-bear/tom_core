@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart';
+import 'package:http/testing.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 import 'preferences_test.reflection.dart';
@@ -450,6 +453,376 @@ void main() {
     });
   });
 
+  group('TomUserPreferencesClient', () {
+    late _ScriptedTransport transport;
+
+    /// A client whose every call is answered by [transport].
+    TomUserPreferencesClient build({
+      Map<String, String> headers = const {},
+      Map<String, String> Function()? headerProvider,
+    }) => TomUserPreferencesClient(
+      baseUri: Uri.parse('https://api.example.com'),
+      channel: TomServerChannel(
+        'api.example.com',
+        443,
+        clientFactory: transport,
+      ),
+      headers: headers,
+      headerProvider: headerProvider,
+    );
+
+    setUp(() => transport = _ScriptedTransport());
+
+    group('addressing', () {
+      // Each endpoint's method and URI come from the contract, so what is
+      // asserted here is that the *declaration* is what reaches the socket — a
+      // client that spelled the routes itself would agree with the server only
+      // by inspection, which is the whole reason this class exists.
+      test('all() issues the list endpoint', () async {
+        transport.answer(body: '[]');
+        await build().all();
+
+        expect(transport.lastMethod, 'GET');
+        expect(
+          transport.lastUrl.toString(),
+          'https://api.example.com/preferences',
+        );
+      });
+
+      test(
+        'read() issues the read endpoint with the key in the path',
+        () async {
+          transport.answer(body: _dtoBody('tom.theme', 'dark'));
+          await build().read(TomUserPreferenceKeys.theme);
+
+          expect(transport.lastMethod, 'GET');
+          expect(
+            transport.lastUrl.toString(),
+            'https://api.example.com/preferences/tom.theme',
+          );
+        },
+      );
+
+      test('set() issues the write endpoint with the encoded value', () async {
+        transport.answer(body: _dtoBody('tom.theme', 'dark'));
+        await build().set(TomUserPreferenceKeys.theme, 'dark');
+
+        expect(transport.lastMethod, 'PUT');
+        expect(
+          transport.lastUrl.toString(),
+          'https://api.example.com/preferences/tom.theme',
+        );
+        // The body carries the codec's encoding, not the raw value: the type
+        // name is what lets the server reject a mismatched write and what lets
+        // a later read come back typed.
+        final sent = jsonDecode(transport.lastBody!) as Map<String, Object?>;
+        expect(sent['key'], 'tom.theme');
+        expect(sent['valueType'], 'String');
+        expect(sent['value'], '"dark"');
+      });
+
+      test('remove() issues the delete endpoint', () async {
+        transport.answer(body: '');
+        await build().remove(TomUserPreferenceKeys.theme);
+
+        expect(transport.lastMethod, 'DELETE');
+        expect(
+          transport.lastUrl.toString(),
+          'https://api.example.com/preferences/tom.theme',
+        );
+      });
+
+      test('a key needing escaping addresses one path segment', () async {
+        transport.answer(body: '');
+        await build().remove('tom/theme');
+
+        expect(
+          transport.lastUrl.path,
+          '/preferences/tom%2Ftheme',
+          reason: 'a key must not be able to address a different route',
+        );
+      });
+    });
+
+    group('credentials', () {
+      // A preferences call is always made *as* somebody — the endpoints answer
+      // for the calling principal — so which credential reaches the socket is
+      // part of this client's contract, not a transport detail. What these
+      // pin is that exactly one arrives.
+      final jwt = _bearerJwt({'username': 'dana', 'userId': 3});
+
+      tearDown(TomBearerAuthentication.clearTokens);
+
+      test('sends the signed-in bearer token by default', () async {
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+        transport.answer(body: '[]');
+        await build().all();
+
+        expect(transport.lastHeaders['authorization'], 'Bearer $jwt');
+      });
+
+      test('sends no Authorization at all when nobody has signed in', () async {
+        // An absent credential is a clean 401; "Bearer null" is the same
+        // rejection dressed as a parse failure, and a deployment debugging the
+        // second one is chasing the wrong bug.
+        TomBearerAuthentication.clearTokens();
+        transport.answer(body: '[]');
+        await build().all();
+
+        expect(transport.lastHeaders.containsKey('authorization'), isFalse);
+      });
+
+      test('a caller-supplied Authorization suppresses the bearer', () async {
+        // The channel writes the bearer *after* the spec headers, so without
+        // suppression the constructor's documented promise would be silently
+        // inverted — the caller's credential overwritten by the global one.
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+        transport.answer(body: '[]');
+        await build(headers: {'Authorization': 'Basic abc'}).all();
+
+        expect(transport.lastHeaders['authorization'], 'Basic abc');
+      });
+
+      test('a per-request provider header suppresses it too', () async {
+        // The provider is the seam for a credential that rotates, so it must
+        // win for the same reason a constructor header does.
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+        transport.answer(body: '[]');
+        await build(headerProvider: () => {'Authorization': 'Basic xyz'}).all();
+
+        expect(transport.lastHeaders['authorization'], 'Basic xyz');
+      });
+
+      test('suppression does not depend on how the header is cased', () async {
+        // HTTP header names are case-insensitive, so a caller who wrote
+        // `authorization` meant the same header. Matching only the capitalised
+        // spelling would put two credentials on one request.
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+        transport.answer(body: '[]');
+        await build(headers: {'authorization': 'Basic abc'}).all();
+
+        expect(transport.lastHeaders['authorization'], 'Basic abc');
+      });
+    });
+
+    group('reading', () {
+      test('decodes every scalar type through the codec', () async {
+        transport.answer(body: _dtoBody('tom.theme', 'dark'));
+        expect(await build().get<String>('tom.theme'), 'dark');
+
+        transport.answer(body: _dtoBody('app.launches', 7));
+        expect(await build().get<int>('app.launches'), 7);
+
+        transport.answer(body: _dtoBody('app.scale', 1.25));
+        expect(await build().get<double>('app.scale'), 1.25);
+
+        transport.answer(body: _dtoBody('app.beta', true));
+        expect(await build().get<bool>('app.beta'), isTrue);
+      });
+
+      test('decodes a reflected object', () async {
+        final stored = LayoutPreference()
+          ..density = 'compact'
+          ..columns = 4
+          ..showSidebar = false;
+        transport.answer(body: _dtoBody('app.layout', stored));
+
+        final restored = await build().get<LayoutPreference>('app.layout');
+
+        expect(restored, isNotNull);
+        expect(restored!.density, 'compact');
+        expect(restored.columns, 4);
+        expect(restored.showSidebar, isFalse);
+      });
+
+      test(
+        'answers null for a preference the server has never stored',
+        () async {
+          // The server distinguishes a miss from a fault with a 404
+          // (`TomUserPreferencesErrorHandler`); reading that as `null` is what
+          // makes an unset preference an ordinary state rather than an error.
+          transport.answer(
+            statusCode: 404,
+            body: '{"errorKey":"preferences.not_found"}',
+          );
+          expect(await build().get<String>('tom.theme'), isNull);
+
+          transport.answer(
+            statusCode: 404,
+            body: '{"errorKey":"preferences.not_found"}',
+          );
+          expect(await build().read('tom.theme'), isNull);
+        },
+      );
+
+      test(
+        'getOr answers the fallback for a preference that is not there',
+        () async {
+          transport.answer(statusCode: 404, body: '');
+          expect(await build().getOr<String>('tom.theme', 'light'), 'light');
+        },
+      );
+
+      test('getOr still throws when the stored type disagrees', () async {
+        // An unwritten preference is a state a default answers; a preference
+        // stored as the wrong type is a bug, and answering the fallback would
+        // hide it. Same rule as the device store.
+        transport.answer(body: _dtoBody('app.launches', 7));
+
+        expect(
+          build().getOr<String>('app.launches', 'light'),
+          throwsA(isA<TomUserPreferenceCodecException>()),
+        );
+      });
+
+      test('a type mismatch surfaces the codec exception', () async {
+        transport.answer(body: _dtoBody('app.launches', 7));
+
+        expect(
+          build().get<String>('app.launches'),
+          throwsA(
+            isA<TomUserPreferenceCodecException>().having(
+              (error) => error.key,
+              'key',
+              'preferences.decode.type_mismatch',
+            ),
+          ),
+        );
+      });
+
+      test('all() decodes the array the list endpoint answers', () async {
+        transport.answer(
+          body:
+              '[${_dtoBody('tom.theme', 'dark')},'
+              '${_dtoBody('app.launches', 7)}]',
+        );
+
+        final stored = await build().all();
+
+        expect(stored, hasLength(2));
+        expect(stored.first.key, 'tom.theme');
+        expect(stored.first.value, '"dark"');
+        expect(stored.last.valueType, 'int');
+      });
+    });
+
+    group('failures', () {
+      test(
+        'a rejected call fails loudly rather than reading as absent',
+        () async {
+          // A 500 is the server saying it is broken. Answering `null` here would
+          // let an application paper a broken deployment over with a default and
+          // never learn that its user's preferences are unreachable.
+          transport.answer(statusCode: 500, body: 'Internal server error');
+
+          expect(
+            build().get<String>('tom.theme'),
+            throwsA(
+              isA<TomUserPreferencesClientException>().having(
+                (error) => error.key,
+                'key',
+                'preferences.client.rejected',
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        'readPreference throws for a miss, because its result is not nullable',
+        () async {
+          // The contract face keeps the wire's shape — `TomUserPreferenceDto`,
+          // not `TomUserPreferenceDto?` — so the miss has to be an error here.
+          // The `null` lives on the store face (`read` / `get`) instead.
+          transport.answer(statusCode: 404, body: '');
+
+          expect(
+            build().readPreference(
+              TomUserPreferenceKeyRequest(key: 'tom.theme'),
+            ),
+            throwsA(
+              isA<TomUserPreferencesClientException>().having(
+                (error) => error.key,
+                'key',
+                'preferences.client.not_found',
+              ),
+            ),
+          );
+        },
+      );
+
+      test('an unreadable body fails loudly', () async {
+        transport.answer(body: 'not json at all');
+
+        expect(
+          build().read('tom.theme'),
+          throwsA(
+            isA<TomUserPreferencesClientException>().having(
+              (error) => error.key,
+              'key',
+              'preferences.client.invalid_response',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('precedence against the device store', () {
+      test('the device value wins and the server is never asked', () async {
+        final device = TomStoredDevicePreferences(
+          TomMemoryDevicePreferenceStore(),
+        );
+        await device.set(TomUserPreferenceKeys.theme, 'dark');
+        final client = build();
+
+        final theme = await device.getPreferred<String>(
+          TomUserPreferenceKeys.theme,
+          () => client.get<String>(TomUserPreferenceKeys.theme),
+        );
+
+        expect(theme, 'dark');
+        expect(
+          transport.callCount,
+          0,
+          reason:
+              'a device that has written the key must not pay for a round trip',
+        );
+      });
+
+      test('the server answers a key this device has never written', () async {
+        final device = TomStoredDevicePreferences(
+          TomMemoryDevicePreferenceStore(),
+        );
+        transport.answer(body: _dtoBody('tom.theme', 'light'));
+        final client = build();
+
+        final theme = await device.getPreferred<String>(
+          TomUserPreferenceKeys.theme,
+          () => client.get<String>(TomUserPreferenceKeys.theme),
+        );
+
+        expect(theme, 'light');
+        expect(transport.callCount, 1);
+      });
+
+      test('neither store holding the key answers null', () async {
+        final device = TomStoredDevicePreferences(
+          TomMemoryDevicePreferenceStore(),
+        );
+        transport.answer(statusCode: 404, body: '');
+        final client = build();
+
+        expect(
+          await device.getPreferred<String>(
+            TomUserPreferenceKeys.theme,
+            () => client.get<String>(TomUserPreferenceKeys.theme),
+          ),
+          isNull,
+        );
+      });
+    });
+  });
+
   group('backend selection', () {
     /// Registers the platforms the two components are annotated for and
     /// activates [platform].
@@ -485,5 +858,72 @@ void main() {
       TomBean.withType(TomDevicePreferences, installed);
       expect(identical(TomDevicePreferences.resolve(), installed), isTrue);
     });
+  });
+}
+
+/// A syntactically valid, unsigned JWT carrying [payload].
+///
+/// Signed tokens are the security suite's business; here the token only has to
+/// be *parseable*, because what is under test is which header carries it.
+String _bearerJwt(Map<String, dynamic> payload) {
+  String segment(Map<String, dynamic> claims) =>
+      base64Url.encode(utf8.encode(jsonEncode(claims))).replaceAll('=', '');
+  return '${segment({'alg': 'HS256', 'typ': 'JWT'})}.${segment(payload)}.sig';
+}
+
+/// The wire body the server would answer for [key] holding [value].
+///
+/// Built through the real codec and the real reflection encoder, so a test
+/// never asserts against a shape the server does not actually produce.
+String _dtoBody(String key, Object value) => tomReflectionInfo
+    .convertToJsonString(TomUserPreferenceCodec.encode(key, value));
+
+/// An [TomHttpClientFactory] that answers every call from a script and records
+/// what was asked.
+///
+/// A fake rather than a live server: what these tests are about is the *shape*
+/// of the request the contract produces and the decoding of the answer, and
+/// neither needs a socket to be wrong in an interesting way.
+class _ScriptedTransport extends TomHttpClientFactory {
+  int _statusCode = 200;
+  String _body = '';
+
+  /// How many requests reached the transport.
+  int callCount = 0;
+
+  /// The method of the most recent request.
+  String? lastMethod;
+
+  /// The URL of the most recent request.
+  late Uri lastUrl;
+
+  /// The body of the most recent request, or `null` when it carried none.
+  String? lastBody;
+
+  /// The headers of the most recent request, keyed in **lower case**.
+  ///
+  /// Normalised on the way in because HTTP header names are case-insensitive
+  /// and `http` keys its own map that way: copying it into a plain `Map` would
+  /// otherwise make a lookup depend on which spelling the caller happened to
+  /// use, and a test would fail over the casing rather than over the header.
+  Map<String, String> lastHeaders = const {};
+
+  /// Scripts the answer the next call receives.
+  void answer({int statusCode = 200, String body = ''}) {
+    _statusCode = statusCode;
+    _body = body;
+  }
+
+  @override
+  Client getClient() => MockClient((request) async {
+    callCount++;
+    lastMethod = request.method;
+    lastUrl = request.url;
+    lastBody = request.body.isEmpty ? null : request.body;
+    lastHeaders = {
+      for (final entry in request.headers.entries)
+        entry.key.toLowerCase(): entry.value,
+    };
+    return Response(_body, _statusCode);
   });
 }

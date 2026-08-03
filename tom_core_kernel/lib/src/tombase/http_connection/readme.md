@@ -14,7 +14,7 @@ machinery that the server and Flutter layers build their transports on.
 | `TomHttpMethod` | Typed HTTP verbs — `TomHttpMethod.get`, `.post`, `.put`, `.delete`, … |
 | `TomHeader` | A typed HTTP header. |
 | `TomMimeType` / `StaticFileMimetypeMapping` | MIME type values and extension→type mapping. |
-| `TomRemoteApis` / `TomApi` / `TomApiEndpoint` | Declarative API + endpoint descriptors. |
+| `TomRemoteApis` / `TomApi` / `TomApiEndpoint` | Declarative API + endpoint descriptors. `TomApiEndpoint.resolveUri` builds a call's address from the declaration, so a client names no URI of its own. |
 | `TomServerCall` / `TomServerCallSpecs` / `TomServerCallLoad` / `TomServerCallError` | A remote call, its spec, payload, and error. |
 | `TomServerChannel` / `TomServerEndpoint` | Channel and endpoint abstractions. |
 | `TomHttpClientFactory` / `TomDefaultHttpClientFactory` | Pluggable HTTP-client construction. |

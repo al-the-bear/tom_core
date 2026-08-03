@@ -354,9 +354,12 @@ class TomServerCall {
         abortableRequest.headers[name] = specs.headers![name]!;
       }
     }
-    if (specs.includeBearerAuthentication) {
-      abortableRequest.headers["Authorization"] =
-          "Bearer ${TomBearerAuthentication.token}";
+    // The header is omitted rather than written as "Bearer null" when no one has
+    // signed in: an absent credential is a clean 401, a malformed one is the
+    // same rejection dressed as a parse failure.
+    final token = TomBearerAuthentication.token;
+    if (specs.includeBearerAuthentication && token != null) {
+      abortableRequest.headers["Authorization"] = "Bearer $token";
     }
     if (specs.maxRedirects != null) {
       abortableRequest.maxRedirects = specs.maxRedirects!;

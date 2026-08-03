@@ -336,6 +336,39 @@ TomApiEndpoint({
 | `access` | `TomAccessControl?` | The contract-side access policy the endpoint is served under (`null` = fall back to the server default or a handler annotation). |
 | `api` | `TomApi` | The parent API; throws `TomEndpointException` if the endpoint has not been added to an API. |
 
+##### Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `resolveUri(Uri baseUri, {Map<String, Object?> parameters = const {}})` | `Uri` | The address this endpoint is called at, built from its own declaration. |
+
+`resolveUri` is the **client-side inverse** of the binding the server pipeline
+performs: the same `uri` template and the same `urlParameterMapping` that tell
+the server how to read a request tell a client how to write one. A framework
+client therefore names no URI of its own, and the address called and the route
+served cannot drift apart.
+
+```dart
+read.resolveUri(
+  Uri.parse('https://api.example.com'),
+  parameters: {'key': TomUserPreferenceKeys.theme},
+); // https://api.example.com/preferences/tom.theme
+```
+
+The template is the API's `uri` followed by the endpoint's. `parameters` are
+keyed by **request-DTO field name**, the right-hand side of
+`urlParameterMapping` — so one map answers both halves of the address:
+
+- a `{name}` path capture binds to `urlParameterMapping[name] ?? name`, and a
+  capture with no answering parameter throws
+  `apis.endpoint.missing_url_parameter` rather than producing a URL with a hole
+  in it;
+- every *other* `urlParameterMapping` entry becomes a query parameter, omitted
+  when its value is `null`.
+
+Path segments already carried by `baseUri` are kept, so a base pointing at an
+API-gateway prefix still resolves correctly.
+
 #### TomContentDisposition
 
 Constants for HTTP `Content-Disposition` header values, used to specify how

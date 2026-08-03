@@ -385,6 +385,94 @@ class TomApiEndpoint<ReturnType, RequestType> {
     }
   }
 
+  /// Builds the URL that addresses this endpoint on the server rooted at
+  /// [baseUri], substituting [parameters] into the declaration.
+  ///
+  /// This is the **client-side inverse** of the server pipeline's URL-parameter
+  /// binding. The server folds a request's path captures and its named query
+  /// parameters *into* a typed request DTO; this builds the URL those values
+  /// travelled on, from the same [uri] template and the same
+  /// [urlParameterMapping]. Keeping both directions derived from one declaration
+  /// is the whole point: a client that spelled the path itself would agree with
+  /// the route only by inspection, and would keep agreeing only by luck.
+  ///
+  /// [parameters] is keyed by **request-DTO field name** — the *values* of
+  /// [urlParameterMapping] — because a client holds a DTO, not a URL. The two
+  /// kinds of parameter then bind under the rules the mapping documents:
+  ///
+  /// * **Path captures** (`{name}` in [uri], one per path segment) take
+  ///   `parameters[urlParameterMapping[name] ?? name]`, so an unmapped capture
+  ///   binds by its own name. A capture with no value is an error, not an empty
+  ///   segment: the URL would address a different route.
+  /// * **Query parameters** are the mapping entries whose URL name is *not* a
+  ///   path capture. Each is appended when [parameters] carries a non-`null`
+  ///   value for its field, and omitted otherwise — an optional query parameter
+  ///   is ordinary, whereas a missing path capture is a broken address.
+  ///
+  /// Values are converted with `toString()` and escaped per path segment, so a
+  /// key containing `/` or `?` addresses one segment rather than smuggling a
+  /// path or a query string past the route.
+  ///
+  /// ```dart
+  /// final read = tomUserPreferencesApi[tomUserPreferencesReadEndpointId];
+  /// read.resolveUri(
+  ///   Uri.parse('https://api.example.com'),
+  ///   parameters: {'key': TomUserPreferenceKeys.theme},
+  /// ); // https://api.example.com/preferences/tom.theme
+  /// ```
+  ///
+  /// Throws [TomEndpointException] when the endpoint has no parent API, or when
+  /// a path capture has no answering parameter.
+  Uri resolveUri(Uri baseUri, {Map<String, Object?> parameters = const {}}) {
+    final template = '${api.uri ?? ''}${uri ?? ''}';
+    final captureNames = <String>{};
+    final segments = <String>[
+      ...baseUri.pathSegments.where((segment) => segment.isNotEmpty),
+    ];
+    for (final segment in template.split('/')) {
+      if (segment.isEmpty) continue;
+      final capture = _captureName(segment);
+      if (capture == null) {
+        segments.add(segment);
+        continue;
+      }
+      captureNames.add(capture);
+      final field = urlParameterMapping[capture] ?? capture;
+      final value = parameters[field];
+      if (value == null) {
+        throw TomEndpointException(
+          'apis.endpoint.missing_url_parameter',
+          "Endpoint $id declares the path parameter '{$capture}' but no "
+              "'$field' was supplied.",
+          parameters: {'endpoint': id, 'capture': capture, 'field': field},
+        );
+      }
+      segments.add('$value');
+    }
+
+    final query = <String, String>{};
+    urlParameterMapping.forEach((urlName, field) {
+      if (captureNames.contains(urlName)) return;
+      final value = parameters[field];
+      if (value != null) query[urlName] = '$value';
+    });
+
+    return baseUri.replace(
+      pathSegments: segments,
+      // `replace` with an empty map still writes a bare `?`, so an endpoint with
+      // nothing to append must not pass one at all.
+      queryParameters: query.isEmpty ? null : query,
+    );
+  }
+
+  /// The capture name of a `{name}` path segment, or `null` for a literal one.
+  static String? _captureName(String segment) {
+    if (segment.length < 3) return null;
+    if (!segment.startsWith('{') || !segment.endsWith('}')) return null;
+    final name = segment.substring(1, segment.length - 1);
+    return name.contains('{') || name.contains('}') ? null : name;
+  }
+
   /// Gets the parent API for this endpoint.
   ///
   /// Throws [TomEndpointException] if the endpoint hasn't been added to an API.

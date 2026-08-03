@@ -3,16 +3,21 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-Device-stored user preferences: one typed API, one backend per platform, and
-the backend chosen by dependency injection instead of an `if (kIsWeb)` where the
-value is read.
+Both halves of a user's preferences, from the client side: the **device** store
+— one typed API, one backend per platform, chosen by dependency injection instead
+of an `if (kIsWeb)` where the value is read — and `TomUserPreferencesClient`, the
+typed client for the **account** store the server holds.
 
 Some preferences must **not** follow the user — which account was last used on
 this device, whether biometric unlock is on here, a layout choice that is right
-on the tablet and wrong on the phone. This module is where those live. The
-per-*user* store is the server's (`TomUserPreferences`, `tom_core_server`); the
-keys, the wire DTO and the value codec are the kernel's, so the two stores share
-one vocabulary and one encoding rather than two that agree by inspection.
+on the tablet and wrong on the phone. Those live in the device store. The ones
+that *should* follow the user live server-side (`TomUserPreferences`,
+`tom_core_server`) and are reached from here through `TomUserPreferencesClient`,
+which speaks the kernel's `tomUserPreferencesApi` contract. The keys, the wire
+DTO and the value codec are the kernel's, so the two stores share one vocabulary
+and one encoding rather than two that agree by inspection — and both carry the
+same method set, which is what lets a preference *move* between them without a
+call site changing.
 
 ## Key types
 
@@ -25,6 +30,8 @@ one vocabulary and one encoding rather than two that agree by inspection.
 | `TomMemoryDevicePreferenceStore` | A store that persists nothing beyond the process — for tests, examples, and clients that deliberately keep no machine-local state. |
 | `TomDevicePreferenceJson` | The stored JSON document, written once so every persistent backend stores the same text. |
 | `TomDevicePreferenceException` | `device_preferences.unsupported_platform`, `device_preferences.store.invalid_content`. |
+| `TomUserPreferencesClient` | The account store: `all` / `read` / `get` / `getOr` / `set` / `remove` over the server's `/preferences/*` routes. Implements the kernel's `TomUserPreferencesApiService`; every URI is resolved from the contract, none is written. |
+| `TomUserPreferencesClientException` | `preferences.client.not_found`, `preferences.client.rejected`, `preferences.client.invalid_response`. |
 
 ## Quick start
 
@@ -94,6 +101,25 @@ Writing here is the later, more specific act, so the account value behaves as a
 cross-device default and the device value as this machine's override. The rule
 is stated on `TomDevicePreferences` and applied in `getPreferred` — no caller
 re-derives it.
+
+```dart
+final theme = await preferences.getPreferred<String>(
+  TomUserPreferenceKeys.theme,
+  () => account.get<String>(TomUserPreferenceKeys.theme),
+);
+```
+
+The account side stays a **callback** even though the client ships beside the
+device store: a device-only app must not be made to carry an HTTP client to read
+a local setting. The client is simply what an application that has one closes
+over, so the pairing is written at the application layer — see
+`example/preferences/preferences_example.dart`, which runs it end to end against
+a real socket.
+
+The client needs the application to have registered its platform
+(`TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)`); it reaches the
+network through `TomPlatformUtils.current.httpClient()`, and the neutral fallback
+throws rather than guessing one.
 
 ---
 
