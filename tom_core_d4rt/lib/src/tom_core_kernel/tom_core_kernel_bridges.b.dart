@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
-// Sources: 63 files
-// Generated: 2026-08-03T11:44:24.927955
+// Sources: 64 files
+// Generated: 2026-08-04T00:36:53.325832
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -85,6 +85,7 @@ import 'package:tom_crypto/src/jwt_token.dart' as $tom_crypto_1;
 import 'package:tom_crypto/src/password_hashing.dart' as $tom_crypto_2;
 import 'package:tom_crypto/src/rsa_encryption.dart' as $tom_crypto_3;
 import 'package:tom_crypto/src/rsa_tools.dart' as $tom_crypto_4;
+import 'package:tom_crypto/src/secure_bytes.dart' as $tom_crypto_5;
 import 'package:tom_reflection/src/reflection/capability.dart' as $tom_reflection_1;
 import 'package:tom_reflection/src/reflection/mirrors.dart' as $tom_reflection_2;
 import 'package:tom_reflection/src/reflection/reflection_builder_based.dart' as $tom_reflection_3;
@@ -117,6 +118,7 @@ class TomCoreKernelBridge {
       _createTomClientJwtTokenBridge(),
       _createTomPasswordHasherBridge(),
       _createRsaKeyHelperBridge(),
+      _createTomSecureBytesBridge(),
       _createTomBeanLocatorExceptionBridge(),
       _createTomComponentBridge(),
       _createTomNoInterfaceBridge(),
@@ -376,6 +378,7 @@ class TomCoreKernelBridge {
       'TomClientJwtToken': _createTomClientJwtTokenBridge,
       'TomPasswordHasher': _createTomPasswordHasherBridge,
       'RsaKeyHelper': _createRsaKeyHelperBridge,
+      'TomSecureBytes': _createTomSecureBytesBridge,
       'TomBeanLocatorException': _createTomBeanLocatorExceptionBridge,
       'TomComponent': _createTomComponentBridge,
       'TomNoInterface': _createTomNoInterfaceBridge,
@@ -634,6 +637,7 @@ class TomCoreKernelBridge {
       'TomClientJwtToken': $tom_crypto_1.TomClientJwtToken,
       'TomPasswordHasher': $tom_crypto_2.TomPasswordHasher,
       'RsaKeyHelper': $tom_crypto_4.RsaKeyHelper,
+      'TomSecureBytes': $tom_crypto_5.TomSecureBytes,
       'TomBeanLocatorException': $tom_core_kernel_1.TomBeanLocatorException,
       'TomComponent': $tom_core_kernel_1.TomComponent,
       'TomNoInterface': $tom_core_kernel_1.TomNoInterface,
@@ -893,6 +897,7 @@ class TomCoreKernelBridge {
       'TomClientJwtToken': 'package:tom_crypto/src/jwt_token.dart',
       'TomPasswordHasher': 'package:tom_crypto/src/password_hashing.dart',
       'RsaKeyHelper': 'package:tom_crypto/src/rsa_tools.dart',
+      'TomSecureBytes': 'package:tom_crypto/src/secure_bytes.dart',
       'TomBeanLocatorException': 'package:tom_core_kernel/src/tombase/beanlocator/bean_locator.dart',
       'TomComponent': 'package:tom_core_kernel/src/tombase/beanlocator/bean_locator.dart',
       'TomNoInterface': 'package:tom_core_kernel/src/tombase/beanlocator/bean_locator.dart',
@@ -1452,6 +1457,7 @@ class TomCoreKernelBridge {
       (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/password_hashing.dart', show: null, hide: null),
       (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/rsa_encryption.dart', show: null, hide: null),
       (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/rsa_tools.dart', show: null, hide: null),
+      (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/secure_bytes.dart', show: null, hide: null),
       (source: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart', target: 'package:tom_core_kernel/src/tombase/observable/tom_observable.dart', show: null, hide: null),
       (source: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart', target: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart', show: null, hide: null),
       (source: 'package:tom_reflection/generated.dart', target: 'package:tom_reflection/src/reflection/mirrors.dart', show: null, hide: null),
@@ -2082,6 +2088,7 @@ class TomCoreKernelBridge {
       'package:tom_crypto/src/password_hashing.dart',
       'package:tom_crypto/src/rsa_encryption.dart',
       'package:tom_crypto/src/rsa_tools.dart',
+      'package:tom_crypto/src/secure_bytes.dart',
       'package:tom_reflection/src/reflection/mirrors.dart',
       'package:tom_reflection/src/reflection/reflection_builder_based.dart',
     ];
@@ -3783,6 +3790,30 @@ BridgedClass _createRsaKeyHelperBridge() {
       'removePemHeaderAndFooter': 'String removePemHeaderAndFooter(String pem)',
       'encodePrivateKeyToPemPKCS1': 'String encodePrivateKeyToPemPKCS1(RSAPrivateKey privateKey)',
       'encodePublicKeyToPemPKCS1': 'String encodePublicKeyToPemPKCS1(RSAPublicKey publicKey)',
+    },
+  );
+}
+
+// =============================================================================
+// TomSecureBytes Bridge
+// =============================================================================
+
+BridgedClass _createTomSecureBytesBridge() {
+  return BridgedClass(
+    nativeType: $tom_crypto_5.TomSecureBytes,
+    name: 'TomSecureBytes',
+    isAssignable: (v) => v is $tom_crypto_5.TomSecureBytes,
+    constructors: {
+    },
+    staticMethods: {
+      'generate': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'generate');
+        final length = D4.getRequiredArg<int>(positional, 0, 'length', 'generate');
+        return $tom_crypto_5.TomSecureBytes.generate(length);
+      },
+    },
+    staticMethodSignatures: {
+      'generate': 'Uint8List generate(int length)',
     },
   );
 }
@@ -5752,8 +5783,22 @@ BridgedClass _createTomApiEndpointBridge() {
       'responseType': (visitor, target, value) => 
         D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').responseType = D4.extractBridgedArg<Type>(value, 'responseType'),
     },
+    methods: {
+      'resolveUri': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint');
+        D4.requireMinArgs(positional, 1, 'resolveUri');
+        final baseUri = D4.getRequiredArg<Uri>(positional, 0, 'baseUri', 'resolveUri');
+        final parameters = named.containsKey('parameters') && named['parameters'] != null
+            ? D4.coerceMap<String, Object?>(named['parameters'], 'parameters')
+            : const <String, Object?>{};
+        return t.resolveUri(baseUri, parameters: parameters);
+      },
+    },
     constructorSignatures: {
       '': 'TomApiEndpoint({required String id, String? uri, String? description, List<TomHttpMethod>? methods, required TomHttpMethod method, TomMimeType consumes = TomMimeType.json, TomMimeType produces = TomMimeType.json, String? contentDisposition, List<String> formFields = const [], Map<String, String> responseHeaders = const {}, Map<String, String> requestHeaders = const {}, List<Type>? requestTypes, bool followRedirects = false, bool? persistentConnection, bool includeBearerAuthentication = true, int? maxRedirects, Encoding? requestEncoding, Encoding? responseEncoding, Map<int, Type>? statusCodeResponseTypes, Map<String, String> urlParameterMapping = const {}, TomAccessControl? access})',
+    },
+    methodSignatures: {
+      'resolveUri': 'Uri resolveUri(Uri baseUri, {Map<String, Object?> parameters = const {}})',
     },
     getterSignatures: {
       'id': 'String get id',
@@ -9440,6 +9485,7 @@ BridgedClass _createTomResultBridge() {
           case $tom_core_kernel_36.TomScheduledJob _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_36.TomScheduledJob>.success(value);
           case $tom_core_kernel_36.TomScheduledJobs _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_36.TomScheduledJobs>.success(value);
           case $tom_core_kernel_38.TomScope _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_38.TomScope>.success(value);
+          case $tom_crypto_5.TomSecureBytes _: return $tom_core_kernel_31.TomResult<$tom_crypto_5.TomSecureBytes>.success(value);
           case $tom_core_kernel_11.TomServerCall _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomServerCall>.success(value);
           case $tom_core_kernel_11.TomServerCallError _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomServerCallError>.success(value);
           case $tom_core_kernel_11.TomServerCallLoad _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomServerCallLoad>.success(value);
@@ -15810,6 +15856,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_36.TomScheduledJob _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_36.TomScheduledJob>(initialValue);
           case $tom_core_kernel_36.TomScheduledJobs _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_36.TomScheduledJobs>(initialValue);
           case $tom_core_kernel_38.TomScope _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_38.TomScope>(initialValue);
+          case $tom_crypto_5.TomSecureBytes _: return $tom_core_kernel_25.TomObject<$tom_crypto_5.TomSecureBytes>(initialValue);
           case $tom_core_kernel_11.TomServerCall _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomServerCall>(initialValue);
           case $tom_core_kernel_11.TomServerCallError _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomServerCallError>(initialValue);
           case $tom_core_kernel_11.TomServerCallLoad _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomServerCallLoad>(initialValue);

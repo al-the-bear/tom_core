@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 9 files
-// Generated: 2026-08-03T11:44:31.991516
+// Generated: 2026-08-04T00:37:00.921137
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -265,13 +265,6 @@ class TomDistLedgerBridge {
         },
       ),
       BridgedExtensionDefinition(
-        name: 'DLLogLevelExtension',
-        onTypeName: 'DLLogLevel',
-        getters: {
-          'name': (visitor, target) => (target as $tom_dist_ledger_2.DLLogLevel).name,
-        },
-      ),
-      BridgedExtensionDefinition(
         name: 'RetryableResponse',
         onTypeName: 'Response',
         getters: {
@@ -284,7 +277,6 @@ class TomDistLedgerBridge {
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
     return {
-      'DLLogLevelExtension': 'package:tom_dist_ledger/src/ledger_api/call_callback.dart',
       'DLLogLevelExtension': 'package:tom_dist_ledger/src/ledger_api/ledger_api.dart',
       'RetryableResponse': 'package:tom_basics_network/src/http_retry.dart',
     };

@@ -211,6 +211,22 @@ class ReplayTestHelper {
   }
 
   /// Generate bridges using d4rtgen.
+  ///
+  /// ## Why the generator is run from source
+  ///
+  /// `dart run bin/d4rtgen.dart` in the generator's own directory, never a
+  /// `d4rtgen` on PATH: PATH resolves to a prebuilt binary under
+  /// `tom_binaries`, which may have been compiled from a *different* workspace
+  /// checkout and would then generate against sources that are not the ones
+  /// under test.
+  ///
+  /// ## Why the project is selected with `--scan`, not `--project`
+  ///
+  /// d4rtgen's `-p, --project` takes project **name/ID patterns**, not paths.
+  /// Passing a filesystem path matches no project, so the generator does
+  /// nothing — and still exits 0. `--scan <path> --not-recursive` selects
+  /// exactly the one project rooted at [projectPath], which is the only thing
+  /// this helper has (and the only thing it wants).
   Future<bool> _generateBridges() async {
     // Resolve the generator project path
     final generatorPath = p.normalize(
@@ -229,9 +245,20 @@ class ReplayTestHelper {
       return false;
     }
 
+    // Filesystems differ in mtime granularity — some truncate to whole
+    // seconds — so the freshness cutoff gets a little slack. Generation takes
+    // tens of seconds, so a two-second window cannot admit a stale file.
+    final cutoff = DateTime.now().subtract(const Duration(seconds: 2));
+
     final result = await Process.run(
       'dart',
-      ['run', 'bin/d4rtgen.dart', '--project', projectPath],
+      [
+        'run',
+        'bin/d4rtgen.dart',
+        '--scan',
+        p.absolute(projectPath),
+        '--not-recursive',
+      ],
       workingDirectory: generatorPath,
       environment: {'DART_SDK': sdk},
     );
@@ -243,7 +270,45 @@ class ReplayTestHelper {
       return false;
     }
 
+    // A zero exit code is not evidence that anything was generated: d4rtgen
+    // exits 0 when it finds no project to work on. Demand the actual proof —
+    // bridge files rewritten during this run. Without this check the suite
+    // silently validates whatever bridges happened to be on disk, which is how
+    // the `--project <path>` bug above went unnoticed.
+    final regenerated =
+        _generatedBridgeFiles().where((f) => !f.isBefore(cutoff)).length;
+
+    if (regenerated == 0) {
+      _preparationError =
+          'Bridge generation exited 0 but rewrote no "*.b.dart" file under '
+          'lib/ or bin/ of $projectPath — d4rtgen selected no project.\n'
+          'Check that buildkit.yaml still declares a d4rtgen: section, and '
+          'that the generator CLI still selects projects the way this helper '
+          'assumes (see the doc comment on _generateBridges).\n'
+          'STDOUT: ${ReplayResult._truncate(result.stdout.toString(), 800)}\n'
+          'STDERR: ${ReplayResult._truncate(result.stderr.toString(), 800)}';
+      return false;
+    }
+
     return true;
+  }
+
+  /// Last-modified stamps of every generated bridge file in the project.
+  ///
+  /// Generated bridges are the `*.b.dart` files d4rtgen writes under `lib/`
+  /// (modules plus the barrel and dartscript registration) and `bin/` (the
+  /// test runner). Only those two roots are walked — `.dart_tool/` is large
+  /// and holds nothing of interest.
+  Iterable<DateTime> _generatedBridgeFiles() sync* {
+    for (final root in const ['lib', 'bin']) {
+      final dir = Directory(p.join(projectPath, root));
+      if (!dir.existsSync()) continue;
+      for (final entity in dir.listSync(recursive: true)) {
+        if (entity is File && entity.path.endsWith('.b.dart')) {
+          yield entity.lastModifiedSync();
+        }
+      }
+    }
   }
 
   /// Compile the d4rt binary.
