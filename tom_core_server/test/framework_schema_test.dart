@@ -2,11 +2,11 @@
 ///
 /// The application's entities have had a guard since CE-MG: the entity model
 /// declares a shape, the migration chain builds one, and `TomSchemaConvergence`
-/// proves the two agree. The framework's own six tables — the job queue, the
-/// lease table, the roll call, the blob pair, the audit trail — are not
-/// entities, so they sat outside it, and each declared its columns twice: once
-/// in a `CREATE TABLE` string and again in the column lists of the statements
-/// that read and write it. Nothing related the two.
+/// proves the two agree. The framework's own seven tables — the job queue, the
+/// lease table, the roll call, the blob pair, the audit trail, the pending
+/// authorizations — are not entities, so they sat outside it, and each declared
+/// its columns twice: once in a `CREATE TABLE` string and again in the column
+/// lists of the statements that read and write it. Nothing related the two.
 ///
 /// This file is what relates them. Each table is now declared once, as a
 /// [TomFrameworkTable], and the four tests below close the four ways a second
@@ -145,6 +145,15 @@ void main() {
       ]);
     });
 
+    test('the authentication chain builds the OAuth state descriptor', () {
+      // The chain's `[1]` creates the two-factor enrolment table, which is an
+      // *entity* and so is covered by the application convergence check rather
+      // than this one; restricting to the descriptors' tables drops it.
+      converges('example/authentication/migrations/main/tomcore', [
+        oauthStateTable(defaultOAuthStateTable),
+      ]);
+    });
+
     test('a chain that omits a column is reported, not tolerated', () {
       // The guard's own proof. Without it, all three tests above would still
       // pass against a comparison that reported nothing whatsoever.
@@ -222,6 +231,10 @@ void main() {
         TomAuditHeadRow,
         TomAuditSeqRow,
       ]);
+    });
+
+    test('the OAuth state table', () {
+      maps(oauthStateTable(defaultOAuthStateTable), [TomOAuthStateRow]);
     });
 
     test('a rename in the descriptor that the mapper did not follow fails', () {
@@ -355,6 +368,31 @@ void main() {
           await _issuing(() => roll.nodes());
           await _issuing(() => roll.failedNodes(now));
           await _issuing(() => roll.forget('node-b'));
+        },
+      );
+    });
+
+    test('the OAuth state store', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlOAuthStateStore(datasource);
+      final pending = TomOAuthAuthorizationState(
+        state: 'handle',
+        providerId: 'google',
+        createdAt: DateTime.utc(2026, 7, 28, 12),
+        pkce: const TomOAuthPkce('verifier', 'challenge'),
+        client: 'web',
+      );
+      await audit(
+        datasource,
+        [oauthStateTable(defaultOAuthStateTable)],
+        () async {
+          await _issuing(() => store.store(pending));
+          await _issuing(() => store.peek('handle'));
+          await _issuing(() => store.consume('handle'));
+          await _issuing(
+            () => store.purgeExpired(DateTime.utc(2026, 7, 28, 12)),
+          );
+          await _issuing(() => store.deleteAll());
         },
       );
     });

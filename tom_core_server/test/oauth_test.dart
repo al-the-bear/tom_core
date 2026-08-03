@@ -467,6 +467,100 @@ void main() {
       );
     });
 
+    test('the state store defaults to memory when nothing selects one', () {
+      // The whole point of the default: a single-node deployment that has never
+      // heard of the SQL store keeps the behaviour it always had, and needs to
+      // configure nothing to keep it.
+      final settings = TomOAuthStateStoreSettings.fromConfiguration(
+        TomServerConfigResourceProvider.from({
+          'oauth': {'providers': <String, Object>{}},
+        }),
+      );
+      expect(settings.type, TomOAuthStateStoreType.memory);
+      expect(settings.createStore(), isA<TomOAuthMemoryStateStore>());
+    });
+
+    test('the state store is selected alongside the provider set', () {
+      final settings = TomOAuthStateStoreSettings.fromConfiguration(
+        TomServerConfigResourceProvider.from({
+          'oauth': {
+            'stateStore': {
+              'type': 'sql',
+              'datasource': 'main',
+              'table': 'pending_auth',
+              'timeToLiveSeconds': '900',
+              'createSchema': 'false',
+            },
+          },
+        }),
+      );
+      expect(settings.type, TomOAuthStateStoreType.sql);
+      expect(settings.datasourceName, 'main');
+      expect(settings.table, 'pending_auth');
+      expect(settings.timeToLive, const Duration(minutes: 15));
+      expect(settings.createSchema, isFalse);
+    });
+
+    // A typo that quietly selected the per-process store would reintroduce
+    // exactly the intermittent failure the SQL store exists to remove, on a
+    // cluster whose operator believes it is configured for one.
+    test('an unknown state store type is refused, not defaulted away', () {
+      expect(
+        () => TomOAuthStateStoreSettings.fromConfiguration(
+          TomServerConfigResourceProvider.from({
+            'oauth': {
+              'stateStore': {'type': 'redis'},
+            },
+          }),
+        ),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.unknown_state_store',
+          ),
+        ),
+      );
+    });
+
+    test('selecting the sql store without a datasource fails at startup', () {
+      expect(
+        () => TomOAuthStateStoreSettings.fromConfiguration(
+          TomServerConfigResourceProvider.from({
+            'oauth': {
+              'stateStore': {'type': 'sql'},
+            },
+          }),
+        ),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.missing_state_store_datasource',
+          ),
+        ),
+      );
+    });
+
+    test('a time-to-live that is not a positive number of seconds fails', () {
+      expect(
+        () => TomOAuthStateStoreSettings.fromConfiguration(
+          TomServerConfigResourceProvider.from({
+            'oauth': {
+              'stateStore': {'timeToLiveSeconds': '0'},
+            },
+          }),
+        ),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.config.invalid_state_store_ttl',
+          ),
+        ),
+      );
+    });
+
     test(
       'a provider missing a required setting fails at load, not at login',
       () {

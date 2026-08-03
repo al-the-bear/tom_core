@@ -28,7 +28,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
-/// The migration schema the three shipped chains are applied under here.
+/// The migration schema the shipped chains are applied under here.
 ///
 /// Distinct from the name `scheduling_db_test.dart` uses, so the two files'
 /// `<schema>_versioning` bookkeeping tables cannot collide when both run.
@@ -39,6 +39,7 @@ const List<String> _migrationChains = [
   'example/scheduling/migrations/main/tomcore',
   'example/file_storage/migrations/main/tomcore',
   'example/audit/migrations/main/tomcore',
+  'example/authentication/migrations/main/tomcore',
 ];
 
 /// The shipped migration files, laid out the way
@@ -46,9 +47,9 @@ const List<String> _migrationChains = [
 ///
 /// The **contents** are copied verbatim, so what is applied is the SQL a
 /// deployment applies. Only the leading `[n]` is rewritten, because each chain
-/// numbers its own files from `[1]` and the three are concatenated into one
+/// numbers its own files from `[1]` and they are concatenated into one
 /// schema here — the migration adapter admits a single initialisation per
-/// process, so three schemas cannot be migrated in one call. The position of an
+/// process, so several schemas cannot be migrated in one call. The position of an
 /// artifact within a chain is what the numbering encodes, and concatenating in
 /// chain order preserves it.
 Directory _migrationDirectory() {
@@ -97,6 +98,7 @@ void main() async {
       // what an earlier run happened to leave behind.
       await TestDatabase.dropSchedulingTables(dsi);
       await TestDatabase.dropBlobTables(dsi);
+      await TestDatabase.dropOAuthStateTable(dsi);
 
       await TomSqlJobStore(dsi.datasource).ensureSchema();
       await TomSqlLeaseLock(dsi.datasource).ensureSchema();
@@ -106,6 +108,7 @@ void main() async {
         checkinInterval: const Duration(seconds: 5),
       ).ensureSchema();
       await TomDatabaseBlobStore(dsi.datasource).ensureSchema();
+      await TomSqlOAuthStateStore(dsi.datasource).ensureSchema();
 
       await matchesLiveSchema([
         jobRunTable(defaultJobRunTable),
@@ -113,6 +116,7 @@ void main() async {
         schedulerNodeTable(defaultSchedulerNodeTable),
         blobManifestTable(defaultBlobManifestTable),
         blobChunkTable(defaultBlobChunkTable),
+        oauthStateTable(defaultOAuthStateTable),
       ]);
     });
 
@@ -122,6 +126,7 @@ void main() async {
       // the same tables or the guarantee holds for only half of the field.
       await TestDatabase.dropSchedulingTables(dsi);
       await TestDatabase.dropBlobTables(dsi);
+      await TestDatabase.dropOAuthStateTable(dsi);
       await dsi.datasource.executeCommand(
         'DROP TABLE IF EXISTS $defaultAuditTrailTable',
       );

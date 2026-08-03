@@ -329,6 +329,18 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
   }
 
+  /// Drops the relational OAuth state store's table (TCCB6).
+  ///
+  /// Dropped rather than truncated for the same reason as the scheduling
+  /// tables: the store creates it on first use, so a run that changed the DDL
+  /// would otherwise keep the previous shape.
+  static Future<void> dropOAuthStateTable(
+    TomDataSourceInfo dsi, {
+    String table = defaultOAuthStateTable,
+  }) async {
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
+  }
+
   /// Drops the `<schemaName>_versioning` table the migration orchestrator keeps.
   ///
   /// The orchestrator is idempotent by design: it skips a version it has already

@@ -3,7 +3,8 @@
 /// Demonstrates the [TomAuthenticationService] contract end to end without a
 /// running HTTP server or database: building [TomAuthenticationData], resolving
 /// it through a service into a [TomAuthenticationInfo], rejecting a login with a
-/// [LoginException], and reading the adaptor-annotation configuration.
+/// [LoginException], reading the adaptor-annotation configuration, and choosing
+/// the pending-authorization store through [TomOAuthStateStoreSettings].
 ///
 /// Run with `dart run example/authentication/authentication_example.dart`.
 /// The same behaviour is covered by `test/authentication_test.dart`.
@@ -70,12 +71,35 @@ Future<void> run() async {
   print('guest-only adaptor:        ${guestAdaptor.guestOnly}');
   print('2FA adaptor type:          ${totp.type}');
 
+  // Example 5: where pending OAuth authorizations live is configuration.
+  // A single node keeps the in-memory store and configures nothing; a cluster
+  // names a data source, because the provider's redirect lands on whichever
+  // node the load balancer picks, not the one that began the flow.
+  final singleNode = TomOAuthStateStoreSettings.fromConfiguration(
+    TomServerConfigResourceProvider.from({
+      'oauth': {'providers': <String, Object>{}},
+    }),
+  );
+  final clustered = TomOAuthStateStoreSettings.fromConfiguration(
+    TomServerConfigResourceProvider.from({
+      'oauth': {
+        'stateStore': {'type': 'sql', 'datasource': 'main'},
+      },
+    }),
+  );
+  print('default state store:       ${singleNode.type.name}');
+  print('clustered state store:     ${clustered.type.name} '
+      'on "${clustered.datasourceName}"/${clustered.table}');
+
   // Assertions
   assert(guest.principal.authenticated == false);
   assert(user.principal.authenticated == true);
   assert(ok.principal.user.username == 'alice');
   assert(guestAdaptor.guestOnly && !guestAdaptor.userOnly);
   assert(totp.type == 'totp');
+  assert(singleNode.type == TomOAuthStateStoreType.memory);
+  assert(clustered.type == TomOAuthStateStoreType.sql);
+  assert(clustered.table == defaultOAuthStateTable);
 }
 
 void main() => run();

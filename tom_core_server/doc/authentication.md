@@ -73,6 +73,10 @@ principal into an authentication token and an authorization token.
 | `TomOAuthPkce` | class | A verifier / `S256` challenge pair |
 | `TomOAuthAuthorizationState` | class | One pending authorization: state handle, verifier, and the login context it started in |
 | `TomOAuthStateStore` | abstract | Where pending authorizations live; `TomOAuthMemoryStateStore` is the default |
+| `TomSqlOAuthStateStore` | class | A state store over `tom_oauth_state`, so every node of a cluster sees the same pending authorizations |
+| `TomOAuthStateRow` | row type (`@tomReflector`) | One `tom_oauth_state` row, as the store reads it back |
+| `TomOAuthStateStoreType` | enum | `memory` (the default) or `sql` — which store a deployment selected |
+| `TomOAuthStateStoreSettings` | class | The `oauth.stateStore` block as data, and `createStore()` for what it names |
 | `TomOAuthTokenTransport` | abstract | The provider HTTP calls, so a test can stub the provider |
 | `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, raw claims |
 | `TomExternalIdentityStore` | abstract | The linking table: (issuer, subject) → local account |
@@ -1240,6 +1244,76 @@ anonymous identity.
 `oauth_test.dart` does — leaves every other line of the flow executing exactly
 as it does against a real provider.
 
+### Where pending authorizations live
+
+The handshake is **two HTTP requests**, and the second one is not issued by the
+client: the provider redirects the browser to `/oauth/callback`, and a load
+balancer routes that redirect to whichever node it likes. Whatever
+`/oauth/authorize` wrote must therefore be readable by *any* node — including
+one that has never heard of the flow.
+
+`TomOAuthMemoryStateStore` keeps it in one isolate's memory, which is exactly
+right for a single node and wrong for a cluster: a callback that lands on
+another node fails as `oauth.flow.unknown_state`, indistinguishable from an
+expired or replayed state. The symptom is a deployment where external login
+works, but intermittently, and the log claims replay.
+
+`TomSqlOAuthStateStore` puts the record in `tom_oauth_state` — a framework
+table declared once as a `TomFrameworkTable` (see
+[Database Migration](db_migration.md#the-frameworks-own-tables)) and so covered
+by the same convergence checks as every other. Three decisions in it are worth
+stating outright:
+
+* **The PKCE verifier is stored as written, not encrypted.** It is a
+  single-use, ten-minute nonce whose only job is to prove that the party
+  redeeming the code is the party that began the flow, and it is useless
+  without the authorization code — which the store never sees. Encrypting it
+  would require a key shared by every node, a second piece of distributed state
+  protecting the first, guarding nothing that outlives the request pair. The
+  deployment owes this table ordinary database access control; it is not
+  public.
+* **Expiry is a predicate, not a job.** Every statement carries
+  `expires_at > :now`, so a row becomes invisible the instant it expires whether
+  or not anything has swept it — correctness does not depend on the cleanup
+  running. A throttled sweep on write then deletes what is already invisible, so
+  the table does not grow without bound. A scheduled job would have made
+  liveness a precondition of correctness; this way it is only a precondition of
+  size.
+* **Completion is one statement.** `consume` is a single `DELETE … RETURNING`,
+  so two nodes racing the same callback cannot both see the row: the database
+  picks a winner and the loser is handed nothing. A read followed by a delete
+  would open precisely the window that lets one state be spent twice.
+
+Which store a deployment gets is configuration, read from `oauth.stateStore`
+beside `oauth.providers` and defaulting to memory — so nothing changes for a
+deployment that does not ask:
+
+```yaml
+oauth:
+  stateStore:
+    type: sql               # memory (default) | sql
+    datasource: main        # required for sql
+    table: tom_oauth_state  # optional
+    timeToLiveSeconds: 600  # optional
+    createSchema: true      # optional; create the table on first use
+  providers:
+    google: { ... }
+```
+
+```dart
+// Read the block and install whatever it named. TomOAuthStateStore.resolve()
+// picks the installed bean up; nothing else changes.
+TomBean.withType(
+  TomOAuthStateStore,
+  TomOAuthStateStoreSettings.fromConfiguration().createStore(),
+);
+```
+
+A `type` that is neither value, or `sql` with no `datasource`, fails at startup
+rather than falling back to memory — a typo that quietly selected the
+per-process store would reintroduce the intermittent failure on a cluster whose
+operator believes it is configured against exactly that.
+
 ### The endpoints
 
 Three, declared as an ordinary typed contract (`tomOAuthApi` in the kernel) and
@@ -1267,6 +1341,8 @@ without the application registering anything.
 | --- | ------- |
 | `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` | The `oauth.providers` block is malformed. Startup-time. |
 | `oauth.config.unknown_provider` | A request named a provider that is not configured. |
+| `oauth.config.state_store_not_a_map` · `oauth.config.unknown_state_store` · `oauth.config.missing_state_store_datasource` · `oauth.config.invalid_state_store_ttl` | The `oauth.stateStore` block is malformed. Startup-time, and never defaulted away. |
+| `oauth.state_store.unknown_datasource` | The SQL state store names a data source that is not registered. Startup-time. |
 | `oauth.callback.unknown_state` · `oauth.flow.unknown_state` | The state handle is unknown, expired, or already used — raised by the endpoint and by the flow respectively. |
 | `oauth.callback.provider_error` | The provider itself refused (e.g. the user pressed cancel). |
 | `oauth.flow.missing_code` · `oauth.flow.token_exchange_rejected` | The redirect carried no code, or the token endpoint refused the exchange. |
@@ -1404,6 +1480,14 @@ Provider configuration as data, read from `oauth.providers`.
 The handshake, the verifier/challenge pair, the pending-authorization records,
 and the one HTTP seam a stub provider replaces.
 
+### `TomSqlOAuthStateStore` / `TomOAuthStateStoreSettings`
+
+The state store every node of a cluster shares, over the `tom_oauth_state`
+framework table, and the `oauth.stateStore` block that selects it. `store` /
+`peek` / `consume` / `purgeExpired`, with `consume` a single
+`DELETE … RETURNING` so a state stays single-use under concurrent completions —
+see [Where pending authorizations live](#where-pending-authorizations-live).
+
 ### `TomExternalIdentityStore` / `TomExternalIdentityLink`
 
 The linking table. `TomPersistentExternalIdentityStore` for production,
@@ -1462,8 +1546,16 @@ resolves the pending record for its context and calls
 - **`TomOAuthMemoryStateStore` is the default state store, and is per-process.**
   Pending authorizations live for ten minutes in one isolate's memory, which is
   correct for a single-node deployment and wrong behind a load balancer that may
-  route the callback to a different node. A clustered deployment installs a
-  shared `TomOAuthStateStore`; the contract is three methods.
+  route the callback to a different node. That default is deliberate — a single
+  node and a test suite need no database — but it is a default, not the only
+  choice.
+- **A clustered deployment sets `oauth.stateStore.type: sql`** and gets
+  `TomSqlOAuthStateStore` over the shared `tom_oauth_state` table, where an
+  authorization begun on one node completes on any other and a state stays
+  single-use under concurrent completions. What is *not* implemented is any
+  other backing: there is no Redis or other cache-backed store, and a deployment
+  wanting one implements the same three-method contract. See
+  [Where pending authorizations live](#where-pending-authorizations-live).
 - **The identity *store* has no default at all**, deliberately — see
   [The linking table](#the-linking-table).
 - **Token refresh is not implemented.** The provider's access token is used once

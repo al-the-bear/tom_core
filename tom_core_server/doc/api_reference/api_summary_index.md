@@ -10,7 +10,7 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
-| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, and the server's own self-login. |
+| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth handshake, its pending-authorization stores, and the linking table. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
@@ -118,6 +118,32 @@ surface documented here.
 | `TomHttpServiceLoginTransport` | class | The live transport, over `TomServerChannel`. |
 | `TomServiceLoginResponse` | class | The raw status + body of a self-login POST. |
 | `TomServerSelfLoginException` | class | A configured deployment failed to log itself in. |
+| `TomOAuthAuthenticationService` | class | An authentication service for authorization-code logins; delegates every other credential. |
+| `TomOAuthCredential` | class | The code + state pair carried in `TomAuthenticationData.key`. |
+| `TomExternalIdentityDirectory` | abstract class | What the deployment supplies: local account lookup and first-login provisioning. |
+| `TomOAuthProviderConfig` | class | One provider as data: endpoints, client credentials, claim names, provisioning. |
+| `TomOAuthProviders` | class | The configured provider set, read from `oauth.providers`. |
+| `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse` or `autoProvision`. |
+| `TomOAuthFlow` | class | The authorization-code + PKCE handshake. |
+| `TomOAuthPkce` | class | A verifier / `S256` challenge pair. |
+| `TomOAuthExchange` | class | What a completed handshake yields: the asserted identity and its login context. |
+| `TomOAuthAuthorizationState` | class | One pending authorization: handle, verifier, and the context it started in. |
+| `TomOAuthStateStore` | abstract class | Where pending authorizations live between the two halves of the flow. |
+| `TomOAuthMemoryStateStore` | class | The default store: per-process, time-to-live bounded. |
+| `TomSqlOAuthStateStore` | class | State store over `tom_oauth_state`, so a flow begun on one node completes on another. |
+| `TomOAuthStateRow` | class | One `tom_oauth_state` row, as the SQL store reads it back. |
+| `TomOAuthStateStoreType` | enum | Which store is configured: `memory` (default) or `sql`. |
+| `TomOAuthStateStoreSettings` | class | The `oauth.stateStore` block as data, and `createStore()` for what it names. |
+| `TomOAuthTokenTransport` | abstract class | The provider HTTP calls, so a test can stub the provider. |
+| `TomHttpOAuthTokenTransport` | class | The live transport to a provider's token and userinfo endpoints. |
+| `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, claims. |
+| `TomExternalIdentityStore` | abstract class | The linking table: (issuer, subject) → local account. |
+| `TomPersistentExternalIdentityStore` | class | Linking table over a repository. |
+| `TomMemoryExternalIdentityStore` | class | In-memory linking table, for tests and dev servers. |
+| `TomExternalIdentityLink` | class | One persisted link row. |
+| `TomExternalIdentityLinkRepository` | class | SQL repository for `TomExternalIdentityLink`. |
+| `TomOAuthServer` | class | The three `/oauth/*` endpoints. |
+| `TomOAuthException` | class | A mis-configured provider set or a refused handshake (extends `TomServerException`). |
 
 ### Authorization (`lib/src/tomserver/authorization/`)
 
@@ -465,6 +491,7 @@ surface documented here.
 | `defaultJobRunTable` | Scheduling |
 | `defaultLeaseTable` | Scheduling |
 | `defaultNodeFailureSlack` | Scheduling |
+| `defaultOAuthStateTable` | Authentication |
 | `defaultSchedulerNodeTable` | Scheduling |
 | `DoubleCol` | Object Persistence |
 | `DoubleLiteral` | Object Persistence |
@@ -503,6 +530,8 @@ surface documented here.
 | `noopHandler` | Server |
 | `Not` | Object Persistence |
 | `NotLike` | Object Persistence |
+| `oauthStateTable` | Authentication |
+| `oauthStateTableDdl` | Authentication |
 | `Or` | Object Persistence |
 | `Parameter` | Object Persistence |
 | `parseAuditLines` | Audit |
@@ -661,6 +690,11 @@ surface documented here.
 | `TomExportFormats` | Export |
 | `TomExportService` | Export |
 | `TomExportStore` | Export |
+| `TomExternalIdentity` | Authentication |
+| `TomExternalIdentityDirectory` | Authentication |
+| `TomExternalIdentityLink` | Authentication |
+| `TomExternalIdentityLinkRepository` | Authentication |
+| `TomExternalIdentityStore` | Authentication |
 | `TomFieldMappedSmsProtocol` | Messaging |
 | `TomFileAuditAnchorStore` | Audit |
 | `TomFileAuditSink` | Audit |
@@ -670,6 +704,7 @@ surface documented here.
 | `TomGradedAccessControlInformation` | Authorization |
 | `TomHealthServer` | Health Check |
 | `TomHealthService` | Health Check |
+| `TomHttpOAuthTokenTransport` | Authentication |
 | `TomHttpServiceLoginTransport` | Authentication |
 | `TomIntConfig` | Configuration |
 | `TomJobRunRow` | Scheduling |
@@ -683,6 +718,7 @@ surface documented here.
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |
 | `TomMemoryExportStore` | Export |
+| `TomMemoryExternalIdentityStore` | Authentication |
 | `TomMemoryMessageTransport` | Messaging |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
@@ -697,11 +733,29 @@ surface documented here.
 | `tomMimeLineEnding` | Messaging |
 | `tomMimeMaxLineLength` | Messaging |
 | `TomNoOpMessageTransport` | Messaging |
+| `TomOAuthAuthenticationService` | Authentication |
+| `TomOAuthAuthorizationState` | Authentication |
+| `TomOAuthCredential` | Authentication |
+| `TomOAuthException` | Authentication |
+| `TomOAuthExchange` | Authentication |
+| `TomOAuthFlow` | Authentication |
+| `TomOAuthMemoryStateStore` | Authentication |
+| `TomOAuthPkce` | Authentication |
+| `TomOAuthProviderConfig` | Authentication |
+| `TomOAuthProviders` | Authentication |
+| `TomOAuthProvisioning` | Authentication |
+| `TomOAuthServer` | Authentication |
+| `TomOAuthStateRow` | Authentication |
+| `TomOAuthStateStore` | Authentication |
+| `TomOAuthStateStoreSettings` | Authentication |
+| `TomOAuthStateStoreType` | Authentication |
+| `TomOAuthTokenTransport` | Authentication |
 | `TomOperator` | Datasources |
 | `tomOutboxJobName` | Messaging |
 | `TomPdfRenderer` | Export |
 | `TomPermanentDeliveryException` | Messaging |
 | `TomPersistenceEventHandler` | Object Persistence |
+| `TomPersistentExternalIdentityStore` | Authentication |
 | `TomPreparedStatement` | Datasources |
 | `TomPrincipalDelegation` | Authorization |
 | `TomPrincipalResourceGrant` | Authorization |
@@ -761,6 +815,7 @@ surface documented here.
 | `TomSqlDialect` | Datasources |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |
+| `TomSqlOAuthStateStore` | Authentication |
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomStandardSqlDialect` | Datasources |
 | `TomStorageException` | File Storage |

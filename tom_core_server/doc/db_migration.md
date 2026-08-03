@@ -147,7 +147,8 @@ the chain never creates is an error; so is a type family the chain cannot hold.
 ### The Framework's Own Tables
 
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
-`tom_blob`, `tom_blob_chunk`, `tom_audit_trail` — are not application entities
+`tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state` — are not
+application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
 against every application schema. So they sit outside the guard above, and used
@@ -172,7 +173,7 @@ Table names stay per-instance constructor arguments, so the descriptor is a
 *factory* (`jobRunTable(name)`), and index names are derived from the table name
 so two queues in one schema cannot collide.
 
-`frameworkOwnedTables()` returns all six at their default names.
+`frameworkOwnedTables()` returns them all at their default names.
 
 ### The Four Places a Column Name Could Have Been Spelled
 

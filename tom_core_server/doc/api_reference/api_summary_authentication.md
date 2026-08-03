@@ -58,6 +58,10 @@ server's own self-login against an auth server.
   - [TomOAuthAuthorizationState](#tomoauthauthorizationstate)
   - [TomOAuthStateStore](#tomoauthstatestore)
   - [TomOAuthMemoryStateStore](#tomoauthmemorystatestore)
+  - [TomSqlOAuthStateStore](#tomsqloauthstatestore)
+  - [TomOAuthStateRow](#tomoauthstaterow)
+  - [TomOAuthStateStoreType](#tomoauthstatestoretype)
+  - [TomOAuthStateStoreSettings](#tomoauthstatestoresettings)
   - [TomOAuthTokenTransport](#tomoauthtokentransport)
   - [TomHttpOAuthTokenTransport](#tomhttpoauthtokentransport)
   - [TomExternalIdentity](#tomexternalidentity)
@@ -84,6 +88,8 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/server_self_login.dart`,
 `lib/src/tomserver/authentication/oauth_provider.dart`,
 `lib/src/tomserver/authentication/oauth_flow.dart`,
+`lib/src/tomserver/authentication/oauth_state_sql.dart`,
+`lib/src/tomserver/authentication/sql_oauth_state_store.dart`,
 `lib/src/tomserver/authentication/oauth_identity.dart`,
 `lib/src/tomserver/authentication/oauth_authentication_service.dart`,
 `lib/src/tomserver/authentication/oauth_endpoints.dart`.
@@ -173,7 +179,8 @@ TomAuthenticationService  (abstract)
     └── TomOAuthAuthenticationService     (implements, delegates the rest)
 
 TomOAuthStateStore  (abstract)
-    └── TomOAuthMemoryStateStore  (implements)
+    ├── TomOAuthMemoryStateStore  (implements, per-process, the default)
+    └── TomSqlOAuthStateStore     (implements, over tom_oauth_state, shared)
 
 TomOAuthTokenTransport  (abstract)
     └── TomHttpOAuthTokenTransport  (implements)
@@ -237,6 +244,9 @@ TomOAuthProviderConfig     (standalone, immutable)
 TomOAuthProviders          (standalone, immutable)
 TomOAuthPkce               (standalone, immutable)
 TomOAuthAuthorizationState (standalone, immutable)
+TomOAuthStateRow           (@tomReflector, @TomDbTable row type)
+TomOAuthStateStoreType     (enum)
+TomOAuthStateStoreSettings (standalone, immutable)
 TomExternalIdentity        (standalone, immutable)
 TomOAuthExchange           (standalone, immutable)
 TomOAuthFlow               (standalone, immutable)
@@ -1479,6 +1489,117 @@ Expired and unknown handles are indistinguishable to a caller. Correct for a
 single-node deployment; a cluster installs a shared store (see
 [Status and Limitations](../authentication.md#status-and-limitations)).
 
+### TomSqlOAuthStateStore
+
+The shared store: pending authorizations as rows in `tom_oauth_state`, so an
+authorization begun on one node completes on any other.
+
+```dart
+TomSqlOAuthStateStore(
+  TomDataSource datasource, {
+  String table = defaultOAuthStateTable,
+  bool createSchema = true,
+  Duration timeToLive = const Duration(minutes: 10),
+  Duration sweepInterval = const Duration(minutes: 1),
+})
+
+factory TomSqlOAuthStateStore.named(
+  String datasourceName, {
+  String table = defaultOAuthStateTable,
+  bool createSchema = true,
+  Duration timeToLive = const Duration(minutes: 10),
+  Duration sweepInterval = const Duration(minutes: 1),
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `TomDataSource` | Where the table lives |
+| `table` | `String` | The pending-authorization table |
+| `createSchema` | `bool` | Create the table on first use |
+| `timeToLive` | `Duration` | Measured from `createdAt`, as the memory store measures its own |
+| `sweepInterval` | `Duration` | How often `store` prunes; a cost control, not a correctness one |
+
+#### Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `ensureSchema()` | `Future<void>` | Creates the table if absent; idempotent, and called by every operation |
+| `store(TomOAuthAuthorizationState)` | `Future<void>` | Records a pending authorization. `INSERT`, not `REPLACE` — a duplicate handle is an error, never an overwrite |
+| `peek(String state)` | `Future<TomOAuthAuthorizationState?>` | Reads without spending; `null` for unknown *and* expired |
+| `consume(String state)` | `Future<TomOAuthAuthorizationState?>` | Spends the record in **one** `DELETE … RETURNING`, so two racing callbacks cannot both be answered |
+| `purgeExpired([DateTime now])` | `Future<int>` | Deletes what has expired; affects size, never behaviour |
+| `deleteAll()` | `Future<void>` | Empties the table, for provisioning and tests |
+
+`named` throws `oauth.state_store.unknown_datasource` when no such data source
+is registered — a start-up failure rather than a first-login one. Expiry is a
+predicate (`expires_at > :now`) on every read, so a row is invisible from the
+instant it expires whether or not the sweep has reached it.
+
+### TomOAuthStateRow
+
+One `tom_oauth_state` row, as `peek` and `consume` read it back — reflected,
+`@TomDbTable`-mapped, and internal to the store.
+
+Thirteen `@TomDbColumn` fields: `state`, `provider_id`, `pkce_verifier`,
+`pkce_challenge`, `created_at`, `expires_at`, `client`, `application`,
+`process`, `organization`, `client_language`, `client_country`,
+`client_timezone`. The two instants are typed `String` because the driver
+decodes `DATETIME` as local time; `parseSqlInstant` turns them back into UTC.
+
+### TomOAuthStateStoreType
+
+Which store a deployment selected.
+
+| Value | Meaning |
+| ----- | ------- |
+| `memory` | `TomOAuthMemoryStateStore`, per-process. The default |
+| `sql` | `TomSqlOAuthStateStore`, shared through a data source |
+
+`TomOAuthStateStoreType.parse(String)` throws
+`oauth.config.unknown_state_store` on anything else rather than falling back to
+`memory`: a typo that quietly selected the per-process store would reintroduce
+the intermittent clustered failure the SQL store exists to remove.
+
+### TomOAuthStateStoreSettings
+
+The `oauth.stateStore` block as data, read beside `oauth.providers`.
+
+```dart
+TomOAuthStateStoreSettings({
+  TomOAuthStateStoreType type = TomOAuthStateStoreType.memory,
+  String datasourceName = '',
+  String table = defaultOAuthStateTable,
+  Duration timeToLive = const Duration(minutes: 10),
+  bool createSchema = true,
+})
+
+factory TomOAuthStateStoreSettings.fromConfiguration([
+  TomServerConfigResourceProvider? configuration,
+])
+```
+
+#### Static Properties
+
+| Property | Value | Description |
+| -------- | ----- | ----------- |
+| `configurationKey` | `'oauth.stateStore'` | Where the block is read from |
+
+#### Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `createStore()` | `TomOAuthStateStore` | The store these settings describe, ready to install as a `TomBean` |
+
+Configuration keys: `type`, `datasource`, `table`, `timeToLiveSeconds`,
+`createSchema`. An absent block means `memory`, so a deployment that has never
+heard of the SQL store configures nothing. A malformed one fails at start-up —
+`oauth.config.state_store_not_a_map`, `oauth.config.unknown_state_store`,
+`oauth.config.missing_state_store_datasource`,
+`oauth.config.invalid_state_store_ttl`.
+
 ### TomOAuthTokenTransport
 
 The provider HTTP calls, held behind a contract so a test can stub the provider
@@ -1672,8 +1793,17 @@ Keys raised: `oauth.callback.provider_error`, `oauth.callback.unknown_state`
 
 ## Global Functions and Constants
 
-None — this module exposes no top-level functions or constants. The one
-top-level type alias, `TomTotpSecretResolver`, is documented above with the
-adaptor that reads it. The OAuth contract's ids (`tomOAuthApiId` and the three
-endpoint ids) and `registerTomOAuthApi()` live in `tom_core_kernel`'s security
-module, with the rest of the wire contract.
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `defaultOAuthStateTable` | `String` | `'tom_oauth_state'` — the pending-authorization table's default name |
+| `oauthStateTable(String table)` | `TomFrameworkTable` | The table's single column declaration; everything else — the DDL, the `SELECT` column lists, the `INSERT` — is derived from it |
+| `oauthStateTableDdl(String table)` | `String` | That declaration rendered as `CREATE TABLE IF NOT EXISTS`, for a start-up sequence that provisions without the store |
+
+These three live in `oauth_state_sql.dart` rather than beside the store so
+`db_migration/framework_convergence.dart` can name the table without importing
+the store — the same split the scheduling module uses.
+
+The one top-level type alias, `TomTotpSecretResolver`, is documented above with
+the adaptor that reads it. The OAuth contract's ids (`tomOAuthApiId` and the
+three endpoint ids) and `registerTomOAuthApi()` live in `tom_core_kernel`'s
+security module, with the rest of the wire contract.

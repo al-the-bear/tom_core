@@ -65,6 +65,46 @@ or its own principal-to-claims projection is a regression of this design even if
 every test still passes, because the two copies will drift and the copy that
 drifts is the one that stops asking for a second factor.
 
+### The pending authorization is *shared state*, not process state
+
+An authorization-code flow is **two HTTP requests**, and the second one is not
+issued by the client at all — the provider redirects the browser to the callback,
+and a load balancer sends that redirect to whichever node it likes. So the record
+written by the first request must be readable by *any* node serving the second.
+Held in a field, it is readable by exactly one, and a flow that lands elsewhere
+fails as `oauth.flow.unknown_state` — the same key an expired or replayed state
+produces, which is why the symptom reads as "external login works, but
+intermittently, and the log says replay attack".
+
+`TomSqlOAuthStateStore` puts the record in `tom_oauth_state`, a framework table
+declared once as a `TomFrameworkTable` like every other. Three decisions in it
+are worth stating outright, because each could plausibly have gone the other way:
+
+* **The PKCE verifier is stored as written, not encrypted.** It is a
+  single-use, ten-minute nonce whose only purpose is to prove that the party
+  redeeming the code is the party that began the flow, and it is worthless
+  without the authorization code, which the store never sees. Encrypting it
+  would need a key shared by every node — a second piece of distributed state
+  to protect the first, guarding nothing that outlives the request pair. What
+  the deployment *does* owe this table is ordinary database access control; it
+  is not a public table.
+* **Expiry is a predicate, not a job.** Every read carries
+  `expires_at > :now`, so an expired row is invisible from the instant it
+  expires regardless of whether anything has swept it — the correctness does
+  not depend on the cleanup running. A throttled sweep on write then deletes
+  what is invisible, so the table does not grow without bound. A scheduled job
+  would have made liveness a dependency of correctness; this way it is only a
+  dependency of size.
+* **Completion is one statement.** `consume` is a single
+  `DELETE … RETURNING`, so two nodes racing the same callback cannot both see
+  the row: the database picks a winner and the loser gets nothing back. Reading
+  and then deleting would have opened exactly the window that lets a state be
+  spent twice.
+
+Which store a deployment gets is configuration, read from `oauth.stateStore`
+beside `oauth.providers` and defaulting to memory — a single-node deployment and
+a test suite keep the in-memory store and need no database at all.
+
 ## Key types
 
 | Type | Responsibility |
@@ -79,6 +119,8 @@ drifts is the one that stops asking for a second factor.
 | `TomOAuthAuthenticationService` | `TomAuthenticationService` for authorization-code + PKCE logins; delegates everything else. |
 | `TomOAuthProviderConfig` · `TomOAuthProviders` | Provider configuration as **data**, read from the configuration tree under `oauth.providers`. |
 | `TomOAuthFlow` · `TomOAuthPkce` · `TomOAuthStateStore` | The authorization-code + PKCE handshake and its pending-authorization records. |
+| `TomSqlOAuthStateStore` | A `TomOAuthStateStore` over the `tom_oauth_state` table — the one every node of a cluster shares. |
+| `TomOAuthStateStoreSettings` | Which store a deployment gets, read from `oauth.stateStore`; memory unless told otherwise. |
 | `TomOAuthTokenTransport` | The one HTTP call to a provider's token endpoint — the seam a stub provider replaces in tests. |
 | `TomExternalIdentityStore` · `TomExternalIdentityLink` | The linking table: (issuer, subject) → local account, many per account. |
 | `TomExternalIdentityDirectory` | What the deployment supplies: local principal lookup, and provisioning for a first external login. |
