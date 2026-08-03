@@ -2,19 +2,44 @@
 ///
 /// Run with: `flutter test test/screenshots.dart`
 ///
-/// Why this is `screenshots.dart`, not `screenshots_test.dart`: this is a
-/// manual PNG-generation tool, not a regression gate. It mounts each demo in
-/// a deliberately minimal, fixed-size, offline capture box — without the
-/// scrolling, `TomScope`/resource bindings, or `PrimaryScrollController` the
-/// real two-tab app provides — so demos that need that scaffolding render
-/// overflow banners / broken-image placeholders / resource errors. Those are
-/// capture-context artifacts, not `tom_flutter_ui` regressions, so the harness
-/// must not gate the default `flutter test`. Dropping the `_test.dart` suffix
-/// keeps it out of the auto-discovered suite while leaving it runnable on
-/// demand via the command above.
+/// Why this is `screenshots.dart`, not `screenshots_test.dart`: it is a manual
+/// PNG-generation tool, not a regression gate. It asserts nothing about what a
+/// demo *should* look like — it writes a picture for a human to look at. A
+/// suite that always passes has no business in the gating run, and dropping the
+/// `_test.dart` suffix keeps it out of the auto-discovered suite while leaving
+/// it runnable on demand via the command above.
 ///
-/// Each demo is mounted in a fixed-size viewport, pumped once, and captured
-/// via `RenderRepaintBoundary.toImage()`. PNGs are written to
+/// The capture box reproduces the parts of the real two-tab app that a demo can
+/// legitimately depend on, so a demo renders here as it does in the app:
+///
+/// - **[TomScope]** — `main.dart` constructs each widget demo inside
+///   `TomScope.withScope('demoNN', …)`, which is what its resource keys resolve
+///   against. [_scopeIdFor] reproduces that mapping; without it a
+///   resource-driven demo throws rather than rendering.
+/// - **Real fonts** — [_loadSdkFonts] replaces the Ahem placeholder that
+///   `flutter test` installs, so labels are readable rather than black boxes.
+/// - **[PrimaryScrollController]** — a `Scrollbar` defaults to the primary
+///   controller and asserts if it has no attached position. In the app the
+///   route supplies one; here the harness does.
+/// - **Offline images** — [_OfflineHttpOverrides] answers every network image
+///   request with a 1×1 transparent PNG, so a demo that loads a remote asset
+///   captures a clean frame instead of a broken-image placeholder (and the run
+///   stays hermetic).
+/// - **A stubbed sensitive-content channel** — `SensitiveContent` caches a
+///   platform capability query and asserts on teardown that it arrived; with no
+///   platform behind the channel it never does.
+/// - **A definite box** — the capture box is [_viewport]-sized in *both* axes.
+///   Letting it grow vertically (a scroll view) would look like the friendlier
+///   choice for a long demo, but it hands the demo an unbounded height, which
+///   the ACL layout engine cannot size rows against. The viewport is deliberately
+///   tall instead.
+///
+/// Overflow is reported, not fatal: a demo that overflows the viewport still
+/// captures, because Flutter paints the striped banner and the PNG is then the
+/// clearest possible record of the problem. See [_isOverflowReport].
+///
+/// Each demo is mounted, pumped, and captured via
+/// `RenderRepaintBoundary.toImage()`. PNGs are written to
 /// `test/screenshots/<demo>.png`. This is the same capture path that Flutter's
 /// golden tests use internally, so it works headlessly without any extra
 /// dependencies. The rasterisation runs inside `tester.runAsync()` because
@@ -24,12 +49,16 @@
 /// rerun this file and diff the PNGs to see the visual impact.
 library;
 
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui_test/acl_demos/acl_demos.dart';
 import 'package:tom_flutter_ui_test/demo_resources.dart';
 import 'package:tom_flutter_ui_test/forms_demos/forms_demos.dart';
@@ -135,22 +164,210 @@ const Size _viewport = Size(1280, 2400);
 /// matches logical pixels in assertions.
 const double _pixelRatio = 1.0;
 
+/// Demo slugs whose scope id does not follow the `widget_NN` → `demoNN` rule.
+///
+/// The forms and authorization demos appear in a different tab from the widget
+/// gallery but are still constructed inside a `demoNN` scope by `main.dart`.
+const Map<String, String> _scopeIdOverrides = {
+  'forms_01_forms': 'demo27',
+  'auth_01_authorization': 'demo28',
+};
+
+/// The [TomScope] id a demo must be constructed in, or null for an unscoped one.
+///
+/// `main.dart` wraps each widget-gallery demo in `TomScope.withScope('demoNN')`
+/// and leaves the ACL demos unscoped; the resource keys the demos use are
+/// written against exactly that. Reproducing the mapping here is what makes a
+/// resource-driven demo resolve the same values it resolves in the app.
+String? _scopeIdFor(String slug) {
+  final override = _scopeIdOverrides[slug];
+  if (override != null) return override;
+  final match = RegExp(r'^widget_(\d{2})_').firstMatch(slug);
+  return match == null ? null : 'demo${match.group(1)}';
+}
+
+/// Serves every image request a demo makes with a 1x1 transparent PNG.
+///
+/// Keeps the harness hermetic (no network in a test run) and stops a remote
+/// asset from capturing as a broken-image placeholder.
+class _OfflineHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) => _OfflineHttpClient();
+}
+
+/// The smallest valid PNG: one fully transparent pixel.
+final Uint8List _transparentPixelPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk'
+  'YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// Every stub below implements only what `NetworkImage` actually touches and
+/// answers the rest through `noSuchMethod`. `autoUncompress` is spelled out
+/// because the image loader reads it as a `bool` and would choke on a null.
+class _OfflineHttpClient implements HttpClient {
+  @override
+  bool autoUncompress = true;
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async => _OfflineRequest(url);
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async =>
+      _OfflineRequest(url);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _OfflineRequest implements HttpClientRequest {
+  _OfflineRequest(this.uri);
+
+  @override
+  final Uri uri;
+
+  @override
+  final HttpHeaders headers = _EmptyHeaders();
+
+  @override
+  Future<HttpClientResponse> close() async => _OfflineResponse();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _OfflineResponse implements HttpClientResponse {
+  @override
+  int get statusCode => HttpStatus.ok;
+
+  @override
+  int get contentLength => _transparentPixelPng.length;
+
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  final HttpHeaders headers = _EmptyHeaders();
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int>)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return Stream<List<int>>.value(_transparentPixelPng).listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _EmptyHeaders implements HttpHeaders {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+/// Replaces the test-only Ahem font with the real Roboto and Material Icons.
+///
+/// Why: `flutter test` ships a single placeholder font that paints every glyph
+/// as a filled box. That is the right default for a golden *comparison* — it is
+/// deterministic across machines — but this harness exists to produce a picture
+/// a human reads, and a page of black rectangles is not one. The fonts come out
+/// of the Flutter SDK, so no asset is added to this package.
+///
+/// Degrades rather than fails: if the SDK cache is not where it is expected,
+/// the run continues with Ahem and says so.
+Future<void> _loadSdkFonts() async {
+  final root = Platform.environment['FLUTTER_ROOT'];
+  final dir = root == null
+      ? null
+      : Directory('$root/bin/cache/artifacts/material_fonts');
+  if (dir == null || !dir.existsSync()) {
+    debugPrint('screenshots: SDK fonts not found; capturing with the Ahem '
+        'placeholder font.');
+    return;
+  }
+
+  Future<void> loadFamily(String family, List<String> fileNames) async {
+    final loader = FontLoader(family);
+    var added = 0;
+    for (final name in fileNames) {
+      final file = File('${dir.path}/$name');
+      if (!file.existsSync()) continue;
+      loader.addFont(
+        file.readAsBytes().then((b) => ByteData.view(Uint8List.fromList(b).buffer)),
+      );
+      added++;
+    }
+    if (added > 0) await loader.load();
+  }
+
+  await loadFamily('Roboto', const [
+    'Roboto-Regular.ttf',
+    'Roboto-Medium.ttf',
+    'Roboto-Bold.ttf',
+    'Roboto-Light.ttf',
+    'Roboto-Italic.ttf',
+  ]);
+  await loadFamily('MaterialIcons', const ['MaterialIcons-Regular.otf']);
+}
+
+/// True for the "A RenderFlex overflowed by N pixels" layout report.
+///
+/// Why it is singled out: an overflow is *visible* — Flutter paints the striped
+/// banner — so the PNG this harness writes already carries the finding. Failing
+/// on it would suppress the very picture that shows it, so [_capture] collects
+/// these and lets the capture proceed.
+bool _isOverflowReport(FlutterErrorDetails details) =>
+    details.library == 'rendering library' &&
+    details.exception.toString().contains('overflowed by');
+
 Future<void> _capture({
   required WidgetTester tester,
   required Widget demo,
   required String slug,
 }) async {
   final captureKey = GlobalKey(debugLabel: 'screenshot-$slug');
+  // A Scrollbar resolves the primary controller and asserts if it has no
+  // attached position; in the app the enclosing route supplies one.
+  final primaryController = ScrollController();
+  addTearDown(primaryController.dispose);
+
+  final overflows = <String>[];
+  final priorOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    if (_isOverflowReport(details)) {
+      overflows.add(details.exception.toString().split('\n').first);
+      return;
+    }
+    priorOnError?.call(details);
+  };
+  addTearDown(() => FlutterError.onError = priorOnError);
+
   await tester.pumpWidget(
     MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.light(useMaterial3: true),
       home: Scaffold(
-        body: SizedBox.fromSize(
-          size: _viewport,
-          child: RepaintBoundary(
-            key: captureKey,
-            child: Material(child: demo),
+        body: PrimaryScrollController(
+          controller: primaryController,
+          // Definite in both axes. A tempting alternative — wrapping in a
+          // SingleChildScrollView so a long demo grows instead of overflowing —
+          // hands the demo an *unbounded* height, and the ACL layout engine
+          // sizes its rows against a finite constraint; it cannot lay out
+          // without one. The viewport is generously tall instead.
+          child: SizedBox.fromSize(
+            size: _viewport,
+            child: RepaintBoundary(
+              key: captureKey,
+              child: Material(child: demo),
+            ),
           ),
         ),
       ),
@@ -192,14 +409,36 @@ Future<void> _capture({
   if (!outDir.existsSync()) outDir.createSync(recursive: true);
   final file = File('${outDir.path}/$slug.png');
   file.writeAsBytesSync(byteData.buffer.asUint8List());
+
+  for (final overflow in overflows.toSet()) {
+    debugPrint('screenshot · $slug: $overflow (see the banner in the PNG)');
+  }
 }
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() {
+  setUpAll(() async {
     // Match main.dart's bootstrap so TomText resources resolve correctly.
     initializeDemoResources();
+    await _loadSdkFonts();
+    HttpOverrides.global = _OfflineHttpOverrides();
+    // Why: SensitiveContent asks the platform whether content sensitivity is
+    // supported and caches the answer; unregister asserts that the answer has
+    // arrived. With no handler the query never completes, so tearing the demo
+    // down at end of test trips that assert. Answering "not supported" is the
+    // truthful reply for the desktop host this harness runs on.
+    binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.sensitiveContent,
+      (call) async =>
+          call.method == 'SensitiveContent.isSupported' ? false : null,
+    );
+  });
+
+  tearDownAll(() {
+    HttpOverrides.global = null;
+    binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.sensitiveContent, null);
   });
 
   // Pump each demo in its own test so failures are isolated.
@@ -212,11 +451,17 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
+      // The demo must be *constructed* inside its scope: TomNodeBase resolves
+      // its resource base path in the constructor, not in build.
+      final scopeId = _scopeIdFor(slug);
+      final demo =
+          scopeId == null ? factory() : TomScope.withScope(scopeId, factory);
+
       try {
-        await _capture(tester: tester, demo: factory(), slug: slug);
+        await _capture(tester: tester, demo: demo, slug: slug);
       } on FlutterError catch (e) {
-        // Surface the demo's own overflow errors without aborting the run,
-        // but still mark the individual screenshot as failed.
+        // Surface the demo's own errors without aborting the run, but still
+        // mark the individual screenshot as failed.
         final messages = tester.takeException();
         fail('Demo $slug threw: ${e.message}\nCaught: $messages');
       }

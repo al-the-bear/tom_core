@@ -265,6 +265,34 @@ void main() {
       expect(person.salary, 50000.50);
     });
 
+    // Why: neither JSON nor a command line carries Dart's int/double
+    // distinction — `{"salary": 50000}` and `salary=50000` both decode to an
+    // `int`. Widening it to the field's declared `double` is lossless, so the
+    // setter accepts it rather than rejecting a value the source could not
+    // have expressed any other way.
+    test('should widen an int value into a double field', () {
+      final person = SimplePerson();
+      tomReflectionInfo.setValues(person, {'salary': 50000});
+      expect(person.salary, 50000.0);
+    });
+
+    test('should widen an int into a nullable double field', () {
+      final person = NullablePerson();
+      tomReflectionInfo.setValues(person, {'salary': 42});
+      expect(person.salary, 42.0);
+    });
+
+    // The converse is deliberately not symmetric: narrowing a double to an int
+    // would have to pick a rounding policy, and silently truncating 2.5 loses
+    // data. It stays an error.
+    test('should reject a double value for an int field', () {
+      final person = SimplePerson();
+      expect(
+        () => tomReflectionInfo.setValues(person, {'age': 2.5}),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
     test('should set multiple values at once', () {
       final person = SimplePerson();
       tomReflectionInfo.setValues(person, {

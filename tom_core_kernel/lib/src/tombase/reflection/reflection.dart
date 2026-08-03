@@ -664,8 +664,8 @@ class TomReflectionInfo {
 
   /// Sets a complex (non-primitive) value on a field.
   ///
-  /// Handles String (for DateTime parsing), Map, and List values.
-  /// Delegates to specialized handlers based on value type.
+  /// Handles int-to-double widening, String (for DateTime parsing), Map, and
+  /// List values. Delegates to specialized handlers based on value type.
   void _setComplexValue(
     InstanceMirror im,
     ClassMirror cm,
@@ -680,7 +680,9 @@ class TomReflectionInfo {
       );
     }
 
-    if (entry.value is String) {
+    if (_trySetWidenedNumericValue(im, imGet, entry)) {
+      return;
+    } else if (entry.value is String) {
       _setStringValue(im, imGet, entry);
     } else if (entry.value is Map) {
       _setMapValue(im, cm, imGet, entry);
@@ -693,6 +695,28 @@ class TomReflectionInfo {
         autoLog: true,
       );
     }
+  }
+
+  /// Widens an `int` value onto a `double` field, returning true when it did.
+  ///
+  /// Why: the wire formats this reflector reads from — JSON and command-line
+  /// `key=value` arguments — have no int/double distinction. `{"rate": 2}` and
+  /// `rate=2` both decode to an `int`, and there is no way for the source to
+  /// say "double". Rejecting them would make a whole-number double
+  /// unrepresentable, so an `int` destined for a `double` field is widened.
+  ///
+  /// The converse is deliberately absent: narrowing a `double` to an `int`
+  /// would need a rounding policy, and truncating `2.5` silently loses data.
+  bool _trySetWidenedNumericValue(
+    InstanceMirror im,
+    MethodMirror imGet,
+    MapEntry<String, dynamic> entry,
+  ) {
+    if (entry.value is! int) return false;
+    final returnType = imGet.reflectedReturnType;
+    if (returnType != double) return false;
+    im.invokeSetter(entry.key, (entry.value as int).toDouble());
+    return true;
   }
 
   // ---------------------------------------------------------------------------

@@ -10,14 +10,13 @@ import 'package:test/test.dart';
 // its generated bootstrap. `initializeReflection()` populates the global
 // reflection data so ClassMirror/InstanceMirror construction stops throwing
 // "Reflection has not been initialized" — the precondition for exercising the
-// endpoint pipeline, TomArgs.fillFromArgs, and the health route. `main` is
-// hidden because this test declares its own.
+// endpoint pipeline and the health route. `main` is hidden because this test
+// declares its own.
 import 'fixtures/reflection_fixture.dart'
     show
         FixtureAccessApiService,
         FixtureApiServer,
         FixtureConflictingAccessService,
-        FixtureServerConfig,
         fixtureContractAccess,
         fixtureHandlerAccess,
         fixtureInlineAccess,
@@ -292,43 +291,6 @@ void main() {
       // Protection on with no principal -> interface is protected, method is
       // protected -> the false decision stands.
       expect(unguardedHandler.checkAutomaticAccess(false), isFalse);
-    });
-  });
-
-  group('TomArgs.fillFromArgs', () {
-    test('fills String and int fields from key=value arguments', () {
-      final config = TomArgs.fillFromArgs(
-        ['name=svc', 'port=8080'],
-        FixtureServerConfig(),
-      );
-      expect(config.name, 'svc');
-      expect(config.port, 8080);
-    });
-
-    test('coerces a key=value bool into the bool field', () {
-      final config =
-          TomArgs.fillFromArgs(['verbose=true'], FixtureServerConfig());
-      expect(config.verbose, isTrue);
-    });
-
-    test('leaves fields untouched when no matching argument is given', () {
-      final config =
-          TomArgs.fillFromArgs(['unrelated=1'], FixtureServerConfig());
-      expect(config.name, '');
-      expect(config.port, 0);
-      expect(config.verbose, isFalse);
-    });
-
-    // RCJ2: a *bare* flag is recorded by fillFromArgs as the boolean `true`
-    // (matching how `key=true` converts), so it fills a reflected bool field
-    // directly. Previously fillFromArgs stored the String "true", which the
-    // reflection layer refused to coerce into a bool field (it threw). Aligning
-    // the bare-flag encoding with parseArgsToMap keeps the reflection layer's
-    // strict String/typed contract intact while making bare flags usable.
-    test('a bare bool flag fills the bool field (RCJ2)', () {
-      final config =
-          TomArgs.fillFromArgs(['verbose'], FixtureServerConfig());
-      expect(config.verbose, isTrue);
     });
   });
 

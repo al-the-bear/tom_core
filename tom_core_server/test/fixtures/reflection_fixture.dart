@@ -392,6 +392,10 @@ class FixtureConflictingAccessService {
 
 /// A reflected configuration object for exercising [TomArgs.fillFromArgs]: its
 /// public fields are assigned by name from parsed `key=value` arguments.
+///
+/// One field per type the argument converter can produce (`String`, `int`,
+/// `double`, `bool`), so the reflected binding can be exercised across the
+/// whole conversion table rather than a sample of it.
 @tomReflector
 class FixtureServerConfig {
   /// Assigned from `name=<value>` (stays a String).
@@ -399,6 +403,9 @@ class FixtureServerConfig {
 
   /// Assigned from `port=<value>` (coerced to int by the arg parser).
   int port = 0;
+
+  /// Assigned from `rate=<value>` (a decimal value converts to double).
+  double rate = 0.0;
 
   /// Assigned from a bare `verbose` flag (recorded as `"true"`, coerced to bool).
   bool verbose = false;

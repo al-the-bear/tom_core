@@ -3,7 +3,16 @@ import 'dart:io';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/reflection_fixture.dart' show FixtureServerConfig;
+import 'fixtures/reflection_fixture.reflection.dart';
+
 void main() {
+  // fillFromArgs binds through the reflector, which throws until the generated
+  // mirrors are registered.
+  setUpAll(() {
+    initializeReflection();
+  });
+
   group('TomArgs.parseArgsToMap', () {
     test('parses key=value pairs', () {
       final m = TomArgs.parseArgsToMap(['name=server', 'port=8080']);
@@ -57,6 +66,101 @@ void main() {
 
     test('any other text passes through unchanged', () {
       expect(convert('localhost'), 'localhost');
+    });
+  });
+
+  group('TomArgs.fillFromArgs', () {
+    test('fills String and int fields from key=value arguments', () {
+      final config = TomArgs.fillFromArgs(
+        ['name=svc', 'port=8080'],
+        FixtureServerConfig(),
+      );
+      expect(config.name, 'svc');
+      expect(config.port, 8080);
+    });
+
+    test('fills a double field from a decimal value', () {
+      final config = TomArgs.fillFromArgs(['rate=1.5'], FixtureServerConfig());
+      expect(config.rate, 1.5);
+    });
+
+    // A command line cannot say "double": `rate=2` converts to an int, which
+    // the reflector widens onto the declared double field.
+    test('fills a double field from a whole number', () {
+      final config = TomArgs.fillFromArgs(['rate=2'], FixtureServerConfig());
+      expect(config.rate, 2.0);
+    });
+
+    test('coerces a key=value bool into the bool field', () {
+      final config =
+          TomArgs.fillFromArgs(['verbose=true'], FixtureServerConfig());
+      expect(config.verbose, isTrue);
+    });
+
+    // RCJ2: a *bare* flag is recorded by fillFromArgs as the boolean `true`
+    // (matching how `key=true` converts), so it fills a reflected bool field
+    // directly.
+    test('a bare bool flag fills the bool field (RCJ2)', () {
+      final config = TomArgs.fillFromArgs(['verbose'], FixtureServerConfig());
+      expect(config.verbose, isTrue);
+    });
+
+    test('a quoted value stays a String', () {
+      final config =
+          TomArgs.fillFromArgs(['name="my svc"'], FixtureServerConfig());
+      expect(config.name, 'my svc');
+    });
+
+    test('fills every field type in one pass', () {
+      final config = TomArgs.fillFromArgs(
+        ['name=svc', 'port=8080', 'rate=1.5', 'verbose=true'],
+        FixtureServerConfig(),
+      );
+      expect(config.name, 'svc');
+      expect(config.port, 8080);
+      expect(config.rate, 1.5);
+      expect(config.verbose, isTrue);
+    });
+
+    test('an argument with no matching field is ignored', () {
+      final config =
+          TomArgs.fillFromArgs(['unrelated=1'], FixtureServerConfig());
+      expect(config.name, '');
+      expect(config.port, 0);
+      expect(config.rate, 0.0);
+      expect(config.verbose, isFalse);
+    });
+
+    // fillFromArgs has no notion of a *required* argument — it binds whatever
+    // is present and never validates completeness. An omitted argument is
+    // therefore indistinguishable from one that was never declared: the field
+    // simply keeps its initialiser. Callers that need a value to be mandatory
+    // must check it themselves after binding.
+    test('an omitted argument leaves the field at its initialiser', () {
+      final config = TomArgs.fillFromArgs(['name=svc'], FixtureServerConfig());
+      expect(config.name, 'svc');
+      expect(config.port, 0);
+    });
+
+    test('a value whose type does not match the field throws', () {
+      // "abc" is not numeric, so it stays a String and cannot fill an int.
+      expect(
+        () => TomArgs.fillFromArgs(['port=abc'], FixtureServerConfig()),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    test('a decimal value cannot narrow into an int field', () {
+      expect(
+        () => TomArgs.fillFromArgs(['port=1.5'], FixtureServerConfig()),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    test('returns the same instance it was given', () {
+      final config = FixtureServerConfig();
+      expect(identical(TomArgs.fillFromArgs(['name=svc'], config), config),
+          isTrue);
     });
   });
 

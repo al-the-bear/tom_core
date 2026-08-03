@@ -53,6 +53,12 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
   // ===========================================================================
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalScrollController = ScrollController();
+  // Why an explicit controller for the scrollbar sections: this demo's own body
+  // is a primary SingleChildScrollView, and a primary scroll view wraps its
+  // subtree in PrimaryScrollController.none. A nested Scrollbar therefore finds
+  // no controller to attach to and asserts, so each nested scrollbar and its
+  // scroll view must share one of their own.
+  final ScrollController _scrollbarScrollController = ScrollController();
   final ScrollController _cupertinoScrollController = ScrollController();
 
   // ===========================================================================
@@ -90,6 +96,7 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
   void dispose() {
     _verticalScrollController.dispose();
     _horizontalScrollController.dispose();
+    _scrollbarScrollController.dispose();
     _cupertinoScrollController.dispose();
     _nestedTabController.dispose();
     _transformationController.dispose();
@@ -299,11 +306,13 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
             ),
             clipBehavior: Clip.hardEdge,
             child: TomScrollbar(
+              controller: _scrollbarScrollController,
               thumbVisibility: true,
               interactive: true,
               thickness: 8,
               radius: const Radius.circular(4),
               child: TomSingleChildScrollView(
+                controller: _scrollbarScrollController,
                 child: TomPadding(
                   padding: const EdgeInsets.all(12),
                   child: TomColumn(
