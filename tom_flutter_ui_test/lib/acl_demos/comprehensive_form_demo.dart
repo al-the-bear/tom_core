@@ -44,7 +44,11 @@ class ComprehensiveFormDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ResizableBox(
-          initialHeight: 500,
+          // The weighted gapRow()s only absorb space that is left over; once
+          // the fixed rows alone exceed the box, there is nothing to give back
+          // and the column overflows. At 500 the margin was under 3 px, so a
+          // label wrapping onto a second line was enough to break it.
+          initialHeight: 540,
           showBorder: false,
           child: AclBuilder(
             title: 'New Project Request',
@@ -99,6 +103,12 @@ class ComprehensiveFormDemo extends StatelessWidget {
             border: OutlineInputBorder(),
             isDense: true,
           ),
+          // Why isExpanded: this field is pinned to the Code field's width
+          // (120–150 px), but a bare DropdownButton lays its label and arrow
+          // out at their natural size and overflows when they do not fit —
+          // which any longer item text, or a wider font, makes happen.
+          // isExpanded gives the label the remaining width so it ellipsizes.
+          isExpanded: true,
           hint: const Text('Select'),
           items: [
             TomDropdownMenuItem(tomId: 'priority.high', value: 'high', child: const Text('High')),

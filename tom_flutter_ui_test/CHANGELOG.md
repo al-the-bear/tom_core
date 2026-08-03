@@ -18,6 +18,19 @@
   fixed its fake-async raster deadlock via `tester.runAsync()`; drained the
   by-design overflow in `debug_shrink_test.dart` so its measurement loop
   completes. `dart analyze` clean; default `flutter test` gate `+6 / 0`, serial.
+- Layout gate: extracted the demo mount into `test/demo_harness.dart` and added
+  `test/demo_overflow_test.dart`, which fails when a demo overflows the
+  1280x2400 viewport. The gate measures the Ahem placeholder font — wider than
+  Roboto, and present on every machine — while the screenshot harness keeps the
+  real SDK fonts so its PNGs stay readable.
+- Layout fixes for the four demos the gate found: `widget_04_toggles` gives its
+  three-radio `TomRow` `expandX()` instead of the builder's 150 px default
+  width; `acl_19_comprehensive_form` sets `isExpanded` on the width-pinned
+  priority dropdown so its label ellipsizes; and `acl_17`, `acl_19`, `acl_20`
+  size their `ResizableBox` frames with real slack (320→360, 500→540, 300→380)
+  rather than to within 3 px of their content.
+
+  Default `flutter test` gate `+105 / 0`, serial; `flutter analyze` clean.
 
 ## 1.0.0
 

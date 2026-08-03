@@ -21,7 +21,12 @@ class FormLayoutDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ResizableBox(
-          initialHeight: 320,
+          // The five rows plus their gaps and the 16 px padding need ~288 px of
+          // content height, and the box spends 2 px on its border. 320 left no
+          // slack at all: a font with wider glyphs wraps a label onto a second
+          // line and the ACL column overflows the box it was given. 360 keeps
+          // the frame snug around the form while absorbing that.
+          initialHeight: 360,
           child: AclBuilder()
               .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclPadding(const EdgeInsets.all(16))

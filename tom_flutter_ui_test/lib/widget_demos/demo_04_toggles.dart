@@ -867,6 +867,13 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
               ],
             ),
           )
+          // Why expandX: a TomRow is a Row, so it takes the width its ACL
+          // component is given and clips nothing. Without a size hint the
+          // builder falls back to its 150 px default preferred width, which is
+          // narrower than three radios and their labels — the row then reports
+          // a horizontal overflow instead of shrinking. Letting the component
+          // take the container's width is also what the demo wants to show.
+          .expandX()
           .newRow(dist: 16)
           // Row 4: Action buttons
           .append(

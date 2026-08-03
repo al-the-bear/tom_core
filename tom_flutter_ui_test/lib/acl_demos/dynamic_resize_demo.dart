@@ -27,7 +27,12 @@ class DynamicResizeDemo extends StatelessWidget {
             const Text('Resize the window to see layouts adapt dynamically.'),
             const SizedBox(height: 16),
             ResizableBox(
-              initialHeight: 300,
+              // Header and footer are fixed, so everything else is the middle
+              // row's: at 300 it received 158 px, while the Navigation and
+              // Content panels inside it need ~172 and ~220 once their labels
+              // wrap. 380 gives the middle row enough that the nested panels
+              // size to their content instead of overflowing it.
+              initialHeight: 380,
               child: AclBuilder()
                   .setAclPadding(const EdgeInsets.all(8))
                   .append(

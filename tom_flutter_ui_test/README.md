@@ -44,8 +44,21 @@ flutter test test/screenshots.dart # on-demand visual-capture harness (not a gat
 
 `test/screenshots.dart` is a manual "rerun and diff the PNGs" tool, deliberately
 excluded from the default gate (no `_test.dart` suffix). The remaining
-`*_test.dart` files (`widget_test.dart`, `debug_form_test.dart`,
-`debug_heights_test.dart`, `debug_shrink_test.dart`) are the automated suite.
+`*_test.dart` files (`widget_test.dart`, `demo_overflow_test.dart`,
+`debug_form_test.dart`, `debug_heights_test.dart`, `debug_shrink_test.dart`)
+are the automated suite.
+
+`demo_overflow_test.dart` mounts every demo and fails if any of them overflows
+the 1280x2400 viewport — an overflow hides a control the demo exists to show, so
+in a gallery of worked examples it is a documentation fault. It shares its mount
+with the screenshot harness (`test/demo_harness.dart`) and differs in exactly
+one respect: **the gate measures the Ahem placeholder font, the screenshots use
+the real SDK fonts.** Ahem's glyphs are full em squares and therefore wider than
+Roboto's, which makes the gate the stricter of the two and keeps it reproducible
+on machines that have not downloaded the `material_fonts` artifact. A failure's
+pixel count is Ahem's, so it overstates what the running app shows; the fault it
+points at is real either way. To see it, run the screenshot harness and look for
+the striped banner in `test/screenshots/<demo>.png`.
 
 ## Project layout
 
@@ -59,7 +72,7 @@ excluded from the default gate (no `_test.dart` suffix). The remaining
 | `lib/forms_demos/` | Form-framework demos. |
 | `lib/common/` | Shared `DemoTile` / `DemoScaffold`. |
 | `doc/` | `demo_catalogue.md` (navigation map of every demo) plus developer notes on widget resource parameters and discovery. |
-| `test/` | Automated widget suite plus the on-demand screenshot harness. |
+| `test/` | Automated widget suite (including the demo overflow gate), the shared demo mount, and the on-demand screenshot harness. |
 
 ## Dependencies
 
