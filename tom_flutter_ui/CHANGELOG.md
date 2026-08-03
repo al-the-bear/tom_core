@@ -1,3 +1,31 @@
+## Unreleased
+
+### Fixed
+
+- **An explicit `decoration` on the text inputs is no longer overwritten.**
+  `TomTextField` and `TomTextFormField` resolved their label from resources
+  unconditionally and wrote it over the supplied `InputDecoration` at the end,
+  so `decoration: InputDecoration(labelText: 'Name')` was silently discarded —
+  and a caller who supplied a decoration but no `label` and no `tomId` was told
+  the widget "requires either an explicit label or a tomId" for a string the
+  decoration already carried. The label and hint now follow a chain rather than
+  a merge: `label` → `decoration.labelText` → the `<tomId>.label` resource, with
+  the resource lookup last and therefore only performed when nothing earlier
+  supplied one. Omitting every source still throws. **Behavioural change:** a
+  caller who passed *both* a `decoration.labelText` and a label resource now
+  sees the decoration's value where they previously saw the resource's.
+- **`TomInputDatePickerFormField` no longer demands four resources.** Its
+  label, hint and two error messages are optional in Flutter (defaulted from
+  `MaterialLocalizations`), but all four were required, which made a plain
+  `TomInputDatePickerFormField(...)` unconstructible. They are now looked up
+  only when the widget has a `tomId`.
+
+### Changed
+
+- The two byte-identical private `_resolveDecoration` methods on the text
+  inputs are replaced by one shared `_resolveInputDecoration` helper carrying
+  the precedence rule and its rationale.
+
 ## 1.1.0
 
 Adapts the widget set to the Flutter 3.44 scroll/reorder API changes. **This is

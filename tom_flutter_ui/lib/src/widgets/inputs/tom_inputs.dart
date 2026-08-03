@@ -10,9 +10,67 @@ import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
+/// Builds the effective [InputDecoration] of a Tom text input from the four
+/// places a label can come from, in this order of precedence:
+///
+/// 1. the explicit `label` / `hint` argument;
+/// 2. the `labelText` / `hintText` of an explicit [decoration];
+/// 3. the `<basePath>.decoration` resource;
+/// 4. the `<basePath>.label` / `<basePath>.hint` text resources.
+///
+/// The label is *chosen*, not merged — the resource lookup sits at the end of
+/// a `??` chain and therefore only runs when nothing earlier supplied a label.
+/// That laziness is the point: passing a decoration that already carries its
+/// own `labelText` must neither be overwritten by a resource nor demand one.
+/// Everything else in the decoration is still merged property-by-property,
+/// explicit over resource.
+///
+/// With no source at all the label lookup fails loudly ([StateError] from
+/// [TomCtr.textOrFail]) rather than rendering a blank label. The hint has no
+/// such requirement: it is optional in Flutter, so it is only looked up when
+/// the widget has a `tomId` to look under.
+InputDecoration _resolveInputDecoration({
+  required InputDecoration? decoration,
+  required String? basePath,
+  required String? tomId,
+  required String? label,
+  required String? hint,
+}) {
+  InputDecoration merged = decoration ?? const InputDecoration();
+
+  if (basePath != null) {
+    final resourceDecoration =
+        TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
+    if (resourceDecoration != null) {
+      // Explicit decoration properties win over the resource ones: copyWith
+      // keeps the receiver's value wherever the argument is null.
+      merged = resourceDecoration.copyWith(
+        labelText: merged.labelText,
+        hintText: merged.hintText,
+        helperText: merged.helperText,
+        errorText: merged.errorText,
+        prefixIcon: merged.prefixIcon,
+        suffixIcon: merged.suffixIcon,
+      );
+    }
+  }
+
+  return merged.copyWith(
+    labelText:
+        label ?? merged.labelText ?? TomCtr.textOrFail(basePath, 'label'),
+    hintText: hint ??
+        merged.hintText ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null),
+  );
+}
+
 /// Tom wrapper for [TextField].
 ///
 /// Adds ID, group, authorization, resource resolution for label/hint.
+///
+/// The label may come from `label`, from `decoration.labelText`, or from the
+/// `<tomId>.label` resource, in that order: an explicit decoration that
+/// carries its own `labelText` is honoured and needs no resource.
 class TomTextField extends TomInputBase {
   final TextEditingController? controller;
   final FocusNode? focusNode;
@@ -80,8 +138,6 @@ class TomTextField extends TomInputBase {
   final InputCounterWidgetBuilder? buildCounter;
 
   // Pre-resolved resource values
-  late final String _resolvedLabel;
-  late final String? _resolvedHint;
   late final Color? _resolvedCursorColor;
   late final Color? _resolvedCursorErrorColor;
   late final double? _resolvedCursorHeight;
@@ -190,8 +246,6 @@ class TomTextField extends TomInputBase {
        buildCounter = buildCounter != null
            ? InScopeBuilder(scope: scope).wrapCounter(buildCounter)
            : null {
-    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
-    _resolvedHint = hint ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
     _resolvedCursorColor = cursorColor ?? TomCtr.color(basePath, 'cursorColor');
     _resolvedCursorErrorColor = cursorErrorColor ?? TomCtr.color(basePath, 'cursorErrorColor');
     _resolvedCursorHeight = cursorHeight ?? TomCtr.doubleVal(basePath, 'cursorHeight');
@@ -215,7 +269,13 @@ class TomTextField extends TomInputBase {
     _resolvedEnableIMEPersonalizedLearning = TomCtr.boolVal(basePath, 'enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
     _resolvedCanRequestFocus = TomCtr.boolVal(basePath, 'canRequestFocus') ?? canRequestFocus;
     _resolvedStyle = style ?? _resolveTextStyle();
-    _resolvedDecoration = _resolveDecoration(_resolvedLabel, _resolvedHint);
+    _resolvedDecoration = _resolveInputDecoration(
+      decoration: decoration,
+      basePath: basePath,
+      tomId: tomId,
+      label: label,
+      hint: hint,
+    );
     _resolvedScrollPhysics = scrollPhysics ?? _resolveScrollPhysics('scrollPhysics');
     _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
   }
@@ -294,37 +354,6 @@ class TomTextField extends TomInputBase {
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
 
-  /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
-  InputDecoration _resolveDecoration(String resolvedLabel, String? resolvedHint) {
-
-    // Start with explicit decoration or empty
-    InputDecoration base = decoration ?? const InputDecoration();
-
-    // Try to resolve InputDecoration from resources
-    if (basePath != null) {
-      final resourceDecoration =
-          TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');
-      if (resourceDecoration != null) {
-        // Merge: explicit decoration properties take precedence
-        base = resourceDecoration.copyWith(
-          labelText: base.labelText,
-          hintText: base.hintText,
-          helperText: base.helperText,
-          errorText: base.errorText,
-          prefixIcon: base.prefixIcon,
-          suffixIcon: base.suffixIcon,
-          // Keep other explicit properties if set
-        );
-      }
-    }
-
-    // Apply resolved label and hint
-    return base.copyWith(
-      labelText: resolvedLabel,
-      hintText: resolvedHint,
-    );
-  }
-
   StrutStyle? _resolveStrutStyle(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
@@ -340,6 +369,9 @@ class TomTextField extends TomInputBase {
 ///
 /// Like [TomTextField] but integrates with Flutter's [Form] system
 /// for validation. Adds Tom ID, group, authorization, resource resolution.
+///
+/// The label follows the same precedence as [TomTextField]: `label`, then
+/// `decoration.labelText`, then the `<tomId>.label` resource.
 class TomTextFormField extends TomInputBase {
   final TextEditingController? controller;
   final FocusNode? focusNode;
@@ -369,8 +401,6 @@ class TomTextFormField extends TomInputBase {
   final String? hint;
 
   // Pre-resolved resource values
-  late final String _resolvedLabel;
-  late final String? _resolvedHint;
   late final int? _resolvedMaxLines;
   late final int? _resolvedMinLines;
   late final int? _resolvedMaxLength;
@@ -422,8 +452,6 @@ class TomTextFormField extends TomInputBase {
         onFieldSubmitted = InScopeBuilder(scope: scope).wrap1n(onFieldSubmitted),
         onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
         validator = InScopeBuilder(scope: scope).wrap1n(validator) {
-    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
-    _resolvedHint = hint ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
     _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
     _resolvedMinLines = minLines ?? TomCtr.intVal(basePath, 'minLines');
     _resolvedMaxLength = maxLength ?? TomCtr.intVal(basePath, 'maxLength');
@@ -434,7 +462,13 @@ class TomTextFormField extends TomInputBase {
     _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
     _resolvedReadOnly = TomCtr.boolVal(basePath, 'readOnly') ?? readOnly;
     _resolvedStyle = style ?? _resolveTextStyle();
-    _resolvedDecoration = _resolveDecoration(_resolvedLabel, _resolvedHint);
+    _resolvedDecoration = _resolveInputDecoration(
+      decoration: decoration,
+      basePath: basePath,
+      tomId: tomId,
+      label: label,
+      hint: hint,
+    );
   }
 
   @override
@@ -471,36 +505,6 @@ class TomTextFormField extends TomInputBase {
   TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
-  }
-
-  /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
-  InputDecoration _resolveDecoration(String resolvedLabel, String? resolvedHint) {
-
-    // Start with explicit decoration or empty
-    InputDecoration base = decoration ?? const InputDecoration();
-
-    // Try to resolve InputDecoration from resources
-    if (basePath != null) {
-      final resourceDecoration =
-          TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');
-      if (resourceDecoration != null) {
-        // Merge: explicit decoration properties take precedence
-        base = resourceDecoration.copyWith(
-          labelText: base.labelText,
-          hintText: base.hintText,
-          helperText: base.helperText,
-          errorText: base.errorText,
-          prefixIcon: base.prefixIcon,
-          suffixIcon: base.suffixIcon,
-        );
-      }
-    }
-
-    // Apply resolved label and hint
-    return base.copyWith(
-      labelText: resolvedLabel,
-      hintText: resolvedHint,
-    );
   }
 }
 
@@ -1381,6 +1385,11 @@ class TomFormClassic extends TomInputBase {
 /// Tom wrapper for [InputDatePickerFormField].
 ///
 /// Text-based date entry with format validation. Auth for readonly/hidden.
+///
+/// All four strings — label, hint and the two error messages — are optional
+/// here, because [InputDatePickerFormField] defaults each of them from
+/// [MaterialLocalizations]. They are looked up in resources only when the
+/// widget has a `tomId`; a field-level string always wins over the resource.
 class TomInputDatePickerFormField extends TomInputBase {
   final DateTime initialDate;
   final DateTime firstDate;
@@ -1398,10 +1407,10 @@ class TomInputDatePickerFormField extends TomInputBase {
   final FocusNode? focusNode;
 
   // Pre-resolved resource values
-  late final String _resolvedLabelText;
-  late final String _resolvedHintText;
-  late final String _resolvedErrorFormat;
-  late final String _resolvedErrorInvalid;
+  late final String? _resolvedLabelText;
+  late final String? _resolvedHintText;
+  late final String? _resolvedErrorFormat;
+  late final String? _resolvedErrorInvalid;
 
   TomInputDatePickerFormField({
     super.key,
@@ -1427,10 +1436,22 @@ class TomInputDatePickerFormField extends TomInputBase {
     this.focusNode,
   })  : onDateSubmitted = InScopeBuilder(scope: scope).wrap1n(onDateSubmitted),
         onDateSaved = InScopeBuilder(scope: scope).wrap1n(onDateSaved) {
-    _resolvedLabelText = fieldLabelText ?? TomCtr.textOrFail(basePath, 'label');
-    _resolvedHintText = fieldHintText ?? TomCtr.textOrFail(basePath, 'hint');
-    _resolvedErrorFormat = errorFormatText ?? TomCtr.textOrFail(basePath, 'errorFormat');
-    _resolvedErrorInvalid = errorInvalidText ?? TomCtr.textOrFail(basePath, 'errorInvalid');
+    // Why the tomId guard: every one of these is optional in Flutter, which
+    // falls back to MaterialLocalizations. Demanding a resource for them made
+    // a plain `TomInputDatePickerFormField(...)` unconstructible.
+    final resolveFromResources = tomId != null;
+    _resolvedLabelText = fieldLabelText ??
+        (resolveFromResources ? TomCtr.textOrFail(basePath, 'label') : null);
+    _resolvedHintText = fieldHintText ??
+        (resolveFromResources ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedErrorFormat = errorFormatText ??
+        (resolveFromResources
+            ? TomCtr.textOrFail(basePath, 'errorFormat')
+            : null);
+    _resolvedErrorInvalid = errorInvalidText ??
+        (resolveFromResources
+            ? TomCtr.textOrFail(basePath, 'errorInvalid')
+            : null);
   }
 
   @override
