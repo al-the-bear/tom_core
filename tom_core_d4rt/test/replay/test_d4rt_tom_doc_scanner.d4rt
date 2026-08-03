@@ -28,17 +28,22 @@ verifyEquals(sec.fields.length, 0, 'Section fields default empty');
 
 # =============================================================================
 # Test: MarkdownParser.generateId static helper (3 tests)
+#
+# The name must be qualified: tom_md2latex declares a MarkdownParser too, and
+# this binary registers both barrels, so the bare name is ambiguous. The package
+# qualifier needs no import directive — see
+# tom_d4rt_generator/_copilot_guidelines/same_name_class_resolution.md.
 # =============================================================================
 
-verifyEquals(MarkdownParser.generateId('Title', null, 0), 'title', 'generateId single word lowercased');
-verifyEquals(MarkdownParser.generateId('My Section', 'parent', 2), 'parent.2', 'generateId multi-word uses parent.index');
-verifyEquals(MarkdownParser.generateId('Hello World', null, 0), 'hello_world', 'generateId fallback snake_case');
+verifyEquals(tom_doc_scanner.MarkdownParser.generateId('Title', null, 0), 'title', 'generateId single word lowercased');
+verifyEquals(tom_doc_scanner.MarkdownParser.generateId('My Section', 'parent', 2), 'parent.2', 'generateId multi-word uses parent.index');
+verifyEquals(tom_doc_scanner.MarkdownParser.generateId('Hello World', null, 0), 'hello_world', 'generateId fallback snake_case');
 
 # =============================================================================
 # Test: MarkdownParser.extractText static helper (1 test)
 # =============================================================================
 
-verifyEquals(MarkdownParser.extractText('# Title\nbody line\n## Sub', 0, 1), 'body line', 'extractText between headlines');
+verifyEquals(tom_doc_scanner.MarkdownParser.extractText('# Title\nbody line\n## Sub', 0, 1), 'body line', 'extractText between headlines');
 
 # =============================================================================
 # Test: Document value carrier (construct + getters)

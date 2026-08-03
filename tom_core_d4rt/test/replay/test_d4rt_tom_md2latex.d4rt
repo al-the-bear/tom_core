@@ -107,13 +107,18 @@ verifyNotNull(opts.asciiDiagramPatterns, 'MarkdownParserOptions asciiDiagramPatt
 
 # =============================================================================
 # Test: MarkdownParser construct + getters + end-to-end parse
+#
+# The name must be qualified: tom_doc_scanner declares a MarkdownParser too, and
+# this binary registers both barrels, so the bare name is ambiguous. The package
+# qualifier needs no import directive — see
+# tom_d4rt_generator/_copilot_guidelines/same_name_class_resolution.md.
 # =============================================================================
 
-var mp = MarkdownParser('# Hi\n\nbody');
+var mp = tom_md2latex.MarkdownParser('# Hi\n\nbody');
 verifyEquals(mp.content, '# Hi\n\nbody', 'MarkdownParser content getter');
 verifyNotNull(mp.options, 'MarkdownParser options getter');
 
-var parsed = MarkdownParser('# Hello\n\nbody text').parse();
+var parsed = tom_md2latex.MarkdownParser('# Hello\n\nbody text').parse();
 verifyEquals(parsed.title, 'Hello', 'MarkdownParser parse title from h1');
 verifyEquals(parsed.elements.length, 2, 'MarkdownParser parse element count');
 verify(parsed.elements[0] is HeadingElement, 'MarkdownParser first element is HeadingElement');

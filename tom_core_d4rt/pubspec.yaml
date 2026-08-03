@@ -8,9 +8,11 @@ environment:
 
 dependencies:
   # D4rt runtime
-  # >=1.12.0 carries the RCC7 enum-bridging fix (Map<String,Enum> value
-  # coercion + native-stored enum round-trip) the replays rely on.
-  tom_d4rt: ">=1.12.0"
+  # >=1.27.0 resolves same-name bridged classes by declaring source URI: this
+  # project registers both tom_doc_scanner and tom_md2latex, which each declare
+  # a `MarkdownParser`. Below 1.27.0 the bare name picks whichever registered
+  # last, so the two markdown replays cannot both be correct.
+  tom_d4rt: ">=1.27.0"
   
   # D4rt base REPL with dcli bridges
   # >=1.1.6 carries the duplicate-export fix required for AOT compilation.
