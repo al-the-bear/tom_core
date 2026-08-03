@@ -1016,6 +1016,84 @@ class FixtureNullableRecord extends TomClass {
   final occurredAt = TomNDateTime(null);
 }
 
+/// The repository over [FixtureNullableRecord] — the *observable-membered*
+/// entity — which exists to show that this shape does not survive the **write**
+/// path (`qrc1`).
+///
+/// [FixtureNullableRecord] maps fine on the way *in*: the row mapper normalises
+/// a `String?` onto `String` before dispatching, which is what CSEXF1 fixed. The
+/// way *out* is a different mechanism entirely. [TomSqlDatasourceRepository.save]
+/// binds each column from `TomColumnInformation.getVariableValue`, which is
+/// `invokeGetter(declaredName)` — the *field*, not the observable's value. On a
+/// `TomNString` member that yields the `TomNString` object itself, so the
+/// statement would bind an observable where the driver expects a scalar.
+///
+/// That asymmetry is the evidence behind the `@CsColumn` emission rule: an
+/// optional CE-DB column emits a plain nullable Dart field (`String?`), not a
+/// `TomN*` observable. [FixtureOptionalColumnRecord] is the arm that does
+/// round-trip, and the two repositories are declared side by side so the
+/// comparison is a test rather than a claim.
+class FixtureNullableRepository
+    extends TomSqlDatasourceRepository<FixtureNullableRecord, int> {}
+
+/// The **plain-field** counterpart of [FixtureNullableRecord], carrying one
+/// optional column of each of the five persistable value types (`qrc1`).
+///
+/// This is the shape a CE-DB entity actually has — the shipped
+/// [TomUserPreference] declares its own optional column as a bare
+/// `DateTime? updatedAt`, and the CodeSpecs derivation contract's worked example
+/// emits `late final String name;`. A CE-DB entity is a plain annotated model
+/// class, so its optional arm is a plain nullable field.
+///
+/// It maps to the same `fixture_nullable` table as [FixtureNullableRecord] on
+/// purpose: the two entities differ in exactly one respect — whether a member is
+/// an observable or a plain field — and holding the storage constant is what
+/// makes the difference in outcome attributable to that one respect. Suites run
+/// serialized (`dart_test.yaml` `concurrency: 1`), so sharing the table costs
+/// nothing.
+///
+/// All five types, because the rule is stated for all five and a round trip
+/// verified on `String?` alone would say nothing about `DateTime?` — which is
+/// the one with a genuinely separate conversion on both the read and the write
+/// side.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_nullable',
+  primaryKeyField: 'id',
+)
+class FixtureOptionalColumnRecord {
+  /// Surrogate primary key — `null` until first persisted.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// Optional text, over `VARCHAR(255)`.
+  @TomDbColumn(columnName: 'name')
+  String? name;
+
+  /// Optional fractional value, over `DOUBLE`.
+  @TomDbColumn(columnName: 'ratio')
+  double? ratio;
+
+  /// Optional integer, over `INT`.
+  @TomDbColumn(columnName: 'quantity')
+  int? quantity;
+
+  /// Optional boolean, over `TINYINT(1)`.
+  @TomDbColumn(columnName: 'active')
+  bool? active;
+
+  /// Optional timestamp, over `DATETIME`, under a name that differs from its
+  /// column.
+  @TomDbColumn(columnName: 'occurred_at')
+  DateTime? occurredAt;
+}
+
+/// The MariaDB-backed repository for [FixtureOptionalColumnRecord].
+class FixtureOptionalColumnRepository
+    extends TomSqlDatasourceRepository<FixtureOptionalColumnRecord, int> {}
+
 /// A reflected **preference value** — the object shape a user preference is
 /// stored as when it is not a scalar (TCCA10).
 ///
