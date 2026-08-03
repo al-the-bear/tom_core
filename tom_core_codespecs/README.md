@@ -90,7 +90,7 @@ before the class was written:
 **CE-AC (Trigger) is not a gap.** `codespecs_mapping.md` §4.1 / §5.10 / §5.20
 all record "no gap — full action implementation reused": the trigger taxonomy is
 a documented classification over the reused `tom_flutter_ui` action classes. Its
-closed five-kind vocabulary therefore ships as `TriggerKind` on `@CsTrigger` in
+closed five-kind vocabulary therefore ships as `CsTriggerKind` on `@CsTrigger` in
 `tom_code_specs`, not as a class here.
 
 **csra3 — CE-UP is single-moded.** `codespecs_mapping.md` §11 splits

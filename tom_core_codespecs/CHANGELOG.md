@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.1
+
+- Docs only, no API change: the library dartdoc and README now name the CE-AC
+  trigger vocabulary `CsTriggerKind`, following its rename in `tom_code_specs`
+  0.12.0. The note itself stays — it records that CE-AC is *not* a gap and that
+  its vocabulary is delivered as an annotation argument elsewhere, which is
+  still worth stating. What the rename removes is the part a reader had to be
+  told: the symbol now names its own package.
+
 ## 0.11.0
 
 - **Breaking: remove `TomUserSettings`, `TomUserSettingsStore` and

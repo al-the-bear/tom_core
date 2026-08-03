@@ -73,7 +73,7 @@
 /// scheduling runtime). CE-AC (Trigger) is **not** a gap:
 /// `codespecs_mapping.md` §4.1/§5.10/§5.20 record "no gap — full action
 /// implementation reused", and its closed trigger vocabulary is delivered as
-/// `TriggerKind` on `@CsTrigger` in `tom_code_specs` instead.
+/// `CsTriggerKind` on `@CsTrigger` in `tom_code_specs` instead.
 ///
 /// **CE-NT's promotion out of the deferred candidates.** `tom_core_server`'s
 /// `messaging` module delivers a composed message on a named channel, but takes
