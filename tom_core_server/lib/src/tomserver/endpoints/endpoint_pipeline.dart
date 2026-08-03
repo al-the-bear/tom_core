@@ -649,7 +649,24 @@ class TomEndpointHandler {
   ///
   /// A WebSocket endpoint takes the sibling path, [handleWebSocketCall], which
   /// shares the first two stages and replaces the rest with a socket lifetime.
-  Future<Response> handleMethodCall(Request req) async {
+  Future<Response> handleMethodCall(Request req) {
+    // The current transaction is scoped to the flow that opened it, and the
+    // server's authentication middleware normally establishes that scope for the
+    // whole request. That middleware is replaceable
+    // (`TomBaseServerConfiguration.authenticationMiddleware`), so this is a
+    // guard rather than a second mechanism: a transactional endpoint makes sure
+    // a scope exists instead of trusting the chain in front of it, because the
+    // failure it prevents — one request committing another's work — is silent.
+    if (metadata.transactionInfo == null ||
+        TomTransactionManager.hasTransactionScope) {
+      return _handleMethodCallInScope(req);
+    }
+    return TomTransactionManager.runInTransactionScope(
+      () => _handleMethodCallInScope(req),
+    );
+  }
+
+  Future<Response> _handleMethodCallInScope(Request req) async {
     if (req.method == TomHttpMethod.options.name) return handlePreflight(req);
 
     TomRequestLogInfo logInfo =
@@ -673,7 +690,12 @@ class TomEndpointHandler {
     try {
       if (metadata.transactionInfo != null) {
         tomLog.trace("$reqId-${req.url}: Starting transaction...");
-        (transaction, _) = TomTransactionManager.startTransaction();
+        // `@TomTransactional(isReadOnly: true)` was declarable but discarded
+        // here, so a read-only endpoint opened a read-write transaction and the
+        // flag never reached the participants it is addressed to.
+        (transaction, _) = TomTransactionManager.startTransaction(
+          metadata.transactionInfo!.isReadOnly,
+        );
       }
       tomLog.trace(
         "$reqId-${req.url}: Calling method $callName on ${instance.reflectee.runtimeType} with parameters $positionalArguments",

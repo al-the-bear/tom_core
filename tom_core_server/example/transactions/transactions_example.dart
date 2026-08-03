@@ -2,10 +2,13 @@
 ///
 /// Shows the transaction lifecycle with a fake in-memory participant: opening a
 /// transaction through [TomTransactionManager], enlisting participants, and
-/// concluding with a commit or a rollback (including the commit-veto path). In
-/// production the participants are data sources (`TomDataSource` implements
-/// [TomTransactionParticipant]) and the endpoint pipeline opens/closes the
-/// transaction around a `@TomTransactional` endpoint.
+/// concluding with a commit or a rollback (including the commit-veto path), and
+/// finally isolating two concurrent flows from each other with
+/// [TomTransactionManager.runInTransactionScope]. In production the participants
+/// are data sources (`TomDataSource` implements [TomTransactionParticipant]) and
+/// the endpoint pipeline opens/closes the transaction around a
+/// `@TomTransactional` endpoint — inside a scope the server establishes per
+/// request.
 ///
 /// Run with `dart run example/transactions/transactions_example.dart`. The same
 /// behaviour is covered by `test/transactions_test.dart`.
@@ -90,6 +93,31 @@ Future<void> run() async {
   print('4. enlist-after-conclude threw '
       '${captured is TomTransactionException ? captured.key : captured}');
   assert(captured is TomTransactionException);
+
+  // 5. Two concurrent flows, each in its own scope, hold independent current
+  //    transactions. Steps 1-4 above ran outside every scope and so shared the
+  //    process-wide fallback one, which is right for a single flow of work —
+  //    but anything that fans out (a scheduler, a batch tool, and every request
+  //    the server serves) must wrap each flow, or one flow can commit another's
+  //    work. Each flow below yields at the point where the other is guaranteed
+  //    to have opened its transaction, which is exactly the interleave.
+  final opened = <String, TomTransaction>{};
+  Future<void> flow(String name) =>
+      TomTransactionManager.runInTransactionScope(() async {
+        final (txn, isNew) = TomTransactionManager.startTransaction();
+        opened[name] = txn;
+        assert(isNew == true, 'each flow opens its own transaction');
+        await Future<void>.delayed(Duration.zero);
+        assert(identical(TomTransactionManager.getCurrentTransaction(), txn));
+        await txn.commitTransaction();
+      });
+  await Future.wait([flow('left'), flow('right')]);
+  print('5. concurrent flows shared a transaction='
+      '${identical(opened['left'], opened['right'])} '
+      'outside any scope current='
+      '${TomTransactionManager.getCurrentTransaction()}');
+  assert(!identical(opened['left'], opened['right']));
+  assert(TomTransactionManager.getCurrentTransaction() == null);
 
   print('\nTransactions example completed.');
 }

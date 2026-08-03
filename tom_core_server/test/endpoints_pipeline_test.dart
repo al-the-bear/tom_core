@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shelf/shelf.dart';
@@ -401,6 +402,78 @@ void main() {
       TomAuditTrail.uninstall();
       final response = await router.call(_get('/fixture/audited'));
       expect(response.statusCode, 200);
+    });
+  });
+
+  group('@TomTransactional endpoints', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      router = TomEndpointRouting().initializeRouter();
+      FixtureApiServer.transactionalArrivals.clear();
+    });
+
+    tearDown(() {
+      FixtureApiServer.transactionalRelease = null;
+      FixtureApiServer.transactionalArrivals.clear();
+      TomBean.resetBeanContext();
+    });
+
+    test('two concurrent calls run in independent transactions', () async {
+      // The request-path form of the assertion this change exists for. Nothing
+      // here installs the authentication middleware — the router is called
+      // directly — so the scope each call runs in comes from the pipeline's own
+      // guard. Both calls are parked *inside* their transactional block at the
+      // same time, so the two transactions genuinely coexist rather than merely
+      // being observed one after the other; with a process-wide current
+      // transaction the second call would have joined the first one's.
+      final release = Completer<void>();
+      FixtureApiServer.transactionalRelease = release;
+
+      final first = router.call(_get('/fixture/transactional'));
+      final second = router.call(_get('/fixture/transactional'));
+      while (FixtureApiServer.transactionalArrivals.length < 2) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      release.complete();
+      final responses = await Future.wait([first, second]);
+
+      expect(responses.every((r) => r.statusCode == 200), isTrue);
+      final arrivals = FixtureApiServer.transactionalArrivals;
+      expect(arrivals[0], isNotNull, reason: 'the pipeline opened one');
+      expect(arrivals[1], isNotNull);
+      expect(identical(arrivals[0], arrivals[1]), isFalse,
+          reason: 'each request gets its own current transaction');
+    });
+
+    test('the transaction survives an await inside the endpoint', () async {
+      // Zone values follow the flow across asynchronous gaps; a field on the
+      // manager would not distinguish "still mine" from "whatever ran last".
+      final response = await router.call(_get('/fixture/transactional'));
+      final body = jsonDecode(await response.readAsString());
+      expect(body['stable'], isTrue);
+      expect(body['running'], isTrue,
+          reason: 'the pipeline concludes the transaction after the call');
+    });
+
+    test('@TomTransactional(isReadOnly: true) reaches the transaction',
+        () async {
+      // The flag was declarable and discarded, so a read-only endpoint opened a
+      // read-write transaction and no participant could ever act on it.
+      final response = await router.call(_get('/fixture/transactional'));
+      final body = jsonDecode(await response.readAsString());
+      expect(body['readOnly'], isTrue);
+    });
+
+    test('a non-transactional endpoint leaves no current transaction', () async {
+      final response = await router.call(_get('/fixture/unguarded'));
+      expect(response.statusCode, 200);
+      expect(TomTransactionManager.getCurrentTransaction(), isNull,
+          reason: 'the request scope is not the caller\'s scope');
     });
   });
 }

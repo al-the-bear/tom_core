@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../little_things/server_exception.dart';
 
 /// Raised when a transaction operation is attempted in an invalid state — for
@@ -52,6 +54,16 @@ abstract class TomTransactionParticipant {
 /// no longer accept participants.
 class TomTransaction {
 
+  /// The scope this transaction is the current one of.
+  ///
+  /// Held by the transaction rather than looked up on conclusion, because
+  /// `commitTransaction` may well run in a different zone from the one that
+  /// opened the transaction — an `await` inside a handler, a callback scheduled
+  /// elsewhere — and clearing "whatever scope the concluding code happens to be
+  /// in" would leave the opening scope pointing at a finished transaction while
+  /// wiping an unrelated one.
+  final _TomTransactionScope _scope;
+
   final Map<String, TomTransactionParticipant> _participants = {};
 
   /// Whether this transaction was opened as read-only (advisory; surfaced to
@@ -63,7 +75,7 @@ class TomTransaction {
   /// Whether the transaction is still open (not yet committed or rolled back).
   bool get isRunning => _isRunning;
 
-  TomTransaction._([this.isReadOnly=false]);
+  TomTransaction._(this._scope, [this.isReadOnly=false]);
 
   /// Enlists [ttp] in this transaction, calling its `startTransaction()` once.
   ///
@@ -93,7 +105,7 @@ class TomTransaction {
   /// participant in registration order. If any participant vetoes (returns
   /// `false`), the whole transaction is rolled back via [rollbackTransaction]
   /// instead. On a clean commit, `endTransaction()` is called on every
-  /// participant and the [TomTransactionManager] singleton is cleared. Returns
+  /// participant and the transaction is cleared from its scope. Returns
   /// whether the commit (and all end calls) succeeded.
   Future<bool> commitTransaction() async {
     bool ok = true;
@@ -107,15 +119,15 @@ class TomTransaction {
     for (var p in _participants.values) {
       ok = ok && await p.endTransaction();
     }
-    TomTransactionManager._clearTransaction();
+    _scope._clear(this);
     return ok;
   }
 
   /// Rolls back every participant, then ends them; clears the current transaction.
   ///
   /// Marks the transaction not-running, calls `rollback()` on every participant,
-  /// then `endTransaction()` on each, and clears the [TomTransactionManager]
-  /// singleton. Returns whether all end calls succeeded.
+  /// then `endTransaction()` on each, and clears the transaction from its
+  /// scope. Returns whether all end calls succeeded.
   Future<bool> rollbackTransaction() async {
     _isRunning = false;
     for (var p in _participants.values) {
@@ -125,25 +137,97 @@ class TomTransaction {
     for (var p in _participants.values) {
       ok = ok && await p.endTransaction();
     }
-    TomTransactionManager._clearTransaction();
+    _scope._clear(this);
     return ok;
+  }
+}
+
+/// The mutable holder of one flow's current transaction.
+///
+/// A zone value cannot be reassigned once the zone is forked, so what the zone
+/// carries is this cell rather than the transaction itself: forking installs a
+/// fresh, empty cell, and everything inside that zone reads and writes *that*
+/// cell. Two zones therefore have two independent current transactions, which is
+/// the whole point.
+class _TomTransactionScope {
+  TomTransaction? current;
+
+  /// Clears [transaction] if it is still the current one.
+  ///
+  /// Guarded by identity because a transaction concludes at a point in time when
+  /// the scope may already have moved on — nothing opens a second transaction in
+  /// a scope whose first is still running, but a concluded transaction must not
+  /// be able to wipe a successor either.
+  void _clear(TomTransaction transaction) {
+    if (identical(current, transaction)) current = null;
   }
 }
 
 /// Ambient access to the current [TomTransaction].
 ///
-/// Holds a single current transaction (per isolate) so participants and the
-/// endpoint pipeline can join or conclude it without threading a handle through
-/// every call. The pipeline opens one with [startTransaction] for a
-/// `@TomTransactional` endpoint and commits/rolls it back when the call returns;
-/// data sources enlist with the current transaction as they are used. The
-/// transaction clears itself from here on commit or rollback.
+/// Holds the current transaction so participants and the endpoint pipeline can
+/// join or conclude it without threading a handle through every call. The
+/// pipeline opens one with [startTransaction] for a `@TomTransactional` endpoint
+/// and commits/rolls it back when the call returns; data sources enlist with the
+/// current transaction as they are used. The transaction clears itself from here
+/// on commit or rollback.
 ///
-/// The current transaction is a single static (not zone-scoped), so this models
-/// one active transaction per isolate at a time.
+/// **"Current" means current *to this flow*, not to this isolate.** The
+/// transaction lives in a [Zone] value, exactly as the request principal does —
+/// so two requests interleaving in one isolate have two independent current
+/// transactions and neither can enlist in, commit, or roll back the other's
+/// work. A scope is established by [runInTransactionScope]; the server's
+/// authentication middleware opens one per request, and the endpoint pipeline
+/// opens one for a `@TomTransactional` endpoint whose request has none.
+///
+/// Code running outside any scope — a script, a test, a `main()` — shares one
+/// process-wide fallback scope, which is the pre-zone behaviour and is correct
+/// for a program with a single flow of work. Anything that runs *concurrent*
+/// flows outside the request path (a scheduler running two jobs, a batch tool
+/// fanning out) must wrap each flow in [runInTransactionScope] to get the same
+/// isolation a request gets for free.
 abstract class TomTransactionManager {
 
-  static TomTransaction? _currentTransaction;
+  /// The scope used by code that is not inside any [runInTransactionScope].
+  ///
+  /// Deliberately shared rather than per-call: a single-flow program has exactly
+  /// one flow of work, and giving each `startTransaction()` its own scope would
+  /// silently break the nesting contract (a nested call returning the enclosing
+  /// transaction with `false`) that the pipeline and every existing caller rely
+  /// on.
+  static final _TomTransactionScope _fallbackScope = _TomTransactionScope();
+
+  static _TomTransactionScope get _scope =>
+      (Zone.current[_TomTransactionScope] as _TomTransactionScope?) ??
+      _fallbackScope;
+
+  /// Runs [body] with its own current transaction, isolated from every other
+  /// flow in this isolate.
+  ///
+  /// The transaction opened inside [body] — including inside anything it
+  /// `await`s — is invisible outside, and a transaction opened outside is
+  /// invisible within. Returns whatever [body] returns, so an asynchronous body
+  /// is awaited by the caller rather than here:
+  ///
+  /// ```dart
+  /// await TomTransactionManager.runInTransactionScope(() async {
+  ///   final (txn, _) = TomTransactionManager.startTransaction();
+  ///   await doWork();
+  ///   await txn.commitTransaction();
+  /// });
+  /// ```
+  static R runInTransactionScope<R>(R Function() body) => runZoned(
+    zoneValues: {_TomTransactionScope: _TomTransactionScope()},
+    body,
+  );
+
+  /// Whether the current zone carries a transaction scope of its own.
+  ///
+  /// `false` means [startTransaction] would use the process-wide fallback scope.
+  /// Used by the endpoint pipeline to establish a scope for a transactional
+  /// endpoint when the middleware chain in front of it did not.
+  static bool get hasTransactionScope =>
+      Zone.current[_TomTransactionScope] != null;
 
   /// Returns the current transaction, creating one if none is active.
   ///
@@ -152,21 +236,23 @@ abstract class TomTransactionManager {
   /// transaction be the one responsible for concluding it. [isReadOnly] is only
   /// honoured when a new transaction is created.
   static (TomTransaction, bool) startTransaction([bool isReadOnly=false]) {
-    if (_currentTransaction != null) {
-      return (_currentTransaction!, false);
+    final scope = _scope;
+    final existing = scope.current;
+    if (existing != null) {
+      return (existing, false);
     }
-    _currentTransaction = TomTransaction._(isReadOnly);
-    return (_currentTransaction!, true);
-  }
-
-  static void _clearTransaction() {
-    _currentTransaction = null;
+    final transaction = TomTransaction._(scope, isReadOnly);
+    scope.current = transaction;
+    return (transaction, true);
   }
 
   /// The current transaction, or `null` if none is active.
-  static TomTransaction? getCurrentTransaction() => _currentTransaction;
+  static TomTransaction? getCurrentTransaction() => _scope.current;
 
   /// Whether a transaction is currently active and still running.
-  static bool get transactional => _currentTransaction != null && _currentTransaction!._isRunning;
+  static bool get transactional {
+    final current = _scope.current;
+    return current != null && current._isRunning;
+  }
 
 }

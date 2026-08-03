@@ -12,6 +12,7 @@ handle around.
 - [The Participant Contract](#the-participant-contract)
 - [The Transaction Lifecycle](#the-transaction-lifecycle)
 - [Ambient Access](#ambient-access)
+- [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)
 - [Concurrency Model](#concurrency-model)
 - [Core Components](#core-components)
@@ -25,7 +26,7 @@ handle around.
 | ------ | ---- | ------- |
 | `TomTransactionParticipant` | abstract class | A resource that can enlist in a transaction |
 | `TomTransaction` | class | One unit of work coordinating its participants |
-| `TomTransactionManager` | abstract class (statics) | Ambient access to the current transaction |
+| `TomTransactionManager` | abstract class (statics) | Zone-scoped ambient access to the current transaction |
 | `TomTransactionException` | class | Raised on an invalid transaction operation |
 
 ## The Participant Contract
@@ -75,13 +76,53 @@ and `false`. `getCurrentTransaction()` and the `transactional` getter expose the
 current state. `isReadOnly` is advisory and only honoured when a new transaction
 is created.
 
-## How the Pipeline Uses It
+"Current" means current *to this flow of work*, not to this isolate — see
+[Transaction Scopes](#transaction-scopes).
 
-For an endpoint annotated `@TomTransactional`, the endpoint pipeline opens a
-transaction around the call:
+## Transaction Scopes
+
+The current transaction lives in a `Zone` value, exactly as the request principal
+does. A scope is the unit of isolation: the transaction opened inside one is
+invisible outside it, and a transaction opened outside is invisible within.
 
 ```dart
-final (transaction, _) = TomTransactionManager.startTransaction();
+await TomTransactionManager.runInTransactionScope(() async {
+  final (txn, _) = TomTransactionManager.startTransaction();
+  await doWork();               // data sources enlist with *this* transaction
+  await txn.commitTransaction();
+});
+```
+
+`runInTransactionScope` returns whatever its body returns, so an asynchronous
+body is awaited by the caller rather than swallowed. `hasTransactionScope`
+reports whether the current zone carries a scope of its own; `false` means
+`startTransaction()` would fall back to the process-wide scope.
+
+Scopes are established for you on the request path:
+
+- the server's authentication middleware opens one per request, so every request
+  has its own current transaction;
+- the endpoint pipeline opens one for a `@TomTransactional` endpoint whose
+  request does not already have a scope. The authentication middleware is
+  replaceable (`TomBaseServerConfiguration.authenticationMiddleware`), so this is
+  a guard rather than a second mechanism — the failure it prevents (one request
+  committing another's work) is silent.
+
+Code running outside every scope — a script, a test, a `main()` — shares one
+process-wide fallback scope. That is correct for a program with a single flow of
+work, and it is what preserves the nesting contract for existing callers. Code
+that runs *concurrent* flows off the request path (a scheduler running two jobs,
+a batch tool fanning out) must wrap each flow in `runInTransactionScope` to get
+the isolation a request gets for free.
+
+## How the Pipeline Uses It
+
+For an endpoint annotated `@TomTransactional`, the endpoint pipeline ensures a
+scope exists and opens a transaction around the call:
+
+```dart
+final (transaction, _) =
+    TomTransactionManager.startTransaction(transactionInfo.isReadOnly);
 try {
   // ... invoke the endpoint; data sources enlist as they are used ...
   await transaction.commitTransaction();
@@ -90,14 +131,22 @@ try {
 }
 ```
 
+`@TomTransactional(isReadOnly: true)` is passed through to the transaction, so a
+read-only endpoint opens a read-only transaction and participants can act on the
+flag.
+
 ## Concurrency Model
 
-The current transaction is held in a single static field, so the manager models
-**one active transaction per isolate** at a time (it is not zone-scoped). This
-fits the server's request flow — each request opens, uses, and clears the
-transaction — but it does not isolate concurrently-interleaved requests within
-the same isolate. A zone-scoped current transaction is a possible future
-improvement (tracked in the quest completion steps).
+The current transaction is **per flow of work, not per isolate**. Two requests
+interleaving in one isolate hold two independent current transactions: neither
+can enlist in, commit, or roll back the other's work, and an `await` inside a
+transactional block cannot let a second request conclude the first one's
+transaction.
+
+A transaction may conclude in a different zone from the one that opened it (after
+an `await`, or from a callback scheduled elsewhere), so each `TomTransaction`
+holds a reference to the scope it is current in and clears *that* scope —
+identity-guarded, so a concluded transaction can never wipe a successor.
 
 ## Core Components
 
@@ -105,7 +154,9 @@ improvement (tracked in the quest completion steps).
   implemented by data sources.
 - **`TomTransaction`** — registration, dedup-by-id, and the commit/rollback
   drive (with commit-veto → rollback).
-- **`TomTransactionManager`** — the ambient single-transaction accessor.
+- **`TomTransactionManager`** — the zone-scoped ambient accessor, plus
+  `runInTransactionScope` / `hasTransactionScope` for establishing and detecting
+  a scope.
 - **`TomTransactionException`** — invalid-state signalling (a
   `TomServerException`).
 
@@ -116,4 +167,7 @@ improvement (tracked in the quest completion steps).
 - The datasources module — `TomDataSource` is the concrete
   `TomTransactionParticipant`.
 - The endpoints module — drives `startTransaction` / `commitTransaction` /
-  `rollbackTransaction` for `@TomTransactional` endpoints.
+  `rollbackTransaction` for `@TomTransactional` endpoints, and guards that such
+  an endpoint runs inside a scope.
+- The server module — the authentication middleware opens a transaction scope
+  per request.

@@ -2,8 +2,9 @@
 
 A lightweight two-phase transaction coordinator: enlistable participants, a unit
 of work that commits or rolls them back as a group, and an ambient manager that
-holds the single current transaction per isolate so the endpoint pipeline and
-data sources can join it without threading a handle through every call.
+holds the current transaction of the running flow — zone-scoped, so concurrent
+flows in one isolate do not share it — allowing the endpoint pipeline and data
+sources to join it without threading a handle through every call.
 
 ## Table of Contents
 
@@ -27,10 +28,16 @@ work concludes with `commitTransaction` (commit-all, rolling back if any
 participant vetoes) or `rollbackTransaction`. Instances are created only by
 `TomTransactionManager.startTransaction` (the constructor is private).
 
-`TomTransactionManager` provides ambient access to the current transaction — a
-single static, so it models one active transaction per isolate. The pipeline
-opens one for a `@TomTransactional` endpoint and commits/rolls it back when the
-call returns; the transaction clears itself from the manager on completion.
+`TomTransactionManager` provides ambient access to the current transaction. The
+transaction lives in a `Zone` value, so "current" means current to the running
+flow rather than to the isolate: two requests interleaving in one isolate hold
+two independent transactions. A scope is established by `runInTransactionScope`
+— the server's authentication middleware opens one per request, and the endpoint
+pipeline opens one for a `@TomTransactional` endpoint whose request has none.
+Code outside every scope shares one process-wide fallback scope. The pipeline
+opens a transaction for a `@TomTransactional` endpoint and commits/rolls it back
+when the call returns; the transaction clears itself from its scope on
+completion.
 
 ## Class Hierarchy
 
@@ -109,15 +116,21 @@ None — the constructor is private; obtain instances via
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction()` once; deduplicated by participant id. Throws `TomTransactionException` if the transaction is no longer running. |
-| `commitTransaction` | `Future<bool> commitTransaction()` | Commits every participant then ends them; if any vetoes, rolls back instead. Clears the current transaction and returns whether it succeeded. |
-| `rollbackTransaction` | `Future<bool> rollbackTransaction()` | Rolls back every participant then ends them; clears the current transaction and returns whether all end calls succeeded. |
+| `commitTransaction` | `Future<bool> commitTransaction()` | Commits every participant then ends them; if any vetoes, rolls back instead. Clears the transaction from its scope and returns whether it succeeded. |
+| `rollbackTransaction` | `Future<bool> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope and returns whether all end calls succeeded. |
+
+A transaction remembers the scope it is current in, because it may conclude in a
+different zone from the one that opened it (after an `await`, or from a callback
+scheduled elsewhere). Clearing is identity-guarded, so a concluded transaction
+cannot wipe a successor.
 
 ### TomTransactionManager
 
-Ambient access to the current `TomTransaction`. Holds a single current
-transaction (per isolate) so participants and the endpoint pipeline can join or
-conclude it without threading a handle through every call. Abstract with a
-static-only surface.
+Ambient access to the current `TomTransaction`, so participants and the endpoint
+pipeline can join or conclude it without threading a handle through every call.
+"Current" means current to the running flow: the transaction lives in a `Zone`
+value, exactly as the request principal does, so two flows interleaving in one
+isolate cannot see each other's work. Abstract with a static-only surface.
 
 - **Extends:** none (abstract, static members only)
 
@@ -125,6 +138,7 @@ static-only surface.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `runInTransactionScope` | `static R runInTransactionScope<R>(R Function() body)` | Runs `body` with its own current transaction, isolated from every other flow in this isolate. Returns whatever `body` returns, so an asynchronous body is awaited by the caller. |
 | `startTransaction` | `static (TomTransaction, bool) startTransaction([bool isReadOnly = false])` | Returns the current transaction, creating one if none is active; the boolean is `true` when a new one was created. `isReadOnly` is honoured only for a new transaction. |
 | `getCurrentTransaction` | `static TomTransaction? getCurrentTransaction()` | The current transaction, or `null` if none is active. |
 
@@ -132,6 +146,7 @@ static-only surface.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `hasTransactionScope` | `static bool` | *(getter)* Whether the current zone carries a transaction scope of its own; `false` means `startTransaction` would use the process-wide fallback scope. |
 | `transactional` | `static bool` | *(getter)* Whether a transaction is currently active and still running. |
 
 ## Global Functions and Constants

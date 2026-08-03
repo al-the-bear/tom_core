@@ -19,6 +19,8 @@
 /// two roles must be separate types.
 library;
 
+import 'dart:async';
+
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -116,6 +118,23 @@ abstract class FixtureApiService {
   )
   Future<Object> moved();
 
+  /// A `@TomTransactional` endpoint that reports the transaction it ran in.
+  ///
+  /// It parks on [FixtureApiServer.transactionalRelease] in the middle of its
+  /// transactional block, so a test can hold two calls open *simultaneously* and
+  /// assert they are in different transactions rather than inferring it from
+  /// timing. Read-only, because the flag was declarable and discarded before the
+  /// pipeline was fixed to pass it on.
+  @TomPublicAccess()
+  @TomTransactional(isReadOnly: true)
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/transactional',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> transactionalWork();
+
   /// A WebSocket endpoint: invoked once per accepted connection, with the live
   /// socket among its parameters.
   ///
@@ -151,6 +170,37 @@ class FixtureUploadRequest {
 @tomReflector
 @tomComponent
 class FixtureApiServer implements FixtureApiService {
+  /// Every transaction [transactionalWork] observed, in arrival order.
+  ///
+  /// The identities are what the concurrency assertion is made on, so the test
+  /// needs the objects rather than a rendering of them.
+  static final List<TomTransaction?> transactionalArrivals = [];
+
+  /// Held by a test to keep [transactionalWork] parked inside its transaction.
+  ///
+  /// Null (the default) makes the endpoint run straight through, so every other
+  /// test that happens to hit it is unaffected.
+  static Completer<void>? transactionalRelease;
+
+  @override
+  Future<Map<String, Object>> transactionalWork() async {
+    final transaction = TomTransactionManager.getCurrentTransaction();
+    transactionalArrivals.add(transaction);
+    // The await that makes this interesting: while parked here a second request
+    // runs the same block, which is precisely the interleaving a process-wide
+    // current transaction cannot survive.
+    await transactionalRelease?.future;
+    return <String, Object>{
+      'readOnly': transaction?.isReadOnly ?? false,
+      'running': transaction?.isRunning ?? false,
+      // Still the same transaction after the await — the zone carried it.
+      'stable': identical(
+        transaction,
+        TomTransactionManager.getCurrentTransaction(),
+      ),
+    };
+  }
+
   @override
   Future<Map<String, Object>> health() async =>
       <String, Object>{'status': 'ok', 'app': 'fixture'};

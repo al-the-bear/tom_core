@@ -12,6 +12,7 @@ import '../little_things/server_exception.dart';
 import '../configuration/base_server_configuration.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../authorization/authorization_cache.dart';
+import '../transactions/transaction_manager.dart';
 
 /// A pass-through shelf [Middleware] that seeds the request [Request.context].
 ///
@@ -104,7 +105,9 @@ class TomRequestId {
 ///    expose the shelf [Request], the ambient [TomExecutionContext], the
 ///    resolved [TomPrincipal], the [TomClientJwtToken], and a fresh
 ///    [TomRequestId] — making them recoverable anywhere in the request via
-///    `getFromCurrentZone`.
+///    `getFromCurrentZone` — and inside a
+///    [TomTransactionManager.runInTransactionScope], giving the request its own
+///    current transaction.
 ///
 /// [id] labels the middleware for tracing; the optional [context] is merged
 /// into the request context before handling. Replace it via
@@ -141,9 +144,14 @@ Middleware tomDefaultAuthenticationMiddleware(
         TomRequestId: TomRequestId()
       });
       zoneValues[TomZoneValues] = zoneValues;
-      return runZoned<FutureOr<Response>>(
-        zoneValues: zoneValues.zoneValues,
-        () => innerHandler(newRequest),
+      // Each request also gets its own current transaction, for the same reason
+      // it gets its own principal: two requests interleaving in one isolate must
+      // not be able to see — let alone commit or roll back — each other's work.
+      return TomTransactionManager.runInTransactionScope(
+        () => runZoned<FutureOr<Response>>(
+          zoneValues: zoneValues.zoneValues,
+          () => innerHandler(newRequest),
+        ),
       );
     }).then((response) {
       return response;

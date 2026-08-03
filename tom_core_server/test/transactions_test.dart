@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
 /// Tests for the transactions module: the [TomTransaction] lifecycle, the
 /// commit/rollback drive (including the commit-veto path and participant
-/// deduplication), and the ambient [TomTransactionManager] singleton. The
-/// module is self-contained (no reflection, no database), so the whole surface
-/// is exercised here with a recording fake participant.
+/// deduplication), and the ambient [TomTransactionManager] accessors — both in
+/// the process-wide fallback scope and inside an explicit
+/// [TomTransactionManager.runInTransactionScope]. The module is self-contained
+/// (no reflection, no database), so the whole surface is exercised here with a
+/// recording fake participant.
 
 /// A participant that records the lifecycle calls made on it.
 ///
@@ -61,9 +65,22 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 }
 
+/// A participant that enlists itself the way a data source does — through the
+/// *ambient* current transaction rather than a handle it was given.
+///
+/// This is the shape that makes zone scoping load-bearing: the caller never
+/// names a transaction, so which one it joins is decided entirely by the scope
+/// it runs in. Returns whether it found a transaction to join.
+Future<bool> enlistAmbiently(TomTransactionParticipant participant) async {
+  final transaction = TomTransactionManager.getCurrentTransaction();
+  if (transaction == null) return false;
+  await transaction.registerParticipant(participant);
+  return true;
+}
+
 void main() {
-  // The manager holds a single static transaction; ensure each test starts and
-  // ends with no active transaction.
+  // Tests outside an explicit scope share the process-wide fallback scope;
+  // ensure each starts and ends with no active transaction.
   tearDown(() async {
     await TomTransactionManager.getCurrentTransaction()?.rollbackTransaction();
   });
@@ -240,6 +257,175 @@ void main() {
         txn.registerParticipant(_RecordingParticipant('late')),
         throwsA(isA<TomTransactionException>()),
       );
+    });
+  });
+
+  group('runInTransactionScope', () {
+    test('two concurrent flows do not observe each other\'s transaction',
+        () async {
+      // The assertion this whole change exists for. Both flows are started
+      // before either finishes, and each yields at a point where the other is
+      // guaranteed to have opened its transaction — exactly what two requests
+      // interleaving in one isolate do. With a process-wide current
+      // transaction the second flow would receive the first one's handle with
+      // isNew == false, and whichever concluded first would commit the other's
+      // work.
+      final aOpened = Completer<void>();
+      final bOpened = Completer<void>();
+
+      Future<TomTransaction> flow(
+        Completer<void> mine,
+        Completer<void> theirs,
+        TomTransactionParticipant participant,
+      ) =>
+          TomTransactionManager.runInTransactionScope(() async {
+            final (txn, isNew) = TomTransactionManager.startTransaction();
+            expect(isNew, isTrue, reason: 'each flow opens its own transaction');
+            await enlistAmbiently(participant);
+            mine.complete();
+            await theirs.future;
+            // After the interleave the flow still sees its own transaction.
+            expect(
+              identical(TomTransactionManager.getCurrentTransaction(), txn),
+              isTrue,
+            );
+            await txn.commitTransaction();
+            return txn;
+          });
+
+      final pa = _RecordingParticipant('a');
+      final pb = _RecordingParticipant('b');
+      final transactions = await Future.wait([
+        flow(aOpened, bOpened, pa),
+        flow(bOpened, aOpened, pb),
+      ]);
+
+      expect(identical(transactions[0], transactions[1]), isFalse);
+      // Each participant joined exactly one transaction and was driven by it
+      // once — nobody was committed twice or by the wrong flow.
+      expect(pa.calls, ['start', 'commit', 'end']);
+      expect(pb.calls, ['start', 'commit', 'end']);
+    });
+
+    test('a transaction inside a scope is invisible outside it', () async {
+      // A flow running outside the scope must find *nothing*, not the
+      // transaction that happens to be running next to it.
+      final observed = <TomTransaction?>[];
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        observed.add(txn);
+        await txn.commitTransaction();
+      });
+      expect(observed, hasLength(1));
+      expect(TomTransactionManager.getCurrentTransaction(), isNull);
+      expect(TomTransactionManager.transactional, isFalse);
+    });
+
+    test('a transaction outside a scope is invisible inside one', () async {
+      final (outer, _) = TomTransactionManager.startTransaction();
+      final inner = TomTransactionManager.runInTransactionScope(
+        () => TomTransactionManager.getCurrentTransaction(),
+      );
+      expect(inner, isNull);
+      expect(identical(TomTransactionManager.getCurrentTransaction(), outer),
+          isTrue);
+    });
+
+    test('nesting scopes gives the inner one its own transaction', () async {
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (outer, _) = TomTransactionManager.startTransaction();
+        final inner = await TomTransactionManager.runInTransactionScope(
+          () async {
+            final (txn, isNew) = TomTransactionManager.startTransaction();
+            expect(isNew, isTrue);
+            await txn.commitTransaction();
+            return txn;
+          },
+        );
+        expect(identical(inner, outer), isFalse);
+        // Concluding the inner transaction left the outer scope untouched.
+        expect(identical(TomTransactionManager.getCurrentTransaction(), outer),
+            isTrue);
+        await outer.rollbackTransaction();
+      });
+    });
+
+    test('a second startTransaction within one scope still nests', () async {
+      // Scoping changes *where* the current transaction lives, not the nesting
+      // contract every existing caller relies on.
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (txn, isNew) = TomTransactionManager.startTransaction();
+        final (again, isNewAgain) = TomTransactionManager.startTransaction();
+        expect(isNew, isTrue);
+        expect(isNewAgain, isFalse);
+        expect(identical(txn, again), isTrue);
+        await txn.rollbackTransaction();
+      });
+    });
+
+    test('hasTransactionScope reports whether the zone carries one', () {
+      expect(TomTransactionManager.hasTransactionScope, isFalse);
+      expect(
+        TomTransactionManager.runInTransactionScope(
+          () => TomTransactionManager.hasTransactionScope,
+        ),
+        isTrue,
+      );
+    });
+
+    test('concluding in a different zone clears the opening scope', () async {
+      // commitTransaction may well run somewhere other than where the
+      // transaction was opened. The transaction carries its scope, so the
+      // clear lands on the scope that actually holds it.
+      late TomTransaction opened;
+      final scopeSawItCleared = Completer<bool>();
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        opened = txn;
+        // Conclude from outside the scope entirely.
+        await Zone.root.run(() => txn.commitTransaction());
+        scopeSawItCleared
+            .complete(TomTransactionManager.getCurrentTransaction() == null);
+      });
+      expect(await scopeSawItCleared.future, isTrue);
+      expect(opened.isRunning, isFalse);
+    });
+  });
+
+  group('ambient enlistment', () {
+    test('a participant enlisting inside a scope joins that transaction',
+        () async {
+      final p = _RecordingParticipant('inside');
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        expect(await enlistAmbiently(p), isTrue);
+        await txn.commitTransaction();
+      });
+      expect(p.calls, ['start', 'commit', 'end']);
+    });
+
+    test('a participant enlisting outside every scope joins nothing', () async {
+      final inside = _RecordingParticipant('inside');
+      final outside = _RecordingParticipant('outside');
+      final started = Completer<void>();
+      final mayFinish = Completer<void>();
+
+      final flow = TomTransactionManager.runInTransactionScope(() async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await enlistAmbiently(inside);
+        started.complete();
+        await mayFinish.future;
+        await txn.commitTransaction();
+      });
+
+      await started.future;
+      // A scoped transaction is running right now, and this code is not in it.
+      expect(await enlistAmbiently(outside), isFalse);
+      mayFinish.complete();
+      await flow;
+
+      expect(inside.calls, ['start', 'commit', 'end']);
+      expect(outside.calls, isEmpty);
     });
   });
 

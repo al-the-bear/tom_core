@@ -412,7 +412,7 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomTransactionManager` | abstract class | Transaction coordination (static). |
+| `TomTransactionManager` | abstract class | Transaction coordination (static, zone-scoped per flow). |
 | `TomTransaction` | class | An in-flight transaction. |
 | `TomTransactionParticipant` | abstract class | Participant contract (2-phase commit). |
 | `TomTransactionException` | class | Transaction error. |
