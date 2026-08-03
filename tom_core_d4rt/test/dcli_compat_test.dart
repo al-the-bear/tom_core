@@ -76,20 +76,10 @@ void main() {
     );
 
     helper = ReplayTestHelper(projectPath: Directory.current.path);
-
-    // If binary already exists (built by d4rt_replay_test or manual d4rtgen),
-    // mark as prepared directly. Otherwise, generate + compile.
-    if (File(helper.binaryPath).existsSync()) {
-      helper.markPrepared();
-    } else {
-      final ok = await helper.prepare();
-      expect(ok, isTrue,
-          reason: 'Preparation failed: '
-              '${helper.preparationError ?? "unknown"}');
-    }
+    final ok = await helper.ensurePrepared();
+    expect(ok, isTrue,
+        reason: 'Preparation failed: ${helper.preparationError ?? "unknown"}');
   });
-
-  // No cleanup — shared binary with d4rt_replay_test
 
   group('DCli compatibility', () {
     test('basics', () async {

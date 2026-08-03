@@ -6,9 +6,12 @@
 ///
 /// ## Test flow
 ///
-/// 1. `setUpAll` — generates bridges via d4rtgen, compiles `bin/d4rt_test`
+/// 1. `setUpAll` — regenerates bridges and compiles `bin/d4rt_test`, unless the
+///    existing binary is already newer than every source it was built from
 /// 2. Each test — runs `d4rt_test -run-replay <file> -test`
-/// 3. `tearDownAll` — removes the temporary binary
+///
+/// The binary is left in place afterwards: it is the cache that makes step 1
+/// cheap, and its validity is now checked on every run instead of assumed.
 ///
 /// Run with: `dart test test/d4rt_replay_test.dart`
 @TestOn('vm')
@@ -17,7 +20,6 @@ library;
 
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'replay_test_helper.dart';
@@ -27,21 +29,10 @@ void main() {
 
   setUpAll(() async {
     helper = ReplayTestHelper(projectPath: Directory.current.path);
-
-    // If binary already exists (from a previous run or manual build),
-    // skip the expensive generation + compilation step.
-    if (File(p.join(helper.projectPath, 'bin', 'd4rt_test')).existsSync()) {
-      helper.markPrepared();
-    } else {
-      final ok = await helper.prepare();
-      expect(ok, isTrue,
-          reason: 'Bridge generation or compilation failed: '
-              '${helper.preparationError ?? "unknown"}');
-    }
-  });
-
-  tearDownAll(() {
-    helper.cleanup();
+    final ok = await helper.ensurePrepared();
+    expect(ok, isTrue,
+        reason: 'Bridge generation or compilation failed: '
+            '${helper.preparationError ?? "unknown"}');
   });
 
   // ── D4rt Language Features ─────────────────────────────────────────

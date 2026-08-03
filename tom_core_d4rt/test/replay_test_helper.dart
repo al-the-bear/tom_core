@@ -16,7 +16,8 @@
 ///
 /// setUpAll(() async {
 ///   helper = ReplayTestHelper(projectPath: Directory.current.path);
-///   await helper.prepare();
+///   final ok = await helper.ensurePrepared();
+///   expect(ok, isTrue, reason: helper.preparationError ?? 'unknown');
 /// });
 ///
 /// test('basics', () async {
@@ -24,6 +25,11 @@
 ///   expect(result.exitCode, 0);
 /// });
 /// ```
+///
+/// [ReplayTestHelper.ensurePrepared] compiles only when the existing binary is
+/// older than something it was built from, and logs which branch it took. The
+/// binary is left in `bin/` afterwards — it is the cache that fast path exists
+/// for, and it is now revalidated on every run rather than trusted blindly.
 library;
 
 import 'dart:io';
@@ -109,30 +115,99 @@ class ReplayTestHelper {
   bool get isPrepared => _prepared;
   bool _prepared = false;
 
-  /// Whether this helper compiled the binary itself (and therefore owns its
-  /// lifecycle). Only an owned binary is removed by [cleanup]; a pre-existing
-  /// binary reused via [markPrepared] is left in place so that sibling test
-  /// suites sharing the same `bin/d4rt_test` do not delete it out from under
-  /// each other when running concurrently.
-  bool _ownsBinary = false;
-
-  /// Mark as prepared without running generation or compilation.
-  ///
-  /// Use when the binary already exists (e.g. built by another test suite or a
-  /// manual build). The binary is treated as externally owned, so [cleanup]
-  /// will not delete it.
-  void markPrepared() {
-    _prepared = true;
-    _ownsBinary = false;
-  }
-
   /// Errors from preparation, if any.
   String? get preparationError => _preparationError;
   String? _preparationError;
 
-  /// Prepare for replay tests: generate bridges and compile the d4rt binary.
+  /// Prepare for replay tests, reusing an existing binary only when it is
+  /// demonstrably current. This is what suites should call from `setUpAll`.
   ///
-  /// This is expensive (~1-3 minutes) and should be called once in `setUpAll`.
+  /// ## Why existence is not enough
+  ///
+  /// Compiling takes ~100 s, so an unconditional rebuild is not the answer —
+  /// but the fast path this replaces reused `bin/d4rt_test` whenever the file
+  /// was merely *present*, comparing it against nothing. That produces a false
+  /// red and a false green. The false red is how it was found: a suite reported
+  /// two replay failures from a binary built half an hour before the `tom_d4rt`
+  /// upgrade that fixed them — the code under test was correct, the harness was
+  /// measuring a different build. A false green — a passing binary that
+  /// predates a regression — does not announce itself at all.
+  ///
+  /// So the fast path stays and the decision becomes evidence-based: reuse only
+  /// a binary newer than everything it was compiled from, and say out loud
+  /// which branch was taken, so a reused binary is visible in the test log
+  /// instead of being indistinguishable from a fresh one.
+  ///
+  /// ## Why the replay scripts are not build inputs
+  ///
+  /// `test/replay/*.d4rt` and `*.dcli` are deliberately excluded. Nothing
+  /// embeds them: [runReplay] hands the path to the binary, which reads the
+  /// file at run time. Editing a replay script therefore already takes effect
+  /// on the very next run without a rebuild, so listing it here would buy no
+  /// correctness — it would only spend 100 s and print a rebuild reason that is
+  /// not true.
+  Future<bool> ensurePrepared() async {
+    final reasons = rebuildReasons();
+
+    if (reasons.isEmpty) {
+      print('[replay harness] reusing binary built '
+          '${File(binaryPath).lastModifiedSync()} — '
+          'newer than every build input');
+      _prepared = true;
+      return true;
+    }
+
+    final shown = reasons.take(3).join(', ');
+    final rest = reasons.length > 3 ? ' (+${reasons.length - 3} more)' : '';
+    print('[replay harness] rebuilding — $shown$rest');
+    return prepare();
+  }
+
+  /// Why [ensurePrepared] would rebuild; empty when it would reuse the binary.
+  ///
+  /// Split out from [ensurePrepared] so the decision has one definition that is
+  /// both printed and assertable — the alternative is a test that pays the
+  /// ~100 s compile to observe which branch was taken, which is the kind of
+  /// test that gets tagged and then never run.
+  List<String> rebuildReasons() {
+    final binary = File(binaryPath);
+    if (!binary.existsSync()) {
+      return ['no binary at ${p.relative(binaryPath, from: projectPath)}'];
+    }
+    return _buildInputsNewerThan(binary.lastModifiedSync()).toList();
+  }
+
+  /// Build inputs modified after [builtAt], as project-relative paths.
+  ///
+  /// The set is "everything the compiled binary was made from":
+  ///
+  /// - `bin/` and `lib/` — the entry point and every library reachable from it,
+  ///   which includes the generated `*_bridges.b.dart`;
+  /// - `pubspec.lock` — the resolved dependency set, standing in for the
+  ///   sources of every package outside this one. An upgrade rewrites it, and
+  ///   that is precisely the case that produced the false red.
+  Iterable<String> _buildInputsNewerThan(DateTime builtAt) sync* {
+    final lock = File(p.join(projectPath, 'pubspec.lock'));
+    if (lock.existsSync() && lock.lastModifiedSync().isAfter(builtAt)) {
+      yield 'pubspec.lock';
+    }
+
+    for (final root in const ['bin', 'lib']) {
+      final dir = Directory(p.join(projectPath, root));
+      if (!dir.existsSync()) continue;
+      for (final entity in dir.listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        if (entity.lastModifiedSync().isAfter(builtAt)) {
+          yield p.relative(entity.path, from: projectPath);
+        }
+      }
+    }
+  }
+
+  /// Prepare unconditionally: generate bridges and compile the d4rt binary.
+  ///
+  /// This is expensive (~1-3 minutes). Prefer [ensurePrepared], which does the
+  /// same work but skips it when the existing binary is already current.
   /// Returns true on success.
   Future<bool> prepare({bool skipGeneration = false}) async {
     // Step 1: Generate bridges using d4rtgen
@@ -146,7 +221,6 @@ class ReplayTestHelper {
     if (!compileOk) return false;
 
     _prepared = true;
-    _ownsBinary = true;
     return true;
   }
 
@@ -312,31 +386,39 @@ class ReplayTestHelper {
   }
 
   /// Compile the d4rt binary.
+  ///
+  /// Compiles to a process-unique temporary path and renames it into place.
+  /// `package:test` runs test files in concurrent isolates, so the two replay
+  /// suites can decide to rebuild at the same moment; a shared `-o` target
+  /// would have them writing the same file while the other reads it. Rename is
+  /// atomic within a directory, so the worst outcome is a duplicated compile —
+  /// never a half-written binary, and never a window in which the binary is
+  /// absent (which is what deleting it up-front used to create).
   Future<bool> _compileBinary() async {
-    // Delete existing test binary
-    final binFile = File(binaryPath);
-    if (binFile.existsSync()) {
-      binFile.deleteSync();
-    }
+    final stagingPath = '$binaryPath.${pid}_staging';
 
     final result = await Process.run(
       'dart',
-      ['compile', 'exe', 'bin/d4rt.dart', '-o', binaryPath],
+      ['compile', 'exe', 'bin/d4rt.dart', '-o', stagingPath],
       workingDirectory: projectPath,
     );
 
+    final staged = File(stagingPath);
+
     if (result.exitCode != 0) {
+      if (staged.existsSync()) staged.deleteSync();
       _preparationError =
           'Binary compilation failed (exit ${result.exitCode}):\n'
           '${result.stderr}';
       return false;
     }
 
-    if (!File(binaryPath).existsSync()) {
-      _preparationError = 'Compiled binary not found at $binaryPath';
+    if (!staged.existsSync()) {
+      _preparationError = 'Compiled binary not found at $stagingPath';
       return false;
     }
 
+    staged.renameSync(binaryPath);
     return true;
   }
 
@@ -368,15 +450,4 @@ class ReplayTestHelper {
     return null;
   }
 
-  /// Clean up the test binary.
-  void cleanup() {
-    // Only remove a binary this helper compiled. A pre-existing binary reused
-    // via markPrepared() is externally owned — deleting it would break a
-    // sibling suite still running against the same shared bin/d4rt_test.
-    if (!_ownsBinary) return;
-    final binFile = File(binaryPath);
-    if (binFile.existsSync()) {
-      binFile.deleteSync();
-    }
-  }
 }
