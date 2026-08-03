@@ -12,6 +12,48 @@
 ///
 /// Viewport is 1280 × 800 at 1.0 DPR — a realistic laptop-sized surface
 /// that gives AclBuilder breakpoints room to show the wide layout.
+///
+/// ## Capture provenance
+///
+/// Goldens in `test/goldens/examples/` were last recorded as one set with:
+///
+/// | | |
+/// | --- | --- |
+/// | Date    | 2026-08-04 |
+/// | Host    | macOS (mbp), arm64 |
+/// | Flutter | 3.44.6 stable, framework `ee80f08bbf` |
+/// | Engine  | `d3a3293399556a85388faf8c6f0723a7a5597aa8` (rev `83675ed276`) |
+/// | Dart    | 3.12.2 |
+///
+/// Record this whenever the goldens are re-recorded. Text rasterisation shifts
+/// between engine revisions, so without knowing which engine produced the
+/// baselines a future drift cannot be told apart from a real regression
+/// without redoing the pixel analysis below.
+///
+/// **Always re-record the whole file, never a single golden.** The baselines
+/// are only comparable to each other if they share one capture; regenerating
+/// one leaves the rest silently stale behind the tolerance in
+/// `flutter_test_config.dart`.
+///
+/// ### Telling rendering drift from a theme regression
+///
+/// When a golden fails, the question is whether pixels moved because the
+/// rasteriser changed or because the UI did. Two checks settle it from the
+/// failure PNGs in `test/failures/` (`*_masterImage.png` vs `*_testImage.png`),
+/// and neither needs the widget tree:
+///
+/// 1. **Do any differing pixels sit in a flat region?** Take each differing
+///    pixel and test whether master's 5×5 neighbourhood there is one uniform
+///    colour. Anti-aliasing only ever moves *edge* pixels, so a pure
+///    rendering drift scores zero. A fill, colour or layout change puts
+///    differing pixels in the middle of flat areas.
+/// 2. **Are the dominant area colours byte-identical?** Compare the most
+///    frequent colours of both images. A palette change moves them; a
+///    rasterisation change leaves them untouched and only redistributes the
+///    intermediate blend shades along glyph edges.
+///
+/// If both checks say "rendering", re-record. If either says otherwise, the
+/// golden has caught a real regression — fix the UI, not the baseline.
 library;
 
 import 'dart:convert';
