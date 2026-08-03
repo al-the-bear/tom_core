@@ -707,22 +707,6 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // newField (reserved slot exposed to reflection / D4rt bridges)
-    // -----------------------------------------------------------------------
-    group('newField', () {
-      test('should default to null', () {
-        final exception = TomException('ERROR', 'message');
-        expect(exception.newField, isNull);
-      });
-
-      test('should store and expose an assigned value', () {
-        final exception = TomException('ERROR', 'message');
-        exception.newField = 'reserved-value';
-        expect(exception.newField, equals('reserved-value'));
-      });
-    });
-
-    // -----------------------------------------------------------------------
     // printStackTrace (tests §4b)
     // -----------------------------------------------------------------------
     group('printStackTrace', () {

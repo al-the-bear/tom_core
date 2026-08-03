@@ -82,9 +82,6 @@ class TomException extends TomBaseException implements TomLoggable {
   /// Server call error details, if this exception originated from an HTTP call.
   TomServerCallError? serverCallError;
 
-  /// Reserved for future use.
-  String? newField;
-
   /// Creates a new [TomException] with the given error details.
   ///
   /// The [key] should be a consistent error code for programmatic handling.

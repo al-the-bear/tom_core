@@ -185,15 +185,31 @@ void main() {
       expect(wrapped(), equals('section'));
     });
 
-    // Write-once setters: an alternative to initScope for assigning identity.
-    test('write-once id / parent setters assign the scope identity', () {
+    // initScope need not run from a constructor — it is the single write-once
+    // entry point, so a scope may also be identified after construction.
+    // (The `id` / `parent` setters this test used to exercise were removed in
+    // tcca16: they wrote the same `late final` fields and only served to make
+    // a supposedly write-once identity look assignable.)
+    test('initScope assigns the identity after construction', () {
       final root = _MixinScope(scopeId: 'root');
       final lazy = _LazyMixinScope()
-        ..id = 'lazy'
-        ..parent = root;
+        ..initScope(scopeId: 'lazy', parentScope: root);
       expect(lazy.id, equals('lazy'));
       expect(lazy.parent, same(root));
       expect(lazy.getScopePath(), equals('root.lazy'));
+    });
+
+    // tcca16: `defaultScope` is the root of every scope path, so a reassignment
+    // would change resource resolution for the whole process. It is `final`;
+    // `withScope` / `runInScope` are the supported ways to change the current
+    // scope, and they cannot outlive their body.
+    test('the default scope is restored after every scoped body', () {
+      final root = TomScope.defaultScope;
+      TomScope.withScope('transient', () {
+        expect(TomScope.current, isNot(same(root)));
+      });
+      expect(TomScope.current, same(root));
+      expect(TomScope.defaultScope, same(root));
     });
   });
 
@@ -303,6 +319,6 @@ class _MixinScope with TomScopeMixin {
   }
 }
 
-/// A mixin scope whose identity is assigned through the write-once setters
-/// instead of [TomScopeMixin.initScope].
+/// A mixin scope whose identity is assigned after construction, by calling
+/// [TomScopeMixin.initScope] on the instance.
 class _LazyMixinScope with TomScopeMixin {}

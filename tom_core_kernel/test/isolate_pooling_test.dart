@@ -250,7 +250,9 @@ void main() {
   // Reset static state between tests
   setUp(() {
     TomWorker.executors.clear();
-    TomWorker.workerCount = 0;
+    // `workerCount` is read-only (tcca16); the counter is reset through the
+    // declared test seam so the generated worker names stay predictable.
+    TomWorker.resetWorkerCount();
     TomWorker.isMainIsolate = true;
   });
 

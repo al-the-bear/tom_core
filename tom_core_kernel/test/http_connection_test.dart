@@ -36,6 +36,14 @@ void main() {
       test('should have correct attachment constant', () {
         expect(TomContentDisposition.attachment, equals('attachment'));
       });
+
+      test('attachment is a compile-time constant', () {
+        // A `const` context only accepts a `const` field, so this line *is* the
+        // assertion: it stops compiling the moment the field becomes mutable
+        // again (tcca16).
+        const List<String> dispositions = [TomContentDisposition.attachment];
+        expect(dispositions.single, equals('attachment'));
+      });
     });
   });
 
@@ -113,6 +121,17 @@ void main() {
 
       test('should return null for unknown method', () {
         expect(TomHttpMethod.methods['UNKNOWN'], isNull);
+      });
+
+      // tcca16: the map is shared by every consumer of the library, so a single
+      // caller writing it would silently reroute method lookup process-wide.
+      test('is unmodifiable', () {
+        expect(() => TomHttpMethod.methods['GET'] = TomHttpMethod.post,
+            throwsUnsupportedError);
+        expect(
+            () => TomHttpMethod.methods.remove('GET'), throwsUnsupportedError);
+        expect(() => TomHttpMethod.methods.clear(), throwsUnsupportedError);
+        expect(TomHttpMethod.methods['GET'], equals(TomHttpMethod.get));
       });
     });
 
@@ -948,8 +967,10 @@ void main() {
   // ==========================================================================
   group('TomClientRemoteContext', () {
     setUp(() {
-      // Reset current to null before each test
-      TomClientRemoteContext.current = null;
+      // Reset current to null before each test. `current` has no setter
+      // (tcca16) — reassigning it would change which remote every subsequent
+      // call addresses — so the reset goes through the declared test seam.
+      TomClientRemoteContext.resetCurrent();
     });
 
     group('constructor', () {
@@ -996,6 +1017,90 @@ void main() {
           () => TomClientRemoteContext.setCurrent(context2),
           throwsA(isA<TomClientRemoteContextException>()),
         );
+      });
+    });
+
+    // tcca16: `current` used to be a public mutable static. The scoped helper
+    // is the supported way to point calls at a different remote — it is
+    // zone-carried, so it cannot leak past the body it was installed for.
+    group('runWithContext', () {
+      test('installs the context for the duration of the body', () {
+        final scoped = TomClientRemoteContext(
+          Uri.parse('https://scoped.example.com'),
+        );
+
+        final seen = TomClientRemoteContext.runWithContext(
+          scoped,
+          () => TomClientRemoteContext.current,
+        );
+
+        expect(seen, same(scoped));
+        expect(TomClientRemoteContext.current, isNull,
+            reason: 'the scope must not outlive the body');
+      });
+
+      test('overrides an already-set process context, then restores it', () {
+        final installed = TomClientRemoteContext(
+          Uri.parse('https://installed.example.com'),
+        );
+        final scoped = TomClientRemoteContext(
+          Uri.parse('https://scoped.example.com'),
+        );
+        TomClientRemoteContext.setCurrent(installed);
+
+        final seen = TomClientRemoteContext.runWithContext(
+          scoped,
+          () => TomClientRemoteContext.current,
+        );
+
+        expect(seen, same(scoped));
+        expect(TomClientRemoteContext.current, same(installed));
+      });
+
+      test('nests, innermost wins', () {
+        final outer =
+            TomClientRemoteContext(Uri.parse('https://outer.example.com'));
+        final inner =
+            TomClientRemoteContext(Uri.parse('https://inner.example.com'));
+
+        final seen = TomClientRemoteContext.runWithContext(outer, () {
+          final innerSeen = TomClientRemoteContext.runWithContext(
+            inner,
+            () => TomClientRemoteContext.current,
+          );
+          return [innerSeen, TomClientRemoteContext.current];
+        });
+
+        expect(seen, [same(inner), same(outer)]);
+      });
+
+      test('spans asynchronous gaps inside the body', () async {
+        final scoped =
+            TomClientRemoteContext(Uri.parse('https://scoped.example.com'));
+
+        final seen = await TomClientRemoteContext.runWithContext(scoped,
+            () async {
+          await Future<void>.delayed(Duration.zero);
+          return TomClientRemoteContext.current;
+        });
+
+        expect(seen, same(scoped));
+      });
+    });
+
+    group('resetCurrent', () {
+      test('clears the context so setCurrent can run again', () {
+        final first =
+            TomClientRemoteContext(Uri.parse('https://first.example.com'));
+        final second =
+            TomClientRemoteContext(Uri.parse('https://second.example.com'));
+        TomClientRemoteContext.setCurrent(first);
+
+        TomClientRemoteContext.resetCurrent();
+
+        expect(TomClientRemoteContext.current, isNull);
+        TomClientRemoteContext.setCurrent(second);
+        expect(TomClientRemoteContext.current, same(second));
       });
     });
 

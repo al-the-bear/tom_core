@@ -48,7 +48,11 @@ library;
 /// ```
 class TomHttpMethod {
   /// Map of all HTTP methods keyed by their uppercase name.
-  static Map<String, TomHttpMethod> methods = {
+  ///
+  /// Unmodifiable: the map is shared by every consumer of the library, so a
+  /// single caller writing it would reroute method lookup process-wide.
+  static final Map<String, TomHttpMethod> methods =
+      Map<String, TomHttpMethod>.unmodifiable(const {
     "HEAD": head,
     "GET": get,
     "POST": post,
@@ -59,7 +63,7 @@ class TomHttpMethod {
     "TRACE": trace,
     "OPTIONS": options,
     "ALL": all,
-  };
+  });
 
   /// The uppercase name of the HTTP method (e.g., "GET", "POST").
   final String name;

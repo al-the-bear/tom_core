@@ -26,7 +26,13 @@ abstract class TomScope {
   TomScope? get parent;
 
   /// The root scope used when no scope is installed on the current zone.
-  static TomScope defaultScope = TomScopeBase(scopeId: 'default', parentScope: null);
+  ///
+  /// Immutable by design: it is the root of every scope path, so reassigning it
+  /// at runtime would change resource resolution for the whole process. Use
+  /// [withScope] or [runInScope] to install a different scope — they are
+  /// zone-carried and cannot outlive their body.
+  static final TomScope defaultScope =
+      TomScopeBase(scopeId: 'default', parentScope: null);
 
   /// The scope installed on the current [Zone], or [defaultScope] if none.
   static TomScope get current => getFromCurrentZone<TomScope>() ?? defaultScope;
@@ -76,23 +82,22 @@ class TomScopeBase with TomScopeMixin {
 
 /// Reusable [TomScope] implementation backing [TomScopeBase].
 ///
-/// Mix into a class and call [initScope] once during construction to set the
-/// scope's identity. The backing fields are write-once.
+/// Mix into a class and call [initScope] exactly once to set the scope's
+/// identity — usually from the constructor. The backing fields are write-once,
+/// and [initScope] is the only thing that writes them.
 mixin TomScopeMixin on Object implements TomScope {
   late final String _id;
   late final TomScope? _parent;
 
-  /// Initialises this scope's identity. Call exactly once during construction.
+  /// Initialises this scope's identity.
+  ///
+  /// The single write-once entry point: call it exactly once, from the
+  /// constructor or — for a scope whose parent is only known later — on the
+  /// constructed instance.
   void initScope({required String scopeId, TomScope? parentScope}) {
     _id = scopeId;
     _parent = parentScope;
   }
-
-  /// Sets the scope id. Only valid before [initScope] has run (write-once).
-  set id(String newId) => _id = newId;
-
-  /// Sets the parent scope. Only valid before [initScope] has run (write-once).
-  set parent(TomScope? newParent) => _parent = newParent;
 
   @override
   String get id => _id;

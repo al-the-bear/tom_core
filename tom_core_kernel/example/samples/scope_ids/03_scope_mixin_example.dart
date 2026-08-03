@@ -7,8 +7,8 @@
 /// - A custom class `with TomScopeMixin` initialised via `initScope`
 /// - The custom instance participating fully as a scope (`current`, path,
 ///   `runInScope`, `InScopeBuilder`)
-/// - The write-once `set id` / `set parent` setters as an alternative to
-///   `initScope` (used before any identity is assigned)
+/// - `initScope` called *after* construction, for a scope whose parent is only
+///   known once the enclosing scope exists
 ///
 /// Run with (asserts MUST be enabled so the invariants below are checked):
 /// ```bash
@@ -34,9 +34,9 @@ class ScreenSection with TomScopeMixin {
   }
 }
 
-/// A scope whose identity is assigned through the write-once setters instead of
-/// [TomScopeMixin.initScope]. The setters back the same `late final` fields, so
-/// they may be assigned exactly once and must not be combined with `initScope`.
+/// A scope that is constructed before its identity is known, and initialised
+/// afterwards. [TomScopeMixin.initScope] backs `late final` fields, so it may
+/// be called exactly once — from a constructor or, as here, on the instance.
 class LazyScope with TomScopeMixin {}
 
 void run() {
@@ -96,14 +96,12 @@ void run() {
   print('');
 
   // ===========================================================================
-  // Example 4: The write-once setters as an alternative to initScope
+  // Example 4: initScope called after construction
   // ===========================================================================
 
-  print('4. Assigning identity through the write-once setters:');
+  print('4. Assigning identity after construction:');
 
-  final lazy = LazyScope()
-    ..id = 'lazy'
-    ..parent = app;
+  final lazy = LazyScope()..initScope(scopeId: 'lazy', parentScope: app);
 
   print('   lazy.id: ${lazy.id}');
   print('   lazy.getScopePath(): "${lazy.getScopePath()}"');
@@ -128,7 +126,7 @@ void run() {
   // Example 3: InScopeBuilder observes the captured custom scope
   assert(wrappedResult == 'app.checkout.orderForm');
 
-  // Example 4: write-once setters assign the identity
+  // Example 4: a post-construction initScope assigns the identity
   assert(lazy.id == 'lazy');
   assert(lazy.getScopePath() == 'app.lazy');
 }

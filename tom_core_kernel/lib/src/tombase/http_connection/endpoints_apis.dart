@@ -66,7 +66,7 @@ class TomEndpointException extends TomException {
 /// particularly for file downloads.
 class TomContentDisposition {
   /// Indicates that the content should be downloaded as an attachment.
-  static String attachment = "attachment";
+  static const String attachment = "attachment";
 }
 
 // =============================================================================

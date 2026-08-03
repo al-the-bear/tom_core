@@ -23,6 +23,9 @@
 /// ```
 library;
 
+import 'dart:async';
+
+import 'package:meta/meta.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // =============================================================================
@@ -77,10 +80,19 @@ class TomClientRemoteContextException extends TomException {
 /// );
 /// ```
 class TomClientRemoteContext {
+  /// The process-wide context installed by [setCurrent].
+  static TomClientRemoteContext? _processContext;
+
   /// The currently active remote context.
   ///
-  /// Returns `null` if no context has been set.
-  static TomClientRemoteContext? current;
+  /// Returns the context installed by the nearest enclosing [runWithContext],
+  /// falling back to the one set by [setCurrent], or `null` if neither has run.
+  ///
+  /// Read-only: this value decides which remote *every* subsequent call
+  /// addresses, so it is written only through [setCurrent] (once, at startup)
+  /// or [runWithContext] (scoped to a body).
+  static TomClientRemoteContext? get current =>
+      getFromCurrentZone<TomClientRemoteContext>() ?? _processContext;
 
   /// The URI for authentication requests.
   ///
@@ -112,8 +124,8 @@ class TomClientRemoteContext {
   /// );
   /// ```
   static void setCurrent(TomClientRemoteContext context) {
-    if (current == null) {
-      current = context;
+    if (_processContext == null) {
+      _processContext = context;
       tomLog.info("Setting remote context to $context");
     } else {
       throw TomClientRemoteContextException(
@@ -122,6 +134,37 @@ class TomClientRemoteContext {
       );
     }
   }
+
+  /// Runs [body] with [context] as [current], then restores what was there
+  /// before.
+  ///
+  /// This is the supported way to address a different remote for part of a
+  /// program — a tool talking to two servers, or a test exercising one. The
+  /// context is carried on the [Zone], so it follows [body] across `await`
+  /// boundaries and cannot leak past it.
+  ///
+  /// ## Example
+  ///
+  /// ```dart
+  /// final report = await TomClientRemoteContext.runWithContext(
+  ///   TomClientRemoteContext(Uri.parse('https://reporting.example.com')),
+  ///   () => reportingApi.fetchSummary(),
+  /// );
+  /// ```
+  static T runWithContext<T>(
+    TomClientRemoteContext context,
+    T Function() body,
+  ) {
+    return runZoned(body, zoneValues: {TomClientRemoteContext: context});
+  }
+
+  /// Clears the context installed by [setCurrent], so it may be called again.
+  ///
+  /// Exists for tests, which need a clean process context per case;
+  /// application code sets the context once at startup and uses
+  /// [runWithContext] for anything narrower.
+  @visibleForTesting
+  static void resetCurrent() => _processContext = null;
 
   @override
   String toString() => "TomClientRemoteContext $baseUri";

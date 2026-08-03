@@ -130,7 +130,10 @@ class TomComponent extends Object {
 }
 
 /// Marker interface indicating a null/missing component.
-abstract class TomNullInterface {}
+///
+/// Library-private: it exists only to give [_nullComponent] a type, and no
+/// consumer can meaningfully implement or reference it.
+abstract class _TomNullInterface {}
 
 /// Marker interface indicating a component without a specific interface.
 ///
@@ -144,7 +147,7 @@ abstract class TomNoInterface {}
 const TomComponent tomComponent = TomComponent(TomNoInterface);
 
 /// Internal null component marker.
-const TomComponent _nullComponent = TomComponent(TomNullInterface);
+const TomComponent _nullComponent = TomComponent(_TomNullInterface);
 
 // =============================================================================
 // Bean Container

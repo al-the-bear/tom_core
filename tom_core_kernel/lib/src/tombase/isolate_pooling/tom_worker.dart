@@ -52,6 +52,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 // Package imports
+import 'package:meta/meta.dart';
 import 'package:tom_basics/tom_basics.dart';
 
 // Relative imports
@@ -453,8 +454,19 @@ class TomWorkerContext {
 /// - [executeInCreator]: Execute a command in the creator and await result
 /// - [canSendToCreator]: Check if backchannel communication is available
 class TomWorker {
-  /// Counter for generating unique worker names.
-  static int workerCount = 0;
+  static int _workerCount = 0;
+
+  /// Number of workers spawned so far, used to generate unique worker names.
+  ///
+  /// Read-only: writing it would hand two live workers the same name.
+  static int get workerCount => _workerCount;
+
+  /// Resets the worker-name counter so generated names start at zero again.
+  ///
+  /// Exists for tests that assert on the generated names; production code has
+  /// no reason to rewind the counter.
+  @visibleForTesting
+  static void resetWorkerCount() => _workerCount = 0;
 
   /// Whether this worker is ready to accept commands.
   bool isReady = false;
@@ -549,7 +561,7 @@ class TomWorker {
         initializer,
         workerContext,
         debugName:
-            "${workerContext.namePrefix}${(workerCount++).toString().padLeft(3, '0')}",
+            "${workerContext.namePrefix}${(_workerCount++).toString().padLeft(3, '0')}",
       );
     } on Object {
       initPort.close();
