@@ -13,6 +13,7 @@ principal into an authentication token and an authorization token.
 - [Wiring the Server](#wiring-the-server)
 - [Two-Factor Authentication](#two-factor-authentication)
 - [Server Self-Login](#server-self-login)
+- [External Identity (OAuth 2.0 / OIDC)](#external-identity-oauth-20--oidc)
 - [Core Components](#core-components)
 - [Status and Limitations](#status-and-limitations)
 - [Dependencies](#dependencies)
@@ -47,6 +48,22 @@ principal into an authentication token and an authorization token.
 | `TomHttpServiceLoginTransport` | class | The default transport, over `TomServerChannel` without bearer auth |
 | `TomServiceLoginResponse` | class | A raw status + body from that transport |
 | `TomServerSelfLoginException` | exception | A *configured* deployment that could not log itself in; never client-facing |
+| `TomOAuthAuthenticationService` | class | A `TomAuthenticationService` that authenticates an authorization code |
+| `TomOAuthCredential` | class | The code + state pair carried in `TomAuthenticationData.key` |
+| `TomExternalIdentityDirectory` | abstract | What the deployment supplies: local account lookup and first-login provisioning |
+| `TomOAuthProviderConfig` | class | One provider, as data: endpoints, client credentials, claim names, provisioning |
+| `TomOAuthProviders` | class | The configured provider set, read from `oauth.providers` |
+| `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse` or `autoProvision` |
+| `TomOAuthFlow` | class | The authorization-code + PKCE handshake |
+| `TomOAuthPkce` | class | A verifier / `S256` challenge pair |
+| `TomOAuthAuthorizationState` | class | One pending authorization: state handle, verifier, and the login context it started in |
+| `TomOAuthStateStore` | abstract | Where pending authorizations live; `TomOAuthMemoryStateStore` is the default |
+| `TomOAuthTokenTransport` | abstract | The provider HTTP calls, so a test can stub the provider |
+| `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, raw claims |
+| `TomExternalIdentityStore` | abstract | The linking table: (issuer, subject) → local account |
+| `TomExternalIdentityLink` | entity (`@tomReflector`) | One persisted link row |
+| `TomOAuthServer` | class (`@TomApiImplementation`) | The three `/oauth/*` endpoints |
+| `TomOAuthException` | exception | A mis-configured provider set or a refused handshake |
 
 ## The Login Flow
 
@@ -637,6 +654,232 @@ encrypted section is unwrapped locally. It must stay `true` for a deployment
 whose entitlements travel in the encrypted claims, which is the normal case for
 a server holding the RSA private key.
 
+## External Identity (OAuth 2.0 / OIDC)
+
+"Sign in with …" is **not a second login path.** It is one more implementation
+of the contract every login already goes through, and everything below follows
+from that single decision.
+
+### The shape
+
+`TomOAuthAuthenticationService` implements `TomAuthenticationService`. It
+receives a `TomOAuthCredential` (authorization code + state) in
+`TomAuthenticationData.key` — the slot a password login fills with a password,
+typed `Object?` for exactly this reason — exchanges it with the provider,
+resolves the local account, and returns an ordinary `TomAuthenticationInfo`.
+
+Then it stops. It issues no token, consults no 2FA policy and makes no session
+decision, because `TomAuthenticationServer.authenticateExternal` hands its
+result to the same `_completeLogin` a password login reaches:
+
+```text
+POST /oauth/authorize        →  TomOAuthFlow.beginAuthorization
+        │                        stores the pending state + PKCE verifier
+        ▼
+   (browser visits the provider, user consents, provider redirects back)
+        │
+GET  /oauth/callback?code&state
+        │
+        ▼
+TomAuthenticationServer.authenticateExternal
+        │  builds TomAuthenticationData with a TomOAuthCredential as the key
+        ▼
+TomOAuthAuthenticationService.authenticateUser
+        │  code exchange → claims → linking table → TomAuthenticationInfo
+        ▼
+_completeLogin  ← the *same* continuation a password login reaches
+        │
+        ├── Tom2FAPolicy says a second factor is owed → challenge / enrolment
+        └── otherwise → _issueTokens
+```
+
+An externally-authenticated principal is therefore challenged for its second
+factor, offered enrolment, and issued exactly the claims a password login would
+have produced — not because this module reproduces those rules, but because it
+never touches them. `oauth_test.dart` asserts the parity claim-by-claim rather
+than describing it.
+
+### Wiring it up
+
+A deployment installs *one* authentication service, so enabling external login
+must not mean disabling passwords. The service takes the existing one as a
+`delegate` and passes any non-`TomOAuthCredential` straight through:
+
+```dart
+TomAuthenticationServer.globalSettingUserAuthenticationService =
+    TomOAuthAuthenticationService(
+      directory: MyExternalIdentityDirectory(),
+      delegate: TomAuthenticationServer.globalSettingUserAuthenticationService,
+    );
+
+TomBean.withType(TomOAuthProviders, TomOAuthProviders.fromConfiguration());
+TomBean.withType(
+  TomExternalIdentityStore,
+  TomPersistentExternalIdentityStore(TomExternalIdentityLinkRepository()),
+);
+```
+
+An account may hold a password *and* several external identities at once.
+
+### Provider configuration is data
+
+Providers are read from the ordinary configuration tree under `oauth.providers`
+— no new configuration module, and `${...}` env-var substitution already applies
+because `yaml_resources` performs it:
+
+```yaml
+oauth:
+  providers:
+    google:
+      issuer: https://accounts.google.com
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      clientId: 1234.apps.googleusercontent.com
+      clientSecret: ${GOOGLE_CLIENT_SECRET}
+      redirectUri: https://app.example.com/oauth/callback
+      scopes: openid email profile      # a list or a space-separated string
+      provisioning: autoProvision       # or: refuse (the default)
+    github:
+      issuer: https://github.com
+      authorizationEndpoint: https://github.com/login/oauth/authorize
+      tokenEndpoint: https://github.com/login/oauth/access_token
+      userInfoEndpoint: https://api.github.com/user
+      clientId: Iv1.abc
+      clientSecret: ${GITHUB_CLIENT_SECRET}
+      redirectUri: https://app.example.com/oauth/callback
+      subjectClaim: id                  # non-OIDC providers name them differently
+      usernameClaim: login
+      usePkce: false
+```
+
+Every *required* value is demanded rather than defaulted: a provider missing its
+token endpoint is a configuration error, and one that must fail at startup
+rather than as a failed login weeks later. An absent `oauth:` block is not an
+error — it is the majority case, and yields an empty provider set.
+
+`TomOAuthProviders.fromConfiguration()` reads it; the endpoints resolve the
+installed bean, so a deployment that installs nothing offers nothing.
+
+### First login with no local account: `refuse` or `autoProvision`
+
+This is a **configuration choice per provider**, never a hardcoded policy,
+because the two answers are both correct for different deployments:
+
+| `provisioning` | A first external login with no linked account |
+| -------------- | --------------------------------------------- |
+| `refuse` (default) | Rejected with `login.error.oauth.no-local-account`. The right answer for an enterprise deployment where accounts are created by an administrator. |
+| `autoProvision` | `TomExternalIdentityDirectory.provisionFromExternalIdentity` creates the account, and the link is written to the username the *directory* settled on — not to the asserted claim, which a deployment may normalise, prefix or de-duplicate. |
+
+`autoProvision` additionally **links an existing local account** that already
+carries the asserted username, which is how a user who signed up with a password
+later adds "Sign in with …". That behaviour is deliberately gated on
+`autoProvision`: on a provider configured to `refuse`, an unlinked local account
+under the asserted name is precisely the case being refused — an attacker who
+can make *any* provider assert an address must not thereby acquire the local
+account that already uses it.
+
+The default `provisionFromExternalIdentity` throws
+`login.error.oauth.provisioning-unsupported`, so a deployment that turns
+auto-provisioning on without implementing it gets a clear error rather than a
+silently half-created account.
+
+### The linking table
+
+`(issuer, subject)` → local username, unique on the pair and indexed on the
+account, so one account may hold several external identities:
+
+```dart
+abstract class TomExternalIdentityStore {
+  Future<String?> localUsernameFor(TomExternalIdentity identity);
+  Future<void> link(TomExternalIdentity identity, String localUsername);
+  Future<void> recordLogin(TomExternalIdentity identity);
+  Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername);
+}
+```
+
+Keyed on the pair rather than on the subject alone because a subject is only
+unique *within* an issuer — two providers may both call a user `12345`.
+
+`TomPersistentExternalIdentityStore` is the production implementation over
+`TomExternalIdentityLinkRepository`; `TomMemoryExternalIdentityStore` exists for
+tests. There is no in-memory *default*: a link that vanishes on restart sends a
+returning user through provisioning again, so a deployment that installs no
+store is told what is missing rather than given a store that loses its rows.
+
+A link pointing at an account that no longer exists **refuses** the login rather
+than provisioning a replacement — recreating a deleted account from a stale row
+is exactly the state an administrator was trying to reach when they deleted it.
+
+### The handshake
+
+`TomOAuthFlow` implements authorization code + PKCE (`S256`). What it verifies,
+and why each check is not optional:
+
+| Check | Failure key |
+| ----- | ----------- |
+| The `state` was issued by this server, has not expired, and has not been used | `oauth.flow.unknown_state` |
+| The redirect carried an authorization code | `oauth.flow.missing_code` |
+| The code exchange presents the verifier the challenge was derived from | (the provider rejects the exchange) |
+| The claims carry `iss` equal to the configured issuer | `oauth.flow.issuer_mismatch` |
+| The claims carry `aud` containing the configured client id | `oauth.flow.audience_mismatch` |
+| The claims carry a subject | `oauth.flow.missing_subject` |
+
+An unknown, expired and already-spent state are deliberately **indistinguishable
+to a caller**: telling them apart tells an attacker whether a handle was ever
+valid.
+
+The `id_token` signature is **not** checked, and that is a deliberate limitation
+rather than an oversight — see [Status and Limitations](#status-and-limitations).
+
+Providers that predate OIDC return no `id_token`; for those, configure
+`userInfoEndpoint` and the flow fetches the claims with the access token
+instead. A provider with neither fails clearly rather than producing an
+anonymous identity.
+
+`TomOAuthTokenTransport` is the one HTTP seam. Stubbing it — which is all
+`oauth_test.dart` does — leaves every other line of the flow executing exactly
+as it does against a real provider.
+
+### The endpoints
+
+Three, declared as an ordinary typed contract (`tomOAuthApi` in the kernel) and
+implemented by `TomOAuthServer`. All three are public: there is no caller to
+authenticate — that is the point of logging in — and the unguessable `state`
+handle is what ties a callback to an authorization this server started.
+
+| Method | URI | Purpose |
+| ------ | --- | ------- |
+| `GET` | `/oauth/providers` | The configured providers as resource keys only — no endpoint, client id or secret reaches a client |
+| `POST` | `/oauth/authorize` | Begins an authorization; returns the provider URL to send the browser to, and the `state` handle |
+| `GET` | `/oauth/callback` | Where the provider redirects back; completes the login |
+
+The callback is a `GET` with query parameters because that is what a browser
+redirect is; its `code` / `state` / `error` / `error_description` parameters bind
+into the typed DTO through the endpoint's `urlParameterMapping`, the same
+declaration path parameters already used.
+
+`registerFrameworkApis()` registers the contract, so a router resolves it
+without the application registering anything.
+
+### Failure keys
+
+| Key | Meaning |
+| --- | ------- |
+| `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` | The `oauth.providers` block is malformed. Startup-time. |
+| `oauth.config.unknown_provider` | A request named a provider that is not configured. |
+| `oauth.callback.unknown_state` · `oauth.flow.unknown_state` | The state handle is unknown, expired, or already used — raised by the endpoint and by the flow respectively. |
+| `oauth.callback.provider_error` | The provider itself refused (e.g. the user pressed cancel). |
+| `oauth.flow.missing_code` · `oauth.flow.token_exchange_rejected` | The redirect carried no code, or the token endpoint refused the exchange. |
+| `oauth.flow.issuer_mismatch` · `oauth.flow.audience_mismatch` · `oauth.flow.missing_subject` · `oauth.flow.malformed_id_token` | The claims failed verification. |
+| `oauth.flow.no_claims_source` · `oauth.flow.no_access_token` | The provider returned neither an `id_token` nor a usable `userInfoEndpoint` call. |
+| `oauth.provider.http_error` · `oauth.provider.malformed_json` | The provider's HTTP call failed or answered with something that is not a JSON object. |
+| `login.error.oauth.no-local-account` | Authenticated, but unlinked, and the provider is configured to refuse. |
+| `login.error.oauth.linked-account-missing` | The link outlived the account it pointed at. |
+| `login.error.oauth.provisioning-unsupported` | `autoProvision` is configured but the directory does not implement it. |
+| `login.error.oauth.no-identity-store` | No `TomExternalIdentityStore` is installed. |
+| `login.error.oauth.unknown-issuer` | The token's issuer matches no configured provider. |
+| `login.error.oauth.credential-not-supported` | A non-OAuth credential arrived and there is no `delegate`. |
+
 ## Core Components
 
 ### `TomAuthenticationServer`
@@ -707,6 +950,36 @@ it, and installs the result into the kernel's `TomServerPrincipal` — returning
 `false` when the deployment configured no credential. See
 [Server Self-Login](#server-self-login).
 
+### `TomOAuthAuthenticationService` / `TomExternalIdentityDirectory`
+
+The service is a `TomAuthenticationService` that authenticates a
+`TomOAuthCredential` and delegates everything else. The directory is the half
+the framework deliberately does not own — the framework has no user table, so
+resolving "`alice@example.com` at `accounts.google.com`" to a local principal,
+and deciding whether to create one, are both the deployment's.
+
+### `TomOAuthProviders` / `TomOAuthProviderConfig` / `TomOAuthProvisioning`
+
+Provider configuration as data, read from `oauth.providers`.
+`TomOAuthProvisioning` is the per-provider first-login choice.
+
+### `TomOAuthFlow` / `TomOAuthPkce` / `TomOAuthStateStore` / `TomOAuthTokenTransport`
+
+The handshake, the verifier/challenge pair, the pending-authorization records,
+and the one HTTP seam a stub provider replaces.
+
+### `TomExternalIdentityStore` / `TomExternalIdentityLink`
+
+The linking table. `TomPersistentExternalIdentityStore` for production,
+`TomMemoryExternalIdentityStore` for tests, and no default — see
+[The linking table](#the-linking-table).
+
+### `TomOAuthServer`
+
+The `/oauth/*` endpoints. It carries no login logic of its own: the callback
+resolves the pending record for its context and calls
+`TomAuthenticationServer.authenticateExternal`.
+
 ## Status and Limitations
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
@@ -725,6 +998,26 @@ it, and installs the result into the kernel's `TomServerPrincipal` — returning
   cooperative client; the challenge's short validity is what bounds an
   uncooperative one. A deployment needing a hard per-challenge cap must add the
   server-side state stateless verification omits.
+- **The OAuth `id_token` signature is not verified.** The token is read for its
+  claims only. This is safe *as deployed here* and unsafe if copied elsewhere:
+  the token arrives over TLS on the server's own back-channel call to the
+  configured token endpoint, presenting the client secret and the PKCE verifier,
+  so an attacker who could substitute it has already broken the transport. It is
+  **not** safe for an implicit flow or for any token that arrived by way of the
+  browser, neither of which this module performs. Adding JWKS fetching and
+  signature verification is the natural next step for a deployment that wants
+  defence in depth.
+- **`TomOAuthMemoryStateStore` is the default state store, and is per-process.**
+  Pending authorizations live for ten minutes in one isolate's memory, which is
+  correct for a single-node deployment and wrong behind a load balancer that may
+  route the callback to a different node. A clustered deployment installs a
+  shared `TomOAuthStateStore`; the contract is three methods.
+- **The identity *store* has no default at all**, deliberately — see
+  [The linking table](#the-linking-table).
+- **Token refresh is not implemented.** The provider's access token is used once
+  to fetch claims and then discarded; the session is the framework's own JWT
+  pair. A deployment that needs to call the provider's API *on behalf of the
+  user* later must retain and refresh that token itself.
 
 ## Dependencies
 
@@ -744,4 +1037,13 @@ it, and installs the result into the kernel's `TomServerPrincipal` — returning
   delivered message and every mechanism name — no user-facing text originates
   in this module.
 - **Little Things** (this package): `TomServerException`, the base of
-  `LoginException`, `Tom2FAException` and `TomServerSelfLoginException`.
+  `LoginException`, `Tom2FAException`, `TomServerSelfLoginException` and
+  `TomOAuthException`.
+- **Endpoints** (this package): `TomOAuthServer` implements the kernel's
+  `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()`
+  registers the contract.
+- **Object Persistence** (this package): `TomExternalIdentityLink` is an
+  ordinary entity over `TomSqlDatasourceRepository`.
+- **Configuration** (this package): the provider set is read through
+  `TomServerConfigResourceProvider`, which already performs `${...}` env-var
+  substitution.

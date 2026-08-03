@@ -11,6 +11,11 @@ export 'src/tomserver/audit/audit_trail.dart';
 export 'src/tomserver/audit/sql_audit_sink.dart';
 export 'src/tomserver/audit/sql_audit_sql.dart';
 export 'src/tomserver/authentication/authentication_server.dart';
+export 'src/tomserver/authentication/oauth_authentication_service.dart';
+export 'src/tomserver/authentication/oauth_endpoints.dart';
+export 'src/tomserver/authentication/oauth_flow.dart';
+export 'src/tomserver/authentication/oauth_identity.dart';
+export 'src/tomserver/authentication/oauth_provider.dart';
 export 'src/tomserver/authentication/server_self_login.dart';
 export 'src/tomserver/authentication/two_factor.dart';
 export 'src/tomserver/authentication/two_factor_delivered_code.dart';
@@ -100,6 +105,3 @@ export 'package:mysql_client/mysql_client.dart';
 export 'package:mysql_client/exception.dart';
 export 'package:tom_core_kernel/tom_core_kernel.dart';
 export 'package:tom_basics_console/tom_basics_console.dart';
-
-
-

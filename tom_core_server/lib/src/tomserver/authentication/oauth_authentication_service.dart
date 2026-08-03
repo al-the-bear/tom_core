@@ -1,0 +1,305 @@
+/// External identity as an implementation of the *existing* authentication
+/// contract (C-9).
+///
+/// [TomOAuthAuthenticationService] **implements [TomAuthenticationService]**.
+/// That single fact is the design; everything else in this library follows from
+/// it. It receives a [TomOAuthCredential] where a password login receives a
+/// password, exchanges it, finds or provisions the local account, and returns an
+/// ordinary [TomAuthenticationInfo].
+///
+/// Then it stops. It issues no token, consults no 2FA policy and makes no
+/// session decision, because [TomAuthenticationServer.authenticateExternal]
+/// hands its result to the same continuation a password login reaches. An
+/// externally authenticated principal is therefore challenged for its second
+/// factor, offered enrolment, and issued exactly the claims a password login
+/// would have produced — not because this library reproduces those rules, but
+/// because it never touches them.
+///
+/// ## Why a delegate rather than a replacement
+///
+/// A deployment installs *one*
+/// [TomAuthenticationServer.globalSettingUserAuthenticationService]. If enabling
+/// external login meant replacing it, enabling external login would mean
+/// disabling passwords — so this service takes the deployment's existing service
+/// as a [delegate] and passes any credential that is not a
+/// [TomOAuthCredential] straight through. Wiring it up is one line, and an
+/// account may hold a password *and* several external identities at once.
+///
+/// ```dart
+/// TomAuthenticationServer.globalSettingUserAuthenticationService =
+///     TomOAuthAuthenticationService(
+///       directory: MyDirectory(),
+///       delegate: TomAuthenticationServer.globalSettingUserAuthenticationService,
+///     );
+/// ```
+library;
+
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../little_things/server_exception.dart';
+import 'authentication_server.dart';
+import 'oauth_flow.dart';
+import 'oauth_identity.dart';
+import 'oauth_provider.dart';
+
+/// The credential an external login carries in [TomAuthenticationData.key].
+///
+/// A typed value rather than a delimited string, because the pair is what the
+/// flow needs and a `'code|state'` convention is a parser two files apart from
+/// its formatter.
+class TomOAuthCredential {
+  /// The authorization code the provider issued.
+  final String code;
+
+  /// The handle of the pending authorization the code completes.
+  final String state;
+
+  /// Creates an external-login credential.
+  const TomOAuthCredential({required this.code, required this.state});
+
+  @override
+  String toString() => 'TomOAuthCredential(state: $state)';
+}
+
+/// What the deployment supplies: how to turn a *local username* into an
+/// authenticated principal, and what to do when there is no local account yet.
+///
+/// The framework deliberately does not know either. It has no user table — the
+/// whole point of [TomAuthenticationService] is that a deployment owns that — so
+/// an external login can go no further than "this is `alice@example.com` at
+/// `https://accounts.google.com`" without asking the application who that is.
+///
+/// The two methods are separate because the second is a *decision* the first is
+/// not: resolving a known account is a lookup, while creating one is a policy
+/// choice, and a deployment that never wants the second should not have to
+/// implement it as part of the first.
+abstract class TomExternalIdentityDirectory {
+  /// The principal and access-control definition for [username], which the
+  /// external provider has already authenticated.
+  ///
+  /// Note what this method is *not* passed: a credential. The provider has
+  /// verified the user; this is the deployment's account lookup, not a second
+  /// authentication. An implementation that demanded a password here would be
+  /// asking the user to log in twice.
+  ///
+  /// Returns `null` when no local account exists under [username] — which is
+  /// what sends the login down the provisioning branch.
+  Future<TomAuthenticationInfo?> authenticatedPrincipalFor(
+    String username,
+    TomAuthenticationData authData,
+  );
+
+  /// Creates a local account from [identity] and returns its principal.
+  ///
+  /// Only ever called when the provider is configured with
+  /// [TomOAuthProvisioning.autoProvision]. The default implementation refuses,
+  /// so a deployment that turns auto-provisioning on without implementing this
+  /// gets a clear error rather than a silently half-created account.
+  Future<TomAuthenticationInfo> provisionFromExternalIdentity(
+    TomExternalIdentity identity,
+    TomAuthenticationData authData,
+  ) {
+    throw LoginException(
+      'login.error.oauth.provisioning-unsupported',
+      'Provider auto-provisioning is configured, but this deployment\'s '
+          'TomExternalIdentityDirectory does not implement '
+          'provisionFromExternalIdentity.',
+    );
+  }
+
+  /// The installed [TomExternalIdentityDirectory] bean, or `null`.
+  static TomExternalIdentityDirectory? resolve() {
+    final installed = TomBean.getBeanByType(TomExternalIdentityDirectory);
+    return installed is TomExternalIdentityDirectory ? installed : null;
+  }
+}
+
+/// A [TomAuthenticationService] that authenticates an OAuth 2.0 / OIDC
+/// authorization code.
+class TomOAuthAuthenticationService implements TomAuthenticationService {
+  /// The deployment's account lookup and provisioning.
+  final TomExternalIdentityDirectory directory;
+
+  /// The service that handles every credential this one does not — typically
+  /// the deployment's password service. `null` makes external identity the only
+  /// way in, which is a legitimate choice and not the default one.
+  final TomAuthenticationService? delegate;
+
+  /// The handshake. Defaults to [TomOAuthFlow.fromBeans] at first use, so the
+  /// ordinary deployment configures providers and wires nothing.
+  final TomOAuthFlow? flow;
+
+  /// Where `(issuer, subject)` → account links are kept. Defaults to the
+  /// installed [TomExternalIdentityStore] bean.
+  final TomExternalIdentityStore? identityStore;
+
+  /// Creates the service.
+  const TomOAuthAuthenticationService({
+    required this.directory,
+    this.delegate,
+    this.flow,
+    this.identityStore,
+  });
+
+  @override
+  Future<TomAuthenticationInfo> authenticateUser(
+    TomAuthenticationData authData,
+  ) async {
+    final credential = authData.key;
+    if (credential is! TomOAuthCredential) {
+      return _passThrough(authData);
+    }
+
+    final exchange = await (flow ?? TomOAuthFlow.fromBeans())
+        .completeAuthorization(code: credential.code, state: credential.state);
+    final identity = exchange.identity;
+
+    // The login context the *flow* recorded wins over whatever the message
+    // carried: the callback is a browser navigation with no client, locale or
+    // organization of its own, so trusting the message here would issue the
+    // session in whatever the endpoint defaulted to rather than in the context
+    // the user actually started the login from.
+    _applyPendingContext(authData, exchange.pending);
+
+    final store = identityStore ?? TomExternalIdentityStore.resolve();
+    if (store == null) {
+      throw LoginException(
+        'login.error.oauth.no-identity-store',
+        'External identity login requires a TomExternalIdentityStore, but none '
+            'is installed. Register one (for example '
+            'TomPersistentExternalIdentityStore over '
+            'TomExternalIdentityLinkRepository) before enabling a provider.',
+      );
+    }
+
+    final linkedUsername = await store.localUsernameFor(identity);
+    if (linkedUsername != null) {
+      authData.username = linkedUsername;
+      final info = await directory.authenticatedPrincipalFor(
+        linkedUsername,
+        authData,
+      );
+      if (info == null) {
+        // The link outlived the account it pointed at. Refusing is the only
+        // safe answer: provisioning here would recreate a deleted account from
+        // a stale row, which is precisely the state an administrator was trying
+        // to reach when they deleted it.
+        throw LoginException(
+          'login.error.oauth.linked-account-missing',
+          "The external identity $identity is linked to the local account "
+              "'$linkedUsername', which no longer exists.",
+        );
+      }
+      await store.recordLogin(identity);
+      return info;
+    }
+
+    return _firstLogin(identity, authData, store);
+  }
+
+  /// A successful external login for which no link exists yet.
+  Future<TomAuthenticationInfo> _firstLogin(
+    TomExternalIdentity identity,
+    TomAuthenticationData authData,
+    TomExternalIdentityStore store,
+  ) async {
+    final provider = _providerFor(identity);
+
+    // An existing local account under the asserted username is linked rather
+    // than duplicated — this is how a user who signed up with a password later
+    // adds "Sign in with …". It is gated on the provider being configured to
+    // link (auto-provisioning), because on a provider configured to refuse, an
+    // unlinked account is exactly the case being refused: an attacker who can
+    // make *any* provider assert an address must not thereby acquire the local
+    // account that already uses it.
+    if (identity.username.isNotEmpty &&
+        provider.provisioning == TomOAuthProvisioning.autoProvision) {
+      authData.username = identity.username;
+      final existing = await directory.authenticatedPrincipalFor(
+        identity.username,
+        authData,
+      );
+      if (existing != null) {
+        await store.link(identity, identity.username);
+        await store.recordLogin(identity);
+        return existing;
+      }
+    }
+
+    if (provider.provisioning == TomOAuthProvisioning.refuse) {
+      throw LoginException(
+        'login.error.oauth.no-local-account',
+        'The external identity $identity authenticated successfully, but no '
+            'local account is linked to it and provider '
+            "'${provider.id}' is configured to refuse provisioning.",
+      );
+    }
+
+    final provisioned = await directory.provisionFromExternalIdentity(
+      identity,
+      authData,
+    );
+    // Link to the username the *directory* settled on, not the claim: a
+    // deployment may normalise, prefix or de-duplicate it, and linking to the
+    // claim would leave the row pointing at an account that does not exist.
+    final username = provisioned.principal.user.username;
+    authData.username = username;
+    await store.link(identity, username);
+    await store.recordLogin(identity);
+    return provisioned;
+  }
+
+  /// The provider [identity] came from, by issuer.
+  ///
+  /// By issuer rather than by the pending record's provider id because the
+  /// issuer is what the *token* asserted and what the link is keyed on, so this
+  /// cannot pick a provider the identity did not actually come from.
+  TomOAuthProviderConfig _providerFor(TomExternalIdentity identity) {
+    final providers = (flow ?? TomOAuthFlow.fromBeans()).providers;
+    for (final provider in providers.providers.values) {
+      if (provider.issuer == identity.issuer) return provider;
+    }
+    throw LoginException(
+      'login.error.oauth.unknown-issuer',
+      "No provider is configured for the issuer '${identity.issuer}'.",
+    );
+  }
+
+  /// Replays the login context captured when the flow started.
+  void _applyPendingContext(
+    TomAuthenticationData authData,
+    TomOAuthAuthorizationState pending,
+  ) {
+    if (pending.client.isNotEmpty) authData.client = pending.client;
+    if (pending.application.isNotEmpty) {
+      authData.application = pending.application;
+    }
+    if (pending.process.isNotEmpty) authData.process = pending.process;
+    if (pending.organization.isNotEmpty) {
+      authData.organization = pending.organization;
+    }
+    if (pending.clientLanguage.isNotEmpty) {
+      authData.language = pending.clientLanguage;
+    }
+    if (pending.clientCountry.isNotEmpty) {
+      authData.country = pending.clientCountry;
+    }
+    if (pending.clientTimezone.isNotEmpty) {
+      authData.timezone = pending.clientTimezone;
+    }
+  }
+
+  /// Hands a non-OAuth credential to [delegate].
+  Future<TomAuthenticationInfo> _passThrough(TomAuthenticationData authData) {
+    final next = delegate;
+    if (next == null) {
+      throw LoginException(
+        'login.error.oauth.credential-not-supported',
+        'This deployment authenticates only through an external identity '
+            'provider, and the login carried a '
+            '${authData.key.runtimeType} rather than an OAuth credential.',
+      );
+    }
+    return next.authenticateUser(authData);
+  }
+}

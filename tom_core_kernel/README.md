@@ -98,6 +98,7 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | `TomAccessControl` (+ `TomNoAccess`, `TomPublicAccess`, `TomAuthenticatedAccess`, `TomGuestAccess`) | Layered access-control rules |
 | `TomBearerAuthentication` | Bearer-token authentication |
 | `TomAccessControlInformation`, `TomGroup`, `TomRole`, `TomEntitlement` | Principal / ACI model |
+| `tomOAuthApi`, `TomOAuthProviderDto`, `TomOAuthAuthorizationRequest`, `TomOAuthCallbackRequest`, `TomOAuthApiService` | The wire contract for external-identity login ("Sign in with …"). The `/oauth/callback` endpoint answers with `TomAuthenticationResult` — the *same* type `/login` answers with, because an OAuth provider resolves a principal and everything after that is the one login path every credential reaches, second factor included. |
 
 ### Runtime utilities
 
@@ -277,6 +278,6 @@ the common dependency of the server, Flutter, and DartScript layers. See the
 ## Status
 
 - **Version:** 1.1.1
-- **Tests:** 2,096 test cases across 25 suites (run with `testkit :test`
+- **Tests:** 2,128 test cases across 27 suites (run with `testkit :test`
   or `dart test`).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

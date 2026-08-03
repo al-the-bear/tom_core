@@ -251,8 +251,7 @@ class TomAuthenticationServer {
     TomClientJwtToken? challengeToken,
   }) async {
     try {
-      final token =
-          challengeToken ?? getFromCurrentZone<TomClientJwtToken>();
+      final token = challengeToken ?? getFromCurrentZone<TomClientJwtToken>();
       if (token == null) {
         throw LoginException(
           'login.error.2fa.no-challenge',
@@ -292,8 +291,9 @@ class TomAuthenticationServer {
       // The interim token carries the access-control payload pass 1 resolved,
       // so the completed session needs no second trip to the user store — and
       // the principal cannot be swapped for another between the passes.
-      final principal =
-          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        token,
+      );
       final context = _contextFor(principal, m);
 
       final consumed = challenge.withConsumedAttempt();
@@ -308,12 +308,7 @@ class TomAuthenticationServer {
       );
 
       if (accepted) {
-        return _issueTokens(
-          principal,
-          null,
-          m,
-          twoFactorSatisfied: true,
-        );
+        return _issueTokens(principal, null, m, twoFactorSatisfied: true);
       }
 
       if (consumed.isExhausted) {
@@ -396,64 +391,126 @@ class TomAuthenticationServer {
                   : globalSettingUserAuthenticationService)
               .authenticateUser(authData);
 
-      final context = _contextFor(authInfo.principal, m);
-      final decision = await Tom2FAPolicy.resolve().decideFor(context);
-      if (decision.isSatisfiedWithoutFactor) {
-        return _issueTokens(authInfo.principal, authInfo.acd, m);
-      }
-
-      // The first mechanism the policy permits *and* this deployment has an
-      // adaptor for. Both halves of that are needed: a policy names permissions,
-      // and permissions the deployment cannot honour must fail here rather than
-      // as a null adaptor further down.
-      final offerable = decision.offerableMechanisms;
-      if (offerable.isEmpty) {
-        throw LoginException(
-          'login.error.2fa.unsupported-mechanism',
-          decision.allowedMechanisms.isEmpty
-              ? 'The account requires a second factor but names no mechanism'
-              : 'No adaptor is registered for any two-factor mechanism this '
-                  'account may use: ${decision.allowedMechanisms.join(', ')}',
-        );
-      }
-      // What this user has actually set up, narrowed to what they may use.
-      // `null` means "no store installed", which is not the same as "none
-      // enrolled" and must not be treated as it: the first keeps the legacy
-      // challenge path, the second is what forces enrolment.
-      final enrolled = await _usableEnrolments(context, offerable);
-      if (enrolled != null && enrolled.isEmpty) {
-        return _offerEnrolment(authInfo, m, decision, offerable);
-      }
-
-      // The user's primary factor among the permitted ones — not simply the
-      // policy's first choice, so a user with several factors is challenged for
-      // the one they nominated rather than for whichever the policy happens to
-      // list first.
-      final type = enrolled == null || enrolled.isEmpty
-          ? offerable.first
-          : _primaryOf(enrolled).type;
-      // Non-null by construction: `offerable` is the intersection with the
-      // registry's own keys, and `enrolled` was filtered against it.
-      final adaptor = Tom2FARegistry.lookup(type)!;
-
-      final spec = await adaptor.issueChallenge(context);
-      final challenge = Tom2FAChallenge(
-        type: type,
-        hint: spec.hint,
-        attemptsAllowed: spec.attemptsAllowed,
-        expiresAt: DateTime.now().toUtc().add(spec.validity),
-        clientData: spec.clientData,
-      );
-      return _issueTokens(
-        authInfo.principal,
-        authInfo.acd,
-        m,
-        challenge: challenge,
-        twoFactorVerification: spec.verificationData,
-      );
+      return await _completeLogin(authInfo, m);
     } catch (ex, s) {
       return _failedResult(ex, s);
     }
+  }
+
+  /// Authenticates a login whose credential was established by an **external**
+  /// identity provider, and completes it exactly as a password login completes.
+  ///
+  /// [credential] travels in [TomAuthenticationData.key] — the slot that carries
+  /// a password for a password login, typed `Object?` for precisely this reason
+  /// — and is verified by the configured
+  /// [globalSettingUserAuthenticationService], which a deployment offering
+  /// external identity wraps in a `TomOAuthAuthenticationService`. This method
+  /// therefore adds **no** second way to authenticate: it hands a differently
+  /// shaped credential to the same contract.
+  ///
+  /// What it deliberately does not do is decide anything about the resulting
+  /// session. The 2FA policy, the enrolment offer, the stored-timezone
+  /// resolution and the claim set all come from [_completeLogin], the same
+  /// continuation [authenticateUser] reaches — so an externally authenticated
+  /// principal is challenged for its second factor and issued exactly the claims
+  /// a password login would have produced for it. See the module readme: the day
+  /// this method issues its own tokens, the two copies start to drift, and the
+  /// copy that drifts is the one that stops asking for a second factor.
+  Future<TomAuthenticationResult> authenticateExternal(
+    TomAuthenticationMessage m,
+    Object credential,
+  ) async {
+    final authData = TomAuthenticationData(
+      client: m.client,
+      username: m.userName,
+      organization: m.organization,
+      application: m.application,
+      process: m.process,
+      language: m.clientLanguage,
+      country: m.clientCountry,
+      key: credential,
+      timezone: m.clientTimezone,
+    );
+    try {
+      final authInfo = await globalSettingUserAuthenticationService
+          .authenticateUser(authData);
+      return await _completeLogin(authInfo, m);
+    } catch (ex, s) {
+      return _failedResult(ex, s);
+    }
+  }
+
+  /// Everything that happens *after* a credential has been verified: the 2FA
+  /// policy decision, the challenge-or-enrolment branch, and token issuance.
+  ///
+  /// Extracted so that there is exactly one of it. [authenticateUser] and
+  /// [authenticateExternal] resolve a principal by different means and then join
+  /// here; nothing below this line knows or asks which of them called it, so a
+  /// third way of resolving a principal acquires the whole of this behaviour by
+  /// *calling* it rather than by agreeing with it.
+  ///
+  /// Exceptions propagate: both callers already wrap their own resolution step
+  /// in the `try` that turns a [LoginException] into a failed result, and a
+  /// second catch here would make the failure path two places as well.
+  Future<TomAuthenticationResult> _completeLogin(
+    TomAuthenticationInfo authInfo,
+    TomAuthenticationMessage m,
+  ) async {
+    final context = _contextFor(authInfo.principal, m);
+    final decision = await Tom2FAPolicy.resolve().decideFor(context);
+    if (decision.isSatisfiedWithoutFactor) {
+      return _issueTokens(authInfo.principal, authInfo.acd, m);
+    }
+
+    // The first mechanism the policy permits *and* this deployment has an
+    // adaptor for. Both halves of that are needed: a policy names permissions,
+    // and permissions the deployment cannot honour must fail here rather than
+    // as a null adaptor further down.
+    final offerable = decision.offerableMechanisms;
+    if (offerable.isEmpty) {
+      throw LoginException(
+        'login.error.2fa.unsupported-mechanism',
+        decision.allowedMechanisms.isEmpty
+            ? 'The account requires a second factor but names no mechanism'
+            : 'No adaptor is registered for any two-factor mechanism this '
+                  'account may use: ${decision.allowedMechanisms.join(', ')}',
+      );
+    }
+    // What this user has actually set up, narrowed to what they may use.
+    // `null` means "no store installed", which is not the same as "none
+    // enrolled" and must not be treated as it: the first keeps the legacy
+    // challenge path, the second is what forces enrolment.
+    final enrolled = await _usableEnrolments(context, offerable);
+    if (enrolled != null && enrolled.isEmpty) {
+      return _offerEnrolment(authInfo, m, decision, offerable);
+    }
+
+    // The user's primary factor among the permitted ones — not simply the
+    // policy's first choice, so a user with several factors is challenged for
+    // the one they nominated rather than for whichever the policy happens to
+    // list first.
+    final type = enrolled == null || enrolled.isEmpty
+        ? offerable.first
+        : _primaryOf(enrolled).type;
+    // Non-null by construction: `offerable` is the intersection with the
+    // registry's own keys, and `enrolled` was filtered against it.
+    final adaptor = Tom2FARegistry.lookup(type)!;
+
+    final spec = await adaptor.issueChallenge(context);
+    final challenge = Tom2FAChallenge(
+      type: type,
+      hint: spec.hint,
+      attemptsAllowed: spec.attemptsAllowed,
+      expiresAt: DateTime.now().toUtc().add(spec.validity),
+      clientData: spec.clientData,
+    );
+    return _issueTokens(
+      authInfo.principal,
+      authInfo.acd,
+      m,
+      challenge: challenge,
+      twoFactorVerification: spec.verificationData,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -504,8 +561,9 @@ class TomAuthenticationServer {
         );
       }
 
-      final principal =
-          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        token,
+      );
       final context = _contextFor(principal, m);
       final offer = await support.beginEnrolment(context);
 
@@ -577,8 +635,9 @@ class TomAuthenticationServer {
         );
       }
 
-      final principal =
-          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        token,
+      );
       final context = _contextFor(principal, m);
       final consumed = state.withConsumedAttempt();
 
@@ -644,8 +703,9 @@ class TomAuthenticationServer {
         );
       }
 
-      final principal =
-          TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        token,
+      );
       final context = _contextFor(principal, m);
 
       if (state.skipSpendsGrace) {
@@ -678,8 +738,10 @@ class TomAuthenticationServer {
         'No pending two-factor enrolment was presented',
       );
     }
-    final state =
-        Tom2FAEnrolmentState.fromClaims(token.payload, token.secretData);
+    final state = Tom2FAEnrolmentState.fromClaims(
+      token.payload,
+      token.secretData,
+    );
     if (state == null) {
       throw LoginException(
         'login.error.2fa.no-enrolment',
@@ -806,8 +868,9 @@ class TomAuthenticationServer {
     }
 
     var result = TomAuthenticationResult();
-    result.authenticationToken =
-        TomServerJwtToken(publicInfo).getJWT(globalSettingJwtOrganization);
+    result.authenticationToken = TomServerJwtToken(
+      publicInfo,
+    ).getJWT(globalSettingJwtOrganization);
     result.authorizationToken = TomServerJwtToken(
       publicInfo,
       encryptedData: privateInfo,
@@ -818,8 +881,9 @@ class TomAuthenticationServer {
     }
     if (enrolment != null) {
       result.requires2FAEnrolment = true;
-      result.availableTwoFactorMethods =
-          _descriptorsFor(enrolment.offeredTypes);
+      result.availableTwoFactorMethods = _descriptorsFor(
+        enrolment.offeredTypes,
+      );
       result.twoFactorEnrolmentSkippable = enrolment.skippable;
     }
     return result;
@@ -888,25 +952,23 @@ class TomAuthenticationServer {
   /// a mechanism's resource keys were corrected would otherwise keep handing out
   /// the old ones.
   List<Tom2FAMethodDescriptor> _descriptorsFor(List<String> types) => [
-        for (final type in types)
-          if (Tom2FARegistry.lookup(type) case final adaptor?)
-            adaptor.descriptor,
-      ];
+    for (final type in types)
+      if (Tom2FARegistry.lookup(type) case final adaptor?) adaptor.descriptor,
+  ];
 
   /// Builds the adaptor-facing context from the principal and the request.
   Tom2FAContext _contextFor(
     TomPrincipal principal,
     TomAuthenticationMessage m,
-  ) =>
-      Tom2FAContext(
-        principal: principal,
-        client: m.client,
-        organization: m.organization,
-        application: m.application,
-        process: m.process,
-        language: m.clientLanguage,
-        country: m.clientCountry,
-      );
+  ) => Tom2FAContext(
+    principal: principal,
+    client: m.client,
+    organization: m.organization,
+    application: m.application,
+    process: m.process,
+    language: m.clientLanguage,
+    country: m.clientCountry,
+  );
 
   /// The adaptor's server-only payload from the interim token's encrypted
   /// section, or empty when the mechanism stored none (or the token was not

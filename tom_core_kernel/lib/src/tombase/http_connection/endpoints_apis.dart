@@ -318,15 +318,29 @@ class TomApiEndpoint<ReturnType, RequestType> {
   /// Maps HTTP status codes to response types for error handling.
   final Map<int, Type>? statusCodeResponseTypes;
 
-  /// Binds URL path parameters to typed request-DTO fields.
+  /// Binds URL parameters — path captures *and* query-string parameters — to
+  /// typed request-DTO fields.
   ///
-  /// Keys are the route-capture names as they appear in [uri] (e.g. `id` in
-  /// `/items/{id}`); values are the request-DTO field names the captured value
-  /// is injected under before the DTO is instantiated. When a capture name and
-  /// the field name are identical, the entry is `{'id': 'id'}`; a differently
-  /// named field is `{'id': 'itemId'}`. Path parameters not listed are still
-  /// injected under their capture name (identity), so an empty map means every
-  /// path parameter binds by its own name.
+  /// Keys are the parameter names as they appear on the URL: a route-capture
+  /// name from [uri] (e.g. `id` in `/items/{id}`), or a query-string parameter
+  /// name (e.g. `error_description` in `?error_description=…`). Values are the
+  /// request-DTO field names the value is injected under before the DTO is
+  /// instantiated. When the URL name and the field name are identical, the entry
+  /// is `{'id': 'id'}`; a differently named field is `{'id': 'itemId'}`, which is
+  /// also how a provider's snake_cased spelling is translated into a Dart name.
+  ///
+  /// The two kinds bind under different rules, deliberately:
+  ///
+  /// * **Path captures** not listed are still injected under their own capture
+  ///   name (identity), so an empty map means every path parameter binds by its
+  ///   own name. A capture is part of the route, and the route is part of this
+  ///   endpoint's own declaration.
+  /// * **Query parameters** bind *only* when named here — there is no identity
+  ///   fallback. A query string is whatever a caller chose to append, so an
+  ///   identity fallback would let any caller write any field of the request DTO.
+  ///   Naming them makes query binding opt-in per endpoint and per parameter.
+  ///
+  /// A path capture wins over a query parameter mapped to the same field.
   final Map<String, String> urlParameterMapping;
 
   /// The access policy this endpoint is served under, **declared here on the

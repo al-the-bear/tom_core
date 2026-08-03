@@ -35,6 +35,28 @@ server's own self-login against an auth server.
   - [TomHttpServiceLoginTransport](#tomhttpservicelogintransport)
   - [TomServerSelfLoginException](#tomserverselfloginexception)
   - [TomServerSelfLogin](#tomserverselflogin)
+  - [TomOAuthException](#tomoauthexception)
+  - [TomOAuthProvisioning](#tomoauthprovisioning)
+  - [TomOAuthProviderConfig](#tomoauthproviderconfig)
+  - [TomOAuthProviders](#tomoauthproviders)
+  - [TomOAuthPkce](#tomoauthpkce)
+  - [TomOAuthAuthorizationState](#tomoauthauthorizationstate)
+  - [TomOAuthStateStore](#tomoauthstatestore)
+  - [TomOAuthMemoryStateStore](#tomoauthmemorystatestore)
+  - [TomOAuthTokenTransport](#tomoauthtokentransport)
+  - [TomHttpOAuthTokenTransport](#tomhttpoauthtokentransport)
+  - [TomExternalIdentity](#tomexternalidentity)
+  - [TomOAuthExchange](#tomoauthexchange)
+  - [TomOAuthFlow](#tomoauthflow)
+  - [TomExternalIdentityLink](#tomexternalidentitylink)
+  - [TomExternalIdentityLinkRepository](#tomexternalidentitylinkrepository)
+  - [TomExternalIdentityStore](#tomexternalidentitystore)
+  - [TomPersistentExternalIdentityStore](#tompersistentexternalidentitystore)
+  - [TomMemoryExternalIdentityStore](#tommemoryexternalidentitystore)
+  - [TomOAuthCredential](#tomoauthcredential)
+  - [TomExternalIdentityDirectory](#tomexternalidentitydirectory)
+  - [TomOAuthAuthenticationService](#tomoauthauthenticationservice)
+  - [TomOAuthServer](#tomoauthserver)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -42,7 +64,12 @@ server's own self-login against an auth server.
 Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/two_factor.dart`,
 `lib/src/tomserver/authentication/two_factor_delivered_code.dart`,
-`lib/src/tomserver/authentication/server_self_login.dart`.
+`lib/src/tomserver/authentication/server_self_login.dart`,
+`lib/src/tomserver/authentication/oauth_provider.dart`,
+`lib/src/tomserver/authentication/oauth_flow.dart`,
+`lib/src/tomserver/authentication/oauth_identity.dart`,
+`lib/src/tomserver/authentication/oauth_authentication_service.dart`,
+`lib/src/tomserver/authentication/oauth_endpoints.dart`.
 
 The module orchestrates the server-side login flow. `TomAuthenticationServer`
 receives a `TomAuthenticationMessage`, builds a `TomAuthenticationData` from it,
@@ -92,10 +119,27 @@ deployment skips this silently; a configured one that fails raises
 TomServerException  (tom_core_server)
     ├── LoginException
     ├── Tom2FAException
-    └── TomServerSelfLoginException
+    ├── TomServerSelfLoginException
+    └── TomOAuthException
 
 TomAuthenticationService  (abstract)
-    └── TomDummyAuthenticationService  (implements)
+    ├── TomDummyAuthenticationService     (implements)
+    └── TomOAuthAuthenticationService     (implements, delegates the rest)
+
+TomOAuthStateStore  (abstract)
+    └── TomOAuthMemoryStateStore  (implements)
+
+TomOAuthTokenTransport  (abstract)
+    └── TomHttpOAuthTokenTransport  (implements)
+
+TomExternalIdentityStore  (abstract)
+    ├── TomPersistentExternalIdentityStore  (implements)
+    └── TomMemoryExternalIdentityStore      (implements)
+
+TomExternalIdentityDirectory  (abstract, deployment-supplied)
+
+TomSqlDatasourceRepository<TomExternalIdentityLink, int>
+    └── TomExternalIdentityLinkRepository  (extends)
 
 Tom2FAService  (@tomReflector, abstract)
     ├── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'))
@@ -118,6 +162,17 @@ TomAuthenticationServer    (@tomReflector, standalone)
 TomServiceCredential       (standalone)
 TomServiceLoginResponse    (standalone)
 TomServerSelfLogin         (standalone, statics only)
+TomOAuthProvisioning       (enum)
+TomOAuthProviderConfig     (standalone, immutable)
+TomOAuthProviders          (standalone, immutable)
+TomOAuthPkce               (standalone, immutable)
+TomOAuthAuthorizationState (standalone, immutable)
+TomExternalIdentity        (standalone, immutable)
+TomOAuthExchange           (standalone, immutable)
+TomOAuthFlow               (standalone, immutable)
+TomExternalIdentityLink    (@tomReflector, @TomDbTable entity)
+TomOAuthCredential         (standalone, immutable)
+TomOAuthServer             (@tomReflector, @TomApiImplementation)
 ```
 
 ## Classes
@@ -774,8 +829,366 @@ Statics only — the constructor is private.
 | `logIn` | `static Future<TomPrincipal> logIn(TomServiceCredential credential, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in with `credential` and returns the deployment's principal. Throws `TomServerSelfLoginException` when the auth server is unreachable, refuses, answers in an unexpected shape, or returns a token that carries no payload. |
 | `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment predating server-as-principal behaves exactly as before. Call during startup, before `TomServer.start()`. |
 
+### TomOAuthException
+
+An external-login handshake or provider configuration that could not proceed.
+Raised at startup for a malformed `oauth.providers` block, and during a login
+for a refused or unverifiable handshake.
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomOAuthException(String key, String defaultUserMessage, {bool clientThrow = false})
+```
+
+Keys raised: `oauth.config.missing_value`, `oauth.config.not_a_map`,
+`oauth.config.provider_not_a_map`, `oauth.config.unknown_provider`,
+`oauth.config.unknown_provisioning`, `oauth.flow.unknown_state`,
+`oauth.flow.missing_code`, `oauth.flow.token_exchange_rejected`,
+`oauth.flow.no_claims_source`, `oauth.flow.no_access_token`,
+`oauth.flow.issuer_mismatch`, `oauth.flow.audience_mismatch`,
+`oauth.flow.missing_subject`, `oauth.flow.malformed_id_token`,
+`oauth.provider.http_error`, `oauth.provider.malformed_json`.
+
+### TomOAuthProvisioning
+
+What a successful external login does when no local account is linked to the
+identity. A **configuration choice per provider**, because both answers are
+correct for different deployments.
+
+| Value | Meaning |
+| ----- | ------- |
+| `refuse` | Reject the login. The default, and the right answer where accounts are created by an administrator. |
+| `autoProvision` | Create the account through `TomExternalIdentityDirectory.provisionFromExternalIdentity`, and link an existing local account that already carries the asserted username. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `parse` | `static TomOAuthProvisioning parse(String raw)` | Reads the configured spelling. Throws `oauth.config.unknown_provisioning` for anything else rather than falling back to a default — a typo must not silently enable or disable provisioning. |
+
+### TomOAuthProviderConfig
+
+One identity provider, as data. Immutable.
+
+#### Constructors
+
+```dart
+const TomOAuthProviderConfig({
+  required String id,
+  required String issuer,
+  required String authorizationEndpoint,
+  required String tokenEndpoint,
+  required String clientId,
+  required String redirectUri,
+  String? userInfoEndpoint,
+  String? clientSecret,
+  List<String> scopes = const ['openid', 'email', 'profile'],
+  bool usePkce = true,
+  String subjectClaim = 'sub',
+  String usernameClaim = 'email',
+  String displayNameClaim = 'name',
+  TomOAuthProvisioning provisioning = TomOAuthProvisioning.refuse,
+  String displayNameKey = '',
+  String iconKey = '',
+})
+
+factory TomOAuthProviderConfig.fromMap(String id, Map<Object?, Object?> map)
+```
+
+`fromMap` demands every required value rather than defaulting it: a provider
+missing its token endpoint is a configuration error, and one that must fail at
+startup rather than as a failed login weeks later. `scopes` is accepted as a
+YAML list *or* a single space-separated string, which is how every provider's
+own documentation writes them.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toDto` | `TomOAuthProviderDto toDto()` | The client-facing descriptor: `id`, `displayNameKey`, `iconKey`. No endpoint, client id or secret reaches a client. |
+
+### TomOAuthProviders
+
+The configured provider set. Immutable.
+
+- **Constant:** `configurationKey = 'oauth.providers'`
+
+#### Constructors
+
+```dart
+TomOAuthProviders(Map<String, TomOAuthProviderConfig> providers)
+factory TomOAuthProviders.fromConfiguration([TomServerConfigResourceProvider? config])
+```
+
+`fromConfiguration` answers an empty set when the key is absent, so calling it
+unconditionally at startup is safe — a deployment with no `oauth:` block offers
+nothing rather than failing. A *malformed* block still throws: absent and wrong
+are different states.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `resolve` | `static TomOAuthProviders? resolve()` | The installed bean, or `null`. `null` rather than a throw, because "this deployment offers no external login" is the majority case. |
+| `isEmpty` | `bool get isEmpty` | Whether any provider is configured. |
+| `descriptors` | `List<TomOAuthProviderDto> get descriptors` | The providers as client-facing DTOs, in configuration order. |
+| `lookup` | `TomOAuthProviderConfig? lookup(String id)` | The provider under `id`, or `null`. |
+| `operator []` | `TomOAuthProviderConfig operator [](String id)` | The provider under `id`. Throws `oauth.config.unknown_provider` — a request that named a provider must not resolve to some other provider. |
+
+### TomOAuthPkce
+
+A PKCE verifier and its `S256` challenge. Immutable.
+
+- **Constant:** `method = 'S256'`
+
+#### Constructors
+
+```dart
+const TomOAuthPkce(String verifier, String challenge)
+factory TomOAuthPkce.generate()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `challengeFor` | `static String challengeFor(String verifier)` | The base64url-unpadded SHA-256 of the verifier. |
+
+### TomOAuthAuthorizationState
+
+One pending authorization: the `state` handle, the `providerId`, the `pkce`
+pair, `createdAt`, and the login context the flow started in (`client`,
+`application`, `process`, `organization`, `clientLanguage`, `clientCountry`,
+`clientTimezone`).
+
+The context is recorded here because a provider callback is a browser
+navigation with none of its own — replaying it is what makes an external login
+land in the organization and locale the user actually started from.
+
+### TomOAuthStateStore
+
+Where pending authorizations live between the redirect out and the callback
+back.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `store` | `Future<void> store(TomOAuthAuthorizationState pending)` | Records a pending authorization. |
+| `peek` | `Future<TomOAuthAuthorizationState?> peek(String state)` | Reads without spending, so the callback endpoint can build its login context before the credential is authenticated. |
+| `consume` | `Future<TomOAuthAuthorizationState?> consume(String state)` | Reads and spends. The single-use guarantee lives here. |
+| `resolve` | `static TomOAuthStateStore resolve()` | The installed bean, or a shared `TomOAuthMemoryStateStore`. |
+
+### TomOAuthMemoryStateStore
+
+The default store: a per-process map with a time-to-live.
+
+```dart
+TomOAuthMemoryStateStore({Duration timeToLive = const Duration(minutes: 10)})
+```
+
+Expired and unknown handles are indistinguishable to a caller. Correct for a
+single-node deployment; a cluster installs a shared store (see
+[Status and Limitations](../authentication.md#status-and-limitations)).
+
+### TomOAuthTokenTransport
+
+The provider HTTP calls, held behind a contract so a test can stub the provider
+and leave every other line of the flow executing for real.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `postForm` | `Future<String> postForm(Uri uri, Map<String, String> form, Map<String, String> headers)` | The token-endpoint call; returns the raw body. |
+| `getJson` | `Future<String> getJson(Uri uri, Map<String, String> headers)` | The user-info call, for providers that predate OIDC. |
+| `resolve` | `static TomOAuthTokenTransport resolve()` | The installed bean, or `TomHttpOAuthTokenTransport`. |
+
+### TomHttpOAuthTokenTransport
+
+The default transport, over real HTTP. Raises `oauth.provider.http_error` for a
+non-2xx answer.
+
+### TomExternalIdentity
+
+What the provider asserted, immutable: `issuer`, `subject`, `username`,
+`displayName`, and the raw `claims`. The `(issuer, subject)` pair *is* the
+identity — a subject is only unique within its issuer.
+
+### TomOAuthExchange
+
+The result of a completed handshake: the `identity` and the `pending` record it
+completed, so the caller can replay the login context the flow captured.
+
+### TomOAuthFlow
+
+The authorization-code + PKCE handshake. Immutable; holds `providers`,
+`stateStore` and `transport`.
+
+#### Constructors
+
+```dart
+const TomOAuthFlow({
+  required TomOAuthProviders providers,
+  required TomOAuthStateStore stateStore,
+  required TomOAuthTokenTransport transport,
+})
+
+factory TomOAuthFlow.fromBeans()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `beginAuthorization` | `Future<TomOAuthAuthorizationDto> beginAuthorization(TomOAuthAuthorizationRequest request)` | Records the pending authorization and answers where to send the browser. Preserves any query the provider's authorization endpoint already carries (some tenanted providers encode the tenant there). |
+| `completeAuthorization` | `Future<TomOAuthExchange> completeAuthorization({required String code, required String state})` | Spends the pending record, exchanges the code, verifies the claims, and answers who the provider says this is. |
+| `decodeIdTokenClaims` | `static Map<String, Object?> decodeIdTokenClaims(String idToken)` | The `id_token` payload. The **signature is not verified** — see [Status and Limitations](../authentication.md#status-and-limitations). |
+
+### TomExternalIdentityLink
+
+One persisted link row. `@tomReflector`, `@TomDbTable(table: 'tom_external_identity')`.
+
+| Field | Column | Notes |
+| ----- | ------ | ----- |
+| `id` | `id` | Surrogate key, `-1` until persisted. |
+| `issuer` | `issuer` | The provider's issuer identifier. |
+| `subject` | `subject` | The provider's stable identifier for the user, within `issuer`. |
+| `localUsername` | `local_username` | The local account. A username rather than a numeric id, because that is the handle the directory and `TomAuthenticationData` both already speak. |
+| `displayName` | `display_name` | What the provider asserted when the link was made — operator diagnostics. |
+| `linkedAt` | `linked_at` | When the link was created (UTC). |
+| `lastLoginAt` | `last_login_at` | When it was last used, or `null`. What lets an operator answer "is this link still in use?" before revoking a provider. |
+
+`createTableSql` makes `(issuer, subject)` unique — a duplicate would make which
+local account a sign-in reaches depend on row order — and indexes
+`local_username`, which turns "every identity linked to this account" into a
+lookup rather than a scan.
+
+### TomExternalIdentityLinkRepository
+
+`TomSqlDatasourceRepository<TomExternalIdentityLink, int>`.
+
+### TomExternalIdentityStore
+
+The linking table.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `localUsernameFor` | `Future<String?> localUsernameFor(TomExternalIdentity identity)` | The linked account, or `null`. |
+| `link` | `Future<void> link(TomExternalIdentity identity, String localUsername)` | Creates or updates the link. Relinking updates rather than duplicating. |
+| `recordLogin` | `Future<void> recordLogin(TomExternalIdentity identity)` | Stamps `lastLoginAt`. |
+| `identitiesOf` | `Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername)` | Every identity linked to an account — the account-settings question. |
+| `resolve` | `static TomExternalIdentityStore? resolve()` | The installed bean, or `null`. There is deliberately **no in-memory default**: a link that vanishes on restart sends a returning user through provisioning again. |
+
+### TomPersistentExternalIdentityStore
+
+The production implementation, over a
+`TomSqlDatasourceRepository<TomExternalIdentityLink, int>`.
+
+```dart
+const TomPersistentExternalIdentityStore(TomSqlDatasourceRepository<TomExternalIdentityLink, int> repository)
+```
+
+### TomMemoryExternalIdentityStore
+
+A map-backed store for tests. Not a production default — see
+`TomExternalIdentityStore.resolve`.
+
+### TomOAuthCredential
+
+The credential an external login carries in `TomAuthenticationData.key`.
+
+```dart
+const TomOAuthCredential({required String code, required String state})
+```
+
+A typed value rather than a delimited string, because the pair is what the flow
+needs and a `'code|state'` convention is a parser two files apart from its
+formatter.
+
+### TomExternalIdentityDirectory
+
+What the deployment supplies. The framework has no user table — the whole point
+of `TomAuthenticationService` is that a deployment owns that — so an external
+login can go no further than "this is `alice@example.com` at
+`https://accounts.google.com`" without asking the application who that is.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `authenticatedPrincipalFor` | `Future<TomAuthenticationInfo?> authenticatedPrincipalFor(String username, TomAuthenticationData authData)` | The account lookup — note it is **not** passed a credential: the provider has already authenticated the user, and demanding a password here would be asking them to log in twice. `null` when no local account exists. |
+| `provisionFromExternalIdentity` | `Future<TomAuthenticationInfo> provisionFromExternalIdentity(TomExternalIdentity identity, TomAuthenticationData authData)` | Creates a local account. Only ever called under `autoProvision`. The default implementation throws `login.error.oauth.provisioning-unsupported`, so turning provisioning on without implementing this gives a clear error rather than a half-created account. |
+| `resolve` | `static TomExternalIdentityDirectory? resolve()` | The installed bean, or `null`. |
+
+The two methods are separate because the second is a *decision* the first is
+not: resolving a known account is a lookup, while creating one is a policy
+choice.
+
+### TomOAuthAuthenticationService
+
+A `TomAuthenticationService` that authenticates an OAuth 2.0 / OIDC
+authorization code — and nothing else. It issues no token, consults no 2FA
+policy and makes no session decision; `TomAuthenticationServer.authenticateExternal`
+hands its result to the same continuation a password login reaches.
+
+```dart
+const TomOAuthAuthenticationService({
+  required TomExternalIdentityDirectory directory,
+  TomAuthenticationService? delegate,
+  TomOAuthFlow? flow,
+  TomExternalIdentityStore? identityStore,
+})
+```
+
+`delegate` is what keeps passwords working: a deployment installs *one*
+authentication service, so any credential that is not a `TomOAuthCredential`
+passes straight through. `null` makes external identity the only way in — a
+legitimate choice, and not the default one.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `authenticateUser` | `Future<TomAuthenticationInfo> authenticateUser(TomAuthenticationData authData)` | *(override)* Completes the handshake, replays the flow's login context over the message's, resolves or provisions the local account, records the login, and returns an ordinary `TomAuthenticationInfo`. |
+
+Login failure keys: `login.error.oauth.no-identity-store`,
+`login.error.oauth.linked-account-missing`,
+`login.error.oauth.no-local-account`,
+`login.error.oauth.provisioning-unsupported`,
+`login.error.oauth.unknown-issuer`,
+`login.error.oauth.credential-not-supported`.
+
+### TomOAuthServer
+
+The `/oauth/*` endpoints. `@tomReflector @tomComponent
+@TomApiImplementation(apiId: tomOAuthApiId)`, implementing the kernel's
+`TomOAuthApiService`.
+
+All three endpoints are public: there is no caller to authenticate — that is the
+point of logging in — and the unguessable `state` handle is what ties a callback
+to an authorization this server started.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `listOAuthProviders` | `Future<List<TomOAuthProviderDto>> listOAuthProviders()` | `GET /oauth/providers`. Resource keys only. |
+| `beginOAuthAuthorization` | `Future<TomOAuthAuthorizationDto> beginOAuthAuthorization(TomOAuthAuthorizationRequest request)` | `POST /oauth/authorize`. |
+| `completeOAuthAuthorization` | `Future<TomAuthenticationResult> completeOAuthAuthorization(TomOAuthCallbackRequest request)` | `GET /oauth/callback`. Refuses a provider-reported error and an unknown state, then delegates to `TomAuthenticationServer.authenticateExternal`. Returns a login result, not an OAuth result. |
+
+Keys raised: `oauth.callback.provider_error`, `oauth.callback.unknown_state`
+(both `TomEndpointHandlerException`).
+
 ## Global Functions and Constants
 
 None — this module exposes no top-level functions or constants. The one
 top-level type alias, `TomTotpSecretResolver`, is documented above with the
-adaptor that reads it.
+adaptor that reads it. The OAuth contract's ids (`tomOAuthApiId` and the three
+endpoint ids) and `registerTomOAuthApi()` live in `tom_core_kernel`'s security
+module, with the rest of the wire contract.

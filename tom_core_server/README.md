@@ -103,7 +103,7 @@ abstract, so other backends can be added.
 | ------ | --------- | ------------ |
 | `configuration` | `TomBaseServerConfiguration`, `TomServerConfigResourceProvider`, `TomConfig<T>`, `TomYaml` | Typed config + YAML resources |
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
-| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin` | Authentication service and adaptor annotations; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; and a server's own login when it calls another service as itself |
+| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomExternalIdentityStore` | Authentication service and adaptor annotations; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one |
 | `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; and delegation of those roles by explicit share, out-of-office window, or revocable hand-over |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
@@ -234,6 +234,32 @@ lendable to another principal (`TomPrincipalDelegation`).
 `TomHealthService` / `TomHealthServer` expose health endpoints backed by
 `HealthAnalyzer`s.
 
+"Sign in with …" is wired in as one line, because it is not a second login path:
+
+```dart
+TomAuthenticationServer.globalSettingUserAuthenticationService =
+    TomOAuthAuthenticationService(
+      directory: MyDirectory(),  // your account lookup + provisioning policy
+      delegate: TomAuthenticationServer.globalSettingUserAuthenticationService,
+    );
+```
+
+`TomOAuthAuthenticationService` **implements `TomAuthenticationService`**. It
+receives a `TomOAuthCredential` where a password login receives a password,
+exchanges the authorization code, resolves the local account through
+`TomExternalIdentityStore`'s `(issuer, subject)` linking table — and then stops.
+It issues no token, consults no 2FA policy and makes no session decision,
+because the result is handed to the same continuation a password login reaches.
+An externally authenticated principal is therefore challenged for its second
+factor and issued exactly the claims a password login would produce, not because
+this is reimplemented but because it is never touched. Any credential that is
+not a `TomOAuthCredential` passes through to the `delegate`, so an account may
+hold a password *and* several external identities at once.
+
+Providers are configuration data (`oauth.providers`), never code, and what a
+first external login with no local account does — `refuse` or `autoProvision` —
+is per-provider configuration too. See [`doc/authentication.md`](doc/authentication.md).
+
 ## Architecture
 
 ```
@@ -295,7 +321,7 @@ apps get the full kernel API through one dependency. See the
 ## Status
 
 - **Version:** 1.1.4
-- **Tests:** 1367 test cases across 46 module suites (run with `testkit :test`
-  or `dart test`). 198 are tagged `db` and skip unless a live MySQL is
+- **Tests:** 1726 test cases across 56 module suites (run with `testkit :test`
+  or `dart test`). 243 are tagged `db` and skip unless a live MySQL is
   reachable — bring one up with `tool/run_db_tests.sh`.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

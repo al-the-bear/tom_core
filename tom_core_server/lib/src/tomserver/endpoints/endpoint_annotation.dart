@@ -268,13 +268,16 @@ class TomEndpoint<requestType extends Object, resultType extends Object> impleme
   /// `Access-Control-Allow-Headers` override for this endpoint.
   final String? corsAllowedHeaders;
 
-  /// Binds URL path parameters to typed request-DTO fields.
+  /// Binds URL parameters — path captures *and* query-string parameters — to
+  /// typed request-DTO fields.
   ///
-  /// Keys are the route-capture names in [uri] (e.g. `id` in `/items/{id}`);
-  /// values are the request-DTO field names the captured value is injected
-  /// under before the DTO is instantiated. Path parameters not listed bind by
-  /// their capture name (identity), so an empty map binds every path parameter
-  /// by its own name. See `TomApiEndpoint.urlParameterMapping`.
+  /// Keys are the parameter names on the URL: a route capture in [uri] (e.g.
+  /// `id` in `/items/{id}`) or a query-string parameter name; values are the
+  /// request-DTO field names the value is injected under before the DTO is
+  /// instantiated. Path parameters not listed bind by their capture name
+  /// (identity), so an empty map binds every path parameter by its own name;
+  /// query parameters bind **only** when named here, so an endpoint opts into
+  /// query binding per parameter. See `TomApiEndpoint.urlParameterMapping`.
   final Map<String, String> urlParameterMapping;
 
   /// Declares an endpoint; every field has a sensible default so only the

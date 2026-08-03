@@ -45,6 +45,11 @@ per-principal-per-resource role resolution.
   - [Tom2FAChallenge](#tom2fachallenge)
   - [TomTotp](#tomtotp)
   - [TomServerPrincipal](#tomserverprincipal)
+  - [TomOAuthProviderDto](#tomoauthproviderdto)
+  - [TomOAuthAuthorizationRequest](#tomoauthauthorizationrequest)
+  - [TomOAuthAuthorizationDto](#tomoauthauthorizationdto)
+  - [TomOAuthCallbackRequest](#tomoauthcallbackrequest)
+  - [TomOAuthApiService](#tomoauthapiservice)
 - [Enums](#enums)
   - [TomAuthState](#tomauthstate)
   - [AuthGroupMode](#authgroupmode)
@@ -56,7 +61,8 @@ per-principal-per-resource role resolution.
 Sources: `lib/src/tombase/security/user_principal_aci.dart`,
 `tom_authorization.dart`, `access_controls.dart`,
 `resource_role_authorization.dart`, `authentication_authorization.dart`,
-`bearer_authentication.dart`, `two_factor.dart`, `server_principal.dart`.
+`bearer_authentication.dart`, `two_factor.dart`, `server_principal.dart`,
+`oauth_contract.dart`.
 
 `user_principal_aci.dart` holds the identity/authorization data model:
 `TomUser` (identity), `TomPrincipal` (authenticated session + context),
@@ -106,6 +112,21 @@ verifying, enrolment tooling handing out a secret, and the client driving the
 second-factor UI. The server-side orchestration (adaptor registry, mechanisms,
 the two passes) is `tom_core_server`'s authentication module.
 
+`oauth_contract.dart` (C-9) holds the wire contract for external-identity login:
+the DTOs (`TomOAuthProviderDto`, `TomOAuthAuthorizationRequest`,
+`TomOAuthAuthorizationDto`, `TomOAuthCallbackRequest`), the `tomOAuthApi`
+declaration with its three public endpoints, and the `TomOAuthApiService` shape
+both tiers bind to. The *flow* — client secret, token-endpoint call, linking
+table — is server-side and lives in `tom_core_server`; what is here is only what
+the two halves must agree on.
+
+Note the type the callback endpoint answers with: `TomAuthenticationResult`, the
+same type `/login` answers with. That is the contract's half of the framework's
+central decision about external identity — an OAuth provider *resolves a
+principal*, and everything after the principal is resolved is the one login path
+every credential reaches, second factor included. A distinct "OAuth result" type
+here would be the first step towards a second token issuer.
+
 ## Class Hierarchy
 
 ```
@@ -131,6 +152,10 @@ Object
 ├── Tom2FAChallenge
 ├── TomTotp                                  (private constructor)
 ├── TomServerPrincipal                       (private constructor)
+├── TomOAuthProviderDto                      (@tomReflector)
+├── TomOAuthAuthorizationRequest             (@tomReflector)
+├── TomOAuthAuthorizationDto                 (@tomReflector)
+├── TomOAuthCallbackRequest                  (@tomReflector)
 └── TomAccessControl                         (abstract)
     ├── TomGradedAccess
     ├── TomNoAccess
@@ -145,6 +170,7 @@ Object
 
 (interfaces / adapters)
 ├── TomAuthorizable                          (abstract interface)
+├── TomOAuthApiService                       (abstract interface)
 ├── TomAuthorizationAdapter                  (abstract)
 │   └── TomResourceRoleAdapter               (implements)
 
@@ -1181,6 +1207,181 @@ startup.
 | `install(TomPrincipal principal)` | `void` | Installs the deployment's identity for the rest of the process. Replacing an existing principal is intended — a long-running server re-authenticates as its service token nears expiry. |
 | `clear()` | `void` | Removes the principal, returning the process to the uncapped regime. For tests and orderly shutdown. Note the direction: clearing *widens* access, so it is never the right response to an expired token — `install` again instead. |
 
+### TomOAuthProviderDto
+
+One configured external-identity provider, **as a client sees it** — a
+reflection-first wire DTO (G-DTO) with plain non-`final` fields and no
+hand-written serializer.
+
+Deliberately thin: a client needs to render a button and post an id back.
+Issuer URLs, client ids, secrets and scopes are the server's business and never
+reach the wire.
+
+#### Constructors
+
+```dart
+TomOAuthProviderDto({
+  String id = '',
+  String displayNameKey = '',
+  String iconKey = '',
+})
+
+TomOAuthProviderDto.scoped(String id)
+```
+
+`scoped` derives both keys from `id` as `oauth.<id>.name` / `oauth.<id>.icon`,
+which is what makes the convention structural rather than a matter of
+per-provider discipline — adding a provider cannot silently invent a second
+naming scheme.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `resourceScope` | `String` | `'oauth'` — the scope every shipped provider's resource keys live under, so a resource bundle can be searched by prefix. The same convention `Tom2FAMethodDescriptor` follows. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | The provider key as configured under `oauth.providers` on the server (`google`, `github`, `acme-sso`). What a client posts back in [TomOAuthAuthorizationRequest.providerId]. |
+| `displayNameKey` | `String` | Resource key of the provider's short label ("Sign in with Google"). A key rather than text (G-RES-1) — the label is rendered in the user's language, which the server does not know at configuration time. |
+| `iconKey` | `String` | Resource key of the icon to render. A key rather than an asset path, because the Flutter and web tiers name their assets differently and the provider must not have to know which one is asking. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `toString()` | `String` | *(override)* `TomOAuthProviderDto(<id>)`. |
+
+### TomOAuthAuthorizationRequest
+
+The request that starts an authorization-code flow: the same login context a
+password [TomAuthenticationMessage] carries, minus the credential — because
+there is no credential yet; that is what the provider is about to establish.
+
+The context is captured **now** rather than at the callback because the
+provider's redirect arrives as a plain browser navigation carrying none of it:
+no client id, no locale, no organization. The server stores it with the pending
+authorization and replays it when the code comes back, so an externally
+authenticated session is issued in exactly the organization and locale the login
+was started in.
+
+#### Constructors
+
+```dart
+TomOAuthAuthorizationRequest({
+  String providerId = '',
+  String client = '',
+  String application = '',
+  String process = '',
+  String organization = '',
+  String clientLanguage = '',
+  String clientCountry = '',
+  String clientTimezone = '',
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `providerId` | `String` | The provider to authorize against — [TomOAuthProviderDto.id]. |
+| `client` | `String` | The calling client (`web`, `flutter`, …), as in [TomAuthenticationMessage.client]. |
+| `application` | `String` | The application the login is for. |
+| `process` | `String` | The process the login is for. |
+| `organization` | `String` | The organization the login is for. |
+| `clientLanguage` | `String` | The client's language code. |
+| `clientCountry` | `String` | The client's country code. |
+| `clientTimezone` | `String` | The client's IANA timezone name. |
+
+Note what is **absent**: a redirect URI. Where the provider sends the user back
+is server configuration, because a redirect target a caller may choose is an
+open redirect — an attacker who can name it can have the provider deliver a live
+authorization code to a host they own.
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `toString()` | `String` | *(override)* `TomOAuthAuthorizationRequest(<providerId>)`. |
+
+### TomOAuthAuthorizationDto
+
+Where to send the user, and the handle the flow is remembered under.
+
+#### Constructors
+
+```dart
+TomOAuthAuthorizationDto({String authorizationUri = '', String state = ''})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `authorizationUri` | `String` | The provider's authorization endpoint with the flow's parameters applied — `client_id`, `redirect_uri`, `scope`, `state` and, when the provider supports it, the PKCE `code_challenge`. The client navigates to it and does nothing else with it. |
+| `state` | `String` | The opaque handle of the pending authorization. Returned so a client can *correlate* the redirect it later observes with the flow it started. **Not a credential:** presenting it authenticates nothing, because completing the flow additionally requires the provider's authorization code and the PKCE verifier the server kept. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `toString()` | `String` | *(override)* `TomOAuthAuthorizationDto(<state>)`. |
+
+### TomOAuthCallbackRequest
+
+What the provider's redirect carries back: either `code` + `state` (success) or
+`error` + `errorDescription` (the user declined, the provider refused).
+
+The fields are named for the DTO; the snake_cased query parameters they bind
+from are declared once in the endpoint's `urlParameterMapping`, which is what
+keeps the provider's spelling out of the Dart shape.
+
+#### Constructors
+
+```dart
+TomOAuthCallbackRequest({
+  String code = '',
+  String state = '',
+  String error = '',
+  String errorDescription = '',
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `code` | `String` | The authorization code to exchange, when the flow succeeded. |
+| `state` | `String` | The handle of the pending authorization ([TomOAuthAuthorizationDto.state]). |
+| `error` | `String` | The provider's error code (`access_denied`, …), when it refused. |
+| `errorDescription` | `String` | The provider's human-readable elaboration of `error`, when it sent one. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `toString()` | `String` | *(override)* `TomOAuthCallbackRequest(<state>, error: <error>)`. |
+
+### TomOAuthApiService
+
+The typed service interface behind `tomOAuthApi` — the contract's *Dart* face.
+The server implements it; a client that generates or hand-writes a caller
+implements the same shape.
+
+It carries no annotation because the server-side ones (`@tomComponent`,
+`@TomApiEndpointImplementation`) live in `tom_core_server` and cannot be named
+here — the same split the rest of the framework's contracts follow.
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `listOAuthProviders()` | `Future<List<TomOAuthProviderDto>>` | `tomOAuthProvidersEndpointId` — the providers this deployment configures. |
+| `beginOAuthAuthorization(TomOAuthAuthorizationRequest request)` | `Future<TomOAuthAuthorizationDto>` | `tomOAuthBeginEndpointId` — starts a flow and answers where to send the user. |
+| `completeOAuthAuthorization(TomOAuthCallbackRequest request)` | `Future<TomAuthenticationResult>` | `tomOAuthCompleteEndpointId` — exchanges the code and completes the login, answering exactly what a password login answers. |
+
 ## Enums
 
 ### TomAuthState
@@ -1224,6 +1425,17 @@ Strategy for how a [TomAuthorizer] interacts with resource authorization.
 | -------- | --------- | ----------- |
 | `tomProtect` | `T tomProtect<T>(T data, T fallback, String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.protect]. |
 | `tomProtected` | `bool tomProtected(String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.isProtected]. |
+| `registerTomOAuthApi` | `void registerTomOAuthApi()` | Registers `tomOAuthApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves — a server before mounting the endpoints, a client before building a caller. Registration is explicit rather than implicit in a top-level initializer because a deployment that configures no providers should not carry the API in its registry. |
+
+### Constants
+
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `tomOAuthApiId` | `String` | `'tomOAuth'` — the id `tomOAuthApi` is registered and bound under. A constant because the server's `@TomApiEndpointImplementation(apiId: …)` has to name it, and a literal restated on the implementation side is the one string that can go wrong without anything failing to compile. |
+| `tomOAuthProvidersEndpointId` | `String` | `'listOAuthProviders'` — the configured providers a client may offer. |
+| `tomOAuthBeginEndpointId` | `String` | `'beginOAuthAuthorization'` — start an authorization-code flow for one provider. |
+| `tomOAuthCompleteEndpointId` | `String` | `'completeOAuthAuthorization'` — the provider's redirect target; completes the login. |
+| `tomOAuthApi` | `TomApi` | External-identity login, mounted at `/oauth`. Three endpoints: `GET /providers` → `List<TomOAuthProviderDto>`; `POST /authorize` (`TomOAuthAuthorizationRequest` → `TomOAuthAuthorizationDto`); `GET /callback` (`TomOAuthCallbackRequest` → `TomAuthenticationResult`, with `urlParameterMapping` binding `code`, `state`, `error` and `error_description` out of the query string). Every endpoint is `TomPublicAccess`, necessarily so: this is how a caller who is *not yet* authenticated becomes authenticated, exactly like `/login`. Public does not mean unguarded — the flow is protected by the single-use, server-issued, TTL-bounded `state` handle and the PKCE verifier, neither of which a caller supplies. |
 
 ### Typedefs
 

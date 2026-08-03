@@ -143,6 +143,44 @@ class TomEndpointHandler {
     });
   }
 
+  /// Folds the request's *query-string* parameters into [jsonBodyData] under
+  /// the request-DTO field names declared by [endpoint].`urlParameterMapping`.
+  ///
+  /// Only query parameters that the mapping **names explicitly** are folded —
+  /// unlike [injectPathParameters], there is no identity fallback. A path
+  /// capture is part of the route and therefore part of the endpoint's own
+  /// declaration, so binding it by its own name is safe; a query string is
+  /// whatever a caller chose to append, so an identity fallback would let any
+  /// caller write any field of the request DTO of any endpoint. Requiring the
+  /// mapping makes query binding opt-in per contract and per parameter, and
+  /// leaves every existing endpoint's behaviour unchanged.
+  ///
+  /// This is what lets a redirect target — `GET /oauth/callback?code=…&state=…`,
+  /// which a browser navigates to with no body at all — arrive as a typed DTO
+  /// rather than a handful of bare `String` parameters (G-API-2). It is also
+  /// where a provider's snake_cased spelling (`error_description`) is translated
+  /// into the Dart field name, so the wire convention stops at the contract.
+  ///
+  /// Called *before* [injectPathParameters], so a path capture of the same
+  /// mapped name still wins: the route is the stronger statement.
+  ///
+  /// Pure and side-effect-free apart from mutating [jsonBodyData], so it is
+  /// unit-testable without a live router (like [coercePrimitiveParameter]).
+  static void injectQueryParameters(
+    Map<String, dynamic> jsonBodyData,
+    Request req,
+    TomEndpoint endpoint,
+  ) {
+    final mapping = endpoint.urlParameterMapping;
+    if (mapping.isEmpty) return;
+    final queryParameters = req.requestedUri.queryParameters;
+    if (queryParameters.isEmpty) return;
+    mapping.forEach((queryName, fieldName) {
+      final value = queryParameters[queryName];
+      if (value != null) jsonBodyData[fieldName] = value;
+    });
+  }
+
   /// Whether requests are logged when an endpoint does not specify
   /// `logRequests`.
   static bool globalSettingLogRequestsDefault = true;
@@ -151,10 +189,12 @@ class TomEndpointHandler {
   static String globalSettingCorsAllowedOriginsDefault = "*";
 
   /// Default `Access-Control-Allow-Methods` when an endpoint does not override it.
-  static String globalSettingCorsAllowedMethodsDefault = "GET, POST, PUT, DELETE, TRACE, PATCH, HEAD, CONNECT";
+  static String globalSettingCorsAllowedMethodsDefault =
+      "GET, POST, PUT, DELETE, TRACE, PATCH, HEAD, CONNECT";
 
   /// Default `Access-Control-Allow-Headers` when an endpoint does not override it.
-  static String globalSettingCorsAllowedHeadersDefault = "Origin, Content-Type, Accept, Authorization, Referer, User-Agent";
+  static String globalSettingCorsAllowedHeadersDefault =
+      "Origin, Content-Type, Accept, Authorization, Referer, User-Agent";
 
   /// When true, logs the request context for each call (debugging aid).
   static bool debugPrintContext = false;
@@ -168,9 +208,15 @@ class TomEndpointHandler {
     return Response.ok(
       '',
       headers: {
-        'Access-Control-Allow-Origin': metadata.endpoint.corsAllowedOrigins ?? globalSettingCorsAllowedOriginsDefault,
-        'Access-Control-Allow-Methods': metadata.endpoint.corsAllowedMethods ?? globalSettingCorsAllowedMethodsDefault,
-        'Access-Control-Allow-Headers': metadata.endpoint.corsAllowedHeaders ?? globalSettingCorsAllowedHeadersDefault,
+        'Access-Control-Allow-Origin':
+            metadata.endpoint.corsAllowedOrigins ??
+            globalSettingCorsAllowedOriginsDefault,
+        'Access-Control-Allow-Methods':
+            metadata.endpoint.corsAllowedMethods ??
+            globalSettingCorsAllowedMethodsDefault,
+        'Access-Control-Allow-Headers':
+            metadata.endpoint.corsAllowedHeaders ??
+            globalSettingCorsAllowedHeadersDefault,
       },
     );
   }
@@ -205,8 +251,7 @@ class TomEndpointHandler {
   /// role/group/entitlement authorization, and stream/file upload binding are
   /// tracked follow-ups (see the quest completion steps).
   Future<Response> handleMethodCall(Request req) async {
-
-    if( req.method == TomHttpMethod.options.name ) return handlePreflight(req);
+    if (req.method == TomHttpMethod.options.name) return handlePreflight(req);
 
     List<Object> positionalArguments = [];
 
@@ -218,13 +263,13 @@ class TomEndpointHandler {
     var authentication = getFromCurrentZone<TomPrincipal>();
     var token = getFromCurrentZone<TomClientJwtToken>();
     var requestId = getFromCurrentZone<TomRequestId>();
-    var reqId = requestId==null ? "" : requestId.uuid; 
-
+    var reqId = requestId == null ? "" : requestId.uuid;
 
     bool accessCheck = checkAccess(authentication);
 
     if (accessCheck == false) {
-      if (TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection) {
+      if (TomResourceKeyProtection
+          .globalSettingUseAutomaticEndpointProtection) {
         accessCheck = checkAutomaticAccess(accessCheck);
       }
     }
@@ -248,29 +293,41 @@ class TomEndpointHandler {
       );
     }
 
-    if( debugPrintContext ) tomLog.trace("$reqId-${req.url}: Request context is ${req.context} TomPrincipal is $authentication");
-    if( debugPrintAuthentication) tomLog.trace("$reqId-${req.url}: Found $authentication and $token for request",);
+    if (debugPrintContext)
+      tomLog.trace(
+        "$reqId-${req.url}: Request context is ${req.context} TomPrincipal is $authentication",
+      );
+    if (debugPrintAuthentication)
+      tomLog.trace(
+        "$reqId-${req.url}: Found $authentication and $token for request",
+      );
     for (var pm in method.parameters) {
       if (pm.type.reflectedType == TomPrincipal && authentication != null) {
-        tomLog.trace("$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomPrincipal");
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomPrincipal",
+        );
         positionalArguments.add(authentication);
         continue;
-      } else if( authentication == null ){
+      } else if (authentication == null) {
         tomLog.warn(
           "$reqId-${req.url}: Found parameter of type ${pm.type.reflectedType} but no TomPrincipal in zone.",
         );
       }
       if (pm.type.reflectedType == TomClientJwtToken && token != null) {
-        tomLog.trace("$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomClientJwtToken");
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomClientJwtToken",
+        );
         positionalArguments.add(token);
         continue;
-      }else if( token == null ){
+      } else if (token == null) {
         tomLog.warn(
           "$reqId-${req.url}: Found parameter of type ${pm.type.reflectedType} but no TomClientJwtToken in zone.",
         );
       }
       if (req.runtimeType == pm.type.reflectedType) {
-        tomLog.trace("$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to request object");
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to request object",
+        );
         positionalArguments.add(req);
         continue;
       }
@@ -301,8 +358,10 @@ class TomEndpointHandler {
       // invocation would fail with the wrong argument count.
       final pathParam = req.params[pm.simpleName];
       if (pathParam != null) {
-        final primitive =
-            coercePrimitiveParameter(pm.type.reflectedType, pathParam);
+        final primitive = coercePrimitiveParameter(
+          pm.type.reflectedType,
+          pathParam,
+        );
         if (primitive != null) {
           tomLog.trace(
             "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from path variable '$pathParam'.",
@@ -319,8 +378,10 @@ class TomEndpointHandler {
       // fails with the wrong argument count.
       final queryParam = req.requestedUri.queryParameters[pm.simpleName];
       if (queryParam != null) {
-        final primitive =
-            coercePrimitiveParameter(pm.type.reflectedType, queryParam);
+        final primitive = coercePrimitiveParameter(
+          pm.type.reflectedType,
+          queryParam,
+        );
         if (primitive != null) {
           tomLog.trace(
             "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from query parameter '$queryParam'.",
@@ -330,9 +391,9 @@ class TomEndpointHandler {
         }
       }
       var ctx = getFromCurrentZone<TomExecutionContext>();
-      if( ctx != null ) {
+      if (ctx != null) {
         var ctxValue = ctx.contextMap[pm.simpleName];
-        if(ctxValue != null) {
+        if (ctxValue != null) {
           tomLog.trace(
             "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from execution context using name.",
           );
@@ -347,13 +408,15 @@ class TomEndpointHandler {
             req.method != TomHttpMethod.trace.name) {
           try {
             String body = await req.readAsString();
-            // Fold the JSON body (when present) and the mapped URL path
-            // parameters into one map, then build the request DTO from it. Path
-            // parameters must reach the DTO even for a body-less GET
+            // Fold the JSON body (when present) and the mapped URL parameters
+            // into one map, then build the request DTO from it. URL parameters
+            // must reach the DTO even for a body-less GET
             // (`GET /items/{id}` -> `request.id`), so the DTO is instantiated
-            // whenever there is a body *or* at least one path parameter.
-            final Map<String, dynamic> jsonBodyData =
-                body.isNotEmpty ? jsonDecode(body) as Map<String, dynamic> : {};
+            // whenever there is a body *or* at least one URL parameter.
+            final Map<String, dynamic> jsonBodyData = body.isNotEmpty
+                ? jsonDecode(body) as Map<String, dynamic>
+                : {};
+            injectQueryParameters(jsonBodyData, req, metadata.endpoint);
             injectPathParameters(jsonBodyData, req, metadata.endpoint);
             if (jsonBodyData.isNotEmpty) {
               try {
@@ -379,18 +442,20 @@ class TomEndpointHandler {
                   "Request body contains content for ${parameterMirror.simpleName} but instantiation from JSON $jsonBodyData failed: $ex",
                 );
               }
-            }else{
+            } else {
               tomLog.warn(
-                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty and no path parameters were present.",
+                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty and no URL parameters were present.",
               );
             }
           } catch (ex) {
-            tomLog.error("$reqId-${req.url}: Failed to parse json/set values $ex");
+            tomLog.error(
+              "$reqId-${req.url}: Failed to parse json/set values $ex",
+            );
           }
         }
         if (req.context.isNotEmpty &&
             req.context.containsKey(parameterMirror.simpleName) &&
-            req.context[parameterMirror.simpleName] != null ) {
+            req.context[parameterMirror.simpleName] != null) {
           try {
             if (req.context[parameterMirror.simpleName]
                 is Map<String, Object?>) {
@@ -441,7 +506,9 @@ class TomEndpointHandler {
           rootException: error,
         );
       }
-      tomLog.warn("$reqId-${req.url}: Setting parameter ${pm.simpleName} of type ${pm.reflectedType} failed");
+      tomLog.warn(
+        "$reqId-${req.url}: Setting parameter ${pm.simpleName} of type ${pm.reflectedType} failed",
+      );
     }
 
     String callName = method.simpleName;
@@ -451,9 +518,9 @@ class TomEndpointHandler {
     TomTransaction? transaction;
 
     try {
-      if( metadata.transactionInfo != null ) {
+      if (metadata.transactionInfo != null) {
         tomLog.trace("$reqId-${req.url}: Starting transaction...");
-        ( transaction, _ ) = TomTransactionManager.startTransaction();
+        (transaction, _) = TomTransactionManager.startTransaction();
       }
       tomLog.trace(
         "$reqId-${req.url}: Calling method $callName on ${instance.reflectee.runtimeType} with parameters $positionalArguments",
@@ -462,7 +529,7 @@ class TomEndpointHandler {
       if (result is Future) {
         result = await result;
       }
-      if( transaction != null ) {
+      if (transaction != null) {
         tomLog.trace("$reqId-${req.url}: Committing transaction...");
         await transaction.commitTransaction();
       }
@@ -475,8 +542,10 @@ class TomEndpointHandler {
       tomLog.warn(
         "$reqId-${req.url}: $callName on ${instance.type.simpleName} threw $error\n$stacktrace",
       );
-      if( transaction != null ) {
-        tomLog.warn("$reqId-${req.url}: Rolling back transaction after exception $error");
+      if (transaction != null) {
+        tomLog.warn(
+          "$reqId-${req.url}: Rolling back transaction after exception $error",
+        );
         await transaction.rollbackTransaction();
       }
       // CE-LG: an audited endpoint records its failures as well as its
@@ -768,6 +837,7 @@ class TomEndpointRouting {
       componentClasses: componentClasses,
     );
   }
+
   /// Registers the API contracts the framework itself ships an implementation
   /// of, so the router can resolve them without the application registering
   /// anything.
@@ -788,6 +858,7 @@ class TomEndpointRouting {
   /// and cannot double-mount.
   void registerFrameworkApis() {
     registerTomUserPreferencesApi();
+    registerTomOAuthApi();
   }
 
   /// Scans the annotated classes and mounts every endpoint method onto a fresh
@@ -808,9 +879,11 @@ class TomEndpointRouting {
       createRoutesForClassMirror(serviceType, serviceInstance, router);
     }
     // using API definitions from the remote api registry
-    for( var serviceType in scanResult.apiImplementations ) {
+    for (var serviceType in scanResult.apiImplementations) {
       Object? serviceInstance = getReferencedComponent(serviceType);
-      serviceInstance ??= TomBean.getBeanByType(serviceType.dynamicReflectedType);
+      serviceInstance ??= TomBean.getBeanByType(
+        serviceType.dynamicReflectedType,
+      );
       // Same last resort as the interface branch above: an API implementation
       // with a no-argument constructor is fully described by its declaration,
       // so it need not be registered by hand. Without this the framework's own
@@ -826,7 +899,11 @@ class TomEndpointRouting {
   /// Mounts every endpoint method of [serviceType] (invoked on
   /// [serviceInstance]) onto [router], building a [TomEndpointHandler] per
   /// method from its collected metadata.
-  void createRoutesForClassMirror(ClassMirror serviceType, Object? serviceInstance, Router router) {
+  void createRoutesForClassMirror(
+    ClassMirror serviceType,
+    Object? serviceInstance,
+    Router router,
+  ) {
     tomLog.trace(
       "tomService interface $serviceType, ${serviceType.metadata}, $serviceInstance",
     );
@@ -841,8 +918,7 @@ class TomEndpointRouting {
       }
       var instanceMirror = tomReflector.reflect(serviceInstance);
       var instanceClassMirror =
-          tomReflector.reflectType(serviceInstance.runtimeType)
-              as ClassMirror;
+          tomReflector.reflectType(serviceInstance.runtimeType) as ClassMirror;
       for (var mmd in methodMetadata) {
         tomLog.trace("Found endpoint ${mmd.methodMirror.simpleName}");
         var instanceMethodMirror =
@@ -883,7 +959,7 @@ class TomEndpointRouting {
             "TomComponentReference must have either componentName or referencedType set in ${serviceType.qualifiedName}, not both.",
           );
         }
-        if(serviceInstance != null ) {
+        if (serviceInstance != null) {
           throw TomEndpointPipelineException(
             "endpoint_pipeline.initialize_router.multiple_component_references",
             "There must be only a single TomComponentReference in ${serviceType.qualifiedName}, not both.",
@@ -1190,19 +1266,19 @@ class TomMethodMetadata {
 /// The partitioned result of scanning the annotated classes: interface-based
 /// services, remote-API implementations, and component classes.
 class TomClassScanResult {
-    /// Classes annotated with `@tomService` (interface-based services).
-    List<ClassMirror> serviceInterfaces = [];
+  /// Classes annotated with `@tomService` (interface-based services).
+  List<ClassMirror> serviceInterfaces = [];
 
-    /// Classes annotated with `@TomApiImplementation`.
-    List<ClassMirror> apiImplementations = [];
+  /// Classes annotated with `@TomApiImplementation`.
+  List<ClassMirror> apiImplementations = [];
 
-    /// Classes annotated with `@TomComponent` (candidate implementations).
-    List<ClassMirror> componentClasses = [];
+  /// Classes annotated with `@TomComponent` (candidate implementations).
+  List<ClassMirror> componentClasses = [];
 
-    /// Creates a scan result from the three class lists.
-    TomClassScanResult({
-      this.serviceInterfaces = const [],
-      this.apiImplementations = const [],
-      this.componentClasses = const [],
-    });
+  /// Creates a scan result from the three class lists.
+  TomClassScanResult({
+    this.serviceInterfaces = const [],
+    this.apiImplementations = const [],
+    this.componentClasses = const [],
+  });
 }

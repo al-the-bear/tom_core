@@ -18,6 +18,7 @@ The security module provides a comprehensive authentication and authorization sy
   - [TomAuthorizer](#tomauthorizer)
   - [TomUIStateController](#tomuistatecontroller)
 - [The Server Principal and the Meet](#the-server-principal-and-the-meet)
+- [External Identity (OAuth 2.0 / OIDC)](#external-identity-oauth-20--oidc)
 - [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
 
@@ -36,6 +37,7 @@ The security module consists of these main files:
 | `tom_authorization.dart` | UI authorization primitives — the four-state model, groups, authorizers, and the global authorization singleton |
 | `two_factor.dart` | The shared half of the two-pass login — the challenge wire shape, its claim names, and the TOTP primitives |
 | `server_principal.dart` | The ambient server principal — the deployment's own identity, which caps every user's grants |
+| `oauth_contract.dart` | The wire contract for external-identity login — the provider/authorization/callback DTOs and the `/oauth` API declaration both tiers bind to |
 
 ### Key Concepts
 
@@ -48,6 +50,9 @@ The security module consists of these main files:
 - **Server Principal**: The *deployment's* own grants. Every decision is
   `min(user, deployment)` — see [The Server Principal and the
   Meet](#the-server-principal-and-the-meet)
+- **External Identity**: A principal resolved by an OAuth 2.0 / OIDC provider
+  instead of by a password — and then treated identically, second factor
+  included. See [External Identity](#external-identity-oauth-20--oidc)
 
 ---
 
@@ -494,6 +499,101 @@ the narrative in
 
 ---
 
+## External Identity (OAuth 2.0 / OIDC)
+
+"Sign in with …" is **not a second login path.** An OAuth provider *resolves a
+principal*; everything after the principal is resolved — the second-factor
+policy, the enrolment offer, token issuance, grant resolution — is the one login
+path every credential reaches.
+
+That decision is visible in this module's contract in a single place, and it is
+the one thing to read the file for: the callback endpoint answers with
+[`TomAuthenticationResult`](#tomauthenticationresult), the *same* type `/login`
+answers with, carrying the same token pair, the same `requires2FA` handshake and
+the same enrolment offer. A distinct "OAuth result" type here would be the first
+step towards a second token issuer — and the copy that drifts is the one that
+stops asking for a second factor.
+
+### What lives here, and what does not
+
+The *flow* is server-side and cannot live in the kernel: it needs a client
+secret, a call to the provider's token endpoint, and a linking table. What has
+to live here is the part the two tiers must agree on (G-API-1, G-API-3):
+
+| Here (kernel) | There (`tom_core_server`) |
+| ------------- | ------------------------- |
+| `TomOAuthProviderDto` — a provider as a client sees it | Issuer URLs, client ids, secrets, scopes |
+| `TomOAuthAuthorizationRequest` / `TomOAuthAuthorizationDto` | PKCE generation, the pending-state store |
+| `TomOAuthCallbackRequest` | Code exchange, id_token claim extraction |
+| `tomOAuthApi` (`/oauth`, three public endpoints) | The endpoint implementations |
+| `TomOAuthApiService` — the Dart shape both sides bind to | The linking table and provisioning policy |
+
+Provider *configuration* is data on the server (`oauth.providers` in the
+configuration module), never code; see `tom_core_server`'s
+`doc/authentication.md` for the YAML, the `refuse` / `autoProvision` choice, and
+the handshake's verification steps.
+
+### The endpoints
+
+| Endpoint | Method | Request → Response |
+| -------- | ------ | ------------------ |
+| `/oauth/providers` | GET | — → `List<TomOAuthProviderDto>` |
+| `/oauth/authorize` | POST | `TomOAuthAuthorizationRequest` → `TomOAuthAuthorizationDto` |
+| `/oauth/callback` | GET | `TomOAuthCallbackRequest` → `TomAuthenticationResult` |
+
+All three are `TomPublicAccess`, and necessarily so: this is how a caller who is
+*not yet* authenticated becomes authenticated, exactly like `/login`. Public does
+not mean unguarded — the flow is protected by the `state` handle (single-use,
+server-issued, TTL-bounded) and the PKCE verifier, neither of which a caller
+supplies.
+
+`/oauth/callback` is a `GET` with no body because the provider redirects a
+*browser* to it: everything arrives in the query string. The endpoint's
+`urlParameterMapping` binds those parameters into the typed DTO and is the one
+place the provider's snake_case spelling (`error_description`) appears.
+
+### Driving it from a client
+
+```dart
+registerTomOAuthApi();
+
+// 1. Offer the buttons. Both keys are resource keys, not text — render them
+//    through the resource module in the user's language.
+final providers = await api.listOAuthProviders();
+
+// 2. Start a flow. Send the login context now: the provider's redirect is a
+//    plain browser navigation and carries none of it.
+final authorization = await api.beginOAuthAuthorization(
+  TomOAuthAuthorizationRequest(
+    providerId: providers.first.id,
+    client: 'flutter',
+    application: 'web-portal',
+    organization: 'acme',
+    clientLanguage: 'en',
+    clientCountry: 'US',
+    clientTimezone: 'Europe/Berlin',
+  ),
+);
+
+// 3. Navigate to authorization.authorizationUri. Keep authorization.state only
+//    to correlate the redirect you observe with the flow you started — it is
+//    not a credential and presenting it authenticates nothing.
+```
+
+The response to the callback is an ordinary login result, so **handle it with
+the ordinary login code** — including the 2FA block in [Best Practice
+6](#6-drive-2fa-from-the-challenge-not-from-the-type). An externally
+authenticated principal is challenged for its second factor exactly like a
+password login, because nothing about the path is different once the principal
+exists.
+
+Two things the client deliberately cannot do: it never names a **redirect URI**
+(a redirect target a caller may choose is an open redirect — an attacker who can
+name it has the provider deliver a live authorization code to a host they own),
+and it never sees an issuer, client id, secret or scope.
+
+---
+
 ## Usage Examples
 
 ### Role-Based Access Control
@@ -706,3 +806,5 @@ This module depends on:
 - **Observable Module**: Reflection annotations for DTOs
 - **Little Things Module**: Zone-based utilities
 - **Scope IDs Module**: `TomScope` path resolution for `TomAuthorizationGroup`
+- **HTTP Connection Module**: `TomApi` / `TomApiEndpoint` and `TomHttpMethod`
+  for the external-identity contract in `oauth_contract.dart`
