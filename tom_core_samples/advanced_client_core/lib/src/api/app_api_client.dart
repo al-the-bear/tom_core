@@ -137,6 +137,32 @@ TodoComment parseComment(Map<String, dynamic> json) => TodoComment()
   ..body.set(_str(json['body']))
   ..createdAt.set(_date(json['createdAt']));
 
+/// Parses a bare array of comment maps into [TodoComment]s.
+///
+/// The server hands the thread over already ordered (oldest first), and this
+/// preserves that order rather than re-sorting: the sequence is the endpoint's
+/// promise, so a client that sorted independently could show a different thread
+/// than the one the server serves.
+List<TodoComment> parseComments(List<Object?> body) =>
+    [for (final e in body) parseComment(_asMap(e))];
+
+/// Parses one `Subtask` from its wire map.
+///
+/// `done` and `position` are typed observables (`TomBool`/`TomInt`), so unlike
+/// the string-backed fields they need real coercion — JSON `true` and JSON
+/// numbers respectively, each with the entity's own default when absent.
+Subtask parseSubtask(Map<String, dynamic> json) => Subtask()
+  ..id.set(_str(json['id']))
+  ..itemId.set(_str(json['itemId']))
+  ..title.set(_str(json['title']))
+  ..done.set(json['done'] == true)
+  ..position.set(_int(json['position']));
+
+/// Parses a bare array of subtask maps into [Subtask]s, preserving the server's
+/// `position` order (see [parseComments]).
+List<Subtask> parseSubtasks(List<Object?> body) =>
+    [for (final e in body) parseSubtask(_asMap(e))];
+
 Map<String, dynamic> _asMap(Object? element) =>
     (element as Map).cast<String, dynamic>();
 
@@ -258,6 +284,32 @@ class AppApiClient implements AppApiService {
   Future<TodoComment> addComment(TodoComment comment) async => parseComment(
         (await _send('POST', '/items/${comment.itemId.get()}/comments',
                 body: jsonEncode(comment.toJson())))
+            .jsonObject,
+      );
+
+  // The two ordered child reads. Both are body-less GETs whose only input is
+  // the path capture, so the typed `EntityIdRequest` is interpolated straight
+  // into the URL here — the DTO round-trip happens server-side, where the
+  // pipeline folds `{id}` back onto the request object.
+  @override
+  Future<List<TodoComment>> listComments(EntityIdRequest request) async =>
+      parseComments((await _get('/items/${request.id}/comments')).jsonArray);
+
+  @override
+  Future<List<Subtask>> listSubtasks(EntityIdRequest request) async =>
+      parseSubtasks((await _get('/items/${request.id}/subtasks')).jsonArray);
+
+  @override
+  Future<Subtask> addSubtask(Subtask subtask) async => parseSubtask(
+        (await _send('POST', '/items/${subtask.itemId.get()}/subtasks',
+                body: jsonEncode(subtask.toJson())))
+            .jsonObject,
+      );
+
+  @override
+  Future<Subtask> updateSubtask(Subtask subtask) async => parseSubtask(
+        (await _send('PUT', '/subtasks/${subtask.id.get()}',
+                body: jsonEncode(subtask.toJson())))
             .jsonObject,
       );
 

@@ -1,9 +1,9 @@
 /// The end-user app's mutating operations, modelled as `TomAction`s with
 /// action-level authorization (step 27, G-ACT-1/2).
 ///
-/// Every write the app performs — saving an item, posting a comment, sharing a
-/// project — runs through a [TomAction] here rather than an inline screen
-/// callback. Two things fall out of that:
+/// Every write the app performs — saving an item, posting a comment, adding or
+/// ticking a checklist step, sharing a project — runs through a [TomAction] here
+/// rather than an inline screen callback. Two things fall out of that:
 ///
 /// - **Action-level authorization.** Each action carries a [canonicalPath]
 ///   (`<controllerId>.<actionId>`, e.g. `todo.item.save`), and its
@@ -90,6 +90,35 @@ class AddCommentContext extends AppActionContext {
   final String body;
 }
 
+/// Context for [AddSubtaskAction]: the parent item id and the step's title.
+class AddSubtaskContext extends AppActionContext {
+  /// Creates the context for adding a step to [itemId] over [session].
+  AddSubtaskContext(super.session, this.itemId, this.title);
+
+  /// The item the subtask becomes part of.
+  final String itemId;
+
+  /// The (non-empty, trimmed) step title.
+  final String title;
+}
+
+/// Context for [ToggleSubtaskAction]: the stored subtask and its new `done`.
+///
+/// Carries the whole [Subtask] rather than just its id because the update is a
+/// full-row write: the server keeps `id` and `itemId` (it re-stamps the parent
+/// link from storage), and `title`/`position` must round-trip unchanged or
+/// toggling a checkbox would silently blank the step's title.
+class ToggleSubtaskContext extends AppActionContext {
+  /// Creates the context for setting [subtask]'s `done` to [done].
+  ToggleSubtaskContext(super.session, this.subtask, this.done);
+
+  /// The subtask as last read from the backend.
+  final Subtask subtask;
+
+  /// The state the checkbox was moved to.
+  final bool done;
+}
+
 /// Context for [ShareProjectAction]: the project and the grant to make.
 class ShareProjectContext extends AppActionContext {
   /// Creates the context for sharing [projectId] with [granteeUserId] at [role].
@@ -149,6 +178,56 @@ class AddCommentAction extends TomSimpleAction<AddCommentContext> {
   }
 }
 
+/// Adds a checklist step to an item through the backend seam.
+class AddSubtaskAction extends TomSimpleAction<AddSubtaskContext> {
+  /// Registers the action under `todo.item.addSubtask`.
+  AddSubtaskAction(TomActionController controller)
+      : super(actionId: 'addSubtask', controller: controller);
+
+  @override
+  void executeSimple(AddSubtaskContext context, TomActionTransaction tx) {
+    // `position` is left at its default: the server appends, and a client that
+    // computed one from the list it happens to hold would fight any concurrent
+    // insert. `id` and `itemId` are stamped server-side from the addressed item.
+    final subtask = Subtask()..title.set(context.title);
+    context.session
+        .guard((b) => b.addSubtask(context.itemId, subtask))
+        .then((_) => context.completeOk())
+        .catchError(
+          (Object e) => context.completeError((e as AppBackendException).message),
+          test: (e) => e is AppBackendException,
+        );
+  }
+}
+
+/// Flips a checklist step's `done` through the backend seam.
+class ToggleSubtaskAction extends TomSimpleAction<ToggleSubtaskContext> {
+  /// Registers the action under `todo.item.toggleSubtask`.
+  ToggleSubtaskAction(TomActionController controller)
+      : super(actionId: 'toggleSubtask', controller: controller);
+
+  @override
+  void executeSimple(ToggleSubtaskContext context, TomActionTransaction tx) {
+    final source = context.subtask;
+    // A copy, not a mutation of the bound row: the screen keeps rendering the
+    // list it read until the refresh lands, so a rejected write must leave the
+    // visible checkbox where the server still has it.
+    final edited = Subtask()
+      ..id.set(source.id.get())
+      ..itemId.set(source.itemId.get())
+      ..title.set(source.title.get())
+      ..position.set(source.position.get())
+      ..done.set(context.done);
+    context.session
+        .guard((b) => b.updateSubtask(edited))
+        .then((_) => context.completeOk())
+        .catchError(
+          (Object e) => context.completeError((e as AppBackendException).message),
+          test: (e) => e is AppBackendException,
+        );
+  }
+}
+
 /// Grants another user a role on a project through the backend seam.
 class ShareProjectAction extends TomSimpleAction<ShareProjectContext> {
   /// Registers the action under `board.share`.
@@ -186,6 +265,12 @@ class ItemActionsController extends TomActionController {
 
   /// Post a comment (`todo.item.comment`).
   late final AddCommentAction comment = AddCommentAction(this);
+
+  /// Add a checklist step (`todo.item.addSubtask`).
+  late final AddSubtaskAction addSubtask = AddSubtaskAction(this);
+
+  /// Toggle a checklist step (`todo.item.toggleSubtask`).
+  late final ToggleSubtaskAction toggleSubtask = ToggleSubtaskAction(this);
 }
 
 /// The board screen's actions, prefixed `board`.

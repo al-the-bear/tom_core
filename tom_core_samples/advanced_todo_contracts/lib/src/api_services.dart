@@ -227,6 +227,26 @@ abstract class AppApiService {
   /// `{'id': 'itemId'}` `urlParameterMapping`).
   Future<TodoComment> addComment(TodoComment comment);
 
+  /// `appListComments` — `GET /items/{id}/comments`. The item's comment thread,
+  /// oldest first, for any principal that may *read* the item (C-3): a viewer
+  /// sees the history without being able to add to it. The `{id}` path capture
+  /// binds onto [EntityIdRequest.id] even though the GET carries no body.
+  Future<List<TodoComment>> listComments(EntityIdRequest request);
+
+  /// `appListSubtasks` — `GET /items/{id}/subtasks`. The item's subtasks in
+  /// `position` order, gated by the same read scope as [listComments].
+  Future<List<Subtask>> listSubtasks(EntityIdRequest request);
+
+  /// `appAddSubtask` — `POST /items/{id}/subtasks` (editor and above, i.e. the
+  /// same gate as editing the parent item — a subtask is part of the item, not a
+  /// comment on it). The `{id}` path capture binds onto `Subtask.itemId`.
+  Future<Subtask> addSubtask(Subtask subtask);
+
+  /// `appUpdateSubtask` — `PUT /subtasks/{id}` (editor and above). Used to
+  /// toggle `done`; the gate is resolved from the *parent item*, so a subtask
+  /// can never be edited by someone who could not edit the item it belongs to.
+  Future<Subtask> updateSubtask(Subtask subtask);
+
   /// `appShare` — `POST /share`. Owner shares a resource with a user at a role.
   Future<void> share(ShareRequest request);
 

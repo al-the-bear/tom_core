@@ -53,6 +53,7 @@ class InMemoryAppBackend implements AppBackend {
   final List<TodoList> _lists = [];
   final List<TodoItem> _items = [];
   final List<TodoComment> _comments = [];
+  final List<Subtask> _subtasks = [];
 
   /// Active shares: each maps a resource to a grantee at a [ProjectRole].
   final List<ShareRequest> _shares = [];
@@ -196,6 +197,16 @@ class InMemoryAppBackend implements AppBackend {
     'board.item.comment.hint': 'Write a comment…',
     'board.item.comment.submit': 'Post comment',
     'board.item.comment.added': 'Comment added',
+    // The thread and checklist chrome. Also `board.*`, for the same reason the
+    // attachment's keys are: neither section is an eighth graded field, and the
+    // server derives its gradable key set from `todo.item.*`.
+    'board.item.comment.thread': 'Comments',
+    'board.item.comment.empty': 'No comments yet.',
+    'board.item.comment.byline': '{author} · {when}',
+    'board.item.subtask.title': 'Checklist',
+    'board.item.subtask.empty': 'No steps yet.',
+    'board.item.subtask.hint': 'Add a step…',
+    'board.item.subtask.submit': 'Add step',
     'board.share': 'Share',
     'share.title': 'Share project',
     'share.granteeRequired': 'Enter a grantee user id (e.g. u-carol).',
@@ -387,6 +398,30 @@ class InMemoryAppBackend implements AppBackend {
       ..priorityValue = TodoPriority.medium
       ..labelValue = TodoLabel.feature
       ..reporterId.set('u-alice'));
+
+    // A thread and a checklist on item 1, mirroring the live `app_db` seed's
+    // shape (one existing comment, two subtasks with one already done). Without
+    // them the detail screen's two new sections would only ever be seen empty
+    // offline, and "renders a thread" would go untested in the widget suite.
+    _comments.add(TodoComment()
+      ..id.set('c-1')
+      ..itemId.set('i-1')
+      ..authorId.set('u-bob')
+      ..body.set('Started on the hero section — draft attached.')
+      ..createdAt.set(DateTime(2026, 7, 1, 9, 30)));
+
+    _subtasks.add(Subtask()
+      ..id.set('s-1')
+      ..itemId.set('i-1')
+      ..title.set('Collect the reference sites')
+      ..done.set(true)
+      ..position.set(0));
+    _subtasks.add(Subtask()
+      ..id.set('s-2')
+      ..itemId.set('i-1')
+      ..title.set('Write the hero paragraph')
+      ..done.set(false)
+      ..position.set(1));
 
     // Bob is shared into the project as an editor; Carol starts with no access
     // (the share test grants it).
@@ -879,6 +914,100 @@ class InMemoryAppBackend implements AppBackend {
   }
 
   @override
+  Future<List<TodoComment>> listComments(String itemId) async {
+    // Any role on the item's project may read the thread — the same gate the
+    // server applies (C-3): read access to the item is the whole check, so a
+    // viewer sees the history they may not add to.
+    _requireReadableItem(itemId);
+    return [
+      for (final c in _comments)
+        if (c.itemId.get() == itemId) _copyComment(c),
+    ]..sort((a, b) => (a.createdAt.get() ?? DateTime(0))
+        .compareTo(b.createdAt.get() ?? DateTime(0)));
+  }
+
+  @override
+  Future<List<Subtask>> listSubtasks(String itemId) async {
+    _requireReadableItem(itemId);
+    return [
+      for (final s in _subtasks)
+        if (s.itemId.get() == itemId) _copySubtask(s),
+    ]..sort((a, b) => a.position.get().compareTo(b.position.get()));
+  }
+
+  @override
+  Future<Subtask> addSubtask(String itemId, Subtask subtask) async {
+    // `_canWrite`, not merely "has a role": a subtask is part of the item, so
+    // adding one is an edit — the same one-step-stronger gate the server uses.
+    final item = _requireReadableItem(itemId);
+    final project = _projectOfList(item.listId.get());
+    if (!_canWrite(_roleOnProject(project!, _principalId))) {
+      throw const AppBackendException(
+        'You cannot add a subtask to this item.',
+        key: 'app.access.forbidden',
+      );
+    }
+    // `position` is server-owned here as it is live: a new step appends, one
+    // past the highest stored. A client-supplied position would be a guess from
+    // whatever list it happened to hold.
+    var highest = -1;
+    for (final s in _subtasks) {
+      if (s.itemId.get() == itemId) {
+        highest = s.position.get() > highest ? s.position.get() : highest;
+      }
+    }
+    final created = _copySubtask(subtask)
+      ..id.set('s-${_nextId++}')
+      ..itemId.set(itemId)
+      ..position.set(highest + 1);
+    _subtasks.add(created);
+    return _copySubtask(created);
+  }
+
+  @override
+  Future<Subtask> updateSubtask(Subtask subtask) async {
+    final index =
+        _subtasks.indexWhere((s) => s.id.get() == subtask.id.get());
+    if (index < 0) {
+      throw AppBackendException('No subtask with id "${subtask.id.get()}".',
+          key: 'app.subtask.not_found');
+    }
+    // The parent comes from storage, so the gate is resolved against the item
+    // the subtask really belongs to and the link cannot be rewritten.
+    final parentId = _subtasks[index].itemId.get();
+    final item = _requireReadableItem(parentId);
+    final project = _projectOfList(item.listId.get());
+    if (!_canWrite(_roleOnProject(project!, _principalId))) {
+      throw const AppBackendException(
+        'You cannot edit this subtask.',
+        key: 'app.access.forbidden',
+      );
+    }
+    final merged = _copySubtask(subtask)
+      ..id.set(subtask.id.get())
+      ..itemId.set(parentId);
+    _subtasks[index] = merged;
+    return _copySubtask(merged);
+  }
+
+  /// Returns the item [itemId] when the principal may read it, else throws the
+  /// closed/safe `app.item.not_found` — an item they cannot reach and one that
+  /// does not exist are reported identically, as they are server-side.
+  TodoItem _requireReadableItem(String itemId) {
+    final item = _items.firstWhere(
+      (i) => i.id.get() == itemId,
+      orElse: () => throw AppBackendException('No item with id "$itemId".',
+          key: 'app.item.not_found'),
+    );
+    final project = _projectOfList(item.listId.get());
+    if (project == null || _roleOnProject(project, _principalId) == null) {
+      throw AppBackendException('No item with id "$itemId".',
+          key: 'app.item.not_found');
+    }
+    return item;
+  }
+
+  @override
   Future<Map<String, String>> resourceRoles() async {
     final principal = _principalId;
     // The principal's effective role on every resource they can reach: each
@@ -1021,4 +1150,11 @@ class InMemoryAppBackend implements AppBackend {
     ..authorId.set(s.authorId.get())
     ..body.set(s.body.get())
     ..createdAt.set(s.createdAt.get());
+
+  Subtask _copySubtask(Subtask s) => Subtask()
+    ..id.set(s.id.get())
+    ..itemId.set(s.itemId.get())
+    ..title.set(s.title.get())
+    ..done.set(s.done.get())
+    ..position.set(s.position.get());
 }

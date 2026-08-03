@@ -84,6 +84,17 @@
 ///    row at the file endpoint. The role-relative half (a `viewer` downloads and
 ///    is refused the upload) is asserted by `file_transfer_integration_test.dart`
 ///    TC-FT-05; this test asserts the *editability* half.
+///  - [TC-37-10] **the item's two child collections cross principals.** `alice`
+///    (the owner) appends to item 1's comment thread; `bob`, whose only grant is
+///    the seeded `editor` **share** on project 1, reads that history back and
+///    appends a checklist step (server-owned `position`, so it lands one past
+///    the tail whatever the client sent) and ticks it; `carol`, a `viewer` on
+///    the same project, reads the thread she may not extend and is refused both
+///    writes. This pins the one-step-apart gating the two collections carry — a
+///    comment is *about* an item (`commenter` and above), a subtask is *part of*
+///    it (`editor` and above) — which is only observable when more than one
+///    principal touches the same item, and it proves the share reaches the child
+///    collections down the containment chain, not just the item row.
 ///
 /// **Why the grant edit writes the whole `viewer` row.** `adminPutGrants`
 /// replaces grants *per role* (`replaceGrantsForRole`), and `adminGetGrants`
@@ -623,6 +634,114 @@ void main() {
           files.close();
           c.transport.close();
         }
+      }
+    });
+
+    test(
+        'TC-37-10: the item thread and checklist cross principals — an owner '
+        'comments, a share-only user reads the history and appends a step, and '
+        'a viewer may do neither', () async {
+      // The two child collections of an item, live. They are gated one step
+      // apart on purpose — a comment is *about* an item (commenter and above),
+      // a subtask is *part of* it (editor and above) — and that difference is
+      // only observable when more than one principal touches the same item, so
+      // it is asserted here rather than in a socket-free unit test.
+      //
+      // Re-runnable without a reseed: both writes append and every assertion is
+      // relative (the tail of the list, one position past the previous tail),
+      // so a second run against the same volume passes with the rows the first
+      // one left. Neither collection has a client delete path, so there is
+      // nothing to restore — the integration script's fresh volume resets them.
+      final c = _liveClients();
+      final marker = 'cross-tier comment ${DateTime.now().toIso8601String()}';
+      final item = EntityIdRequest(id: _carolItemId);
+      try {
+        expect((await c.app.health())['status'], equals('ok'));
+
+        // --- Beat 1: alice owns item 1 and appends to its thread. ---
+        await c.auth.login(_aliceLogin);
+        final posted = await c.app.addComment(
+          TodoComment()
+            ..itemId.set(_carolItemId)
+            ..body.set(marker),
+        );
+        expect(posted.id.get(), isNotEmpty);
+        expect(posted.body.get(), marker);
+
+        // --- Beat 2: bob, whose only grant is the seeded editor *share* on
+        //     project 1, reads the same thread. The history he sees is not his
+        //     own: it carries the seeded comment authored by him and alice's
+        //     new one, oldest first, so the share reaches the child collection
+        //     down the containment chain exactly as it reaches the item. ---
+        await c.auth.login(_bobLogin);
+        final thread = await c.app.listComments(item);
+        expect(thread.map((comment) => comment.body.get()), contains(marker),
+            reason: "the share reveals another principal's comment");
+        expect(thread.last.body.get(), marker,
+            reason: 'the thread is oldest first, so the newest is last');
+
+        // --- Beat 3: the same share-only user appends a checklist step. The
+        //     server owns `position`, so the new step lands one past the
+        //     current tail rather than wherever the client guessed. ---
+        final before = await c.app.listSubtasks(item);
+        expect(before, isNotEmpty, reason: 'the seed gives item 1 two steps');
+        final step = await c.app.addSubtask(
+          Subtask()
+            ..itemId.set(_carolItemId)
+            ..title.set('Verify the cross-tier loop')
+            ..position.set(99), // ignored — the server appends
+        );
+        final after = await c.app.listSubtasks(item);
+        expect(after, hasLength(before.length + 1));
+        expect(after.last.id.get(), step.id.get());
+        expect(after.last.title.get(), 'Verify the cross-tier loop');
+        expect(
+          after.last.position.get(),
+          before.last.position.get() + 1,
+          reason: 'the step appended, one past the previous tail',
+        );
+
+        // --- Beat 4: bob ticks his own step — the editor-and-above update
+        //     path, and the one write the checklist screen performs most. ---
+        final ticked = await c.app.updateSubtask(step..done.set(true));
+        expect(ticked.done.get(), isTrue);
+
+        // --- Beat 5: carol is a `viewer` on the same project. She reads the
+        //     history she may not add to (the thread is gated by the *item's*
+        //     readability, not by the commenter role) and is refused both
+        //     writes — the comment because a viewer is below `commenter`, the
+        //     step because she is below `editor`. ---
+        await c.auth.login(_carolLogin);
+        expect((await c.app.listComments(item)).map((cm) => cm.body.get()),
+            contains(marker),
+            reason: 'a viewer sees the history she may not extend');
+        expect(await c.app.listSubtasks(item), hasLength(after.length));
+
+        await expectLater(
+          c.app.addComment(
+            TodoComment()
+              ..itemId.set(_carolItemId)
+              ..body.set('viewer comment'),
+          ),
+          throwsA(isA<AppApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)),
+          reason: 'a viewer is below the commenter gate',
+        );
+        await expectLater(
+          c.app.addSubtask(
+            Subtask()
+              ..itemId.set(_carolItemId)
+              ..title.set('viewer step'),
+          ),
+          throwsA(isA<AppApiException>()
+              .having((e) => e.statusCode, 'statusCode', 403)),
+          reason: 'a viewer is below the editor gate the checklist needs',
+        );
+      } on SocketException catch (e) {
+        markTestSkipped(_skipMessage(e));
+        return;
+      } finally {
+        c.transport.close();
       }
     });
   });

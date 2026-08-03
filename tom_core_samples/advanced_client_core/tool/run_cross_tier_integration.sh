@@ -7,9 +7,11 @@
 # One scripted command for the Phase-7 "scripted scenario passes end-to-end"
 # done bar: an admin grant edit reaching the end-user's field matrix, a share
 # revealing a project to a second user, and the same admin edit reaching the
-# file endpoint — one grant cell deciding whether bytes may be written. It also
-# carries tcca5's loop: a second factor enrolled mid-run, declined once, and
-# then challenged on the next login.
+# file endpoint — one grant cell deciding whether bytes may be written. The
+# share is then followed into the item's *child collections*: an owner's comment
+# read back by the shared-with user, who appends a checklist step the viewer on
+# the same project is refused. It also carries tcca5's loop: a second factor
+# enrolled mid-run, declined once, and then challenged on the next login.
 #
 #   tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh
 #
@@ -196,6 +198,12 @@ wait_app_health
 #        the upload away from the owner of the row and restoring it gives it
 #        back (TC-37-09). That beat is what makes file transfer part of this
 #        sample's authorization story rather than a feature bolted beside it.
+#        It closes on the item's child collections (TC-37-10): the owner
+#        comments, the shared-with user reads that history back and appends a
+#        checklist step, and the viewer on the same project reads the thread but
+#        is refused both writes — the one-step-apart gating (`commenter` for a
+#        comment, `editor` for a subtask) is only visible when several
+#        principals touch one item, so it can only be asserted here.
 #      - auth_client_integration_test — the login paths themselves (step 22 +
 #        csex3 + tcca5): dave's two-pass TOTP login, and erin's *enrolment* —
 #        offered a factor, declining it, setting one up, and then being

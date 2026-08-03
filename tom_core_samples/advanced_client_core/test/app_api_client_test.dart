@@ -116,6 +116,45 @@ void main() {
       expect(comment.authorId.get(), '2');
       expect(comment.body.get(), 'Looks good to me');
     });
+
+    test('TC-24-13: parseComments preserves the server thread order', () {
+      // The server sorts oldest-first and the client must not re-sort: a client
+      // that re-derived the order could show a different thread than the one
+      // served. The bodies below are deliberately *not* alphabetical, so a
+      // stray sort would be visible.
+      final thread = parseComments([
+        {'id': '1', 'itemId': '11', 'body': 'zebra'},
+        {'id': '2', 'itemId': '11', 'body': 'apple'},
+        {'id': '3', 'itemId': '11', 'body': 'mango'},
+      ]);
+      expect(thread.map((c) => c.body.get()), ['zebra', 'apple', 'mango']);
+    });
+
+    test('TC-24-14: parseSubtask coerces the typed done/position fields', () {
+      // Unlike the string-backed fields, `done` is a TomBool and `position` a
+      // TomInt, so these are the two that need real coercion rather than
+      // interpolation.
+      final subtask = parseSubtask({
+        'id': '5',
+        'itemId': '11',
+        'title': 'Draft the schema',
+        'done': true,
+        'position': 2,
+      });
+      expect(subtask.itemId.get(), '11');
+      expect(subtask.done.get(), isTrue);
+      expect(subtask.position.get(), 2);
+    });
+
+    test('TC-24-15: parseSubtasks tolerates a partial row, keeping defaults',
+        () {
+      expect(parseSubtasks(const []), isEmpty);
+      final subtask = parseSubtasks([
+        {'id': '5', 'title': 'Bare'},
+      ]).single;
+      expect(subtask.done.get(), isFalse);
+      expect(subtask.position.get(), 0);
+    });
   });
 
   group('AppApiClient over a fake transport', () {
@@ -225,6 +264,117 @@ void main() {
       );
     });
 
+    test('TC-24-16: listComments GETs the item-scoped thread path', () async {
+      // The path capture is the whole input, so the assertion that matters is
+      // that the item id lands in the *path* and not in a query parameter —
+      // the two child reads are the only GETs in this client shaped that way.
+      storeBearer();
+      final transport = _RoutingTransport({
+        '/items/11/comments': [
+          HttpJsonResponse(
+              200,
+              jsonEncode([
+                {'id': '1', 'itemId': '11', 'body': 'first'},
+                {'id': '2', 'itemId': '11', 'body': 'second'},
+              ])),
+        ],
+      });
+      final client = clientOver(transport);
+
+      final thread = await client.listComments(EntityIdRequest(id: '11'));
+
+      expect(thread.map((c) => c.body.get()), ['first', 'second']);
+      final call = transport.callsTo('/items/11/comments').single;
+      expect(call.method, 'GET');
+      expect(call.uri.queryParameters, isEmpty);
+      expect(call.headers['Authorization'], startsWith('Bearer '));
+    });
+
+    test('TC-24-17: listSubtasks GETs the item-scoped checklist path', () async {
+      storeBearer();
+      final transport = _RoutingTransport({
+        '/items/11/subtasks': [
+          HttpJsonResponse(
+              200,
+              jsonEncode([
+                {'id': '5', 'itemId': '11', 'title': 'a', 'position': 0},
+                {'id': '7', 'itemId': '11', 'title': 'b', 'position': 1},
+              ])),
+        ],
+      });
+      final client = clientOver(transport);
+
+      final checklist = await client.listSubtasks(EntityIdRequest(id: '11'));
+
+      expect(checklist.map((s) => s.title.get()), ['a', 'b']);
+      expect(transport.callsTo('/items/11/subtasks').single.method, 'GET');
+    });
+
+    test('TC-24-18: addSubtask POSTs under the parent item', () async {
+      storeBearer();
+      final transport = _RoutingTransport({
+        '/items/11/subtasks': [
+          HttpJsonResponse(
+              201,
+              jsonEncode(
+                  {'id': '9', 'itemId': '11', 'title': 'c', 'position': 2})),
+        ],
+      });
+      final client = clientOver(transport);
+
+      final created = await client.addSubtask(Subtask()
+        ..itemId.set('11')
+        ..title.set('c'));
+
+      expect(created.id.get(), '9');
+      final call = transport.callsTo('/items/11/subtasks').single;
+      expect(call.method, 'POST');
+      expect((jsonDecode(call.body!) as Map)['title'], 'c');
+    });
+
+    test('TC-24-19: updateSubtask PUTs to the subtask, not the item', () async {
+      // The update is addressed by the subtask's *own* id: the parent link is
+      // server-owned, so the client never re-states it in the URL.
+      storeBearer();
+      final transport = _RoutingTransport({
+        '/subtasks/9': [
+          HttpJsonResponse(
+              200,
+              jsonEncode(
+                  {'id': '9', 'itemId': '11', 'title': 'c', 'done': true})),
+        ],
+      });
+      final client = clientOver(transport);
+
+      final saved = await client.updateSubtask(Subtask()
+        ..id.set('9')
+        ..itemId.set('11')
+        ..done.set(true));
+
+      expect(saved.done.get(), isTrue);
+      expect(transport.callsTo('/subtasks/9').single.method, 'PUT');
+    });
+
+    test('TC-24-20: a 404 on the thread read surfaces the closed/safe key',
+        () async {
+      // The server reports an unreachable item as missing rather than
+      // forbidden; the client must relay that key verbatim so the UI can tell
+      // "gone" from "denied" the same way the server does.
+      storeBearer();
+      final transport = _RoutingTransport({
+        '/items/55/comments': [
+          HttpJsonResponse(404, jsonEncode({'error': 'app.item.not_found'})),
+        ],
+      });
+      final client = clientOver(transport);
+
+      await expectLater(
+        client.listComments(EntityIdRequest(id: '55')),
+        throwsA(isA<AppApiException>()
+            .having((e) => e.key, 'key', 'app.item.not_found')
+            .having((e) => e.statusCode, 'statusCode', 404)),
+      );
+    });
   });
 }
 

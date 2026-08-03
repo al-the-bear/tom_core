@@ -43,6 +43,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
@@ -57,6 +58,20 @@ import '../access/visible_resource_resolver.dart';
 import '../persistence/app_mapping.dart';
 import '../persistence/app_persistence_model.dart';
 import '../resources/app_resource_bundles.dart';
+
+/// The closed/safe "no such item" rejection, shared by every item-addressed
+/// path — reads (the comment thread, the subtask checklist) and writes alike.
+///
+/// Top-level rather than private to one service because both services owe the
+/// *same* answer: an item the principal may not reach is reported missing, not
+/// forbidden, so no endpoint leaks its existence. Two separately worded
+/// rejections would eventually disagree, and the difference between them is
+/// precisely the leak.
+TomEndpointHandlerException itemNotFound(int itemId) =>
+    TomEndpointHandlerException(
+      'app.item.not_found',
+      'No accessible item with id $itemId',
+    );
 
 /// The listing seam the read operations enumerate candidate rows through.
 ///
@@ -77,6 +92,15 @@ abstract class AppReadStore {
 
   /// The item rows whose `list_id` is [listId], in storage order.
   Future<List<ItemRecord>> itemsInList(int listId);
+
+  /// The comment rows on item [itemId], oldest first.
+  ///
+  /// Ordering is part of the seam rather than left to the caller: a thread read
+  /// out of order is a different thread, so both stores owe the same sequence.
+  Future<List<CommentRecord>> commentsOnItem(int itemId);
+
+  /// The subtask rows of item [itemId], in `position` order.
+  Future<List<SubtaskRecord>> subtasksOfItem(int itemId);
 
   /// The stored-file descriptor of item [itemId]'s exposed `attachment`
   /// column, or null when the slot holds nothing.
@@ -127,6 +151,32 @@ class RepositoryAppReadStore implements AppReadStore {
     return matches.toList();
   }
 
+  // The two ordered child reads. Each sort key is followed by `id`, which makes
+  // the order *total*: `created_at` has second resolution and `position` is
+  // caller-supplied, so either can tie, and a tie broken differently on two
+  // reads is a thread that reshuffles itself. The tiebreak is free — InnoDB
+  // carries the primary key in every secondary index leaf, so
+  // `(item_id, created_at, id)` is served entirely by the
+  // `idx_app_comments_item_created` index migration [004] adds.
+
+  @override
+  Future<List<CommentRecord>> commentsOnItem(int itemId) async {
+    final matches = await commentRepository.findByQuerySentence(
+      'FIND BY item_id = :itemId ORDER BY created_at id ASC',
+      {'itemId': itemId},
+    );
+    return matches.toList();
+  }
+
+  @override
+  Future<List<SubtaskRecord>> subtasksOfItem(int itemId) async {
+    final matches = await subtaskRepository.findByQuerySentence(
+      'FIND BY item_id = :itemId ORDER BY position id ASC',
+      {'itemId': itemId},
+    );
+    return matches.toList();
+  }
+
   @override
   Future<TomFileMetadata?> describeAttachment(int itemId) {
     // Resolved through the slot registry — the very object the file endpoint's
@@ -152,6 +202,8 @@ class InMemoryAppReadStore implements AppReadStore {
   final List<ProjectRecord> _projects;
   final List<ListRecord> _lists;
   final List<ItemRecord> _items;
+  final List<CommentRecord> _comments;
+  final List<SubtaskRecord> _subtasks;
   final Map<int, TomFileMetadata> _attachments;
 
   /// Seeds the store from the given record lists (each defaults to empty).
@@ -164,11 +216,15 @@ class InMemoryAppReadStore implements AppReadStore {
     List<ProjectRecord> projects = const [],
     List<ListRecord> lists = const [],
     List<ItemRecord> items = const [],
+    List<CommentRecord> comments = const [],
+    List<SubtaskRecord> subtasks = const [],
     Map<int, TomFileMetadata> attachments = const {},
   })  : _workspaces = workspaces,
         _projects = projects,
         _lists = lists,
         _items = items,
+        _comments = comments,
+        _subtasks = subtasks,
         _attachments = attachments;
 
   @override
@@ -185,6 +241,30 @@ class InMemoryAppReadStore implements AppReadStore {
   @override
   Future<List<ItemRecord>> itemsInList(int listId) async =>
       [for (final i in _items) if (i.listId == listId) i];
+
+  // Sorted here rather than trusting seed order, so the in-memory store owes the
+  // same total ordering the repository store's `ORDER BY … id` produces. A test
+  // may seed rows in any order and still assert the sequence the endpoint
+  // promises. `??` guards the nullable record columns: an unset sort key sorts
+  // first, which is where an incomplete row belongs in both stores.
+  @override
+  Future<List<CommentRecord>> commentsOnItem(int itemId) async {
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    return [for (final c in _comments) if (c.itemId == itemId) c]
+      ..sort((a, b) {
+        final byTime =
+            (a.createdAt ?? epoch).compareTo(b.createdAt ?? epoch);
+        return byTime != 0 ? byTime : (a.id ?? 0).compareTo(b.id ?? 0);
+      });
+  }
+
+  @override
+  Future<List<SubtaskRecord>> subtasksOfItem(int itemId) async =>
+      [for (final s in _subtasks) if (s.itemId == itemId) s]
+        ..sort((a, b) {
+          final byPosition = (a.position ?? 0).compareTo(b.position ?? 0);
+          return byPosition != 0 ? byPosition : (a.id ?? 0).compareTo(b.id ?? 0);
+        });
 
   @override
   Future<TomFileMetadata?> describeAttachment(int itemId) async =>
@@ -277,6 +357,45 @@ class AppReadService {
         (r) => r.id,
         itemFromRecord,
       );
+
+  /// The comment thread on item [itemId] for the principal [userId], oldest
+  /// first.
+  ///
+  /// Gated by [_requireVisibleItem]: the *item's* readability decides the whole
+  /// thread (C-3), so a viewer with a share sees the history they may not add
+  /// to, and a stranger gets `app.item.not_found` rather than an empty list —
+  /// an empty thread and an unreachable item must not look alike.
+  Future<List<TodoComment>> listComments(int userId, int itemId) async {
+    await _requireVisibleItem(userId, itemId);
+    return [
+      for (final record in await store.commentsOnItem(itemId))
+        commentFromRecord(record),
+    ];
+  }
+
+  /// The subtasks of item [itemId] for the principal [userId], in `position`
+  /// order. Gated exactly like [listComments].
+  Future<List<Subtask>> listSubtasks(int userId, int itemId) async {
+    await _requireVisibleItem(userId, itemId);
+    return [
+      for (final record in await store.subtasksOfItem(itemId))
+        subtaskFromRecord(record),
+    ];
+  }
+
+  /// Throws the closed/safe `app.item.not_found` unless [itemId] is in the
+  /// principal's visible item id-set.
+  ///
+  /// Deliberately the *same* set [listItems] filters against rather than a
+  /// per-resource [ResourceRoleResolver] call: a child collection must be
+  /// reachable exactly when its parent is listed, and two independently
+  /// resolved answers to "may this principal read this item?" would eventually
+  /// disagree.
+  Future<void> _requireVisibleItem(int userId, int itemId) async {
+    final visible = await visibleResolver.visibleIds(
+        AppResourceTypes.item, userId.toString());
+    if (!visible.contains(itemId)) throw itemNotFound(itemId);
+  }
 
   /// The attachment descriptors of the visible items in [listId] — the board's
   /// paperclip source, one entry per item that actually has a readable file.
@@ -439,6 +558,27 @@ abstract class AppWriteStore {
 
   /// Inserts or updates [record], returning the saved comment row.
   Future<CommentRecord> saveComment(CommentRecord record);
+
+  /// Returns the subtask row for [id], or `null` when it does not exist.
+  ///
+  /// The update path needs the stored row before it can authorize: a subtask
+  /// carries no owner of its own, so the gate is resolved from the *parent*
+  /// item — which means the parent link has to be read from storage rather than
+  /// taken from the caller's payload.
+  Future<SubtaskRecord?> findSubtask(int id);
+
+  /// The `position` a newly added subtask of item [itemId] should take — one
+  /// past the highest currently stored, or `0` for the first.
+  ///
+  /// On the store rather than computed by the caller because `position` is
+  /// **server-owned**, like `id` and `itemId`: a client that sent one would be
+  /// guessing from the list it happens to hold, and two clients adding a step
+  /// concurrently would both guess the same number. The store is the only place
+  /// that can read what is actually there.
+  Future<int> nextSubtaskPosition(int itemId);
+
+  /// Inserts or updates [record], returning the saved subtask row.
+  Future<SubtaskRecord> saveSubtask(SubtaskRecord record);
 }
 
 /// The query-backed [AppWriteStore] wired at boot.
@@ -473,6 +613,26 @@ class RepositoryAppWriteStore implements AppWriteStore {
   @override
   Future<CommentRecord> saveComment(CommentRecord record) =>
       commentRepository.save(record);
+
+  @override
+  Future<SubtaskRecord?> findSubtask(int id) => subtaskRepository.findById(id);
+
+  @override
+  Future<int> nextSubtaskPosition(int itemId) async {
+    // Descending by position, first row: the same
+    // `idx_app_subtasks_item_position` index migration [004] adds serves this
+    // read backwards, so "what is the last step" costs one index seek rather
+    // than loading the checklist.
+    final rows = await subtaskRepository.findByQuerySentence(
+      'FIND BY item_id = :itemId ORDER BY position DESC',
+      {'itemId': itemId},
+    );
+    return rows.isEmpty ? 0 : (rows.first.position ?? 0) + 1;
+  }
+
+  @override
+  Future<SubtaskRecord> saveSubtask(SubtaskRecord record) =>
+      subtaskRepository.save(record);
 }
 
 /// A seeded, database-free [AppWriteStore] for tests (and local scaffolding).
@@ -486,11 +646,13 @@ class InMemoryAppWriteStore implements AppWriteStore {
   final List<ItemRecord> _items;
   final List<ProjectRecord> _projects;
   final List<CommentRecord> _comments;
+  final List<SubtaskRecord> _subtasks;
 
   int _nextWorkspaceId = 1;
   int _nextItemId = 1;
   int _nextProjectId = 1;
   int _nextCommentId = 1;
+  int _nextSubtaskId = 1;
 
   /// Seeds the store with the given rows (each list defaults to empty); the
   /// auto-increment counters advance past any seeded ids.
@@ -499,14 +661,17 @@ class InMemoryAppWriteStore implements AppWriteStore {
     List<ItemRecord> items = const [],
     List<ProjectRecord> projects = const [],
     List<CommentRecord> comments = const [],
+    List<SubtaskRecord> subtasks = const [],
   })  : _workspaces = [...workspaces],
         _items = [...items],
         _projects = [...projects],
-        _comments = [...comments] {
+        _comments = [...comments],
+        _subtasks = [...subtasks] {
     _nextWorkspaceId = _maxId(_workspaces.map((w) => w.id)) + 1;
     _nextItemId = _maxId(_items.map((i) => i.id)) + 1;
     _nextProjectId = _maxId(_projects.map((p) => p.id)) + 1;
     _nextCommentId = _maxId(_comments.map((c) => c.id)) + 1;
+    _nextSubtaskId = _maxId(_subtasks.map((s) => s.id)) + 1;
   }
 
   static int _maxId(Iterable<int?> ids) =>
@@ -526,6 +691,9 @@ class InMemoryAppWriteStore implements AppWriteStore {
 
   /// The persisted comment rows (test introspection).
   List<CommentRecord> get comments => List.unmodifiable(_comments);
+
+  /// The persisted subtask rows (test introspection).
+  List<SubtaskRecord> get subtasks => List.unmodifiable(_subtasks);
 
   @override
   Future<WorkspaceRecord> saveWorkspace(WorkspaceRecord record) async {
@@ -582,6 +750,36 @@ class InMemoryAppWriteStore implements AppWriteStore {
       _comments.add(record);
     } else {
       _replaceById(_comments, record, (c) => c.id == record.id);
+    }
+    return record;
+  }
+
+  @override
+  Future<SubtaskRecord?> findSubtask(int id) async {
+    for (final subtask in _subtasks) {
+      if (subtask.id == id) return subtask;
+    }
+    return null;
+  }
+
+  @override
+  Future<int> nextSubtaskPosition(int itemId) async {
+    var highest = -1;
+    for (final subtask in _subtasks) {
+      if (subtask.itemId == itemId) {
+        highest = max(highest, subtask.position ?? 0);
+      }
+    }
+    return highest + 1;
+  }
+
+  @override
+  Future<SubtaskRecord> saveSubtask(SubtaskRecord record) async {
+    if (record.id == null) {
+      record.id = _nextSubtaskId++;
+      _subtasks.add(record);
+    } else {
+      _replaceById(_subtasks, record, (s) => s.id == record.id);
     }
     return record;
   }
@@ -863,9 +1061,9 @@ class AppWriteService {
       resourceType: AppResourceTypes.item,
       resourceId: itemId,
     );
-    if (role == null) throw _notFoundItem(itemId);
+    if (role == null) throw itemNotFound(itemId);
     final stored = await store.findItem(itemId);
-    if (stored == null) throw _notFoundItem(itemId);
+    if (stored == null) throw itemNotFound(itemId);
     final grades = await gradeResolver.resolveItemFieldStates(role);
     final merged = _enforceFieldWrites(stored, itemToRecord(item), grades)
       ..updatedAt = DateTime.now();
@@ -908,6 +1106,73 @@ class AppWriteService {
     return commentFromRecord(await store.saveComment(record));
   }
 
+  /// Adds [subtask] to the item [itemId]; `editor` or above may add one.
+  ///
+  /// The gate is deliberately one step stronger than [addComment]'s: a comment
+  /// is *about* an item, a subtask is *part of* it, so adding one changes what
+  /// the item claims to require. A `commenter` who could create subtasks would
+  /// be editing the item's scope through a side door.
+  ///
+  /// `id`, `itemId` and `position` are all stamped server-side: the first two
+  /// from the addressed item, so the payload cannot file the subtask under an
+  /// item the caller was not gated on, and the third from the stored checklist
+  /// ([AppWriteStore.nextSubtaskPosition]) — a new step always appends. Only
+  /// `title` and `done` are caller-owned on create.
+  Future<Subtask> addSubtask(int userId, int itemId, Subtask subtask) async {
+    await _requireRole(
+      userId,
+      AppResourceTypes.item,
+      itemId,
+      ProjectRole.editor,
+      'add a subtask to this item',
+      notFoundOnNoAccess: true,
+    );
+    final record = subtaskToRecord(subtask)
+      ..id = null
+      ..itemId = itemId
+      ..position = await store.nextSubtaskPosition(itemId);
+    return subtaskFromRecord(await store.saveSubtask(record));
+  }
+
+  /// Applies the caller's [subtask] payload to the stored subtask [subtaskId];
+  /// `editor` or above on the **parent item** may update it.
+  ///
+  /// The parent is read from storage rather than from the payload, for two
+  /// reasons that are really one: it is what the authorization gate must be
+  /// resolved against (a subtask has no owner of its own), and re-stamping it
+  /// onto the merged row makes the parent link unwritable — a caller cannot
+  /// move a subtask onto an item they do not hold `editor` on by editing its
+  /// `itemId`. Only `title`, `done` and `position` are caller-owned.
+  Future<Subtask> updateSubtask(
+    int userId,
+    int subtaskId,
+    Subtask subtask,
+  ) async {
+    final stored = await store.findSubtask(subtaskId);
+    final parentId = stored?.itemId;
+    if (parentId == null) throw _subtaskNotFound(subtaskId);
+    await _requireRole(
+      userId,
+      AppResourceTypes.item,
+      parentId,
+      ProjectRole.editor,
+      'edit this subtask',
+      notFoundOnNoAccess: true,
+    );
+    final merged = subtaskToRecord(subtask)
+      ..id = subtaskId
+      ..itemId = parentId;
+    return subtaskFromRecord(await store.saveSubtask(merged));
+  }
+
+  /// The closed/safe "no such subtask" rejection, shaped like [itemNotFound]:
+  /// an unreachable subtask and a non-existent one are indistinguishable.
+  static TomEndpointHandlerException _subtaskNotFound(int subtaskId) =>
+      TomEndpointHandlerException(
+        'app.subtask.not_found',
+        'No accessible subtask with id $subtaskId',
+      );
+
   /// Resolves the principal's role on `(resourceType, resourceId)` and asserts it
   /// is at least [minimum]. Returns the resolved role for callers that need it.
   ///
@@ -930,7 +1195,7 @@ class AppWriteService {
     );
     if (role == null) {
       if (notFoundOnNoAccess && resourceType == AppResourceTypes.item) {
-        throw _notFoundItem(resourceId);
+        throw itemNotFound(resourceId);
       }
       throw TomEndpointHandlerException(
         'app.access.forbidden',
@@ -990,13 +1255,6 @@ class AppWriteService {
   /// declared strongest-first, so a *lower* index is the stronger role.
   static bool _roleAtLeast(ProjectRole role, ProjectRole minimum) =>
       role.index <= minimum.index;
-
-  /// The closed/safe "no such item" rejection shared by the item write paths.
-  static TomEndpointHandlerException _notFoundItem(int itemId) =>
-      TomEndpointHandlerException(
-        'app.item.not_found',
-        'No accessible item with id $itemId',
-      );
 
   /// A field-by-field copy of [record] (the write paths never mutate the stored
   /// row in place — a rejected write must leave storage untouched).
@@ -1141,8 +1399,9 @@ const String appEndpointAccessDeniedKey =
 /// over [TomDefaultErrorHandler] to turn those keys into the HTTP contract §A.6
 /// promises:
 ///
-/// - `app.item.not_found` / `app.share.not_found` → **404** (a resource the
-///   caller cannot reach is reported missing, never leaking its existence).
+/// - `app.item.not_found` / `app.share.not_found` / `app.subtask.not_found` →
+///   **404** (a resource the caller cannot reach is reported missing, never
+///   leaking its existence).
 /// - `app.access.forbidden` / `app.item.field_forbidden` (and the pipeline's
 ///   pre-invocation [appEndpointAccessDeniedKey]) → **403**.
 /// - a framework [TomDataScopeAuthorizationException] (a non-owner's write to a
@@ -1169,6 +1428,7 @@ Response? appForbiddenOrNotFound(
   switch (error.key) {
     case 'app.item.not_found':
     case 'app.share.not_found':
+    case 'app.subtask.not_found':
       return Response.notFound(
         jsonEncode({'error': error.key}),
         headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
@@ -1322,6 +1582,20 @@ class AdvancedAppApiService implements AppApiService {
   Future<List<FileDescriptorDto>> listAttachments(String listId) =>
       _reads.listAttachments(_principalId, int.tryParse(listId) ?? -1);
 
+  // The two ordered child reads on an item. Both take an [EntityIdRequest]
+  // rather than a bare `String` (G-API-2) even though their GETs carry no body:
+  // the pipeline folds URL parameters into the request DTO before instantiating
+  // it, so a body-less `GET /items/{id}/comments` still arrives typed.
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListComments')
+  @override
+  Future<List<TodoComment>> listComments(EntityIdRequest request) =>
+      _reads.listComments(_principalId, int.tryParse(request.id) ?? -1);
+
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListSubtasks')
+  @override
+  Future<List<Subtask>> listSubtasks(EntityIdRequest request) =>
+      _reads.listSubtasks(_principalId, int.tryParse(request.id) ?? -1);
+
   // ----- Write endpoints (step 20) -----------------------------------------
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateProject')
@@ -1348,6 +1622,20 @@ class AdvancedAppApiService implements AppApiService {
   @override
   Future<TodoComment> addComment(TodoComment comment) => _writes.addComment(
       _principalId, int.tryParse(comment.itemId.get()) ?? -1, comment);
+
+  // The parent link is read from the payload's `itemId` — which the pipeline
+  // has already populated from the `{id}` path capture (`urlParameterMapping:
+  // {'id': 'itemId'}`), the same shape `appAddComment` uses. So the addressed
+  // item, not a caller-chosen field, is what the write is gated on.
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddSubtask')
+  @override
+  Future<Subtask> addSubtask(Subtask subtask) => _writes.addSubtask(
+      _principalId, int.tryParse(subtask.itemId.get()) ?? -1, subtask);
+
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateSubtask')
+  @override
+  Future<Subtask> updateSubtask(Subtask subtask) => _writes.updateSubtask(
+      _principalId, int.tryParse(subtask.id.get()) ?? -1, subtask);
 
   // ----- Share endpoints (step 21) -----------------------------------------
 

@@ -20,11 +20,26 @@
 /// render editable, the others keep their bound values, so a write-back persists
 /// exactly the permitted fields — the server re-checks the same grade.
 ///
-/// A minimal add-only comment composer posts through the existing
-/// [AppBackend.addComment] seam. The comment thread (history) and subtasks are
-/// deferred — the step-26 backend seam exposes neither a comment-list read nor
-/// subtask operations, so they cannot be driven against the in-memory fake
-/// without extending the frozen seam (see `step30_item_detail_decisions.md`).
+/// ## The two child sections
+///
+/// Below the graded fields the screen shows the item's two child collections,
+/// loaded together on open ([_loadChildren]) and each authorized differently
+/// from the fields above them:
+///
+///  * The **checklist** ([_buildSubtaskSection]) — the item's subtasks in
+///    `position` order. Adding a step and ticking one are `editor`-and-above
+///    operations, one step stronger than commenting, because a subtask is *part
+///    of* the item rather than a remark about it; the screen resolves that from
+///    the same resource state the fields use ([_subtaskState]) so a viewer sees
+///    the steps with disabled checkboxes and no composer.
+///  * The **thread** ([_buildCommentSection]) — the comment history, read-gated
+///    by the *item's* readability alone. Anyone who can open the screen can read
+///    it, including a viewer who may not add to it; the composer below it stays
+///    on its own `todo.item.comment` action.
+///
+/// Both sections re-read from the backend after a successful write rather than
+/// patching their lists locally, so what the screen shows is what the server
+/// stored — including the id and ordering it assigned.
 ///
 /// ## The attachment
 ///
@@ -44,6 +59,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../actions/app_actions.dart';
 import '../app/app_session.dart';
+import '../backend/backend.dart';
 import '../forms/todo_item_form.dart';
 
 /// Bound, authorization-aware editor for a single [TodoItem].
@@ -80,18 +96,36 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   TomFormFileUpload? _attachment;
   late final TodoItem _item = widget.item;
   final TextEditingController _commentController = TextEditingController();
+  final TextEditingController _subtaskController = TextEditingController();
+
+  /// The item's resource-level state and the subtask sections' state, both
+  /// resolved once in [_resolveForm] (see [_buildSubtaskSection]).
+  TomAuthState _subtaskState = TomAuthState.none;
+
+  List<TodoComment> _thread = const [];
+  List<Subtask> _checklist = const [];
+  bool _loadingChildren = true;
+  String? _childrenError;
 
   bool _busy = false;
   bool _postingComment = false;
+  bool _addingSubtask = false;
   String? _error;
   String? _commentError;
+  String? _subtaskError;
 
   AppSession get _session => widget.session;
+
+  /// Whether the principal may add and tick checklist steps — the `editor`
+  /// gate, read off the one resolved [_subtaskState] rather than re-derived
+  /// from the role, so the composer and the checkboxes cannot disagree.
+  bool get _canEditSubtasks => _subtaskState == TomAuthState.full;
 
   @override
   void initState() {
     super.initState();
     _resolveForm();
+    _loadChildren();
   }
 
   @override
@@ -99,6 +133,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     _form?.dispose();
     _attachment?.dispose();
     _commentController.dispose();
+    _subtaskController.dispose();
     super.dispose();
   }
 
@@ -136,6 +171,45 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
     _form = form;
     _attachment = _buildAttachmentField(resourceState, role);
+    // The checklist's own grade. Not a member of the field matrix — a subtask
+    // is a row of its own, not a JSON member of the item — so it is narrowed
+    // here by the server's rule instead: `editor` and above may write
+    // (`full`), everyone who can open the screen may look (`read`). Narrowing
+    // through `resourceState` keeps the registry load-bearing here too: no role
+    // → `none` → the whole section collapses.
+    _subtaskState = resourceState.narrow(
+      role == ProjectRole.owner || role == ProjectRole.editor
+          ? TomAuthState.full
+          : TomAuthState.read,
+    );
+  }
+
+  /// Loads the item's thread and checklist in one pass.
+  ///
+  /// The two are fetched together and rendered together: they are the same
+  /// item's children, gated by the same read, and a screen that showed one
+  /// while the other was still arriving would flicker for no gain. A failure
+  /// is surfaced on the sections rather than on the form — the graded fields
+  /// resolved synchronously and are already usable.
+  Future<void> _loadChildren() async {
+    final itemId = _item.id.get();
+    try {
+      final thread = await _session.guard((b) => b.listComments(itemId));
+      final checklist = await _session.guard((b) => b.listSubtasks(itemId));
+      if (!mounted) return;
+      setState(() {
+        _thread = thread;
+        _checklist = checklist;
+        _childrenError = null;
+        _loadingChildren = false;
+      });
+    } on AppBackendException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _childrenError = e.message;
+        _loadingChildren = false;
+      });
+    }
   }
 
   /// Builds the item's attachment field: its file slot on the app server, wired
@@ -256,12 +330,85 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         TomSnackBar(
             content: TomText(text: TomCtr.text('board.item.comment.added'))),
       );
+      await _reloadThread();
       return;
     }
     setState(() {
       _commentError = error;
       _postingComment = false;
     });
+  }
+
+  /// Adds the composer's text as a checklist step via the [AddSubtaskAction]
+  /// (`todo.item.addSubtask`), then re-reads the list.
+  Future<void> _addSubtask() async {
+    final title = _subtaskController.text.trim();
+    if (title.isEmpty) return;
+    setState(() {
+      _addingSubtask = true;
+      _subtaskError = null;
+    });
+    final error = await runAppAction(
+      itemActions.addSubtask,
+      AddSubtaskContext(_session, _item.id.get(), title),
+    );
+    if (!mounted) return;
+    if (error == null) {
+      _subtaskController.clear();
+      setState(() => _addingSubtask = false);
+      await _reloadChecklist();
+      return;
+    }
+    setState(() {
+      _subtaskError = error;
+      _addingSubtask = false;
+    });
+  }
+
+  /// Flips [subtask]'s `done` via the [ToggleSubtaskAction]
+  /// (`todo.item.toggleSubtask`), then re-reads the list.
+  ///
+  /// No optimistic flip: the checkbox keeps showing the stored value until the
+  /// re-read lands, so a refused toggle leaves the row where the server has it
+  /// rather than snapping back.
+  Future<void> _toggleSubtask(Subtask subtask, bool done) async {
+    setState(() => _subtaskError = null);
+    final error = await runAppAction(
+      itemActions.toggleSubtask,
+      ToggleSubtaskContext(_session, subtask, done),
+    );
+    if (!mounted) return;
+    if (error == null) {
+      await _reloadChecklist();
+      return;
+    }
+    setState(() => _subtaskError = error);
+  }
+
+  /// Re-reads the thread after a write, surfacing a failed refresh on the
+  /// composer (the write itself already succeeded).
+  Future<void> _reloadThread() async {
+    try {
+      final thread = await _session.guard((b) => b.listComments(_item.id.get()));
+      if (!mounted) return;
+      setState(() => _thread = thread);
+    } on AppBackendException catch (e) {
+      if (!mounted) return;
+      setState(() => _commentError = e.message);
+    }
+  }
+
+  /// Re-reads the checklist after a write; see [_reloadThread].
+  Future<void> _reloadChecklist() async {
+    try {
+      final checklist =
+          await _session.guard((b) => b.listSubtasks(_item.id.get()));
+      if (!mounted) return;
+      setState(() => _checklist = checklist);
+    } on AppBackendException catch (e) {
+      if (!mounted) return;
+      setState(() => _subtaskError = e.message);
+    }
   }
 
   @override
@@ -318,9 +465,183 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                 : TomText(text: TomCtr.text('board.item.save')),
           ),
         TomDivider(height: 32),
+        _buildSubtaskSection(),
+        TomDivider(height: 32),
+        _buildCommentSection(),
+      ],
+    );
+  }
+
+  /// What both child sections show *instead of* their list while the shared
+  /// [_loadChildren] is in flight or after it failed — or null once real data
+  /// is available.
+  ///
+  /// Shared because the two lists arrive on one load: showing "no steps yet"
+  /// and "no comments yet" for a read that never landed would report absence
+  /// where the truth is ignorance, and the two sections must not disagree about
+  /// which it is. The failure text is the backend's own message (already fit to
+  /// show) rather than a generic key, so a denied read reads as a denial.
+  Widget? _childrenNotice(Key key) {
+    if (_loadingChildren) {
+      return Padding(
+        key: key,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: TomCircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    if (_childrenError case final message?) {
+      return TomText(
+          key: key,
+          text: message,
+          style: TextStyle(color: Theme.of(context).colorScheme.error));
+    }
+    return null;
+  }
+
+  /// The checklist: the item's steps in `position` order, plus the
+  /// `editor`-gated composer.
+  ///
+  /// The rows render for anyone who can open the screen — a viewer sees what
+  /// the item requires — but their checkboxes carry [_subtaskState], so a
+  /// `read` grade renders them ticked-but-inert. The composer is not merely
+  /// disabled for a viewer, it is absent: a control that can never succeed is
+  /// noise, and the section already shows the state it is in.
+  Widget _buildSubtaskSection() {
+    return Column(
+      key: const Key('subtask-section'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TomText(
+            text: TomCtr.text('board.item.subtask.title'),
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (_childrenNotice(const Key('subtask-notice')) case final notice?)
+          notice
+        else if (_checklist.isEmpty)
+          TomText(
+              key: const Key('subtask-empty'),
+              text: TomCtr.text('board.item.subtask.empty'))
+        else
+          Column(
+            key: const Key('subtask-list'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final subtask in _checklist)
+                Row(
+                  key: Key('subtask-${subtask.id.get()}'),
+                  children: [
+                    TomCheckbox(
+                      value: subtask.done.get(),
+                      authorizer: TomAuthorizer.fixed(_subtaskState),
+                      onChanged: (value) =>
+                          _toggleSubtask(subtask, value ?? false),
+                    ),
+                    Expanded(child: TomText(text: subtask.title.get())),
+                  ],
+                ),
+            ],
+          ),
+        if (_subtaskError != null) ...[
+          const SizedBox(height: 8),
+          TomText(
+              text: _subtaskError!,
+              key: const Key('subtask-error'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ],
+        if (_canEditSubtasks) ...[
+          const SizedBox(height: 8),
+          TomTextField(
+            key: const Key('subtask-input'),
+            controller: _subtaskController,
+            label: '',
+            hint: TomCtr.text('board.item.subtask.hint'),
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TomOutlinedButton(
+              key: const Key('subtask-submit-button'),
+              authorizer: itemActions.addSubtask.authorizer,
+              onPressed: _addingSubtask ? null : _addSubtask,
+              child: _addingSubtask
+                  ? SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: TomCircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : TomText(text: TomCtr.text('board.item.subtask.submit')),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// The comment thread (oldest first) above the add-only composer.
+  ///
+  /// The history is ungated beyond the item's own readability, which is the
+  /// whole point of showing it here: a viewer reads the discussion they cannot
+  /// join, and the composer below carries its own action grant.
+  Widget _buildCommentSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TomText(
+            text: TomCtr.text('board.item.comment.thread'),
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (_childrenNotice(const Key('comment-notice')) case final notice?)
+          notice
+        else if (_thread.isEmpty)
+          TomText(
+              key: const Key('comment-empty'),
+              text: TomCtr.text('board.item.comment.empty'))
+        else
+          Column(
+            key: const Key('comment-thread'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final comment in _thread) _buildComment(comment),
+            ],
+          ),
+        const SizedBox(height: 16),
         _buildCommentComposer(),
       ],
     );
+  }
+
+  /// One posted comment: its byline (author + timestamp) over its body.
+  Widget _buildComment(TodoComment comment) {
+    final when = comment.createdAt.get();
+    return Padding(
+      key: Key('comment-${comment.id.get()}'),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TomText(
+            text: TomCtr.text('board.item.comment.byline')
+                .replaceAll('{author}', comment.authorId.get())
+                .replaceAll('{when}', when == null ? '' : _formatWhen(when)),
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          TomText(text: comment.body.get()),
+        ],
+      ),
+    );
+  }
+
+  /// Formats a comment timestamp as `YYYY-MM-DD HH:MM`.
+  ///
+  /// Deliberately not locale-formatted: the sample ships no localisation
+  /// package, and an ISO-ish stamp is unambiguous in every locale — which is
+  /// the property that matters for a teaching sample and for the widget tests
+  /// that assert on it.
+  static String _formatWhen(DateTime when) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${when.year}-${two(when.month)}-${two(when.day)} '
+        '${two(when.hour)}:${two(when.minute)}';
   }
 
   Widget _buildCommentComposer() {

@@ -187,6 +187,32 @@ abstract class AppBackend {
   /// persisted comment.
   Future<TodoComment> addComment(String itemId, TodoComment comment);
 
+  /// The comment thread on the item [itemId], oldest first.
+  ///
+  /// Gated by the *item's* readability, not by [ProjectRole.commenter]: a
+  /// viewer sees the history they may not add to. The order is the server's and
+  /// is preserved end-to-end — the detail screen renders the list as given.
+  Future<List<TodoComment>> listComments(String itemId);
+
+  /// The subtask checklist of the item [itemId], in `position` order.
+  Future<List<Subtask>> listSubtasks(String itemId);
+
+  /// Adds [subtask] to the item [itemId] (editor and above), returning the
+  /// persisted subtask with its assigned id.
+  ///
+  /// One role stronger than [addComment] on purpose: a comment is *about* an
+  /// item, a subtask is *part of* it, so adding one edits what the item claims
+  /// to require.
+  ///
+  /// `id`, `itemId` and `position` are server-owned: the step always appends,
+  /// one past the highest already stored, so a caller's `position` is ignored.
+  /// Only `title` and `done` are read off the payload.
+  Future<Subtask> addSubtask(String itemId, Subtask subtask);
+
+  /// Updates [subtask] (editor and above on its parent item) — the screen uses
+  /// it to toggle `done`. The parent link is server-owned and cannot be moved.
+  Future<Subtask> updateSubtask(Subtask subtask);
+
   /// The current principal's per-resource role grants, as a
   /// `resourceKey → roleName` map (`<type>:<id>` keys — e.g. `item:1` →
   /// `'editor'`). The app installs it as a [TomResourceRoleAdapter] at login, so

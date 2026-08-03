@@ -260,7 +260,8 @@ final TomApi adminApi = TomApi(
 final TomApi appApi = TomApi(
   id: 'app',
   name: 'Todo Application API',
-  description: 'Workspaces, projects, lists, items, comments and sharing.',
+  description:
+      'Workspaces, projects, lists, items, comments, subtasks and sharing.',
   uri: '',
   endpoints: [
     TomApiEndpoint<Map<String, Object>, Object?>(
@@ -377,6 +378,48 @@ final TomApi appApi = TomApi(
       // The demonstrative non-identity mapping: the item id lives on the
       // comment's `itemId` field, so `{id}` → `TodoComment.itemId`.
       urlParameterMapping: const {'id': 'itemId'},
+      access: TomAuthenticatedAccess(),
+    ),
+    // The comment *history* read, the counterpart of `appAddComment`. A
+    // body-less GET that still binds its path capture onto a typed request DTO
+    // (G-API-2): the framework folds URL parameters into the DTO map before
+    // instantiating it, so `{id}` arrives as `EntityIdRequest.id` without a
+    // bare-`String` handler parameter. Data scope (C-3) is applied server-side —
+    // the history is only readable for an item the principal may read.
+    TomApiEndpoint<List<TodoComment>, EntityIdRequest>(
+      id: 'appListComments',
+      uri: '/items/{id}/comments',
+      method: TomHttpMethod.get,
+      // `{id}` → `EntityIdRequest.id` (identity): the item whose thread is read.
+      urlParameterMapping: const {'id': 'id'},
+      access: TomAuthenticatedAccess(),
+    ),
+    // Subtasks: the sample's one-to-many child collection under an item. Read,
+    // create and update — the update exists so toggling `done` exercises the
+    // write gate on a child row rather than only on the parent item.
+    TomApiEndpoint<List<Subtask>, EntityIdRequest>(
+      id: 'appListSubtasks',
+      uri: '/items/{id}/subtasks',
+      method: TomHttpMethod.get,
+      // `{id}` → `EntityIdRequest.id` (identity): the parent item.
+      urlParameterMapping: const {'id': 'id'},
+      access: TomAuthenticatedAccess(),
+    ),
+    TomApiEndpoint<Subtask, Subtask>(
+      id: 'appAddSubtask',
+      uri: '/items/{id}/subtasks',
+      method: TomHttpMethod.post,
+      // The same non-identity mapping `appAddComment` uses: the parent item id
+      // lives on the subtask's `itemId` field, so `{id}` → `Subtask.itemId`.
+      urlParameterMapping: const {'id': 'itemId'},
+      access: TomAuthenticatedAccess(),
+    ),
+    TomApiEndpoint<Subtask, Subtask>(
+      id: 'appUpdateSubtask',
+      uri: '/subtasks/{id}',
+      method: TomHttpMethod.put,
+      // `{id}` → `Subtask.id` (identity): the addressed subtask.
+      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, ShareRequest>(

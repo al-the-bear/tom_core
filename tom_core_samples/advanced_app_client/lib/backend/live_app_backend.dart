@@ -158,6 +158,24 @@ class LiveAppBackend implements AppBackend {
       _guard(() => _api.addComment(comment..itemId.set(itemId)));
 
   @override
+  Future<List<TodoComment>> listComments(String itemId) =>
+      _guard(() => _api.listComments(EntityIdRequest(id: itemId)));
+
+  @override
+  Future<List<Subtask>> listSubtasks(String itemId) =>
+      _guard(() => _api.listSubtasks(EntityIdRequest(id: itemId)));
+
+  @override
+  Future<Subtask> addSubtask(String itemId, Subtask subtask) =>
+      // As with `addComment`, the addressed item travels on the payload's
+      // `itemId`, which the `{id}` → `itemId` mapping binds server-side.
+      _guard(() => _api.addSubtask(subtask..itemId.set(itemId)));
+
+  @override
+  Future<Subtask> updateSubtask(Subtask subtask) =>
+      _guard(() => _api.updateSubtask(subtask));
+
+  @override
   Future<Map<String, String>> resourceRoles() =>
       _guard(() => _api.resourceRoles());
 

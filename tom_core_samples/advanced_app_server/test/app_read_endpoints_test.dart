@@ -137,6 +137,85 @@ AppReadService demoService() => AppReadService(
       demoResolver(),
     );
 
+/// Three comments on item 1 seeded **out of order** — the middle one first, and
+/// two sharing a timestamp. Seeding out of order is the point: it is what
+/// distinguishes a store that really sorts from one that merely echoes its seed.
+/// The timestamp collision pins the `id` tiebreak that makes the order *total*
+/// (`created_at` has second resolution in `app_comments`, so ties are ordinary,
+/// not pathological).
+List<CommentRecord> threadComments() => [
+      CommentRecord()
+        ..id = 2
+        ..itemId = 1
+        ..authorId = bob
+        ..body = 'second'
+        ..createdAt = DateTime.utc(2026, 1, 1, 12, 0, 30),
+      CommentRecord()
+        ..id = 3
+        ..itemId = 1
+        ..authorId = alice
+        ..body = 'third'
+        // Same second as #2: only the id tiebreak separates them.
+        ..createdAt = DateTime.utc(2026, 1, 1, 12, 0, 30),
+      CommentRecord()
+        ..id = 1
+        ..itemId = 1
+        ..authorId = alice
+        ..body = 'first'
+        ..createdAt = DateTime.utc(2026, 1, 1, 12, 0, 0),
+      // On a *different* item, to prove the read is keyed and not a full scan.
+      CommentRecord()
+        ..id = 4
+        ..itemId = 2
+        ..authorId = alice
+        ..body = 'other item'
+        ..createdAt = DateTime.utc(2026, 1, 1, 12, 0, 0),
+    ];
+
+/// Subtasks of item 1, likewise seeded out of `position` order and with one
+/// position collision.
+List<SubtaskRecord> checklistSubtasks() => [
+      SubtaskRecord()
+        ..id = 7
+        ..itemId = 1
+        ..title = 'b'
+        ..done = false
+        ..position = 1,
+      SubtaskRecord()
+        ..id = 5
+        ..itemId = 1
+        ..title = 'a'
+        ..done = true
+        ..position = 0,
+      SubtaskRecord()
+        ..id = 9
+        ..itemId = 1
+        ..title = 'c'
+        ..done = false
+        // Ties with #7 on position; the id breaks it.
+        ..position = 1,
+      SubtaskRecord()
+        ..id = 11
+        ..itemId = 2
+        ..title = 'elsewhere'
+        ..done = false
+        ..position = 0,
+    ];
+
+/// The read service over the comment/subtask fixture, sharing the demo grants
+/// and shares so visibility behaves exactly as in the groups above.
+AppReadService threadService() => AppReadService(
+      InMemoryAppReadStore(
+        workspaces: demoWorkspaces(),
+        projects: demoProjects(),
+        lists: demoLists(),
+        items: demoItems(),
+        comments: threadComments(),
+        subtasks: checklistSubtasks(),
+      ),
+      demoResolver(),
+    );
+
 void main() {
   // The list endpoints build observable domain entities through the mapping
   // layer, which self-observe through reflection; the registry must be live.
@@ -269,6 +348,90 @@ void main() {
       // their attachments — are his to see.
       final descriptors = await service.listAttachments(bob, 1);
       expect(descriptors.map((d) => d.slot), ['app_items/1/attachment']);
+    });
+  });
+
+  // The two ordered child reads. Both are gated by the *item's* readability
+  // rather than by a role of their own, so the interesting cases are the
+  // ordering (which the endpoint promises) and the boundary between "empty
+  // thread" and "unreachable item" — which must not look alike.
+  group('listComments returns the thread of one item, oldest first', () {
+    final service = threadService();
+
+    test('the thread is ordered by creation time, not by seed order', () async {
+      expect((await service.listComments(alice, 1)).map((c) => c.body.get()),
+          ['first', 'second', 'third']);
+    });
+
+    test('comments on other items are not in the thread', () async {
+      expect((await service.listComments(alice, 1)).map((c) => c.body.get()),
+          isNot(contains('other item')));
+    });
+
+    test('an item with no comments yields an empty thread', () async {
+      // Item 2 has one comment in the fixture; item 2's *own* thread is that
+      // comment, so the empty case is asserted on a reachable item with none.
+      final bare = AppReadService(
+        InMemoryAppReadStore(
+          workspaces: demoWorkspaces(),
+          projects: demoProjects(),
+          lists: demoLists(),
+          items: demoItems(),
+        ),
+        demoResolver(),
+      );
+      expect(await bare.listComments(alice, 1), isEmpty);
+    });
+
+    test('a viewer reads the history they may not add to (C-3)', () async {
+      // The step's point: read access to the *item* is the whole gate, so a
+      // `viewer` share sees every comment without holding `commenter`.
+      expect((await service.listComments(carol, 1)).map((c) => c.body.get()),
+          ['first', 'second', 'third']);
+    });
+
+    test('a stranger is told the item does not exist, not that it is empty',
+        () async {
+      // Closed/safe: an empty list would confirm the item exists. `dave` is
+      // shared nothing and owns nothing, so the read must reject.
+      expect(
+        () => service.listComments(dave, 1),
+        throwsA(isA<TomException>()
+            .having((e) => e.key, 'key', 'app.item.not_found')),
+      );
+    });
+  });
+
+  group('listSubtasks returns the checklist of one item, in position order', () {
+    final service = threadService();
+
+    test('the checklist is ordered by position, ties broken by id', () async {
+      expect((await service.listSubtasks(alice, 1)).map((s) => s.title.get()),
+          ['a', 'b', 'c']);
+    });
+
+    test('the done flag survives the mapping round-trip', () async {
+      final checklist = await service.listSubtasks(alice, 1);
+      expect(checklist.map((s) => s.done.get()), [true, false, false]);
+    });
+
+    test('subtasks of other items are not in the checklist', () async {
+      expect((await service.listSubtasks(alice, 1)).map((s) => s.title.get()),
+          isNot(contains('elsewhere')));
+    });
+
+    test('a viewer sees the checklist (same read gate as the thread)',
+        () async {
+      expect((await service.listSubtasks(carol, 1)).map((s) => s.title.get()),
+          ['a', 'b', 'c']);
+    });
+
+    test('a stranger is told the item does not exist', () async {
+      expect(
+        () => service.listSubtasks(dave, 1),
+        throwsA(isA<TomException>()
+            .having((e) => e.key, 'key', 'app.item.not_found')),
+      );
     });
   });
 }

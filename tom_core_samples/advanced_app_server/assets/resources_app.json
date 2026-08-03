@@ -35,7 +35,16 @@
         "title": "Add a comment",
         "hint": "Write a comment…",
         "submit": "Post comment",
-        "added": "Comment added"
+        "added": "Comment added",
+        "thread": "Comments",
+        "empty": "No comments yet.",
+        "byline": "{author} · {when}"
+      },
+      "subtask": {
+        "title": "Checklist",
+        "empty": "No steps yet.",
+        "hint": "Add a step…",
+        "submit": "Add step"
       }
     },
     "share": "Share"

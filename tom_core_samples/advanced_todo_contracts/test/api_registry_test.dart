@@ -47,13 +47,29 @@ void main() {
             // Public because its caller is mid-login and holds no bearer yet;
             // the interim challenge token travels in the body instead.
             'authSecondFactor',
+            // The three enrolment passes, public for the same reason: they are
+            // reached *during* a half-finished login, by a caller holding a
+            // token that by construction authenticates nobody. Listing them
+            // individually rather than widening the guard to a prefix is the
+            // point of this test — a fourth enrolment endpoint should have to
+            // be justified here.
+            'authBeginEnrolment',
+            'authConfirmEnrolment',
+            'authSkipEnrolment',
             'authLoginResources',
             'appHealth',
           ]));
     });
 
     test('public endpoints skip bearer authentication', () {
-      for (final id in ['authLogin', 'authSecondFactor', 'authLoginResources']) {
+      for (final id in [
+        'authLogin',
+        'authSecondFactor',
+        'authBeginEnrolment',
+        'authConfirmEnrolment',
+        'authSkipEnrolment',
+        'authLoginResources',
+      ]) {
         expect(authApi.endpoints[id]!.includeBearerAuthentication, isFalse,
             reason: '$id is public and must not be bearer-gated');
       }

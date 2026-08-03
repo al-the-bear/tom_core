@@ -337,6 +337,166 @@ void main() {
     });
   });
 
+  // Subtasks are gated one step *stronger* than comments: a comment is about an
+  // item, a subtask is part of it, so adding one changes what the item claims to
+  // require. The gating tests below are what pin that difference — `erin` is the
+  // fixture's `commenter`, and she is the one caller who may comment but not
+  // build a checklist.
+  group('addSubtask role gating (editor and above)', () {
+    test('an editor may add a subtask, filed under the addressed item',
+        () async {
+      // `position` is server-owned like `id` and `itemId`: the step appends, so
+      // the caller's 7 is ignored and the first entry of an empty checklist
+      // lands at 0. A client's position is only ever a guess from whatever list
+      // it happened to be holding.
+      final store = seededWriteStore();
+      final saved = await writeServiceOver(store).addSubtask(
+        bob,
+        1,
+        Subtask()
+          ..title.set('Write the migration')
+          ..position.set(7),
+      );
+
+      expect(saved.itemId.get(), '1');
+      expect(saved.title.get(), 'Write the migration');
+      expect(store.subtasks, hasLength(1));
+      expect(store.subtasks.single.position, 0);
+    });
+
+    test('successive subtasks append rather than collide at one position',
+        () async {
+      // The counter is per item, not global: a neighbouring item's checklist
+      // sitting at position 5 does not push item 1's first step past 0.
+      final store = InMemoryAppWriteStore(
+        items: [demoItem()],
+        subtasks: [
+          SubtaskRecord()
+            ..id = 9
+            ..itemId = 2
+            ..title = 'Someone else’s step'
+            ..done = false
+            ..position = 5,
+        ],
+      );
+      final service = writeServiceOver(store);
+      await service.addSubtask(bob, 1, Subtask()..title.set('First'));
+      await service.addSubtask(bob, 1, Subtask()..title.set('Second'));
+
+      expect(
+        store.subtasks
+            .where((s) => s.itemId == 1)
+            .map((s) => '${s.position}/${s.title}'),
+        ['0/First', '1/Second'],
+      );
+    });
+
+    test('a commenter may not add a subtask', () async {
+      // The line between the two child collections: erin may comment (asserted
+      // above) but a checklist entry is an edit to the item's scope.
+      final store = seededWriteStore();
+      await expectLater(
+        () => writeServiceOver(store)
+            .addSubtask(erin, 1, Subtask()..title.set('Nope')),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+      expect(store.subtasks, isEmpty);
+    });
+
+    test('a viewer may not add a subtask', () async {
+      final store = seededWriteStore();
+      await expectLater(
+        () => writeServiceOver(store)
+            .addSubtask(carol, 1, Subtask()..title.set('Nope')),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+      expect(store.subtasks, isEmpty);
+    });
+
+    test('the payload cannot file the subtask under another item', () async {
+      // `itemId` is stamped from the addressed item, so a payload naming a
+      // different parent is overwritten rather than honoured — otherwise the
+      // gate would have been resolved against one item and the row written
+      // under another.
+      final store = seededWriteStore();
+      final saved = await writeServiceOver(store).addSubtask(
+        bob,
+        1,
+        Subtask()
+          ..itemId.set('999')
+          ..title.set('Smuggled'),
+      );
+      expect(saved.itemId.get(), '1');
+      expect(store.subtasks.single.itemId, 1);
+    });
+  });
+
+  group('updateSubtask gating and server-owned columns', () {
+    /// A store carrying one subtask on item 1 — the row the update tests edit.
+    InMemoryAppWriteStore storeWithSubtask() => InMemoryAppWriteStore(
+          items: [demoItem()],
+          subtasks: [
+            SubtaskRecord()
+              ..id = 5
+              ..itemId = 1
+              ..title = 'Draft the schema'
+              ..done = false
+              ..position = 0,
+          ],
+        );
+
+    test('an editor may toggle done', () async {
+      final store = storeWithSubtask();
+      final saved = await writeServiceOver(store).updateSubtask(
+        bob,
+        5,
+        Subtask()
+          ..title.set('Draft the schema')
+          ..done.set(true)
+          ..position.set(0),
+      );
+      expect(saved.done.get(), true);
+      expect(store.subtasks.single.done, isTrue);
+    });
+
+    test('a viewer may not toggle done', () async {
+      final store = storeWithSubtask();
+      await expectLater(
+        () => writeServiceOver(store)
+            .updateSubtask(carol, 5, Subtask()..done.set(true)),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+      expect(store.subtasks.single.done, isFalse);
+    });
+
+    test('the parent link is not writable — a subtask cannot be moved',
+        () async {
+      // The gate was resolved from the *stored* parent, so honouring a payload
+      // `itemId` would let an editor of item 1 attach a row to an item they
+      // hold nothing on.
+      final store = storeWithSubtask();
+      final saved = await writeServiceOver(store).updateSubtask(
+        bob,
+        5,
+        Subtask()
+          ..itemId.set('999')
+          ..title.set('Draft the schema'),
+      );
+      expect(saved.itemId.get(), '1');
+      expect(store.subtasks.single.itemId, 1);
+    });
+
+    test('an unknown subtask is reported missing, not forbidden', () async {
+      final store = storeWithSubtask();
+      await expectLater(
+        () => writeServiceOver(store)
+            .updateSubtask(bob, 404, Subtask()..done.set(true)),
+        throwsA(isA<TomException>()
+            .having((e) => e.key, 'key', 'app.subtask.not_found')),
+      );
+    });
+  });
+
   group('createItem role gating + field grade', () {
     test('an editor may create an item, recorded as the reporter', () async {
       final store = seededWriteStore();

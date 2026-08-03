@@ -16,6 +16,12 @@
 ///   title and saving persists the title while the assignee stays put — the
 ///   write-back only carries the fields the grade renders editable.
 ///
+/// The screen's two **child sections** — the comment thread and the checklist —
+/// are covered from TC-30-06 on. They carry their own gates, distinct from the
+/// field matrix above: the thread is readable by anyone who can open the item
+/// (a viewer reads what they may not add to), while adding or ticking a
+/// checklist step is `editor`-and-above, one step stronger than commenting.
+///
 /// Socket-free: the in-memory fake builds the reflected domain tree, so the
 /// app's own `initializeReflection()` runs once in [setUpAll] and the resource
 /// provider is installed per test. The detail screen is pushed from a host route
@@ -61,8 +67,15 @@ void main() {
 
   /// A tall viewport so the detail form's fields and Save button all fit
   /// on-screen (the default 800×600 window scrolls controls out of reach).
-  void useTallViewport(WidgetTester tester) {
-    tester.view.physicalSize = const Size(1000, 2400);
+  ///
+  /// [height] exists because the screen's body is a `ListView`: a sliver only
+  /// *builds* the children it can lay out, so a section scrolled past the
+  /// bottom edge is absent from the element tree and `find.byKey` reports it
+  /// missing. The child sections (checklist + thread) sit below the fields, so
+  /// the tests that assert on them ask for a taller window rather than
+  /// scrolling — scrolling would make every later `find` order-dependent.
+  void useTallViewport(WidgetTester tester, {double height = 2400}) {
+    tester.view.physicalSize = Size(1000, height);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -86,8 +99,9 @@ void main() {
     String itemId = 'i-1',
     ProjectRole? shareCarolAs,
     Map<String, dynamic>? bundleOverride,
+    double viewportHeight = 2400,
   }) async {
-    useTallViewport(tester);
+    useTallViewport(tester, height: viewportHeight);
 
     final backend = InMemoryAppBackend();
     final session = AppSession(backend);
@@ -269,5 +283,128 @@ void main() {
     // label resolves through the installed provider, nothing else.
     expect(find.text('Title'), findsNothing);
     expect(find.text('title'), findsNothing);
+  });
+
+  // ---------------------------------------------------------------------------
+  // The two child sections (tcca21): the comment thread and the checklist.
+  //
+  // These prove the half of the item screen that the step-30 seam could not
+  // reach: reading a thread and a checklist back, and writing to them under a
+  // gate one step *stronger* than the comment composer's. The seed puts one
+  // comment and two subtasks (one already done) on `i-1`, so an assertion about
+  // ordering and checked state has something to be about.
+  // ---------------------------------------------------------------------------
+
+  /// The checklist rows need room below the seven fields, so the child-section
+  /// tests open on a taller window (see [useTallViewport]).
+  const double childSectionViewport = 4200;
+
+  testWidgets(
+      'TC-30-06: the item renders its seeded thread and checklist in order',
+      (tester) async {
+    await openDetail(tester, 'alice', viewportHeight: childSectionViewport);
+
+    // The thread: one seeded comment, rendered with its author byline and body.
+    expect(find.byKey(const Key('comment-thread')), findsOneWidget);
+    expect(find.byKey(const Key('comment-c-1')), findsOneWidget);
+    expect(find.text('Started on the hero section — draft attached.'),
+        findsOneWidget);
+    // The byline is bundle-driven (`board.item.comment.byline`) with both
+    // placeholders substituted — the seeded author and the seeded timestamp.
+    expect(find.text('u-bob · 2026-07-01 09:30'), findsOneWidget);
+
+    // The checklist: both steps, in `position` order, with the first ticked.
+    expect(find.byKey(const Key('subtask-list')), findsOneWidget);
+    expect(find.text('Collect the reference sites'), findsOneWidget);
+    expect(find.text('Write the hero paragraph'), findsOneWidget);
+    final boxes = tester
+        .widgetList<Checkbox>(find.descendant(
+            of: find.byKey(const Key('subtask-list')),
+            matching: find.byType(Checkbox)))
+        .toList();
+    expect(boxes.map((b) => b.value), [true, false],
+        reason: 'position order is preserved and s-1 is the done one');
+  });
+
+  testWidgets('TC-30-07: an owner adds a checklist step and it is persisted',
+      (tester) async {
+    final backend =
+        await openDetail(tester, 'alice', viewportHeight: childSectionViewport);
+
+    await tester.enterText(
+        find.descendant(
+            of: find.byKey(const Key('subtask-input')),
+            matching: find.byType(TextField)),
+        'Pick the hero image');
+    await tester.tap(find.byKey(const Key('subtask-submit-button')));
+    await tester.pumpAndSettle();
+
+    // The screen re-read the list rather than patching it locally, so the row
+    // it shows is the persisted one — and the backend agrees.
+    expect(find.text('Pick the hero image'), findsOneWidget);
+    final stored = await backend.listSubtasks('i-1');
+    expect(stored.map((s) => s.title.get()),
+        containsAllInOrder(<String>['Collect the reference sites',
+          'Write the hero paragraph', 'Pick the hero image']));
+    // The composer is cleared, so a second tap cannot re-post the same step.
+    expect(
+        tester
+            .widget<TextField>(find.descendant(
+                of: find.byKey(const Key('subtask-input')),
+                matching: find.byType(TextField)))
+            .controller
+            ?.text,
+        isEmpty);
+  });
+
+  testWidgets('TC-30-08: an owner ticks a step and the toggle is persisted',
+      (tester) async {
+    final backend =
+        await openDetail(tester, 'alice', viewportHeight: childSectionViewport);
+
+    // The second row (`s-2`) starts unticked; tap its checkbox.
+    await tester.tap(find.descendant(
+        of: find.byKey(const Key('subtask-s-2')),
+        matching: find.byType(Checkbox)));
+    await tester.pumpAndSettle();
+
+    final stored = await backend.listSubtasks('i-1');
+    expect(stored.firstWhere((s) => s.id.get() == 's-2').done.get(), isTrue);
+    // The title round-tripped: the toggle sends the whole row, so ticking a box
+    // must not blank the step it belongs to.
+    expect(stored.firstWhere((s) => s.id.get() == 's-2').title.get(),
+        'Write the hero paragraph');
+  });
+
+  testWidgets(
+      'TC-30-09: a viewer reads both sections but gets no checklist composer',
+      (tester) async {
+    final backend = await openDetail(tester, 'carol',
+        shareCarolAs: ProjectRole.viewer,
+        viewportHeight: childSectionViewport);
+
+    // Both histories are readable — the thread is gated by the *item's*
+    // readability alone, so a viewer sees the discussion they may not join…
+    expect(find.byKey(const Key('comment-thread')), findsOneWidget);
+    expect(find.text('Started on the hero section — draft attached.'),
+        findsOneWidget);
+    expect(find.byKey(const Key('subtask-list')), findsOneWidget);
+    expect(find.text('Collect the reference sites'), findsOneWidget);
+
+    // …but the checklist composer is absent entirely (a control that could only
+    // ever be refused), as is the comment composer's editor-gated sibling.
+    expect(find.byKey(const Key('subtask-input')), findsNothing);
+    expect(find.byKey(const Key('subtask-submit-button')), findsNothing);
+
+    // And the rows themselves are inert: the `read` grade wraps each checkbox in
+    // the framework's readonly treatment, so a tap changes nothing.
+    await tester.tap(
+        find.descendant(
+            of: find.byKey(const Key('subtask-s-2')),
+            matching: find.byType(Checkbox)),
+        warnIfMissed: false);
+    await tester.pumpAndSettle();
+    final stored = await backend.listSubtasks('i-1');
+    expect(stored.firstWhere((s) => s.id.get() == 's-2').done.get(), isFalse);
   });
 }
