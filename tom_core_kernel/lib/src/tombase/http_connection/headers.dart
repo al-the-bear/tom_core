@@ -36,4 +36,10 @@ class TomHeader {
   /// Used to indicate if the content should be displayed inline or
   /// as an attachment to be downloaded.
   static const contentDisposition = "Content-Disposition";
+
+  /// The Location header field name.
+  ///
+  /// Carries the target of a redirect (3xx) response — the one header that
+  /// makes a redirect a redirect rather than an empty body with an odd status.
+  static const location = "Location";
 }

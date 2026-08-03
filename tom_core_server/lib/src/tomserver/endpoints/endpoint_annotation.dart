@@ -223,10 +223,12 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
 /// route, and supplies the method's parameters from the request (JSON body,
 /// path/query params, principal/token, or execution context).
 ///
-/// Form-field (`formFields`), file-upload, redirect, and streaming/file
-/// response handling are not yet implemented in the pipeline; the fields exist
-/// for forward compatibility. See the quest completion steps and the module
-/// guide for the tracked follow-up.
+/// A body declared as `multipart/form-data` ([consumes]) is decoded by the
+/// pipeline: text parts fold into the request DTO — narrowed by [formFields]
+/// when it is non-empty — and file parts bind to `TomFormFile` /
+/// `TomMultipartForm` method parameters. A handler may return a `TomRedirect`
+/// to answer with a `3xx`, or a shelf `Response` to own the body itself (which
+/// is how the file endpoint streams a download).
 class TomEndpoint<requestType extends Object, resultType extends Object> implements TomEndpointBase<requestType, resultType> {
   // Samples:
   // consumes = "application/x-www-form-urlencoded",
@@ -235,7 +237,15 @@ class TomEndpoint<requestType extends Object, resultType extends Object> impleme
   /// The HTTP methods this endpoint answers (defaults to `GET`).
   final List<TomHttpMethod> methods;
 
-  /// Declared form-field names (reserved; not yet consumed by the pipeline).
+  /// The text form fields this endpoint accepts from a `multipart/form-data`
+  /// body, or empty for "every one that arrives".
+  ///
+  /// An allow-list, not a requirement: a named field that the form omits is
+  /// simply absent from the DTO. It exists for the case where the form is
+  /// filled in by something the endpoint does not control — a browser adds
+  /// hidden fields, a proxy adds its own — and the endpoint would rather ignore
+  /// them than fold them into its request object. An endpoint whose form it
+  /// owns leaves this empty, exactly as a JSON endpoint does.
   final List<String> formFields;
 
   /// The route path the endpoint is mounted at.

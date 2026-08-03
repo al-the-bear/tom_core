@@ -19,6 +19,7 @@
 /// two roles must be separate types.
 library;
 
+import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// Entry point required by the reflection generator: it only processes a root
@@ -73,6 +74,76 @@ abstract class FixtureApiService {
     logRequests: false,
   )
   Future<Map<String, Object>> auditedAction();
+
+  /// A `multipart/form-data` endpoint that takes both halves of a form: the
+  /// text parts as a typed request DTO, and a file part as a parameter.
+  ///
+  /// This is the shape the raw-body file endpoint cannot express — "create a
+  /// document *with* its attachment", where the metadata and the bytes arrive
+  /// together and there is no row yet to attach to.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/upload',
+    consumes: TomMimeType.multipartFormData,
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> upload(
+    FixtureUploadRequest request,
+    TomFormFile attachment,
+  );
+
+  /// A form endpoint that declares [TomEndpoint.formFields] as an allow-list,
+  /// so a part the sender added on its own does not reach the DTO.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/upload_declared',
+    consumes: TomMimeType.multipartFormData,
+    produces: TomMimeType.json,
+    formFields: ['title'],
+    logRequests: false,
+  )
+  Future<Map<String, Object>> uploadDeclared(FixtureUploadRequest request);
+
+  /// An endpoint that answers with a redirect directive rather than a value.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/moved',
+    logRequests: false,
+  )
+  Future<Object> moved();
+
+  /// A WebSocket endpoint: invoked once per accepted connection, with the live
+  /// socket among its parameters.
+  ///
+  /// It reports what it can see of the request zone, which is the property that
+  /// makes a socket endpoint an *endpoint* rather than a second server (bug
+  /// D22): the callback fires after the handshake response is finished, so
+  /// without the pipeline's zone capture the principal, the execution context
+  /// and the request id would all be gone by the time this body runs.
+  @TomPublicAccess()
+  @TomWebSocketEndpoint(uri: '/fixture/socket')
+  Future<void> socket(TomWebSocketConnection connection);
+}
+
+/// The request DTO of the fixture's form endpoints.
+///
+/// Reflected and default-constructible, because that is how the pipeline builds
+/// a request DTO — text form parts are folded into a map and the instance is
+/// created from it, exactly as for a JSON body.
+@tomReflector
+class FixtureUploadRequest {
+  /// The document title, from the `title` form field.
+  String title = '';
+
+  /// Free-text tags, from the `tags` form field.
+  String tags = '';
+
+  /// Creates an empty request; the pipeline fills the fields by reflection.
+  FixtureUploadRequest();
 }
 
 /// Live implementation of [FixtureApiService]; the pipeline invokes these
@@ -91,6 +162,43 @@ class FixtureApiServer implements FixtureApiService {
   @override
   Future<Map<String, Object>> auditedAction() async =>
       <String, Object>{'audited': true};
+
+  @override
+  Future<Map<String, Object>> upload(
+    FixtureUploadRequest request,
+    TomFormFile attachment,
+  ) async => <String, Object>{
+    'title': request.title,
+    'tags': request.tags,
+    'field': attachment.field,
+    'fileName': attachment.fileName ?? '',
+    'mediaType': attachment.mediaType ?? '',
+    'bytes': attachment.byteCount,
+  };
+
+  @override
+  Future<Map<String, Object>> uploadDeclared(
+    FixtureUploadRequest request,
+  ) async => <String, Object>{'title': request.title, 'tags': request.tags};
+
+  @override
+  Future<Object> moved() async => TomRedirect.seeOther('/fixture/health');
+
+  @override
+  Future<void> socket(TomWebSocketConnection connection) async {
+    // Read from the zone the pipeline captured at handshake time. If the zone
+    // were not re-established for the callback, both of these would be null.
+    final request = getFromCurrentZone<Request>();
+    final requestId = getFromCurrentZone<TomRequestId>();
+    connection.sendText(
+      'zone:${request == null ? 'lost' : request.url.path};'
+      'id:${requestId == null ? 'lost' : 'present'}',
+    );
+    await for (final message in connection.messages) {
+      if (message == 'bye') return;
+      connection.sendText('echo:$message');
+    }
+  }
 }
 
 // =============================================================================

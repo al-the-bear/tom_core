@@ -15,6 +15,11 @@ dependencies:
   shelf: ^1.4.2
   shelf_router: ^1.1.2
   shelf_multipart:
+  # WebSocket upgrade for the socket endpoint kind
+  # (endpoints/web_socket_endpoint.dart). Brings web_socket_channel, which is
+  # the channel type a socket handler talks to.
+  shelf_web_socket: ^3.0.0
+  web_socket_channel: ^3.0.0
   mysql_client:
   yaml:
   # Used directly by the audit trail's hash chain (audit/audit_sink.dart);

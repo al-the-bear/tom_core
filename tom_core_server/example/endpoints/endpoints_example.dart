@@ -11,6 +11,8 @@
 /// The same behaviour is covered by `test/endpoints_test.dart`.
 library;
 
+import 'dart:typed_data';
+
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -65,6 +67,63 @@ void run() {
   );
   print('5. default error handler => HTTP ${response.statusCode}');
   assert(response.statusCode == 500);
+
+  // 6. A form endpoint. `formFields` is an allow-list: left empty, every text
+  //    part folds into the request DTO; named, only those do.
+  const formEndpoint = TomEndpoint(
+    uri: '/documents',
+    methods: [TomHttpMethod.post],
+    consumes: TomMimeType.multipartFormData,
+    formFields: ['title', 'tags'],
+  );
+  print('6. form endpoint: ${formEndpoint.uri} '
+      'consumes=${formEndpoint.consumes} fields=${formEndpoint.formFields}');
+  // Both HTML form shapes answer the same question; only the reading differs.
+  assert(tomConsumesForm(formEndpoint.consumes));
+  assert(tomConsumesForm(TomMimeType.urlEncoded));
+  assert(!tomConsumesForm(TomMimeType.json));
+  assert(tomConsumesMultipartForm(formEndpoint.consumes));
+  assert(!tomConsumesMultipartForm(TomMimeType.urlEncoded));
+
+  // 7. A decoded form: text fields fold into the DTO, file parts bind as typed
+  //    parameters (a file cannot travel through a JSON map into a DTO).
+  final form = TomMultipartForm(
+    fields: {'title': 'Quarterly report', 'tags': 'q3,final'},
+    files: [
+      TomFormFile(
+        field: 'attachment',
+        bytes: Uint8List.fromList('the numbers'.codeUnits),
+        fileName: 'q3.txt',
+        mediaType: 'text/plain',
+      ),
+    ],
+  );
+  final attachment = form.file('attachment')!;
+  print('7. form: fields=${form.fields.keys.toList()} '
+      'file=${attachment.fileName} (${attachment.byteCount} bytes)');
+  assert(attachment.field == 'attachment');
+  assert(form.file('missing') == null);
+
+  // 8. A redirect is a directive, not a hand-built response: the handler states
+  //    the status and the URL, and the pipeline builds the Response.
+  final redirect = TomRedirect.seeOther('/documents/42');
+  final redirectResponse = redirect.toResponse();
+  print('8. redirect => HTTP ${redirectResponse.statusCode} '
+      '-> ${redirectResponse.headers[TomHeader.location.toLowerCase()]}');
+  assert(redirectResponse.statusCode == 303);
+  assert(TomRedirect.permanent('/x').status == 308);
+
+  // 9. A socket is a kind of endpoint, not a second server: it implements the
+  //    same TomEndpointBase the scan already keys on, and converts to a GET.
+  const socketEndpoint = TomWebSocketEndpoint(uri: '/ws/ticker');
+  final converted = socketEndpoint.convertToTomEndpoint();
+  print('9. socket endpoint: ${socketEndpoint.uri} '
+      'routes as ${converted.methods}');
+  // Assigning it to the base type is the whole point: `tag is TomEndpointBase`
+  // is what the pipeline's scan asks of every annotation it finds.
+  const TomEndpointBase asBase = socketEndpoint;
+  assert(identical(asBase, socketEndpoint));
+  assert(converted.methods.single == TomHttpMethod.get);
 
   print('\nEndpoints example completed.');
 }

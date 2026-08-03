@@ -3,7 +3,9 @@ import 'dart:convert';
 
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../audit/audit_record.dart';
 import '../audit/audit_trail.dart';
@@ -12,6 +14,9 @@ import '../server/server.dart';
 import '../transactions/transaction_manager.dart';
 
 import 'endpoint_annotation.dart';
+import 'endpoint_results.dart';
+import 'form_binding.dart';
+import 'web_socket_endpoint.dart';
 
 /// Serializes one element of a `List` endpoint result to a JSON-encodable value.
 ///
@@ -181,6 +186,55 @@ class TomEndpointHandler {
     });
   }
 
+  /// Folds the *text* parts of a decoded `multipart/form-data` body into
+  /// [jsonBodyData], so the request DTO is built from a form exactly as it is
+  /// built from a JSON body.
+  ///
+  /// [TomEndpoint.formFields] decides which parts are folded, and its two
+  /// states mean genuinely different things:
+  ///
+  /// * **empty** — fold every text part. A request body is the endpoint's own
+  ///   contract, just as a JSON body is, and a JSON body is not filtered
+  ///   field-by-field either. Nothing is gained by making the ordinary case
+  ///   restate the DTO's field list.
+  /// * **non-empty** — an allow-list: only the named parts are folded. This is
+  ///   for the endpoint whose form is filled in by something it does not
+  ///   control (a payment provider's callback, a third-party webhook posting a
+  ///   form), where the sender may add fields at will and only the declared
+  ///   ones should reach the DTO.
+  ///
+  /// Note the asymmetry with [injectQueryParameters], which binds *only* what
+  /// the mapping names. It is the same reasoning read in the other direction: a
+  /// query string is appended by whoever typed the URL, whereas a body is what
+  /// the endpoint asked for. Where that stops being true, `formFields` is the
+  /// way to say so.
+  ///
+  /// File parts are not folded — see [TomFormFile], which binds as a method
+  /// parameter, because an arbitrary object cannot travel through a JSON map
+  /// into a reflected DTO.
+  ///
+  /// Called *before* [injectQueryParameters] and [injectPathParameters], so a
+  /// URL value of the same name still wins: the route is the stronger
+  /// statement, and a form field cannot override the row it is posted to.
+  ///
+  /// Pure and side-effect-free apart from mutating [jsonBodyData], so it is
+  /// unit-testable without a live router (like [coercePrimitiveParameter]).
+  static void injectFormFields(
+    Map<String, dynamic> jsonBodyData,
+    TomMultipartForm form,
+    TomEndpoint endpoint,
+  ) {
+    final declared = endpoint.formFields;
+    if (declared.isEmpty) {
+      jsonBodyData.addAll(form.fields);
+      return;
+    }
+    for (final field in declared) {
+      final value = form.fields[field];
+      if (value != null) jsonBodyData[field] = value;
+    }
+  }
+
   /// Whether requests are logged when an endpoint does not specify
   /// `logRequests`.
   static bool globalSettingLogRequestsDefault = true;
@@ -243,28 +297,16 @@ class TomEndpointHandler {
     );
   }
 
-  /// Runs the full request pipeline for this endpoint and returns the response.
+  /// Enforces this endpoint's access rule for the principal in the current
+  /// zone, auditing and throwing on a denial.
   ///
-  /// Handles preflight, access control, reflection-based parameter binding,
-  /// optional transaction wrapping, method invocation, and result/error
-  /// conversion (see the class doc). WebSocket transport, richer
-  /// role/group/entitlement authorization, and stream/file upload binding are
-  /// tracked follow-ups (see the quest completion steps).
-  Future<Response> handleMethodCall(Request req) async {
-    if (req.method == TomHttpMethod.options.name) return handlePreflight(req);
-
-    List<Object> positionalArguments = [];
-
-    TomRequestLogInfo logInfo =
-        req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo;
-    logInfo.shouldBeLogged =
-        metadata.endpoint.logRequests ?? globalSettingLogRequestsDefault;
-
-    var authentication = getFromCurrentZone<TomPrincipal>();
-    var token = getFromCurrentZone<TomClientJwtToken>();
-    var requestId = getFromCurrentZone<TomRequestId>();
-    var reqId = requestId == null ? "" : requestId.uuid;
-
+  /// Shared by every endpoint kind — the HTTP pipeline and the WebSocket
+  /// handshake alike — because "may this caller reach this endpoint?" is the
+  /// same question regardless of what happens after the answer is yes. A socket
+  /// that authorized itself separately would be one place for the policy to
+  /// drift out of step.
+  Future<void> enforceAccess() async {
+    final authentication = getFromCurrentZone<TomPrincipal>();
     bool accessCheck = checkAccess(authentication);
 
     if (accessCheck == false) {
@@ -274,24 +316,63 @@ class TomEndpointHandler {
       }
     }
 
-    if (accessCheck == false) {
-      // CE-LG: a denial is audited unconditionally — no annotation, no opt-in.
-      // It is the one auditable event the repository chokepoint cannot see,
-      // because the request is refused before it reaches any data, and it is
-      // the entry an auditor looks for first. Awaited, so a trail that cannot
-      // store the denial fails the request rather than losing the record.
-      await TomAuditTrail.recordAction(
-        action: TomAuditAction.execute,
-        target: name,
-        outcome: TomAuditOutcome.denied,
-        detail:
-            "Access not granted and no resource key found for endpoint $name",
-      );
-      throw TomEndpointHandlerException(
-        "endpoint_handler.handle_method_call.access_denied",
-        "Access denied to endpoint, access not granted and resource key not found: $name",
-      );
-    }
+    if (accessCheck) return;
+
+    // CE-LG: a denial is audited unconditionally — no annotation, no opt-in.
+    // It is the one auditable event the repository chokepoint cannot see,
+    // because the request is refused before it reaches any data, and it is
+    // the entry an auditor looks for first. Awaited, so a trail that cannot
+    // store the denial fails the request rather than losing the record.
+    await TomAuditTrail.recordAction(
+      action: TomAuditAction.execute,
+      target: name,
+      outcome: TomAuditOutcome.denied,
+      detail: "Access not granted and no resource key found for endpoint $name",
+    );
+    throw TomEndpointHandlerException(
+      "endpoint_handler.handle_method_call.access_denied",
+      "Access denied to endpoint, access not granted and resource key not found: $name",
+    );
+  }
+
+  /// Materialises the endpoint method's positional arguments from [req].
+  ///
+  /// Each parameter is resolved by the first binding strategy that succeeds:
+  /// a value supplied by the caller in [extraByType], the zone's
+  /// [TomPrincipal] / [TomClientJwtToken], the request object itself, the
+  /// request context (by type or by name), a primitive path or query value,
+  /// the execution context, the decoded `multipart/form-data` body (whole form
+  /// or a single file part), and finally the request DTO built from the JSON
+  /// or form body folded together with the URL parameters.
+  ///
+  /// [extraByType] is how an endpoint *kind* contributes a value the generic
+  /// strategies cannot know about — a WebSocket endpoint passes the
+  /// [TomWebSocketConnection] this way. It is consulted first, so a kind-owned
+  /// value is never shadowed.
+  ///
+  /// Shared by [handleMethodCall] and [handleWebSocketCall]: the two differ in
+  /// what they do with the invocation, not in how the handler's parameters are
+  /// found.
+  Future<List<Object>> bindParameters(
+    Request req, {
+    Map<Type, Object> extraByType = const {},
+  }) async {
+    final List<Object> positionalArguments = [];
+
+    final authentication = getFromCurrentZone<TomPrincipal>();
+    final token = getFromCurrentZone<TomClientJwtToken>();
+    final requestId = getFromCurrentZone<TomRequestId>();
+    final reqId = requestId == null ? "" : requestId.uuid;
+
+    // Read once, before the loop: a request body is a single-pass stream, so a
+    // per-parameter decode would find it already drained. Decoding here also
+    // means a malformed envelope fails before any argument is bound, rather
+    // than half-way through.
+    final TomMultipartForm? form = !tomConsumesForm(metadata.endpoint.consumes)
+        ? null
+        : tomConsumesMultipartForm(metadata.endpoint.consumes)
+        ? await TomMultipartForm.readForm(req)
+        : await TomMultipartForm.readUrlEncodedForm(req);
 
     if (debugPrintContext)
       tomLog.trace(
@@ -302,6 +383,42 @@ class TomEndpointHandler {
         "$reqId-${req.url}: Found $authentication and $token for request",
       );
     for (var pm in method.parameters) {
+      final supplied = extraByType[pm.type.reflectedType];
+      if (supplied != null) {
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from the endpoint kind's supplied values",
+        );
+        positionalArguments.add(supplied);
+        continue;
+      }
+      if (form != null && pm.type.reflectedType == TomMultipartForm) {
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} to the decoded multipart form",
+        );
+        positionalArguments.add(form);
+        continue;
+      }
+      if (form != null && pm.type.reflectedType == TomFormFile) {
+        // Bound by parameter *name*: the form field a file arrived under is
+        // what identifies it, and the handler's parameter name is where the
+        // endpoint states which one it wants.
+        final file = form.file(pm.simpleName);
+        if (file == null) {
+          // Named rather than left to the arity mismatch this would otherwise
+          // become: "the endpoint expects a file part called `attachment`" is
+          // diagnosable, "wrong number of arguments" is not.
+          throw TomFormBindingException(
+            "endpoint_pipeline.bind_parameters.missing_file_part",
+            "The form did not include the required file.",
+            parameters: {"field": pm.simpleName, "endpoint": name},
+          );
+        }
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} to form file $file",
+        );
+        positionalArguments.add(file);
+        continue;
+      }
       if (pm.type.reflectedType == TomPrincipal && authentication != null) {
         tomLog.trace(
           "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomPrincipal",
@@ -404,18 +521,29 @@ class TomEndpointHandler {
       try {
         ClassMirror parameterMirror =
             tomReflector.reflectType(pm.reflectedType) as ClassMirror;
-        if (metadata.endpoint.consumes == TomMimeType.json &&
+        if ((metadata.endpoint.consumes == TomMimeType.json || form != null) &&
             req.method != TomHttpMethod.trace.name) {
           try {
-            String body = await req.readAsString();
-            // Fold the JSON body (when present) and the mapped URL parameters
-            // into one map, then build the request DTO from it. URL parameters
-            // must reach the DTO even for a body-less GET
-            // (`GET /items/{id}` -> `request.id`), so the DTO is instantiated
-            // whenever there is a body *or* at least one URL parameter.
-            final Map<String, dynamic> jsonBodyData = body.isNotEmpty
-                ? jsonDecode(body) as Map<String, dynamic>
-                : {};
+            // A form and a JSON body are two spellings of the same thing here:
+            // both end as a map of field names, and the DTO is built from that
+            // map either way. Only the decoding differs — and the form has
+            // already been decoded once, before the loop.
+            String body = "";
+            final Map<String, dynamic> jsonBodyData = {};
+            if (form != null) {
+              injectFormFields(jsonBodyData, form, metadata.endpoint);
+              body = "$form";
+            } else {
+              body = await req.readAsString();
+              // Fold the JSON body (when present) and the mapped URL parameters
+              // into one map, then build the request DTO from it. URL parameters
+              // must reach the DTO even for a body-less GET
+              // (`GET /items/{id}` -> `request.id`), so the DTO is instantiated
+              // whenever there is a body *or* at least one URL parameter.
+              if (body.isNotEmpty) {
+                jsonBodyData.addAll(jsonDecode(body) as Map<String, dynamic>);
+              }
+            }
             injectQueryParameters(jsonBodyData, req, metadata.endpoint);
             injectPathParameters(jsonBodyData, req, metadata.endpoint);
             if (jsonBodyData.isNotEmpty) {
@@ -510,6 +638,31 @@ class TomEndpointHandler {
         "$reqId-${req.url}: Setting parameter ${pm.simpleName} of type ${pm.reflectedType} failed",
       );
     }
+    return positionalArguments;
+  }
+
+  /// Runs the full request pipeline for this endpoint and returns the response.
+  ///
+  /// Handles preflight, access control ([enforceAccess]), reflection-based
+  /// parameter binding ([bindParameters]), optional transaction wrapping,
+  /// method invocation, and result/error conversion (see the class doc).
+  ///
+  /// A WebSocket endpoint takes the sibling path, [handleWebSocketCall], which
+  /// shares the first two stages and replaces the rest with a socket lifetime.
+  Future<Response> handleMethodCall(Request req) async {
+    if (req.method == TomHttpMethod.options.name) return handlePreflight(req);
+
+    TomRequestLogInfo logInfo =
+        req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo;
+    logInfo.shouldBeLogged =
+        metadata.endpoint.logRequests ?? globalSettingLogRequestsDefault;
+
+    final requestId = getFromCurrentZone<TomRequestId>();
+    final reqId = requestId == null ? "" : requestId.uuid;
+
+    await enforceAccess();
+
+    final List<Object> positionalArguments = await bindParameters(req);
 
     String callName = method.simpleName;
 
@@ -595,6 +748,12 @@ class TomEndpointHandler {
     // transaction that has already committed.
     await _recordInvocationAudit(TomAuditOutcome.succeeded);
     try {
+      // A redirect is fully described by a status and a URL, so the handler
+      // states *what* it wants ([TomRedirect]) and the pipeline builds the
+      // response. Turned into one here rather than recognised separately below,
+      // so that a redirect and a handler-supplied Response share one exit and
+      // one log line — the difference between them ends at this statement.
+      if (result is TomRedirect) result = result.toResponse();
       // A handler that returns a shelf Response has already decided everything
       // this block would decide — status, headers, and a body that may be an
       // un-materialised stream. Answered first, before the conversion chain,
@@ -695,6 +854,125 @@ class TomEndpointHandler {
           stack: stacktrace,
         );
       }
+    }
+  }
+
+  /// Serves a WebSocket handshake for this endpoint and runs the handler for
+  /// the lifetime of the accepted connection.
+  ///
+  /// The first two stages are the HTTP pipeline's own — [enforceAccess] and
+  /// [bindParameters] — and run *before* the upgrade, so an unauthorized or
+  /// unbindable call is refused as an ordinary HTTP error rather than as a
+  /// socket that opens and immediately dies. What replaces the rest of the
+  /// pipeline is the socket's lifetime: the handler is invoked once, with the
+  /// live [TomWebSocketConnection] among its arguments, and the socket is
+  /// closed when it returns.
+  ///
+  /// A transaction is deliberately not offered here — see the mounting check in
+  /// `createRoutesForEndpoint`.
+  Future<Response> handleWebSocketCall(Request req) async {
+    if (req.method == TomHttpMethod.options.name) return handlePreflight(req);
+
+    final declaration = metadata.webSocket;
+    if (declaration == null) {
+      throw TomWebSocketException(
+        "endpoint_pipeline.handle_web_socket_call.not_a_socket_endpoint",
+        "This endpoint does not declare a WebSocket transport.",
+        parameters: {"endpoint": name},
+      );
+    }
+
+    // Read leniently: unlike the HTTP path, a socket endpoint is routinely
+    // exercised without the logging middleware in front of it.
+    final logInfo =
+        req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo?;
+    logInfo?.shouldBeLogged =
+        metadata.endpoint.logRequests ?? globalSettingLogRequestsDefault;
+
+    final requestId = getFromCurrentZone<TomRequestId>();
+    final reqId = requestId == null ? "" : requestId.uuid;
+
+    await enforceAccess();
+
+    final connection = TomWebSocketConnection();
+    final positionalArguments = await bindParameters(
+      req,
+      extraByType: {TomWebSocketConnection: connection},
+    );
+
+    // The socket callback fires after the handshake response is finished, by
+    // which time the request zone — and with it the TomPrincipal, the execution
+    // context and the request id — is no longer current. Capture it here and
+    // run the handler inside it: the same fix, for the same reason, as the
+    // streamed file download (bug D22).
+    final zone = Zone.current;
+    final callName = method.simpleName;
+
+    final handler = webSocketHandler(
+      (WebSocketChannel channel, String? subprotocol) {
+        connection.attachChannel(channel, subprotocol);
+        unawaited(
+          zone.run(
+            () => _serveSocket(
+              reqId,
+              req,
+              callName,
+              connection,
+              positionalArguments,
+            ),
+          ),
+        );
+      },
+      protocols: declaration.protocols.isEmpty ? null : declaration.protocols,
+      allowedOrigins: declaration.allowedOrigins.isEmpty
+          ? null
+          : declaration.allowedOrigins,
+      pingInterval: declaration.pingInterval,
+    );
+
+    final response = await handler(req);
+    if (metadata.endpoint.logRequests == true) {
+      tomLog.info(
+        "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} [WebSocket handshake]",
+      );
+      logInfo?.hasBeenLogged = true;
+    }
+    return response;
+  }
+
+  /// Invokes the socket handler and closes the connection when it returns.
+  ///
+  /// Runs inside the captured request zone (see [handleWebSocketCall]), so the
+  /// handler sees the same principal and execution context an HTTP handler
+  /// would.
+  Future<void> _serveSocket(
+    String reqId,
+    Request req,
+    String callName,
+    TomWebSocketConnection connection,
+    List<Object> positionalArguments,
+  ) async {
+    // CE-LG: what is auditable about a socket is that it was *accepted* — the
+    // point at which an authenticated principal gained an open channel. The
+    // conversation that follows carries no further endpoint invocations, so
+    // there is no later moment at which "this succeeded" would mean more.
+    await _recordInvocationAudit(
+      TomAuditOutcome.succeeded,
+      detail: "WebSocket connection accepted",
+    );
+    try {
+      var result = instance.invoke(callName, positionalArguments);
+      if (result is Future) await result;
+      await connection.close(1000, "Handler completed");
+    } catch (error, stacktrace) {
+      tomLog.warn(
+        "$reqId-${req.url}: WebSocket handler $callName on ${instance.type.simpleName} threw $error\n$stacktrace",
+      );
+      await _recordInvocationAudit(TomAuditOutcome.failed, detail: "$error");
+      // 1011 "internal error" is the WebSocket equivalent of a 500: the peer is
+      // told the conversation ended because *this* side failed, without being
+      // told how — the same discretion the default error handler applies.
+      await connection.close(1011, "Handler failed");
     }
   }
 
@@ -990,6 +1268,27 @@ class TomEndpointRouting {
     // with the raw template silently never matches a real value. Translate once
     // and register the shelf form.
     final route = shelfRoutePath(tep.uri);
+    if (mmd.webSocket != null) {
+      if (mmd.transactionInfo != null) {
+        // A transaction is scoped to a request; a socket outlives every
+        // individual message on it. Wrapping the handler would mean one
+        // transaction held open for the whole conversation — a lock held for
+        // as long as a client cares to stay connected. Refused at mount time,
+        // because the alternative is discovering it under load.
+        throw TomEndpointPipelineException(
+          "endpoint_pipeline.create_routes_for_endpoint.transactional_web_socket",
+          "WebSocket endpoint ${mmd.methodMirror.simpleName}-${instanceClassMirror.simpleName} cannot be @TomTransactional: a transaction cannot span a connection.",
+        );
+      }
+      // A handshake is a GET, and OPTIONS still answers preflight so that a
+      // browser can discover the route the same way it discovers any other.
+      router.get(route, teph.handleWebSocketCall);
+      router.options(route, teph.handleMethodCall);
+      routingInfo[tep.uri] = TomEndpointRoutingInfo(teph, tep);
+      tomLog.info("mounted websocket endpoint ${teph.name} $tep");
+      handlers.add(teph);
+      return;
+    }
     for (var method in tep.methods) {
       switch (method) {
         case TomHttpMethod.get:
@@ -1134,6 +1433,10 @@ class TomEndpointRouting {
                 access: resolvedAccess,
                 transactionInfo: ti,
                 audited: aud,
+                // A socket endpoint is discovered by the very same `tag is
+                // TomEndpointBase` test as every other kind; all that is kept
+                // here is *which* kind it was, for the mounting step.
+                webSocket: tepTag is TomWebSocketEndpoint ? tepTag : null,
                 apiEndpointImplementation: aei,
                 apiEndpoint: ae,
                 api: a,
@@ -1237,6 +1540,15 @@ class TomMethodMetadata {
   /// declaration — it happens at the repository.
   TomAudited? audited;
 
+  /// The `@TomWebSocketEndpoint` declaration, when the method is a socket
+  /// endpoint rather than a request/response one.
+  ///
+  /// Kept alongside the [endpoint] it converts to, not instead of it: the scan,
+  /// the access resolution and the routing table all work on the [TomEndpoint],
+  /// and this field is what tells the mounting step to give the route a socket
+  /// handler rather than an HTTP one.
+  TomWebSocketEndpoint? webSocket;
+
   /// The `@TomApiEndpointImplementation` tag, for registry-based endpoints.
   TomApiEndpointImplementation? apiEndpointImplementation;
 
@@ -1256,6 +1568,7 @@ class TomMethodMetadata {
     this.access,
     this.transactionInfo,
     this.audited,
+    this.webSocket,
     this.apiEndpointImplementation,
     this.apiImplementation,
     this.api,

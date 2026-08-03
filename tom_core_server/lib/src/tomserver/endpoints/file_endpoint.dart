@@ -69,6 +69,7 @@ import '../object_persistence/data_scope.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'endpoint_annotation.dart';
 import 'endpoint_pipeline.dart';
+import 'form_binding.dart';
 
 /// Thrown while registering or resolving a file slot.
 ///
@@ -352,6 +353,52 @@ class TomFileSlots {
   /// Exists for tests, which build a fresh registry per case; an application
   /// registers once at startup.
   static void reset() => _slots.clear();
+}
+
+/// Stores a file that arrived as one part of a `multipart/form-data` request.
+///
+/// This is the join between the two upload shapes, and it is deliberately thin:
+/// a form part reaches the blob store through the *same* [TomFileSlot] the
+/// raw-body endpoint uses, so exposure ([TomFileReference.exposed]), the row
+/// scope (C-3) and the column grade (C-4) all apply to it unchanged. There is
+/// one route from bytes to storage; multipart only changes how the bytes get to
+/// the handler.
+///
+/// The call is the handler's, not the pipeline's, and that ordering is
+/// load-bearing: on a create the row does not exist while the request body is
+/// being read, so the id the slot is addressed by is only known once the
+/// handler has saved the entity.
+///
+/// ```dart
+/// final saved = await documents.save(request.toDocument());
+/// await attachment.storeIn('document', 'attachment', '${saved.id}');
+/// ```
+extension TomFormFileStorage on TomFormFile {
+  /// Stores this part in the file slot `<table>/<column>` of row [rowId].
+  ///
+  /// Throws [TomFileSlotException] when no such slot is exposed — the same
+  /// answer the HTTP endpoint gives, because it is the same registry and the
+  /// same default-closed rule.
+  Future<TomFileMetadata> storeIn(
+    String table,
+    String column,
+    String rowId,
+  ) async {
+    final slot = TomFileSlots.resolve(table, column);
+    if (slot == null) {
+      throw TomFileSlotException(
+        'file_endpoint.unknown_slot',
+        'No such file slot.',
+        parameters: {'table': table, 'column': column, 'field': field},
+      );
+    }
+    return slot.upload(
+      rowId,
+      openRead(),
+      mediaType: mediaType,
+      fileName: fileName,
+    );
+  }
 }
 
 /// Serves the file-transfer wire contract over the registered [TomFileSlots].

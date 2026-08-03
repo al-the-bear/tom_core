@@ -26,12 +26,22 @@ method, and runs the per-request handling.
   - [TomEndpointRouting](#tomendpointrouting)
   - [TomMethodMetadata](#tommethodmetadata)
   - [TomClassScanResult](#tomclassscanresult)
+  - [TomFormBindingException](#tomformbindingexception)
+  - [TomFormFile](#tomformfile)
+  - [TomMultipartForm](#tommultipartform)
+  - [TomRedirect](#tomredirect)
+  - [TomWebSocketException](#tomwebsocketexception)
+  - [TomWebSocketEndpoint&lt;requestType, resultType&gt;](#tomwebsocketendpointrequesttype-resulttype)
+  - [TomWebSocketConnection](#tomwebsocketconnection)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
 Source: `lib/src/tomserver/endpoints/endpoint_annotation.dart`,
-`lib/src/tomserver/endpoints/endpoint_pipeline.dart`.
+`lib/src/tomserver/endpoints/endpoint_pipeline.dart`,
+`lib/src/tomserver/endpoints/form_binding.dart`,
+`lib/src/tomserver/endpoints/endpoint_results.dart`,
+`lib/src/tomserver/endpoints/web_socket_endpoint.dart`.
 
 `endpoint_annotation.dart` defines the declarative surface: `@tomService` /
 `@TomApiImplementation` mark a class as a routable service, `@TomEndpoint`
@@ -48,6 +58,15 @@ request, optionally opens a transaction, invokes the method by reflection, and
 converts the result (or error) into a `Response`. `TomMethodMetadata` bundles
 the collected annotations per method.
 
+`form_binding.dart` decodes an HTML form body — `multipart/form-data` or
+`application/x-www-form-urlencoded` — into a `TomMultipartForm` whose text
+fields fold into the request DTO and whose `TomFormFile` parts bind to method
+parameters. `endpoint_results.dart` adds `TomRedirect`, the directive a handler
+returns to answer with a `3xx`. `web_socket_endpoint.dart` adds the socket
+endpoint kind: `TomWebSocketEndpoint` is a `TomEndpointBase`, so it is scanned,
+authorized and parameter-bound by the same pipeline, and the handler talks
+through a `TomWebSocketConnection`.
+
 ## Class Hierarchy
 
 ```
@@ -59,20 +78,27 @@ TomService
 
 TomEndpointBase<requestType, resultType>  (abstract)
     ├── TomApiEndpointImplementation<requestType, resultType>  (implements)
-    └── TomEndpoint<requestType, resultType>                   (implements)
+    ├── TomEndpoint<requestType, resultType>                   (implements)
+    └── TomWebSocketEndpoint<requestType, resultType>          (implements)
 
 TomComponentReference
 TomTransactional
 
 TomServerException  (server module)
     ├── TomEndpointHandlerException
-    └── TomEndpointPipelineException
+    ├── TomEndpointPipelineException
+    ├── TomFormBindingException
+    └── TomWebSocketException
 
 TomEndpointHandler
 TomEndpointRoutingInfo
 TomEndpointRouting
 TomMethodMetadata
 TomClassScanResult
+TomFormFile
+TomMultipartForm
+TomRedirect
+TomWebSocketConnection
 ```
 
 ## Classes
@@ -250,7 +276,7 @@ const TomEndpoint({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `methods` | `List<TomHttpMethod>` | The HTTP methods this endpoint answers (defaults to `GET`). |
-| `formFields` | `List<String>` | Declared form-field names (reserved; not yet consumed by the pipeline). |
+| `formFields` | `List<String>` | Allow-list of text form fields folded into the request DTO from a form body; empty means "every field that arrives". |
 | `uri` | `String` | The route path the endpoint is mounted at. |
 | `consumes` | `TomMimeType` | The request body media type the endpoint accepts (defaults to JSON). |
 | `produces` | `TomMimeType` | The response body media type the endpoint produces (defaults to JSON). |
@@ -381,6 +407,8 @@ TomEndpointHandler({
 | ------ | --------- | ----------- |
 | `coercePrimitiveParameter` | `static Object? coercePrimitiveParameter(Type type, String raw)` | Coerces a raw URL string into the parameter's primitive `type`, or `null` when `type` is not a bindable primitive. |
 | `injectPathParameters` | `static void injectPathParameters(Map<String, dynamic> jsonBodyData, Request req, TomEndpoint endpoint)` | Folds the request's URL path parameters into `jsonBodyData` under the DTO field names declared by `endpoint.urlParameterMapping`. |
+| `injectQueryParameters` | `static void injectQueryParameters(Map<String, dynamic> jsonBodyData, Request req, TomEndpoint endpoint)` | Folds query-string values into `jsonBodyData`, but only those the endpoint explicitly maps. |
+| `injectFormFields` | `static void injectFormFields(Map<String, dynamic> jsonBodyData, TomMultipartForm form, TomEndpoint endpoint)` | Folds a form body's text fields into `jsonBodyData`, narrowed by `endpoint.formFields` when it is non-empty. |
 
 #### Properties
 
@@ -406,6 +434,9 @@ TomEndpointHandler({
 | ------ | --------- | ----------- |
 | `handlePreflight` | `Response handlePreflight(Request req)` | Answers a CORS preflight (`OPTIONS`) request with the endpoint's (or global default) allowed origins/methods/headers. |
 | `handleMethodCall` | `Future<Response> handleMethodCall(Request req)` | Runs the full request pipeline for this endpoint and returns the response. |
+| `handleWebSocketCall` | `Future<Response> handleWebSocketCall(Request req)` | Serves a WebSocket handshake: enforces access, binds parameters *before* the upgrade, and runs the handler inside the captured request zone. |
+| `enforceAccess` | `Future<void> enforceAccess()` | Runs the access check and its denial audit; shared by the HTTP and WebSocket paths. |
+| `bindParameters` | `Future<List<Object>> bindParameters(Request req, {Map<Type, Object> extraByType = const {}})` | Builds the method's positional arguments from the request; `extraByType` supplies values only the endpoint kind knows (the socket connection). |
 | `checkAccess` | `bool checkAccess(TomPrincipal? principal)` | Decides whether `principal` may call this endpoint from its resolved access control, falling back to the global protection default. |
 | `checkAutomaticAccess` | `bool checkAutomaticAccess(bool accessCheck)` | Second-chance access check via resource-key protection; returns the possibly-upgraded decision. |
 
@@ -482,6 +513,7 @@ TomMethodMetadata({
   TomApiImplementation? apiImplementation,
   TomApi? api,
   TomApiEndpoint? apiEndpoint,
+  TomWebSocketEndpoint? webSocket,
 })
 ```
 
@@ -497,6 +529,7 @@ TomMethodMetadata({
 | `apiImplementation` | `TomApiImplementation?` | The class's `@TomApiImplementation` tag, for registry-based endpoints. |
 | `api` | `TomApi?` | The resolved remote API, for registry-based endpoints. |
 | `apiEndpoint` | `TomApiEndpoint?` | The resolved remote-API endpoint, for registry-based endpoints. |
+| `webSocket` | `TomWebSocketEndpoint?` | The socket declaration, when the method is a WebSocket endpoint (kept alongside the `endpoint` it converts to). |
 
 ### TomClassScanResult
 
@@ -521,8 +554,216 @@ TomClassScanResult({
 | `apiImplementations` | `List<ClassMirror>` | Classes annotated with `@TomApiImplementation`. |
 | `componentClasses` | `List<ClassMirror>` | Classes annotated with `@TomComponent` (candidate implementations). |
 
+### TomFormBindingException
+
+Thrown while decoding or binding an HTML form body. Always caused by what the
+caller sent — a malformed envelope, a part over the size ceiling, a declared
+file part that never arrived — so it surfaces as a client error.
+
+#### Constructors
+
+```dart
+TomFormBindingException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = true,
+})
+```
+
+### TomFormFile
+
+One uploaded file part of a `multipart/form-data` request: the bytes plus what
+the envelope said about them. The file name is a display hint, never a path,
+and the media type is a claim the store records rather than a fact it verifies.
+
+#### Constructors
+
+```dart
+TomFormFile({
+  required String field,
+  required Uint8List bytes,
+  String? fileName,
+  String? mediaType,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `field` | `String` | The form field name the part arrived under. |
+| `fileName` | `String?` | The file name the client supplied, if any (a hint, not a path). |
+| `mediaType` | `String?` | The media type the part declared, if any. |
+| `bytes` | `Uint8List` | The part's bytes. |
+| `byteCount` | `int` | The size of the part, in bytes. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `openRead` | `Stream<List<int>> openRead()` | The part's bytes as a stream, for handing to a store. |
+
+See also `TomFormFile.storeIn` in the
+[File Storage](api_summary_file_storage.md) summary, which uploads the part
+through the file-slot registry.
+
+### TomMultipartForm
+
+The decoded body of a form request: its text `fields` and its uploaded `files`.
+Produced once per request and handed to the pipeline, which folds the fields
+into the request DTO and binds the files to the handler's parameters.
+
+#### Constructors
+
+```dart
+TomMultipartForm({
+  required Map<String, String> fields,
+  required List<TomFormFile> files,
+})
+```
+
+#### Static Members
+
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `globalSettingMaxFilePartBytes` | `static int` | The largest a single file part may be before it is refused (default 8 MiB). |
+| `readForm` | `static Future<TomMultipartForm?> readForm(Request req)` | Decodes `req` as `multipart/form-data`, or returns `null` when it is not one. Reads the body, so it may be called once per request. |
+| `readUrlEncodedForm` | `static Future<TomMultipartForm> readUrlEncodedForm(Request req)` | Decodes `req` as `application/x-www-form-urlencoded`; the result never carries files. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `fields` | `Map<String, String>` | The text parts, keyed by field name; a repeated name keeps the last value. |
+| `files` | `List<TomFormFile>` | The uploaded file parts, in arrival order. |
+| `isEmpty` | `bool` | Whether the request carried no parts at all. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `file` | `TomFormFile? file(String field)` | The single file part named `field`, or `null`; when repeated, the **first** wins. |
+| `filesNamed` | `List<TomFormFile> filesNamed(String field)` | Every file part named `field`, in arrival order. |
+
+### TomRedirect
+
+The directive a handler returns to answer with a `3xx`. A redirect is fully
+described by a status and a URL, so the handler states what it wants and the
+pipeline builds the response.
+
+#### Constructors
+
+```dart
+TomRedirect(String location, {int status = 303})
+TomRedirect.seeOther(String location)    // 303
+TomRedirect.temporary(String location)   // 307
+TomRedirect.permanent(String location)   // 308
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `location` | `String` | The URL to redirect to. |
+| `status` | `int` | The `3xx` status to answer with. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toResponse` | `Response toResponse()` | Builds the bodiless response carrying the `Location` header. |
+
+### TomWebSocketException
+
+Thrown when a WebSocket endpoint is declared or used in a way the pipeline
+cannot serve (a non-socket endpoint routed to the socket handler, a connection
+used before it is attached, a second attach).
+
+#### Constructors
+
+```dart
+TomWebSocketException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = true,
+})
+```
+
+### TomWebSocketEndpoint&lt;requestType, resultType&gt;
+
+Method-level annotation declaring a WebSocket endpoint. The method is invoked
+once per accepted connection and its returned future ends the conversation.
+Implements `TomEndpointBase`, which is what the pipeline's scan keys on.
+
+#### Constructors
+
+```dart
+const TomWebSocketEndpoint({
+  required String uri,
+  List<String> protocols = const [],
+  List<String> allowedOrigins = const [],
+  Duration? pingInterval,
+  Map<String, String> urlParameterMapping = const {},
+  bool? logRequests,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `uri` | `String` | The route path the socket is mounted at. |
+| `protocols` | `List<String>` | Subprotocols the endpoint will speak, in preference order; empty = none. |
+| `allowedOrigins` | `List<String>` | Browser origins allowed to open the socket; empty = any. |
+| `pingInterval` | `Duration?` | How often to ping an idle connection, or `null` to never ping. |
+| `urlParameterMapping` | `Map<String, String>` | Binds URL parameters to typed request-DTO fields. |
+| `logRequests` | `bool?` | Whether handshake requests are logged (`null` = default). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `convertToTomEndpoint` | `TomEndpoint<requestType, resultType> convertToTomEndpoint([TomApiImplementation? apiImplementation])` | *(override)* Produces the `GET`-only `TomEndpoint` the pipeline routes with. |
+
+### TomWebSocketConnection
+
+A live WebSocket connection as a handler sees it. Created before the upgrade —
+so a binding failure is an ordinary HTTP error — and attached to the channel at
+the moment the connection is accepted, which is when the handler is invoked.
+
+#### Constructors
+
+```dart
+TomWebSocketConnection()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `subprotocol` | `String?` | The subprotocol agreed during the handshake, or `null`. |
+| `isOpen` | `bool` | Whether the socket has been attached and not yet closed from this side. |
+| `messages` | `Stream<dynamic>` | Messages from the peer: `String` for a text frame, `List<int>` for a binary one. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `attachChannel` | `void attachChannel(WebSocketChannel channel, [String? subprotocol])` | Attaches the accepted channel; called by the pipeline, not by application code. |
+| `sendText` | `void sendText(String message)` | Sends a text frame. |
+| `sendBytes` | `void sendBytes(List<int> bytes)` | Sends a binary frame. |
+| `close` | `Future<void> close([int? code, String? reason])` | Closes the socket; idempotent. |
+
 ## Global Functions and Constants
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `tomService` | `const TomService tomService` | The annotation instance to mark a class with `TomService` (applied as `@tomService`). |
+| `tomConsumesForm` | `bool tomConsumesForm(TomMimeType consumes)` | Whether `consumes` declares an HTML form body (multipart **or** url-encoded), comparing type and subtype only. |
+| `tomConsumesMultipartForm` | `bool tomConsumesMultipartForm(TomMimeType consumes)` | Whether `consumes` declares specifically `multipart/form-data` — which reader the pipeline calls. |

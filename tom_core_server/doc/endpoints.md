@@ -16,6 +16,9 @@ method, and converts the result (or any error) into a `Response`.
 - [Access Control](#access-control)
 - [Transactions](#transactions)
 - [Taking Over the Request and the Response](#taking-over-the-request-and-the-response)
+- [Multipart Forms](#multipart-forms)
+- [Redirects](#redirects)
+- [WebSocket Endpoints](#websocket-endpoints)
 - [Error Handling](#error-handling)
 - [Building the Router](#building-the-router)
 - [Core Components](#core-components)
@@ -151,6 +154,135 @@ Future<Response> file(Request request);
 This is exactly how the [file endpoint](file_storage.md#serving-a-file-over-http)
 is built; it is not a private arrangement.
 
+## Multipart Forms
+
+An endpoint that declares `consumes: TomMimeType.multipartFormData` has its
+body decoded by the pipeline into a `TomMultipartForm` before any parameter is
+bound — once per request, because a body is a single-pass stream.
+
+The two halves of a form then reach two different places:
+
+- **text parts** fold into the request DTO, beside the query and path values
+  `injectQueryParameters` / `injectPathParameters` already fold in (form first,
+  so an explicitly routed value always wins);
+- **file parts** bind to method parameters: a `TomFormFile` parameter receives
+  the part whose field name matches the *parameter* name, and a
+  `TomMultipartForm` parameter receives the whole decoded form.
+
+The split is not a style choice — a DTO is built through
+`createInstanceFromJson`, which carries primitives and maps and cannot carry an
+arbitrary object, so a file has nowhere to land inside one.
+
+```dart
+@TomEndpoint(
+  methods: [TomHttpMethod.post],
+  uri: '/documents',
+  consumes: TomMimeType.multipartFormData,
+  formFields: ['title', 'tags'],       // optional allow-list; see below
+)
+Future<DocumentResponse> create(
+  DocumentRequest request,             // title, tags — from the text parts
+  TomFormFile attachment,              // the part named "attachment"
+);
+```
+
+`formFields` is an **allow-list, not a requirement**. Left empty (the default)
+every text part folds into the DTO — a body is the endpoint's own contract,
+just as a JSON body is. Non-empty, only the named fields are folded, which is
+what an endpoint wants when the form is filled in by something it does not
+control and would rather ignore the extra fields than absorb them.
+
+The bytes reach the blob store through the very same `TomFileSlot` the raw-body
+[file endpoint](file_storage.md#serving-a-file-over-http) uses — there is one
+route from bytes to storage, and multipart takes it:
+
+```dart
+final stored = await attachment.storeIn('document', 'attachment', saved.id);
+```
+
+A multipart part must be **materialised** to be read (part N+1 is unreachable
+until part N is drained), so each file part is buffered, and
+`TomMultipartForm.globalSettingMaxFilePartBytes` (8 MiB) states the ceiling out
+loud rather than letting a large upload discover it as an out-of-memory crash.
+Bulk transfer belongs on the raw-body file endpoint, which streams and needs no
+ceiling at all.
+
+An endpoint that declares `consumes: TomMimeType.urlEncoded` gets the *other*
+shape an HTML form takes — the one a browser sends when the form has no file
+input. It decodes into the same `TomMultipartForm` (with no files), folds
+through the same `formFields` allow-list, and binds identically; only the
+reading differs. Which of the two a browser sends is decided by the form's
+markup, not by anything the endpoint chooses, so the endpoint declares the one
+its clients send.
+
+## Redirects
+
+A handler answers with a `3xx` by returning a `TomRedirect`; the pipeline turns
+it into the `Response`:
+
+```dart
+@TomEndpoint(uri: '/documents/{id}/print')
+Future<Object> print(String id) async =>
+    TomRedirect.seeOther('/render/$id.pdf');
+```
+
+`TomRedirect.seeOther` (303), `.temporary` (307) and `.permanent` (308) name
+the three that differ observably; 301/302 are omitted because they express the
+same two intentions with method-rewriting behaviour left ambiguous across
+clients.
+
+This is a *directive*, not a hand-built `Response`, precisely because a
+redirect is fully described by a status and a URL: a handler building its own
+would re-derive those three facts and be free to get them wrong. The escape
+hatch above stays for the case that genuinely needs it — a streamed body, which
+only the handler can produce.
+
+## WebSocket Endpoints
+
+A socket is declared as a *kind of endpoint*, not served by a second server:
+
+```dart
+@tomService
+class TickerService {
+  @TomWebSocketEndpoint(uri: '/ws/ticker')
+  @TomAccessControl(resourceKey: 'ticker')
+  Future<void> ticker(TomWebSocketConnection socket, TomPrincipal who) async {
+    socket.sendText('hello ${who.userName}');
+    await for (final message in socket.messages) {
+      socket.sendText('echo: $message');
+    }
+  }
+}
+```
+
+`TomWebSocketEndpoint` implements the same `TomEndpointBase` the HTTP
+annotations implement, which is what the scan already keys on — so a socket
+endpoint is *discovered*, *authorized*, *parameter-bound* and *audited* by
+exactly the code that does so for every other endpoint (`enforceAccess` and
+`bindParameters`, shared with `handleMethodCall`). Only its mounting and its
+lifecycle are its own.
+
+What differs:
+
+- the method is invoked **once per accepted connection**, not once per message,
+  and the future it returns ends the conversation — the pipeline closes the
+  socket when it completes (`1000` normally, `1011` after a throw);
+- parameters are bound **before** the upgrade, so a binding failure is an
+  ordinary HTTP error rather than a socket that opens and immediately dies;
+- the request zone is captured at handshake time and the handler runs inside it
+  (`Zone.run`), because the socket callback fires after the handshake response
+  is finished and the zone carrying the `TomPrincipal`, the execution context
+  and the request id would otherwise be gone — the same fix the streamed file
+  download needed (bug D22);
+- `@TomTransactional` is refused at mount time: a transaction cannot span a
+  connection.
+
+`protocols`, `allowedOrigins` and `pingInterval` are passed through to the
+handshake. `allowedOrigins` is the handshake-time counterpart of CORS — the
+`Origin` header is set by browsers and only by browsers, so it is what stops a
+page on another site from opening an authenticated socket in a visitor's
+session.
+
 ## Error Handling
 
 Each endpoint has a `TomErrorHandler`. The pipeline calls
@@ -172,15 +304,21 @@ abort the build with `TomEndpointPipelineException`.
 
 ## Not Yet Implemented
 
-The annotation surface anticipates features the pipeline does not yet
-implement; these are tracked in the quest completion steps:
-
-- `TomEndpoint.formFields`, multipart form binding, and redirect directives —
-  note that single-file upload and download *are* shipped, by the
-  [file endpoint](file_storage.md#serving-a-file-over-http) over a raw body;
-  what is missing is binding a file that arrives as one part of a form;
-- WebSocket transport;
-- richer role/group/entitlement authorization beyond resource-key protection.
+- **A repeated text field cannot become a list.** Both form shapes keep the
+  last value of a repeated field, the way a query string does, because a DTO
+  field is one value. An endpoint that needs a repeated *text* field declares a
+  JSON body, where a list is expressible. Changing this would mean deciding —
+  per field, not per endpoint — when two values are one list and when they are a
+  correction, which the envelope does not say.
+- **Multipart parts are materialised.** A part must be buffered to be read, so
+  `globalSettingMaxFilePartBytes` bounds it. Streaming a part lazily is not
+  expressible over a sequential envelope; bulk transfer belongs on the raw-body
+  [file endpoint](file_storage.md#serving-a-file-over-http), which streams.
+- **A socket has no server-side push registry.** A handler owns its own
+  connection and can write to it at any time, but there is no shared registry to
+  broadcast to every connection of a user or a topic. That is a feature of
+  whatever wants to broadcast, and inventing its addressing model before a
+  caller has one would be guessing.
 
 ## Core Components
 
@@ -193,12 +331,22 @@ implement; these are tracked in the quest completion steps:
   `TomEndpointHandler` (per-request serving), `TomMethodMetadata`,
   `TomClassScanResult`, `TomEndpointRoutingInfo`, and the two exception types.
 - **File endpoint** (`file_endpoint.dart`) — `TomFileService` / `TomFileServer`,
-  `TomFileEndpoint`, and the `TomFileSlots` registry; documented in
+  `TomFileEndpoint`, the `TomFileSlots` registry, and the `TomFormFile.storeIn`
+  extension that joins an uploaded form part to a file slot; documented in
   [File Storage](file_storage.md#serving-a-file-over-http).
+- **Form binding** (`form_binding.dart`) — `TomMultipartForm`, `TomFormFile`,
+  `TomFormBindingException`, and the `tomConsumesForm` /
+  `tomConsumesMultipartForm` predicates.
+- **Results** (`endpoint_results.dart`) — `TomRedirect`.
+- **WebSocket** (`web_socket_endpoint.dart`) — `TomWebSocketEndpoint`,
+  `TomWebSocketConnection`, `TomWebSocketException`.
 
 ## Dependencies
 
 - `shelf` / `shelf_router` — the HTTP `Request` / `Response` / `Router` types.
+- `shelf_multipart` — decoding a `multipart/form-data` body into its parts.
+- `shelf_web_socket` / `web_socket_channel` — the handshake upgrade and the
+  channel a socket handler talks through.
 - `tom_core_kernel` — `tomReflector` and the mirror types (annotation
   discovery, parameter binding, result conversion), `TomHttpMethod`,
   `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`,

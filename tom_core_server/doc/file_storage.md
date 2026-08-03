@@ -32,6 +32,7 @@ without the second; the second is built entirely on the first.
   - [Exposure Is Default-Closed](#exposure-is-default-closed)
   - [The Wire Contract](#the-wire-contract)
   - [Serving a File by Hand](#serving-a-file-by-hand)
+  - [A File That Arrives as Part of a Form](#a-file-that-arrives-as-part-of-a-form)
 - [Exports Ride the Same API](#exports-ride-the-same-api)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -481,6 +482,27 @@ return Response.ok(
 `Content-Type` and `Content-Length` before it starts streaming. Both calls are
 gated identically, so the metadata read cannot become a side channel around the
 download refusal.
+
+### A File That Arrives as Part of a Form
+
+The endpoint above moves a file over a **raw body**: the whole request is the
+file, the slot is the URL. That is the right shape for "replace the attachment
+of row 42" and the wrong shape for "create a document *with* its attachment" —
+there is no row yet, and the title, the tags and the bytes arrive together.
+
+That case is served by
+[multipart form binding](endpoints.md#multipart-forms) in the endpoints module,
+and the bytes still take **this** route to storage: a `TomFormFile` uploads
+through the same `TomFileSlot` the raw-body endpoint uses.
+
+```dart
+final saved = await repo.save(Document()..title = request.title);
+final stored = await attachment.storeIn('document', 'attachment', '${saved.id}');
+```
+
+`storeIn` resolves the slot exactly as the endpoint does — so an unregistered or
+unexposed column refuses the upload there for the same reason it refuses it
+here — and there is one route from bytes to storage rather than two.
 
 ## Exports Ride the Same API
 

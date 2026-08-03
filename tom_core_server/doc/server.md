@@ -112,9 +112,14 @@ removed; the intended capabilities are tracked in the quest completion steps:
 
 - **Diagnostics** — server diagnostics/introspection endpoints.
 - **Monitoring** — runtime metrics / monitoring hooks.
-- **WebSocket** — WebSocket support in the request pipeline (also noted as a gap
-  in the endpoints module).
-- **Server-side forms** — server-rendered form support.
+- **Server-side forms** — server-rendered form support. *Receiving* a form is
+  shipped — see
+  [Multipart Forms](endpoints.md#multipart-forms) — what is missing is rendering
+  one server-side, which is a templating concern rather than a transport one.
+
+WebSocket support is no longer among them: it is served by the endpoint
+pipeline as a kind of endpoint — see
+[WebSocket Endpoints](endpoints.md#websocket-endpoints).
 
 ## Dependencies
 
