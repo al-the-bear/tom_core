@@ -247,22 +247,39 @@ placeholder would be substituted or not depending on map order.
 
 ## One chain, two packages
 
-`[004]-ops_framework_tables.sql` lives in **this** package and extends the app
-server's `app_db/app_schema` chain, which owns `[000]`–`[003]`. That works
-because the migration engine records an applied version per *(datasource,
-schema)* pair, regardless of which package the folder sits in — so a deployment
-can add a back-office server without editing the app server's package.
+`[100]-ops_framework_tables.sql` lives in **this** package and extends the app
+server's `app_db/app_schema` chain. That works because the migration engine
+records an applied version per *(datasource, schema)* pair, regardless of which
+package the folder sits in — so a deployment can add a back-office server
+without editing the app server's package.
+
+The two packages divide the chain into **bands**: the app server numbers in
+`[000]`–`[099]`, the ops server from `[100]` up. The gap is the point. Neither
+package depends on the other, so neither can see which numbers are already
+taken; taking "the next free number" therefore means guessing, and two packages
+guessing eventually guess the same. A collision is not a loud failure — the
+engine records the version as applied and the *second* file with that number is
+never run at all, so the symptom is a missing table on a fresh deployment,
+discovered at the first tick, in whichever environment was provisioned last.
+With bands, each side numbers freely inside its own range and the question never
+arises. `ops_migration_chain_test.dart` reads both directories and fails if
+either side leaves its band — the check belongs to the ops server because it is
+the only package that can see both.
+
+(`auth_db` has one contributing package and stays contiguous. A band buys
+nothing where nobody else can collide with you, and the gap would be pure
+noise.)
 
 It also creates a wrinkle worth stating, because it is the shape any real
 multi-package deployment hits. The app server's compose file mounts **its own**
-migration folder into MariaDB's initdb hook, so `[000]`–`[003]` apply themselves
-on a fresh volume. The container has never seen `[004]`. Something has to apply
-it, and both obvious alternatives are worse:
+migration folder into MariaDB's initdb hook, so the `[000]`–`[099]` band applies
+itself on a fresh volume. The container has never seen `[100]`. Something has to
+apply it, and both obvious alternatives are worse:
 
 - *start the ops server to migrate* — which also starts its timers, putting a
   second scheduler node on the same `tom_lease` rows a test is about to claim;
 - *apply the SQL by hand* — which leaves the chain's version table unaware
-  `[004]` ever ran.
+  `[100]` ever ran.
 
 Hence `--migrate-only`: the full boot sequence as far as the migrations, then
 exit. `tool/run_ops_integration.sh` uses it for exactly that reason.
@@ -309,13 +326,13 @@ Composing four modules over live data is what walked into it.
 | audit anchoring | `ops_anchor_test.dart` | the publisher's schedule — and that no `@TomScheduledJob` declares it |
 | declarations | `ops_jobs_test.dart` | every schedule, retry policy, timeout and overlap flag, read back from the annotations |
 | authorization | `ops_authorization_meet_test.dart` | `min(user, server)`: the same actor refused under the cap, the refusal recorded, and no retry requested |
-| schema | `ops_framework_schema_test.dart`, `ops_migration_chain_test.dart` | `[004]` against the framework's descriptors; that it extends the app chain rather than forking it |
-| live stack | `ops_live_test.dart` | **the consequences** — the counted deletes produced audit rows carrying before-images; the export bytes came back out of the database; the scheduler's tables are the ones `[004]` built |
+| schema | `ops_framework_schema_test.dart`, `ops_migration_chain_test.dart` | `[100]` against the framework's descriptors; that it extends the app chain rather than forking it, and that neither package numbers outside its band |
+| live stack | `ops_live_test.dart` | **the consequences** — the counted deletes produced audit rows carrying before-images; the export bytes came back out of the database; the scheduler's tables are the ones `[100]` built |
 
 ```sh
 cd advanced_ops_server
 dart test                        # all eight; the live suite skips without docker
-./tool/run_ops_integration.sh    # boots both databases, applies [004], runs everything
+./tool/run_ops_integration.sh    # boots both databases, applies [100], runs everything
 ```
 
 The live suite skips when `app_db` is unreachable so a laptop with no docker
@@ -366,7 +383,7 @@ authorization lines with their enforcement anchors.
 - `advanced_ops_server/lib/src/jobs/` — `ops_jobs.dart` (the declarations),
   `retention_service.dart`, `digest_service.dart`, `report_service.dart`
 - `advanced_ops_server/bin/ops_server_start.dart` (the boot sequence and `--migrate-only`),
-  `database_migrations/app_db/app_schema/[004]-ops_framework_tables.sql`
+  `database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql`
 - `tom_core_server/doc/` — `scheduling.md`, `audit.md` (§496), `messaging.md`
   (§317 delivery, §435 application email), `resources.md`, `export.md` (§394)
 - `advanced_ops_server/test/ops_live_test.dart`, `tool/run_ops_integration.sh`

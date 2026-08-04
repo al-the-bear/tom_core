@@ -47,14 +47,14 @@
 /// ```
 ///
 /// Runs the sequence above as far as the migrations and exits, without starting
-/// a scheduler. This exists because of the arrangement `[004]` is part of: the
-/// app server's `[000]`–`[003]` are mounted into its container's initdb hook and
-/// so apply themselves on a fresh volume, while this package's contribution to
-/// the same chain lives in a folder that container never sees. Something has to
+/// a scheduler. This exists because of the arrangement `[100]` is part of: the
+/// app server's `[000]`–`[099]` band is mounted into its container's initdb
+/// hook and so applies itself on a fresh volume, while this package's
+/// contribution to the same chain lives in a folder that container never sees. Something has to
 /// apply it, and the alternatives are worse — a deployment that had to *start*
 /// the back-office server to migrate would also be starting its timers, and
 /// applying the file by hand would leave the chain's version table not knowing
-/// `[004]` had run. `tool/run_ops_integration.sh` uses this before the live
+/// `[100]` had run. `tool/run_ops_integration.sh` uses this before the live
 /// suite for exactly that reason.
 library;
 
@@ -226,8 +226,8 @@ Future<void> main(List<String> args) async {
 
   initializeBeanContext();
 
-  // The ops server owns `[004]` of the `app_db/app_schema` chain (the framework
-  // tables the scheduler, the leases and the trail need). Running the migration
+  // The ops server owns `[100]` and up of the `app_db/app_schema` chain (the
+  // framework tables the scheduler, the leases and the trail need). Running the migration
   // from here means the deployment can add the back-office server without
   // editing the app server's package — and the engine's per-(datasource, schema)
   // version table is what lets two packages contribute to one chain.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Boots `app_db` and applies the whole `app_db/app_schema` migration chain — the
-# app server's [000]–[003] and this package's [004] — then runs the ops server's
+# app server's [000]–[099] band and this package's [100] — then runs the ops server's
 # live suite against it and tears the database down again.
 #
 #   tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
@@ -84,7 +84,7 @@ wait_db_healthy() {
 
 # 1. Fresh databases. `down -v` drops the old volumes so each server's migration
 #    tree — mounted into the stock initdb hook by its compose file — re-applies
-#    its chain on first boot ([000]–[003] for `app_db`).
+#    its chain on first boot (the [000]–[099] band for `app_db`).
 #
 #    No server is started. The live suite drives the ops services directly rather
 #    than over HTTP (this server has no port), so the app server would only be a
@@ -100,7 +100,7 @@ wait_db_healthy advanced-app-db
 log "Resolving Dart dependencies"
 (cd "$OPS_DIR" && dart pub get)
 
-# 3. Apply [004]. The initdb hook mounts the *app server's* folder, so it has
+# 3. Apply [100]. The initdb hook mounts the *app server's* folder, so it has
 #    never seen this package's file; and the engine records an applied version
 #    per (datasource, schema) pair regardless of which package the folder sits
 #    in, which is exactly what lets two packages share one chain.
@@ -109,7 +109,7 @@ log "Resolving Dart dependencies"
 #    timers would put a second scheduler node on the same `tom_lease` rows the
 #    live suite claims, and a purge firing beside the test would delete the rows
 #    it seeded.
-log "Applying this package's [004] migration"
+log "Applying this package's [100] migration"
 (cd "$OPS_DIR" && dart run bin/ops_server_start.dart --migrate-only) \
   >"$LOG_DIR/migrate.log" 2>&1
 tail -n 5 "$LOG_DIR/migrate.log"

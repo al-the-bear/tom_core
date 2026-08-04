@@ -6,15 +6,24 @@
 -- imposes no contiguity on versions: it records an applied version per
 -- (datasource, schema) and applies whatever it has not seen. So the same logical
 -- chain can be *contributed to* by more than one package, and the natural owner
--- of a table is the server that needs it. `[000]`–`[003]` are the app server's
--- application schema; `[004]` is the ops server's operational schema. Nothing in
--- the app server's package mentions a job queue it never runs.
+-- of a table is the server that needs it. `[000]`–`[099]` are the app server's
+-- application schema; `[100]` and up are the ops server's operational schema.
+-- Nothing in the app server's package mentions a job queue it never runs.
 --
 -- The version number is the one coordination cost of that arrangement, and it is
 -- a real one: two packages numbering into one chain must not pick the same
--- number. It is checked rather than trusted — `test/ops_migration_chain_test.dart`
--- asserts that this file's version does not collide with any the app server
--- ships.
+-- number, and neither can see the other's choice. Hence the **bands** — the gap
+-- between the app server's highest migration and `[100]` is deliberate. Within
+-- its band each package numbers freely and no coordination is needed at all;
+-- the app server may add a migration tomorrow without this file moving. The
+-- bands are checked rather than trusted: `test/ops_migration_chain_test.dart`
+-- reads both directories and fails if either side numbers outside its range.
+--
+-- This file was `[004]` until the app server legitimately grew an `[004]` of its
+-- own and the two collided — the engine records "4 applied" and silently never
+-- runs the second file, which surfaces as a missing table at the first tick of
+-- whichever deployment was provisioned last. The bands exist so that cannot
+-- recur.
 --
 -- **Why these tables live in app_db rather than a database of their own.** An
 -- operations server with its own store is a second system of record. The queue

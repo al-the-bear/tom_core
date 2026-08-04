@@ -140,22 +140,32 @@ dart run bin/ops_server_start.dart --migrate-only
 ```
 
 Runs the boot as far as the migrations and exits without starting a scheduler.
-This package owns `[004]` of the `app_db/app_schema` chain — the framework
-tables the scheduler, the leases and the trail need — while `[000]`–`[003]` live
-in the app server's folder, which is the one mounted into the database
-container's initdb hook. Two packages can contribute to one chain because the
+This package owns `[100]` and up of the `app_db/app_schema` chain — the
+framework tables the scheduler, the leases and the trail need — while the
+`[000]`–`[099]` band lives in the app server's folder, which is the one mounted
+into the database container's initdb hook. Two packages can contribute to one chain because the
 engine records an applied version per *(datasource, schema)* pair; something
 still has to apply the file the container never sees, and both alternatives are
 worse. Starting the server to migrate would also start its timers; applying the
-SQL by hand would leave the version table unaware `[004]` had run.
+SQL by hand would leave the version table unaware `[100]` had run.
 
 ## The migration this package owns
 
-`database_migrations/app_db/app_schema/[004]-ops_framework_tables.sql` creates
+`database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql` creates
 `tom_job_run`, `tom_lease`, `tom_scheduler_node` and `tom_audit_trail`.
 `test/ops_framework_schema_test.dart` checks that file against the framework's
 own table descriptors, so a framework column added upstream fails here rather
 than at 03:00 in production.
+
+The gap between the app server's highest migration and `[100]` is deliberate.
+Two packages number into one chain and neither can see the other's choice, so
+each owns a **band** rather than taking the next free number: within its own
+range each numbers freely and no coordination is needed. Without that, the two
+sides eventually pick the same number — and a collision is silent, because the
+engine records the version as applied and never runs the second file, which
+surfaces as a missing table at the first tick of whichever deployment was
+provisioned last. `test/ops_migration_chain_test.dart` reads both directories
+and fails if either side leaves its band.
 
 ## Tests
 
@@ -169,17 +179,17 @@ Eight suites, seven of which need no socket at all.
 | `ops_anchor_test.dart` | the publisher's schedule — and that no `@TomScheduledJob` declares it |
 | `ops_jobs_test.dart` | every declared schedule, retry policy, timeout and overlap flag |
 | `ops_authorization_meet_test.dart` | `min(user, server)`: the same actor refused under the cap, the refusal recorded, and no retry requested |
-| `ops_framework_schema_test.dart` | `[004]` against the framework's table descriptors |
-| `ops_migration_chain_test.dart` | that this package's file extends the app server's chain rather than forking it |
-| `ops_live_test.dart` | **the consequences** — that the counted deletes produced audit rows, that the export bytes came back out of the database, that the scheduler's tables are the ones `[004]` built |
+| `ops_framework_schema_test.dart` | `[100]` against the framework's table descriptors |
+| `ops_migration_chain_test.dart` | that this package's file extends the app server's chain rather than forking it, and that neither side numbers outside its band |
+| `ops_live_test.dart` | **the consequences** — that the counted deletes produced audit rows, that the export bytes came back out of the database, that the scheduler's tables are the ones `[100]` built |
 
 ```sh
 dart test                                # the eight suites; the live one skips
-./tool/run_ops_integration.sh            # boots both databases, applies [004], runs everything
+./tool/run_ops_integration.sh            # boots both databases, applies [100], runs everything
 ```
 
 The live suite *skips* when `app_db` is unreachable, so a laptop with no docker
 stays green. A skip is only safe if something turns it back into a failure when
 the database was supposed to be there — that is the runner's job: it treats the
 string `All tests skipped` as a failure, boots both databases from fresh
-volumes, applies `[004]`, and tears everything down again.
+volumes, applies `[100]`, and tears everything down again.

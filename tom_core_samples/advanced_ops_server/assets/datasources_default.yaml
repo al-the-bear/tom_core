@@ -10,8 +10,10 @@
 #
 # The map key MUST equal the migration folder name under database_migrations/,
 # so `app_db` here matches database_migrations/app_db/. This server contributes
-# one migration to that chain ([004]) creating the framework tables the scheduler
-# and the audit sink need; the app server's [000]–[003] are untouched.
+# one migration to that chain ([100]) creating the framework tables the scheduler
+# and the audit sink need; the app server's [000]–[099] band is untouched. The
+# gap is deliberate: the two packages number into one chain and cannot see each
+# other's choices, so each owns a range instead of a next-free number.
 app_db:
   type: mariadb
   username: ${APP_DB_USER:app}

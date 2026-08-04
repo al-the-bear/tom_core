@@ -1,7 +1,7 @@
 /// The framework tables this package ships, checked against the descriptors the
 /// framework will use to read them.
 ///
-/// `[004]-ops_framework_tables.sql` is hand-written DDL, copied from the
+/// `[100]-ops_framework_tables.sql` is hand-written DDL, copied from the
 /// framework's canonical reference migrations. That copy is the risk: the
 /// scheduler, the lease lock and the audit sink address these tables through
 /// column names compiled into `tom_core_server`, and a missing column or a
@@ -60,7 +60,7 @@ void main() {
         datasource: 'app_db',
         schema: 'app_schema',
         tables: [
-          // Exactly the four `[004]` creates, and no more: the blob tables of
+          // Exactly the four `[100]` creates, and no more: the blob tables of
           // the same chain are the app server's, checked by its own suite.
           jobRunTable(defaultJobRunTable),
           leaseTable(defaultLeaseTable),
@@ -84,13 +84,13 @@ void main() {
       expect(chain, isNotEmpty);
       expect(
         chain.map((artifact) => artifact.basename),
-        contains('[004]-ops_framework_tables.sql'),
+        contains('[100]-ops_framework_tables.sql'),
       );
     });
   });
 
   group('the tables are created by the chain, not at start-up', () {
-    final sql = File('${_opsSchemaDir}[004]-ops_framework_tables.sql')
+    final sql = File('${_opsSchemaDir}[100]-ops_framework_tables.sql')
         .readAsStringSync();
 
     test('the migration creates all four framework tables', () {

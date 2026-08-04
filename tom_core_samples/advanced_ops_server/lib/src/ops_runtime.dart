@@ -90,7 +90,7 @@ class OpsRuntime {
     TomRecipient? digestSender,
     bool anchorStoreIsIndependent = false,
   }) {
-    // `createSchema: false` throughout: the tables come from migration [004],
+    // `createSchema: false` throughout: the tables come from migration [100],
     // which runs before this is built. A framework component quietly creating
     // its own table would mean the schema exists in two places — the migration
     // chain and a start-up side effect — and the schema-convergence test could

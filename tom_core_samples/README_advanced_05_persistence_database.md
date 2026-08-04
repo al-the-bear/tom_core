@@ -255,13 +255,29 @@ letters/underscores-only, both enforced by the runner's filename pattern.
 **This sample separates DDL, the production admin bootstrap, and demo content**
 into consecutively-numbered migrations, so a production apply seeds the
 administrator account while omitting every demo user. The migrations are numbered
-`000, 001, 002, …` with no gaps; the demo seeds carry the `@dev,test` tag so the
-runner skips them outside `dev`/`test`:
+`000, 001, 002, …`; the demo seeds carry the `@dev,test` tag so the runner skips
+them outside `dev`/`test`:
 
 | Database | Schema (DDL, untagged) | Admin seed (untagged — all envs) | Demo seeds (`@dev,test` — dev/test only) |
 | --- | --- | --- | --- |
-| `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) · `[002]-app_file_columns.sql` (the two `@TomFileReference` key columns) · `[003]-app_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) | — (no admin rows in `app_db`) | `[001]-app_demo_seed@dev,test.sql` |
+| `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) · `[002]-app_file_columns.sql` (the two `@TomFileReference` key columns) · `[003]-app_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) · `[004]-app_thread_ordering_indexes.sql` (the comment/checklist ordering indexes) · **`[100]-ops_framework_tables.sql`** (`tom_job_run`, `tom_lease`, `tom_scheduler_node`, `tom_audit_trail` — shipped by `advanced_ops_server`, not by the app server) | — (no admin rows in `app_db`) | `[001]-app_demo_seed@dev,test.sql` |
 | `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) · `[004]-auth_two_factor_columns.sql` (the two second-factor columns) · `[006]-auth_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` · `[005]-auth_two_factor_seed@dev,test.sql` |
+
+**`app_db` is the one chain with two contributing packages, and its numbering is
+banded rather than contiguous.** The engine matches a chain to a database by the
+folder names `<datasource>/<schema>`, not by which package the folder sits in, so
+`advanced_ops_server` can extend `app_db/app_schema` with the framework tables its
+scheduler needs without the app server's package mentioning a job queue it never
+runs. The cost is that two packages must not pick the same number and neither can
+see the other's choice — and a collision is silent, because the engine records the
+version as applied and never runs the second file, surfacing as a missing table at
+the first tick of whichever deployment was provisioned last. So each package owns a
+**band**: the app server `[000]`–`[099]`, the ops server `[100]` and up. The gap is
+deliberate. Within its band each package numbers freely, which is why the app server
+could add `[004]` without anyone consulting the ops server.
+`advanced_ops_server/test/ops_migration_chain_test.dart` enforces it from the only
+side that can see both directories. `auth_db` has a single contributing package and
+stays contiguous — a band buys nothing where nobody else can collide with you.
 
 Each seed sorts after the schema it depends on, so every table and column exists
 before it is filled: the grant rows in `[003]` populate the `tom_resource_grant`

@@ -4,9 +4,9 @@
 /// `<datasource>/<schema>` — not by which package the folder sits in, and it
 /// imposes no contiguity on versions: it records an applied version per
 /// (datasource, schema) pair and applies whatever it has not seen. That is what
-/// lets `advanced_app_server` own `[000]`–`[003]` of `app_db/app_schema` while
-/// this package owns `[004]`, so nothing in the app server's package mentions a
-/// job queue it never runs.
+/// lets `advanced_app_server` and this package both contribute to
+/// `app_db/app_schema`, so nothing in the app server's package mentions a job
+/// queue it never runs.
 ///
 /// The price is that the two packages must not pick the same number, and neither
 /// one can see the other's choice. A collision is not a loud failure either: the
@@ -14,9 +14,19 @@
 /// never run at all — so the symptom is a missing table on a fresh deployment,
 /// discovered at the first tick, in whichever environment was provisioned last.
 ///
+/// **The bands are what make that impossible rather than merely detected.** The
+/// app server numbers in `[000]`–`[099]`, this package from `[100]` up. Neither
+/// has to know what the other has already used, because the ranges cannot
+/// overlap — so the app server may add a migration whenever it likes and this
+/// package never has to move. That is the whole reason for the gap between
+/// `app_db`'s highest app-server migration and `[100]`; it is deliberate, not an
+/// accounting error. (`auth_db` has a single contributing package and so stays
+/// contiguous — a band buys nothing where nobody else can collide with you.)
+///
 /// So it is checked rather than trusted. This suite reads both packages'
-/// directories off disk and compares the numbers, which is the only place the
-/// arrangement can be verified — by construction, no single package knows.
+/// directories off disk and checks each side stays inside its band, which is the
+/// only place the arrangement can be verified — by construction, no single
+/// package knows.
 library;
 
 import 'dart:io';
@@ -29,6 +39,14 @@ const String _opsSchemaDir = 'database_migrations/app_db/app_schema/';
 /// The app server's part of the same chain.
 const String _appSchemaDir =
     '../advanced_app_server/database_migrations/app_db/app_schema/';
+
+/// The first version this package may use.
+///
+/// Everything below belongs to `advanced_app_server`. Raising this would strand
+/// the migration already deployed at [_opsBandFloor]; the way to give the app
+/// server more room is to have had a wider band from the start, not to move the
+/// floor afterwards.
+const int _opsBandFloor = 100;
 
 /// The `[nnn]` prefix of a migration file name.
 ///
@@ -59,35 +77,48 @@ void main() {
       final ops = _versions(_opsSchemaDir).toSet();
       final app = _versions(_appSchemaDir).toSet();
 
+      // The goal. The bands below are only the mechanism that reaches it, so
+      // this is asserted directly and not inferred from them: if the bands are
+      // ever changed, this is the test that still has to hold.
       expect(
         ops.intersection(app),
         isEmpty,
         reason: 'app_db/app_schema versions collide: the engine would record '
-            'the number as applied and silently never run the second file — '
-            'renumber this package\'s migration above ${app.reduce((a, b) => a > b ? a : b)}',
+            'the number as applied and silently never run the second file. '
+            'One of the two packages has numbered outside its band — the '
+            'app server owns [000]-[099], this package [$_opsBandFloor] and up',
       );
     });
 
-    test('this package numbers above the app server, not into a gap', () {
-      // Not required by the engine, which has no contiguity rule — but a
-      // deployment that already applied `[004]` cannot receive a later `[003]`,
-      // so numbering below the existing head would work on a fresh database and
-      // silently skip on every existing one.
-      final ops = _versions(_opsSchemaDir);
-      final app = _versions(_appSchemaDir);
-      expect(ops.reduce((a, b) => a < b ? a : b),
-          greaterThan(app.reduce((a, b) => a > b ? a : b)));
+    test('every migration this package ships is inside its band', () {
+      // The half of the contract this package can actually keep. Numbering
+      // below the floor would work on a fresh database and silently skip on
+      // every database that already applied `[$_opsBandFloor]`, because the
+      // engine only applies versions above the one it has recorded.
+      for (final version in _versions(_opsSchemaDir)) {
+        expect(
+          version,
+          greaterThanOrEqualTo(_opsBandFloor),
+          reason: 'this package owns [$_opsBandFloor] and up; '
+              '[$version] is in the app server\'s band',
+        );
+      }
     });
 
-    test('this package ships exactly one migration, numbered [004]', () {
-      expect(_basenames(_opsSchemaDir), ['[004]-ops_framework_tables.sql']);
-    });
-
-    test('the app server still ships the four this expects', () {
-      // The other half of the pair. If the app server grows an `[004]` the test
-      // above fails; if it grows an `[005]` nothing fails, but the head has
-      // moved and this is where a reader finds out.
-      expect(_versions(_appSchemaDir), [0, 1, 2, 3]);
+    test('the app server stays below this package\'s band', () {
+      // The other half. The app server cannot run this test — it does not
+      // depend on this package and must not — so the obligation is checked
+      // from the side that can see both directories.
+      for (final version in _versions(_appSchemaDir)) {
+        expect(
+          version,
+          lessThan(_opsBandFloor),
+          reason: 'the app server has numbered into the ops band: '
+              '[$version] >= [$_opsBandFloor]. The bands exist so neither '
+              'package has to know what the other has used — widen them '
+              'deliberately or renumber, but do not overlap',
+        );
+      }
     });
   });
 
