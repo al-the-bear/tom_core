@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Source: /Users/alexiskyaw/Desktop/Code/al_the_bear/inhouse/second_wind/enterprise_flutter/tom_agent_container/tom_ai/core/tom_core_d4rt/lib/src/demo_persistence/demo_persistence.dart
-// Generated: 2026-08-04T04:00:22.070913
+// Generated: 2026-08-04T14:54:07.461406
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -15,7 +15,8 @@ import 'package:tom_core_server/src/tomserver/datasources/sql_dialects.dart' as 
 import 'package:tom_core_server/src/tomserver/datasources/types_operator.dart' as $tom_core_server_4;
 import 'package:tom_core_server/src/tomserver/file_storage/blob_store.dart' as $tom_core_server_5;
 import 'package:tom_core_server/src/tomserver/object_persistence/grouped_query.dart' as $tom_core_server_6;
-import 'package:tom_core_server/src/tomserver/object_persistence/persistence_annotations.dart' as $tom_core_server_7;
+import 'package:tom_core_server/src/tomserver/object_persistence/paging.dart' as $tom_core_server_7;
+import 'package:tom_core_server/src/tomserver/object_persistence/persistence_annotations.dart' as $tom_core_server_8;
 import 'package:tom_core_server/src/tomserver/object_persistence/crud_repository.dart' as $aux_tom_core_server;
 
 /// Bridge class for demo_persistence module.
@@ -289,13 +290,13 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
     },
     setters: {
       'primaryKeyColumnInfo': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository').primaryKeyColumnInfo = D4.extractBridgedArg<$tom_core_server_7.TomColumnInformation>(value, 'primaryKeyColumnInfo'),
+        D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository').primaryKeyColumnInfo = D4.extractBridgedArg<$tom_core_server_8.TomColumnInformation>(value, 'primaryKeyColumnInfo'),
       'datasourceInfo': (visitor, target, value) => 
         D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository').datasourceInfo = D4.extractBridgedArg<$tom_core_server_1.TomDataSourceInfo>(value, 'datasourceInfo'),
       'persistenceInfo': (visitor, target, value) => 
         D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository').persistenceInfo = D4.extractBridgedArg<$tom_core_server_2.TomTypePersistenceInfo>(value, 'persistenceInfo'),
       'dbTable': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository').dbTable = D4.extractBridgedArg<$tom_core_server_7.TomDbTable>(value, 'dbTable'),
+        D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository').dbTable = D4.extractBridgedArg<$tom_core_server_8.TomDbTable>(value, 'dbTable'),
       'queryTypes': (visitor, target, value) => 
         D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository').queryTypes = D4.coerceList<Type>(value, 'queryTypes'),
       'resultType': (visitor, target, value) => 
@@ -365,7 +366,8 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
       },
       'findAll': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
-        return t.findAll();
+        final page = D4.getOptionalArg<$tom_core_server_7.TomPageRequest?>(positional, 0, 'page');
+        return t.findAll(page);
       },
       'findAllById': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
@@ -374,7 +376,8 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
           throw ArgumentError('findAllById: Missing required argument "ids" at position 0');
         }
         final ids = D4.coerceList<int>(positional[0], 'ids');
-        return t.findAllById(ids);
+        final page = D4.getOptionalArg<$tom_core_server_7.TomPageRequest?>(positional, 1, 'page');
+        return t.findAllById(ids, page);
       },
       'findById': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
@@ -410,7 +413,8 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
         }
         final params = D4.coerceMap<String, Object?>(positional[1], 'params');
         final resultType = D4.getOptionalArg<Type?>(positional, 2, 'resultType');
-        return t.findByQuerySentence(querySentence, params, resultType);
+        final page = D4.getOptionalArg<$tom_core_server_7.TomPageRequest?>(positional, 3, 'page');
+        return t.findByQuerySentence(querySentence, params, resultType, page);
       },
       'deleteByQuerySentence': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
@@ -440,7 +444,8 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
           throw ArgumentError('findByQuery: Missing required argument "params" at position 1');
         }
         final params = D4.coerceMap<String, Object?>(positional[1], 'params');
-        return t.findByQuery(query, params);
+        final page = D4.getOptionalArg<$tom_core_server_7.TomPageRequest?>(positional, 2, 'page');
+        return t.findByQuery(query, params, page);
       },
       'deleteByQuery': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
@@ -653,42 +658,42 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
         D4.requireMinArgs(positional, 2, 'textF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'textF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_7.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_8.TomColumnInformation>(positional, 1, 'columnInformation', 'textF');
         return t.textF(fieldName, columnInformation);
       },
       'intF': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
         D4.requireMinArgs(positional, 2, 'intF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'intF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_7.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_8.TomColumnInformation>(positional, 1, 'columnInformation', 'intF');
         return t.intF(fieldName, columnInformation);
       },
       'doubleF': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
         D4.requireMinArgs(positional, 2, 'doubleF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'doubleF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_7.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_8.TomColumnInformation>(positional, 1, 'columnInformation', 'doubleF');
         return t.doubleF(fieldName, columnInformation);
       },
       'boolF': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
         D4.requireMinArgs(positional, 2, 'boolF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'boolF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_7.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_8.TomColumnInformation>(positional, 1, 'columnInformation', 'boolF');
         return t.boolF(fieldName, columnInformation);
       },
       'dateTimeF': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
         D4.requireMinArgs(positional, 2, 'dateTimeF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateTimeF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_7.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_8.TomColumnInformation>(positional, 1, 'columnInformation', 'dateTimeF');
         return t.dateTimeF(fieldName, columnInformation);
       },
       'dateF': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_d4rt_1.D4rtDemoTaskRepository>(target, 'D4rtDemoTaskRepository');
         D4.requireMinArgs(positional, 2, 'dateF');
         final fieldName = D4.getRequiredArg<String>(positional, 0, 'fieldName', 'dateF');
-        final columnInformation = D4.getRequiredArg<$tom_core_server_7.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
+        final columnInformation = D4.getRequiredArg<$tom_core_server_8.TomColumnInformation>(positional, 1, 'columnInformation', 'dateF');
         return t.dateF(fieldName, columnInformation);
       },
       'countAll': (visitor, target, positional, named, typeArgs) {
@@ -790,16 +795,16 @@ BridgedClass _createD4rtDemoTaskRepositoryBridge() {
       'deleteAllById': 'Future<void> deleteAllById(Iterable<int> ids)',
       'deleteById': 'Future<int> deleteById(int id)',
       'existsById': 'Future<bool> existsById(Iterable<int> ids)',
-      'findAll': 'Future<List<D4rtDemoTaskRecord>> findAll()',
-      'findAllById': 'Future<List<D4rtDemoTaskRecord>> findAllById(Iterable<int> ids)',
+      'findAll': 'Future<List<D4rtDemoTaskRecord>> findAll([TomPageRequest? page])',
+      'findAllById': 'Future<List<D4rtDemoTaskRecord>> findAllById(Iterable<int> ids, [TomPageRequest? page])',
       'findById': 'Future<D4rtDemoTaskRecord?> findById(int id)',
       'count': 'Future<TomDbInt> count()',
       'save': 'Future<D4rtDemoTaskRecord> save(D4rtDemoTaskRecord toSave)',
       'saveAll': 'Future<Iterable<D4rtDemoTaskRecord>> saveAll(Iterable<D4rtDemoTaskRecord> entities)',
-      'findByQuerySentence': 'Future<Iterable<D4rtDemoTaskRecord>> findByQuerySentence(String querySentence, Map<String, Object?> params, [Type? resultType])',
+      'findByQuerySentence': 'Future<Iterable<D4rtDemoTaskRecord>> findByQuerySentence(String querySentence, Map<String, Object?> params, [Type? resultType, TomPageRequest? page])',
       'deleteByQuerySentence': 'Future<int> deleteByQuerySentence(String querySentence, Map<String, Object?> params)',
       'countByQuerySentence': 'Future<TomDbInt> countByQuerySentence(String querySentence, Map<String, Object?> params)',
-      'findByQuery': 'Future<Iterable<D4rtDemoTaskRecord>> findByQuery(TomSelect query, Map<String, Object?> params)',
+      'findByQuery': 'Future<Iterable<D4rtDemoTaskRecord>> findByQuery(TomSelect query, Map<String, Object?> params, [TomPageRequest? page])',
       'deleteByQuery': 'Future<int> deleteByQuery(TomDelete query, Map<String, Object?> params)',
       'countByQuery': 'Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params)',
       'findGroupedByQuery': 'Future<List<TomGroupedRow>> findGroupedByQuery(TomGroupedSelect query, Map<String, Object?> params)',
