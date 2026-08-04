@@ -1030,8 +1030,11 @@ TomAuthenticationResult([String error = ""])
 | `error` | `String` | Error message if authentication failed; empty on success. |
 | `authenticationToken` | `String` | JWT token proving user identity. |
 | `authorizationToken` | `String` | JWT token containing authorization information (ACI). |
-| `requires2FA` | `bool` | Indicates if two-factor authentication is required. |
+| `requires2FA` | `bool` | The user holds a factor and must now **use** it. |
 | `twoFactorType` | `String` | The type of 2FA required (e.g. `'totp'`, `'sms'`, `'email'`). |
+| `requires2FAEnrolment` | `bool` | The user holds no usable factor and must first **set one up**. Never true at the same time as [requires2FA], so a client written before enrolment existed cannot mistake one for the other. |
+| `availableTwoFactorMethods` | `List<Tom2FAMethodDescriptor>` | The mechanisms offered for set-up, in preference order; empty unless `requires2FAEnrolment`. Already narrowed to what this principal's policy permits and this deployment can enrol, so the client renders the list as given. |
+| `twoFactorEnrolmentSkippable` | `bool` | Whether the user may decline the offer and finish the login without a factor. The client shows a "not now" affordance only when this is set; the server re-checks the same fact from its own signed token. |
 
 ### TomBearerAuthentication
 
@@ -1056,6 +1059,7 @@ TomBearerAuthentication()
 | `clientJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authentication JWT token. |
 | `clientAuthorizationJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authorization JWT token. |
 | `pendingTwoFactorChallenge` | `Tom2FAChallenge?` | *(getter)* The challenge carried by the currently held token, or `null` when the login is complete. Reads the authorization token if present, otherwise the authentication token. |
+| `pendingTwoFactorEnrolment` | `Tom2FAPendingEnrolment?` | *(getter)* The enrolment the currently held token is part-way through, or `null` when the login owes no set-up. Read the same way as `pendingTwoFactorChallenge`. Both can answer non-null at once — a principal forced to enrol who already holds a factor is being asked for both, and the client renders the challenge first. |
 
 #### Static Methods
 
@@ -1141,6 +1145,181 @@ Tom2FAChallenge({
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `fromClaims(Map<String, dynamic>? payload)` | `Tom2FAChallenge?` | Reads a challenge back out of a token payload, or `null` when the payload carries no challenge or a malformed one. Never returns a half-built challenge. |
+
+### Tom2FAEnrolmentClaims
+
+The claim names a pending second-factor **enrolment** travels under — the
+sibling of [Tom2FAClaims], for the leg of the login where the user has no factor
+yet and is being offered the chance to set one up.
+
+All of them name **public** claims except `offerData`, which names the encrypted
+claim holding the whole offer including the mechanism's server-only section, so
+any instance can confirm an enrolment another began.
+
+Two encoding details are worth knowing before reading a token by hand.
+`pendingEnrolment` is the string `"true"`, for the same compatibility reason
+[Tom2FAClaims.requires2FA] is; `skippable` and `skipSpendsGrace` are JSON
+booleans, because they are newer and have no tokens in flight to stay
+compatible with. [Tom2FAPendingEnrolment.fromClaims] reads both encodings
+anyway.
+
+#### Constructors
+
+*(private constructor — the class is a constant namespace)*
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `pendingEnrolment` | `String` | Claim marking the token as carrying an enrolment awaiting confirmation (`"true"`). |
+| `type` | `String` | Claim holding the mechanism key being enrolled, e.g. `'totp'`. Absent while the user is still choosing. |
+| `hint` | `String` | Claim holding a short, displayable hint for the factor being set up. |
+| `attempt` | `String` | Claim holding the number of confirmation attempts already consumed. |
+| `attemptsAllowed` | `String` | Claim holding the confirmation-attempt budget for this offer. |
+| `expiresAt` | `String` | Claim holding the offer's expiry as an ISO-8601 UTC string. Projected only once a mechanism has been picked. |
+| `clientData` | `String` | Claim holding the mechanism's client-interpreted enrolment payload — for TOTP the base32 secret and the `otpauth://` URI. Public because delivering it to the user *is* the enrolment. |
+| `offerData` | `String` | Claim (in the **encrypted** section) holding the whole offer, server-only section included. |
+| `offeredTypes` | `String` | Claim holding the mechanism keys this principal was offered, in preference order. Carried rather than recomputed: a client naming a mechanism is checked against the list it was actually given. |
+| `skippable` | `String` | Claim holding whether the user may decline the offer. Decided on the pass that made the offer, so the authority is the signed token, never a flag the client sends back. |
+| `skipSpendsGrace` | `String` | Claim holding whether declining spends one of the principal's grace logins. Recorded on the offering pass, which is the one that knows *why* skipping was allowed. |
+
+### Tom2FAPendingEnrolment
+
+The wire shape of a second-factor enrolment awaiting the user's next move — the
+exact analogue of [Tom2FAChallenge], one step earlier in the story. Where a
+challenge says *prove you hold the factor you already set up*, a pending
+enrolment says *you have none; here are the mechanisms you may set up, and here
+is the one you picked, half-built*. Both ride in an interim token's public
+claims and both leave the principal unauthenticated.
+
+The flow has two stops and this one type covers both, distinguished by
+`hasOffer`:
+
+- **Choosing** — `offeredTypes` is populated and `type` is empty. The client
+  renders a chooser and posts the chosen key back.
+- **Confirming** — `type` names the mechanism and `clientData` carries what the
+  user needs to set it up. The client renders that mechanism's enrolment panel
+  and posts the confirmation code.
+
+One type rather than two, because a client that had to pick between two readers
+before knowing which it held would only be re-deriving `hasOffer`.
+
+Unlike [Tom2FAChallenge] there is no `toClaims()`: the client reads a pending
+enrolment, it never mints one. Projecting the claims is the server's job.
+
+#### Constructors
+
+```dart
+Tom2FAPendingEnrolment({
+  DateTime? expiresAt,
+  String type = '',
+  String hint = '',
+  int attempt = 0,
+  int attemptsAllowed = 3,
+  Map<String, Object?> clientData = const {},
+  List<String> offeredTypes = const [],
+  bool skippable = false,
+  bool skipSpendsGrace = false,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `type` | `String` | The mechanism being enrolled; empty while the user is still choosing. |
+| `hint` | `String` | Display hint for the factor being set up; empty when the mechanism has nothing useful to show. |
+| `attempt` | `int` | Confirmation attempts already consumed. |
+| `attemptsAllowed` | `int` | The confirmation-attempt budget before the offer is burned. |
+| `expiresAt` | `DateTime?` | UTC instant after which the offer is no longer answerable — `null` while choosing, because the deadline belongs to the mechanism's offer and nothing has been generated yet. |
+| `clientData` | `Map<String, Object?>` | The mechanism's opaque payload for its client UI, passed through untouched by the framework. Empty while choosing. |
+| `offeredTypes` | `List<String>` | The mechanism keys this principal was offered, in preference order. |
+| `skippable` | `bool` | Whether the user may decline and complete the login without a factor. |
+| `skipSpendsGrace` | `bool` | Whether declining spends one of the principal's grace logins. |
+| `hasOffer` | `bool` | *(getter)* Whether a mechanism has been chosen and its enrolment begun — i.e. render the mechanism's panel rather than the chooser. |
+| `attemptsRemaining` | `int` | *(getter)* `attemptsAllowed - attempt`, floored at zero. |
+| `isExhausted` | `bool` | *(getter)* True once no confirmation attempts remain. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `isExpired([DateTime? now])` | `bool` | Whether the offer has lapsed as of `now` (defaults to the current UTC time). **Always false while choosing** — there is no generated material to go stale, so a chooser left open is a UX question, not a security one. |
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `fromClaims(Map<String, dynamic>? payload)` | `Tom2FAPendingEnrolment?` | Reads a pending enrolment back out of a token payload, as defensively as [Tom2FAChallenge.fromClaims]. Yields `null` when the payload carries no enrolment, when it names neither a chosen mechanism nor an offer list (nothing a client could render), and when a *begun* enrolment's expiry is unreadable. An unreadable `attemptsAllowed` falls back to `0`, not to the constructor's `3`, so a malformed token cannot hand out attempts. |
+
+### Tom2FAMethodDescriptor
+
+How a mechanism names itself to a user who is being asked to choose one
+(reflection-discoverable, `@tomReflector`). It travels to the client inside
+[TomAuthenticationResult.availableTwoFactorMethods], which is what makes it a
+wire type and puts it in the kernel beside [Tom2FAChallenge].
+
+A mechanism *key* (`'totp'`, `'sms'`) is an identifier: it dispatches back to
+the right adaptor and is stable across releases, which is exactly why it must
+never be shown. The label, the explanation and the icon are user-facing, so
+under G-RES-1 they are **resource keys**, resolved against the caller's locale
+by whichever tier renders them. The descriptor therefore carries no literal text
+at all — a descriptor holding `'Authenticator app'` would be a translation
+defect that no test could distinguish from a correct value, because it looks
+right in the one locale it was written in.
+
+`Tom2FAMethodDescriptor.scoped(type)` derives all three keys under
+`resourceScope`, so a mechanism cannot half-follow the convention and adding one
+cannot silently invent a fourth naming scheme:
+
+| Field | For `scoped('webauthn')` | Rendered as |
+| ----- | ------------------------ | ----------- |
+| `type` | `'webauthn'` | Not shown — the key the client sends back |
+| `displayNameKey` | `two_factor.webauthn.name` | The option's label |
+| `descriptionKey` | `two_factor.webauthn.description` | The sentence under it |
+| `iconKey` | `two_factor.webauthn.icon` | Whatever the client's icon set calls it |
+
+The unnamed constructor exists for a mechanism whose keys do not follow the
+convention — a deployment fitting an adaptor into an existing resource bundle —
+but `scoped` is the one to use.
+
+#### Constructors
+
+```dart
+Tom2FAMethodDescriptor({
+  String type = '',
+  String displayNameKey = '',
+  String descriptionKey = '',
+  String iconKey = '',
+})
+
+Tom2FAMethodDescriptor.scoped(String type)
+```
+
+Every parameter of the unnamed constructor is optional and every field is
+mutable, because this is a wire DTO: reflection constructs it empty and fills it
+in (G-DTO-1/2).
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `resourceScope` | `String` | `'two_factor'` — the scope every shipped mechanism's keys live under, so a resource bundle can be searched for the whole 2FA catalog by prefix. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `type` | `String` | The mechanism key — the same value the server's registry resolves and a challenge dispatches on. |
+| `displayNameKey` | `String` | Resource key of the mechanism's short label. |
+| `descriptionKey` | `String` | Resource key of the one-sentence explanation shown beside the label. |
+| `iconKey` | `String` | Resource key of the icon to render — a key rather than an asset path, because the Flutter and web tiers name their assets differently and the mechanism must not have to know which one is asking. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `toString()` | `String` | `'Tom2FAMethodDescriptor($type -> $displayNameKey)'`. |
 
 ### TomTotp
 

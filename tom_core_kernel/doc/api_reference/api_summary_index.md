@@ -284,6 +284,9 @@ declarations are omitted.
 | `TomBearerAuthentication` | class | Bearer-token authentication helper. |
 | `Tom2FAChallenge` | class | A pending second factor, carried in an interim token's public claims. |
 | `Tom2FAClaims` | class | The claim names a pending 2FA challenge travels under. |
+| `Tom2FAPendingEnrolment` | class | A second factor being *set up*, carried in an interim token's public claims; `hasOffer` tells a chooser apart from a half-built mechanism. |
+| `Tom2FAEnrolmentClaims` | class | The claim names a pending 2FA enrolment travels under. |
+| `Tom2FAMethodDescriptor` | class | How a mechanism names itself to a user choosing one — an identifier plus three resource keys, never literal text. |
 | `TomTotp` | class | RFC 4226/6238 code derivation and the base32 codec. |
 | `tomProtect<T>`, `tomProtected` | function | Wrap/read a resource-key-protected value. |
 

@@ -35,7 +35,7 @@ The security module consists of these main files:
 | `bearer_authentication.dart` | JWT token management |
 | `user_principal_aci.dart` | User, principal, and ACI types |
 | `tom_authorization.dart` | UI authorization primitives — the four-state model, groups, authorizers, and the global authorization singleton |
-| `two_factor.dart` | The shared half of the two-pass login — the challenge wire shape, its claim names, and the TOTP primitives |
+| `two_factor.dart` | The shared half of the two-pass login — the challenge and enrolment wire shapes, their claim names, the method descriptor, and the TOTP primitives |
 | `server_principal.dart` | The ambient server principal — the deployment's own identity, which caps every user's grants |
 | `oauth_contract.dart` | The wire contract for external-identity login — the provider/authorization/callback DTOs and the `/oauth` API declaration both tiers bind to |
 
@@ -47,6 +47,10 @@ The security module consists of these main files:
 - **CLI (Client Limits Information)**: Quotas and feature flags
 - **2FA Challenge**: A pending second factor, carried in an interim token's
   public claims between pass 1 and pass 2 of a login
+- **2FA Enrolment**: The same interim-token mechanism one step earlier — the
+  user owes a factor and has none, so the login offers the chance to *set one
+  up* before completing. See [Drive 2FA from the Challenge, Not from the
+  Type](#6-drive-2fa-from-the-challenge-not-from-the-type)
 - **Server Principal**: The *deployment's* own grants. Every decision is
   `min(user, deployment)` — see [The Server Principal and the
   Meet](#the-server-principal-and-the-meet)
@@ -132,6 +136,12 @@ The response DTO from the server:
 if (result.error.isNotEmpty) {
   // Authentication failed
   showError(result.error);
+} else if (result.requires2FAEnrolment) {
+  // No usable factor yet — offer the mechanisms the server permits.
+  showEnrolmentChooser(
+    result.availableTwoFactorMethods,
+    canSkip: result.twoFactorEnrolmentSkippable,
+  );
 } else if (result.requires2FA) {
   // Need two-factor authentication
   show2FADialog(result.twoFactorType);
@@ -772,10 +782,85 @@ Three things this buys over branching on `result.twoFactorType` by hand:
   with `authenticated == false`, so holding it never passes an authentication
   guard. It is a challenge carrier and nothing more.
 
-`Tom2FAChallenge`, `Tom2FAClaims` and `TomTotp` live in this module because
-both tiers must agree on them exactly. The server half — the adaptor registry,
-the mechanisms and the two passes — is `tom_core_server`'s authentication
-module; see its `doc/authentication.md` for wiring a second factor.
+**When the user has no factor yet.** A deployment whose policy demands a second
+factor from someone who has never set one up does not reject the login — it
+offers the set-up *inside* the login that demanded it. That leg uses the same
+interim-token mechanism, so the client reads it the same way, through
+[TomBearerAuthentication.pendingTwoFactorEnrolment]:
+
+```dart
+var enrolment = TomBearerAuthentication.pendingTwoFactorEnrolment;
+while (enrolment != null) {
+  if (!enrolment.hasOffer) {
+    // Choosing: render enrolment.offeredTypes, or the descriptors in
+    // result.availableTwoFactorMethods, which carry the text keys for them.
+    // enrolment.skippable → show a "not now" affordance, which posts
+    // skipTwoFactorEnrolment; enrolment.skipSpendsGrace → say that declining
+    // costs one of the remaining grace logins.
+    result = await api.beginTwoFactorEnrolment(message..password = chosenType);
+  } else {
+    // Confirming: enrolment.clientData carries the mechanism's set-up material
+    // (for TOTP the base32 secret and the otpauth:// URI to scan), and
+    // .attemptsRemaining / .expiresAt are what the panel shows.
+    final code = await promptForSetupCode(enrolment);
+    result =
+        await api.completeTwoFactorEnrolment(message..password = code);
+  }
+  TomBearerAuthentication.setTokens(
+    result.authenticationToken,
+    result.authorizationToken,
+  );
+  enrolment = TomBearerAuthentication.pendingTwoFactorEnrolment;
+}
+// pendingTwoFactorEnrolment == null → nothing further is owed on this leg.
+```
+
+Four things follow from reading it this way rather than from tracking the stage
+by hand:
+
+- **One type covers both stops.** `hasOffer` is the whole distinction between
+  *choose a mechanism* (`offeredTypes` populated, `type` empty) and *confirm
+  this one* (`type` named, `clientData` filled). A client holding a token does
+  not have to remember which pass produced it.
+- **A wrong confirmation code is a loop, not a restart** — exactly as it is for
+  a challenge. `attempt` advances in a fresh interim token and the block above
+  repeats.
+- **A skip is the server's decision.** `skippable` was decided on the pass that
+  made the offer and is carried in the signed token, so a client that shows a
+  "not now" button anyway achieves nothing: the server checks the same claim
+  again. `skipSpendsGrace` says whether declining is free (an optional policy)
+  or costs one of the principal's remaining grace logins (a required one).
+- **Confirming completes the login outright.** A user who has just derived a
+  code from the secret they were handed has demonstrated possession; there is no
+  challenge afterwards. `pendingTwoFactorEnrolment` and
+  `pendingTwoFactorChallenge` both answering `null` is the signal that the token
+  pair is a real session.
+
+**The text is never in the payload.** `result.availableTwoFactorMethods` carries
+`Tom2FAMethodDescriptor`s, and a descriptor is an identifier plus three
+*resource keys* — never words (G-RES-1). `Tom2FAMethodDescriptor.scoped(type)`
+derives them all under the one scope:
+
+| Field | For `scoped('totp')` | Rendered as |
+| ----- | -------------------- | ----------- |
+| `type` | `'totp'` | Not shown — the key posted back to `beginTwoFactorEnrolment` |
+| `displayNameKey` | `two_factor.totp.name` | The option's label |
+| `descriptionKey` | `two_factor.totp.description` | The sentence under it |
+| `iconKey` | `two_factor.totp.icon` | Whatever the client's icon set calls it |
+
+So the client resolves the three keys against the user's locale, and the same
+deployment serves a login dialog in every language its resource bundle covers.
+Rendering `descriptor.type` directly would put an internal identifier on screen;
+hard-coding "Authenticator app" beside it would put one locale's English there
+permanently.
+
+`Tom2FAChallenge`, `Tom2FAPendingEnrolment`, their claim-name namespaces
+(`Tom2FAClaims`, `Tom2FAEnrolmentClaims`), `Tom2FAMethodDescriptor` and
+`TomTotp` live in this module because both tiers must agree on them exactly.
+The server half — the adaptor registry, the mechanisms, the enrolment store and
+the passes — is `tom_core_server`'s authentication module; see its
+`doc/authentication.md` for wiring a second factor and for what the server does
+with the encrypted half of the same token.
 
 ### 7. Refresh Permissions Appropriately
 
