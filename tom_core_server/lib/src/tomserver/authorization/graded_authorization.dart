@@ -98,6 +98,9 @@ class TomAuthStateCodec {
   table: 'tom_resource_grant',
   primaryKeyField: 'id',
 )
+// Authorization metadata: the grade rows feed the row scope and so must not be
+// filtered by it (see [TomPrincipalResourceGrant]).
+@TomDbScope.unscoped()
 class TomResourceGrant {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()

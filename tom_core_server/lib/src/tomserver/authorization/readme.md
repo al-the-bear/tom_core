@@ -3,11 +3,18 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-A short-lived cache of authenticated principals, keyed by authorization token.
-Once `authentication` issues a token, `TomAuthorizationCache` stores the
+The server-side authorization data — which role a principal holds on which
+resource, how strongly that role counts, and who has lent their roles to whom —
+plus a short-lived cache of authenticated principals keyed by authorization
+token. Once `authentication` issues a token, `TomAuthorizationCache` stores the
 `TomPrincipal` so later requests on the same token skip a fresh login. The cache
 is isolate-aware: a worker isolate forwards `storePrincipal` / `getPrincipal` to
 the main isolate (where the cache lives) via a `TomExecutor` command.
+
+`TomResourceDataScope` applies that data to the database: install it once and
+every entity carrying a `resource_key` column is filtered — on reads *and* on
+writes — by the resource keys the current principal holds a grant on, with no
+application-side resolver involved.
 
 ## Key types
 
@@ -18,6 +25,10 @@ the main isolate (where the cache lives) via a `TomExecutor` command.
 | `TomAuthorizationCacheStoreMessage` · `TomAuthorizationCacheRetrieveMessage` | Cross-isolate commands carrying a store/retrieve to the main isolate. |
 | `TomAuthorizationCacheExecutor` | `TomExecutor` that runs those commands in the creator isolate. |
 | `TomAuthorizationCacheException` | Raised on cache faults. |
+| `TomPrincipalResourceGrant` · `PrincipalResourceGrantStore` · `TomPrincipalResourceRoleResolver` | The `(principalId, resourceKey, role)` row, its read seam, and the fold into a `resourceKey → role` map (strongest role wins). |
+| `TomPrincipalDelegation` · `TomDelegationMode` · `TomDelegationResolver` | Share / absence / intentional delegation of a delegator's roles, and the resolver folding them over the delegate's direct grants. Never transitive. |
+| `TomResourceGrant` · `TomAuthStateCodec` · `TomGradedAccessControlInformation` | The graded `(role, resourceKey)` record, its stored representation, and the resolved graded view over the kernel's binary fallback. |
+| `TomResourceDataScope` | Installs the grant-driven `resource` row scope: `read` or wider admits a row to queries, `full` alone admits a write. |
 
 ## Quick start
 
@@ -33,8 +44,38 @@ Future<void> main() async {
   // or never cached), so the request skips a fresh authentication:
   final principal = await TomAuthorizationCache.getPrincipal(token);
   print(principal == null); // true when nothing is cached for this token
+
+  // Once at start-up, wire the grant-driven row scope over the same delegation
+  // resolver the rest of the layer uses. Until this runs the scope denies every
+  // row — an unwired scope is a closed door. The stores are shown seeded here;
+  // a server passes RepositoryPrincipalDelegationStore /
+  // RepositoryPrincipalResourceGrantStore over their entity repositories.
+  TomResourceRoleRegistry.registerAll({
+    'owner': TomAuthState.full,
+    'viewer': TomAuthState.read,
+  });
+  TomResourceDataScope.install(
+    TomDelegationResolver(
+      InMemoryPrincipalDelegationStore([]),
+      TomPrincipalResourceRoleResolver(
+        InMemoryPrincipalResourceGrantStore([
+          TomPrincipalResourceGrant(
+            principalId: '1',
+            resourceKey: 'proj-a',
+            role: 'owner',
+          ),
+        ]),
+      ),
+    ),
+  );
+  print(TomResourceDataScope.isInstalled); // true
 }
 ```
+
+See [`doc/authorization.md`](../../../../doc/authorization.md) for the grade
+thresholds, the delegation modes and the request-scoped `runCached`, and
+`example/authorization/resource_data_scope_example.dart` for a runnable,
+connection-free walkthrough.
 
 ---
 

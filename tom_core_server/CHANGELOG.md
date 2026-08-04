@@ -1,3 +1,74 @@
+## 1.2.0
+
+### Features
+
+- **grant-driven row scope (`resource`).** An entity carrying a `resource_key`
+  column is now filtered — on reads *and* on writes — by the resource keys the
+  current principal holds a grant on, with **no application-side resolver**. The
+  C-5 grants and C-6 delegations already answered "which resources may this
+  principal touch, and how strongly"; the new `TomResourceDataScope` (in the
+  `authorization` module) simply asks them per query and binds the answer, and
+  the new `TomResourceScopeSource` hook in `object_persistence` is the inversion
+  that keeps `authorization → object_persistence` the only dependency direction.
+  Wire it once at start-up with `TomResourceDataScope.install(delegationResolver)`.
+  Delegations are folded in *through* `TomDelegationResolver` rather than around
+  it, so the validity window, revocation, mode semantics and non-transitivity
+  govern the row scope for free.
+
+  The grades are the design: a row is admitted to a **query** at
+  `TomAuthState.read` or wider and to a **write** only at `TomAuthState.full`, so
+  a viewer's shared row is listed and opened while every attempt to modify it
+  raises `TomDataScopeAuthorizationException` — the difference between "shared
+  with me" and "mine". An unregistered role grades as nothing and grants nothing,
+  so a typo in a grant row closes a door rather than opening one. Resolution is
+  **live** (read per request, never from the token), so a revoked share stops
+  granting at revocation rather than at token expiry;
+  `TomResourceDataScope.runCached` amortises the several resolutions of one
+  request into a single grant read without weakening that.
+
+- **row scopes can distinguish read from write.** `TomDataScopeRegistry.register`
+  and `registerAsync` now accept an optional `write:` resolver answering the
+  narrower question "which values may this principal *modify*", threaded through
+  `TomDataScope.build` / `buildAsync` / `allowedValues` / the new
+  `allowedValuesAsync` by a `forWrite` flag and applied by the repository's three
+  write guards. A kind that registers no write resolver writes exactly what it
+  reads, so every pre-existing scope is unaffected. This is the general mechanism
+  behind the `resource` kind's read/write grades; "may read every tenant, may
+  write only my own" has the same shape.
+
+### Behaviour Changes
+
+- **grant scoping is now the default, not an opt-in.** `TomAnnotationAnalyzer`
+  synthesises a `@TomDbScope(field: 'resource_key', scope: 'resource')` for any
+  reflected entity exposing a `resource_key` column (or a `resourceKey` field),
+  so forgetting the annotation can no longer silently publish every row. An
+  entity that must stay global despite carrying such a column declares
+  `@TomDbScope.unscoped()`.
+
+  **Deployments that already have `resource_key` columns and no grant rows will
+  see those entities return nothing** until the scope is installed and granted,
+  which is the deny-by-default this change is for. The framework's own
+  authorization tables are excluded twice over: they declare
+  `@TomDbScope.unscoped()`, and they are additionally named in the constant
+  `TomAnnotationAnalyzer.resourceScopeInputTables`. The constant is the
+  load-bearing guard — it survives a stale generated `*.reflection.dart` whose
+  class metadata predates the annotation, and a safety invariant must not depend
+  on a deployment having re-run code generation before it upgrades. Scoping those
+  tables would close the authorization layer against itself: a principal could
+  reach its own grant rows only by already holding a grant on them, which no row
+  can satisfy.
+
+### Documentation
+
+- `doc/object_persistence.md` gains a **Row Scopes** section covering the whole
+  engine: the three built-in kinds, sync value lists versus async OR-unions and
+  why the union is parenthesised, automatic scoping and its opt-out, the
+  `runUnscoped` recursion guard, and the read-filters/write-rejects asymmetry.
+- `doc/authorization.md` is brought up to date with the module it describes. It
+  previously documented only the principal cache and opened by stating that
+  nothing in the module grants or refuses anything, which the grant, delegation,
+  grade and row-scope code has not been true of for some time.
+
 ## 1.1.4
 
 ### Bug Fixes

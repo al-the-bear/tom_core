@@ -71,14 +71,41 @@ typedef TomDataScopeResolver = List<Object?>? Function(TomPrincipal? principal);
 typedef TomAsyncDataScopeResolver =
     Future<List<List<Object?>>?> Function(TomPrincipal? principal);
 
+/// The grant-driven source behind the built-in `resource` scope kind
+/// ([TomDbScope.resourceScope]).
+///
+/// The resource scope filters rows by the resource keys a principal holds a
+/// grant for — direct ownership grants folded with the share/absence
+/// delegations that are active right now. Resolving that needs the
+/// authorization layer (grant store, delegation resolver, role registry), which
+/// sits *above* persistence; this interface is the inversion that keeps the
+/// dependency pointing the right way. `object_persistence` declares the hook,
+/// `authorization` implements and installs it
+/// (`TomResourceDataScope.install`).
+///
+/// While no source is installed the built-in resolver denies every row: an
+/// unwired scope must be a closed door, not an open one.
+abstract class TomResourceScopeSource {
+  /// The resource keys [principal] may **read** — grade `read` or `full`.
+  Future<List<Object?>> readableResourceKeys(TomPrincipal? principal);
+
+  /// The resource keys [principal] may **write** — grade `full` only, so a
+  /// `read` grant admits a row to queries but rejects every write to it.
+  Future<List<Object?>> writableResourceKeys(TomPrincipal? principal);
+}
+
 /// Registry of the named row-scope resolvers a `@TomDbScope` can reference.
 ///
-/// Two resolvers are registered out of the box:
+/// Three resolvers are registered out of the box:
 ///
 ///  - `'owner'` — the principal's own id (`principal.id`); a `null` principal
 ///    sees nothing;
 ///  - `'group'` — the principal's groups (`principal.aci.groups`); a `null`
-///    principal sees nothing.
+///    principal sees nothing;
+///  - `'resource'` ([TomDbScope.resourceScope]) — the resource keys the
+///    principal holds a grant for, resolved asynchronously through the
+///    installed [resourceScopeSource]; denies every row while no source is
+///    installed.
 ///
 /// Applications register their own scope kinds (e.g. `'organization'`,
 /// `'tenant'`) via [register] (synchronous, single AND-predicate) or
@@ -91,6 +118,14 @@ typedef TomAsyncDataScopeResolver =
 /// synchronously (or vice versa) is not meaningful — a kind is either a sync
 /// value-list scope or an async union scope, and the two maps are kept disjoint
 /// by the callers (a kind is registered in exactly one of them).
+///
+/// Each kind may additionally register a **write** resolver. It answers a
+/// narrower question than the read resolver — "which values may this principal
+/// *modify*" as opposed to "which may it *see*" — and the two genuinely differ:
+/// the `resource` scope admits a `read`-graded key to queries but rejects every
+/// write to it, and an application scope ("may read every tenant, may write only
+/// my own") has the same shape. A kind with no write resolver writes exactly
+/// what it reads, which is what every scope did before the seam existed.
 class TomDataScopeRegistry {
   TomDataScopeRegistry._();
 
@@ -101,32 +136,91 @@ class TomDataScopeRegistry {
         principal == null ? const <Object?>[] : principal.aci.groups,
   };
 
+  static Map<String, TomAsyncDataScopeResolver> _asyncDefaults() => {
+    TomDbScope.resourceScope: (principal) async {
+      final source = resourceScopeSource;
+      if (source == null) return const <List<Object?>>[];
+      return [await source.readableResourceKeys(principal)];
+    },
+  };
+
+  static Map<String, TomAsyncDataScopeResolver> _asyncWriteDefaults() => {
+    TomDbScope.resourceScope: (principal) async {
+      final source = resourceScopeSource;
+      if (source == null) return const <List<Object?>>[];
+      return [await source.writableResourceKeys(principal)];
+    },
+  };
+
+  /// The installed grant source backing the built-in `resource` scope kind, or
+  /// `null` while none is installed (in which case the scope denies every row).
+  ///
+  /// Installed by `TomResourceDataScope.install` from the authorization layer;
+  /// deliberately *not* cleared by [reset], which restores scope-kind
+  /// registrations rather than tearing down the deployment's wiring.
+  static TomResourceScopeSource? resourceScopeSource;
+
   static final Map<String, TomDataScopeResolver> _resolvers = _defaults();
 
-  static final Map<String, TomAsyncDataScopeResolver> _asyncResolvers = {};
+  static final Map<String, TomDataScopeResolver> _writeResolvers = {};
+
+  static final Map<String, TomAsyncDataScopeResolver> _asyncResolvers =
+      _asyncDefaults();
+
+  static final Map<String, TomAsyncDataScopeResolver> _asyncWriteResolvers =
+      _asyncWriteDefaults();
 
   /// Registers (or replaces) the synchronous [resolver] for the scope kind
-  /// [scope].
-  static void register(String scope, TomDataScopeResolver resolver) {
+  /// [scope], optionally with a narrower [write] resolver naming the values the
+  /// principal may modify (defaulting to the readable values when omitted).
+  static void register(
+    String scope,
+    TomDataScopeResolver resolver, {
+    TomDataScopeResolver? write,
+  }) {
     _resolvers[scope] = resolver;
+    if (write == null) {
+      _writeResolvers.remove(scope);
+    } else {
+      _writeResolvers[scope] = write;
+    }
   }
 
   /// Registers (or replaces) the asynchronous [resolver] for the scope kind
   /// [scope] — the union/OR path a shared-entity scope uses to fold ownership
   /// and share-mode delegations resolved from another database into one visible
-  /// id-set (RCB8).
-  static void registerAsync(String scope, TomAsyncDataScopeResolver resolver) {
+  /// id-set (RCB8) — optionally with a narrower [write] resolver.
+  static void registerAsync(
+    String scope,
+    TomAsyncDataScopeResolver resolver, {
+    TomAsyncDataScopeResolver? write,
+  }) {
     _asyncResolvers[scope] = resolver;
+    if (write == null) {
+      _asyncWriteResolvers.remove(scope);
+    } else {
+      _asyncWriteResolvers[scope] = write;
+    }
   }
 
   /// The synchronous resolver for scope kind [scope], or `null` if none is
   /// registered.
   static TomDataScopeResolver? resolverFor(String scope) => _resolvers[scope];
 
+  /// The synchronous **write** resolver for scope kind [scope], or `null` when
+  /// the kind writes exactly what it reads.
+  static TomDataScopeResolver? writeResolverFor(String scope) =>
+      _writeResolvers[scope];
+
   /// The asynchronous resolver for scope kind [scope], or `null` if none is
   /// registered.
   static TomAsyncDataScopeResolver? asyncResolverFor(String scope) =>
       _asyncResolvers[scope];
+
+  /// The asynchronous **write** resolver for scope kind [scope], or `null` when
+  /// the kind writes exactly what it reads.
+  static TomAsyncDataScopeResolver? asyncWriteResolverFor(String scope) =>
+      _asyncWriteResolvers[scope];
 
   /// Whether scope kind [scope] resolves asynchronously (registered via
   /// [registerAsync]). The repository dispatches on this to pick the async
@@ -134,12 +228,18 @@ class TomDataScopeRegistry {
   static bool isAsync(String scope) => _asyncResolvers.containsKey(scope);
 
   /// Restores the built-in resolvers, discarding any custom registrations
-  /// (synchronous *and* asynchronous).
+  /// (synchronous *and* asynchronous, read *and* write).
   static void reset() {
     _resolvers
       ..clear()
       ..addAll(_defaults());
-    _asyncResolvers.clear();
+    _writeResolvers.clear();
+    _asyncResolvers
+      ..clear()
+      ..addAll(_asyncDefaults());
+    _asyncWriteResolvers
+      ..clear()
+      ..addAll(_asyncWriteDefaults());
   }
 }
 
@@ -209,13 +309,16 @@ class TomDataScope {
   ///    value so no value is concatenated into the SQL (C-7).
   ///
   /// Throws [TomDataScopeException] if `scope.scope` names an unregistered kind.
+  /// Pass [forWrite] to resolve the (possibly narrower) set the principal may
+  /// *modify* rather than the set it may see.
   static TomDataScopePredicate? build(
     TomQueryBuilder builder,
     TomDbScope scope,
     TomColumnInformation col,
-    TomPrincipal? principal,
-  ) {
-    final values = allowedValues(scope, principal);
+    TomPrincipal? principal, {
+    bool forWrite = false,
+  }) {
+    final values = allowedValues(scope, principal, forWrite: forWrite);
     if (values == null) return null;
     return inList(builder, col, values);
   }
@@ -233,13 +336,33 @@ class TomDataScope {
   ///
   /// Throws [TomDataScopeException] if `scope.scope` names a kind no async
   /// resolver is registered for.
+  /// Pass [forWrite] to resolve the (possibly narrower) set the principal may
+  /// *modify* rather than the set it may see.
   static Future<TomDataScopePredicate?> buildAsync(
     TomQueryBuilder builder,
     TomDbScope scope,
     TomColumnInformation col,
-    TomPrincipal? principal,
-  ) async {
-    final resolver = TomDataScopeRegistry.asyncResolverFor(scope.scope);
+    TomPrincipal? principal, {
+    bool forWrite = false,
+  }) async {
+    final groups = await _asyncGroups(scope, principal, forWrite: forWrite);
+    if (groups == null) return null;
+    return anyOf(builder, col, groups);
+  }
+
+  /// Resolves the raw id-set groups for an async [scope], honouring the write
+  /// resolver when [forWrite] is set (falling back to the read resolver when the
+  /// kind registers none).
+  static Future<List<List<Object?>>?> _asyncGroups(
+    TomDbScope scope,
+    TomPrincipal? principal, {
+    required bool forWrite,
+  }) async {
+    final resolver =
+        (forWrite
+            ? TomDataScopeRegistry.asyncWriteResolverFor(scope.scope)
+            : null) ??
+        TomDataScopeRegistry.asyncResolverFor(scope.scope);
     if (resolver == null) {
       throw TomDataScopeException(
         'data_scope.build.unknown_async_scope',
@@ -248,9 +371,7 @@ class TomDataScope {
             'TomDataScopeRegistry.registerAsync.',
       );
     }
-    final groups = await resolver(principal);
-    if (groups == null) return null;
-    return anyOf(builder, col, groups);
+    return resolver(principal);
   }
 
   /// Builds the **union** predicate over the id-set [groups] for column [col]:
@@ -337,8 +458,17 @@ class TomDataScope {
   /// list of allowed values. Throws [TomDataScopeException] when `scope.scope`
   /// names a kind no resolver is registered for. Shared by the read-side
   /// predicate [build] and the write-side membership check [permits].
-  static List<Object?>? allowedValues(TomDbScope scope, TomPrincipal? principal) {
-    final resolver = TomDataScopeRegistry.resolverFor(scope.scope);
+  ///
+  /// Pass [forWrite] to resolve the (possibly narrower) set the principal may
+  /// *modify*; a kind that registers no write resolver writes what it reads.
+  static List<Object?>? allowedValues(
+    TomDbScope scope,
+    TomPrincipal? principal, {
+    bool forWrite = false,
+  }) {
+    final resolver =
+        (forWrite ? TomDataScopeRegistry.writeResolverFor(scope.scope) : null) ??
+        TomDataScopeRegistry.resolverFor(scope.scope);
     if (resolver == null) {
       throw TomDataScopeException(
         'data_scope.build.unknown_scope',
@@ -348,6 +478,24 @@ class TomDataScope {
       );
     }
     return resolver(principal);
+  }
+
+  /// Resolves the scope-field values [principal] is allowed for an **async**
+  /// [scope], flattened from the resolver's OR-groups into one membership set.
+  ///
+  /// The read path keeps the groups apart because each renders its own `IN`
+  /// list; a membership check ("may this principal write this value") only asks
+  /// whether the value appears in *any* group, so the flattened union is the
+  /// right shape. `null` (the resolver opted out) is passed through, so the
+  /// result feeds [permits] exactly as [allowedValues] does.
+  static Future<List<Object?>?> allowedValuesAsync(
+    TomDbScope scope,
+    TomPrincipal? principal, {
+    bool forWrite = false,
+  }) async {
+    final groups = await _asyncGroups(scope, principal, forWrite: forWrite);
+    if (groups == null) return null;
+    return [for (final group in groups) ...group];
   }
 
   /// Whether [value] falls within the [allowed] scope values a resolver produced

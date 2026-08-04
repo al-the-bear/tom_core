@@ -11,6 +11,12 @@ contract (`save`, `findById`, `findAll`, `delete`, `count`, plus the
 `datasources` `TomDataSource`. A typed query DSL (`TomQueryBuilder` mixin +
 column/operator expressions) builds `WHERE` clauses without raw SQL.
 
+Entities can also carry a **row scope**: `@TomDbScope` narrows every query to the
+rows the current principal may see, and the repository rejects writes that fall
+outside it. An entity with a `resource_key` column is scoped by the principal's
+resource grants automatically, without an annotation — `@TomDbScope.unscoped()`
+is the explicit opt-out.
+
 ## Key types
 
 | Type | Responsibility |
@@ -20,6 +26,10 @@ column/operator expressions) builds `WHERE` clauses without raw SQL.
 | `TomRepository<T, K>` | CRUD contract: `save`, `findById`, `findAll`, `delete`/`deleteById`, `count`, `existsById`, and `*ByQuery` / `*ByQuerySentence`. |
 | `TomSqlDatasourceRepository<T, K>` | SQL implementation over a `TomDataSource`; subclass and override `sqlDialect`. |
 | `TomQueryBuilder` | Mixin offering `isNull` / `isNotNull` / `isIn` / `between` / `like` plus the `Eq` / `Neq` / `And` / `Or` / `Not` operators and the typed column references (`IntCol`, `StringCol`, …). |
+| `TomDbScope` | Annotation declaring an entity's row scope — its scope field and kind — or, as `TomDbScope.unscoped()`, the deliberate opt-out. |
+| `TomDataScopeRegistry` | The named scope-kind resolvers (`owner`, `group`, `resource`, plus application kinds), sync or async, read and write. |
+| `TomDataScope` | Renders a resolver's answer into a bound `IN` (or OR-union) predicate; `runUnscoped` is the recursion guard async resolvers run their own reads inside. |
+| `TomResourceScopeSource` | The hook behind the `resource` kind, implemented and installed by the authorization module. |
 
 ## Quick start
 

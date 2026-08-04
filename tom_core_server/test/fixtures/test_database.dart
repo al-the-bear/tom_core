@@ -211,6 +211,32 @@ CREATE TABLE IF NOT EXISTS fixture_scoped_document (
     );
   }
 
+  /// The DDL for `FixtureResourceRecord`, the entity the grant-driven row scope
+  /// filters *without* an annotation (RCC5). `resource_key` is what makes it
+  /// scoped: the analyzer sees the column and synthesizes the scope.
+  static const String _fixtureResourceDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_resource_document (
+  id           BIGINT       NOT NULL AUTO_INCREMENT,
+  resource_key VARCHAR(255) NULL,
+  title        VARCHAR(255) NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_resource_document` table if it does not already
+  /// exist.
+  static Future<void> ensureFixtureResourceTable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(_fixtureResourceDdl);
+  }
+
+  /// Empties the `fixture_resource_document` table so each test starts from a
+  /// known state.
+  static Future<void> truncateFixtureResource(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(
+      'TRUNCATE TABLE fixture_resource_document',
+    );
+  }
+
   /// The DDL for `FixtureAmountRecord`, the entity whose numeric columns are
   /// `DECIMAL` rather than `INT`/`DOUBLE` (CSEXE1).
   ///

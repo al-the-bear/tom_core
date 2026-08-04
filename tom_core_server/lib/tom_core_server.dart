@@ -28,6 +28,7 @@ export 'src/tomserver/authorization/authorization_cache.dart';
 export 'src/tomserver/authorization/graded_authorization.dart';
 export 'src/tomserver/authorization/principal_delegation.dart';
 export 'src/tomserver/authorization/principal_resource_grant.dart';
+export 'src/tomserver/authorization/resource_data_scope.dart';
 export 'src/tomserver/cmdline/args.dart';
 export 'src/tomserver/cmdline/env_file.dart';
 export 'src/tomserver/configuration/base_server_configuration.dart';

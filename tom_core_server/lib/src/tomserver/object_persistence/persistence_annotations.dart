@@ -129,9 +129,26 @@ class TomEntityId {
 ///
 /// At query time the repository resolves the principal's allowed values and
 /// binds them into an additional prepared `WHERE <field> IN (?, …)` clause; no
-/// value is ever concatenated into the SQL text (C-7). An entity *without* this
-/// annotation is unscoped — every row is visible.
+/// value is ever concatenated into the SQL text (C-7).
+///
+/// **An entity that carries a resource-key column is scoped automatically**
+/// under the [resourceScope] kind, without an annotation: the analyzer
+/// synthesizes exactly the `TomDbScope(field: 'resource_key', scope:
+/// 'resource')` a developer would otherwise have written, so grant-driven
+/// scoping is the default rather than something each entity has to remember to
+/// opt into. An entity that must stay global despite carrying such a column —
+/// a lookup table, a configuration table, the authorization metadata tables
+/// themselves — says so with [TomDbScope.unscoped]. An entity with neither an
+/// annotation nor a resource-key column is unscoped: every row is visible.
 class TomDbScope {
+  /// The scope kind resolving a principal's granted resource keys — direct
+  /// ownership grants folded with the delegations active right now (C-5 ∪ C-6).
+  static const String resourceScope = 'resource';
+
+  /// The sentinel [scope] of [TomDbScope.unscoped] — an entity explicitly
+  /// declaring that it carries no row scope at all.
+  static const String noScope = '';
+
   /// The entity field whose value is matched against the principal's allowed
   /// scope values.
   final String field;
@@ -143,6 +160,20 @@ class TomDbScope {
   /// Declares that the annotated entity's rows are scoped by [field] under the
   /// named [scope] resolver (default `'owner'`).
   const TomDbScope({required this.field, this.scope = 'owner'});
+
+  /// Declares that the annotated entity is **deliberately unscoped** — every
+  /// row is visible to every principal.
+  ///
+  /// Needed only where automatic scoping would otherwise apply, i.e. on an
+  /// entity that carries a resource-key column but must stay global. The
+  /// authorization metadata tables are the framework's own instance: the rows
+  /// that *say* who may see what cannot themselves be filtered by who may see
+  /// what, or the resolver would deny itself its own input.
+  const TomDbScope.unscoped() : field = '', scope = noScope;
+
+  /// Whether this annotation is the explicit opt-out ([TomDbScope.unscoped])
+  /// rather than a scope declaration.
+  bool get isOptOut => scope == noScope;
 }
 
 /// Annotation marking a `String` column that holds a **blob storage key**

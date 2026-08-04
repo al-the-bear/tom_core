@@ -243,7 +243,13 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// method is async so the union path can await its cross-database resolution;
   /// the sync path completes synchronously via the returned already-completed
   /// future.
-  Future<TomDataScopePredicate?> _resolveScope() async {
+  ///
+  /// [forWrite] selects the (possibly narrower) set the principal may *modify*
+  /// rather than the set it may see — the difference the grant-driven
+  /// `resource` scope draws between a `read` grant and a `full` one (RCC5). A
+  /// scope kind that registers no write resolver writes exactly what it reads,
+  /// so every other kind is unaffected.
+  Future<TomDataScopePredicate?> _resolveScope({bool forWrite = false}) async {
     // Inside an async resolver's own enumeration (RCB8), scope resolution is
     // suppressed so the reads that *compute* the visible id-set are not
     // themselves re-scoped — the guard against unbounded resolver recursion.
@@ -255,9 +261,15 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     ]);
     final principal = getFromCurrentZone<TomPrincipal>();
     if (TomDataScopeRegistry.isAsync(scope.scope)) {
-      return TomDataScope.buildAsync(this, scope, col, principal);
+      return TomDataScope.buildAsync(
+        this,
+        scope,
+        col,
+        principal,
+        forWrite: forWrite,
+      );
     }
-    return TomDataScope.build(this, scope, col, principal);
+    return TomDataScope.build(this, scope, col, principal, forWrite: forWrite);
   }
 
   /// Asserts the current principal may write the row keyed by [id] under the
@@ -274,9 +286,14 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// value reports zero affected rows, which would otherwise reject a legitimate
   /// in-scope no-op write. A missing row and an out-of-scope row are reported
   /// identically, so existence is not leaked across the scope boundary.
+  ///
+  /// The read it performs is resolved `forWrite`, so a scope kind that grades
+  /// its values (RCC5) measures the row against the *writable* set: a row the
+  /// principal may only read is reported here exactly as an invisible one is —
+  /// as not writable.
   Future<void> _assertRowWritable(K id) async {
     if (TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null) return;
-    if (await _selectById(id) == null) {
+    if (await _selectById(id, forWrite: true) == null) {
       throw TomDataScopeAuthorizationException(
         'data_scope.write.out_of_scope',
         'The requested row is not within your data scope.',
@@ -289,10 +306,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// a scoped existence check must see *all* of them — if any is out of scope
   /// (or absent) it raises [TomDataScopeAuthorizationException]. Reuses the
   /// scoped [existsById] so the same bound-parameter predicate governs the
-  /// check and the reads.
+  /// check and the reads — resolved against the *writable* set (RCC5).
   Future<void> _assertIdsWritable(Iterable<K> ids) async {
     if (TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null) return;
-    if (!await existsById(ids)) {
+    if (!await _existsById(ids, forWrite: true)) {
       throw TomDataScopeAuthorizationException(
         'data_scope.write.out_of_scope',
         'One or more of the requested rows is not within your data scope.',
@@ -308,21 +325,34 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// a row scoped to a value it cannot itself read (e.g. owned by someone else),
   /// silently bypassing the read scope.
   ///
-  /// An **async** union scope (RCB8) is a no-op here: it scopes on the primary
-  /// key (`id IN (visible…)`), but a fresh insert has no id yet, so there is no
-  /// scope-field value to check — insert authorization for such entities is
-  /// enforced at the service layer (the caller must hold a create grant on the
-  /// parent). Applying the read scope to a null/unassigned id would reject every
-  /// legitimate insert.
-  void _assertInsertWritable(T entity) {
+  /// A scope **on the primary key** is a no-op here: a fresh insert has no id
+  /// yet, so there is no scope-field value to check — insert authorization for
+  /// such entities is enforced at the service layer (the caller must hold a
+  /// create grant on the parent). Applying the read scope to a null/unassigned
+  /// id would reject every legitimate insert. Note this is a property of the
+  /// *column*, not of the resolver being async: a grant-driven scope on a
+  /// `resource_key` column (RCC5) carries its value on the incoming entity and
+  /// is checked here like any other, which is what stops a principal from
+  /// creating a row under a resource key it holds no `full` grant on.
+  ///
+  /// The check resolves the **writable** value set, so a `read`-graded value is
+  /// rejected for an insert exactly as an ungranted one is.
+  Future<void> _assertInsertWritable(T entity) async {
+    // Suppressed inside a resolver's own enumeration, exactly as the other two
+    // write guards are (they resolve through the bypass-aware `_resolveScope`).
+    if (TomDataScope.isBypassed) return;
     final scope = TomAnnotationAnalyzer.findDataScope(queryTypes[0]);
     if (scope == null) return;
-    if (TomDataScopeRegistry.isAsync(scope.scope)) return;
-    final allowed =
-        TomDataScope.allowedValues(scope, getFromCurrentZone<TomPrincipal>());
     final col = TomAnnotationAnalyzer.determineColumn(scope.field, [
       persistenceInfo,
     ]);
+    if (col.getQueryFieldName() == primaryKeyColumnInfo.getQueryFieldName()) {
+      return;
+    }
+    final principal = getFromCurrentZone<TomPrincipal>();
+    final allowed = TomDataScopeRegistry.isAsync(scope.scope)
+        ? await TomDataScope.allowedValuesAsync(scope, principal, forWrite: true)
+        : TomDataScope.allowedValues(scope, principal, forWrite: true);
     if (!TomDataScope.permits(allowed, col.getVariableValue(entity))) {
       throw TomDataScopeAuthorizationException(
         'data_scope.write.insert_out_of_scope',
@@ -550,7 +580,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
         readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(entity));
     await _assertColumnWritable(column, primaryKey);
     if (isUnsavedKey(primaryKey)) {
-      _assertInsertWritable(entity);
+      await _assertInsertWritable(entity);
     } else {
       await _assertRowWritable(primaryKey as K);
     }
@@ -827,9 +857,10 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   /// yields a `FALSE` predicate — matching no rows — rather than the invalid
   /// `IN ()` (RCA5).
   Future<(TomOperator<TomDbBool>, Map<String, Object?>)> _idListPredicate(
-    Iterable<K> ids,
-  ) async {
-    final scope = await _resolveScope();
+    Iterable<K> ids, {
+    bool forWrite = false,
+  }) async {
+    final scope = await _resolveScope(forWrite: forWrite);
     final idList = TomDataScope.inList(
       this,
       primaryKeyColumnInfo,
@@ -893,12 +924,17 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   }
 
   @override
-  Future<bool> existsById(Iterable<K> ids) async {
+  Future<bool> existsById(Iterable<K> ids) => _existsById(ids);
+
+  /// The body of [existsById], additionally able to ask the question of the
+  /// *writable* row set — which is what `_assertIdsWritable` needs and a caller
+  /// asking "do these rows exist" does not.
+  Future<bool> _existsById(Iterable<K> ids, {bool forWrite = false}) async {
     final idSet = ids.toSet();
     // The empty set is vacuously contained; short-circuit before emitting the
     // invalid `IN ()`.
     if (idSet.isEmpty) return true;
-    final (where, params) = await _idListPredicate(idSet);
+    final (where, params) = await _idListPredicate(idSet, forWrite: forWrite);
     // Every requested id exists iff the COUNT of matching rows equals the
     // number of distinct ids. The prior code compared the *row count* of a
     // COUNT query — always 1 — to `ids.length`, so it only ever held for a
@@ -971,8 +1007,8 @@ SELECT * FROM ${dbTable.table}
   ///
   /// This is the raw read [findById] masks and [save] diffs its update against —
   /// a write must be measured against the true stored value, not a masked null.
-  Future<T?> _selectById(K id) async {
-    final scope = await _resolveScope();
+  Future<T?> _selectById(K id, {bool forWrite = false}) async {
+    final scope = await _resolveScope(forWrite: forWrite);
     List<T> result;
     if (scope == null) {
       final params = {"id": id};
@@ -1134,7 +1170,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // update must target a row already within the principal's scope (it cannot
     // update a row it could not read). Both raise before any statement runs.
     if (insert) {
-      _assertInsertWritable(toSave);
+      await _assertInsertWritable(toSave);
     } else {
       await _assertRowWritable(primaryKey as K);
     }

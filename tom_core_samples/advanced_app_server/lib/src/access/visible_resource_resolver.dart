@@ -29,6 +29,19 @@
 /// [TomDataScope.runUnscoped]: the reads that *compute* the visible set are not
 /// themselves re-scoped, which is what prevents the resolver recursing into
 /// itself.
+///
+/// **Why this is not the framework's built-in `resource` scope.** The framework
+/// now ships a grant-driven row scope of its own ([TomDbScope.resourceScope],
+/// backed by `TomResourceDataScope`), which filters an entity's `resource_key`
+/// column by the keys the principal holds a grant on. That is a **direct-key**
+/// model: a row is visible when a grant names *that row's own key*. This
+/// resolver is a **containment** model: a row is visible when a grant names the
+/// row's key *or any of its ancestors'*. The framework scope cannot express the
+/// inheritance, and this resolver is not a hand-rolled duplicate of it — they
+/// are two different visibility rules, and an application picks whichever
+/// matches its domain. Do not "simplify" this into the built-in scope: doing so
+/// would silently drop ancestor→descendant inheritance and hide every row a
+/// principal reaches only through a workspace- or project-level grant.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';

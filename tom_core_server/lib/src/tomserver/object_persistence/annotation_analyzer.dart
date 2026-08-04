@@ -127,20 +127,94 @@ mixin TomAnnotationAnalyzer {
     return null;
   }
 
-  /// Returns the `@TomDbScope` annotation on [dbType], or `null` when the
-  /// entity declares no row-level data scope (it is then unscoped).
+  /// The column name (and its camelCase field spelling) that marks an entity as
+  /// carrying a resource key, and so as automatically grant-scoped.
+  static const String resourceKeyColumn = 'resource_key';
+
+  /// The camelCase entity-field spelling of [resourceKeyColumn].
+  static const String resourceKeyField = 'resourceKey';
+
+  /// The framework's own authorization tables — the ones the resource scope
+  /// reads in order to *compute* itself — which are therefore never
+  /// auto-scoped.
+  ///
+  /// They all carry a [resourceKeyColumn], so without this guard each would
+  /// match [autoScopeFor] and filter itself: a principal could reach its own
+  /// grant rows only by already holding a grant on them, which no row can
+  /// satisfy, and the authorization layer would resolve to nothing at all.
+  ///
+  /// The entities also declare `@TomDbScope.unscoped()`, which is the readable
+  /// statement of the same fact. This set is the one that survives a **stale
+  /// generated `*.reflection.dart`**, whose class metadata predates the
+  /// annotation — a safety invariant of the framework must not depend on a
+  /// deployment having re-run code generation before it upgrades.
+  ///
+  /// The names are duplicated from the entities' `@TomDbTable` annotations
+  /// rather than imported, because `authorization` depends on
+  /// `object_persistence` and not the other way round;
+  /// `test/resource_data_scope_test.dart` asserts the two agree.
+  static const Set<String> resourceScopeInputTables = {
+    'tom_principal_resource_grant',
+    'tom_principal_delegation',
+    'tom_resource_grant',
+  };
+
+  /// Returns the row-level data scope of [dbType], or `null` when the entity is
+  /// unscoped.
+  ///
+  /// Resolution order:
+  ///
+  ///  1. an explicit `@TomDbScope` on the class wins — including
+  ///     `@TomDbScope.unscoped()`, the deliberate opt-out, for which this
+  ///     returns `null`;
+  ///  2. otherwise, an entity carrying a resource-key column is scoped
+  ///     automatically under [TomDbScope.resourceScope] — see [autoScopeFor];
+  ///  3. otherwise the entity is unscoped.
+  ///
+  /// Step 2 is why grant-driven scoping is the *default*: an entity that models
+  /// a grantable resource is filtered by the principal's grants without anyone
+  /// remembering to annotate it, and forgetting the annotation can no longer
+  /// silently publish every row.
   static TomDbScope? findDataScope(Type dbType) {
     if (dataScopeCache.containsKey(dbType)) return dataScopeCache[dbType];
     ClassMirror? mirror = findMirror(dbType);
     if (mirror != null) {
       for (var md in mirror.metadata) {
         if (md is TomDbScope) {
-          dataScopeCache[dbType] = md;
-          return md;
+          final declared = md.isOptOut ? null : md;
+          dataScopeCache[dbType] = declared;
+          return declared;
         }
       }
     }
-    dataScopeCache[dbType] = null;
+    final auto = autoScopeFor(getPersistentColumns(dbType) ?? const []);
+    dataScopeCache[dbType] = auto;
+    return auto;
+  }
+
+  /// The scope an entity with these [columns] carries implicitly, or `null` if
+  /// it carries none.
+  ///
+  /// An entity is implicitly grant-scoped when one of its persistent columns is
+  /// a resource key — the column named [resourceKeyColumn] (or declared as
+  /// [resourceKeyField]). That column holds exactly the value the C-5 grant and
+  /// C-6 delegation rows key on, so the rows it identifies are precisely the
+  /// ones a grant admits; the synthesized annotation is identical to the one a
+  /// developer would have written by hand, which keeps `@TomDbScope` the single
+  /// declaration mechanism rather than adding a parallel one.
+  ///
+  /// The framework's own [resourceScopeInputTables] are excluded: they carry a
+  /// resource key but *are* the scope's input, so scoping them would close the
+  /// authorization layer against itself.
+  static TomDbScope? autoScopeFor(List<TomColumnInformation> columns) {
+    for (final column in columns) {
+      if (resourceScopeInputTables.contains(column.table.table)) return null;
+      final name = column.getQueryFieldName();
+      if (name.toLowerCase() == resourceKeyColumn ||
+          column.declaredName == resourceKeyField) {
+        return TomDbScope(field: name, scope: TomDbScope.resourceScope);
+      }
+    }
     return null;
   }
 

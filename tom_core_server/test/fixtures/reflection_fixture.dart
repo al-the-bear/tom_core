@@ -590,6 +590,40 @@ class FixtureScopedDocumentRecord {
 class FixtureScopedDocumentRepository
     extends TomSqlDatasourceRepository<FixtureScopedDocumentRecord, int> {}
 
+/// A reflected entity carrying a **resource key** and *no* `@TomDbScope`
+/// (RCC5).
+///
+/// The missing annotation is the point. An entity whose rows are identified by
+/// a resource key is scoped by the principal's grants automatically — the
+/// analyzer synthesizes the annotation — so this fixture is what proves the
+/// automatic path: if the scope had to be declared, every query below would
+/// return every row.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_resource_document',
+  primaryKeyField: 'id',
+)
+class FixtureResourceRecord {
+  /// Surrogate primary key, assigned by the database on insert.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The resource this row belongs to — the key the C-5 grants and C-6
+  /// delegations are written against, and so the value the row scope binds.
+  @TomDbColumn(columnName: 'resource_key')
+  String? resourceKey;
+
+  /// An ordinary column, so a scoped row is more than its key.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+}
+
+/// The MariaDB-backed repository for [FixtureResourceRecord].
+class FixtureResourceRepository
+    extends TomSqlDatasourceRepository<FixtureResourceRecord, int> {}
+
 /// A reflected entity whose file columns cover the three exposure cases the
 /// HTTP file endpoint has to tell apart (CSFSB1).
 ///

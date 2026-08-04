@@ -47,6 +47,11 @@ import '../object_persistence/crud_repository.dart';
   table: 'tom_principal_resource_grant',
   primaryKeyField: 'id',
 )
+// The grant rows are the row scope's *input*, so they cannot themselves be
+// filtered by it: a principal reaches its own grants only by already holding a
+// grant on them, which no row could ever satisfy. Authorization metadata is the
+// canonical case for the opt-out.
+@TomDbScope.unscoped()
 class TomPrincipalResourceGrant {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()

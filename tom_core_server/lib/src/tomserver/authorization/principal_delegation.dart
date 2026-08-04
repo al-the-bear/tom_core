@@ -60,6 +60,11 @@ enum TomDelegationMode {
   table: 'tom_principal_delegation',
   primaryKeyField: 'id',
 )
+// Authorization metadata: the delegation rows feed the row scope and so must
+// not be filtered by it (see [TomPrincipalResourceGrant]). A delegation's
+// `resource_key` names the resource being shared, not the resource the *row*
+// belongs to, which is a second reason the automatic scope would be wrong here.
+@TomDbScope.unscoped()
 class TomPrincipalDelegation {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()

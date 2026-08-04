@@ -449,4 +449,195 @@ void main() {
       expect(TomDataScope.isBypassed, isFalse);
     });
   });
+
+  // RCC5: a scope kind may admit a *narrower* value set for writes than for
+  // reads. The `resource` scope needs this — a `read` grant admits a row to
+  // queries but must reject any write to it — and the seam is generic, so an
+  // application scope ("may read every tenant, may write only my own") gets the
+  // same behaviour by registering a second resolver.
+  group('write-scope resolvers (RCC5)', () {
+    final col = _column('tasks', 'owner_id', int);
+
+    test('without a write resolver the write set is the read set', () {
+      TomDataScopeRegistry.register('tenant', (p) => const [1, 2]);
+      expect(TomDataScopeRegistry.writeResolverFor('tenant'), isNull);
+      const scope = TomDbScope(field: 'owner_id', scope: 'tenant');
+      expect(TomDataScope.allowedValues(scope, _principal(1)), [1, 2]);
+      expect(
+        TomDataScope.allowedValues(scope, _principal(1), forWrite: true),
+        [1, 2],
+      );
+    });
+
+    test('a registered write resolver narrows the writable set', () {
+      TomDataScopeRegistry.register(
+        'tenant',
+        (p) => const [1, 2],
+        write: (p) => const [1],
+      );
+      expect(TomDataScopeRegistry.writeResolverFor('tenant'), isNotNull);
+      const scope = TomDbScope(field: 'owner_id', scope: 'tenant');
+      expect(TomDataScope.allowedValues(scope, _principal(1)), [1, 2]);
+      final writable =
+          TomDataScope.allowedValues(scope, _principal(1), forWrite: true);
+      expect(writable, [1]);
+      // The membership check the repository applies on insert: readable but not
+      // writable is rejected.
+      expect(TomDataScope.permits(writable, 1), isTrue);
+      expect(TomDataScope.permits(writable, 2), isFalse);
+    });
+
+    test('build(forWrite:) binds the write set, not the read set', () {
+      TomDataScopeRegistry.register(
+        'tenant',
+        (p) => const [1, 2],
+        write: (p) => const [1],
+      );
+      const scope = TomDbScope(field: 'owner_id', scope: 'tenant');
+      final read = TomDataScope.build(b, scope, col, _principal(1))!;
+      final write =
+          TomDataScope.build(b, scope, col, _principal(1), forWrite: true)!;
+      expect(read.parameters, {'__tomscope_0': 1, '__tomscope_1': 2});
+      expect(write.parameters, {'__tomscope_0': 1});
+    });
+
+    test('registerAsync accepts a write resolver too', () async {
+      TomDataScopeRegistry.registerAsync(
+        'visible',
+        (p) async => const [
+          [1, 2],
+        ],
+        write: (p) async => const [
+          [1],
+        ],
+      );
+      expect(TomDataScopeRegistry.asyncWriteResolverFor('visible'), isNotNull);
+      const scope = TomDbScope(field: 'id', scope: 'visible');
+      final idCol = _column('projects', 'id', int);
+      final read =
+          (await TomDataScope.buildAsync(b, scope, idCol, _principal(1)))!;
+      final write = (await TomDataScope.buildAsync(
+        b,
+        scope,
+        idCol,
+        _principal(1),
+        forWrite: true,
+      ))!;
+      expect(read.parameters.values, containsAll(<Object?>[1, 2]));
+      expect(write.parameters.values, [1]);
+    });
+
+    test('allowedValuesAsync flattens the groups for a membership check',
+        () async {
+      TomDataScopeRegistry.registerAsync(
+        'visible',
+        (p) async => const [
+          [1],
+          [2, 3],
+        ],
+      );
+      const scope = TomDbScope(field: 'id', scope: 'visible');
+      expect(
+        await TomDataScope.allowedValuesAsync(scope, _principal(1)),
+        [1, 2, 3],
+      );
+    });
+
+    test('reset clears write registrations with the rest', () {
+      TomDataScopeRegistry.register(
+        'tenant',
+        (p) => const [1],
+        write: (p) => const [],
+      );
+      TomDataScopeRegistry.registerAsync(
+        'visible',
+        (p) async => const [],
+        write: (p) async => const [],
+      );
+      TomDataScopeRegistry.reset();
+      expect(TomDataScopeRegistry.writeResolverFor('tenant'), isNull);
+      expect(TomDataScopeRegistry.asyncWriteResolverFor('visible'), isNull);
+    });
+  });
+
+  // RCC5: the `resource` kind is a *built-in* async scope, so `reset()` restores
+  // it. Until a deployment installs its grant source it denies every row — an
+  // unwired scope must not be an open door.
+  group('the built-in resource scope kind (RCC5)', () {
+    final col = _column('projects', 'resource_key', String);
+
+    test('resource is a built-in async kind that survives reset', () {
+      TomDataScopeRegistry.reset();
+      expect(TomDataScopeRegistry.isAsync(TomDbScope.resourceScope), isTrue);
+      expect(
+        TomDataScopeRegistry.asyncResolverFor(TomDbScope.resourceScope),
+        isNotNull,
+      );
+      expect(
+        TomDataScopeRegistry.asyncWriteResolverFor(TomDbScope.resourceScope),
+        isNotNull,
+      );
+    });
+
+    test('denies every row while no grant source is installed', () async {
+      TomDataScopeRegistry.reset();
+      const scope = TomDbScope(
+        field: 'resource_key',
+        scope: TomDbScope.resourceScope,
+      );
+      final read =
+          (await TomDataScope.buildAsync(b, scope, col, _principal(1)))!;
+      final write = (await TomDataScope.buildAsync(
+        b,
+        scope,
+        col,
+        _principal(1),
+        forWrite: true,
+      ))!;
+      expect(
+        read.predicate.generate(dialect),
+        b.boolOp(false).generate(dialect),
+      );
+      expect(
+        write.predicate.generate(dialect),
+        b.boolOp(false).generate(dialect),
+      );
+    });
+  });
+
+  // RCC5: `@TomDbScope` is the *only* scope declaration — an entity that carries
+  // a resource-key column is scoped automatically under the `resource` kind, and
+  // an entity that must stay global says so with the same annotation.
+  group('automatic resource scoping and opt-out (RCC5)', () {
+    TomColumnInformation col(String table, String column) =>
+        _column(table, column, String);
+
+    test('a resource_key column implies the resource scope', () {
+      final scope = TomAnnotationAnalyzer.autoScopeFor([
+        col('projects', 'id'),
+        col('projects', 'resource_key'),
+        col('projects', 'title'),
+      ]);
+      expect(scope, isNotNull);
+      expect(scope!.scope, TomDbScope.resourceScope);
+      expect(scope.field, 'resource_key');
+    });
+
+    test('an entity without a resource-key column is not auto-scoped', () {
+      expect(
+        TomAnnotationAnalyzer.autoScopeFor([
+          col('lookup', 'id'),
+          col('lookup', 'label'),
+        ]),
+        isNull,
+      );
+    });
+
+    test('TomDbScope.unscoped is the explicit opt-out marker', () {
+      const optOut = TomDbScope.unscoped();
+      expect(optOut.scope, TomDbScope.noScope);
+      expect(optOut.isOptOut, isTrue);
+      expect(const TomDbScope(field: 'owner_id').isOptOut, isFalse);
+    });
+  });
 }

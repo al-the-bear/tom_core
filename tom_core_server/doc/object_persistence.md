@@ -12,6 +12,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 - [The Repository Contract](#the-repository-contract)
 - [Query Sentences](#query-sentences)
 - [The Query Builder DSL](#the-query-builder-dsl)
+- [Row Scopes](#row-scopes)
 - [Grouping and Aggregation](#grouping-and-aggregation)
 - [How Metadata Is Resolved](#how-metadata-is-resolved)
 - [SQL Dialects](#sql-dialects)
@@ -36,6 +37,9 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomGroupedRow` | class | One group's result: the group keys plus the aggregate values, keyed by alias |
 | `TomAnnotationAnalyzer` | mixin | Resolves an entity's persistence metadata by reflection |
 | `TomColumnInformation` | class | The resolved metadata for one entity field |
+| `TomDbScope` | annotation | Declares (or explicitly opts out of) an entity's row scope |
+| `TomDataScopeRegistry` | class (statics) | The named scope-kind resolvers, read and write |
+| `TomDataScope` | class (statics) | Renders a resolver's answer into a bound `IN` / union predicate |
 
 ## Mapping an Entity
 
@@ -126,6 +130,151 @@ final sql = predicate.generate(MariadbSqlDialect());
 Use `p<T>('name')` for bound parameters (`:name`) — the driver binds the value,
 avoiding SQL injection. Literal factories (`text`, `intOp`, `dateOp`, …)
 interpolate directly and should be reserved for trusted values.
+
+## Row Scopes
+
+A **row scope** (C-3) narrows every query on an entity to the rows the current
+principal may see, by ANDing a `<column> IN (…)` predicate into the `WHERE`. It
+is not a filter the caller opts into per query — it is a property of the
+*entity*, applied by the repository to every read and enforced on every write,
+so a caller cannot forget it.
+
+### Declaring a scope
+
+`@TomDbScope(field:, scope:)` names the entity field whose value is matched and
+the **scope kind** that resolves the principal into a set of allowed values:
+
+```dart
+@tomReflector
+@TomDbTable(datasource: 'main', table: 'note', primaryKeyField: 'id')
+@TomDbScope(field: 'ownerId')          // scope defaults to 'owner'
+class Note {
+  @TomEntityId() @TomDbColumn(columnName: 'id') int? id;
+  @TomDbColumn(columnName: 'owner_id') int ownerId = 0;
+}
+```
+
+Three kinds are registered out of the box:
+
+| Kind | Allowed values | Resolution |
+| ---- | -------------- | ---------- |
+| `owner` | `principal.id` | synchronous |
+| `group` | `principal.aci.groups` | synchronous |
+| `resource` (`TomDbScope.resourceScope`) | the resource keys the principal holds a grant on | **asynchronous**, through the installed `TomResourceScopeSource` |
+
+An application adds its own (`'tenant'`, `'organization'`, …) with
+`TomDataScopeRegistry.register` or `registerAsync`; `reset()` restores just the
+built-ins.
+
+### Automatic scoping, and opting out
+
+An entity that carries a **`resource_key` column** (or a `resourceKey` field) is
+scoped under the `resource` kind *without an annotation* —
+`TomAnnotationAnalyzer.autoScopeFor` synthesises exactly the `@TomDbScope` a
+developer would have written. Grant-driven scoping is therefore the default, and
+forgetting the annotation can no longer silently publish every row.
+
+An entity that must stay global despite carrying such a column says so
+explicitly:
+
+```dart
+@TomDbScope.unscoped()   // field: '', scope: '' — the deliberate opt-out
+```
+
+`TomAnnotationAnalyzer.findDataScope` resolves in that order: an explicit
+annotation wins (including the opt-out, which yields no scope), then the
+automatic resource scope, then nothing.
+
+The framework's **own** authorization tables are excluded from automatic scoping
+twice over. They declare `@TomDbScope.unscoped()`, and they are additionally
+named in `TomAnnotationAnalyzer.resourceScopeInputTables`. The second guard is
+the load-bearing one: those tables are the input the `resource` scope reads *in
+order to compute itself*, so scoping them would close the authorization layer
+against itself — a principal could reach its own grant rows only by already
+holding a grant on them, which no row can satisfy. A constant set survives a
+**stale generated `*.reflection.dart`** whose class metadata predates the
+annotation, and a safety invariant must not depend on a deployment having re-run
+code generation before it upgrades. A test asserts the constant names exactly
+the tables those entities declare, so a table rename cannot silently disarm it.
+
+### How a scope renders
+
+`TomDataScope.build` (sync) and `buildAsync` (async) turn the resolver's answer
+into a `TomDataScopePredicate` — a boolean operator plus the bind values it
+references:
+
+- **`null`** from the resolver means *opt out* — no predicate, every row visible;
+- **an empty result** denies every row, rendering a bare `FALSE` (`IN ()` is not
+  valid SQL, and an allowed-value set of no values matches no rows);
+- otherwise `<col> IN (:__tomscope_0, …)`, **one bound parameter per value**, so
+  no scope value is ever concatenated into the SQL text (C-7).
+
+A **sync** resolver returns one value list and renders one `IN`. An **async**
+resolver returns a *list of id-set groups* and renders their **union**:
+`(<col> IN (…) OR <col> IN (…))`, with each group's placeholders namespaced
+(`__tomscope_0_`, `__tomscope_1_`, …). The multi-group union is wrapped in an
+explicit parenthesis group — the caller ANDs the whole thing into a larger
+`WHERE`, and an unparenthesised `a OR b` would bind as `(base AND a) OR b`,
+letting the second id-set escape the base filter and leak rows.
+
+The union shape exists because some visibility rules are genuinely a union of
+independently-computed sets (rows I own ∪ rows shared with me), which a single
+intersecting `IN` list cannot express without silently hiding legitimately
+shared rows.
+
+### Async resolvers must not recurse
+
+An async resolver typically computes its id-set by *reading the very entities it
+scopes*. Those reads must not re-enter scope resolution. A resolver therefore
+wraps its enumeration in `TomDataScope.runUnscoped`, which places a
+`TomDataScopeBypass` marker in the zone; `TomDataScope.isBypassed` reads it, and
+the repository skips scope resolution entirely while it is present. This is the
+guard against unbounded resolver recursion, and it is why the reads that
+*compute* a visible set are not themselves scoped.
+
+### Reads filter, writes reject
+
+The read paths *filter*: an out-of-scope row simply is not returned. A write
+names a specific row, so filtering it away would be a silent no-op; the
+repository *rejects* instead, with `TomDataScopeAuthorizationException`:
+
+- **update / delete by id** — `_assertRowWritable` re-runs the exact scoped read
+  predicate; if the row is not found it is refused. Modelling the check as a
+  scoped visibility read (rather than an atomic `UPDATE … AND <scope>` plus a
+  zero-rows-affected test) sidesteps the MariaDB quirk that an `UPDATE` changing
+  no value reports zero affected rows, which would otherwise reject a legitimate
+  in-scope no-op write. A missing row and an out-of-scope row are reported
+  identically, so existence is not leaked across the scope boundary.
+- **bulk delete** — `_assertIdsWritable` requires the scoped existence check to
+  see *all* the named ids.
+- **insert** — `_assertInsertWritable` checks the new row's scope-field value
+  against the allowed set, which is what stops a principal creating a row scoped
+  to a value it could not itself read. A scope **on the primary key** is a no-op
+  here: a fresh insert has no id yet, so there is no value to check, and insert
+  authorization for such entities belongs to the service layer.
+
+### Reading and writing can differ
+
+A scope kind may register a **write resolver** alongside its read resolver,
+answering the narrower question "which values may this principal *modify*". A
+kind that registers none writes exactly what it reads.
+
+This is what lets the `resource` kind admit a `read`-graded key to queries while
+rejecting every write to it, and it generalises: "may read every tenant, may
+write only my own" has the same shape. The `forWrite` flag threads the choice
+through `build` / `buildAsync` / `allowedValues` / `allowedValuesAsync` down to
+the three write guards above.
+
+### The grant-driven `resource` kind
+
+The `resource` kind's resolver is deliberately *empty* in this module: it
+delegates to whatever `TomResourceScopeSource` is installed in
+`TomDataScopeRegistry.resourceScopeSource`, and denies every row while none is
+— an unwired scope must be a closed door. The interface is declared here and
+implemented in the authorization module by `TomResourceDataScope`, which is the
+inversion that keeps the dependency arrow pointing from authorization down to
+persistence rather than the reverse. See
+[`authorization.md`](authorization.md#the-grant-driven-row-scope).
 
 ## Grouping and Aggregation
 
@@ -263,9 +412,10 @@ the behaviour identical on every dialect.
 Both server-side controls apply, and the column control applies *differently*
 here than on the row-returning paths:
 
-- **Row scope (C-3)** is ANDed into the `WHERE`, never into `HAVING` — it decides
-  which rows the principal may see, so it must apply before aggregation.
-  Filtering groups afterwards would still have counted the hidden rows.
+- **Row scope (C-3)** — see [Row Scopes](#row-scopes) — is ANDed into the
+  `WHERE`, never into `HAVING`: it decides which rows the principal may see, so
+  it must apply before aggregation. Filtering groups afterwards would still have
+  counted the hidden rows.
 - **Column rights (C-4)** cause the query to be **refused outright** rather than
   masked. The row paths null a forbidden column out of each returned entity; a
   grouped query cannot, because by the time rows exist the column has already
@@ -345,7 +495,14 @@ source's type.
 - **`TomAggregate` + `TomGroupedSelect` + `TomGroupedRow`** — the aggregation
   nodes (`CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max`), the grouped sentence
   and its result shape.
-- **`TomAnnotationAnalyzer`** — reflection-based metadata resolver.
+- **`TomAnnotationAnalyzer`** — reflection-based metadata resolver, including
+  `findDataScope` / `autoScopeFor` and the `resourceScopeInputTables` guard.
+- **`TomDbScope` + `TomDataScopeRegistry` + `TomDataScope`** — the row-scope
+  declaration, its named resolvers (read and write, sync and async), and the
+  bound-parameter predicate they render. `TomResourceScopeSource` is the hook the
+  authorization module installs behind the `resource` kind;
+  `TomDataScopeException` signals an unregistered kind and
+  `TomDataScopeAuthorizationException` a refused write.
 
 ## Not Yet Implemented
 

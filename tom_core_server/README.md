@@ -87,7 +87,7 @@ abstract, so other backends can be added.
 | `TomQueryBuilder` + `Eq` / `And` / `Like` / `In` / `Gte` … | Type-safe query expressions |
 | `TomAggregate` + `countAll` / `sum` / `avg` / `min` / `max`, `TomGroupedSelect`, `TomGroupedRow` | Grouping and aggregation — results come back as group keys plus aggregate values, not entities |
 | `TomQuerySentenceCompiler` | Compiles a readable query sentence (`find by name = :name order by age desc`) into the same query objects the builder produces |
-| `TomDataScope` / `TomDataScopeRegistry` / `TomColumnAuthorization` | Row scoping ANDed into every query, and per-column read/write rights enforced by the repository |
+| `TomDataScope` / `TomDataScopeRegistry` / `TomColumnAuthorization` | Row scoping ANDed into every query — `owner`, `group` and the grant-driven `resource` kind, the last applied automatically to any entity with a `resource_key` column — and per-column read/write rights enforced by the repository |
 | `TomDataSource` / `MariaDbDatasource` / `MariaDbXADatasource` | Connection drivers (MariaDB/MySQL) |
 | `TomDbType` family / `TomStandardSqlDialect` | Typed columns and SQL rendering |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomGroupedSelect` / `TomLiteralSelect` | Generated query objects, plus the raw-SQL escape hatch |
@@ -107,7 +107,7 @@ abstract, so other backends can be added.
 | `configuration` | `TomBaseServerConfiguration`, `TomServerConfigResourceProvider`, `TomConfig<T>`, `TomYaml` | Typed config + YAML resources |
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
 | `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomExternalIdentityStore` | Authentication service and adaptor annotations; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one |
-| `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; and delegation of those roles by explicit share, out-of-office window, or revocable hand-over |
+| `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver`, `TomResourceDataScope` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; delegation of those roles by explicit share, out-of-office window, or revocable hand-over; and the row scope that filters an entity's rows by those grants — `read` to list, `full` to write — with no application-side resolver |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
 | `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
@@ -156,7 +156,7 @@ annotated entities and are documented in [`doc/`](doc/).
 | [`example/transactions/`](example/transactions/) | Local/XA transaction coordination |
 | [`example/configuration/`](example/configuration/) | Typed config + YAML resources |
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
-| [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Login and second factors; the authorization cache, graded grants, resource roles and delegation |
+| [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Login and second factors; the authorization cache, graded grants, resource roles and delegation, and the grant-driven row scope those grants filter the database with |
 | [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain, the relational trail's schema and its write-once check, and signed anchors published outside the server |
 | [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox |
 | [`example/export/`](example/export/) | The streaming tabular shape, CSV/XLSX/PDF renderers, the format registry, export storage and the two delivery channels |
@@ -236,6 +236,16 @@ authorization decisions on an isolate, over grants that are graded per key
 lendable to another principal (`TomPrincipalDelegation`).
 `TomHealthService` / `TomHealthServer` expose health endpoints backed by
 `HealthAnalyzer`s.
+
+Those same grants filter the database. Install `TomResourceDataScope` once and
+every entity carrying a `resource_key` column is scoped to the keys the current
+principal holds a grant on, on reads *and* on writes — a `read` grade lists the
+row, only `full` may change it, and resolution is live, so a revoked share stops
+granting on the next request rather than at token expiry:
+
+```dart
+TomResourceDataScope.install(delegationResolver);
+```
 
 "Sign in with …" is wired in as one line, because it is not a second login path:
 
