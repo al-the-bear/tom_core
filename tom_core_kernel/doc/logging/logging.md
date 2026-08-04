@@ -235,8 +235,8 @@ void setupRemoteLogging() {
 By default `TomRemoteLogOutput` makes a single delivery attempt and, on failure,
 writes the record to its fallback output (console) so nothing is lost. A send is
 treated as failed both when the transport *throws* and when the server *returns*
-an error result. For flaky links you can opt into retry-with-backoff and an
-in-memory replay queue that drains, oldest-first, once the endpoint recovers:
+an error result. For flaky links you can opt into retry-with-backoff and a
+bounded replay queue that drains, oldest-first, once the endpoint recovers:
 
 ```dart
 // Retry each record up to 3 more times, waiting 200ms × attempt between tries.
@@ -251,8 +251,22 @@ TomRemoteLogOutput.clearReplayQueue();
 ```
 
 The defaults (no retries, no backoff, no replay queue) keep behaviour
-predictable and testable without a live server. The queue is in-memory only, so
-buffered records do not survive a process restart.
+predictable and testable without a live server.
+
+The queue's *storage* is pluggable through `TomLogReplayStore`. The default
+(`TomInMemoryLogReplayStore`) keeps records in memory, so they are lost if the
+process exits mid-outage. Point the store at a file to make the buffer durable —
+constructing it reloads whatever the previous process left behind:
+
+```dart
+TomRemoteLogOutput.globalSettingReplayStore =
+    TomFileLogReplayStore('/var/lib/myservice/log_replay.json');
+```
+
+`TomFileLogReplayStore` mirrors the queue to a JSON file on every mutation and
+requires `dart:io`, so it is not available on the web. Implement
+`TomLogReplayStore` yourself to back the queue with anything else that preserves
+arrival order.
 
 ### Multi-Isolate Logging
 
@@ -399,12 +413,16 @@ if (isProduction) {
 
 ```
 logging/
-├── logging.dart           # Core logging system
-├── logging_isolate.dart   # Multi-isolate support
-├── remote_logoutput.dart  # Remote logging client
-├── remote_logserver.dart  # Remote logging server
-└── logging.md             # This documentation
+├── logging_isolate.dart        # Multi-isolate support
+├── remote_logoutput.dart       # Remote logging client + replay queue
+├── file_log_replay_store.dart  # Durable, file-backed replay store
+├── remote_logserver.dart       # Remote logging server
+└── readme.md                   # Module overview
 ```
+
+The logger itself (`TomLogger`, `TomLogLevel`, `TomLogOutput`,
+`TomConsoleLogOutput`) lives in `tom_basics`; this module supplies the sinks
+that route records off the emitting isolate.
 
 ---
 

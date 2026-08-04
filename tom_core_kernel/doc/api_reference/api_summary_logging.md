@@ -19,6 +19,9 @@ logging server.
   - [TomRemoteLogMessage](#tomremotelogmessage)
   - [TomRemoteLogResult](#tomremotelogresult)
   - [TomLoggingContext](#tomloggingcontext)
+  - [TomLogReplayStore](#tomlogreplaystore)
+  - [TomInMemoryLogReplayStore](#tominmemorylogreplaystore)
+  - [TomFileLogReplayStore](#tomfilelogreplaystore)
   - [TomRemoteLogOutput](#tomremotelogoutput)
   - [TomRemoteLogServer](#tomremotelogserver)
 - [Global Functions and Constants](#global-functions-and-constants)
@@ -29,6 +32,7 @@ Sources:
 
 - `lib/src/tombase/logging/logging_isolate.dart`
 - `lib/src/tombase/logging/remote_logoutput.dart`
+- `lib/src/tombase/logging/file_log_replay_store.dart`
 - `lib/src/tombase/logging/remote_logserver.dart`
 
 The Logging module builds on the `TomLogLevel` / `TomLogOutput` primitives from
@@ -41,7 +45,11 @@ payload, and `TomIsolateLogging` is the setup facade. The remote side serializes
 log entries as `TomRemoteLogMessage`, sends them over HTTP via
 `TomRemoteLogOutput` (with re-entrancy protection through `TomLoggingContext`),
 and reconstructs them on the server through `TomRemoteLogServer`, which replies
-with a `TomRemoteLogResult`.
+with a `TomRemoteLogResult`. Records that fail every send attempt are buffered
+in a bounded replay queue whose storage is pluggable through
+`TomLogReplayStore` — in memory by default (`TomInMemoryLogReplayStore`), or
+mirrored to disk (`TomFileLogReplayStore`) so the buffer survives a process
+restart during an endpoint outage.
 
 The log-level type (`TomLogLevel`) is defined in `tom_basics`, not in this
 module.
@@ -69,6 +77,10 @@ TomRemoteLogMessage
 TomRemoteLogResult
 
 TomLoggingContext
+
+TomLogReplayStore  (abstract interface)
+    ├── TomInMemoryLogReplayStore
+    └── TomFileLogReplayStore
 
 TomRemoteLogServer
 ```
@@ -307,6 +319,65 @@ TomLoggingContext({bool inRemoteLogging = false})
 | -------- | ---- | ----------- |
 | `inRemoteLogging` | `bool` | Whether execution is currently inside a remote logging operation. |
 
+### TomLogReplayStore
+
+Pluggable storage behind `TomRemoteLogOutput`'s replay queue. Implementations
+own ordering: records must be returned in the order they were appended (FIFO),
+and overflow drops from the head.
+
+- **Kind:** `abstract interface class`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `length` | `int get length` | Number of records currently buffered. |
+| `append` | `void append(TomRemoteLogMessage message)` | Appends a record to the tail of the queue. |
+| `snapshot` | `List<TomRemoteLogMessage> snapshot()` | Returns a copy of all buffered records in arrival order. |
+| `oldest` | `TomRemoteLogMessage? get oldest` | The oldest buffered record, or `null` when empty. |
+| `removeOldest` | `void removeOldest()` | Removes the oldest record; a no-op when empty. |
+| `trim` | `void trim(int maxSize)` | Drops the oldest records until at most `maxSize` remain; a non-positive size clears the queue. |
+| `clear` | `void clear()` | Discards every buffered record. |
+
+### TomInMemoryLogReplayStore
+
+In-memory `TomLogReplayStore` — the zero-config default. Buffered records live
+in a plain list and are lost if the process exits while the queue is non-empty.
+
+- **Implements:** `TomLogReplayStore`
+
+#### Constructors
+
+```dart
+TomInMemoryLogReplayStore()
+```
+
+### TomFileLogReplayStore
+
+File-backed `TomLogReplayStore` for durable replay buffering. Records are held
+in memory and mirrored to a JSON file on every mutation (flushed to disk before
+returning); constructing the store reloads any records previously written, so
+the buffer survives a process restart during an endpoint outage. Requires
+`dart:io` and is therefore not available on the web.
+
+- **Implements:** `TomLogReplayStore`
+
+#### Constructors
+
+```dart
+TomFileLogReplayStore(String path)
+```
+
+Creates a store backed by `path`, loading any previously persisted records.
+Parent directories are created on the first write. A missing, empty or
+non-list file yields an empty queue.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `file` | `File` | *(final)* The file the queue is mirrored to and reloaded from. |
+
 ### TomRemoteLogOutput
 
 Log output that transmits log messages over HTTP to a centralized logging
@@ -323,7 +394,8 @@ delivery fails.
 | `remoteEndpoint` | `TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>?` | The configured remote endpoint; if `null`, all messages fall back to `globalSettingFallbackOutput`. |
 | `globalSettingMaxSendRetries` | `int` | Number of *additional* send attempts after the first fails (`0` = single attempt, the default). |
 | `globalSettingRetryBackoff` | `Duration` | Base delay between retries; the wait before retry *k* is `backoff × k` (`Duration.zero` by default = retry immediately). |
-| `globalSettingReplayQueueMaxSize` | `int` | Maximum records held in the in-memory replay queue; `0` (default) disables buffering, drop-oldest on overflow otherwise. |
+| `globalSettingReplayQueueMaxSize` | `int` | Maximum records held in the replay queue; `0` (default) disables buffering, drop-oldest on overflow otherwise. |
+| `globalSettingReplayStore` | `TomLogReplayStore` | Storage backing the replay queue (defaults to `TomInMemoryLogReplayStore`); assign `TomFileLogReplayStore` for durability across a restart. Shared across instances. |
 | `replayQueueLength` | `int` | *(read-only)* Number of records currently buffered for replay. |
 
 #### Static Methods
