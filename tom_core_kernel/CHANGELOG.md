@@ -1,3 +1,222 @@
+## 1.1.16
+
+The largest release since 1.0: four new modules (`scheduling/`, `preferences/`,
+`result/`, and the file-transfer half of `http_connection/`), the second
+authentication pass, the deployment's own principal, and a set of deliberate
+API narrowings. Read the **Changed** section before upgrading — several public
+members became read-only or non-overridable, which is a compile break for
+anyone who was writing them.
+
+### Added
+
+- **Background scheduling (`scheduling/`, csex7 / csex8 / CSEXB6 / CSEXC1 /
+  csexc2).** A complete job-scheduling substrate, previously absent from the
+  kernel entirely. `TomScheduler` is the runtime, and the whole loop — window
+  planning, catch-up, claiming, dispatch, timeout, retry and alerting — lives in
+  one awaitable `tick()` driven by an injectable clock, so a year of scheduling
+  is exercised in milliseconds rather than by waiting on a timer.
+  `TomSchedule` covers five kinds (`TomCronSchedule`, `TomCalendarSchedule`,
+  `TomIntervalSchedule`, `TomOnceSchedule`, `TomEventSchedule`);
+  `TomJobDefinition` carries the policies (`TomRetryPolicy`,
+  `TomMissedWindowPolicy`, overlap, timeout) and raises `TomJobAlert`s through a
+  `TomJobAlertSink` — including when a schedule can never fire again. Runs are
+  persisted through `TomJobStore` (`TomMemoryJobStore`, `TomFileJobStore`) and
+  executed through a `TomJobDispatcher` (`TomWorkerPoolJobDispatcher` onto the
+  existing isolate pool, or `TomInlineJobDispatcher`). The runtime never
+  executes anything itself.
+- **Cluster coordination for the scheduler (`TomLeaseLock`, csex8).** Two
+  schedulers over one store both claim the same due run unless something
+  arbitrates. Supplying a `TomLeaseLock` (`TomMemoryLeaseLock`,
+  `TomFileLeaseLock`) gates every run on a lease that is renewed while the work
+  runs and lapses when a node dies, with **fencing tokens** (`TomLease.token`,
+  strictly increasing per resource) so a paused-then-resumed holder cannot write
+  behind its successor's back. The lock is optional and `null` by default: left
+  unset, the scheduler behaves exactly as the single-node runtime. The execution
+  guarantee is **at-least-once** — job bodies must be idempotent.
+- **Declarative jobs (`@TomScheduledJob`, CSEXC1).** A job class annotated with
+  `@TomScheduledJob(cron: '0 3 * * *')` *is* its own registration; extend
+  `TomJobBase` and start-up collapses to `TomScheduledJobs.registerAll(scheduler)`.
+  This removes the failure mode where the class and a hand-written
+  `TomJobDefinition` are joined only by a string typed twice, so a rename
+  silently unpairs them.
+- **`TomResult<T>` — the canonical success-or-error envelope (csmb4, CodeSpecs
+  CE-ER).** The server contract treats only 5xx as a transport failure; every
+  application outcome, success *or* structured error, comes back in a 2xx body
+  as one envelope. `TomResult` is that envelope (explicit `success`
+  discriminator, reflection-free `TomJsonSerializable` wire form), carrying
+  either a value or a `TomErrorResult` (machine `code`, default message,
+  `TomFieldError` list, `retryable`, `TomErrorSeverity` with forward-compatible
+  `fromWire`). It lives in the kernel rather than a CodeSpecs-only package
+  because both tiers read the same discriminator.
+- **Second-factor authentication, end to end (`security/two_factor.dart`).**
+  Login became a two-pass flow: pass 1 verifies the primary credential and, when
+  the principal still owes a second factor, answers with a token that is a
+  *challenge carrier* rather than a session; pass 2 takes that token plus the
+  submitted factor and returns exactly the token pair a 2FA-free login would
+  have produced. The challenge travels in the token's claims (`Tom2FAClaims`),
+  not in a server-side pending-login record, so pass 2 stays stateless and any
+  instance can complete a login started by any other. `Tom2FAChallenge` is the
+  client-visible half (mechanism, hint, attempts remaining, expiry, an opaque
+  `clientData` map); whatever the server needs to verify travels encrypted under
+  `Tom2FAClaims.verificationData`. `Tom2FAPendingEnrolment` and
+  `Tom2FAMethodDescriptor` let a login *enrol* the factor it demands rather than
+  dead-ending a user who has none, and `TomTotp` supplies the RFC 4226 / 6238
+  primitives. Neither the framework nor the wire types name a mechanism: adding
+  SMS or WebAuthn needs no change here.
+- **The ambient server principal (`TomServerPrincipal`, csex4).** A deployed
+  server is itself a principal — it authenticates with a service credential and
+  its entitlements are *this deployment's* feature grants. Access evaluation now
+  has two operands and returns the meet: `min(user, server)` over the four-state
+  ladder. A user's `TomAuthState.full` on a feature the deployment is not
+  entitled to evaluates to `none`; deployment grants cap user grants and never
+  widen them. A deployment that never logs itself in leaves the holder empty and
+  evaluation degrades to the user's grant alone — the designed default, not a
+  failure mode (`TomServerPrincipal.isConfigured` says which regime a process is
+  in). It is a process-wide static rather than a zone value because the zone slot
+  for `TomPrincipal` is already taken by the *user* inside a request.
+- **Streaming file transfer (`file_transfer.dart` / `http_file_transfer.dart`,
+  csfs2).** The client half of the framework's file storage. `TomServerCall`
+  accumulates a whole response into a `BytesBuilder` — right for JSON, wrong for
+  a 400 MB video — so this library reuses the same connection machinery
+  (`TomServerChannel`, the bearer token, the client factory) without ever
+  materialising the payload. `TomFileSource` to send, `TomFileMetadata` to
+  describe what was stored, `TomFileTransferClient` (`TomHttpFileTransferClient`,
+  `TomMemoryFileTransferClient`) to move the bytes, with `TomTransferProgress`
+  and `TomTransferCancellation`. A transfer addresses an application-owned
+  **slot** (`invoices/4711/scan`), never a storage key: keys are generated
+  server-side and returned in `TomFileMetadata.key`, because a client that could
+  name its own key would turn any upload endpoint into an open write surface on
+  the blob store.
+- **Server-stored user preferences (`preferences/`, TCCA10 / C-13, TCCB5).** The
+  wire contract (`TomUserPreferenceDto`, `TomUserPreferenceWriteRequest`,
+  `TomUserPreferenceKeyRequest`, `TomUserPreferencesApiService`, the
+  `tomUserPreferencesApi` endpoint set), a typed `TomUserPreferenceCodec` for
+  the stored values, and `TomUserPreferenceKeys` for the framework's own keys.
+  `TomApiEndpoint.resolveUri` was added so a client can build the call URL from
+  the DTO it already holds — path captures and query parameters both resolve
+  through `urlParameterMapping`, and a missing capture is a named
+  `TomEndpointException` rather than a malformed URL.
+- **External identity as another authentication service
+  (`security/oauth_contract.dart`).** `TomOAuthProviderDto`,
+  `TomOAuthAuthorizationRequest`, `TomOAuthAuthorizationDto`,
+  `TomOAuthCallbackRequest`, `TomOAuthApiService` and the `tomOAuthApi` endpoint
+  set (list providers, begin authorization, complete authorization). OAuth 2.0 /
+  OIDC is modelled as one more authentication service rather than a parallel
+  login path.
+- **`TomObservableEnum<E>` (tcca9 / C-8).** An observable enum cell whose
+  *display text* comes from the text-resource bundle
+  (`<scope>.<enumname>.<value>`, lower case) instead of a Dart-side label table.
+  It notifies when *either* the value or the installed bundle changes, which is
+  what makes a locale switch re-render a bound field without the caller
+  rebuilding anything. `TomTextResourceProvider` gained the revision cell
+  (`appResourcesRevision` / `notifyAppResourcesChanged`) that second trigger
+  needs, and a `TomTextResourceProvider.from` constructor; assigning `resources`
+  announces a change only on the *installed* provider, so populating a
+  not-yet-installed one stays silent.
+- `TomHeader.location` — the `Location` header name, which is what makes a 3xx a
+  redirect rather than an empty body with an odd status.
+
+### Changed
+
+- **Breaking: `TomAccessControl` subclasses must move their rule.**
+  `checkAccessibility` and `resolveAuthState` are now `@nonVirtual` — they
+  compute the user/deployment meet described above, and a cap any subclass could
+  sidestep by overriding the method everybody already calls would not be a cap.
+  Override `checkPrincipalAccess` / `resolvePrincipalAuthState` instead (the
+  *user* operand; the rule is unchanged, only the method it belongs in), and
+  `resolveServerAuthState` for the *deployment* operand. That last one defaults
+  to `TomAuthState.full` — uncapped — because a control naming a role, a group
+  or a resource key has no opinion about which features a deployment licenses,
+  and a participant with no opinion must return the identity element.
+  `TomEntitlementAccess` overrides it, since entitlement patterns are the grant
+  carrier.
+- **Breaking: several public members are no longer writable (TCCA16).** Each was
+  a process-wide switch that a single caller could flip for everybody:
+  `TomClientRemoteContext.current` is now a getter (use `setCurrent` once at
+  startup, or the new zone-carried `runWithContext` for a scoped override, plus
+  `resetCurrent` for tests); `TomWorker.workerCount` is a getter (writing it
+  handed two live workers the same name) with `resetWorkerCount` for tests;
+  `TomHttpMethod.methods` is an unmodifiable map; `TomScope.defaultScope` is
+  `final`; `TomContentDisposition.attachment` is `const`.
+- **Breaking: three members were removed.** `TomNullInterface` is now private —
+  it only ever existed to give the internal null-component marker a type, and no
+  consumer could meaningfully implement it. `TomException.newField` was a
+  never-used "reserved for future use" field. `TomScopeMixin`'s `id` and
+  `parent` setters are gone; `initScope` is the single write-once entry point.
+- **Ambiguous bean bindings now throw instead of warning (TCCA18).** When two
+  implementations qualify equally within one selection tier, the locator raises
+  `beanlocator.initialization.ambiguous_implementation` naming both candidates
+  and pointing at `@TomEnvironment` / `@TomPlatform` to distinguish them.
+  Previously the first candidate won and the second was logged as a warning —
+  which binds a deployment to an arbitrary implementation, the failure mode
+  where the code runs, the tests pass and production misbehaves.
+- **Reflection widens `int` onto `double` fields (tcca20).** JSON and
+  command-line `key=value` arguments have no int/double distinction, so
+  `{"rate": 2}` decodes to an `int` and a whole-number `double` was previously
+  unrepresentable. The converse is deliberately absent: narrowing would need a
+  rounding policy, and truncating `2.5` silently loses data.
+- **Registering the UTC singleton is no longer reported as an ERROR (tccc3).**
+  The IANA database ships `Etc/UTC` and has no location keyed exactly `UTC`, so
+  `TomTimezone` registers its documented `utc` singleton on every start of every
+  process — an ERROR line that is always present is how a team learns to filter
+  out ERROR. It is now DEBUG. A genuine ERROR was added for the case that
+  actually is broken: the database loaded no locations at all, so only UTC is
+  available and every other lookup will miss.
+  `TomTimezone.populateFromLocations` is `@visibleForTesting` so that branch can
+  be driven, since on a native platform the embedded database always loads.
+- `TomTimezone.convertMinutesToUtcOffset` now delegates to the top-level
+  `convertMinutesToUtcOffset` in `little_things/formatting.dart` so the two entry
+  points cannot drift apart.
+- **The `Authorization` header is omitted rather than sent as `Bearer null`**
+  when nobody has signed in. An absent credential is a clean 401; a malformed one
+  is the same rejection dressed up as a parse failure.
+- **Stack-frame truncation kept the wrong frames (RCL1).** `_processStackFrames`
+  iterated oldest-first, so a depth limit discarded the frames nearest the throw
+  site — the useful ones — and kept the outermost `main`-side frames. It now
+  iterates newest-first, as its own documentation already claimed.
+- `TomAuthenticationResult` gained `requires2FAEnrolment`,
+  `availableTwoFactorMethods` and `twoFactorEnrolmentSkippable`, so pass 1 can
+  tell a client that the user must *enrol* a factor rather than merely present
+  one.
+- **Dependency floors were raised, and two dependencies added.** `tom_basics`
+  `>=1.0.3` (`setCurrentEnvironment` now applies its fallback unconditionally;
+  1.0.2 added `TomRuntime.reset()`); `tom_crypto` `>=1.1.0` (earlier versions
+  drew secure random bytes with an exclusive bound of 255, so no byte could be
+  `0xFF` — a bias inherited by every RSA key pair and every password salt this
+  package re-exports); new `crypto ^3.0.0` for the `TomTotp` HMAC-SHA1
+  primitives; new `meta ^1.9.0` for the `@nonVirtual` annotations that make the
+  deployment cap load-bearing. Dev: `tom_reflection_generator` `>=1.3.1`
+  (type-literal annotation arguments are now emitted import-prefixed).
+
+### Tests
+
+- New suites for every new module: `scheduling_test.dart`,
+  `scheduled_job_test.dart` (plus `test/contracts/scheduling_contract.dart`, the
+  shared store/lock contract), `result_test.dart`, `file_transfer_test.dart`,
+  `observable_enum_test.dart`, `server_principal_test.dart`.
+- Bean selection is now covered end to end: `beanlocator_selection_test.dart`
+  (the four tiers), `beanlocator_ambiguous_selection_test.dart` (the new throw)
+  and `beanlocator_excluded_selection_test.dart`, over a shared
+  `test/support/bean_selection_support.dart`.
+- `timezones_logging_test.dart` and `timezones_empty_database_test.dart` pin the
+  new log levels and drive the empty-database branch.
+- `api_reference_coverage_test.dart` guards the doc tree against drifting from
+  `lib/`.
+
+### Examples
+
+- `example/samples/scheduling/` (memory substrate, declared jobs, the five
+  schedule kinds, the at-least-once execution guarantee),
+  `example/samples/result/` (envelope, error details, wire format),
+  `example/samples/preferences/` (codec, contract), and
+  `example/samples/observable/08_observable_enum.dart`.
+
+### Documentation
+
+- `doc/scheduling/scheduling.md` (including the execution guarantee in full),
+  `doc/result/result.md`, `doc/preferences/preferences.md`, and the matching
+  `doc/api_reference/api_summary_*.md` entries.
+
 ## 1.1.15
 
 ### Added

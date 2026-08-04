@@ -13,7 +13,7 @@ through a typed handle, so collaborators never construct their own dependencies.
 | ---- | -------------- |
 | `TomBean<T>` | Typed handle to a registered bean; `withName` / `withType` register, `fromName` resolves, `get()` returns the instance. |
 | `TomComponent` | Base marker for objects participating in the locator. |
-| `TomNullInterface` / `TomNoInterface` | Sentinel interfaces for beans registered without a declared interface type. |
+| `TomNoInterface` | Sentinel interface for beans registered without a declared interface type. |
 | `TomBeanLocatorException` | Thrown on duplicate registration or failed resolution. |
 
 ## Quick start
