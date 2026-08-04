@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:tom_basics/tom_basics.dart';
 
@@ -159,23 +160,51 @@ class TomTimezone {
     _populateTimezonesMap();
   }
 
-  static void _populateTimezonesMap() {
+  static void _populateTimezonesMap() =>
+      populateFromLocations(tz.timeZoneDatabase.locations);
+
+  /// Fills the lookup caches from [locations] and registers the [utc]
+  /// singleton, which the IANA database does not supply under that name.
+  ///
+  /// Takes the location map rather than reading `tz.timeZoneDatabase` directly
+  /// so that a test can drive the failure branch below. On a native platform
+  /// the embedded database always loads, so "it did not load" is the one state
+  /// that cannot be provoked through the public entry points — and it is
+  /// precisely the state whose handling must not go untested.
+  @visibleForTesting
+  static void populateFromLocations(Map<String, tz.Location> locations) {
     if (_timezonesMap.isEmpty) {
-      // Iterate over all locations in the timezone database
-      for (var entry in tz.timeZoneDatabase.locations.entries) {
-        final tomTz = TomTimezone._(
-          timezone: entry.value.name,
-          location: entry.value,
+      for (var entry in locations.entries) {
+        _insertTimezone(
+          TomTimezone._(timezone: entry.value.name, location: entry.value),
         );
-        _insertTimezone(tomTz);
       }
     }
     _initialized = true;
+
+    // Routine setup, not a failure. The IANA database has no location keyed
+    // exactly `UTC` — it ships `Etc/UTC` — while [utc] is a documented
+    // singleton and `fromName('UTC')` is expected to resolve, so registering it
+    // here is how that promise is kept. Announced at debug level because the
+    // branch fires on every run of every process, forever: an ERROR line that
+    // is always present is how a team learns to filter out ERROR.
     if (_timezonesMap['UTC'] == null) {
-      tomLog.error(
-        "UTC timezone not found in timezone database, inserting manually.",
+      tomLog.debug(
+        'UTC is not a location in the IANA database (it ships Etc/UTC); '
+        'registering the UTC singleton.',
       );
       _insertTimezone(utc);
+    }
+
+    // The genuinely broken case, and the only one here worth an ERROR: the
+    // database did not load at all. UTC alone is not a timezone database —
+    // every other lookup will miss, and reporting that as a run of unknown
+    // zone names would hide a configuration failure behind a data one.
+    if (locations.isEmpty) {
+      tomLog.error(
+        'Timezone database is empty: no IANA locations were loaded, so only '
+        'UTC is available and all other timezone lookups will fail.',
+      );
     }
   }
 
