@@ -87,10 +87,10 @@ final child = TomScopeBase(scopeId: 'checkout', parentScope: root);
 print(child.getScopePath()); // app.checkout
 ```
 
-> **Note:** `TomScopeMixin` exposes `set id` / `set parent` setters, but the
-> backing fields are write-once — they are intended only for the brief window
-> before `initScope` runs and will throw if assigned afterwards. Prefer the
-> constructor (`TomScopeBase(scopeId:, parentScope:)`).
+> **Note:** a scope's identity is write-once. `initScope` is the only way to set
+> `id` and `parent`, and there is no way to change them afterwards — use the
+> constructor (`TomScopeBase(scopeId:, parentScope:)`), or call `initScope`
+> exactly once when mixing `TomScopeMixin` into your own type.
 
 ### InScopeBuilder
 

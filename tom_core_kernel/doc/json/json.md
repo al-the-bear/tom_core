@@ -14,12 +14,37 @@ This module provides utilities for working with JSON data structures in Dart, in
 
 ## Overview
 
-The JSON utilities module consists of two main files:
+The JSON utilities module consists of three files:
 
 | File | Purpose |
 |------|---------|
-| `map_merge_and_process.dart` | Deep merging, tree traversal, path access, and sanitization |
+| `json_serializable.dart` | The `TomJsonSerializable` contract for hand-written `toJson` |
+| `map_merge_and_process.dart` | Deep merging, tree traversal, path access, environment substitution, and sanitization |
 | `pretty_json.dart` | JSON formatting for human readability |
+
+### TomJsonSerializable
+
+For types that cannot be reflected — an immutable value object with `final`
+fields and no zero-argument constructor — `TomJsonSerializable` names the
+hand-written serialization contract:
+
+```dart
+class Money implements TomJsonSerializable {
+  const Money(this.amount, this.currency);
+  final int amount;
+  final String currency;
+
+  @override
+  Map<String, dynamic> toJson() => {'amount': amount, 'currency': currency};
+
+  static Money fromJson(Map<String, dynamic> json) =>
+      Money(json['amount'] as int, json['currency'] as String);
+}
+```
+
+Call `toJson()` yourself before the value enters a map tree. `makeCleanJsonMap`
+keeps only scalars, maps and lists — it does **not** recognise the interface, so
+a `TomJsonSerializable` left in place is dropped rather than converted.
 
 ## Quick Start
 
@@ -207,18 +232,23 @@ mergeMapsOneSided(baseConfig, localConfig);
 
 ### Environment Variable Substitution
 
-Replace placeholders with environment variables:
+Use `substituteEnvVars` — it walks every string in the tree and rewrites
+`${VAR}` placeholders in place:
 
 ```dart
-traverseAndProcess(
-  config,
-  (value) => value.startsWith(r'${') && value.endsWith('}'),
-  (value) {
-    final varName = value.substring(2, value.length - 1);
-    return Platform.environment[varName] ?? value;
-  },
-);
+final config = <String, dynamic>{
+  'host': r'${DB_HOST:localhost}',
+  'port': r'${DB_PORT}',
+};
+
+substituteEnvVars(config, Platform.environment);
+// {'host': 'production.db.com', 'port': '5432'}
 ```
+
+`${VAR:default}` supplies a fallback; a `${VAR}` with no default and no matching
+entry is left in the tree unchanged, so an unresolved placeholder is visible
+rather than silently blank. Multiple placeholders in one string are all
+replaced.
 
 ### Debugging API Responses
 

@@ -25,7 +25,9 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
     - [Optional Typed Beans Registration](#optional-typed-beans-registration)
   - [Environment and Platform Beans](#environment-and-platform-beans)
     - [Environment-Specific Beans](#environment-specific-beans)
+    - [Selecting an Implementation by Environment Name](#selecting-an-implementation-by-environment-name)
     - [Platform-Specific Beans](#platform-specific-beans)
+  - [Resetting the Bean Context](#resetting-the-bean-context)
   - [Implementation Resolution](#implementation-resolution)
   - [Error Handling](#error-handling)
     - [TomBeanLocatorException](#tombeanlocatorexception)
@@ -315,6 +317,33 @@ class ConsoleEmailService implements EmailService { ... }
 class MockEmailService implements EmailService { ... }
 ```
 
+### Selecting an Implementation by Environment Name
+
+Annotations let each *implementation* declare which environment it belongs to.
+`TomBean.installByEnvironment` inverts that: the caller supplies the mapping and
+the locator runs exactly one factory.
+
+```dart
+TomBean.installByEnvironment<EmailService>({
+  'production': () => SmtpEmailService(),
+  'development': () => ConsoleEmailService(),
+  'test': () => MockEmailService(),
+});
+
+final email = TomBean<EmailService>().get();
+```
+
+The active environment comes from `TomRuntime.getCurrentEnvironment()` unless
+you pass `environment:` explicitly. Only the selected factory runs, and its
+instance is registered by type, so a later `TomBean<EmailService>()` resolves
+it. An environment with no entry in the map throws
+`beanlocator.environment.no_factory_for_environment` — a missing mapping is a
+wiring bug, not a silent fallback.
+
+Reach for this form when the candidate implementations live in packages that
+must not depend on one another, or when the choice is driven by a launch flag
+rather than by a property of the implementation itself.
+
 ### Platform-Specific Beans
 
 ```dart
@@ -333,6 +362,23 @@ class AndroidStorageService implements StorageService { ... }
 @platformWeb
 class WebStorageService implements StorageService { ... }
 ```
+
+## Resetting the Bean Context
+
+The bean context is process-global static state, so a registration made by one
+unit of work is still visible to the next. `TomBean.resetBeanContext()` empties
+it, drops every pending unresolved handle, and marks the context uninitialized
+so a subsequent `initializeBeanContext` starts clean:
+
+```dart
+setUp(() {
+  TomBean.resetBeanContext();
+  TomBean.initializeBeanContext();
+});
+```
+
+This is what isolates tests from each other. Application code normally
+initializes once at start-up and never resets.
 
 ## Implementation Resolution
 
@@ -393,6 +439,9 @@ try {
 | `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean |
 | `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered |
 | `beanlocator.initialization.no_matching_implementation_found` | No matching implementation |
+| `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
+| `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type |
+| `beanlocator.environment.no_factory_for_environment` | `installByEnvironment` has no factory for the active environment |
 
 ## Best Practices
 

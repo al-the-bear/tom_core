@@ -104,8 +104,8 @@ call `initScope` once during construction to set the scope's write-once identity
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `id` | `String` | The scope's local id; the setter is valid only before `initScope` runs (write-once). |
-| `parent` | `TomScope?` | The parent scope; the setter is valid only before `initScope` runs (write-once). |
+| `id` | `String` | The scope's local id. Read-only; written once by `initScope`. |
+| `parent` | `TomScope?` | The parent scope. Read-only; written once by `initScope`. |
 
 #### Methods
 

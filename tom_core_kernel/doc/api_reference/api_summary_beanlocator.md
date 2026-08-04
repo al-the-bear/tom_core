@@ -11,7 +11,6 @@ environment- and platform-specific implementations.
 - [Classes](#classes)
   - [TomBeanLocatorException](#tombeanlocatorexception)
   - [TomComponent](#tomcomponent)
-  - [TomNullInterface](#tomnullinterface)
   - [TomNoInterface](#tomnointerface)
   - [TomBean\<T\>](#tombeant)
 - [Global Functions and Constants](#global-functions-and-constants)
@@ -42,7 +41,6 @@ TomException  (kernel)
 TomComponent
 
 (interfaces)
-├── TomNullInterface
 └── TomNoInterface
 
 TomBean<T>
@@ -95,10 +93,6 @@ const TomComponent(Type type)
 | ------ | --------- | ----------- |
 | `getType` | `Type getType()` | Returns the interface type for this component. |
 | `toString` | `String toString()` | *(override)* Renders as `TomComponent of <type>`. |
-
-### TomNullInterface
-
-Marker interface indicating a null/missing component.
 
 ### TomNoInterface
 

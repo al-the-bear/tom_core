@@ -75,7 +75,6 @@ When `autoLog` is `true`, the exception and its stack trace are written to
 | -------- | ---- | ----------- |
 | `autoLog` | `bool` | Whether this exception is automatically logged when created. |
 | `serverCallError` | `TomServerCallError?` | Server-call error details when the exception originated from an HTTP call. |
-| `newField` | `String?` | Reserved for future use. |
 | `logRepresentation` | `String` | *(override)* The string representation used by the logging system (equals `toString()`). |
 
 #### Methods
