@@ -39,20 +39,21 @@ class SerializationExample {
       timezone: tokyo,
     );
 
-    // toString() gives the base serialization
-    final baseString = dt.toString();
-    
-    // Full serialization includes the prefix
-    dateTimeSerialized = '${dt.getSerializationPrefix()}$baseString';
+    // toString() is the complete serialization — it already carries the type
+    // prefix, so it round-trips through parseFromString as-is. Do not prepend
+    // getSerializationPrefix() to it; that is for building the prefix
+    // separately (e.g. to dispatch on type before parsing).
+    dateTimeSerialized = dt.toString();
 
-    print('   - Base toString(): $baseString');
-    print('   - With prefix: $dateTimeSerialized');
+    print('   - Serialized: $dateTimeSerialized');
+    print('   - Prefix for this type: ${dt.getSerializationPrefix()}');
     print('   - Format: @X@ISO8601_OFFSET_TIMEZONE');
 
     // Assertions
-    assert(baseString.contains('Z'), 'Should contain UTC marker');
-    assert(baseString.contains('Asia/Tokyo'), 'Should contain timezone name');
+    assert(dateTimeSerialized.contains('Z'), 'Should contain UTC marker');
+    assert(dateTimeSerialized.contains('Asia/Tokyo'), 'Should contain timezone name');
     assert(dateTimeSerialized.startsWith('@X@'), 'Should start with @X@ prefix');
+    assert(dt.getSerializationPrefix() == '@X@', 'Prefix should be @X@');
   }
 
   // -------------------------------------------------------------------------
@@ -69,16 +70,15 @@ class SerializationExample {
       timezone: newYork,
     );
 
-    final baseString = date.toString();
-    dateSerialized = '${date.getSerializationPrefix()}$baseString';
+    dateSerialized = date.toString();
 
-    print('   - Base toString(): $baseString');
-    print('   - With prefix: $dateSerialized');
+    print('   - Serialized: $dateSerialized');
+    print('   - Prefix for this type: ${date.getSerializationPrefix()}');
     print('   - Format: @D@ISO8601_OFFSET_TIMEZONE');
 
     // Assertions
     assert(dateSerialized.startsWith('@D@'), 'Should start with @D@ prefix');
-    assert(baseString.contains('America/New_York'), 'Should contain timezone name');
+    assert(dateSerialized.contains('America/New_York'), 'Should contain timezone name');
   }
 
   // -------------------------------------------------------------------------
@@ -95,11 +95,10 @@ class SerializationExample {
       timezone: london,
     );
 
-    final baseString = time.toString();
-    timeSerialized = '${time.getSerializationPrefix()}$baseString';
+    timeSerialized = time.toString();
 
-    print('   - Base toString(): $baseString');
-    print('   - With prefix: $timeSerialized');
+    print('   - Serialized: $timeSerialized');
+    print('   - Prefix for this type: ${time.getSerializationPrefix()}');
     print('   - Format: @T@ISO8601_OFFSET_TIMEZONE');
 
     // Assertions

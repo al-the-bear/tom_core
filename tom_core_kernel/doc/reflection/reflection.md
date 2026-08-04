@@ -274,6 +274,12 @@ The following types are handled directly:
 - `String` / `String?`
 - `null`
 
+An `int` destined for a `double` field is **widened** — neither JSON nor a
+command-line `key=value` argument can express "the double 2", so `{"rate": 2}`
+sets a `double rate` to `2.0`. The converse is deliberately absent: a `double`
+for an `int` field is an error, because narrowing would need a rounding policy
+and truncating `2.5` loses data.
+
 ### DateTime Types
 
 The following DateTime types are automatically serialized/deserialized:
@@ -286,22 +292,24 @@ The following DateTime types are automatically serialized/deserialized:
 ### Collection Types
 
 **Lists:**
+- `List<dynamic>`, `List<Object>`, `List<Object?>`
 - `List<String>`, `List<String?>`
 - `List<int>`, `List<int?>`
 - `List<double>`, `List<double?>`
 - `List<bool>`, `List<bool?>`
 - `List<DateTime>`, `List<DateTime?>`
-- `List<TomZonedDate>`, `List<TomZonedTime>`, `List<TomZonedDateTime>`
-- `List<MyClass>` (where MyClass is annotated)
+- `List<TomZonedDate>`, `List<TomZonedTime>`, `List<TomZonedDateTime>` and their nullable forms
+- `List<MyClass>`, `List<MyClass?>` (where MyClass is annotated)
 
 **Maps:**
-- `Map<String, dynamic>`, `Map<String, Object?>`
+- `Map<String, dynamic>`, `Map<String, Object>`, `Map<String, Object?>`
 - `Map<String, String>`, `Map<String, String?>`
 - `Map<String, int>`, `Map<String, int?>`
 - `Map<String, double>`, `Map<String, double?>`
 - `Map<String, bool>`, `Map<String, bool?>`
 - `Map<String, DateTime>`, `Map<String, DateTime?>`
-- `Map<String, MyClass>` (where MyClass is annotated)
+- `Map<String, TomZonedDate>`, `Map<String, TomZonedTime>`, `Map<String, TomZonedDateTime>` and their nullable forms
+- `Map<String, MyClass>`, `Map<String, MyClass?>` (where MyClass is annotated)
 
 ## Working with Collections
 
@@ -460,10 +468,56 @@ try {
 | Error Key | Description |
 |-----------|-------------|
 | `reflector.instance_creation.failed` | Failed to create instance |
+| `reflector.type_resolution.not_a_generic_type` | The collection's runtime type carries no type arguments |
+| `reflector.type_resolution.not_a_map_type` | Expected `Map<K, V>` but found fewer than two type arguments |
 | `reflector.classmirror.not_found_for_map_value` | Map value type not found |
 | `reflector.classmirror.not_found_for_iterable_value` | List element type not found |
+| `reflector.classmirror.ambiguous_simple_name` | The simple name matches more than one annotated class |
+| `reflection.set.unexpected_condition_final_static_private` | Field has a getter but no setter (static, final or private) |
 | `reflection.set.unexpected_type` | Unexpected value type during deserialization |
 | `reflection.set.unexpected_string_type` | String value for non-DateTime field |
+| `reflection.set.datetime_must_be_filled_from_string_in_map` | Non-String element in a `Map<String, DateTime>`-style field |
+| `reflection.set.datetime_must_be_filled_from_string_for_list` | Non-String element in a `List<DateTime>`-style field |
+| `reflection.set.map_value_materialization_failed` | A value could not be materialized into a `Map<String, T>` field |
+| `reflection.set.list_element_materialization_failed` | An element could not be materialized into a `List<T>` field |
+
+### Atomic Collection Updates
+
+Collection fields are built in full before the target field is touched. If any
+element or value cannot be materialized, a `TomReflectorException` is thrown and
+the field keeps its previous content — it is never left cleared, truncated, or
+half-populated.
+
+```dart
+final team = Team()..members.add(TeamMember()..name = 'Old');
+
+try {
+  tomReflectionInfo.setValues(team, {
+    'members': [
+      {'name': 'New'},
+      null, // List<TeamMember> cannot hold null — the whole update fails
+    ],
+  });
+} on TomReflectorException catch (e) {
+  print(e.key); // reflection.set.list_element_materialization_failed
+}
+
+print(team.members.length); // 1 — the original content is intact
+print(team.members[0].name); // 'Old'
+```
+
+### Ambiguous Type Names
+
+Element types of annotated collections are resolved by *simple* name. If two
+`@tomReflector` classes in different libraries share a simple name, the lookup
+is rejected rather than silently resolved to the first match:
+
+```dart
+// Both a.dart and b.dart declare an annotated `Address`.
+tomReflectionInfo.singleElementType(<Address>[]);
+// throws TomReflectorException(reflector.classmirror.ambiguous_simple_name),
+// naming both qualified names in the message.
+```
 
 ## Best Practices
 

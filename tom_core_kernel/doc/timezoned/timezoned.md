@@ -47,8 +47,8 @@ All `TomTimezoned` values store the actual UTC moment internally:
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
-  // The timezone database must be initialized once at startup (await the
-  // platform-appropriate init_tz* entry point) before constructing zoned values.
+  // On native platforms the timezone database loads synchronously on first
+  // access — no startup call needed. On web, `await tomSetupTimezones()` first.
   final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
   final newYork = TomTimezone.fromName('America/New_York')!;
   
@@ -338,15 +338,27 @@ final offset = TomTimezone.firstWithOffset(99999);     // null
 
 ### Format Exceptions
 
-Thrown when parsing fails:
+Thrown when parsing fails — either because the string does not match the
+expected shape, or because it names a zone the database does not know:
 
 ```dart
 try {
   TomZonedDateTime.parseFromString('invalid');
 } on FormatException catch (e) {
-  print(e.message);
+  print(e.message); // Invalid TomZonedDateTime string: invalid
+}
+
+try {
+  TomZonedDateTime.parseFromString(
+    '@X@2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus',
+  );
+} on FormatException catch (e) {
+  print(e.message); // Unknown timezone 'Mars/Olympus' in ...
 }
 ```
+
+An unknown zone is a parse failure, not a silent substitution: the parsed value
+would otherwise carry UTC while claiming a zone it never had.
 
 ### Safe Parsing Pattern
 

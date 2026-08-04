@@ -14,9 +14,10 @@ unit of work; a `TomWorker` runs it on a dedicated isolate, and a
 | `TomCommand` | An encapsulated unit of work with an async `execute()`. |
 | `TomExecutor` | Custom command handler chain (returns a value or passes to the next executor). |
 | `TomWorker` | A single worker isolate; `spawn(...)` creates one, `executeCommand(cmd)` runs work on it. |
-| `TomWorkerPool` | Fixed pool of workers; `withSize(n)` builds it, `execute(cmd)` dispatches to a free worker. |
+| `TomWorkerPool` | Fixed pool of workers; `withSize(n, context)` builds it, `execute(cmd)` dispatches to a free worker, `close()` tears it down. |
 | `TomWorkerContext` | The state handed to a worker isolate at spawn time. |
-| `TomWorkerException` | Thrown on worker spawn / communication failures. |
+| `TomWorkerException` | Thrown on worker spawn / communication failures, and on dispatch to a closed pool. |
+| `TomWorkerDiedException` | Fails an in-flight command whose worker isolate died, when liveness supervision is enabled. |
 
 ## Quick start
 
@@ -36,11 +37,34 @@ class FactorialCommand extends TomCommand {
 }
 
 Future<void> main() async {
+  final context = TomWorkerContext(
+      defaultTomEnvironment, platformLinux, [], 'PoolWorker');
+
   // Build a pool and run the command on a worker isolate.
-  final pool = await TomWorkerPool.withSize(2);
+  final pool = await TomWorkerPool.withSize(2, context);
   print(await pool.execute(FactorialCommand(5))); // 120
+
+  pool.close();
 }
 ```
+
+## Liveness supervision (opt-in)
+
+Pass a `healthCheckInterval` to `withSize` and the pool watches its workers: an
+isolate that dies fails its in-flight command with a `TomWorkerDiedException`
+instead of hanging the caller forever, and a replacement is spawned. Idle
+workers are additionally pinged to catch hangs that emit no exit signal.
+
+```dart
+final pool = await TomWorkerPool.withSize(
+  4,
+  context,
+  healthCheckInterval: const Duration(seconds: 5),
+);
+```
+
+A failed command is deliberately **not** re-dispatched — only the caller knows
+whether the work is idempotent.
 
 ---
 

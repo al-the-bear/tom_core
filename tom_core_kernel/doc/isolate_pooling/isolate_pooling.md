@@ -21,6 +21,7 @@ Dart isolates are independent execution contexts with their own memory space. Wh
 - **Command Pattern**: Execute commands as self-contained objects
 - **Executor Pattern**: Register handlers to process incoming messages
 - **Worker Pools**: Manage multiple workers with automatic load distribution
+- **Liveness Supervision**: Opt-in detection and recovery from worker deaths
 
 ## Quick Start
 
@@ -28,10 +29,10 @@ Dart isolates are independent execution contexts with their own memory space. Wh
 
 ```dart
 final context = TomWorkerContext(
-  TomEnvironment.development,
-  TomPlatform.mobile,
+  defaultTomEnvironment, // or your own TomEnvironment("staging")
+  platformLinux,         // platformMacos, platformWindows, platformWeb, …
   [],
-  'Worker', // Name prefix for isolates
+  'Worker',              // Name prefix for isolates
 );
 ```
 
@@ -79,6 +80,9 @@ The main class for managing worker isolates. Handles spawning, communication, an
 | `executeCommand()` | Send a command and await the result |
 | `sendExecutorToIsolate()` | Add an executor to the worker |
 | `close()` | Shutdown the worker |
+| `superviseExit()` | Register a death callback; in-flight requests fail instead of hanging |
+| `ping()` | Liveness probe with a timeout; never kills the isolate |
+| `killUnresponsive()` | Force-kill a hung isolate, routing it through the death path |
 | `isReady` | Whether the worker is ready for commands |
 | `isBusy()` | Whether the worker has pending requests |
 | `isClosed` | Whether the worker has been closed |
@@ -99,8 +103,8 @@ Configuration context for initializing worker isolates.
 ```dart
 class MyWorkerContext extends TomWorkerContext {
   MyWorkerContext() : super(
-    TomEnvironment.development,
-    TomPlatform.mobile,
+    defaultTomEnvironment,
+    platformLinux,
     [],
     'MyWorker',
   );
@@ -171,7 +175,57 @@ final results = await Future.wait([
   pool.execute(command3),
   pool.execute(command4),
 ]);
+
+// Tear down when done; the pool must not be reused afterwards.
+pool.close();
 ```
+
+### Liveness Supervision
+
+By default the pool performs no supervision. Pass a `healthCheckInterval` to
+turn it on:
+
+```dart
+final pool = await TomWorkerPool.withSize(
+  4,
+  context,
+  healthCheckInterval: const Duration(seconds: 5),
+  healthCheckTimeout: const Duration(seconds: 30), // default: 5s
+);
+
+print(pool.isSupervised); // true
+print(pool.workerCount);  // 4
+```
+
+Two mechanisms then run. **Exit detection** watches every worker: if an isolate
+dies for any reason — an uncaught error, `Isolate.kill`, an out-of-memory kill —
+each in-flight command on it is failed with a `TomWorkerDiedException` instead
+of hanging its caller forever, and the pool respawns a replacement.
+**Periodic pings** probe *idle* workers only, catching hangs that never emit an
+exit signal; a worker that misses `healthCheckTimeout` is force-killed and
+routed through the same death/respawn path.
+
+Only idle workers are pinged, because a probe queued behind a busy worker's
+in-flight command is indistinguishable from legitimately slow work — and a busy
+worker that actually crashes is already covered by exit detection.
+
+```dart
+try {
+  await pool.execute(SomeCommand());
+} on TomWorkerDiedException catch (e) {
+  // The request failed rather than hanging — and was NOT retried.
+  print('worker died: ${e.parameters?['isolateName']}');
+}
+
+// Capacity is restored asynchronously.
+while (pool.workerCount < 4) {
+  await Future<void>.delayed(const Duration(milliseconds: 20));
+}
+```
+
+A failed in-flight command is deliberately **not** re-dispatched: re-running
+work that may already have produced side effects risks doing non-idempotent work
+twice. Only the caller knows whether a retry is safe.
 
 ## Architecture
 
@@ -252,8 +306,8 @@ class DatabaseWorkerContext extends TomWorkerContext {
   final String connectionString;
 
   DatabaseWorkerContext(this.connectionString) : super(
-    TomEnvironment.production,
-    TomPlatform.server,
+    defaultTomEnvironment,
+    platformLinux,
     [],
     'DB',
   );
@@ -286,12 +340,21 @@ class DatabaseWorkerContext extends TomWorkerContext {
 
 ### 3. Error Handling
 
+A command that throws inside the worker surfaces as a `RemoteError`. A worker
+that *dies* while a command is in flight surfaces as a `TomWorkerDiedException`
+— but only on a supervised pool; without supervision the future never
+completes.
+
 ```dart
 try {
   final result = await worker.executeCommand(command);
 } on RemoteError catch (e) {
-  // Handle errors from the worker isolate
+  // The command failed, but the worker is still healthy.
   print('Worker error: $e');
+} on TomWorkerDiedException catch (e) {
+  // The worker is gone; the command's fate is unknown, so decide whether
+  // re-running it is safe before retrying.
+  print('Worker died: $e');
 }
 ```
 
@@ -299,8 +362,10 @@ try {
 
 - **Don't share mutable state**: Isolates have separate memory
 - **Keep messages serializable**: Objects must be sendable across isolate boundaries
-- **Clean up resources**: Always call `close()` when done with workers
-- **Handle worker failures**: Implement health checks for long-running pools
+- **Clean up resources**: Always call `close()` when done with workers or pools
+- **Handle worker failures**: Enable supervision (`healthCheckInterval`) on
+  long-running pools rather than writing your own health checks — an
+  unsupervised pool hangs the caller forever when a worker dies
 
 ### 5. Logging Considerations
 
@@ -308,7 +373,8 @@ When using logging in workers that delegate to a logging isolate, avoid logging 
 
 ## API Reference
 
-See the source code documentation in [tom_worker.dart](tom_worker.dart) for detailed API reference.
+See `doc/api_reference/api_summary_isolate_pooling.md` for the full public
+surface, or the dartdoc in `lib/src/tombase/isolate_pooling/tom_worker.dart`.
 
 ---
 

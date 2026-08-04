@@ -19,8 +19,11 @@ full variants used by the observable date/time cells.
 | `TomZonedDateTime` | Full zoned date-and-time value. |
 | `TomTimezoneException` | Thrown on unknown zones / parse failures. |
 
-> Initialise the timezone database once at startup via the platform-appropriate
-> `init_tz*` entry point before constructing zoned values.
+> On native (VM / Flutter) the timezone database loads **synchronously on first
+> access** from the embedded IANA data — no startup call is required. On the
+> **web** the data is fetched over the network, so `await tomSetupTimezones()`
+> during startup is mandatory; a first access without it throws rather than
+> resolving to an empty database.
 
 ## Quick start
 

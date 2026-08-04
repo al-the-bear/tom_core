@@ -140,7 +140,9 @@ A singleton provider for text-based resources.
 | Member | Type | Description |
 |--------|------|-------------|
 | `loader` | `Map<String, dynamic> Function()?` | Optional function to load resources lazily |
-| `setAppResourceProvider()` | Method | Sets the application-wide provider instance |
+| `appResourcesRevision` | `TomInt` | Observable revision counter, bumped whenever the installed bundle changes |
+| `notifyAppResourcesChanged()` | Method | Bumps `appResourcesRevision` after an in-place edit of the installed bundle |
+| `setAppResourceProvider()` | Method | Sets the application-wide provider instance and bumps `appResourcesRevision` |
 | `getAppResources()` | Method | Returns the singleton provider instance |
 
 #### Constructors
@@ -151,10 +153,11 @@ A singleton provider for text-based resources.
 | `TomTextResourceProvider.load(loader)` | Creates provider with a custom loader function |
 | `TomTextResourceProvider.from(map)` | Creates provider from an existing map |
 
-#### Instance Methods
+#### Instance Members
 
-| Method | Return Type | Description |
-|--------|-------------|-------------|
+| Member | Type | Description |
+|--------|------|-------------|
+| `resources` | `Map<String, dynamic>` | The resource bundle. Assigning a new map to the **installed** provider bumps `appResourcesRevision` |
 | `exists(key)` | `bool` | Checks if a **String** value exists at the path |
 | `existsObject(key)` | `bool` | Checks if **any** value (of any type) exists at the path |
 | `getText(key)` | `String` | Returns the text value, or the **key itself** if not found |
@@ -219,6 +222,42 @@ final retries = resources.getObjectOrNull('api.retries') as int? ?? 3;
 final config = TomConfigResourceProvider.getAppConfig();
 final timeout = config.exists('api.timeout') ? config.getText('api.timeout') as int : 5000;
 ```
+
+### Observing bundle changes
+
+Text derived from the resource bundle — a translated label held in a widget, a
+localized enum caption — has to be re-derived when the bundle is swapped, for
+example on a language change. `TomTextResourceProvider.appResourcesRevision` is
+a `TomInt` that exists for exactly that: observe it, and re-read your resources
+when it fires.
+
+```dart
+// Retain the returned observer — observers are held weakly.
+final observer = TomTextResourceProvider.appResourcesRevision >> (_) {
+  rebuildLocalizedCaptions();
+};
+
+// Installing a new bundle bumps the revision, so the observer fires.
+TomTextResourceProvider.setAppResourceProvider(
+  TomTextResourceProvider.from(germanResources),
+);
+
+// Assigning a new map to the *installed* provider bumps it too.
+TomTextResourceProvider.getAppResources().resources = frenchResources;
+```
+
+In-place mutation of the map cannot be detected — the setter never runs — so
+announce it yourself:
+
+```dart
+TomTextResourceProvider.getAppResources().resources['app.title'] = 'Renamed';
+TomTextResourceProvider.notifyAppResourcesChanged();
+```
+
+Assigning `resources` on a provider that is *not* the installed one is silent by
+design: a provider nobody reads from has not changed anything
+application-visible. This is what `TomObservableEnum` observes to keep its
+display strings current — see [`observable`](../observable/observable.md).
 
 ## Usage Examples
 

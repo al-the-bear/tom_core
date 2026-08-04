@@ -232,15 +232,25 @@ class PoolCleanupExample {
   static bool poolClosedSuccessfully = false;
 
   static Future<void> example6PoolCleanup(TomWorkerPool pool) async {
-    // TomWorkerPool doesn't have a close() method, but individual workers can be closed
-    // In a real application, you would track and close workers when done
-    // For this example, we simulate cleanup completion
-    
-    // Give time for any pending operations
+    // Give any pending operations a moment to settle before tearing down.
     await Future.delayed(Duration(milliseconds: 100));
 
-    poolClosedSuccessfully = true;
+    // close() shuts down every worker in the pool and cancels supervision.
+    // The pool must not be reused afterwards.
+    pool.close();
 
+    // Dispatch after close fails fast instead of hanging on a free worker.
+    Object? closedError;
+    try {
+      await pool.execute(IsPrimeCommand(7));
+    } on TomWorkerException catch (e) {
+      closedError = e;
+    }
+
+    poolClosedSuccessfully = closedError != null;
+
+    assert(closedError is TomWorkerException,
+        'execute() after close() should throw TomWorkerException');
     assert(poolClosedSuccessfully, 'Pool cleanup should complete successfully');
   }
 }

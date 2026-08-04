@@ -115,15 +115,15 @@ TomReflectionInfo(TomReflector reflector)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `mapValueElementType` | `ClassMirror mapValueElementType(Object collection)` | Extracts the value type's `ClassMirror` from a `Map<K, V>` type annotation; throws `TomReflectorException` if the value type is not among annotated classes. |
-| `singleElementType` | `ClassMirror singleElementType(Object collection)` | Extracts the element type's `ClassMirror` from a single-type-parameter collection (e.g. `List`, `Set`); throws `TomReflectorException` if not found. |
+| `mapValueElementType` | `ClassMirror mapValueElementType(Object collection)` | Extracts the value type's `ClassMirror` from a `Map<K, V>` type annotation. Throws `TomReflectorException` if the collection is not generic, carries fewer than two type arguments, the value type is not among annotated classes, or its simple name is ambiguous. |
+| `singleElementType` | `ClassMirror singleElementType(Object collection)` | Extracts the element type's `ClassMirror` from a single-type-parameter collection (e.g. `List`, `Set`). Throws `TomReflectorException` if the collection is not generic, the element type is not found, or its simple name is ambiguous. |
 | `reportReflectObject` | `void reportReflectObject(Object o)` | Prints detailed reflection information about an object (declarations, instance members, superclass hierarchy) for debugging. |
 | `reportReflect` | `void reportReflect(ClassMirror cm)` | Prints detailed reflection information about a `ClassMirror` for debugging. |
 | `convertFromJsonString` | `T convertFromJsonString<T extends Object>(T o, String s)` | Parses a JSON string and populates the fields of object `o`; returns the same object. |
 | `createInstanceFromJsonString` | `T? createInstanceFromJsonString<T extends Object>(ClassMirror objectMirror, String s)` | Creates a new instance of `T` from a JSON string using `objectMirror`; returns null if creation fails. |
 | `createInstanceFromJson` | `T? createInstanceFromJson<T extends Object>(ClassMirror objectMirror, Map<String, Object?> jsonData)` | Creates a new instance of `T` from JSON data, preferring a `fromJson` constructor and falling back to the default constructor plus `setValues`. |
 | `createInstance` | `T createInstance<T extends Object>([Type? type])` | Creates a new instance of `T` (or `type`) using its default constructor; throws `TomReflectorException` if instantiation fails. |
-| `setValues` | `T setValues<T extends Object>(T o, Map<String, dynamic> values)` | Sets field values on `o` from a map (the main deserialization entry point); handles primitives, date/time types, nested annotated objects, and collections. |
+| `setValues` | `T setValues<T extends Object>(T o, Map<String, dynamic> values)` | Sets field values on `o` from a map (the main deserialization entry point); handles primitives, `int`→`double` widening, date/time types, nested annotated objects, and collections. Collections of annotated objects are assigned atomically — the field is untouched unless every element materializes. |
 | `convertToJsonString` | `String convertToJsonString(Object o)` | Calls `getValues` and encodes the result to a JSON string. |
 | `getValues` | `Map<String, Object?> getValues(Object o)` | Extracts all values from an object as a JSON-compatible map (the main serialization entry point). |
 
