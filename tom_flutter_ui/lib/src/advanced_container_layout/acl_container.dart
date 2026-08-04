@@ -1,6 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+// `_AclFloorWidthBox` drops to the render layer: measuring a child's minimum
+// intrinsic width and clipping instead of overflowing are both below what the
+// widget layer exposes.
+import 'package:flutter/rendering.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../theme/tom_theme.dart';
@@ -156,6 +160,17 @@ class AclComponent {
   final double gapWeight;
 
   final Size? preferredSize;
+
+  /// `true` when [preferredSize]'s width was not declared by the author but
+  /// fabricated by `AclBuilder` from [AclBuilder.defaultPreferredWidth].
+  ///
+  /// A declared width is honoured literally. A defaulted one is only a
+  /// **floor**: the container measures the child's natural width and widens the
+  /// component when its content needs more, so a forgotten size hint produces a
+  /// component that fits rather than a `RenderFlex` overflow. When even the
+  /// widened component does not fit the row, the content is clipped — never
+  /// overflowed — and keeps the width it laid out at.
+  final bool preferredWidthIsDefault;
   final Size? minimumSize;
   final Size? maximumSize;
   final Key? referenceKey;
@@ -199,6 +214,7 @@ class AclComponent {
     this.gapBeforeIsDefault = false,
     this.gapWeight = 1.0,
     this.preferredSize,
+    this.preferredWidthIsDefault = false,
     this.minimumSize,
     this.maximumSize,
     this.referenceKey,
@@ -233,6 +249,7 @@ class AclComponent {
     bool? gapBeforeIsDefault,
     double? gapWeight,
     Size? preferredSize,
+    bool? preferredWidthIsDefault,
     Size? minimumSize,
     Size? maximumSize,
     Key? referenceKey,
@@ -259,6 +276,8 @@ class AclComponent {
       gapBeforeIsDefault: gapBeforeIsDefault ?? this.gapBeforeIsDefault,
       gapWeight: gapWeight ?? this.gapWeight,
       preferredSize: preferredSize ?? this.preferredSize,
+      preferredWidthIsDefault:
+          preferredWidthIsDefault ?? this.preferredWidthIsDefault,
       minimumSize: minimumSize ?? this.minimumSize,
       maximumSize: maximumSize ?? this.maximumSize,
       referenceKey: referenceKey ?? this.referenceKey,
@@ -610,6 +629,19 @@ class _AclContainerState extends State<AclContainer> {
   /// pre-calculation loop. Keys are the component's [AclComponent.componentKey].
   final Map<Key, Size> _naturalSizeCache = {};
 
+  /// Measured minimum widths of components whose preferred width was *not*
+  /// declared by the author but auto-applied by `AclBuilder`
+  /// ([AclComponent.preferredWidthIsDefault]).
+  ///
+  /// The value is the narrowest width at which the child can be painted without
+  /// overflowing — its minimum intrinsic width — reported from layout by
+  /// [_AclFloorWidthBox]. Kept apart from [_naturalSizeCache] on purpose: that
+  /// cache holds *rendered* sizes of components carrying no ACL hints at all,
+  /// and mixing a lower bound into it would change how those are estimated.
+  /// Keys are the component's [AclComponent.componentKey].
+  final Map<Key, double> _measuredDefaultWidths = {};
+  bool _measuredDefaultWidthRebuildScheduled = false;
+
   @override
   void initState() {
     super.initState();
@@ -668,6 +700,7 @@ class _AclContainerState extends State<AclContainer> {
     List<AclRow> newRows,
   ) {
     final newCache = <Key, Size>{};
+    final newMeasured = <Key, double>{};
     final minRows = math.min(oldRows.length, newRows.length);
     for (int ri = 0; ri < minRows; ri++) {
       final oldComps = oldRows[ri].components;
@@ -679,11 +712,92 @@ class _AclContainerState extends State<AclContainer> {
         if (newKey == null) continue;
         final sz = oldKey != null ? _naturalSizeCache[oldKey] : null;
         if (sz != null) newCache[newKey] = sz;
+        final measured =
+            oldKey != null ? _measuredDefaultWidths[oldKey] : null;
+        if (measured != null) newMeasured[newKey] = measured;
       }
     }
     _naturalSizeCache
       ..clear()
       ..addAll(newCache);
+    _measuredDefaultWidths
+      ..clear()
+      ..addAll(newMeasured);
+  }
+
+  // ── Auto-defaulted preferred widths ───────────────────────────────────────
+
+  /// Records the minimum width [key]'s child needs, reported from layout by
+  /// [_AclFloorWidthBox].
+  ///
+  /// Called during layout, so the rebuild it may need is deferred to the next
+  /// frame — the same post-frame discipline the natural-size cache uses.
+  void _reportMeasuredDefaultWidth(Key key, double minWidth) {
+    if (!minWidth.isFinite || minWidth < 0) return;
+    final previous = _measuredDefaultWidths[key];
+    if (previous != null && (previous - minWidth).abs() < _geometryEpsilon) {
+      return;
+    }
+    _measuredDefaultWidths[key] = minWidth;
+    if (_measuredDefaultWidthRebuildScheduled) return;
+    _measuredDefaultWidthRebuildScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measuredDefaultWidthRebuildScheduled = false;
+      if (mounted) setState(() {});
+    });
+  }
+
+  /// Widens components whose preferred width was auto-defaulted and whose
+  /// content has been measured as needing more than the default.
+  ///
+  /// This is the point at which the default stops being a cap: the widened
+  /// value flows into the *whole* pre-calculation — planned X positions, row
+  /// estimates, the fit/shrink distribution and `getRect()` — so the geometry
+  /// the engine computes in pure Dart stays the geometry that is rendered.
+  /// Widening here rather than at the individual read sites is what keeps that
+  /// true: a component is one declared width to everything downstream.
+  ///
+  /// The first frame has no measurement and uses the plain default; the
+  /// measurement arrives from that frame's layout and the container rebuilds
+  /// once. Until it does — and whenever the row is too tight for the widened
+  /// width — [_AclFloorWidthBox] clips rather than overflows.
+  List<AclRow> _applyMeasuredDefaultWidths(List<AclRow> rows) {
+    if (_measuredDefaultWidths.isEmpty) return rows;
+    List<AclRow>? rewritten;
+    for (int ri = 0; ri < rows.length; ri++) {
+      final row = rows[ri];
+      List<AclComponent>? components;
+      for (int ci = 0; ci < row.components.length; ci++) {
+        final widened = _widenedByMeasurement(row.components[ci]);
+        if (widened == null) continue;
+        components ??= List<AclComponent>.of(row.components);
+        components[ci] = widened;
+      }
+      if (components == null) continue;
+      rewritten ??= List<AclRow>.of(rows);
+      rewritten[ri] = row.copyWith(components: components);
+    }
+    return rewritten ?? rows;
+  }
+
+  /// The component with its auto-defaulted preferred width raised to the
+  /// measured minimum, or `null` when nothing needs to change.
+  AclComponent? _widenedByMeasurement(AclComponent component) {
+    if (!component.preferredWidthIsDefault) return null;
+    final key = component.componentKey;
+    final declared = component.preferredSize?.width;
+    if (key == null || declared == null) return null;
+    final measured = _measuredDefaultWidths[key];
+    if (measured == null) return null;
+    // An author-declared maximum still caps the widening — the auto-applied
+    // default is the only thing this pass is allowed to overrule.
+    final cap = component.maximumSize?.width;
+    final width =
+        (cap != null && cap.isFinite) ? math.min(measured, cap) : measured;
+    if (width <= declared + _geometryEpsilon) return null;
+    return component.copyWith(
+      preferredSize: Size(width, component.preferredSize!.height),
+    );
   }
 
   /// Selects the appropriate variant rows based on [availableWidth], or
@@ -1579,7 +1693,9 @@ class _AclContainerState extends State<AclContainer> {
           inlineFilteredRows,
           canExpandHorizontally ? effectiveMaxW : null,
         );
-        final effectiveRows = _applyAuthHiding(breakpointedRows);
+        final effectiveRows = _applyMeasuredDefaultWidths(
+          _applyAuthHiding(breakpointedRows),
+        );
 
         final hasExpandY = effectiveRows.any(
           (row) => !row.isGapRow && row.components.any((c) => c.expandY),
@@ -2424,6 +2540,22 @@ class _AclContainerState extends State<AclContainer> {
         child = IgnorePointer(child: Opacity(opacity: 0.4, child: child));
       }
 
+      // ── Auto-defaulted width: measure, and never overflow ────────────────
+      // Innermost wrapper, so it sees the component's own content and receives
+      // whatever width the sizing wrappers below settle on. Only components
+      // whose preferred width the builder invented get it; an author-declared
+      // width is emitted exactly as before.
+      if (!isFlexNativeChild &&
+          component.preferredWidthIsDefault &&
+          component.componentKey != null) {
+        final measureKey = component.componentKey!;
+        child = _AclFloorWidthBox(
+          onMinWidth: (minWidth) =>
+              _reportMeasuredDefaultWidth(measureKey, minWidth),
+          child: child,
+        );
+      }
+
       final linkedWidth = layout.linkedWidths[componentIndex];
       final linkedHeight = layout.linkedHeights[componentIndex];
       final fittedWidth = layout.fittedWidths[componentIndex];
@@ -3174,3 +3306,133 @@ enum AclTitlePosition { topLeft, topCenter, topRight }
 /// * [bottom] — the bottom edge of the label sits on the border line; the label
 ///              floats above the border (default, classic field-set look).
 enum AclTitleBorderAlign { top, middle, bottom }
+
+// ── Auto-defaulted width: measurement + overflow guard ───────────────────────
+
+/// Wrapper for components whose preferred width was auto-applied by
+/// `AclBuilder` rather than declared by the author.
+///
+/// It does two things the plain `SizedBox(width:)` around every other component
+/// cannot:
+///
+/// * it reports, via [onMinWidth], the narrowest width at which its child can
+///   be painted without overflowing, which is what lets the container widen the
+///   component to fit its content instead of capping it at the default;
+/// * it lays the child out at that width whenever the allocation is smaller,
+///   and clips what does not fit — so a container too narrow for the content
+///   shows a clean edge rather than the striped overflow banner, and the child
+///   keeps the size it laid out at instead of reflowing.
+class _AclFloorWidthBox extends SingleChildRenderObjectWidget {
+  const _AclFloorWidthBox({required this.onMinWidth, required Widget super.child});
+
+  /// Called during layout with the child's minimum intrinsic width.
+  final ValueChanged<double> onMinWidth;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderAclFloorWidthBox(onMinWidth: onMinWidth);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderAclFloorWidthBox renderObject,
+  ) {
+    renderObject.onMinWidth = onMinWidth;
+  }
+}
+
+class _RenderAclFloorWidthBox extends RenderProxyBox {
+  _RenderAclFloorWidthBox({required this.onMinWidth});
+
+  ValueChanged<double> onMinWidth;
+
+  final LayerHandle<ClipRectLayer> _clipLayer = LayerHandle<ClipRectLayer>();
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+
+    final minWidth = _minIntrinsicWidthOf(child);
+    // The width this component was allocated by the ACL arithmetic. Unbounded
+    // only happens outside a sizing wrapper, where the content's own width is
+    // the honest answer.
+    final allocated =
+        constraints.hasBoundedWidth ? constraints.maxWidth : minWidth;
+    // Why max(): giving the child less than its minimum is precisely what
+    // produces a RenderFlex overflow. Give it the minimum and clip in paint
+    // instead — the overflow becomes invisible *and* harmless, and the child's
+    // own layout is untouched by how narrow the container happens to be.
+    final childWidth = math.max(allocated, minWidth);
+    child.layout(
+      BoxConstraints(
+        minWidth: childWidth,
+        maxWidth: childWidth,
+        minHeight: constraints.minHeight,
+        maxHeight: constraints.maxHeight,
+      ),
+      parentUsesSize: true,
+    );
+    size = constraints.constrain(Size(allocated, child.size.height));
+
+    onMinWidth(minWidth);
+  }
+
+  /// The narrowest width at which [child] can be painted without overflowing.
+  ///
+  /// Not every subtree answers the intrinsics protocol — `LayoutBuilder` and
+  /// the scrolling viewports throw rather than guess. `debugCheckingIntrinsics`
+  /// is the framework's own "an intrinsic query is in flight, degrade instead
+  /// of throwing" switch, and degrading is the right outcome here: a child that
+  /// cannot report a minimum keeps the plain default width, which is exactly
+  /// the behaviour that existed before this box.
+  double _minIntrinsicWidthOf(RenderBox child) {
+    bool restore = false;
+    assert(() {
+      restore = !RenderObject.debugCheckingIntrinsics;
+      RenderObject.debugCheckingIntrinsics = true;
+      return true;
+    }());
+    double measured;
+    try {
+      measured = child.getMinIntrinsicWidth(double.infinity);
+    } finally {
+      assert(() {
+        if (restore) RenderObject.debugCheckingIntrinsics = false;
+        return true;
+      }());
+    }
+    return measured.isFinite && measured > 0 ? measured : 0;
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+    if (child.size.width <= size.width + _clipEpsilon) {
+      _clipLayer.layer = null;
+      context.paintChild(child, offset);
+      return;
+    }
+    _clipLayer.layer = context.pushClipRect(
+      needsCompositing,
+      offset,
+      Offset.zero & size,
+      (innerContext, innerOffset) => innerContext.paintChild(child, innerOffset),
+      oldLayer: _clipLayer.layer,
+    );
+  }
+
+  /// Sub-pixel slack: a child a rounding error wider than its allocation is not
+  /// worth a clip layer.
+  static const double _clipEpsilon = 0.01;
+
+  @override
+  void dispose() {
+    _clipLayer.layer = null;
+    super.dispose();
+  }
+}

@@ -14,6 +14,10 @@ class _ComponentData {
   bool gapBeforeIsDefault;
   double gapWeight;
   Size? preferredSize;
+
+  /// Whether [preferredSize]'s width was fabricated by
+  /// [_finalizeCurrentComponent] rather than declared by the author.
+  bool preferredWidthIsDefault = false;
   Size? minimumSize;
   Size? maximumSize;
   Key? referenceKey;
@@ -51,6 +55,7 @@ class _ComponentData {
       gapBeforeIsDefault: gapBeforeIsDefault,
       gapWeight: gapWeight,
       preferredSize: preferredSize,
+      preferredWidthIsDefault: preferredWidthIsDefault,
       minimumSize: minimumSize,
       maximumSize: maximumSize,
       referenceKey: referenceKey,
@@ -224,11 +229,17 @@ class AclBuilder {
   // ── Component placement ────────────────────────────────────────────────────
 
   /// Default preferred width for components without an explicit preferred size
-  /// and no custom [_defaultUnknownPreferredSize].
+  /// and no custom [setAclDefaultUnknownPreferredSize].
+  ///
   /// Large enough to prevent buttons/small widgets from collapsing next to
   /// elastic gaps, but still participates proportionally in the grow/shrink
   /// distribution alongside explicitly sized components.
-  static const double _defaultPreferredWidth = 150;
+  ///
+  /// This is a **floor, not a cap**. A component that is appended without a
+  /// size hint and whose content needs more than this takes the width its
+  /// content needs; only content that fits inside the default is held at the
+  /// default. See [append] for the full contract.
+  static const double defaultPreferredWidth = 150;
 
   /// Applies default preferred and minimum sizes to the current component if
   /// no explicit sizes were set. Called whenever the current-component scope is
@@ -241,12 +252,20 @@ class AclBuilder {
       final dp = _defaultUnknownPreferredSize;
       if (dp != null) {
         c.preferredSize = Size(
-          dp.width == 0 ? _defaultPreferredWidth : dp.width,
+          dp.width == 0 ? defaultPreferredWidth : dp.width,
           dp.height,
         );
       } else {
-        c.preferredSize = const Size(_defaultPreferredWidth, 0);
+        c.preferredSize = const Size(defaultPreferredWidth, 0);
       }
+      // Why: the container must be able to tell this fabricated width from one
+      // the author actually asked for. An author-declared width is honoured
+      // literally; a defaulted one is only a floor, and the container measures
+      // the child and widens the component when its content needs more. Without
+      // the flag both look identical downstream and the default becomes a cap —
+      // which is what used to turn a forgotten size hint into a RenderFlex
+      // overflow instead of a component that simply fits.
+      c.preferredWidthIsDefault = true;
     }
     // Apply default minimum size if none was explicitly set.
     if (c.minimumSize == null && _defaultUnknownMinimumSize != null) {
@@ -259,6 +278,28 @@ class AclBuilder {
   }
 
   /// Appends a component to the current row.
+  ///
+  /// ## Sizing a component that is appended without a hint
+  ///
+  /// A component that gets no [setPSize] / [setMSize] / [setXSize] and no
+  /// [expandX] is given [defaultPreferredWidth] — but as a **floor**, not a cap:
+  ///
+  /// * content that fits inside the default occupies the default, so a button
+  ///   or a short label does not collapse next to an elastic gap;
+  /// * content that needs more — a `Row` of controls, say, which cannot shrink
+  ///   below the sum of its children — is measured and the component is widened
+  ///   to what the content needs, then takes part in the row's fit/shrink
+  ///   distribution at that width;
+  /// * content that still does not fit the row is **clipped**, never
+  ///   overflowed. The child keeps the width it laid out at, so narrowing the
+  ///   container changes how much of the component is visible and nothing else.
+  ///
+  /// Measurement lands one frame after the component first renders; until then
+  /// the plain default applies and the clip covers the difference.
+  ///
+  /// Sizing hints are therefore about *intent* — "this field is 220 wide",
+  /// "these two line up" — not about preventing overflow. Overflow is the
+  /// container's problem, and it has been made incapable of showing one.
   AclBuilder append(Widget child, {double dist = 0}) {
     _finalizeCurrentComponent();
     final canAttachComponentKey =
