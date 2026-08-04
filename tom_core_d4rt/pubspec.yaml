@@ -16,7 +16,10 @@ dependencies:
   
   # D4rt base REPL with dcli bridges
   # >=1.1.6 carries the duplicate-export fix required for AOT compilation.
-  tom_d4rt_dcli: ">=1.1.6"
+  # >=1.2.0 runs a `.start-execute` block of bare statements as a program rather
+  # than handing it to the parser as a compilation unit, which is what the
+  # `multiline` case of dcli_compat_test.dart needs.
+  tom_d4rt_dcli: ">=1.2.0"
   
   # Projects to bridge
   tom_core_kernel:
