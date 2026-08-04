@@ -1,5 +1,6 @@
 import "package:tom_core_kernel/tom_core_kernel.dart";
 import "../object_persistence/annotation_analyzer.dart";
+import "../object_persistence/paging.dart";
 import "../object_persistence/persistence_annotations.dart";
 import "types_operator.dart";
 import "sql_dialects.dart";
@@ -78,9 +79,9 @@ abstract class TomQuery extends TomTypedPersistenceBase {
 }
 
 /// A [TomQuery] whose WHERE clause is built from a [TomOperator] predicate
-/// [query], with shared shaping options ([distinct], [orderBy], [ascending],
-/// [top], [ignoreFields]). Concrete subclasses ([TomSelect], [TomCount],
-/// [TomDelete]) render the appropriate statement around that predicate.
+/// [query], with shared shaping options ([distinct], [sort], [top], [offset],
+/// [ignoreFields]). Concrete subclasses ([TomSelect], [TomCount], [TomDelete])
+/// render the appropriate statement around that predicate.
 abstract class TomGeneratedQuery extends TomQuery {
   /// The boolean predicate forming the WHERE clause.
   final TomOperator<TomDbBool> query;
@@ -91,26 +92,54 @@ abstract class TomGeneratedQuery extends TomQuery {
   /// Whether to request distinct rows.
   final bool distinct;
 
-  /// Field names to sort by (empty = unsorted).
-  final List<String> orderBy;
+  /// The ordering, outermost term first (empty = unsorted).
+  ///
+  /// Each term carries its own direction, so `ORDER BY priority DESC, name ASC`
+  /// is expressible; the `orderBy`/`ascending` constructor pair is a shorthand
+  /// that maps onto this list with one direction shared by every field.
+  final List<TomSortField> sort;
 
-  /// Sort direction when [orderBy] is set.
-  final bool ascending;
-
-  /// Row cap (0 = unbounded).
+  /// Row cap (`<= 0` = unbounded).
   final int top;
+
+  /// Rows skipped before the first returned row (`0` = start at the beginning).
+  ///
+  /// A non-zero offset requires a [top]: SQL skips with `LIMIT n OFFSET m` and
+  /// has no bare `OFFSET`.
+  final int offset;
 
   /// Builds a generated query over [types] from the predicate [query] and the
   /// shaping options.
+  ///
+  /// The ordering is given either as [sort] (per-term directions) or as the
+  /// [orderBy]/[ascending] shorthand, which maps onto [sort] with one direction
+  /// for every field. [sort] wins when both are given.
+  ///
+  /// Throws [TomQuerySyntaxException] when [offset] is set without a [top], or
+  /// when either is negative (see [TomPageRequest.assertWindow]).
   TomGeneratedQuery(
     super.types, {
     required this.query,
     this.distinct = false,
-    this.orderBy = const [],
-    this.ascending = true,
+    List<String> orderBy = const [],
+    bool ascending = true,
+    List<TomSortField>? sort,
     this.top = 0,
+    this.offset = 0,
     this.ignoreFields = const [],
-  });
+  }) : sort =
+           sort ??
+           TomSortField.allOf(
+             orderBy,
+             direction: ascending
+                 ? TomSortDirection.ascending
+                 : TomSortDirection.descending,
+           ) {
+    // `top` defaults to an unbounded marker that callers spell either 0 or -1
+    // (the query-sentence compiler uses -1), so only the offset is range-checked
+    // here; the pairing rule is checked with a normalised limit.
+    TomPageRequest.assertWindow(limit: top > 0 ? top : 0, offset: offset);
+  }
 
   @override
   String generateQuery(TomStandardSqlDialect t) {
@@ -120,20 +149,40 @@ abstract class TomGeneratedQuery extends TomQuery {
   /// Renders the `DISTINCT ` projection prefix (empty when not [distinct]).
   static String distinctPrefix(bool distinct) => distinct ? 'DISTINCT ' : '';
 
-  /// Renders the trailing ` LIMIT n` row-cap clause (empty when [top] `<= 0`).
+  /// Renders the trailing ` LIMIT n [OFFSET m]` row-window clause (empty when
+  /// [top] `<= 0` and no [offset] is asked for).
   ///
-  /// MariaDB/MySQL cap rows with `LIMIT n`; the Informix-style `FIRST n` this
-  /// replaces is not valid MariaDB syntax (bug §67).
-  static String limitClause(int top) => top > 0 ? ' LIMIT $top' : '';
+  /// MariaDB/MySQL cap rows with `LIMIT n` and skip with `LIMIT n OFFSET m`; the
+  /// Informix-style `FIRST n` this replaces is not valid MariaDB syntax
+  /// (bug §67). There is no bare `OFFSET`, so an offset without a cap is
+  /// rejected rather than silently dropped (see [TomPageRequest.assertWindow]).
+  ///
+  /// Both bounds are rendered as literal integers rather than bound parameters,
+  /// as the row cap always has been: they are Dart `int`s, so they carry no
+  /// text that could reach the statement, and MariaDB will not plan a
+  /// placeholder window as well as a literal one.
+  static String limitClause(int top, [int offset = 0]) {
+    TomPageRequest.assertWindow(limit: top > 0 ? top : 0, offset: offset);
+    if (top <= 0) return '';
+    return offset > 0 ? ' LIMIT $top OFFSET $offset' : ' LIMIT $top';
+  }
 
-  /// Renders the trailing ` ORDER BY <cols> ASC|DESC` clause (empty when
-  /// [orderColumns] is empty).
+  /// Renders the trailing ` ORDER BY <col> ASC|DESC, …` clause (empty when
+  /// [sort] is empty).
   ///
-  /// The direction keywords are `ASC` / `DESC`; the spelled-out
+  /// Every term carries its own direction, so a mixed-direction sort renders as
+  /// written. The keywords are `ASC` / `DESC`; the spelled-out
   /// `ASCENDING` / `DESCENDING` forms this replaces are not valid SQL (bug §67).
-  static String orderByClause(List<String> orderColumns, bool ascending) {
-    if (orderColumns.isEmpty) return '';
-    return ' ORDER BY ${orderColumns.join(',')} ${ascending ? 'ASC' : 'DESC'}';
+  ///
+  /// The terms' [TomSortField.field]s are emitted verbatim, so callers pass
+  /// *resolved* column expressions — a name that came from outside must have
+  /// been through the entity's column metadata first.
+  static String orderByClause(List<TomSortField> sort) {
+    if (sort.isEmpty) return '';
+    final terms = [
+      for (final term in sort) '${term.field} ${term.direction.sqlKeyword}',
+    ];
+    return ' ORDER BY ${terms.join(',')}';
   }
 
   /// Renders the `COUNT(*)` / `COUNT(DISTINCT <cols>)` projection.
@@ -159,12 +208,12 @@ abstract class TomGeneratedQuery extends TomQuery {
 
   @override
   String toString() =>
-      "TomQuery: $query ignoreFields: $ignoreFields distinct: $distinct top: $top order-by: $orderBy ascending: $ascending";
+      "TomQuery: $query ignoreFields: $ignoreFields distinct: $distinct top: $top offset: $offset order-by: $sort";
 }
 
 /// A `SELECT` over the entity [types]: emits the (non-reference) columns of all
 /// involved tables, the WHERE clause from the predicate, and optional
-/// `DISTINCT`, `ORDER BY … ASC|DESC`, and `LIMIT n` clauses.
+/// `DISTINCT`, `ORDER BY … ASC|DESC`, and `LIMIT n [OFFSET m]` clauses.
 class TomSelect extends TomGeneratedQuery {
   /// Builds a `SELECT` from the predicate `query` and shaping options.
   TomSelect(
@@ -173,7 +222,9 @@ class TomSelect extends TomGeneratedQuery {
     super.distinct,
     super.orderBy,
     super.ascending,
+    super.sort,
     super.top,
+    super.offset,
     super.ignoreFields,
   });
 
@@ -195,16 +246,18 @@ class TomSelect extends TomGeneratedQuery {
         return "$current , ${nextCol.table.table}.${nextCol.getQueryFieldName()}";
       }
     });
-    List<String> dbOrderBy = [];
-    for (var ob in orderBy) {
-      var ci = determineColumn(ob);
-      dbOrderBy.add("${ci.table.table}.${ci.getQueryFieldName()}");
+    // Resolve each sort term's field through the entity's column metadata: an
+    // unknown name fails here rather than reaching the statement text.
+    final dbSort = <TomSortField>[];
+    for (final term in sort) {
+      final ci = determineColumn(term.field);
+      dbSort.add(term.withField("${ci.table.table}.${ci.getQueryFieldName()}"));
     }
     return "SELECT ${TomGeneratedQuery.distinctPrefix(distinct)}$fieldList"
         " FROM ${tables.join(',')}"
         " WHERE ${query.generate(t)}"
-        "${TomGeneratedQuery.orderByClause(dbOrderBy, ascending)}"
-        "${TomGeneratedQuery.limitClause(top)}";
+        "${TomGeneratedQuery.orderByClause(dbSort)}"
+        "${TomGeneratedQuery.limitClause(top, offset)}";
   }
 }
 
@@ -241,6 +294,10 @@ class TomLiteralSelect extends TomQuery {
 
 /// A `SELECT COUNT(*)` (or `COUNT(DISTINCT <cols>)`) over the entity [types],
 /// filtered by the predicate. Returns a single `count` column.
+///
+/// A count has no row window: it renders neither `ORDER BY` nor `LIMIT`, and so
+/// takes no `offset` — the total of a filtered set does not depend on which page
+/// of it the caller is looking at.
 class TomCount extends TomGeneratedQuery {
   /// Builds a count query from the predicate `query`.
   TomCount(
@@ -249,6 +306,7 @@ class TomCount extends TomGeneratedQuery {
     super.distinct,
     super.orderBy,
     super.ascending,
+    super.sort,
     super.top,
     super.ignoreFields,
   });
@@ -279,6 +337,7 @@ class TomDelete extends TomGeneratedQuery {
     super.distinct,
     super.orderBy,
     super.ascending,
+    super.sort,
     super.top,
     super.ignoreFields,
   });
@@ -288,10 +347,12 @@ class TomDelete extends TomGeneratedQuery {
   String generateQuery(TomStandardSqlDialect t) {
     // MariaDB `DELETE` is single-table and supports neither `DISTINCT` nor a
     // column projection — only an optional `ORDER BY … ASC|DESC` and `LIMIT n`
-    // (bug §67). The order-by names are unqualified (single table).
+    // (bug §67). The order-by names are unqualified (single table), and there is
+    // no `OFFSET`: `DELETE … LIMIT n OFFSET m` is not MariaDB syntax, so a
+    // delete takes no offset either.
     return "DELETE FROM ${TomAnnotationAnalyzer.findTable(types[0])!.table}"
         " WHERE ${query.generate(t)}"
-        "${TomGeneratedQuery.orderByClause(orderBy, ascending)}"
+        "${TomGeneratedQuery.orderByClause(sort)}"
         "${TomGeneratedQuery.limitClause(top)}";
   }
 }

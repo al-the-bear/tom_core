@@ -1,3 +1,55 @@
+## 1.3.0
+
+### Features
+
+- **repository paging and caller-controlled sorting.** The four finders
+  (`findAll`, `findAllById`, `findByQuery`, `findByQuerySentence`) now take an
+  optional `TomPageRequest`, so a caller asks for page N of size M instead of
+  loading the whole table. Three holes closed at once: OFFSET was previously
+  *unrepresentable* (`TomGeneratedQuery` rendered `LIMIT n` and nothing else),
+  none of it was on the repository API, and ordering carried a single
+  `bool ascending` for every column — `ORDER BY priority DESC, due_date ASC` could
+  not be expressed at all.
+
+  Ordering is now a list of `TomSortField`s, each with its own
+  `TomSortDirection`. `TomSelect` / `TomCount` / `TomDelete` still accept the old
+  `orderBy:` + `ascending:` pair as a *shorthand* that maps onto the list, so the
+  generated `*.reflection.dart` files across the samples keep compiling
+  unchanged; the stored field is the list.
+
+  **Two requests are rejected rather than silently reinterpreted.** MariaDB's
+  grammar is `LIMIT n [OFFSET m]` with no bare `OFFSET`, so a skip without a cap
+  would be dropped on the floor — `TomPageRequest.assertWindow` and
+  `TomGeneratedQuery.limitClause` both throw `TomQuerySyntaxException` for it, and
+  for a negative bound. `TomCount` and `TomDelete` take no offset: a total does
+  not depend on the page, and `DELETE … LIMIT n OFFSET m` is not MariaDB syntax.
+
+  **An unsorted window is still made deterministic.** Rather than rejecting a
+  page request with no `ORDER BY`, the repository appends the entity's primary key
+  ascending as a tiebreaker, so consecutive pages partition the result instead of
+  repeating and dropping rows at the database's discretion.
+
+  **Paging composes with the security layers** because the window is applied
+  *before* the scope: the row scope's bound `IN` predicate is still ANDed in and
+  column-authorization masking still runs on the returned rows. The total beside
+  a page comes from `count()`, which routes through the same scoping — so page
+  metadata cannot leak a row count the principal may not read. Asserted live in
+  `test/paging_db_test.dart` (three of five rows visible, count says three).
+
+  The query sentence grew the matching vocabulary: `skip M` / `offset M` beside
+  `top N` / `first N`, and a direction per field in the trailing `order by`. Each
+  direction keyword applies back to the previous one, so `order by a b desc`
+  sorts both descending (the historical whole-list reading) while
+  `order by a desc b asc` mixes them, and an undirected field sorts ascending.
+
+  *Design decisions.* (1) The result shape is `List<T>` plus the existing
+  `count()`, not a `TomPage<T>`: it keeps every existing signature intact and
+  avoids a mandatory second round-trip per page for callers that do not need the
+  total. (2) The offset guard rejects the *unrepresentable* window but not the
+  merely under-specified one — a missing `ORDER BY` is repaired with the primary
+  key rather than refused, because refusing it would make the common
+  "just give me a page" call an error.
+
 ## 1.2.0
 
 ### Features

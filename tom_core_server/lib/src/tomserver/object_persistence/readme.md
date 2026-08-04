@@ -11,6 +11,12 @@ contract (`save`, `findById`, `findAll`, `delete`, `count`, plus the
 `datasources` `TomDataSource`. A typed query DSL (`TomQueryBuilder` mixin +
 column/operator expressions) builds `WHERE` clauses without raw SQL.
 
+The four finders take an optional `TomPageRequest`, so a caller asks for page N
+of size M with a multi-column, mixed-direction sort instead of loading the table.
+A window is applied *before* the row scope, so the page is cut out of the rows
+the principal may see and `count()` reports that same scoped total — page
+metadata cannot leak a row count the principal is not allowed to read.
+
 Entities can also carry a **row scope**: `@TomDbScope` narrows every query to the
 rows the current principal may see, and the repository rejects writes that fall
 outside it. An entity with a `resource_key` column is scoped by the principal's
@@ -25,6 +31,7 @@ is the explicit opt-out.
 | `TomAnnotationAnalyzer` | Mixin that reads the mapping annotations off an entity. |
 | `TomRepository<T, K>` | CRUD contract: `save`, `findById`, `findAll`, `delete`/`deleteById`, `count`, `existsById`, and `*ByQuery` / `*ByQuerySentence`. |
 | `TomSqlDatasourceRepository<T, K>` | SQL implementation over a `TomDataSource`; subclass and override `sqlDialect`. |
+| `TomPageRequest` · `TomSortField` · `TomSortDirection` | The optional row window (`offset` + `limit`) and per-field sort the finders accept; an unsorted window gets the primary key appended so consecutive pages partition the result. |
 | `TomQueryBuilder` | Mixin offering `isNull` / `isNotNull` / `isIn` / `between` / `like` plus the `Eq` / `Neq` / `And` / `Or` / `Not` operators and the typed column references (`IntCol`, `StringCol`, …). |
 | `TomDbScope` | Annotation declaring an entity's row scope — its scope field and kind — or, as `TomDbScope.unscoped()`, the deliberate opt-out. |
 | `TomDataScopeRegistry` | The named scope-kind resolvers (`owner`, `group`, `resource`, plus application kinds), sync or async, read and write. |

@@ -6,6 +6,7 @@ import '../datasources/queries.dart';
 import '../datasources/sql_dialects.dart';
 import 'grouped_query.dart';
 import 'operators_expressions.dart';
+import 'paging.dart';
 import 'persistence_annotations.dart';
 import 'query_builder.dart';
 
@@ -16,11 +17,22 @@ import 'query_builder.dart';
 /// `delete by id = $id`. The first word selects the query kind
 /// (`find` → [TomSelect], `count` → [TomCount], `delete` → [TomDelete],
 /// `group` → [TomGroupedSelect]); the part before `by` carries options
-/// (`distinct`, `top`/`first` N, and for `group` the projection); the part
-/// after `by` is the predicate, optionally followed by a `having <predicate>`
-/// clause and an `order by <fields> [asc|desc]` clause. The predicate is parsed
-/// against the entity's resolved columns (via [TomQueryBuilder] and
-/// [TomAnnotationAnalyzer]) into a [TomOperator] tree.
+/// (`distinct`, `top`/`first` N, `skip`/`offset` M, and for `group` the
+/// projection); the part after `by` is the predicate, optionally followed by a
+/// `having <predicate>` clause and an `order by <fields> [asc|desc]` clause. The
+/// predicate is parsed against the entity's resolved columns (via
+/// [TomQueryBuilder] and [TomAnnotationAnalyzer]) into a [TomOperator] tree.
+///
+/// **Paging.** `top`/`first` N caps the rows; `skip`/`offset` M skips M of them
+/// first, so page P of size N is `first N skip P*N`. A skip needs a cap — SQL
+/// has no bare `OFFSET` — and a paged sentence should order by something
+/// unique, or successive pages are cut from an order the database is free to
+/// change between them.
+///
+/// **Sort direction.** A direction keyword applies to every field back to the
+/// previous direction keyword, so `order by a b desc` sorts both descending
+/// (one direction for the whole list, as it always did) while
+/// `order by a desc b asc` mixes them.
 ///
 /// **The grouped sentence.** `group` projects aggregates instead of entities:
 ///
@@ -37,7 +49,8 @@ import 'query_builder.dart';
 /// **by alias**, where the `by` predicate filters *rows* and addresses columns.
 ///
 /// Throws [TomQuerySyntaxException] for a malformed sentence (unknown kind,
-/// both `top` and `first`, a misplaced order direction, etc.).
+/// both `top` and `first`, both `skip` and `offset`, a skip without a cap,
+/// etc.).
 ///
 /// (The select/count/delete branches currently build their option fields
 /// independently; unifying them is a tracked follow-up.)
@@ -52,71 +65,82 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     var queryOptions = parts.sublist(0, _index(parts, "BY"));
     var whereClause = parts.sublist(_index(parts, "BY") + 1);
 
-    int topIndex = _index(queryOptions, "TOP");
-    int firstIndex = _index(queryOptions, "FIRST");
-    if (topIndex > -1 && firstIndex > -1) {
+    final top = _countOption(
+      queryOptions,
+      qs,
+      "TOP",
+      "FIRST",
+      "conflicting_top_first",
+      "You may specify First or Top, but not both.",
+    );
+    final skip = _countOption(
+      queryOptions,
+      qs,
+      "SKIP",
+      "OFFSET",
+      "conflicting_skip_offset",
+      "You may specify Skip or Offset, but not both.",
+    );
+    final offset = skip > 0 ? skip : 0;
+    if (offset > 0 && top <= 0) {
       throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.conflicting_top_first",
-        "The QuerySentence $qs cannot be compiled. You may specify First or Top, but not both.",
+        "query_sentence_compiler.compile.skip_without_top",
+        "The QuerySentence $qs cannot be compiled. Skip/Offset needs a row cap: "
+            "SQL skips rows with LIMIT <n> OFFSET <m> and has no form that skips "
+            "without also capping. Add First/Top <n>.",
       );
     }
-    if (topIndex == -1) {
-      topIndex = firstIndex;
-    }
-    int topCount = -1;
-    if (topIndex > -1) {
-      try {
-        topCount = int.parse(queryOptions[topIndex + 1]);
-      } catch (error) {
-        topCount = 1;
-      }
+    final kind = parts[0].toUpperCase();
+    if (offset > 0 && kind != "FIND" && kind != "GROUP") {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.skip_unsupported_for_kind",
+        "The QuerySentence $qs cannot be compiled. Only Find and Group take a "
+            "Skip/Offset: a Count of a filtered set does not depend on which "
+            "page of it you are reading, and MariaDB's DELETE has no OFFSET.",
+        parameters: {"kind": kind},
+      );
     }
     var distinct = _find(queryOptions, "DISTINCT");
-    var top = topCount;
-    var ascending =
-        !_find(whereClause, "DESC") && !_find(whereClause, "DESCENDING");
-    var orderBy = _analyseOrderByClause(whereClause, qs);
+    var sort = _analyseOrderByClause(whereClause, qs);
 
     // The grouped kind splits its `having` clause off the where clause before
     // either predicate is built, so it branches ahead of the common build.
-    if (parts[0].toUpperCase() == "GROUP") {
+    if (kind == "GROUP") {
       return _compileGrouped(
         queryOptions,
         whereClause,
         qs,
         top: top,
-        ascending: ascending,
-        orderBy: orderBy,
+        offset: offset,
+        sort: sort,
       );
     }
 
     var query = _buildQuery(whereClause, qs).$1;
 
-    if (parts[0].toUpperCase() == "FIND") {
+    if (kind == "FIND") {
       return TomSelect(
         types,
         distinct: distinct,
         top: top,
-        ascending: ascending,
-        orderBy: orderBy,
+        offset: offset,
+        sort: sort,
         query: query,
       );
-    } else if (parts[0].toUpperCase() == "COUNT") {
+    } else if (kind == "COUNT") {
       return TomCount(
         types,
         distinct: distinct,
         top: top,
-        ascending: ascending,
-        orderBy: orderBy,
+        sort: sort,
         query: query,
       );
-    } else if (parts[0].toUpperCase() == "DELETE") {
+    } else if (kind == "DELETE") {
       return TomDelete(
         types,
         distinct: distinct,
         top: top,
-        ascending: ascending,
-        orderBy: orderBy,
+        sort: sort,
         query: query,
       );
     } else {
@@ -138,22 +162,25 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
 
   /// Compiles the `group` sentence kind into a [TomGroupedSelect].
   ///
-  /// [queryOptions] is everything before `by` (the kind word, an optional
-  /// `top`/`first` N, the projection, and an optional `over <fields>`);
-  /// [whereClause] is everything after it with the `order by` clause already
-  /// stripped, so it is the row predicate optionally followed by `having`.
+  /// [queryOptions] is everything before `by` (the kind word, the optional
+  /// window options `top`/`first` N and `skip`/`offset` M, the projection, and
+  /// an optional `over <fields>`); [whereClause] is everything after it with the
+  /// `order by` clause already stripped, so it is the row predicate optionally
+  /// followed by `having`.
   TomGroupedSelect _compileGrouped(
     List<String> queryOptions,
     List<String> whereClause,
     String qs, {
     required int top,
-    required bool ascending,
-    required List<String> orderBy,
+    required int offset,
+    required List<TomSortField> sort,
   }) {
-    int start = 1; // past the `group` keyword
-    if (start < queryOptions.length) {
-      final option = queryOptions[start].toUpperCase();
-      if (option == "TOP" || option == "FIRST") start += 2;
+    // Past the `group` keyword and any window options, whose values were
+    // already read by the caller — what remains is the projection.
+    int start = 1;
+    while (start < queryOptions.length &&
+        _windowOptions.contains(queryOptions[start].toUpperCase())) {
+      start += 2;
     }
     final overIndex = _index(queryOptions, "OVER", start);
     final projectionTokens = queryOptions.sublist(
@@ -196,9 +223,9 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       groupBy: groupBy,
       aggregates: aggregates,
       having: having,
-      orderBy: orderBy,
-      ascending: ascending,
+      sort: sort,
       top: top,
+      offset: offset,
     );
   }
 
@@ -358,10 +385,58 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     }
   }
 
-  List<String> _analyseOrderByClause(List<String> wc, String qs) {
-    List<String> fields = [];
+  /// The option keywords that take a numeric argument, so the grouped branch
+  /// knows how many tokens to skip before the projection starts.
+  static const Set<String> _windowOptions = {
+    "TOP",
+    "FIRST",
+    "SKIP",
+    "OFFSET",
+  };
+
+  /// Reads the numeric option spelled either [keyA] or [keyB] out of [options],
+  /// returning `-1` when neither appears.
+  ///
+  /// Naming the same option twice is a contradiction rather than a preference,
+  /// so it is rejected with [conflictKey]; a non-numeric argument falls back to
+  /// `1`, which is the behaviour `top`/`first` has always had.
+  int _countOption(
+    List<String> options,
+    String qs,
+    String keyA,
+    String keyB,
+    String conflictKey,
+    String conflictMessage,
+  ) {
+    int index = _index(options, keyA);
+    final other = _index(options, keyB);
+    if (index > -1 && other > -1) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.$conflictKey",
+        "The QuerySentence $qs cannot be compiled. $conflictMessage",
+      );
+    }
+    if (index == -1) index = other;
+    if (index == -1) return -1;
+    try {
+      return int.parse(options[index + 1]);
+    } catch (error) {
+      return 1;
+    }
+  }
+
+  /// Parses the trailing `order by <field> [asc|desc] …` clause into sort terms
+  /// and strips it from [wc].
+  ///
+  /// A direction keyword applies to every field back to the previous direction
+  /// keyword — so `order by a b desc` sorts both descending (the whole-list
+  /// reading the clause has always had) and `order by a desc b asc` mixes them.
+  /// Fields with no direction of their own default to ascending. Commas are
+  /// accepted as separators and ignored.
+  List<TomSortField> _analyseOrderByClause(List<String> wc, String qs) {
+    final terms = <TomSortField>[];
     int orderIndex = _index(wc, "ORDER");
-    if (orderIndex == -1) return [];
+    if (orderIndex == -1) return const [];
     if (wc.length < orderIndex + 2) {
       throw TomQuerySyntaxException(
         "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
@@ -379,21 +454,34 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
           "The QuerySentence $qs cannot be compiled. If you specify Order-By you must include the fields for ordering.",
         );
       }
+      // Fields since the last direction keyword: the ones it will apply to.
+      int undirected = 0;
       for (; partIndex < wc.length; partIndex++) {
-        var part = wc[partIndex].toUpperCase();
-        if (part == "ASC" ||
-            part == "ASCENDING" ||
-            part == "DESC" ||
-            part == "DESCENDING") {
-          if (wc.length > partIndex + 1) {
+        final token = wc[partIndex];
+        if (token == ",") continue;
+        final direction = _sortDirection(token);
+        if (direction != null) {
+          if (undirected == 0) {
             throw TomQuerySyntaxException(
-              "query_sentence_compiler.analyse_order_by.invalid_order_direction_position",
-              "The QuerySentence $qs cannot be compiled. Ascending/Descending must be the last part of a sentence.",
+              "query_sentence_compiler.analyse_order_by.direction_without_field",
+              "The QuerySentence $qs cannot be compiled. '$token' must follow "
+                  "the field(s) it orders.",
             );
           }
-          break;
+          for (var i = terms.length - undirected; i < terms.length; i++) {
+            terms[i] = terms[i].withDirection(direction);
+          }
+          undirected = 0;
+          continue;
         }
-        fields.add(wc[partIndex]);
+        terms.add(TomSortField.asc(token));
+        undirected++;
+      }
+      if (terms.isEmpty) {
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
+          "The QuerySentence $qs cannot be compiled. If you specify Order-By you must include the fields for ordering.",
+        );
       }
       wc.removeRange(orderIndex, wc.length);
     } on TomQuerySyntaxException {
@@ -406,8 +494,16 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         stack: s,
       );
     }
-    return fields;
+    return terms;
   }
+
+  /// The direction [token] names, or `null` when it is not a direction keyword.
+  static TomSortDirection? _sortDirection(String token) =>
+      switch (token.toUpperCase()) {
+        "ASC" || "ASCENDING" => TomSortDirection.ascending,
+        "DESC" || "DESCENDING" => TomSortDirection.descending,
+        _ => null,
+      };
 
   bool _find(List<String> list, String key, [int startAt = 0]) {
     for (int i = startAt; i < list.length; i++) {

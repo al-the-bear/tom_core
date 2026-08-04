@@ -11,6 +11,7 @@ import '../file_storage/blob_store.dart';
 
 import 'grouped_query.dart';
 import 'file_reference.dart';
+import 'paging.dart';
 import 'persistence_annotations.dart';
 import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
@@ -39,8 +40,13 @@ class TomCountResult {
 /// `TomQuery` object ([findByQuery] / [deleteByQuery] / [countByQuery]), and a
 /// raw SQL string ([executeQueryString]).
 ///
-/// Note: pageable/limit/slice/sort result options are not yet supported (see the
-/// quest completion steps).
+/// **Paging and sorting.** Every read that can return more than one row takes an
+/// optional [TomPageRequest]: an offset, a row limit, and an ordered list of
+/// (field, direction) sort terms. The result is the window itself — a plain
+/// `List<T>` — and the *total* comes from the matching `count` method, which
+/// applies the same row scope, so page metadata never reports rows the
+/// principal may not see. A caller that does not page passes nothing and gets
+/// exactly the behaviour it had before.
 abstract class TomRepository<T extends Object, K> {
   /// Deletes [entity] by its primary key.
   Future<void> delete(T entity);
@@ -54,11 +60,11 @@ abstract class TomRepository<T extends Object, K> {
   /// Whether every id in [ids] exists.
   Future<bool> existsById(Iterable<K> ids);
 
-  /// Loads all entities.
-  Future<List<T>> findAll();
+  /// Loads all entities, or the window [page] asks for.
+  Future<List<T>> findAll([TomPageRequest? page]);
 
-  /// Loads every entity whose id is in [ids].
-  Future<List<T>> findAllById(Iterable<K> ids);
+  /// Loads every entity whose id is in [ids], or the window [page] asks for.
+  Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page]);
 
   /// Loads the entity with the given [id], or `null` if absent.
   Future<T?> findById(K id);
@@ -74,11 +80,16 @@ abstract class TomRepository<T extends Object, K> {
   Future<Iterable<T>> saveAll(Iterable<T> entities);
 
   /// Runs a parsed query sentence as a `SELECT`, binding [params]; an optional
-  /// [resultType] overrides the row type.
+  /// [resultType] overrides the row type and an optional [page] narrows the
+  /// result to one window.
+  ///
+  /// A [page] that carries a sort replaces the sentence's own `order by`; one
+  /// that carries only a window keeps it.
   Future<Iterable<T>> findByQuerySentence(
     String querySentence,
     Map<String, Object?> params, [
     Type? resultType,
+    TomPageRequest? page,
   ]);
 
   /// Runs a parsed query sentence as a `DELETE`, binding [params].
@@ -93,8 +104,13 @@ abstract class TomRepository<T extends Object, K> {
     Map<String, Object?> params,
   );
 
-  /// Runs a built [TomSelect], binding [params].
-  Future<Iterable<T>> findByQuery(TomSelect query, Map<String, Object?> params);
+  /// Runs a built [TomSelect], binding [params], optionally narrowed to the
+  /// window [page] asks for.
+  Future<Iterable<T>> findByQuery(
+    TomSelect query,
+    Map<String, Object?> params, [
+    TomPageRequest? page,
+  ]);
 
   /// Runs a built [TomDelete], binding [params].
   Future<void> deleteByQuery(TomDelete query, Map<String, Object?> params);
@@ -369,8 +385,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       base.types,
       query: and([base.query, scope.predicate]),
       distinct: base.distinct,
-      orderBy: base.orderBy,
-      ascending: base.ascending,
+      sort: base.sort,
       top: base.top,
       ignoreFields: base.ignoreFields,
     );
@@ -384,9 +399,9 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       base.types,
       query: and([base.query, scope.predicate]),
       distinct: base.distinct,
-      orderBy: base.orderBy,
-      ascending: base.ascending,
+      sort: base.sort,
       top: base.top,
+      offset: base.offset,
       ignoreFields: base.ignoreFields,
     );
   }
@@ -409,9 +424,9 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       groupBy: base.groupBy,
       aggregates: base.aggregates,
       having: base.having,
-      orderBy: base.orderBy,
-      ascending: base.ascending,
+      sort: base.sort,
       top: base.top,
+      offset: base.offset,
     );
   }
 
@@ -423,9 +438,66 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       base.types,
       query: and([base.query, scope.predicate]),
       distinct: base.distinct,
-      orderBy: base.orderBy,
-      ascending: base.ascending,
+      sort: base.sort,
       top: base.top,
+      ignoreFields: base.ignoreFields,
+    );
+  }
+
+  // ───────────────────────── Paging and sorting ──────────────────────────
+
+  /// Normalises [page] into the window actually applied, or `null` when it asks
+  /// for nothing.
+  ///
+  /// A request that cuts a window gets a *total* ordering: the entity's primary
+  /// key is appended as the final sort term unless the caller already sorts on
+  /// it. Without that, "page 2" is not the complement of "page 1" — rows tied
+  /// under the caller's ordering (or under no ordering at all) may appear on
+  /// both pages or on neither, because nothing obliges the database to visit
+  /// them in the same order twice.
+  TomPageRequest? _effectivePage(TomPageRequest? page) {
+    if (page == null || page.isUnpaged) return null;
+    if (!page.needsStableSort) return page;
+    final key = dbTable.primaryKeyField;
+    if (page.sort.any((term) => term.field == key)) return page;
+    return page.withSort([...page.sort, TomSortField.asc(key)]);
+  }
+
+  /// Resolves each sort term's declared field name to its qualified column
+  /// expression, throwing when the entity has no such field.
+  ///
+  /// Sort fields routinely arrive from outside (an HTTP `sort=` parameter, say),
+  /// and the rendered `ORDER BY` cannot bind them as parameters. Resolving them
+  /// through the entity's column metadata is therefore the guard that keeps an
+  /// arbitrary string out of the statement text (C-7).
+  List<TomSortField> _resolveSortColumns(List<TomSortField> sort) {
+    final resolved = <TomSortField>[];
+    for (final term in sort) {
+      final column = TomAnnotationAnalyzer.determineColumn(term.field, [
+        persistenceInfo,
+      ]);
+      resolved.add(
+        term.withField('${column.table.table}.${column.getQueryFieldName()}'),
+      );
+    }
+    return resolved;
+  }
+
+  /// Returns [base] narrowed to [page]'s window and ordering, or [base]
+  /// unchanged when [page] is `null`.
+  ///
+  /// A page without a sort keeps the query's own ordering (a query sentence's
+  /// `order by`, say); a page with one replaces it, because the caller asking
+  /// for page N is the one that knows what N is counted in.
+  TomSelect _pagedSelect(TomSelect base, TomPageRequest? page) {
+    if (page == null) return base;
+    return TomSelect(
+      base.types,
+      query: base.query,
+      distinct: base.distinct,
+      sort: page.sort.isEmpty ? base.sort : page.sort,
+      top: page.limit > 0 ? page.limit : base.top,
+      offset: page.offset,
       ignoreFields: base.ignoreFields,
     );
   }
@@ -951,32 +1023,50 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
 
   TomPreparedStatement<T>? _findAllQuery;
   @override
-  Future<List<T>> findAll() async {
+  Future<List<T>> findAll([TomPageRequest? page]) async {
     final scope = await _resolveScope();
+    final window = _effectivePage(page);
     if (scope == null) {
-      _findAllQuery ??= await datasourceInfo.datasource.prepareStatement(
-        TomLiteralSelect(
-          [T],
-          query:
-              '''
+      if (window == null) {
+        _findAllQuery ??= await datasourceInfo.datasource.prepareStatement(
+          TomLiteralSelect(
+            [T],
+            query:
+                '''
 SELECT * FROM ${dbTable.table}
       ''',
+          ),
+        );
+        return _maskRows(await _findAllQuery!.execute({}));
+      }
+      // A window varies per call, so it cannot share the cached statement; the
+      // clauses are appended to the same `SELECT *`, with the sort names
+      // resolved against the entity's columns first.
+      return _maskRows(
+        await _runPrepared<T>(
+          TomLiteralSelect(
+            [T],
+            query:
+                'SELECT * FROM ${dbTable.table}'
+                '${TomGeneratedQuery.orderByClause(_resolveSortColumns(window.sort))}'
+                '${TomGeneratedQuery.limitClause(window.limit, window.offset)}',
+          ),
+          {},
         ),
       );
-      return _maskRows(await _findAllQuery!.execute({}));
     }
     // Scoped: the WHERE is the scope predicate alone; a generated SELECT emits
     // the persistent columns and binds the principal's allowed values.
     return _maskRows(
       await _runPrepared<T>(
-        TomSelect(queryTypes, query: scope.predicate),
+        _pagedSelect(TomSelect(queryTypes, query: scope.predicate), window),
         {...scope.parameters},
       ),
     );
   }
 
   @override
-  Future<List<T>> findAllById(Iterable<K> ids) async {
+  Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page]) async {
     // One bound `?` per id (RCA5): the MySQL driver does not expand a bound
     // Iterable into `IN (?,?,…)`, so `_idListPredicate` renders the placeholders
     // per element and ANDs the principal's row scope on top. No value is
@@ -984,7 +1074,13 @@ SELECT * FROM ${dbTable.table}
     // varies with `ids.length`.
     final (where, params) = await _idListPredicate(ids);
     return _maskRows(
-      await _runPrepared<T>(TomSelect(queryTypes, query: where), params),
+      await _runPrepared<T>(
+        _pagedSelect(
+          TomSelect(queryTypes, query: where),
+          _effectivePage(page),
+        ),
+        params,
+      ),
     );
   }
 
@@ -1366,12 +1462,13 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     String querySentence,
     Map<String, Object?> params, [
     Type? resultType,
+    TomPageRequest? page,
   ]) async {
     TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     final rows = await _runPrepared<T>(
-      _scopedSelect(select, scope),
+      _scopedSelect(_pagedSelect(select, _effectivePage(page)), scope),
       effective,
       resultType,
     );
@@ -1421,12 +1518,16 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   @override
   Future<Iterable<T>> findByQuery(
     TomSelect query,
-    Map<String, Object?> params,
-  ) async {
+    Map<String, Object?> params, [
+    TomPageRequest? page,
+  ]) async {
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     return _maskRows(
-      await _runPrepared<T>(_scopedSelect(query, scope), effective),
+      await _runPrepared<T>(
+        _scopedSelect(_pagedSelect(query, _effectivePage(page)), scope),
+        effective,
+      ),
     );
   }
 

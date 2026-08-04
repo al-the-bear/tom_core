@@ -88,6 +88,50 @@ flavours: a parsed query sentence (`findByQuerySentence`), a built `TomQuery`
 not fit the find/delete/count pattern (see
 [Grouping and Aggregation](#grouping-and-aggregation)).
 
+### Paging and Sorting
+
+Every read that can return more than one row takes an optional `TomPageRequest`:
+an offset, a row limit, and an ordered list of `TomSortField` terms.
+
+```dart
+final page = TomPageRequest.page(2, 25, sort: const [
+  TomSortField.desc('priority'),
+  TomSortField.asc('dueDate'),
+]);
+
+final rows  = await repo.findAll(page);                       // the window
+final total = await repo.count();                             // the total
+final some  = await repo.findAllById(ids, page);
+final found = await repo.findByQuerySentence(sentence, params, null, page);
+final built = await repo.findByQuery(select, params, page);
+```
+
+The request is an optional argument on the existing finders rather than a
+parallel `findAllPaged` family, so a caller that does not page writes exactly
+what it wrote before.
+
+**The result is the page, not a page object.** A finder returns the rows of the
+window as a plain `List<T>`; the total comes from the matching `count` method,
+which applies the same row scope. Two calls, both scoped, and a caller that does
+not need the total does not pay for a second round trip to get it.
+
+**A window is ordered.** Rows come back in whatever order the database found
+convenient unless something says otherwise, so "page 2" of an unordered query is
+not the complement of "page 1" — it may repeat rows or skip them. The repository
+therefore appends the entity's primary key ascending as a final sort term
+whenever a window is requested and the caller's sort does not already settle it.
+
+**Paging composes with the security layers.** The window is applied to the query
+*before* the row scope narrows it, so the scope predicate still binds and
+`@TomDbColumn(authKey:)` masking still runs over the returned rows. The total is
+likewise the scoped total — a principal never learns the size of a row set it
+may not read.
+
+A `TomPageRequest` that SQL cannot express is rejected where it is built: a
+negative bound, or an offset with no limit (MariaDB's grammar is
+`LIMIT n [OFFSET m]`, so there is no bare `OFFSET` and the skip would be
+silently dropped).
+
 ## Query Sentences
 
 A *query sentence* is a Spring-Data-style phrase compiled by
@@ -102,13 +146,21 @@ group count ( * ) as total over status by age >= :min
 
 - The first word picks the kind: `find` → `TomSelect`, `count` → `TomCount`,
   `delete` → `TomDelete`, `group` → `TomGroupedSelect`.
-- The part before `by` carries options: `distinct`, and `top N` / `first N`
-  (mutually exclusive). For `group` it also carries the aggregate projection and
-  the optional `over <fields>` group key — see
-  [Grouping and Aggregation](#grouping-and-aggregation).
+- The part before `by` carries options: `distinct`, the row cap `top N` /
+  `first N` (mutually exclusive), and the skip `skip M` / `offset M` (likewise).
+  A skip needs a cap, and only `find` and `group` accept one. For `group` this
+  part also carries the aggregate projection and the optional `over <fields>`
+  group key — see [Grouping and Aggregation](#grouping-and-aggregation).
 - The part after `by` is the predicate, optionally followed by a `having
-  <predicate>` clause (`group` only) and `order by <fields> [asc|desc]` (the
-  direction must be the last token).
+  <predicate>` clause (`group` only) and
+  `order by <field> [asc|desc] [, <field> [asc|desc]]…`. A direction keyword
+  applies to every field back to the previous direction keyword, so
+  `order by a b desc` sorts both descending while `order by a desc b asc` mixes
+  them; a field with no direction of its own sorts ascending.
+
+```text
+find first 25 skip 50 by status = :status order by priority desc due_date asc
+```
 
 A malformed sentence raises `TomQuerySyntaxException`.
 
@@ -357,10 +409,10 @@ group count ( * ) as total , sum ( priority ) as weight over title
 The projection is a comma-separated list of `<fn> ( <arg> ) as <alias>`, with
 `count ( * )` for the row count and a leading `distinct` inside the parentheses
 for `count`/`sum`/`avg`. `over <fields>` names the group key — **omit it to
-aggregate the whole filtered set into exactly one row**. `top N` / `first N`
-work as they do on the other kinds.
+aggregate the whole filtered set into exactly one row**. `top N` / `first N` and
+`skip M` / `offset M` work as they do on `find`, so a grouped result pages too.
 
-`orderBy` names *projection aliases* — a group column's declared field name or an
+The sort names *projection aliases* — a group column's declared field name or an
 aggregate's alias — not arbitrary entity fields. Ordering a grouped result by an
 ungrouped column has no meaning, and the constructor rejects it rather than
 letting the database pick a behaviour.
@@ -489,6 +541,8 @@ source's type.
 - **`TomRepository` / `TomSqlDatasourceRepository` / `MariadbRepository`** — the
   CRUD/query contract and its SQL/MariaDB implementations.
 - **`TomQuerySentenceCompiler`** — query-sentence parser.
+- **`TomPageRequest` + `TomSortField` + `TomSortDirection`** — the caller-facing
+  row window (offset, limit) and its ordered, per-field sort terms.
 - **`TomQueryBuilder` + the operators** (`Eq`, `Lt`, `Like`, `In`, `Between`,
   `And`, `Or`, literals, `Parameter`, the `*Col` references) — the expression
   tree and its dialect-rendered SQL.
@@ -508,11 +562,6 @@ source's type.
 
 Tracked in the quest completion steps:
 
-- Pagination on the repository: offset / page / slice. `top N` / `first N`
-  renders `LIMIT n` on every query kind, but there is no `OFFSET`, so a result
-  set can be capped and not paged through.
-- Sorting as a repository argument. `orderBy` is a property of the query, so
-  `findAll` and the other id-based methods cannot be given one.
 - `@TomJoinTable` is declared but never read — neither detected nor acted on.
 - `@TomPersistenceEventHandler` is *detected* (`TomAnnotationAnalyzer` resolves
   it onto `TomColumnInformation.eventHandler`) but never invoked, so declaring

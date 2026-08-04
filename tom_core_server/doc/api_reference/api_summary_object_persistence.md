@@ -451,16 +451,16 @@ Data's `CrudRepository`.
 | `deleteAllById` | `Future<void> deleteAllById(Iterable<K> ids)` | Deletes every entity whose id is in `ids`. |
 | `deleteById` | `Future<void> deleteById(K id)` | Deletes the entity with the given `id`. |
 | `existsById` | `Future<bool> existsById(Iterable<K> ids)` | Whether every id in `ids` exists. |
-| `findAll` | `Future<List<T>> findAll()` | Loads all entities. |
-| `findAllById` | `Future<List<T>> findAllById(Iterable<K> ids)` | Loads every entity whose id is in `ids`. |
+| `findAll` | `Future<List<T>> findAll([TomPageRequest? page])` | Loads all entities, or the window `page` asks for. |
+| `findAllById` | `Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page])` | Loads every entity whose id is in `ids`, optionally windowed. |
 | `findById` | `Future<T?> findById(K id)` | Loads the entity with the given `id`, or `null` if absent. |
 | `count` | `Future<TomDbInt> count()` | Counts all entities. |
 | `save` | `Future<T> save(T toSave)` | Inserts (no primary key) or updates (primary key set) and returns the stored entity. |
 | `saveAll` | `Future<Iterable<T>> saveAll(Iterable<T> entities)` | Saves every entity and returns the stored entities. |
-| `findByQuerySentence` | `Future<Iterable<T>> findByQuerySentence(String querySentence, Map<String, Object?> params, [Type? resultType])` | Runs a parsed query sentence as a `SELECT`, binding `params`. |
+| `findByQuerySentence` | `Future<Iterable<T>> findByQuerySentence(String querySentence, Map<String, Object?> params, [Type? resultType, TomPageRequest? page])` | Runs a parsed query sentence as a `SELECT`, binding `params`, optionally windowed. |
 | `deleteByQuerySentence` | `Future<void> deleteByQuerySentence(String querySentence, Map<String, Object?> params)` | Runs a parsed query sentence as a `DELETE`. |
 | `countByQuerySentence` | `Future<TomDbInt> countByQuerySentence(String querySentence, Map<String, Object?> params)` | Runs a parsed query sentence as a `COUNT`. |
-| `findByQuery` | `Future<Iterable<T>> findByQuery(TomSelect query, Map<String, Object?> params)` | Runs a built `TomSelect`, binding `params`. |
+| `findByQuery` | `Future<Iterable<T>> findByQuery(TomSelect query, Map<String, Object?> params, [TomPageRequest? page])` | Runs a built `TomSelect`, binding `params`, optionally windowed. |
 | `deleteByQuery` | `Future<void> deleteByQuery(TomDelete query, Map<String, Object?> params)` | Runs a built `TomDelete`, binding `params`. |
 | `countByQuery` | `Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params)` | Runs a built `TomCount`, binding `params`. |
 | `findGroupedByQuery` | `Future<List<TomGroupedRow>> findGroupedByQuery(TomGroupedSelect query, Map<String, Object?> params)` | Runs a built `TomGroupedSelect`, binding `params`, and returns one `TomGroupedRow` per group. Deliberately not `T`: a grouped row's shape is the query's, not the entity's. |
@@ -627,6 +627,85 @@ group count ( * ) as total , sum ( amount ) as revenue over status
 
 `having` addresses the projection **by alias**; the `by` predicate addresses
 columns. Omitting `over` aggregates the whole filtered set into one row.
+
+The window options `top N` / `first N` (the cap) and `skip M` / `offset M` (the
+skip) precede `by`; the two spellings of each are synonyms and naming both is
+rejected. A skip needs a cap, and only `find` and `group` accept one. The trailing
+`order by` clause takes a direction per field, each keyword applying back to the
+previous one — `order by a b desc` sorts both descending, `order by a desc b asc`
+mixes them, and an undirected field sorts ascending.
+
+### Paging & Sorting
+
+#### TomSortDirection
+
+The direction one sort term orders in: `ascending` or `descending`. `sqlKeyword`
+renders it as `ASC` / `DESC`.
+
+#### TomSortField
+
+One term of a sort: a `field` and the `direction` it orders in. A sort is an
+*ordered list* of these rather than a field list plus one shared flag, because
+`ORDER BY priority DESC, due_date ASC` cannot be expressed by a direction every
+column has to agree on.
+
+##### Constructors
+
+```dart
+const TomSortField(String field, {TomSortDirection direction = TomSortDirection.ascending})
+const TomSortField.asc(String field)
+const TomSortField.desc(String field)
+```
+
+##### Properties and Methods
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `field` | `String` | The field name, or — once resolved — the column expression to sort on. |
+| `direction` | `TomSortDirection` | The direction `field` orders in. |
+| `isAscending` | `bool` | *(getter)* Whether this term orders ascending. |
+| `withField` | `TomSortField withField(String resolved)` | This term with `field` replaced, keeping the direction — how a declared name becomes a qualified column expression. |
+| `withDirection` | `TomSortField withDirection(TomSortDirection direction)` | This term ordering in `direction` instead. |
+| `allOf` | `static List<TomSortField> allOf(List<String> fields, {TomSortDirection direction})` | Maps `fields` onto terms that all order in `direction`. |
+
+#### TomPageRequest
+
+A caller's request for one window of a result set: `offset` rows in, at most
+`limit` rows wide, ordered by `sort`. It is the only paging vocabulary the
+repository speaks, and is passed to the finders as an optional argument rather
+than duplicating them into a paged family.
+
+##### Constructors
+
+```dart
+TomPageRequest({int offset = 0, int limit = 0, List<TomSortField> sort = const []})
+TomPageRequest.page(int pageNumber, int pageSize, {List<TomSortField> sort = const []})
+TomPageRequest.sorted(List<TomSortField> sort)
+```
+
+Throws `TomQuerySyntaxException` for a negative bound, or for an `offset` without
+a `limit` — MariaDB's grammar is `LIMIT n [OFFSET m]`, so there is no bare
+`OFFSET` and the skip would be silently dropped.
+
+##### Properties and Methods
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `offset` | `int` | Rows to skip before the first returned row. |
+| `limit` | `int` | The maximum number of rows to return; `0` means unbounded. |
+| `sort` | `List<TomSortField>` | The ordering the window is cut from, outermost term first. |
+| `isUnpaged` | `bool` | *(getter)* Whether this request shapes nothing at all. |
+| `needsStableSort` | `bool` | *(getter)* Whether this request cuts a window, and so needs a total ordering to be reproducible across pages. |
+| `withSort` | `TomPageRequest withSort(List<TomSortField> sort)` | This request with `sort` replaced. |
+| `assertWindow` | `static void assertWindow({required int limit, required int offset})` | Rejects a row window that is not renderable. |
+
+**The result is the page, not a page object.** A finder given a request returns
+the rows of that window as a plain `List<T>`; the total comes from the matching
+`count` method, which applies the same row scope — so a caller that does not need
+the total does not pay for it, and page metadata never reports rows the principal
+may not see. When a window is requested and the caller's `sort` does not already
+settle the order, the repository appends the entity's primary key ascending, so
+consecutive pages neither repeat nor drop rows.
 
 ### Operators & Expressions
 
@@ -886,14 +965,16 @@ TomGroupedSelect(
   TomOperator<TomDbBool>? having,
   List<String> orderBy,
   bool ascending,
+  List<TomSortField>? sort,
   int top,
+  int offset,
 })
 ```
 
 Throws `TomQuerySyntaxException` when no aggregate is given (a grouped select
 with none is a `DISTINCT` select, which `TomSelect` already expresses), when two
 projections share an alias, when a group column's type cannot be materialised, or
-when an `orderBy` entry is not a projection alias.
+when a sort term is not a projection alias.
 
 ##### Properties
 

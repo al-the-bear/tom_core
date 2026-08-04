@@ -193,11 +193,39 @@ void main() {
       expect(TomGeneratedQuery.limitClause(-1), '');
     });
 
+    test('limitClause renders a row window as "LIMIT n OFFSET m"', () {
+      expect(TomGeneratedQuery.limitClause(5, 10), ' LIMIT 5 OFFSET 10');
+      // Offset 0 is the first page: no OFFSET term at all.
+      expect(TomGeneratedQuery.limitClause(5, 0), ' LIMIT 5');
+    });
+
+    test('limitClause rejects a window MariaDB cannot express', () {
+      // No bare OFFSET in the LIMIT grammar, so a skip without a cap would be
+      // silently dropped.
+      expect(() => TomGeneratedQuery.limitClause(0, 10),
+          throwsA(isA<TomQuerySyntaxException>()));
+      expect(() => TomGeneratedQuery.limitClause(5, -1),
+          throwsA(isA<TomQuerySyntaxException>()));
+    });
+
     test('orderByClause uses "ASC"/"DESC", not "ASCENDING"/"DESCENDING"', () {
-      expect(TomGeneratedQuery.orderByClause(['t.a', 't.b'], false),
-          ' ORDER BY t.a,t.b DESC');
-      expect(TomGeneratedQuery.orderByClause(['t.a'], true), ' ORDER BY t.a ASC');
-      expect(TomGeneratedQuery.orderByClause([], false), '');
+      expect(
+          TomGeneratedQuery.orderByClause(
+              TomSortField.allOf(const ['t.a', 't.b'],
+                  direction: TomSortDirection.descending)),
+          ' ORDER BY t.a DESC,t.b DESC');
+      expect(TomGeneratedQuery.orderByClause(const [TomSortField.asc('t.a')]),
+          ' ORDER BY t.a ASC');
+      expect(TomGeneratedQuery.orderByClause(const []), '');
+    });
+
+    test('orderByClause gives every term its own direction', () {
+      expect(
+          TomGeneratedQuery.orderByClause(const [
+            TomSortField.desc('t.priority'),
+            TomSortField.asc('t.due_date'),
+          ]),
+          ' ORDER BY t.priority DESC,t.due_date ASC');
     });
 
     test('countProjection emits a valid COUNT(DISTINCT ...), never DISTINCT(*)',

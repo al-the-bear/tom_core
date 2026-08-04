@@ -204,14 +204,38 @@ removes groups after it. ANDing them upstream would change the meaning of both.
 
 A query is built over a set of entity `types` and renders to SQL via
 `generateQuery(dialect)`. The generated forms wrap a `TomOperator<TomDbBool>`
-predicate with shaping options (`distinct`, `orderBy`, `ascending`, `top`):
+predicate with shaping options (`distinct`, `sort`, `top`, `offset`):
 
 | Class | Renders |
 | ----- | ------- |
-| `TomSelect` | `SELECT … FROM … WHERE <predicate> [ORDER BY …]` |
+| `TomSelect` | `SELECT … FROM … WHERE <predicate> [ORDER BY …] [LIMIT n [OFFSET m]]` |
 | `TomCount` | `SELECT COUNT(*) AS count FROM … WHERE <predicate>` |
-| `TomDelete` | `DELETE FROM <first table> WHERE <predicate>` |
+| `TomDelete` | `DELETE FROM <first table> WHERE <predicate> [ORDER BY …] [LIMIT n]` |
 | `TomLiteralSelect` | a raw, hand-written SQL string with explicit parameters |
+
+### Ordering and the row window
+
+`sort` is an *ordered list* of `TomSortField` — a field name and its own
+`TomSortDirection` — rather than a field list plus one shared flag, because
+`ORDER BY priority DESC, due_date ASC` cannot be expressed by a direction that
+every column has to agree on. The older two-argument form is still accepted at
+the constructor (`orderBy:` + `ascending:`) and maps onto the list, so existing
+call sites and generated reflection code keep working; internally there is only
+`sort`.
+
+`top` caps the rows and `offset` skips them, rendering as `LIMIT n` or
+`LIMIT n OFFSET m`. Two windows are rejected at construction rather than
+rendered:
+
+- a negative bound has no meaning; and
+- an `offset` without a `top` is *unrepresentable* — the MariaDB grammar is
+  `LIMIT n [OFFSET m]`, so there is no bare `OFFSET`, and emitting the statement
+  anyway would silently ignore the skip.
+
+Only `TomSelect` and `TomGroupedSelect` take an `offset`. A count has no row
+window — the total of a filtered set does not depend on which page of it the
+caller is reading — and MariaDB's single-table `DELETE … LIMIT n` has no
+`OFFSET` form at all.
 
 `TomLiteralSelect` is the escape hatch for statements the generated queries
 cannot express; its `types` still drive result-row mapping.

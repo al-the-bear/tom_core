@@ -549,18 +549,25 @@ TomGeneratedQuery(
   bool distinct = false,
   List<String> orderBy = const [],
   bool ascending = true,
+  List<TomSortField>? sort,
   int top = 0,
+  int offset = 0,
   List<String> ignoreFields = const [],
 })
 ```
+
+`orderBy` + `ascending` are a shorthand that maps onto `sort`: they are accepted
+so existing call sites keep working, and are not stored. Passing `sort`
+supersedes them. The constructor rejects a window SQL cannot express — a negative
+bound, or an `offset` without a `top`.
 
 ##### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `distinctPrefix` | `static String distinctPrefix(bool distinct)` | Renders the `DISTINCT ` projection prefix (empty when not `distinct`). |
-| `limitClause` | `static String limitClause(int top)` | Renders the trailing ` LIMIT n` row-cap clause (empty when `top <= 0`). |
-| `orderByClause` | `static String orderByClause(List<String> orderColumns, bool ascending)` | Renders the trailing ` ORDER BY <cols> ASC\|DESC` clause. |
+| `limitClause` | `static String limitClause(int top, [int offset = 0])` | Renders the trailing ` LIMIT n` / ` LIMIT n OFFSET m` row-window clause (empty when `top <= 0`). |
+| `orderByClause` | `static String orderByClause(List<TomSortField> sort)` | Renders the trailing ` ORDER BY <col> ASC\|DESC, …` clause, one direction per term. |
 | `countProjection` | `static String countProjection(bool distinct, List<String> columnExprs)` | Renders the `COUNT(*)` / `COUNT(DISTINCT <cols>)` projection. |
 
 ##### Properties
@@ -570,9 +577,9 @@ TomGeneratedQuery(
 | `query` | `TomOperator<TomDbBool>` | The boolean predicate forming the WHERE clause. |
 | `ignoreFields` | `List<String>` | Field names to omit from the generated column list. |
 | `distinct` | `bool` | Whether to request distinct rows. |
-| `orderBy` | `List<String>` | Field names to sort by (empty = unsorted). |
-| `ascending` | `bool` | Sort direction when `orderBy` is set. |
-| `top` | `int` | Row cap (0 = unbounded). |
+| `sort` | `List<TomSortField>` | The ordering, outermost term first (empty = unsorted). |
+| `top` | `int` | Row cap (`<= 0` = unbounded). |
+| `offset` | `int` | Rows skipped before the first returned row; needs a `top`. |
 
 ##### Methods
 
@@ -600,10 +607,16 @@ TomSelect(
   bool distinct,
   List<String> orderBy,
   bool ascending,
+  List<TomSortField>? sort,
   int top,
+  int offset,
   List<String> ignoreFields,
 })
 ```
+
+Each sort term's field is resolved to a qualified `table.column` expression
+before rendering, so an unknown field name fails at resolution rather than
+reaching the statement text.
 
 ##### Methods
 
@@ -661,10 +674,14 @@ TomCount(
   bool distinct,
   List<String> orderBy,
   bool ascending,
+  List<TomSortField>? sort,
   int top,
   List<String> ignoreFields,
 })
 ```
+
+No `offset`: the total of a filtered set does not depend on which page of it the
+caller is reading.
 
 ##### Methods
 
@@ -688,10 +705,15 @@ TomDelete(
   bool distinct,
   List<String> orderBy,
   bool ascending,
+  List<TomSortField>? sort,
   int top,
   List<String> ignoreFields,
 })
 ```
+
+No `offset`: `DELETE … LIMIT n OFFSET m` is not MariaDB syntax. Sort terms are
+rendered unqualified, because a single-table `DELETE` has no table alias to
+qualify them with.
 
 ##### Methods
 

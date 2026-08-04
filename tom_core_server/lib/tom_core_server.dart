@@ -91,6 +91,7 @@ export 'src/tomserver/object_persistence/file_reference.dart';
 export 'src/tomserver/object_persistence/grouped_query.dart';
 export 'src/tomserver/object_persistence/mariadb_repository.dart';
 export 'src/tomserver/object_persistence/operators_expressions.dart';
+export 'src/tomserver/object_persistence/paging.dart';
 export 'src/tomserver/object_persistence/persistence_annotations.dart';
 export 'src/tomserver/object_persistence/query_builder.dart';
 export 'src/tomserver/object_persistence/query_sentence_compiler.dart';

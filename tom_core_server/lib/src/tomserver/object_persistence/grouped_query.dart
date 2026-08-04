@@ -342,14 +342,15 @@ class TomGroupedSelect extends TomGeneratedQuery {
   /// Builds a grouped select over [types].
   ///
   /// [query] is the row predicate, [groupBy] the key columns, [aggregates] the
-  /// projected aggregates, [having] the optional group predicate. [orderBy]
-  /// names *projection aliases* (a group column's declared name or an
-  /// aggregate's alias), not arbitrary entity fields — ordering a grouped
-  /// result by an ungrouped column is not meaningful.
+  /// projected aggregates, [having] the optional group predicate. The ordering
+  /// (`sort`, or the `orderBy`/`ascending` shorthand) names *projection aliases*
+  /// (a group column's declared name or an aggregate's alias), not arbitrary
+  /// entity fields — ordering a grouped result by an ungrouped column is not
+  /// meaningful.
   ///
   /// Throws [TomQuerySyntaxException] when no aggregate is given, when two
   /// projections share an alias, when a group column's type cannot be
-  /// materialised, or when an [orderBy] entry is not a projection alias.
+  /// materialised, or when a sort term is not a projection alias.
   TomGroupedSelect(
     super.types, {
     required super.query,
@@ -358,7 +359,9 @@ class TomGroupedSelect extends TomGeneratedQuery {
     this.having,
     super.orderBy,
     super.ascending,
+    super.sort,
     super.top,
+    super.offset,
   }) {
     if (aggregates.isEmpty) {
       throw TomQuerySyntaxException(
@@ -393,15 +396,15 @@ class TomGroupedSelect extends TomGeneratedQuery {
         );
       }
     }
-    for (final ordered in orderBy) {
-      if (!seen.contains(ordered)) {
+    for (final ordered in sort) {
+      if (!seen.contains(ordered.field)) {
         throw TomQuerySyntaxException(
           "grouped_query.select.order_by_not_projected",
-          "The grouped select orders by '$ordered', which it does not project. "
-              "Order a grouped result by a group column or an aggregate alias; "
-              "an ungrouped column has no single value per group. "
-              "Projected: ${seen.join(', ')}.",
-          parameters: {"orderBy": ordered, "projected": seen.toList()},
+          "The grouped select orders by '${ordered.field}', which it does not "
+              "project. Order a grouped result by a group column or an "
+              "aggregate alias; an ungrouped column has no single value per "
+              "group. Projected: ${seen.join(', ')}.",
+          parameters: {"orderBy": ordered.field, "projected": seen.toList()},
         );
       }
     }
@@ -440,8 +443,8 @@ class TomGroupedSelect extends TomGeneratedQuery {
         " WHERE ${query.generate(t)}"
         "${t.groupByClause([for (final column in groupBy) column.generate(t)])}"
         "${t.havingClause(having?.generate(t))}"
-        "${TomGeneratedQuery.orderByClause(orderBy, ascending)}"
-        "${TomGeneratedQuery.limitClause(top)}";
+        "${TomGeneratedQuery.orderByClause(sort)}"
+        "${TomGeneratedQuery.limitClause(top, offset)}";
   }
 
   /// Parameters in statement-text order — projection, then `WHERE`, then
