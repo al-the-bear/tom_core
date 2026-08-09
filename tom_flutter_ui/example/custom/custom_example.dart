@@ -7,7 +7,8 @@
 ///
 /// - [TomAuthGuard] — hide / disable a subtree by a resolved [TomAuthState].
 /// - [TomAuthTreeView] / [TomAuthTreeNode] — a tree with per-node auth, where a
-///   parent's effective auth narrows (never widens) its children.
+///   `disabled` parent caps its whole subtree and every other node resolves on
+///   its own key.
 /// - [TomRadioGroup] / [TomRadioGroupItem] — a radio group with one resource
 ///   key controlling the whole group.
 /// - [TomEmptyState], [TomLoadingOverlay], [TomSkeletonLoader],
@@ -17,9 +18,10 @@
 /// only shows up in a widget tree (covered by the `testWidgets` cases in
 /// `test/custom/custom_example_test.dart`). What *is* pure and demonstrated
 /// here is the shared machinery they delegate to: the `TomAuthState` lattice
-/// (`narrow` — the exact rule [TomAuthTreeView] applies to inherit a parent's
-/// auth into its children), the resource-path auth lookup every guard performs,
-/// and the plain data models ([TomRadioGroupItem], [TomAuthTreeNode]).
+/// (`narrow` — the operation [TomAuthTreeView] uses to fold what a node
+/// inherits into the state it resolved for itself), the resource-path auth
+/// lookup every guard performs, and the plain data models
+/// ([TomRadioGroupItem], [TomAuthTreeNode]).
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
 /// barrel, run it under the Flutter toolchain, e.g.
@@ -70,18 +72,20 @@ void run() {
   print('open   → ${TomAuthorization.resolveAuth('reports.open')}'); // full
 
   // ---------------------------------------------------------------------------
-  // 2. The TomAuthState lattice — `narrow` is the exact rule TomAuthTreeView
-  //    uses to fold a parent's effective auth into each child (a child can be
-  //    tightened by its parent but never widened beyond it).
+  // 2. The TomAuthState lattice — `narrow` returns the more restrictive of two
+  //    states, and is how TomAuthTreeView folds what a node inherits into the
+  //    state the node resolved for itself. Only a `disabled` node passes a cap
+  //    down; a `read` or `full` node passes `full`, so every descendant is
+  //    still judged on its own key.
   // ---------------------------------------------------------------------------
-  // A `read` parent caps a `full` child at `read`.
-  final cappedChild = TomAuthState.full.narrow(TomAuthState.read);
-  // A `full` parent leaves a `read` child at `read`.
-  final freeParent = TomAuthState.read.narrow(TomAuthState.full);
-  // A `none` parent hides the whole subtree.
+  // A `disabled` parent caps a `full` child at `disabled`.
+  final cappedChild = TomAuthState.full.narrow(TomAuthState.disabled);
+  // A parent that does not cap passes `full`, leaving the child's own state.
+  final freeChild = TomAuthState.read.narrow(TomAuthState.full);
+  // A node that resolves `none` is hidden together with its subtree.
   final hiddenSubtree = TomAuthState.full.narrow(TomAuthState.none);
-  print('full ⊓ read = $cappedChild'); // read
-  print('read ⊓ full = $freeParent'); // read
+  print('full ⊓ disabled = $cappedChild'); // disabled
+  print('read ⊓ full = $freeChild'); // read
   print('full ⊓ none = $hiddenSubtree'); // none
 
   // ---------------------------------------------------------------------------
@@ -130,8 +134,8 @@ void run() {
   assert(TomAuthorization.resolveAuth('reports.view') == TomAuthState.read);
   assert(TomAuthorization.resolveAuth('reports.open') == TomAuthState.full);
 
-  assert(cappedChild == TomAuthState.read);
-  assert(freeParent == TomAuthState.read);
+  assert(cappedChild == TomAuthState.disabled);
+  assert(freeChild == TomAuthState.read);
   assert(hiddenSubtree == TomAuthState.none);
 
   assert(items.first.value == 'eur');

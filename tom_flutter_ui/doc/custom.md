@@ -29,7 +29,7 @@ lookup and the plain data models — is what the example demonstrates.
 | Widget | Kind | What it does |
 | ------ | ---- | ------------ |
 | `TomAuthGuard` | `StatelessWidget` | Hide / disable a `child` by the `TomAuthState` resolved from a `tomId`. |
-| `TomAuthTreeView` / `TomAuthTreeNode` | `StatelessWidget` + data model | A tree where every node resolves its own auth; a parent's effective auth **narrows** its children. |
+| `TomAuthTreeView` / `TomAuthTreeNode` | `StatelessWidget` + data model | A tree where every node resolves its own auth; a `disabled` node **caps** its whole subtree. |
 | `TomRadioGroup` / `TomRadioGroupItem` | `StatelessWidget` + data model | A radio group whose whole selection is gated by one resource key. |
 | `TomEmptyState` | `StatelessWidget` | Icon + title + description + optional action for "no data" surfaces. |
 | `TomLoadingOverlay` | `StatelessWidget` | Translucent scrim + spinner (+ message) layered over a subtree while loading. |
@@ -67,10 +67,21 @@ entire selection (the per-item `Radio` auth in the widgets kit is per-field).
 A `null` `tomId` means "no auth check — always full".
 
 **`TomAuthTreeView`** resolves auth **per node**. Each `TomAuthTreeNode`
-carries its own `tomId`; as the tree descends, a node's own auth is folded with
-its parent's via `ownAuth.narrow(inheritedAuth)`, so a `read` parent caps a
-`full` child at `read` and a `none` parent hides the whole subtree. This is the
-exact `TomAuthState.narrow` lattice rule the example demonstrates.
+carries its own `tomId`, and a node's own auth is folded with what it inherits
+via `ownAuth.narrow(inheritedAuth)` — the `TomAuthState.narrow` lattice rule the
+example demonstrates. What a node passes down depends on the state it lands on:
+
+| Node's effective state | Rendered as | Passed to children |
+| ---------------------- | ----------- | ------------------ |
+| `none` | removed, subtree never built | — |
+| `disabled` | faded, non-interactive | `disabled` — the subtree is capped |
+| `read` | rendered, non-interactive | `full` — children judged on their own keys |
+| `full` | interactive | `full` — children judged on their own keys |
+
+So only a `disabled` node caps its descendants. A `read` parent renders itself
+non-interactive but leaves a `full` child fully interactive, which is what a
+navigation tree needs: a section header the user may not activate can still
+contain entries they may.
 
 ## Placeholder & state widgets
 
@@ -110,8 +121,8 @@ field widgets use, which is why the example can exercise it directly:
 
 ```dart
 TomAuthorization.adapter = _PathAuthAdapter({'reports.view': TomAuthState.read});
-TomAuthorization.resolveAuth('reports.view'); // TomAuthState.read
-TomAuthState.full.narrow(TomAuthState.read);  // read  — the tree's inherit rule
+TomAuthorization.resolveAuth('reports.view');     // TomAuthState.read
+TomAuthState.full.narrow(TomAuthState.disabled);  // disabled — the tree's cap
 ```
 
 ## Dependencies
