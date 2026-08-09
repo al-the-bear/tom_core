@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/src/forms/decoration/tom_field_anatomy.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_list_field.dart';
 import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
@@ -309,6 +310,22 @@ void main() {
       final result = await field.validate();
       expect(result, isA<ValidationError>());
       expect((result as ValidationError).errorKey, 'error.minLength');
+    });
+
+    test('a resource-declared required raises the required indicator',
+        () async {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({
+          'username.validators': 'required',
+        }),
+      );
+      final field = TomFormStringInput('username', '');
+
+      // The anatomy decides whether to paint the required marker by looking
+      // for the shared required validator in the merged list — so the rule
+      // resolved from the bundle has to *be* that validator, not a wrapper
+      // around it, or a bundle-declared constraint renders unmarked.
+      expect(fieldHasRequiredValidator(field.validators), isTrue);
     });
   });
 }

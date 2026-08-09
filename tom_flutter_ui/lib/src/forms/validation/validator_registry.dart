@@ -113,7 +113,11 @@ class TomValidatorRegistry {
   // --- Built-in validators -------------------------------------------------
 
   void _registerBuiltins() {
-    register('required', (_) => (Object? value) => Validators.requiredInstance(value));
+    // The shared instance itself, not a wrapper around it: the field anatomy
+    // decides whether to paint the required marker by looking for exactly this
+    // validator in the merged list, so a wrapper would render a
+    // bundle-declared `required` unmarked.
+    register('required', (_) => Validators.requiredInstance);
     register('email', (_) => _wrapString(Validators.email()));
     register('minLength',
         (args) => _wrapString(Validators.minLength(_intArg(args, 'minLength'))));
