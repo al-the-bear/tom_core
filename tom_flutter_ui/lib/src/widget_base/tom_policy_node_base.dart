@@ -9,8 +9,9 @@ import 'tom_node_base.dart';
 /// Every Tom widget passes through this base class. It resolves the effective
 /// authorization state by combining:
 /// 1. Resource-based authorization (via [TomAuthorization] singleton)
-/// 2. Per-widget [authorizer] (if set)
-/// 3. Build-time [uiStateController] (if set, can only narrow)
+/// 2. Group authorization (if a member of a [TomAuthorizationGroup])
+/// 3. Per-widget [authorizer] (if set)
+/// 4. Build-time [uiStateController] (if set, can only narrow)
 ///
 /// Enforcement:
 /// - [TomAuthState.none] → [SizedBox.shrink] (hidden from layout)
@@ -34,26 +35,33 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
 
   /// Resolves the effective [TomAuthState] for this widget.
   ///
-  /// Combines resource auth, authorizer, UI state controller, and group auth.
+  /// Combines resource auth, group auth, authorizer, and UI state controller,
+  /// in that order (§78 — the same order `TomField` uses).
+  ///
+  /// Resource and group together establish what is *granted*; the authorizer
+  /// and the controller then narrow it. The controller has to run last for its
+  /// "can only narrow" promise to hold — [TomAuthorizationGroup.applyMode]
+  /// widens under `controlsNarrowest` and replaces outright under
+  /// `controlsAll`, so a group applied afterwards would undo the narrowing.
   TomAuthState resolveEffectiveAuth() {
     // 1. Resource-based authorization
     var state = basePath != null
         ? TomAuthorization.resolveAuth(basePath!)
         : TomAuthState.full;
 
-    // 2. Per-widget authorizer
+    // 2. Group authorization (if member of a group)
+    if (tomGroup != null) {
+      state = tomGroup!.applyMode(state);
+    }
+
+    // 3. Per-widget authorizer
     if (authorizer != null) {
       state = authorizer!.effectiveAuth(state);
     }
 
-    // 3. Build-time UI state controller (can only narrow)
+    // 4. Build-time UI state controller (can only narrow)
     if (uiStateController != null) {
       state = uiStateController!.apply(state);
-    }
-
-    // 4. Group authorization (if member of a group)
-    if (tomGroup != null) {
-      state = tomGroup!.applyMode(state);
     }
 
     return state;

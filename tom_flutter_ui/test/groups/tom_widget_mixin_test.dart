@@ -4,10 +4,10 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // tests §24: TomWidgetMixin is the render contract every direct-extension Tom
-// widget shares — `getAuth()` (resource → authorizer → uiStateController →
-// group), `checkHidden()`, and the 4-state `applyAuthState` visual treatment —
-// yet it had no dedicated coverage. These pin the combination order and the
-// per-state rendering.
+// widget shares — `getAuth()` (resource → group → authorizer →
+// uiStateController), `checkHidden()`, and the 4-state `applyAuthState` visual
+// treatment — yet it had no dedicated coverage. These pin the combination
+// order and the per-state rendering.
 
 /// Minimal concrete widget mixing in [TomWidgetMixin].
 class _MixinWidget extends StatelessWidget with TomWidgetMixin {
