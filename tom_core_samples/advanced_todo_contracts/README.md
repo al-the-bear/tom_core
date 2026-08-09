@@ -10,24 +10,13 @@ The single definition of the over-the-wire surface, depended on by both servers
 > This package is documented in context by
 > **[04 · Wire contracts & DTOs](../README_advanced_04_wire_contracts_dtos.md)**.
 
-## Status
-
-Contract complete (step 6). The package carries the step-4 DTOs, the step-5
-typed service interfaces (`AuthApiService`, `AdminApiService`, `AppApiService`)
-and the wire registry (each endpoint's URI, HTTP method, request/response types,
-and four-state access policy), and the [authorization model](#authorization-model)
-the servers implement against is documented below. This completes Phase 1 of the
-plan; the auth server, app server and clients (Phases 2–4) implement against
-this written contract.
-
 ### Endpoint model: kernel `TomApi` registry, not server `@tomService`
 
-The plan named the endpoint declarations "`@tomService` interfaces … with
-`@TomEndpoint` + access annotations". Those annotations live in
-**`tom_core_server`** (`@tomService`, `@TomEndpoint`), and this package depends
-only on `tom_core_kernel` + the domain model so the **Flutter-free client core**
-can consume it — pulling in `tom_core_server` would break that. The migrated
-`tom_uam_codespec` hit the same constraint and resolves it with the kernel's
+The server-side endpoint annotations (`@tomService`, `@TomEndpoint`) live in
+**`tom_core_server`**, and this package depends only on `tom_core_kernel` + the
+domain model so the **Flutter-free client core** can consume it — pulling in
+`tom_core_server` would break that. The migrated `tom_uam_codespec` meets the
+same constraint and resolves it with the kernel's
 `TomApi`/`TomApiEndpoint`/`tomRemoteApis` model; this package follows that
 precedent. So the wire surface is expressed as:
 
@@ -42,48 +31,66 @@ precedent. So the wire surface is expressed as:
   `tomRemoteApis`.
 
 The server-side `@tomService` endpoint classes are re-declared against this
-registry inside `tom_core_server` when the servers are built (steps 11+).
+registry inside `tom_core_server` by each server.
 
 ## Contents
 
-The DTOs (`lib/src/`, re-exported from `advanced_todo_contracts.dart`) are plain
-value records — not reflected entities. Each carries hand-written
-`toJson`/`fromJson`, structural `==`/`hashCode`, and a **log-safe** `toString`
-(passwords and bearer tokens are never rendered). The endpoints exchange them as
-plain JSON maps (mirroring `core_server_sample`'s `Map<String, Object>`
-surface); the client core maps them with pure functions. Decoders are
-**closed-safe**: an unknown access token degrades to `TomAuthState.none` and an
-unknown role to `ProjectRole.viewer`.
+The DTOs (`lib/src/`, re-exported from `advanced_todo_contracts.dart`) are
+**reflection-first** (G-DTO): each is a `@tomReflector` class with plain
+non-`final` fields and **no** hand-written `toJson`/`fromJson`. The kernel
+reflection path serializes them ([`TomReflectionInfo.getValues`] /
+`createInstanceFromJson`) exactly like the reflected `advanced_todo_domain`
+entities — the server endpoint pipeline drives it directly, while off-server
+consumers (the Flutter client core, the round-trip tests) go through the
+`dtoFromJson` / `dtoToMap` / `dtoToJsonString` helpers in `dto_reflection.dart`.
+Every DTO has a **log-safe** `toString` (passwords and bearer tokens are never
+rendered). Values that cannot cross the wire as their native type travel as the
+enum's `.name` token in a plain `String`, with a typed accessor for callers; the
+token readers are **closed-safe**, so an unknown access token degrades to
+`TomAuthState.none` and an unknown role to `ProjectRole.viewer`.
 
 - **Auth/login** (`login_dtos.dart`): `LoginRequest`
-  (`{username, password, app, org}`), `UserDto` (the password-free user
-  projection, with a typed `statusValue`), and `LoginResult`
-  (`{user, authToken, authzToken, expiresAt}`).
+  (`{username, password, app, org}`), `SecondFactorRequest`,
+  `TwoFactorEnrolmentRequest`, `UserDto` (the password-free user projection,
+  with a typed `statusValue`), and `LoginResult`
+  (`{user, authToken, authzToken, expiresAt}` plus the two-factor challenge and
+  enrolment flags).
 - **Authorization** (`graded_field_dto.dart`, `grant_matrix_dto.dart`):
   `GradedFieldDto` (`{resourceKey, access}`) and `GrantMatrixDto` — the full
   `role → {resourceKey: TomAuthState}` matrix the admin grant editor reads and
-  writes, immutable with copy-on-edit `withAccess` and order-independent
-  equality.
+  writes, with a copy-on-edit `withAccess` that leaves the receiver unchanged.
 - **Sharing** (`share_request.dart`): `ShareRequest`
   (`{resourceType, resourceId, granteeUserId, projectRole}`).
 - **Admin CRUD** (`admin_dtos.dart`): `CreateUserRequest`, `RoleDto`,
-  `GroupDto` (with an unmodifiable member list), and `AssignmentRequest`.
+  `GroupDto` (name + member ids in display order), and `AssignmentRequest`.
+- **By-id requests** (`entity_id_request.dart`): `EntityIdRequest`, the one
+  reusable request type every `/…/{id}` endpoint binds its path capture onto
+  (G-API-2).
+- **Files** (`file_descriptor_dto.dart`): `FileDescriptorDto`, a lossless
+  wrapper around the kernel `TomFileMetadata` a `HEAD` against a slot returns,
+  plus `AppFileSlots` — the `<table>/<id>/<column>` slot addresses named once so
+  both servers and both clients spell them the same way.
+- **Resources** (`resource_bundle_dto.dart`): `ResourceBundleDto`, the
+  `<basePath>.<suffix>` → text map a server delivers so clients ship no UI
+  strings, plus `flattenResourceTree` for servers that store their texts nested.
 
 ## The service surface
 
-- **Auth** (`AuthApiService` / `authApi`, `/auth/*`): `login` (public) +
+- **Auth** (`AuthApiService` / `authApi`, `/auth/*`): `login`,
+  `submitSecondFactor`, the three enrolment passes and `loginResources`
+  (public — exactly the surface a caller reaches *before* it holds a token) +
   `refresh`/`logout`/`me` (authenticated).
 - **Admin** (`AdminApiService` / `adminApi`, `/admin/*`): user, role, group,
   grant-matrix and assignment management — every endpoint declares the shared
   `adminAccess` (`TomRoleAccess(['admin'])`) policy.
-- **App** (`AppApiService` / `appApi`, the todo board): `health` (public) +
-  workspaces, projects, lists, items, comments, field-state and sharing
-  endpoints (authenticated; resource- and field-level checks are enforced inside
-  the handlers, not by these blanket levels).
+- **App** (`AppApiService` / `appApi`, the todo board): `health` (public, served
+  at `/status`) + workspaces, projects, lists, items, attachments, comments,
+  subtasks, resources, resource-roles and sharing endpoints (authenticated;
+  resource- and field-level checks are enforced inside the handlers, not by
+  these blanket levels).
 
-The wire DTOs are reflection-first (`@tomReflector`, no hand-written
-`toJson`/`fromJson` — the kernel reflection path serializes them). Reflection is
-needed only to run this package's own round-trip tests, so the single seed is
+Reflection is needed only to run this package's own round-trip tests, so the
+single seed is
 **test-only**: `test/run_all_tests.dart` → `test/run_all_tests.reflection.dart`
 (regenerate with `./reflection_generation.sh`). The package ships no runtime seed
 (G-REFL-1/2); the servers and clients reflect these DTOs through their own
@@ -178,9 +185,13 @@ the authadmin client (`adminGetGrants` / `adminPutGrants`, carrying
 Reading the matrix: an `owner` edits everything; an `editor` can do likewise
 except `estimate` (read-only); a `commenter` may move `status` and read most
 fields but cannot see `estimate` (`none`); a `viewer` reads the visible fields
-but `assigneeId`/`estimate` are hidden. This is the table the auth-server
-migration seeds in step 8 and the field-grade resolver tests against in
-step 18.
+but `assigneeId`/`estimate` are hidden.
+
+An eighth graded key rides alongside the seven form fields:
+`todo.item.attachment`, the item's file column (`full` for `owner`/`editor`,
+`read` for `commenter`/`viewer`). It is graded per role like the fields are but
+enforced on the **file endpoint** rather than in the item payload — no client
+may write a blob key directly — so the seed is 8 keys × 4 roles = 32 rows.
 
 ### How the two layers compose per request
 
@@ -189,8 +200,9 @@ step 18.
 2. **Resource check** (Layer 1, handler): owner-or-share lookup yields the
    effective `projectRole`, or denies access (404/403).
 3. **Field grade** (Layer 2, handler): the `(projectRole, fieldKey)` matrix
-   resolves each field's `TomAuthState`; reads are projected as
-   `GradedFieldDto`s, writes to non-`full` fields are rejected.
+   resolves each field's `TomAuthState`. Writes to non-`full` fields are
+   rejected; reads carry no per-field grade at all — the client resolves them
+   locally from the `appResourceRoles` map.
 
 Role gating that is coarser than the field matrix is also enforced in the
 handler: delete is owner/editor-only, commenting requires `commenter` or above.

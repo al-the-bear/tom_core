@@ -12,23 +12,22 @@ assignments, and the `projectRole` × field grant matrix via the auth server's
 > **[09 · Forms & UI](../README_advanced_09_forms_ui.md)** and
 > [11 · The two Flutter clients](../README_advanced_11_clients_app_admin.md).
 
-## Status
+## Layout
 
-Phase 6 is complete: the assignments editor (step 36) closes the console over
-the step-35 grant matrix, the step-34 Users / Roles / Groups CRUD, the step-33
-login + shell, and the step-32 backend seam. `lib/app/` defines the
-`AdminSession` (`ChangeNotifier`) and the `AdminConsoleApp` shell that swaps
-between the login screen and the console as a pure function of
-`session.isLoggedIn`; `lib/screens/` holds the login screen plus the console
-shell — a `NavigationRail` over an `IndexedStack` of the Users, Roles, Groups,
-Grants, and Assignments destinations — the generic `AdminCrudScreen<T>` the
-first three share, the `GrantsScreen` matrix editor, and the `AssignmentsScreen`
-role/group assigner. `lib/forms/` binds reflected drafts
-(`UserForm`/`RoleForm`/`GroupForm`); `lib/main.dart` calls
-`initializeReflection()` (from `lib/reflection_seed.dart`) before bootstrapping
-the console over the live stack by default (no dart-defines — URLs from the
-`AdvancedClientConfig` config bean), or over the seeded in-memory fake under
-`--dart-define=TEST_MODE=true`.
+| Folder | Holds |
+| ------ | ----- |
+| `lib/app/` | `AdminSession` (a `ChangeNotifier`) and `AdminConsoleApp`, the shell that swaps between the login screen and the console as a pure function of `session.isLoggedIn` |
+| `lib/screens/` | the login screen, the console shell (a `NavigationRail` over an `IndexedStack` of the Users, Roles, Groups, Grants and Assignments destinations), the generic `AdminCrudScreen<T>` the first three share, the shared `AdminEditorDialog`, the `GrantsScreen` matrix editor and the `AssignmentsScreen` role/group assigner |
+| `lib/forms/` | the five reflected forms — `AdminLoginForm`, `AdminSecondFactorForm`, `UserForm`, `RoleForm`, `GroupForm` |
+| `lib/domain/` | the client-local reflected entities those forms bind — `AdminLoginCredentials`, `AdminSecondFactorCode`, and the `UserDraft`/`RoleDraft`/`GroupDraft` trio |
+| `lib/actions/` | `admin_actions.dart` — the eleven `TomSimpleAction`s every write runs through |
+| `lib/backend/` | the `AdminBackend` seam and its two implementations |
+| `lib/files/` | `registerSampleAvatarPicker()`, the application's one `TomFilePickerRegistry` adaptor |
+
+`lib/main.dart` calls `initializeReflection()` (from `lib/reflection_seed.dart`)
+before bootstrapping the console over the live stack by default (no
+dart-defines — URLs from the `AdvancedClientConfig` config bean), or over the
+seeded in-memory fake under `--dart-define=TEST_MODE=true`.
 
 ## Admin login + shell
 
@@ -102,18 +101,41 @@ matrix, and role/group assignments — plus the two session operations
   the same four-state grant matrix the auth server seeds. Every administrative
   call requires the `admin` role: a signed-in non-admin is refused with
   `admin.access.forbidden`, mirroring the server's contract-declared
-  `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) gate. Reflection-free — the
-  admin DTOs are plain value records.
+  `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) gate. It holds DTO
+  instances directly and never serializes one, so it is the one path through the
+  console that needs no reflection.
 - **`LiveAdminBackend`** — the production wiring: a thin adapter over an
   `AuthClient` (login/token storage) and an `AdminApiClient` (the `/admin/*` API)
   sharing one `JsonTransport`, normalising the client core's transport exceptions
-  into the single `AdminBackendException` the screens catch.
+  into the single `AdminBackendException` the screens catch. Its `files` client
+  is pointed at the **auth** server, because that is where the avatar slot lives.
 
 ```dart
-final AdminBackend backend = InMemoryAdminBackend(); // or LiveAdminBackend(auth, api)
+final AdminBackend backend = InMemoryAdminBackend(); // or LiveAdminBackend.fromConfig()
 await backend.login(LoginRequest(username: 'admin', password: 'pw'));
 final users = await backend.listUsers();
 final grants = await backend.getGrants(); // (role, resourceKey) → TomAuthState
+```
+
+## Actions
+
+Every write the console performs — the nine entity create/update/delete
+operations, the assignment, and the grant-matrix save — runs through a
+`TomSimpleAction` in `lib/actions/admin_actions.dart` rather than an inline
+screen callback. Two things follow. Each action carries a canonical path
+(`admin.<entity>.<verb>`) whose `TomAction.authorizer` the screens hand to the
+button that triggers it, so an installed authorization adapter could disable
+`admin.users.delete` fleet-wide without touching a screen; and `runAdminAction`
+is the single bridge between the synchronous action lifecycle and the
+`Future`-based seam. Its `Future<String?>` return (`null` saved, a message to
+show inline) is exactly the editor dialog's `submit` contract, so a screen hands
+one straight to the other.
+
+```dart
+return runAdminAction(
+  adminActions.createUser,
+  CreateUserContext(session, request),
+);
 ```
 
 ## Users / Roles / Groups
@@ -124,8 +146,10 @@ edit, delete — so the three flows share one list/dialog/confirm skeleton rathe
 than triplicating it. Create and edit open a reflected editor
 (`showAdminEditor`) bound to a client-local **draft** (`UserDraft`/`RoleDraft`/
 `GroupDraft`, extending `TomClass`); on save the draft folds by hand into the
-plain wire DTO the backend takes, mirroring the app client's
-`LoginCredentials → LoginRequest` seam. The console stays domain-agnostic — it
+wire DTO the backend takes, mirroring the app client's
+`LoginCredentials → LoginRequest` seam. A draft exists because a bound `TomForm`
+needs observable members, which the reflection-first wire DTOs deliberately do
+not have. The console stays domain-agnostic — it
 reads the raw `status` wire token (`'active'`/`'suspended'`), never the
 `UserStatus` enum.
 
@@ -136,6 +160,34 @@ is conditional, because a reflected `TomForm` validates *every* declared field,
 rendered or not). Group membership is a checklist over every account
 (`group-member-${userId}`), pre-checked from the group's current members and
 folded back into `GroupDto.memberUserIds` on save.
+
+### The avatar
+
+The user editor carries one control that is *not* a form field: the account's
+avatar, a `TomFormFileUpload` over `AppFileSlots.userAvatar(id)` — the auth
+server's `auth_users.avatar_ref` column. It is the same authenticated file
+client the app client attaches item files with, pointed at the other server,
+which is the whole reason the console has a file field at all: one client, one
+bearer, two servers.
+
+Three consequences follow from a slot not being a bound member. It is
+**edit-only** — a slot is addressed by the row's id, and on create there is no
+row. It **transfers on pick**, not on Save, and the field's description says so.
+And its stored state is read with a single `HEAD`
+(`TomFileTransferClient.describe`) when the editor opens rather than from
+`UserDto`, which carries no avatar column — the descriptor *is* what a `HEAD`
+returns, so asking the slot is asking the authoritative source. Because that
+read happens before the dialog exists, a failure surfaces on the list rather
+than inside an editor that never opened.
+
+The platform picker is registered once at bootstrap through
+`registerSampleAvatarPicker()` (`lib/files/sample_avatar_picker.dart`).
+`TomFormFileField` takes no dependency on a picker package, so an application
+registers exactly one adaptor with `TomFilePickerRegistry` and every file field
+in it opens that one. This console's adaptor composes a real 1×1 PNG rather than
+opening a gallery, because the sample's Flutter clients ship no platform folders;
+everything downstream of the picker — the `FileRef` conversion, the streaming
+upload, progress, cancel, retry — is the real code path.
 
 ## Grant matrix
 
@@ -179,6 +231,25 @@ Run the suite serially:
 flutter test --concurrency=1
 ```
 
+- `test/admin_login_form_test.dart` — the reflected `AdminLoginForm` in
+  isolation: it runs unscoped so `formId` *is* its base path, each field
+  self-addresses as its served bundle key, both fields are required, and
+  `bind`/`save` round-trips into the bound `AdminLoginCredentials`.
+- `test/login_resources_bootstrap_test.dart` (TC-8-02) — the sign-in screen
+  renders the raw resource *keys* with no bundle installed, proving no chrome
+  string is baked into the widget, and the server texts only after
+  `loadLoginResources`.
+- `test/full_resources_bootstrap_test.dart` (TC-9-02) — an admin sign-in installs
+  the admin-gated console bundle merged over the login bundle, and logout
+  restores exactly what was there before.
+- `test/form_label_resolution_test.dart` (TC-10-U/R/G) — the three CRUD forms
+  resolve their field labels from the installed bundle rather than from
+  overrides, asserted against a sentinel bundle so a resolved label cannot be
+  confused with a hardcoded one.
+- `test/user_avatar_test.dart` (TC-D12-09..15) — the avatar field: rendered from
+  the bundle, edit-only, uploading without waiting for Save, a stored avatar
+  found by the `HEAD` on open, progress and cancel on a transfer in flight, and
+  the file chrome coming from the server bundle.
 - `test/in_memory_admin_backend_test.dart` — the `InMemoryAdminBackend` contract
   (TC-32-01..18): the login + `admin`-role gate (admin proceeds, a non-admin is
   forbidden, a call before login fails), Users/Roles/Groups CRUD, the four-state
@@ -214,8 +285,10 @@ flutter test --concurrency=1
   into `listGroups` and updates the row subtitle on reload, an empty selection is
   refused inline, and a role and a group can be assigned together.
 
-The Users/Roles/Groups suites bind reflected forms, so they share
-`test/support/admin_console_harness.dart` (sign in, open a destination, save an
-editor, confirm a delete) and run `initializeReflection()` once in `setUpAll`.
-The Grants and Assignments suites are socket- and reflection-free (no `TomForm`),
-reusing only the harness's sign-in and destination helpers.
+Six suites drive the console through `test/support/admin_console_harness.dart`
+(sign in, open a destination, save an editor, confirm a delete): Users, Roles,
+Groups, `user_avatar_test.dart`, Grants and Assignments. The Grants and
+Assignments screens carry no `TomForm` of their own, but every suite still calls
+`initializeReflection()` once in `setUpAll` — reaching a destination means
+signing in first, and the login screen renders the reflected `AdminLoginForm`.
+All thirteen suites are socket-free: they run against `InMemoryAdminBackend`.

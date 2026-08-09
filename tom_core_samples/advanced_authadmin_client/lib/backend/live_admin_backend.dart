@@ -13,8 +13,9 @@
 /// (`AuthClientException`/`AdminApiException`/`TomAuthExpiredException`) into the
 /// single [AdminBackendException] the screens catch — preserving the server's
 /// stable error key, so the shell can still reject a non-admin login by keying on
-/// the `admin`-role gate's denial. The admin DTOs are plain records, so this
-/// backend needs no reflection.
+/// the `admin`-role gate's denial. The admin DTOs are reflection-first, so every
+/// call here reaches `dtoFromJson`/`dtoToJsonString` inside the client core: the
+/// console's `initializeReflection()` must have run before the first request.
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';

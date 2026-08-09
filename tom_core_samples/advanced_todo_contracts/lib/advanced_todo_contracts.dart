@@ -3,8 +3,9 @@
 /// The single definition of the over-the-wire surface, depended on by both
 /// servers (which implement it) and the shared client core (which calls it):
 ///
-/// - the JSON DTOs (`src/dtos.dart`) — plain value records with hand-written
-///   mapping;
+/// - the JSON DTOs (`src/dtos.dart`) — reflection-first wire shapes
+///   (`@tomReflector`, plain non-`final` fields, no hand-written
+///   `toJson`/`fromJson`), serialized through the kernel reflection path;
 /// - the typed service interfaces (`src/api_services.dart`) —
 ///   `AuthApiService`, `AdminApiService`, `AppApiService`, the implementation
 ///   seam shared by the servers and the client core;

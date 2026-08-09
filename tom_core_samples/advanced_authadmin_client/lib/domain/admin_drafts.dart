@@ -1,11 +1,12 @@
 /// The client-local reflected entities the admin editor forms bind (step 34).
 ///
 /// The wire DTOs (`UserDto`/`RoleDto`/`GroupDto`/…) in `advanced_todo_contracts`
-/// are deliberately plain value records (step 32). A bound `TomForm` needs a
-/// reflected [TomClass] to round-trip `bind`/`save` against, so each editor gets
-/// a small client-local *draft* — exactly the `LoginCredentials` pattern the app
-/// client uses. The screens fold a draft into the matching wire DTO on save and
-/// hydrate it from a DTO on edit.
+/// are reflection-first value records: `@tomReflector` classes with plain
+/// non-`final` fields, which is what the JSON round-trip needs but *not* what a
+/// bound `TomForm` needs — that requires a [TomClass] whose members are
+/// observables. So each editor gets a small client-local *draft* instead —
+/// exactly the `LoginCredentials` pattern the app client uses. The screens fold a
+/// draft into the matching wire DTO on save and hydrate it from a DTO on edit.
 ///
 /// Drafts carry only the fields an admin edits: a user's profile + status (its
 /// id is server-assigned and its password is set only at creation); a role's

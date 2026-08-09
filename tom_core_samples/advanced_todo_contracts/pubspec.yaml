@@ -1,9 +1,10 @@
 name: advanced_todo_contracts
 description: >-
-  Shared wire contracts for the advanced Tom Core full-stack sample — the
-  @tomService endpoint interfaces (AuthApiService, AdminApiService,
-  AppApiService) and the JSON DTOs (login, graded-field, share, grant-matrix,
-  admin CRUD) the servers implement and the clients call.
+  Shared wire contracts for the advanced Tom Core full-stack sample — the typed
+  service interfaces (AuthApiService, AdminApiService, AppApiService), the
+  kernel TomApi wire registry, and the reflection-first JSON DTOs (login,
+  graded-field, share, grant-matrix, admin CRUD, file descriptor, resource
+  bundle) the servers implement and the clients call.
 version: 0.1.0
 publish_to: none
 

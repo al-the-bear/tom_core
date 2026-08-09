@@ -97,12 +97,11 @@
 ///    collections down the containment chain, not just the item row.
 ///
 /// **Why the grant edit writes the whole `viewer` row.** `adminPutGrants`
-/// replaces grants *per role* (`replaceGrantsForRole`), and `adminGetGrants`
-/// cannot round-trip a single DTO over the live wire yet (the kernel
-/// reflection-serializer gap documented in `admin_api_client.dart`). So rather
-/// than read-modify-write the matrix, the test posts the complete intended
-/// `viewer` row (the §A.4 seed with just `title` flipped); that preserves the
-/// other six fields and is robust to the read-back gap. The test normalises
+/// replaces grants *per role* (`replaceGrantsForRole`), so a partial row would
+/// drop the keys it omits. Rather than read-modify-write the matrix, the test
+/// posts the complete intended `viewer` row (the §A.4 seed with just `title`
+/// flipped); that preserves the other six fields and keeps the scenario
+/// independent of whatever else the matrix holds. The test normalises
 /// `title` to `read` first (carol's write is rejected), regrades it to `full`
 /// (the same write now succeeds), and restores it to `read` in `finally`, so it
 /// leaves `auth_db` exactly as seeded and is re-runnable. carol's successful
