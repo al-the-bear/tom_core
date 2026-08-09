@@ -70,11 +70,16 @@ resolves the effective `TomAuthState` by combining, in order:
 
 1. **Resource auth** — `TomAuthorization.resolveAuth(basePath)` (`full` when no
    `basePath`).
-2. **Per-widget `authorizer`** — `authorizer.effectiveAuth(state)` when set.
-3. **`uiStateController`** — a build-time narrowing callback (can only narrow,
-   never widen).
-4. **Group auth** — `tomGroup.applyMode(state)` when the widget is a group
+2. **Group auth** — `tomGroup.applyMode(state)` when the widget is a group
    member.
+3. **Per-widget `authorizer`** — `authorizer.effectiveAuth(state)` when set.
+4. **`uiStateController`** — a build-time narrowing callback (can only narrow,
+   never widen).
+
+Resource and group together establish what is *granted*; the authorizer and the
+controller then narrow it. The controller runs last because `applyMode` widens
+under `controlsNarrowest` and replaces outright under `controlsAll` — a group
+applied afterwards would undo the narrowing the controller just performed.
 
 The resolved state selects the render path:
 

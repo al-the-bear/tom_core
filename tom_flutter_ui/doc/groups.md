@@ -87,9 +87,9 @@ that extends a Flutter original to gain:
 `getAuth()` composes the resolution layers in order:
 
 1. **Resource auth** for `basePath` (via `TomAuthorization.resolveAuth`).
-2. **Per-widget authorizer** (`authorizer.effectiveAuth`).
-3. **Build-time UI state controller** (`uiStateController.apply`, narrows only).
-4. **Group** (`tomGroup.applyMode`).
+2. **Group** (`tomGroup.applyMode`).
+3. **Per-widget authorizer** (`authorizer.effectiveAuth`).
+4. **Build-time UI state controller** (`uiStateController.apply`, narrows only).
 
 So a field whose resource auth is `full` but whose group resolves to `read`
 under `controlsWidest` ends up `read`. The model needs no `BuildContext` — only

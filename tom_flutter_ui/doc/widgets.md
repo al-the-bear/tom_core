@@ -112,8 +112,8 @@ but **no** `BuildContext`.
 ## Authorization, groups, and scope
 
 `effectiveAuthState` composes, in order: resource auth for `basePath`, the
-per-widget `authorizer`, the build-time `uiStateController` (narrows only), and
-the `tomGroup` mode. At render time `TomPolicyNodeBase` maps the result —
+`tomGroup` mode, the per-widget `authorizer`, and the build-time
+`uiStateController` (narrows only). At render time `TomPolicyNodeBase` maps the result —
 `none` → `SizedBox.shrink`, `disabled` → greyed `AbsorbPointer`, `read` → the
 read-only style, `full` → the content. The resolution itself is pure:
 
