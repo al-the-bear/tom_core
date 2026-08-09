@@ -144,7 +144,7 @@ already constructed, for bundles loaded from a database or an asset archive.
 | `textOrNull` | `String? textOrNull(String key, {TomTextLocale? locale, Map<String, Object?> parameters = const {}})` | The text at `key` for `locale`, with `{name}` placeholders substituted; `null` when no bundle in the chain has the key. |
 | `exists` | `bool exists(String key, {TomTextLocale? locale})` | Whether `key` resolves anywhere in the fallback chain — "will a render find something". |
 | `isTranslated` | `bool isTranslated(String key, TomTextLocale locale)` | Whether `key` is in that locale's **own** bundle, un-chained — "did somebody write this translation". |
-| `hasLocale` | `bool hasLocale(TomTextLocale locale)` | Whether a bundle exists for the locale's **exact** tag — "did someone write this translation". |
+| `hasLocale` | `bool hasLocale(TomTextLocale locale)` | Whether a bundle exists for the locale's **exact** tag — "did this deployment ship this bundle". |
 | `resolveLocale` | `TomTextLocale? resolveLocale(TomTextLocale? locale)` | The locale a lookup would read from, following the fallback chain; `null` when the set carries nothing. |
 | `substitute` | `static String substitute(String template, Map<String, Object?> parameters)` | Substitutes `{name}` in a template. Exposed so text from elsewhere is substituted the same way. |
 | `resolve` | `static TomLocalizedTextResources? resolve()` | The bundle set this deployment installed, or `null`. Nullable with no fallback: an empty default would render every message blank. |

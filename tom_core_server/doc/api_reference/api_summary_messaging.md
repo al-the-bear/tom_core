@@ -107,7 +107,7 @@ runner per message and failure alerting all remain the kernel scheduler's.
 names a template key and supplies parameters; `TomEmailRequest` has **no subject
 and no body field** and `TomSmsRequest` has **no text field**, so there is no way
 to spell a literal user-facing string through either API. The base owns `send`,
-`sendNow` and `requiredText`; a subclass supplies only its channel name and how
+`sendNow`, `deliverNow` and `requiredText`; a subclass supplies only its channel name and how
 one of its requests becomes a `TomMessage`. `TomEmailService` resolves
 `<templateKey>.subject`, `.text` and (optionally) `.html` against a
 `TomLocalizedTextResources` bundle set in the recipient's locale;
@@ -859,6 +859,7 @@ const TomTemplatedMessageService({
 | `render` | `TomMessage render(R request)` | *(abstract)* Turns a request into a message without queueing it — for a preview, a test, or a digest that renders many and queues one. Where every template fault surfaces, which is why `send` calls it before touching the queue. |
 | `send` | `Future<void> send(R request)` | Renders and queues. `async` rather than a forwarding expression, so a template fault arrives as a failed future rather than as a synchronous throw from an otherwise-asynchronous API. |
 | `sendNow` | `Future<void> sendNow(R request)` | Renders, queues and delivers immediately, for a message a human is waiting on. Retry behaviour is unchanged: only the first attempt skips the wait. |
+| `deliverNow` | `Future<TomDeliveryReceipt> deliverNow(R request)` | Renders and delivers **now, reporting the outcome** — no queue, no retry. The deliberate exception to "always through the outbox", for a payload whose value expires before the retry budget would and whose non-arrival the caller must therefore learn about immediately (a second-factor code is the case it exists for). The trade is explicit: `send`/`sendNow` cannot fail for a transport reason, this one can. Returns the transport's own receipt, so a partial delivery — some recipients accepted, others refused — is visible rather than being flattened into a success or a throw. |
 | `requiredText` | `String requiredText(String templateKey, String subKey, {TomTextLocale? locale, Map<String, Object?> parameters = const {}})` | Resolves `<templateKey>.<subKey>` or raises `TomMessagingException` (`messaging.<channelName>.template.missing`) naming the key and locale. Public for the **conditional fragment** — a sentence a body includes only sometimes, resolved on its own and passed in as a parameter. Resolve fragments fully before passing them in: substitution is one pass over the map. |
 
 ### TomEmailRequest
@@ -943,7 +944,7 @@ const TomEmailService({
 | `channelName` | `String` | *(override getter)* `email`. |
 | `subjectSubKey` / `textSubKey` / `htmlSubKey` | `static const String` | The sub-keys a template key is suffixed with: `subject`, `text`, `html`. |
 
-`outbox`, `texts`, `send`, `sendNow` and `requiredText` are inherited from
+`outbox`, `texts`, `send`, `sendNow`, `deliverNow` and `requiredText` are inherited from
 [TomTemplatedMessageService](#tomtemplatedmessageservice).
 
 #### Methods
@@ -1556,7 +1557,7 @@ const TomSmsService({
 | `channelName` | `String` | *(override getter)* `sms`. |
 | `textSubKey` | `static const String` | `text` — the whole template, on this channel. |
 
-`outbox`, `texts`, `send`, `sendNow` and `requiredText` are inherited from
+`outbox`, `texts`, `send`, `sendNow`, `deliverNow` and `requiredText` are inherited from
 [TomTemplatedMessageService](#tomtemplatedmessageservice).
 
 #### Methods

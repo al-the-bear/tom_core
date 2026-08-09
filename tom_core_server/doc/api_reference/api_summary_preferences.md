@@ -244,6 +244,13 @@ const TomUserPreferencesErrorHandler()
 | -------- | ---- | ----------- |
 | `notFoundKey` | `String` | `'preferences.not_found'` — the one key that becomes a `404`. |
 
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers `404` when `error` is a `TomException` whose `key` is `notFoundKey`, carrying the framework's error envelope and the `x-tom-error` header so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
+| `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not the one mapped miss is answered exactly as it would have been without this handler. |
+
 Why only that key: a client must be able to tell **"you have no such
 preference"** from **"the server is broken"**, and a client that cannot must
 either treat every failure as a miss or every miss as a failure. Mapping
