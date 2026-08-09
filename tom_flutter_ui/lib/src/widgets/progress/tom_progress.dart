@@ -37,7 +37,6 @@ class TomCircularProgressIndicator extends TomProgressBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.value,
     this.backgroundColor,
@@ -102,7 +101,6 @@ class TomLinearProgressIndicator extends TomProgressBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.value,
     this.backgroundColor,
@@ -173,7 +171,6 @@ class TomRefreshIndicator extends TomProgressBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.child,
     required Future<void> Function() onRefresh,
@@ -235,7 +232,6 @@ class TomCupertinoActivityIndicator extends TomProgressBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.animating = true,
     this.radius = 10.0,
@@ -281,7 +277,6 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.value,
     this.color,
@@ -332,7 +327,6 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.refreshTriggerPullDistance,
     this.refreshIndicatorExtent,
@@ -380,9 +374,6 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
   final TomAuthorizer? authorizer;
 
   @override
-  final TomAuthorizerStrategy authorizerStrategy;
-
-  @override
   final TomUIStateController? uiStateController;
 
   @override
@@ -394,7 +385,6 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.value,
     Color? backgroundColor,

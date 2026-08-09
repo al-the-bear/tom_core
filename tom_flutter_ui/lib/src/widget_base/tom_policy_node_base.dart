@@ -24,7 +24,6 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 

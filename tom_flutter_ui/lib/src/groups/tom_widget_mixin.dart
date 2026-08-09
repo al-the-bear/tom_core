@@ -22,10 +22,6 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// Optional per-widget authorizer.
   TomAuthorizer? get authorizer => null;
 
-  /// Authorizer strategy. Defaults to narrowing only.
-  TomAuthorizerStrategy get authorizerStrategy =>
-      TomAuthorizerStrategy.authorizerNarrowsOnly;
-
   /// Optional build-time state controller.
   TomUIStateController? get uiStateController => null;
 

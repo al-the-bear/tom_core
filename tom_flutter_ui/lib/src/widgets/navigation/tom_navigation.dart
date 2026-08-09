@@ -55,7 +55,6 @@ class TomNavigationRail extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.selectedIndex,
     ValueChanged<int>? onDestinationSelected,
@@ -170,7 +169,6 @@ class TomNavigationBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.selectedIndex = 0,
     ValueChanged<int>? onDestinationSelected,
@@ -279,7 +277,6 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.tabs,
     this.controller,
@@ -407,7 +404,6 @@ class TomNavigationDrawer extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.children,
     this.selectedIndex,
@@ -481,7 +477,6 @@ class TomDrawer extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.child,
     this.backgroundColor,
@@ -567,7 +562,6 @@ class TomBottomNavigationBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.items,
     this.currentIndex = 0,
@@ -670,7 +664,6 @@ class TomStepper extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.steps,
     this.currentStep = 0,
@@ -737,7 +730,6 @@ class TomTabBarView extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.children,
     this.controller,
@@ -786,7 +778,6 @@ class TomPageView extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.children,
     this.controller,
@@ -850,7 +841,6 @@ class TomCupertinoTabBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.items,
     ValueChanged<int>? onTap,
@@ -912,7 +902,6 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.leading,
     this.automaticallyImplyLeading = true,
@@ -990,7 +979,6 @@ class TomBreadcrumb extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.items,
     this.separator = const Text(' / '),
@@ -1054,7 +1042,6 @@ class TomTab extends Tab with TomWidgetMixin {
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.key,
     super.text,
@@ -1077,9 +1064,6 @@ class TomTab extends Tab with TomWidgetMixin {
 
   @override
   final TomAuthorizer? authorizer;
-
-  @override
-  final TomAuthorizerStrategy authorizerStrategy;
 
   @override
   final TomUIStateController? uiStateController;
@@ -1130,7 +1114,6 @@ class TomNavigationDestination extends NavigationDestination
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.key,
     required super.icon,
@@ -1153,9 +1136,6 @@ class TomNavigationDestination extends NavigationDestination
 
   @override
   final TomAuthorizer? authorizer;
-
-  @override
-  final TomAuthorizerStrategy authorizerStrategy;
 
   @override
   final TomUIStateController? uiStateController;
@@ -1207,7 +1187,6 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.key,
     required super.icon,
@@ -1230,9 +1209,6 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
 
   @override
   final TomAuthorizer? authorizer;
-
-  @override
-  final TomAuthorizerStrategy authorizerStrategy;
 
   @override
   final TomUIStateController? uiStateController;
@@ -1296,7 +1272,6 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.largeTitle,
     this.leading,
@@ -1360,7 +1335,6 @@ class TomFlexibleSpaceBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.title,
     this.background,
@@ -1406,7 +1380,6 @@ class TomDrawerHeader extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.decoration,
     this.padding,
@@ -1456,7 +1429,6 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.decoration,
     this.margin = const EdgeInsets.only(bottom: 8.0),
@@ -1506,7 +1478,6 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.color,
     this.previousPageTitle,
@@ -1546,7 +1517,6 @@ class TomTabPageSelector extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.controller,
     this.indicatorSize,

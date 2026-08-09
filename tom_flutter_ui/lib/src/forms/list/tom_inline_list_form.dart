@@ -104,7 +104,6 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.listForm,
     required this.rowBuilder,

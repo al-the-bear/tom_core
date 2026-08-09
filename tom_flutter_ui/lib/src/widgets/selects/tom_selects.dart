@@ -62,7 +62,6 @@ class TomDropdownButton<T> extends TomSelectBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.value,
     this.items,
@@ -201,7 +200,6 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required PopupMenuItemBuilder<T> itemBuilder,
     this.initialValue,
@@ -333,7 +331,6 @@ class TomDropdownMenu<T> extends TomSelectBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.initialSelection,
     ValueChanged<T?>? onSelected,
@@ -446,7 +443,6 @@ class TomMenuAnchor extends TomSelectBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.menuChildren,
     this.controller,
@@ -556,7 +552,6 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.items,
     this.value,
@@ -695,7 +690,6 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.children,
     required this.groupValue,
@@ -758,7 +752,6 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.key,
     super.value,
@@ -785,9 +778,6 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomAuthorizer? authorizer;
-
-  @override
-  final TomAuthorizerStrategy authorizerStrategy;
 
   @override
   final TomUIStateController? uiStateController;
@@ -834,7 +824,6 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.key,
     super.height,
@@ -853,9 +842,6 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
 
   @override
   final TomAuthorizer? authorizer;
-
-  @override
-  final TomAuthorizerStrategy authorizerStrategy;
 
   @override
   final TomUIStateController? uiStateController;
@@ -908,7 +894,6 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.key,
     super.value,
@@ -934,9 +919,6 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
 
   @override
   final TomAuthorizer? authorizer;
-
-  @override
-  final TomAuthorizerStrategy authorizerStrategy;
 
   @override
   final TomUIStateController? uiStateController;
@@ -1006,7 +988,6 @@ class TomCupertinoPicker extends TomSelectBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     this.diameterRatio,
     this.backgroundColor,
@@ -1072,7 +1053,6 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.children,
     this.groupValue,
@@ -1126,7 +1106,6 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
     super.key,
     super.onTap,
@@ -1149,9 +1128,6 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomAuthorizer? authorizer;
-
-  @override
-  final TomAuthorizerStrategy authorizerStrategy;
 
   @override
   final TomUIStateController? uiStateController;

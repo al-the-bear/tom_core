@@ -8,7 +8,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// - [tomGroup] — optional group membership.
 /// - [scope] — optional explicit scope (defaults to [TomScope.current]).
 /// - [authorizer] — optional per-widget authorizer.
-/// - [authorizerStrategy] — how authorizer interacts with resource auth.
 /// - [uiStateController] — build-time state narrowing callback.
 /// - Resource path resolution via [basePath].
 /// - Debug identity via [debugLabel].
@@ -33,13 +32,9 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   /// Optional per-widget authorizer that can modify authorization outcomes.
   ///
   /// When set, the authorizer is consulted after resource-based authorization
-  /// and can modify the effective state according to [authorizerStrategy].
+  /// and combines its verdict with the resource state according to its own
+  /// [TomAuthorizer.strategy].
   final TomAuthorizer? authorizer;
-
-  /// Strategy controlling how [authorizer] interacts with resource auth.
-  ///
-  /// Defaults to [TomAuthorizerStrategy.authorizerNarrowsOnly].
-  final TomAuthorizerStrategy authorizerStrategy;
 
   /// Build-time callback that can further narrow the widget's state.
   ///
@@ -59,7 +54,6 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
     this.tomGroup,
     this.scope,
     this.authorizer,
-    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
   })  : constructionScope = scope ?? TomScope.current,
         basePath = _resolveBasePath(tomId, scope) {

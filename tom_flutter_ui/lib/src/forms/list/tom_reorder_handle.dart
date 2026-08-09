@@ -54,7 +54,6 @@ class TomReorderHandle extends TomImageBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
     required this.index,
     IconData? icon,

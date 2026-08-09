@@ -13,7 +13,6 @@ abstract class TomFamilyBase extends TomPolicyNodeBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -39,7 +38,6 @@ abstract class TomButtonBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -55,7 +53,6 @@ abstract class TomInputBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -71,7 +68,6 @@ abstract class TomSelectBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -87,7 +83,6 @@ abstract class TomToggleBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -103,7 +98,6 @@ abstract class TomSliderBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -119,7 +113,6 @@ abstract class TomContainerBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -135,7 +128,6 @@ abstract class TomDialogBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -151,7 +143,6 @@ abstract class TomTableBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -167,7 +158,6 @@ abstract class TomLabelBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -183,7 +173,6 @@ abstract class TomImageBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -199,7 +188,6 @@ abstract class TomNavigationBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -215,7 +203,6 @@ abstract class TomProgressBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -231,7 +218,6 @@ abstract class TomChipBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -247,7 +233,6 @@ abstract class TomListBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -263,7 +248,6 @@ abstract class TomTreeBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -279,7 +263,6 @@ abstract class TomSliverBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -295,7 +278,6 @@ abstract class TomAnimatedBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -311,7 +293,6 @@ abstract class TomEffectBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -327,7 +308,6 @@ abstract class TomInteractionBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
@@ -343,7 +323,6 @@ abstract class TomBuilderBase extends TomFamilyBase {
     super.tomGroup,
     super.scope,
     super.authorizer,
-    super.authorizerStrategy,
     super.uiStateController,
   });
 
