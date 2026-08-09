@@ -19,11 +19,14 @@ import '../common/showcase_section.dart';
 /// the resolved [AclFormFactor].
 Widget _factorLayout(double width) {
   final factor = AclDeviceContext.resolveFormFactor(width);
-  return Column(
+  // G-UI-2: the readout and its column are Tom primitives, matching every other
+  // group's badge. Only the width pin below stays a raw SizedBox — pure
+  // geometry, and it is the constraint the cell exists to demonstrate.
+  return TomColumn(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('resolveFormFactor($width) → ${factor.name}'),
-      const SizedBox(height: 8),
+      TomText(text: 'resolveFormFactor($width) → ${factor.name}'),
+      TomSizedBox(height: 8),
       SizedBox(
         width: width,
         child: AclBuilder()

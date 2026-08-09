@@ -41,7 +41,7 @@ final ShowcaseGroup familySwapGroup = ShowcaseGroup(
           'TomFormStyleScope(\n'
           '  style: const TomFormStyle(),\n'
           '  styleBpOverrides: [(700, TomCupertinoFormStyle.cupertino)],\n'
-          '  child: LayoutBuilder(builder: (ctx, c) {\n'
+          '  child: TomLayoutBuilder(builder: (ctx, c) {\n'
           '    final wide = c.maxWidth >= 700;\n'
           '    return (wide ? material : cupertino).buildColumn();\n'
           '  }),\n'

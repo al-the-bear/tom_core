@@ -20,7 +20,8 @@ flutter test       # smoke + cell-contract tests
 
 | Piece | File | Role |
 | --- | --- | --- |
-| Entry point | `lib/main.dart` | Installs an empty `TomTextResourceProvider` then `runApp` |
+| Entry point | `lib/main.dart` | Installs the `chromeTexts` resource bundle then `runApp` |
+| Chrome bundle | `lib/common/chrome_texts.dart` | The showcase's own interactive-chrome strings |
 | App shell | `lib/showcase_app.dart` | `MaterialApp` + a home index listing every group |
 | The teaching cell | `lib/common/showcase_cell.dart` | A `ShowcaseCell` shows a verbatim snippet beside the live widget |
 | Code block | `lib/common/code_block.dart` | Monospace, copy-to-clipboard source rendering |

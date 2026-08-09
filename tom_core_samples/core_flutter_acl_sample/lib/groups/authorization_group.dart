@@ -10,9 +10,9 @@
 ///
 /// Here each cell places a [TomElevatedButton] pinned to one state (via
 /// [TomAuthorizer.fixed]) inside an [AclBuilder] row, so the gating composes
-/// with the layout engine. `disabled` and `read` render **distinctly** — the
-/// conflation removed by the flutter_ui four-state work (decisions R§18). In a
-/// real app the state flows from a resource provider or action controller.
+/// with the layout engine. `disabled` and `read` render **distinctly** — they
+/// are separate renderings, not two names for the same greying. In a real app
+/// the state flows from a resource provider or action controller.
 library;
 
 import 'package:flutter/material.dart';

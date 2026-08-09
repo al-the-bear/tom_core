@@ -167,6 +167,32 @@ void main() {
       expect(find.text('medium layout'), findsOneWidget);
       expect(find.text('narrow layout'), findsNothing);
     });
+
+    // A variant's rows are harvested from a second, throwaway AclBuilder. That
+    // builder must be finalized the same way `build()` finalizes the main one,
+    // or the *last* component appended inside the variant never receives the
+    // auto-defaulted preferred width — and without that flag the container does
+    // not wrap it in the measure/clip box. The first frame, which has no
+    // measurement yet, then lays the row out unclipped and overflows for one
+    // frame. `pumpAndSettle` hides it; a single pump does not.
+    testWidgets('an active variant lays out without overflow on its first '
+        'frame', (tester) async {
+      final acl = AclBuilder()
+          .append(const Text('wide layout'))
+          .addVariant(
+            'narrow',
+            atWidth: 300,
+            builder: (b) => b
+                .append(const Text('first narrow line'))
+                .newRow(dist: 6)
+                .append(const Text('second narrow line')),
+          )
+          .build();
+
+      await tester.pumpWidget(_host(acl, width: 250));
+
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Acl row breakpoints — _applyRowBreakpoints', () {

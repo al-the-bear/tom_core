@@ -282,13 +282,15 @@ The flow is: **role → matrix → per-field authorizer → render**.
    field:
 
    ```dart
-   TomAuthorizer _authFor(String key) =>
-       TomAuthorizer.fixed(fieldStates[key] ?? TomAuthState.none);
+   // The field's own tomId composes both its label key and its grant key,
+   // from the one scope constant — so the two can never diverge.
+   TomAuthorizer _authFor(String tomId) => TomAuthorizer.fixed(
+       fieldStates['$todoItemScope.$tomId'] ?? TomAuthState.none);
 
    late final priority = TomFormStringDropdown(
      'priority', TodoPriority.medium.name,
      form: this, source: _prioritySource,
-     authorizer: _authFor('todo.item.priority'),
+     authorizer: _authFor('priority'),
    );
    ```
 
@@ -346,8 +348,7 @@ with `Navigator.of(context).push(TomPageRoute(...))`: `TomPageRoute` captures
 the active `TomScope` at push time and re-enters it around the pushed screen's
 builder, so the screen constructs in the pushing scope rather than the
 Navigator's zone — closing the scope-propagation gap G-UI-6 warns about (a
-form's scope "is usually a Flutter route"). Both primitives were added by quest
-todo **RCD2**.
+form's scope "is usually a Flutter route").
 
 ---
 
@@ -358,11 +359,19 @@ server's read endpoints. The networking is trivial; the value is in keeping the
 **mapping pure**:
 
 ```dart
-List<TodoItem> parseTodos(Map<String, dynamic> body) { … }
+List<TodoItem> parseTodos(List<Object?> body) { … }
 Map<String, Map<String, TomAuthState>> parseFieldStates(Map<String, dynamic> body) { … }
 TomAuthState parseAuthState(String? token) =>
-    TomAuthState.values.asNameMap()[token] ?? TomAuthState.none;
+    TodoFieldMatrixDto.parseState(token);
 ```
+
+The bodies are the **reflection-first wire DTOs** declared in `todo_domain`
+(G-DTO): `/todos` is a JSON array of `TodoItemDto`, `/todos/field-states` a
+`TodoFieldMatrixDto`. Each parser deserializes through the kernel reflection
+path (`dtoFromJson`) and then projects into the observable form entity, so the
+client never hand-parses a field name the server chose — and an unrecognised
+grade token degrades to `TomAuthState.none` through the DTO's own closed-safe
+`parseState`.
 
 Those functions are unit-tested against captured JSON with no socket in the
 test, which is why the live path is verifiable even though the server must be
@@ -403,7 +412,9 @@ core_client_sample/
     ├── in_memory_api_test.dart         # backend contract: login / CRUD / matrix
     ├── live_read_client_test.dart      # pure JSON parsers
     ├── login_flow_test.dart            # widget: sign in / out, inline error
-    └── todo_crud_test.dart             # widget: CRUD + per-role field states
+    ├── todo_crud_test.dart             # widget: CRUD + per-role field states
+    ├── todo_item_form_test.dart        # single field identity: basePath = wire key
+    └── validator_resolution_test.dart  # resource-declared validators + messages
 ```
 
 ---

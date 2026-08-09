@@ -52,30 +52,37 @@ class _InlineOrderListState extends TomState<_InlineOrderList> {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // TomInlineListForm shrink-wraps its rows and never scrolls itself,
+          // so it renders at its natural height wherever it is placed. In a
+          // bounded pane the pane supplies the scrolling — which is also the
+          // arrangement an application copies: the list grows with the data,
+          // the surrounding region decides how much of it is on screen.
           TomExpanded(
-            child: TomInlineListForm<OrderItem, OrderItemForm>(
-              listForm: _listForm,
-              reorderable: true,
-              rowBuilder: (context, index, rowForm) => TomCard(
-                key: ValueKey('order-row-${rowForm.hashCode}'),
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                color: index == _selectedIndex
-                    ? Theme.of(context).colorScheme.surfaceContainerHighest
-                    : null,
-                child: TomInkWell(
-                  onTap: () => _select(index),
-                  child: TomPadding(
-                    padding: const EdgeInsets.all(8),
-                    child: TomRow(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TomReorderHandle(index: index),
-                        TomSizedBox(width: 8),
-                        TomExpanded(
-                            flex: 3, child: rowForm.productName.widget),
-                        TomSizedBox(width: 8),
-                        TomExpanded(child: rowForm.quantity.widget),
-                      ],
+            child: TomSingleChildScrollView(
+              child: TomInlineListForm<OrderItem, OrderItemForm>(
+                listForm: _listForm,
+                reorderable: true,
+                rowBuilder: (context, index, rowForm) => TomCard(
+                  key: ValueKey('order-row-${rowForm.hashCode}'),
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  color: index == _selectedIndex
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                      : null,
+                  child: TomInkWell(
+                    onTap: () => _select(index),
+                    child: TomPadding(
+                      padding: const EdgeInsets.all(8),
+                      child: TomRow(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TomReorderHandle(index: index),
+                          TomSizedBox(width: 8),
+                          TomExpanded(
+                              flex: 3, child: rowForm.productName.widget),
+                          TomSizedBox(width: 8),
+                          TomExpanded(child: rowForm.quantity.widget),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -106,14 +113,17 @@ final ShowcaseGroup listsGroup = ShowcaseGroup(
       title: 'TomInlineListForm + toolbar',
       note: 'Tap a row to select it, then use the toolbar to remove or move '
           'it; drag the handle to reorder. Add appends a fresh OrderItem.',
-      code: "TomInlineListForm<OrderItem, OrderItemForm>(\n"
-          "  listForm: listForm,\n"
-          "  reorderable: true,\n"
-          "  rowBuilder: (context, index, rowForm) => Row(children: [\n"
-          "    TomReorderHandle(index: index),\n"
-          "    Expanded(flex: 3, child: rowForm.productName.widget),\n"
-          "    Expanded(child: rowForm.quantity.widget),\n"
-          "  ]),\n"
+      code: "// The inline list shrink-wraps; a bounded pane scrolls it.\n"
+          "SingleChildScrollView(\n"
+          "  child: TomInlineListForm<OrderItem, OrderItemForm>(\n"
+          "    listForm: listForm,\n"
+          "    reorderable: true,\n"
+          "    rowBuilder: (context, index, rowForm) => Row(children: [\n"
+          "      TomReorderHandle(index: index),\n"
+          "      Expanded(flex: 3, child: rowForm.productName.widget),\n"
+          "      Expanded(child: rowForm.quantity.widget),\n"
+          "    ]),\n"
+          "  ),\n"
           ")\n"
           "// …\n"
           "TomListFormToolbar<OrderItem, OrderItemForm>(\n"

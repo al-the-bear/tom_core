@@ -175,10 +175,14 @@ file size: a form that cannot bind is not a form.
 Two small types under [`lib/common/`](lib/common) carry the whole presentation:
 
 - **`ShowcaseCell`** — one teaching entry: a `title`, the verbatim `code`
-  snippet, the live `child` widget, and an optional `note`. It renders
-  `code | rendered` side-by-side on wide viewports and stacked on narrow ones.
-  Both halves are asserted present by the cell test, so an empty snippet can
-  never slip through.
+  snippet, the live `child` widget, an optional `note`, and an optional
+  `previewMinWidth`. It renders `code | rendered` side-by-side on wide viewports
+  and stacked on narrow ones. Both halves are asserted present by the cell test,
+  so an empty snippet can never slip through.
+  A preview that stops rendering below a width declares `previewMinWidth`; the
+  cell then raises its split threshold to leave room for both halves *and* gives
+  the preview column that preferred width, so the split actually grants it. Only
+  the master-detail cell needs one, at 560 px.
 - **`ShowcaseGroup`** — a feature family: an `id`, `title`, one-line `summary`,
   an `icon`, and a `cells(context)` builder. The home screen lists every group;
   tapping one opens a `GroupScreen` that scrolls its cells.
@@ -459,14 +463,17 @@ sub-form per item, and `TomListFormToolbar` adds, removes and reorders rows.
 Structural mutations flow straight back into the bound list:
 
 ```dart
-TomInlineListForm<OrderItem, OrderItemForm>(
-  listForm: listForm,
-  reorderable: true,
-  rowBuilder: (context, index, rowForm) => Row(children: [
-    TomReorderHandle(index: index),
-    Expanded(flex: 3, child: rowForm.productName.widget),
-    Expanded(child: rowForm.quantity.widget),
-  ]),
+// The inline list shrink-wraps; a bounded pane scrolls it.
+SingleChildScrollView(
+  child: TomInlineListForm<OrderItem, OrderItemForm>(
+    listForm: listForm,
+    reorderable: true,
+    rowBuilder: (context, index, rowForm) => Row(children: [
+      TomReorderHandle(index: index),
+      Expanded(flex: 3, child: rowForm.productName.widget),
+      Expanded(child: rowForm.quantity.widget),
+    ]),
+  ),
 )
 // …
 TomListFormToolbar<OrderItem, OrderItemForm>(
@@ -475,6 +482,11 @@ TomListFormToolbar<OrderItem, OrderItemForm>(
   onSelectionChanged: select,
 )
 ```
+
+The scroll view is part of the pattern: `TomInlineListForm` shrink-wraps its
+rows and gives them `NeverScrollableScrollPhysics`, so it always renders at its
+natural height and never scrolls itself — which is what lets it sit inside a
+longer page. In a bounded pane the pane supplies the scrolling instead.
 
 `OrderItemListForm extends TomListForm<OrderItem, OrderItemForm>` supplies
 `createItem()` (a seeded fresh row for *add*) and a `formFactory` (the per-row

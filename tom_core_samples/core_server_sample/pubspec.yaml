@@ -1,10 +1,10 @@
 name: core_server_sample
 description: >-
-  Tom Core sample backend — a todo-management API on tom_core_server. Persists
-  the shared todo_domain model, authenticates users, and grades field access
-  with the four-state authorization schema. The persistence + authorization
-  core is analyze-clean and unit-tested without a database; the live boot runs
-  against the bundled Docker MariaDB.
+  Tom Core sample backend — a read-only todo-management API on tom_core_server.
+  Persists the shared todo_domain model and serves the four-state authorization
+  grade matrix over public endpoints. The persistence + authorization core is
+  analyze-clean and unit-tested without a database; the live boot runs against
+  the bundled Docker MariaDB.
 version: 0.1.0
 publish_to: none
 

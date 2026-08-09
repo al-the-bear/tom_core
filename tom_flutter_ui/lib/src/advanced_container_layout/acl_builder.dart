@@ -1147,6 +1147,14 @@ class AclBuilder {
       titleVerticalOffset: _titleVerticalOffset,
     );
     builder(variantBuilder);
+    // Why: the variant's rows are harvested straight out of the throwaway
+    // builder, so nothing else ever calls the finalization `build()` performs.
+    // Without it the last component appended inside the variant keeps a null
+    // preferred size and never carries `preferredWidthIsDefault` — which is the
+    // flag that puts it inside the measure/clip box. It would then lay out
+    // unclipped on the first frame, before any measurement exists, and overflow
+    // for exactly that frame.
+    variantBuilder._finalizeCurrentComponent();
     _variants.add(AclVariant(
       name: name,
       atWidth: atWidth,

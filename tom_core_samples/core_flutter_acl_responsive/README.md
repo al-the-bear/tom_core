@@ -143,12 +143,17 @@ Two small types under `lib/common/` carry every page:
   threshold the mechanism reacts at.
 
 `ShowcaseCell` **dogfoods the engine the sample is about** to lay *itself* out —
-side by side on tablet/desktop widths, stacked on phone widths — using the same
-form-factor tiers it teaches rather than a bare numeric `MediaQuery` compare:
+snippet and preview share one row while the cell is at least 720px wide, and
+reflow to a stack below it. It reaches for a row breakpoint on the engine's own
+builder rather than a hand-rolled `MediaQuery` compare (G-UI-4):
 
 ```dart
-final width = MediaQuery.sizeOf(context).width;
-final wide = AclDeviceContext.resolveFormFactor(width) != AclFormFactor.phone;
+AclBuilder()
+    .setAclExpandXDefault(true)
+    .append(codeView)
+    .addRowBreakpoint(atWidth: 720, splitRowDist: 12)
+    .append(preview, dist: 16)
+    .build()
 ```
 
 Live forms are owned by **`FormHost<F>`**, which creates the form inside a
@@ -232,7 +237,7 @@ material.bind(shared); cupertino.bind(shared);   // ONE entity
 TomFormStyleScope(
   style: const TomFormStyle(),
   styleBpOverrides: [(700, TomCupertinoFormStyle.cupertino)],
-  child: LayoutBuilder(builder: (ctx, c) {
+  child: TomLayoutBuilder(builder: (ctx, c) {
     final wide = c.maxWidth >= 700;
     return (wide ? material : cupertino).buildColumn();
   }),

@@ -10,6 +10,8 @@
 /// breakpoint (G-UI-4), not a hand-rolled `MediaQuery` width compare.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
@@ -32,6 +34,7 @@ class ShowcaseCell extends TomStatelessWidget {
     required this.code,
     required this.child,
     this.note,
+    this.previewMinWidth,
   });
 
   /// Human-readable label for the component being shown.
@@ -47,6 +50,31 @@ class ShowcaseCell extends TomStatelessWidget {
 
   /// Optional caveat shown under the title.
   final String? note;
+
+  /// The narrowest surface [child] renders correctly on, when it has one.
+  ///
+  /// Most previews are elastic and leave this null. A few — the master-detail
+  /// scaffold with its fixed-width master pane, the editable list with its
+  /// multi-field rows — stop fitting below a width, and side-by-side is what
+  /// takes them there: the split halves the cell. Declaring the width lets the
+  /// cell stack instead of shrinking the preview past what it can render.
+  final double? previewMinWidth;
+
+  /// The narrowest code column worth splitting for. Below it the snippet wraps
+  /// so hard that the side-by-side reading the cell exists for is lost.
+  static const double _minCodeWidth = 280;
+
+  /// The gutter between the two columns.
+  static const double _gutter = 16;
+
+  /// The cell width below which the `code | preview` pair stacks.
+  ///
+  /// Splitting is only worth it when both halves fit: the preview's declared
+  /// minimum, a readable code column, and the gutter between them. 720 is the
+  /// floor for a preview that declares nothing.
+  double get _splitBelow => previewMinWidth == null
+      ? 720
+      : math.max(720, previewMinWidth! + _minCodeWidth + _gutter);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -74,20 +102,32 @@ class ShowcaseCell extends TomStatelessWidget {
             TomSizedBox(height: 12),
             // G-UI-4: the `code | preview` split reflows through an AclBuilder
             // row breakpoint rather than a hand-rolled MediaQuery compare — the
-            // two columns share one row while the cell is at least 720px wide
-            // and stack below it. The ACL default top cross-alignment (and its
-            // intrinsic-free measurement) keeps previews that build an internal
-            // LayoutBuilder — e.g. the ACL engine itself — robust.
-            AclBuilder()
-                .setAclExpandXDefault(true)
-                .append(codeView)
-                .addRowBreakpoint(atWidth: 720, splitRowDist: 12)
-                .append(preview, dist: 16)
-                .build(),
+            // two columns share one row while the cell is wide enough for both
+            // and stack below that. The ACL default top cross-alignment (and
+            // its intrinsic-free measurement) keeps previews that build an
+            // internal LayoutBuilder — e.g. the ACL engine itself — robust.
+            _split(codeView, preview),
           ],
         ),
       ),
     );
+  }
+
+  /// Lays the two halves out as one ACL row that breaks below [_splitBelow].
+  Widget _split(Widget codeView, Widget preview) {
+    final builder = AclBuilder()
+        .setAclExpandXDefault(true)
+        .append(codeView)
+        .addRowBreakpoint(atWidth: _splitBelow, splitRowDist: 12)
+        .append(preview, dist: _gutter);
+    // Both columns expand, so the slack is shared from their preferred widths
+    // — a preview left at the default preferred width ends up much narrower
+    // than the code column, whose long snippet lines prefer a wide box. A
+    // declared minimum is what makes the split honour the width the preview
+    // actually needs; the breakpoint above guarantees the row is wide enough
+    // to grant it.
+    if (previewMinWidth != null) builder.setPSize(previewMinWidth!);
+    return builder.build();
   }
 }
 

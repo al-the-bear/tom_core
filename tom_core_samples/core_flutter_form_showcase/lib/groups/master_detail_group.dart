@@ -219,6 +219,9 @@ final ShowcaseGroup masterDetailGroup = ShowcaseGroup(
           "  detailBuilder: (context, _, rowForm) =>\n"
           "      DetailPane(form: rowForm),\n"
           ")",
+      // The master pane is a fixed 220px; below ~560 the detail pane has no
+      // room left for its field column, so the cell stacks rather than split.
+      previewMinWidth: 560,
       child: _MasterDetailDemo(),
     ),
   ],

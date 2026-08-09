@@ -1,8 +1,7 @@
 // Four-state authorization contract: the `none` state is distinct from the
 // three visible states, and the visible states each render their content.
 //
-// Ports the spirit of the flutter_ui four-state anti-conflation work (decisions
-// R§18) into this sample: `none` collapses the gated widget to nothing, while
+// `none` collapses the gated widget to nothing, while
 // `full`, `read` and `disabled` all keep the button on screen. (The pixel-level
 // opacity distinction between `disabled` and `read` is asserted in
 // tom_flutter_ui's own suite; here we assert the sample wires all four states

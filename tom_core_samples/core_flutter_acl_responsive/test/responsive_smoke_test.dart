@@ -20,7 +20,8 @@ void main() {
   setUpAll(initializeReflection);
 
   setUp(() {
-    // Mirror main(): install an empty provider so any singleton probe resolves.
+    // Mirror main(): install the chrome bundle so TomCtr.text resolves rather
+    // than echoing the key back as a development indicator.
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(chromeTexts),
     );

@@ -64,7 +64,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 | Piece | File | Role |
 | --- | --- | --- |
-| Entry point | `lib/main.dart` | Installs an empty `TomTextResourceProvider`, then `runApp` |
+| Entry point | `lib/main.dart` | Installs the `chromeTexts` resource bundle then `runApp` |
+| Chrome bundle | `lib/common/chrome_texts.dart` | The tour's own interactive-chrome strings |
 | App shell | `lib/acl_app.dart` | `MaterialApp` + a home index listing every capability group |
 | The teaching cell | `lib/common/showcase_cell.dart` | A `ShowcaseCell` shows a verbatim snippet beside the live layout |
 | Code block | `lib/common/code_block.dart` | Monospace, copy-to-clipboard source rendering |
@@ -330,8 +331,8 @@ AclBuilder()
 // later: ctrl.mode = AclGroupVisibilityMode.hidden;
 ```
 
-The visibility cell in the app is interactive — a `Switch` drives the controller
-live. *Source: `group_visibility_demo`.*
+The visibility cell in the app is interactive — a `TomSwitch` drives the
+controller live. *Source: `group_visibility_demo`.*
 
 ### 10. Four-state authorization
 
@@ -363,10 +364,11 @@ AclBuilder()
     .build();
 ```
 
-All four states render distinctly today — `disabled` is no longer conflated with
-`read` (the flutter_ui four-state work, decisions R§18). `test/authorization_states_test.dart`
-asserts the `none` state collapses while the three visible states keep the button
-on screen. *Source: `widget_demos/demo_28_authorization` + `tom_policy_node_base.dart`.*
+All four states render distinctly: `disabled` and `read` are separate renderings,
+not two names for the same greying. `test/authorization_states_test.dart` asserts
+the `none` state collapses while the three visible states keep the button on
+screen. *Source: `widget_demos/demo_28_authorization` +
+`tom_policy_node_base.dart`.*
 
 ---
 

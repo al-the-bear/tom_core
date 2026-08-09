@@ -119,12 +119,48 @@ stored value with no change here.
 
 ---
 
+## The wire contract
+
+The entities above are what the *application* holds. What crosses the network is
+a second, flatter set of shapes under `lib/src/wire/`, exported from the same
+barrel:
+
+| DTO | Endpoint | Shape |
+| --- | --- | --- |
+| `TodoItemDto` | `GET /todos` (a bare array) | flat projection: keys as strings, `priority`/`label` as their enum `.name` token, `dueDate` as an ISO-8601 string (empty when unset) |
+| `TodoFieldMatrixDto` | `GET /todos/field-states` | `{states: {role: {resourceKey: token}}}` — the full `role → field → TomAuthState` grade matrix |
+
+Both are **reflection-first** (G-DTO): a `@tomReflector` class with plain
+non-`final` fields and **no** hand-written `toJson`/`fromJson`. The framework
+round-trips them through the same kernel reflection path as the entities — the
+server's endpoint pipeline drives it directly, while off-server consumers (the
+Flutter client's live read path, the round-trip tests) go through the three
+one-liners in `dto_reflection.dart`:
+
+```dart
+final map = dtoToMap(dto);                       // DTO  → JSON-ready map
+final json = dtoToJsonString(dto);               // DTO  → JSON string
+final back = dtoFromJson<TodoItemDto>(map);      // map  → DTO
+```
+
+Values that cannot cross the wire as their native type travel as a stable token
+with a typed accessor on the near side, and the readers are **closed-safe**: an
+unset or unrecognised `TodoFieldMatrixDto` cell resolves to `TomAuthState.none`
+rather than throwing, so an unknown grade denies rather than escalates.
+
+The DTOs live beside the entities rather than in a separate contracts package
+because this deliberately-minimal pair already shares one reflected package
+across both tiers; the `wire/` folder keeps the domain-versus-transport
+separation without a second package to build and reflect.
+
+---
+
 ## Reflection — initialise once
 
 Reflection metadata is generated, not hand-written. The package ships a
-generated `lib/src/entities.reflection.dart` exposing a single
+generated `lib/src/reflection_entry.reflection.dart` exposing a single
 `initializeReflection()` function, re-exported from the public barrel. Call it
-**once** at startup, before constructing any entity:
+**once** at startup, before constructing any entity or parsing a wire DTO:
 
 ```dart
 import 'package:todo_domain/todo_domain.dart';
@@ -151,10 +187,13 @@ cd tom_core_samples/todo_domain
 ./reflection_generation.sh        # runs: dart run tom_reflection_generator build
 ```
 
-The generator's entrypoint is `lib/src/entities.dart` (configured in
-`build.yaml`); it follows the barrel's exports to discover every `@tomReflector`
-class and rewrites `lib/src/entities.reflection.dart`. The generated file is
-excluded from analysis by the shared workspace `analysis_options.yaml`.
+The generator's entrypoint is `lib/src/reflection_entry.dart` (configured in
+`build.yaml`); the generator only processes files that expose a `main()`, so
+that file exists solely to give it one — its `main()` touches each reflected
+type, and the generator follows the import graph from there to discover every
+`@tomReflector` class, rewriting `lib/src/reflection_entry.reflection.dart`. It
+is never called at runtime. The generated file is excluded from analysis by the
+shared workspace `analysis_options.yaml`.
 
 ---
 
@@ -177,6 +216,11 @@ todo_domain/
       project.dart                 Project
       todo_list.dart               TodoList
       todo_item.dart               TodoItem
+      wire/
+        wire.dart                  wire barrel (exported from todo_domain.dart)
+        todo_item_dto.dart         TodoItemDto — GET /todos
+        todo_field_matrix_dto.dart TodoFieldMatrixDto — GET /todos/field-states
+        dto_reflection.dart        dtoFromJson / dtoToMap / dtoToJsonString
   example/
     build_hierarchy_example.dart   Project → TodoList → TodoItem nesting
     enum_round_trip_example.dart   enum stored as name, read back typed

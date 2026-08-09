@@ -1,9 +1,15 @@
 # core_server_sample
 
 A worked example of a **Tom Core backend**: a small todo-management API built on
-`tom_core_server`. It persists the shared `todo_domain` model to MariaDB,
-authenticates users, and grades individual field access with the framework's
-**four-state authorization** schema.
+`tom_core_server`. It persists the shared `todo_domain` model to MariaDB and
+serves the framework's **four-state authorization** grade matrix — the per-role,
+per-field access decision — over three public `GET` endpoints.
+
+Authentication is deliberately **not** part of this sample: the endpoints are
+`@TomPublicAccess`, so the grading you see is the stored `(role, field)` matrix
+rather than a decision made about a logged-in principal. The secured successor
+that adds JWT login and per-principal grading is the
+[**Advanced Tom Core Full-Stack Sample**](../README_advanced_sample.md).
 
 The sample is split deliberately into two halves:
 
@@ -383,11 +389,17 @@ straight out of the database:
 
 ```json
 {
-  "owner":  {"todo.item.title":"full","todo.item.done":"full","todo.item.priority":"full","todo.item.assigneeId":"full"},
-  "member": {"todo.item.title":"full","todo.item.done":"full","todo.item.priority":"none","todo.item.assigneeId":"read"},
-  "viewer": {"todo.item.title":"read","todo.item.done":"disabled","todo.item.priority":"read","todo.item.assigneeId":"read"}
+  "states": {
+    "owner":  {"todo.item.title":"full","todo.item.done":"full","todo.item.priority":"full","todo.item.assigneeId":"full"},
+    "member": {"todo.item.title":"full","todo.item.done":"full","todo.item.priority":"none","todo.item.assigneeId":"read"},
+    "viewer": {"todo.item.title":"read","todo.item.done":"disabled","todo.item.priority":"read","todo.item.assigneeId":"read"}
+  }
 }
 ```
+
+The `states` wrapper is the reflected shape of `TodoFieldMatrixDto` — the wire
+type declared in `todo_domain` — not a hand-written envelope; the endpoint
+returns the DTO and the pipeline serializes it.
 
 ---
 
@@ -406,17 +418,17 @@ todo_db:
   username: ${TODO_DB_USER:app}
   password: ${TODO_DB_PASSWORD:app}
   host: ${TODO_DB_HOST:localhost}   # `db` inside the compose network
-  port: 3306                        # literal int, not ${...} — see below
+  port: ${TODO_DB_PORT:3306}
   databaseName: ${TODO_DB_NAME:todo_db}
 
 main:
   delegateTo: todo_db               # the framework's grant store, same DB
 ```
 
-`port` is a **literal int**, not a `${...}` substitution: the substitution
-always yields a string, and the MariaDB datasource binds `port` to an `int`
-field, so a substituted `"3306"` fails reflection. The other keys are strings
-and substitute cleanly.
+`port` substitutes like every other field. The substitution always yields a
+string, and the MariaDB datasource parses a string port to the `int` it binds
+(G-DB-3) — so both an int literal and a substituted `"3306"` work. The other
+keys are strings and substitute cleanly.
 
 The `main` datasource is where the framework binds its graded-authorization
 store (`TomResourceGrant`). Rather than duplicate the connection block it

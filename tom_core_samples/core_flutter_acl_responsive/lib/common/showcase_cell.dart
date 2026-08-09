@@ -3,11 +3,11 @@
 ///
 /// The teaching value is the `code | rendered` pairing — the verbatim builder
 /// chain next to the layout it produces. Fittingly for a sample *about* the
-/// responsive engine, the cell **dogfoods** that engine to lay itself out:
-/// [AclDeviceContext.resolveFormFactor] decides side-by-side on tablet/desktop
-/// widths vs. stacked on phone widths, rather than a bare numeric `MediaQuery`
-/// compare. Shared in shape with `core_flutter_form_showcase` /
-/// `core_flutter_acl_sample`.
+/// responsive engine, the cell **dogfoods** that engine to lay itself out: an
+/// [AclBuilder] row breakpoint keeps the snippet and the preview side by side
+/// while the cell is at least 720px wide and reflows them to a stack below it,
+/// rather than a hand-rolled `MediaQuery` compare (G-UI-4). Shared in shape
+/// with `core_flutter_form_showcase` / `core_flutter_acl_sample`.
 library;
 
 import 'package:flutter/material.dart';
