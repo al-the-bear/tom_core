@@ -97,15 +97,27 @@ ownership/share and per-field grade are enforced inside the handlers.
 | --- | --- | --- |
 | `GET /status` | public | Typed JSON status (`{status, service}`) |
 | `GET /health` | public | Framework plain-text liveness probe (`OK`) — auto-mounted |
-| `GET /workspaces` | authenticated | Workspaces the caller can reach |
+| `GET /workspaces` · `POST /workspaces` | authenticated | List (owner-scoped) / create a workspace |
+| `PUT /workspaces/{id}` · `DELETE /workspaces/{id}` | authenticated | Update / delete a workspace (owner-scoped at the database) |
 | `GET /projects` · `POST /projects` | authenticated | List / create a project (workspace owner/editor) |
 | `GET /lists` | authenticated | Lists the caller can reach |
 | `GET /items` · `POST /items` | authenticated | List / create items (create: editor+, field-graded) |
 | `PUT /items/{id}` · `DELETE /items/{id}` | authenticated | Update (field-graded) / delete (editor+) an item |
-| `POST /items/{id}/comments` | authenticated | Comment on an item (commenter+) |
+| `GET /attachments` | authenticated | Attachment descriptors for the visible items of a list |
+| `GET /items/{id}/comments` · `POST /items/{id}/comments` | authenticated | Read / add a comment on an item (add: commenter+) |
+| `GET /items/{id}/subtasks` · `POST /items/{id}/subtasks` | authenticated | Read / add a checklist step (add: editor+) |
+| `PUT /subtasks/{id}` | authenticated | Update a checklist step (editor+) |
 | `GET /resource-roles` | authenticated | The caller's flat `resourceKey → roleName` map (client grades fields locally) |
+| `GET /resources` | authenticated | The app client's text resource bundle |
 | `POST /share` | authenticated | **Owner-only** — grant a user a role on a resource |
 | `DELETE /share/{id}` | authenticated | **Owner-only** — revoke a share |
+
+The framework file endpoint additionally publishes
+`POST|GET|HEAD|DELETE /files/app_items/{id}/attachment`, mounted by the boot's
+one-line `TomFileSlots.register(itemRepository)`. It is graded per row by the
+C-4 column resolver, not by the endpoint access declaration. The item's second
+file column, `internal_note`, is deliberately **not** exposed, so
+`/files/app_items/{id}/internal_note` is a 404 however privileged the caller is.
 
 ## `curl` tour
 
@@ -157,8 +169,13 @@ A non-owner sharing is rejected with **403**; revoking the share
 ## JWT signing
 
 The app server applies the **identical** `initializeJwtSigning()` as the auth
-server — the framework's bundled sample keypair, configured non-dummy — so a
-token the auth server mints (HS256 + RSA-encrypted authorization payload)
-verifies here. It also sets the same `globalSettingJwtOrganization = 'tom'`
-issuer. This is the standard "resource server trusts the authorization server"
-split. **Replace the keys with real ones before any real deployment.**
+server — the framework's bundled sample keypair — so a token the auth server
+mints (HS256 + RSA-encrypted authorization payload) verifies here. It also sets
+the same `globalSettingJwtOrganization = 'tom'` issuer. This is the standard
+"resource server trusts the authorization server" split.
+
+The bundled keypair is a development ("dummy") certificate on both servers, so
+the framework emits its development-key warning on every sign and verify and
+`warnIfDevelopmentSigningKey()` repeats it at boot — intentionally not
+suppressed (G-AUTH-2). **Replace the keys with real ones — built into a
+`TomJwtConfiguration` with `isDummy: false` — before any real deployment.**

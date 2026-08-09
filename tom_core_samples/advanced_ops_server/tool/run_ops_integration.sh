@@ -8,7 +8,7 @@
 #
 # ## What this proves that the connection-free suites cannot
 #
-# Seven of the eight suites in this package run without a socket, and between
+# Eight of the nine suites in this package run without a socket, and between
 # them they cover every decision the package makes. What they cannot reach is the
 # consequence of a call: `ops_retention_test.dart` counts one `destroy` per
 # candidate, each carrying an entity, but its store is a stand-in — a repository

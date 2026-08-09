@@ -169,7 +169,7 @@ and fails if either side leaves its band.
 
 ## Tests
 
-Eight suites, seven of which need no socket at all.
+Nine suites, eight of which need no socket at all.
 
 | Suite | What it settles |
 | --- | --- |
@@ -184,7 +184,7 @@ Eight suites, seven of which need no socket at all.
 | `ops_live_test.dart` | **the consequences** — that the counted deletes produced audit rows, that the export bytes came back out of the database, that the scheduler's tables are the ones `[100]` built |
 
 ```sh
-dart test                                # the eight suites; the live one skips
+dart test                                # the nine suites; the live one skips
 ./tool/run_ops_integration.sh            # boots both databases, applies [100], runs everything
 ```
 

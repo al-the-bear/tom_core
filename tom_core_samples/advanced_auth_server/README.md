@@ -59,7 +59,8 @@ credentials are (sample only — never ship them):
 | `alice` | `alice-pass` | — | `@dev,test` `[003]` demo seed |
 | `bob` | `bob-pass` | — | `@dev,test` `[003]` demo seed |
 | `carol` | `carol-pass` | — | `@dev,test` `[003]` demo seed |
-| `dave` | `dave-pass` | — | `@dev,test` `[005]` seed — **enrolled in TOTP**, so the password only gets him through pass 1 |
+| `dave` | `dave-pass` | `two_factor_required` | `@dev,test` `[005]` seed — **enrolled in TOTP**, so the password only gets him through pass 1 |
+| `erin` | `erin-pass` | `two_factor_optional` | `@dev,test` `[005]` seed — holds **no** factor, so her login is *offered* one she may decline or enrol |
 
 ## Endpoints
 
@@ -75,6 +76,10 @@ request and exposes it through `GET /resource-roles`, which the client reads.
 | --- | --- | --- |
 | `POST /auth/login` | public | Exchange credentials for the token pair (or, for a 2FA account, an interim pair + `requires2FA`) |
 | `POST /auth/second-factor` | public | Answer a pending challenge (`code` + `challengeToken` in the **body**, not as a bearer) and complete the login |
+| `POST /auth/enrol/begin` | public | Start enrolment — generates a fresh secret and returns it once, with the `clientData` a QR code is built from |
+| `POST /auth/enrol/confirm` | public | Confirm enrolment by proving one code against the new secret |
+| `POST /auth/enrol/skip` | public | Decline an *offered* factor and complete the login unchanged |
+| `GET /auth/resources/login` | public | The login screen's resource bundle — readable before a token exists |
 | `POST /auth/refresh` | authenticated | Re-issue a fresh token pair |
 | `GET /auth/me` | authenticated | The caller's `UserDto` |
 | `POST /auth/logout` | authenticated | No-op (stateless JWT) |
@@ -86,6 +91,7 @@ request and exposes it through `GET /resource-roles`, which the client reads.
 | `PUT /admin/groups/{id}` · `DELETE /admin/groups/{id}` | admin | Update / delete a group |
 | `GET /admin/grants` · `PUT /admin/grants` | admin | Read / write the `(role, resourceKey) → TomAuthState` matrix |
 | `POST /admin/assignments` | admin | Assign a user to a role and/or group |
+| `GET /admin/resources` | admin | The admin console's resource bundle |
 
 ## `curl` tour
 
@@ -161,6 +167,17 @@ with *that* token; the third failure burns the challenge, as does its 5-minute
 expiry. On success you get exactly the pair a password-only login would have
 produced. Full walkthrough:
 [06 · Two-factor login](../README_advanced_06_authentication.md#two-factor-login-the-second-pass).
+
+### Two-factor enrolment (`erin`)
+
+`erin` holds the `two_factor_optional` role and no factor, so her login is met
+with an *offer* rather than a challenge. `POST /auth/enrol/begin` generates a
+fresh random secret (`TomTotp2FAService.encodeBase32`) and returns it once with
+the `clientData` a QR code is built from; `POST /auth/enrol/confirm` proves one
+code against it and stores the enrolment; `POST /auth/enrol/skip` declines and
+completes the login unchanged. An account that confirms is challenged on its
+*next* login — from `tom_user_two_factor_enrolment`, not from the legacy
+`two_factor_type` column that carries dave's.
 
 ## JWT signing
 
