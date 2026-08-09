@@ -50,18 +50,28 @@ Compiled binaries are published under `$TOM_BINARY_PATH/<platform-vs>/`:
 ## Point the VS Code extension at it
 
 The extension launches a bridge process from its **active bridge profile**.
-Profiles live in the `bridge` section of `tom_vscode_extension.json`:
+Profiles live in the `bridge` section of `tom_vscode_extension.json`. A profile
+does **not** hold a command path: it names an entry in the sibling
+`bridge.executables` map, which is resolved for the current platform against
+`bridge.binaryPath`.
 
 ```jsonc
 {
   "bridge": {
-    "current": "core",                  // active profile key
+    "current": "core",                   // active profile key
+    "binaryPath": {                      // per-platform binary directory
+      "darwin-arm64": "${env:TOM_BINARY_PATH}/darwin-arm64/",
+      "linux-x64": "${env:TOM_BINARY_PATH}/linux-x64/"
+    },
+    "executables": {                     // name → per-platform path
+      "core_bs": { "*": "${binaryPath}core_bs" }
+    },
     "profiles": {
       "core": {
         "label": "Tom Core Bridge",
-        "command": "/abs/path/to/$TOM_BINARY_PATH/<platform-vs>/core_bs",
+        "executable": "core_bs",         // key in `executables` — mandatory
         "args": [],
-        "cwd": "<bridge working dir>",   // optional; defaults to workspace root
+        "cwd": "${workspaceFolder}",     // optional; defaults to workspace root
         "runPubGet": false               // compiled binary needs no pub get
       }
     }
@@ -69,17 +79,31 @@ Profiles live in the `bridge` section of `tom_vscode_extension.json`:
 }
 ```
 
-The active profile's `command` / `args` / `cwd` / `runPubGet` drive
-`DartBridgeClient.startWithAutoRestart`
-(`tom_vscode_extension/src/handlers/restartBridge-handler.ts`):
+`loadBridgeConfig()`
+(`tom_vscode_extension/src/handlers/restartBridge-handler.ts`) reads each
+profile, requires a string `executable`, and resolves it via
+`resolveBridgeExecutable` → `resolveNamedExecutable(profile.executable,
+bridge.executables)`. The resolved path plus `args` / `cwd` / `runPubGet` then
+drive `DartBridgeClient.startWithAutoRestart`.
 
-- **Compiled binary** — set `command` to the published `core_bs` executable and
-  leave `args` empty; set `runPubGet: false`.
-- **From source** — set `command` to `dart` and
-  `args: ["run", "<path>/tom_core_bridge/bin/core_bs.dart"]`. When `command` is
-  `dart` and `args` are omitted, the extension falls back to
-  `dart run bin/tom_bs.dart` (the **base** server) — so for `core_bs` you must
-  supply the explicit `args`.
+Two consequences worth knowing before you edit the file:
+
+- **A profile without `executable` is skipped silently.** `loadBridgeConfig()`
+  `continue`s past it, so it never appears in the profile picker. If every
+  profile lacks one, the whole config resolves to `undefined` and the only
+  message you get is the generic `Bridge configuration missing`.
+- **A name that resolves to nothing is skipped the same way.** If
+  `executables["core_bs"]` has no entry matching the current platform (exact,
+  `<os>-*` wildcard, then `*`), `resolveNamedExecutable` returns `undefined`
+  and the profile is dropped.
+
+An `executables` entry is a platform map resolved by exact key
+(`darwin-arm64`), then family wildcard (`darwin-*`), then `*`. The value is
+expanded for `${binaryPath}`, `${home}`, `${workspaceFolder}`, `${env:VAR}` and
+a leading `~`. Use `${binaryPath}core_bs` for a published artifact — a **bare**
+name is *not* prefixed with `binaryPath`; it is looked for under the
+extension's own `bin/<platform>/` and then on `PATH`. On Windows a value with
+no file extension gains `.exe`.
 
 Switch the active profile with the **`tomAi.bridge.switchProfile`** command;
 restart applies it (the bridge auto-restarts on error).
@@ -92,11 +116,11 @@ Work the list top-down:
 
 | Symptom | Cause / fix |
 | --- | --- |
-| `Bridge binary not found: <path>` | The handler `fs.existsSync(command)` check failed. The profile `command` path is wrong or the binary was never built — run `tom build tom_core_bridge` and point `command` at the published `$TOM_BINARY_PATH/<platform-vs>/core_bs`. |
-| `Bridge configuration missing` / `Working directory not found` | No `bridge` section in `tom_vscode_extension.json`, or the profile `cwd` does not exist. Add/fix the profile. |
+| `Bridge binary not found: <path>` | The handler's `fs.existsSync` check on the resolved path failed. `executables["core_bs"]` points somewhere wrong, `binaryPath` for this platform is wrong, or the binary was never built — run `tom build tom_core_bridge` and confirm `$TOM_BINARY_PATH/<platform-vs>/core_bs` exists. |
+| `Bridge configuration missing` / `Working directory not found` | No `bridge` section in `tom_vscode_extension.json`, **or every profile was skipped** (missing `executable`, or an `executable` that resolves to nothing on this platform), or the profile `cwd` does not exist. Add the `executable` key and a matching `executables` entry. |
 | Process starts then exits immediately, no `[BSTART]` line | The binary failed to start. A healthy server prints `[BSTART] VS Code Bridge Server started` once stdin is wired. Check the output channel and the process stderr for a stack trace. |
-| `dart compile exe` fails (building from scratch) | The former codegen blockers are resolved — `core_bs` links `tom_core_d4rt`'s generated bridges, which now compile clean (`tom_d4rt` resolves to 1.8.24, `dart analyze` clean), so the binary builds and `dart run tool/smoke_test.dart` reports `[SMOKE] PASS`. If a build still fails, run `dart pub get` here to realign `tom_d4rt` after upgrading `tom_core_d4rt`, then retry. See [`../CHANGELOG.md`](../CHANGELOG.md). |
-| Bridge runs but Tom Framework classes are missing in scripts | The extension is running the **base** `tom_bs` (the `dart`-command fallback), not `core_bs`. Confirm the active profile supplies the explicit `core_bs` command/args and was applied (`tomAi.bridge.switchProfile` → restart). |
+| `dart compile exe` fails (building from scratch) | `core_bs` links `tom_core_d4rt`'s generated bridges, so a failure here is usually a version skew between the two. Run `dart pub get` in this package to realign `tom_d4rt` after upgrading `tom_core_d4rt`, then retry; `dart analyze` in `tom_core_d4rt` localises a genuine codegen defect. |
+| Bridge runs but Tom Framework classes are missing in scripts | The extension is running the **base** `tom_bs`, not `core_bs` — most often because the `core` profile was skipped and `loadBridgeConfig()` fell back to the first profile that did resolve. Confirm the active profile's `executable` is `core_bs` and that it was applied (`tomAi.bridge.switchProfile` → restart). |
 | `Running dart pub get …` hangs/fails on a compiled binary | A compiled `core_bs` needs no `pub get`; set `runPubGet: false` on the profile. |
 
 ## Verify a healthy launch

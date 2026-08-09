@@ -5,12 +5,10 @@ answers a bridge request**. It exercises the simplest request the server
 handles — `echo`, which round-trips a message — so a pass proves the transport
 (stdin/stdout JSON-RPC) and the server startup are wired correctly.
 
-> **Current status:** the binary now **builds** and the smoke test **passes** —
-> `dart run tool/smoke_test.dart` reports `[SMOKE] PASS`. The earlier blockers
-> (the `tom_d4rt_generator` codegen defects plus a `tom_d4rt` version skew) are
-> resolved (`tom_d4rt` resolves to 1.8.24; `dart analyze` is clean across the
-> generated bridges). The automated runner and the manual procedure below are
-> both live.
+> Because `core_bs` links the generated `tom_core_d4rt` bridge set, a pass also
+> proves that set compiles — which is why this is the one command to run after
+> regenerating the bridges. Both the automated runner and the manual procedure
+> below are supported.
 
 ## The minimal request
 

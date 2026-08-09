@@ -5,8 +5,8 @@
 /// Tom Framework D4rt bridge set registered by `tom_core_d4rt`
 /// (`TomDartscriptBridges.register`): tom_basics, tom_reflection,
 /// tom_core_kernel, tom_core_server, tom_build, tom_dist_ledger,
-/// tom_process_monitor, tom_doc_scanner, tom_doc_specs, tom_md2latex, and
-/// tom_md2pdf.
+/// tom_process_monitor, tom_doc_scanner, tom_doc_specs, tom_md2latex,
+/// tom_md2pdf, and `tom_core_d4rt`'s own demo_persistence entities.
 ///
 /// Configure this binary in the VS Code extension as an alternative to the
 /// base `tom_bs` bridge to expose all Tom Framework classes and functions in

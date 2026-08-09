@@ -21,6 +21,8 @@ complete Tom Framework bridge set registered by `tom_core_d4rt`
 - **tom_doc_specs** — document-spec validation
 - **tom_md2latex** — markdown → LaTeX conversion
 - **tom_md2pdf** — markdown → PDF conversion
+- **demo_persistence** — `tom_core_d4rt`'s own reflected demo entities, the
+  worked example the persistence and endpoint surfaces are exercised against
 
 The bridged surfaces are documented per module in
 [`tom_core_d4rt/doc/`](../tom_core_d4rt/doc/).
@@ -38,8 +40,8 @@ tom_core_bridge (bin/core_bs.dart)
 └── tom_core_d4rt               — Tom Framework bridges (TomDartscriptBridges)
     ├── tom_basics              ├── tom_dist_ledger     ├── tom_doc_specs
     ├── tom_reflection          ├── tom_process_monitor ├── tom_md2latex
-    ├── tom_core_kernel         ├── tom_doc_scanner     └── tom_md2pdf
-    ├── tom_core_server
+    ├── tom_core_kernel         ├── tom_doc_scanner     ├── tom_md2pdf
+    ├── tom_core_server                                 └── demo_persistence
     └── tom_build
 ```
 
@@ -71,25 +73,47 @@ tom build tom_core_bridge
 dart compile exe bin/core_bs.dart -o core_bs
 ```
 
-> **Note:** `core_bs` links the generated `tom_core_d4rt` bridge set. The
-> earlier codegen blockers (the `tom_d4rt_generator` defects in the
-> `tom_core_server` / `tom_dist_ledger` bridges and the `tom_d4rt` version
-> skew) are resolved: `tom_d4rt` resolves to 1.8.24, `dart analyze` is clean
-> across those generated bridges, and the binary now **builds**. Running
-> `dart run tool/smoke_test.dart` reports `[SMOKE] PASS`. See
-> `tom_core_d4rt/CHANGELOG.md` for the history.
+> **Note:** `core_bs` links the generated `tom_core_d4rt` bridge set, so the
+> build depends on those generated bridges analyzing clean. Verify the whole
+> chain — compile, launch, answer a request — with
+> `dart run tool/smoke_test.dart`, which reports `[SMOKE] PASS`. See
+> [`doc/smoke_test.md`](doc/smoke_test.md).
 
 ## VS Code registration
 
-The extension launches a bridge process whose command and arguments come from
-its bridge-profile configuration (`DartBridgeClient`). When no explicit command
-is configured it falls back to `dart run bin/tom_bs.dart`. To run the extended
-server instead, point the bridge command/args at `core_bs`:
+The extension launches a bridge process from its **active bridge profile** in
+`tom_vscode_extension.json`. A profile does not carry a command path — it names
+an entry in the sibling `bridge.executables` map, which is resolved per
+platform against `bridge.binaryPath`. To run the extended server, register
+`core_bs` as an executable and point a profile at it:
 
-- **Compiled binary** — set the bridge command to the published
-  `core_bs` executable (`$TOM_BINARY_PATH/<platform-vs>/core_bs`), no args.
-- **From source** — set the command to `dart` with args
-  `['run', '<path>/tom_core_bridge/bin/core_bs.dart']`.
+```jsonc
+{
+  "bridge": {
+    "current": "core",
+    "binaryPath": {
+      "darwin-arm64": "${env:TOM_BINARY_PATH}/darwin-arm64/",
+      "linux-x64": "${env:TOM_BINARY_PATH}/linux-x64/"
+    },
+    "executables": {
+      "core_bs": { "*": "${binaryPath}core_bs" }
+    },
+    "profiles": {
+      "core": {
+        "label": "Tom Core Bridge",
+        "executable": "core_bs",
+        "args": [],
+        "cwd": "${workspaceFolder}",
+        "runPubGet": false
+      }
+    }
+  }
+}
+```
+
+`executable` is mandatory: the extension's `loadBridgeConfig()` **skips** any
+profile without one, so a profile written with a `command` key is silently not
+offered.
 
 Once registered, every D4rt script run through the VS Code bridge has the full
 Tom Framework bridge set available in addition to the DCli and VS Code APIs.
