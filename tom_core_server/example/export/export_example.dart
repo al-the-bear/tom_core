@@ -4,8 +4,8 @@
 /// or a filesystem the run does not clean up: the streaming tabular shape the
 /// renderers consume, the one abstraction all three formats implement, the
 /// registry that keeps the format set open, what each format does with the same
-/// result, the storage seam that stands in for the framework's future blob
-/// store, and the two delivery channels an endpoint actually calls.
+/// result, the storage seam and its adaptor onto the framework's blob store,
+/// and the two delivery channels an endpoint actually calls.
 ///
 /// The thing to watch for is what is *absent*: at no point is a whole result or
 /// a whole document held. Step 3 proves it — bytes arrive while rows are still
@@ -176,10 +176,12 @@ Future<void> run() async {
   }
 
   // 9. Storage is deliberately the narrowest interface an export needs — put a
-  //    stream under a key, read it back, ask, delete. The framework's general
-  //    blob store is unwritten, and guessing the shape of an API someone else
-  //    is designing produces two APIs that nearly match. When it lands, an
-  //    implementation of these four methods is the whole adaptation.
+  //    stream under a key, read it back, ask, delete. That narrowness is what
+  //    lets `TomBlobExportStore` put every `file_storage` backend behind the
+  //    same four methods, in four delegating lines, without anything that
+  //    renders or delivers an export knowing which backend ran. The two own
+  //    backends below remain because an export module that works with no
+  //    storage configured at all is worth the hundred lines.
   final store = TomMemoryExportStore();
   final service = TomExportService(store: store);
 

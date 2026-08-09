@@ -278,7 +278,9 @@ repairable only by hand. Uploading first can at worst leave an orphaned blob,
 which nothing references and a sweep can collect; and even that is cleaned up
 when the save throws.
 
-The annotation carries three settings:
+Besides `exposed` — which is the HTTP endpoint's business and is covered under
+[Exposure Is Default-Closed](#exposure-is-default-closed) — the annotation
+carries four settings:
 
 | Setting | Meaning |
 | ------- | ------- |

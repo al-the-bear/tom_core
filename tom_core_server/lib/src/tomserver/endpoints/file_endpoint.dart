@@ -49,7 +49,7 @@
 /// final client = TomHttpFileTransferClient(
 ///   baseUri: Uri.parse('http://localhost:8080/files'),
 /// );
-/// await client.upload('document/42/attachment', source);
+/// await client.upload(slot: 'document/42/attachment', source: source);
 /// ```
 library;
 
