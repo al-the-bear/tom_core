@@ -1198,8 +1198,15 @@ abstract class TomExternalIdentityStore {
   Future<void> link(TomExternalIdentity identity, String localUsername);
   Future<void> recordLogin(TomExternalIdentity identity);
   Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername);
+  Future<void> unlink(String issuer, String subject);
+
+  static TomExternalIdentityStore? resolve();
 }
 ```
+
+`unlink` removes the link **and every provider token held through it** — the
+cascade is part of the contract, not the caller's responsibility, so a user who
+presses *disconnect* cannot leave a live refresh token behind.
 
 Keyed on the pair rather than on the subject alone because a subject is only
 unique *within* an issuer — two providers may both call a user `12345`.

@@ -1,8 +1,8 @@
 # Tom Core Server API Reference: Authorization Module
 
 Server-side authorization: the per-token principal cache, the four-state graded
-authorization model, per-principal-per-resource role grants (C-5), and
-delegation of those roles (C-6).
+authorization model, per-principal-per-resource role grants (C-5), delegation of
+those roles (C-6), and the row scope that turns both into a `WHERE` clause.
 
 ## Table of Contents
 
@@ -29,12 +29,13 @@ delegation of those roles (C-6).
   - [TomPrincipalResourceRoleResolver](#tomprincipalresourceroleresolver)
   - [RepositoryPrincipalResourceGrantStore](#repositoryprincipalresourcegrantstore)
   - [InMemoryPrincipalResourceGrantStore](#inmemoryprincipalresourcegrantstore)
+  - [TomResourceDataScope](#tomresourcedatascope)
 
 ## Overview
 
 Sources: `lib/src/tomserver/authorization/authorization_cache.dart`,
 `graded_authorization.dart`, `principal_delegation.dart`,
-`principal_resource_grant.dart`.
+`principal_resource_grant.dart`, `resource_data_scope.dart`.
 
 `authorization_cache.dart` caches the `TomPrincipal` resolved for an
 authentication token so the authorization lookup runs once per token; the cache
@@ -54,6 +55,13 @@ seam, and `TomPrincipalResourceRoleResolver` folding grants into a
 roles from one principal to another via `TomPrincipalDelegation` rows resolved by
 `TomDelegationResolver`, in `share`/`absence`/`intentional` modes.
 
+`resource_data_scope.dart` is where those two models stop being advisory:
+`TomResourceDataScope` implements the kernel's `TomResourceScopeSource`, so an
+entity column annotated `@TomDbScope(scope: TomDbScope.resourceScope)` is
+filtered by the keys the caller holds a grant on — readable at
+`TomAuthState.read` or wider, writable only at `TomAuthState.full`. While no
+source is installed the scope denies every row.
+
 ## Class Hierarchy
 
 ```
@@ -70,6 +78,9 @@ PrincipalDelegationStore  (abstract)
 PrincipalResourceGrantStore  (abstract)
     ├── RepositoryPrincipalResourceGrantStore  (implements)
     └── InMemoryPrincipalResourceGrantStore    (implements)
+
+TomResourceScopeSource  (kernel, abstract)
+    └── TomResourceDataScope                   (implements)
 
 Standalone: TomAuthorizationCacheEntry, TomAuthorizationCache,
 TomAuthorizationCacheStoreMessage, TomAuthorizationCacheRetrieveMessage,
@@ -561,6 +572,64 @@ InMemoryPrincipalResourceGrantStore(List<TomPrincipalResourceGrant> grants)
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `grantsForPrincipal` | `Future<List<TomPrincipalResourceGrant>> grantsForPrincipal(String principalId)` | *(override)* Filters the seeded rows by principal id. |
+
+### TomResourceDataScope
+
+The grant-driven row scope: an entity column annotated
+`@TomDbScope(field: …, scope: TomDbScope.resourceScope)` is filtered by the
+resource keys the calling principal holds a grant on. Resolution is **live** —
+the grant and delegation tables are read per resolution rather than trusted from
+the token — so a revoked share stops granting access at revocation instead of at
+token expiry.
+
+Delegations are folded in *through* `TomDelegationResolver`, so every rule that
+model already enforces (validity window, revocation, mode semantics,
+non-transitivity) governs the row scope without being restated.
+
+- **Implements:** `TomResourceScopeSource` (kernel)
+
+#### Constructors
+
+```dart
+TomResourceDataScope(
+  TomDelegationResolver delegationResolver, {
+  DateTime Function()? now,
+  String Function(TomPrincipal)? principalId,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `delegationResolver` | `TomDelegationResolver` | Resolves the principal's effective per-resource roles — direct grants folded with the delegations active at `now`. |
+| `now` | `DateTime Function()` | The clock delegation validity is evaluated against; injectable for tests. Defaults to `DateTime.now`. |
+| `principalId` | `String Function(TomPrincipal)` | Maps the request's principal to the id the grant rows are keyed by. Defaults to the numeric `id` rendered as a string; a deployment keying grants by username or by an external subject claim overrides it. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `install` | `static TomResourceDataScope install(TomDelegationResolver delegationResolver, {DateTime Function()? now, String Function(TomPrincipal)? principalId})` | Builds the source and registers it as `TomDataScopeRegistry.resourceScopeSource`. Returns it, so a caller that also wants to hold or assert on it need not rebuild it. |
+| `uninstall` | `static void uninstall()` | Clears the registered source, returning the `resource` scope to deny-all. |
+| `runCached` | `static Future<T> runCached<T>(Future<T> Function() body)` | Runs `body` with the resolved roles cached per principal for its duration. A request typically resolves the scope once per repository call plus once for the write check; this collapses those into one read while keeping resolution live *between* requests — a revocation still takes effect on the next request, never mid-request. The cache lives in the zone, so it cannot outlive `body` or leak between concurrently-served requests. |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `isInstalled` | `static bool` | Whether a source is registered — and therefore whether the `resource` scope admits anything at all. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `readableResourceKeys` | `Future<List<Object?>> readableResourceKeys(TomPrincipal? principal)` | *(override)* The keys whose role is registered at `TomAuthState.read` or wider. A `null` principal resolves to no keys, so an unauthenticated query sees nothing. |
+| `writableResourceKeys` | `Future<List<Object?>> writableResourceKeys(TomPrincipal? principal)` | *(override)* The keys whose role is registered at `TomAuthState.full`. The narrower answer is what makes a viewer's shared project listable and openable but not modifiable — an out-of-scope write is rejected with `TomDataScopeAuthorizationException`. |
+
+An unregistered role grades as nothing and therefore grants nothing: a typo in a
+grant row closes a door rather than opening one. Role grades come from the
+kernel's `TomResourceRoleRegistry`.
 
 ## Global Functions and Constants
 
