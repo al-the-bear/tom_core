@@ -143,7 +143,8 @@ class TomResourceGrant {
   ///
   /// The `access_level` column is constrained to the four [TomAuthState]
   /// tokens, so the database itself rejects an out-of-range grade. Shipped
-  /// verbatim as the reference `db_migration` script.
+  /// verbatim as the reference `db_migration` script, so the two cannot drift —
+  /// `test/reference_migrations_test.dart` fails if they do.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,

@@ -12,7 +12,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -1107,36 +1106,6 @@ void main() {
       );
     });
 
-    group('reference db_migration SQL for identity links', () {
-      final file = File(
-        'example/authentication/migrations/main/tomcore/'
-        '[4]-create_tom_external_identity.sql',
-      );
-
-      test('ships under the db_migration directory convention', () {
-        expect(
-          file.existsSync(),
-          isTrue,
-          reason: 'the reference migration must exist under example/',
-        );
-      });
-
-      test('filename matches the migration discovery regex', () {
-        // Mirrors db_migration.dart: RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').
-        final name = file.uri.pathSegments.last.replaceAll('.sql', '');
-        final match = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').firstMatch(name);
-        expect(match, isNotNull);
-        expect(match!.group(1), '4');
-        expect(match.group(2), 'create_tom_external_identity');
-      });
-
-      test('reproduces the entity DDL verbatim', () {
-        expect(
-          file.readAsStringSync(),
-          contains(TomExternalIdentityLink.createTableSql.trim()),
-        );
-      });
-    });
   });
 
   // ===========================================================================
@@ -1314,39 +1283,6 @@ void main() {
     // be written where there is nowhere to write it.
     test('resolves to null when no store bean is installed', () {
       expect(TomOAuthTokenStore.resolve(), isNull);
-    });
-  });
-
-  group('reference db_migration SQL for retained tokens', () {
-    final file = File(
-      'example/authentication/migrations/main/tomcore/'
-      '[3]-create_tom_external_identity_token.sql',
-    );
-
-    test('ships under the db_migration directory convention', () {
-      expect(
-        file.existsSync(),
-        isTrue,
-        reason: 'the reference migration must exist under example/',
-      );
-    });
-
-    test('filename matches the migration discovery regex', () {
-      // Mirrors db_migration.dart: RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').
-      final name = file.uri.pathSegments.last.replaceAll('.sql', '');
-      final match = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').firstMatch(name);
-      expect(match, isNotNull);
-      expect(match!.group(1), '3');
-      expect(match.group(2), 'create_tom_external_identity_token');
-    });
-
-    // A migration that described a different table from the entity would fail
-    // at the first read, in production, having applied cleanly.
-    test('reproduces the entity DDL verbatim', () {
-      expect(
-        file.readAsStringSync(),
-        contains(TomExternalIdentityToken.createTableSql.trim()),
-      );
     });
   });
 

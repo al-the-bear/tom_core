@@ -114,7 +114,8 @@ class TomExternalIdentityLink {
   });
 
   /// The DDL this entity expects, reproduced verbatim by the framework
-  /// migration so the two cannot drift.
+  /// migration so the two cannot drift — `test/reference_migrations_test.dart`
+  /// fails if they do.
   ///
   /// `(issuer, subject)` is unique because that pair *is* the external
   /// identity: a duplicate would make which local account a sign-in reaches

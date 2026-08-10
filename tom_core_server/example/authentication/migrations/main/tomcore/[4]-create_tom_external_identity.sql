@@ -46,8 +46,8 @@
 -- none.
 --
 -- This file is the canonical DDL and reproduces
--- `TomExternalIdentityLink.createTableSql` verbatim; `test/oauth_test.dart`
--- fails if the two drift apart.
+-- `TomExternalIdentityLink.createTableSql` verbatim;
+-- `test/reference_migrations_test.dart` fails if the two drift apart.
 CREATE TABLE IF NOT EXISTS tom_external_identity (
   id BIGINT NOT NULL AUTO_INCREMENT,
   issuer VARCHAR(255) NOT NULL,

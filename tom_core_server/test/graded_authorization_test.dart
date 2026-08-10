@@ -7,13 +7,15 @@
 ///   * [TomResourceGrant] — the persistable grant row + its canonical DDL.
 ///   * [TomGradedAccessControlInformation] — the graded resolver, including the
 ///     binary fallback that keeps the model backward compatible.
-///   * the reference db_migration SQL file shipped under `example/`.
+///
+/// The reference `db_migration` SQL shipped under `example/` is pinned to
+/// [TomResourceGrant.createTableSql] by `reference_migrations_test.dart`, along
+/// with every other reference migration; what is asserted here is the claim
+/// that file cannot make — that the constant enumerates every [TomAuthState].
 ///
 /// Everything here is connection-free: no live MariaDB is touched, matching the
 /// conventions of `authorization_test.dart` and `db_migration_test.dart`.
 library;
-
-import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -226,33 +228,15 @@ void main() {
     });
   });
 
-  group('reference db_migration SQL', () {
-    final file = File(
-      'example/authorization/migrations/main/tomcore/'
-      '[1]-create_tom_resource_grants.sql',
-    );
-
-    test('ships under the db_migration directory convention', () {
-      expect(file.existsSync(), isTrue,
-          reason: 'the reference migration must exist under example/');
-    });
-
-    test('filename matches the migration discovery regex', () {
-      // Mirrors db_migration.dart: RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').
-      final name = file.uri.pathSegments.last.replaceAll('.sql', '');
-      final match = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').firstMatch(name);
-      expect(match, isNotNull,
-          reason: 'the orchestrator must be able to parse the version + name');
-      expect(match!.group(1), '1');
-      expect(match.group(2), 'create_tom_resource_grants');
-    });
-
-    test('content matches the entity DDL and lists all four state tokens', () {
-      final sql = file.readAsStringSync();
-      expect(sql, contains('CREATE TABLE'));
-      expect(sql, contains('tom_resource_grant'));
+  group('the entity DDL constrains the graded column', () {
+    // A state the resolver can produce but the column will not accept is a
+    // write that fails only once someone grants that grade — so the enum and
+    // the DDL have to be checked against each other, and neither is derived
+    // from the other. The shipped `.sql` inherits this via the verbatim pin in
+    // reference_migrations_test.dart.
+    test('the access_level enum lists every TomAuthState token', () {
       for (final state in TomAuthState.values) {
-        expect(sql, contains("'${state.name}'"));
+        expect(TomResourceGrant.createTableSql, contains("'${state.name}'"));
       }
     });
   });

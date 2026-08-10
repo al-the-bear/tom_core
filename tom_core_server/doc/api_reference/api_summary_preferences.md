@@ -102,7 +102,7 @@ fills it column by column when mapping a result.
 
 | Constant | Type | Description |
 | -------- | ---- | ----------- |
-| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration so the two cannot drift. `(principal_id, preference_key)` is unique, because that pair is the preference's identity. |
+| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration so the two cannot drift — `test/reference_migrations_test.dart` fails if they do. `(principal_id, preference_key)` is unique, because that pair is the preference's identity. |
 
 ### TomUserPreferenceRepository
 
@@ -269,5 +269,6 @@ endpoint id constants it binds to are the kernel's (see
 `tom_core_kernel/doc/api_reference/api_summary_preferences.md`).
 
 The framework migration `migrations/main/tomcore/[1]-create_tom_user_preference.sql`
-reproduces `TomUserPreference.createTableSql` verbatim, and is untagged so it
-applies in every environment.
+reproduces `TomUserPreference.createTableSql` verbatim — pinned by
+`test/reference_migrations_test.dart` — and is untagged so it applies in every
+environment.

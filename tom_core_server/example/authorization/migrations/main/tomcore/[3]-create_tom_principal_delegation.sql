@@ -7,9 +7,10 @@
 -- override the delegator's inherited roles. The `[valid_from, valid_to]` window
 -- and the `revoked` kill-switch bound every mode. The delegate index backs the
 -- resolver's "delegations targeting this delegate" lookup. This file is the
--- canonical DDL kept in sync with TomPrincipalDelegation.createTableSql; the
--- db_migration module applies it as version [3] of the `tomcore` schema on the
--- `main` datasource, after the per-principal grant table [2].
+-- canonical DDL and reproduces `TomPrincipalDelegation.createTableSql`
+-- verbatim; `test/reference_migrations_test.dart` fails if the two drift apart.
+-- The db_migration module applies it as version [3] of the `tomcore` schema on
+-- the `main` datasource, after the per-principal grant table [2].
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   id BIGINT NOT NULL AUTO_INCREMENT,
   delegator_id VARCHAR(255) NOT NULL,

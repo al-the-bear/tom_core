@@ -90,6 +90,9 @@ class TomPrincipalResourceGrant {
   /// A principal has at most one direct role per resource, enforced by the
   /// unique key. (Delegated roles from C-6 arrive as separate rows resolved
   /// alongside these; the resolver folds duplicates by strength.)
+  ///
+  /// Shipped verbatim as the reference `db_migration` script, so the two cannot
+  /// drift — `test/reference_migrations_test.dart` fails if they do.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_principal_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,

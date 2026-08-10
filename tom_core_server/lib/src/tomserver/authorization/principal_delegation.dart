@@ -144,6 +144,9 @@ class TomPrincipalDelegation {
   }
 
   /// The canonical DDL for the `tom_principal_delegation` table.
+  ///
+  /// Shipped verbatim as the reference `db_migration` script, so the two cannot
+  /// drift — `test/reference_migrations_test.dart` fails if they do.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   id BIGINT NOT NULL AUTO_INCREMENT,

@@ -401,7 +401,8 @@ class TomExternalIdentityToken {
   });
 
   /// The DDL this entity expects, reproduced verbatim by the framework
-  /// migration so the two cannot drift.
+  /// migration so the two cannot drift — `test/reference_migrations_test.dart`
+  /// fails if they do.
   ///
   /// `(issuer, subject)` is unique because a second grant for the same identity
   /// would make which credential an application presents depend on row order —

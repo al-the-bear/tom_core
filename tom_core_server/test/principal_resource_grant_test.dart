@@ -3,16 +3,19 @@
 /// The server half of the C-5 done-bar: a `(principal_id, resource_key, role)`
 /// grant table folds into the `resourceKey → roleName` map the kernel carries on
 /// the principal (and thus in the authorization token). This suite pins:
-///   * [TomPrincipalResourceGrant] — the grant row and its canonical DDL.
+///   * [TomPrincipalResourceGrant] — the grant row.
 ///   * [TomPrincipalResourceRoleResolver] — folding grants into a per-resource
 ///     role map, including the strongest-role tie-break for duplicate resources.
 ///   * [InMemoryPrincipalResourceGrantStore] — the seeded, connection-free store.
 ///
+/// That the shipped reference migration still reproduces
+/// [TomPrincipalResourceGrant.createTableSql] is asserted in
+/// `reference_migrations_test.dart`, which holds that guard for every migration
+/// under `example/` rather than a copy of it per entity.
+///
 /// Everything here is connection-free: no live MariaDB is touched, matching the
 /// conventions of `graded_authorization_test.dart`.
 library;
-
-import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -128,42 +131,4 @@ void main() {
     });
   });
 
-  group('reference db_migration SQL', () {
-    final file = File(
-      'example/authorization/migrations/main/tomcore/'
-      '[2]-create_tom_principal_resource_grant.sql',
-    );
-
-    test('ships under the db_migration directory convention', () {
-      expect(file.existsSync(), isTrue,
-          reason: 'the reference migration must exist under example/');
-    });
-
-    test('filename matches the migration discovery regex', () {
-      // Mirrors db_migration.dart: RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').
-      final name = file.uri.pathSegments.last.replaceAll('.sql', '');
-      final match = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').firstMatch(name);
-      expect(match, isNotNull,
-          reason: 'the orchestrator must be able to parse the version + name');
-      expect(match!.group(1), '2');
-      expect(match.group(2), 'create_tom_principal_resource_grant');
-    });
-
-    test('content matches the entity DDL (table, columns, unique key)', () {
-      final sql = file.readAsStringSync();
-      expect(sql, contains('CREATE TABLE'));
-      expect(sql, contains('tom_principal_resource_grant'));
-      expect(sql, contains('principal_id'));
-      expect(sql, contains('resource_key'));
-      expect(sql, contains('role'));
-      expect(sql, contains('UNIQUE KEY uq_tom_principal_resource_grant'));
-      // The CREATE TABLE body of the shipped entity DDL is reproduced verbatim.
-      expect(sql, contains(_createBody(TomPrincipalResourceGrant.createTableSql)));
-    });
-  });
 }
-
-/// The `CREATE TABLE …;` statement extracted from a reflected entity's
-/// [createTableSql] constant, so a test can assert the reference `.sql` file
-/// reproduces the entity DDL verbatim regardless of surrounding file comments.
-String _createBody(String createTableSql) => createTableSql.trim();

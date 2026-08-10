@@ -146,7 +146,8 @@ what makes the write an upsert.
 
 The DDL ships as the framework migration
 `migrations/main/tomcore/[1]-create_tom_user_preference.sql`, reproduced verbatim
-from `TomUserPreference.createTableSql` so the two cannot drift. The filename is
+from `TomUserPreference.createTableSql` so the two cannot drift —
+`test/reference_migrations_test.dart` fails if they do. The filename is
 **untagged**, so it applies in every environment — a preference table that
 existed only in production would fail every test that touched it, and one that
 existed only in test would fail in production.

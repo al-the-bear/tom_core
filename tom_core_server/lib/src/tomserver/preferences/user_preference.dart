@@ -98,7 +98,8 @@ class TomUserPreference {
   );
 
   /// The DDL this entity expects, reproduced verbatim by the framework
-  /// migration so the two cannot drift.
+  /// migration so the two cannot drift — `test/reference_migrations_test.dart`
+  /// fails if they do.
   ///
   /// `(principal_id, preference_key)` is unique because that pair *is* the
   /// preference's identity: writing a key twice must replace the value, and a

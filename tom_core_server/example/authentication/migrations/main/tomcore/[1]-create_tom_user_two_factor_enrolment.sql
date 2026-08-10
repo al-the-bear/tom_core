@@ -12,9 +12,11 @@
 -- base64-wrapped) before it reaches this column, because a TOTP shared secret
 -- read out of a backup is a complete 2FA bypass.
 --
--- This file is the canonical DDL kept in sync with
--- TomUserTwoFactorEnrolment.createTableSql; the db_migration module applies it
--- as version [1] of the `tomcore` schema on the `main` datasource. It carries no
+-- This file is the canonical DDL and reproduces
+-- `TomUserTwoFactorEnrolment.createTableSql` verbatim;
+-- `test/reference_migrations_test.dart` fails if the two drift apart. The
+-- db_migration module applies it as version [1] of the `tomcore` schema on the
+-- `main` datasource. It carries no
 -- `@environment` suffix on purpose: a schema migration is never
 -- environment-tagged (G-MIG-1, G-MIG-2, C-16), because a table that exists only
 -- in some environments makes the code above it conditional on the deployment.

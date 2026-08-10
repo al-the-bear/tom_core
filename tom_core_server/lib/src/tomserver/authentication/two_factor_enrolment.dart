@@ -675,7 +675,8 @@ class TomUserTwoFactorEnrolment {
   });
 
   /// The DDL this entity expects, reproduced verbatim by the framework
-  /// migration so the two cannot drift.
+  /// migration so the two cannot drift — `test/reference_migrations_test.dart`
+  /// fails if they do.
   ///
   /// `(principal_id, enrolment_id)` is unique because that pair *is* the
   /// enrolment's identity — the upsert in

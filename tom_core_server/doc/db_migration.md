@@ -20,6 +20,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
   - [The Framework's Own Tables](#the-frameworks-own-tables)
   - [The Four Places a Column Name Could Have Been Spelled](#the-four-places-a-column-name-could-have-been-spelled)
   - [What the Live Check Adds](#what-the-live-check-adds)
+  - [Pinning the Entity-Owned Migrations](#pinning-the-entity-owned-migrations)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -188,7 +189,10 @@ could survive is closed by a check, and each check has a negative test in
    must read like it. What is generated is the *comparison*, not the migration.
    `modelOf` renders the descriptor's `CREATE TABLE` and feeds it through the same
    `TomSchemaDdlReader` the migration side uses, so one parser cannot disagree
-   with itself about what `TINYINT(1)` means.
+   with itself about what `TINYINT(1)` means. This covers the migrations that
+   ship a *descriptor* table; the ones that ship an *entity* table are pinned
+   character-for-character against the entity's `createTableSql` instead — see
+   [Pinning the entity-owned migrations](#pinning-the-entity-owned-migrations).
 2. **The reflected row type.** `verifyRowTypes` checks that every column the row
    mapper maps is a column the descriptor declares (absent → error) and that its
    Dart type can hold the declared SQL type (mismatch → error). A descriptor
@@ -218,6 +222,29 @@ against both provisioning routes — the stores' create-on-first-use and the
 shipped migration files, which must not diverge — and then hand-edits a column to
 prove the comparison reports something. It is tagged `db` and skips when no
 server is reachable; bring one up with `tool/run_db_tests.sh`.
+
+### Pinning the Entity-Owned Migrations
+
+Not every framework table is a descriptor. Seven of them —
+`tom_user_two_factor_enrolment`, `tom_external_identity`,
+`tom_external_identity_token`, `tom_resource_grant`,
+`tom_principal_resource_grant`, `tom_principal_delegation` and
+`tom_user_preference` — are ordinary reflected **entities**, each carrying its
+own `createTableSql`. There is no descriptor to converge against, so the shipped
+`.sql` is compared to that constant **verbatim**: a substring match, not a
+parse. `test/reference_migrations_test.dart` holds all seven, and its negative
+test mutates a constant to prove the comparison can fail.
+
+The guard that matters most there is not any individual pin but the one that
+counts them. A pin that was never written leaves nothing behind to fail — the
+absence is invisible, which is exactly how two of these seven shipped unpinned.
+So the same file walks `example/*/migrations/main/tomcore/` and requires every
+`.sql` it finds to be named either by the entity-pin table or by the list of
+migrations covered elsewhere (`framework_schema_test.dart` for descriptors,
+`audit_sql_test.dart` and `scheduling_schema_test.dart` for the triggers and
+their chains). A reverse test catches list entries whose file is gone. Adding a
+migration without a guard therefore fails when it is added, rather than when it
+drifts.
 
 ## Core Components
 

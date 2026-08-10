@@ -4,17 +4,20 @@
 /// window and loses it after; verified by test at two timestamps.* Delegations
 /// are grant-table rows resolved alongside a delegate's own direct C-5 grants, so
 /// this suite pins:
-///   * [TomPrincipalDelegation] — the row, its parsed mode, its canonical DDL,
-///     and the uniform [TomPrincipalDelegation.isActiveAt] window/revoke gate.
+///   * [TomPrincipalDelegation] — the row, its parsed mode, and the uniform
+///     [TomPrincipalDelegation.isActiveAt] window/revoke gate.
 ///   * [TomDelegationResolver] — the three modes, the two-timestamp absence
 ///     window, non-transitivity, and the strength-fold merge with direct grants.
 ///   * [InMemoryPrincipalDelegationStore] — the seeded, connection-free store.
 ///
+/// That the shipped reference migration still reproduces
+/// [TomPrincipalDelegation.createTableSql] is asserted in
+/// `reference_migrations_test.dart`, which holds that guard for every migration
+/// under `example/` rather than a copy of it per entity.
+///
 /// Everything here is connection-free: no live MariaDB is touched, matching the
 /// conventions of `principal_resource_grant_test.dart`.
 library;
-
-import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -292,40 +295,4 @@ void main() {
     });
   });
 
-  group('reference db_migration SQL', () {
-    final file = File(
-      'example/authorization/migrations/main/tomcore/'
-      '[3]-create_tom_principal_delegation.sql',
-    );
-
-    test('ships under the db_migration directory convention', () {
-      expect(file.existsSync(), isTrue,
-          reason: 'the reference migration must exist under example/');
-    });
-
-    test('filename matches the migration discovery regex', () {
-      // Mirrors db_migration.dart: RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').
-      final name = file.uri.pathSegments.last.replaceAll('.sql', '');
-      final match = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').firstMatch(name);
-      expect(match, isNotNull,
-          reason: 'the orchestrator must be able to parse the version + name');
-      expect(match!.group(1), '3');
-      expect(match.group(2), 'create_tom_principal_delegation');
-    });
-
-    test('content matches the entity DDL (table, columns, delegate index)', () {
-      final sql = file.readAsStringSync();
-      expect(sql, contains('CREATE TABLE'));
-      expect(sql, contains('tom_principal_delegation'));
-      expect(sql, contains('delegator_id'));
-      expect(sql, contains('delegate_id'));
-      expect(sql, contains('mode'));
-      expect(sql, contains('valid_from'));
-      expect(sql, contains('valid_to'));
-      expect(sql, contains('revoked'));
-      expect(sql, contains('idx_tom_principal_delegation_delegate'));
-      // The CREATE TABLE body of the shipped entity DDL is reproduced verbatim.
-      expect(sql, contains(TomPrincipalDelegation.createTableSql.trim()));
-    });
-  });
 }
