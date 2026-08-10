@@ -1293,6 +1293,29 @@ Used by: `TomForm{Type}Dropdown`
 | `enabled` | Auth-driven | From auth state | |
 | `label` / `hintText` / `helperText` / `errorText` | Resource text | Scoped resource lookup | `DropdownMenu` only |
 | `controller` | Internal controller | For `DropdownMenu` — managed internally | |
+| `isExpanded` | Static config | Always `true`, via `TomDropdownDecorationMixin.dropdownFillsColumnWidth` | See below |
+
+A dropdown **field** always fills the width of the column the form gives it,
+and its item labels are rendered through
+`TomDropdownDecorationMixin.dropdownItemLabel` — one line, ellipsised.
+
+Flutter's `isExpanded` defaults to `false`, sizing the button to its content.
+That is right for a general-purpose dropdown a caller places wherever it likes
+— which is what `TomDropdownButton` / `TomDropdownButtonFormField` in
+`widgets/selects` are, and why they keep the Flutter default and expose the
+knob as a constructor parameter. It is wrong for a field: a field never chooses
+its own width (a breakpoint, a two-column section or a drawer does), while its
+items arrive from data. "The widest label is wider than the column" is
+therefore an ordinary runtime state, and a content-sized button answers it with
+a `RenderFlex overflowed by N pixels`.
+
+Ellipsis rather than wrapping, because the closed button draws the selected
+item into a row of fixed height: a label that reflowed to a second line would
+merely trade a horizontal overflow for a vertical one.
+
+`test/forms/fields/tom_form_dropdown_narrow_constraint_test.dart` renders all
+four dropdown fields into a box narrower than their longest label and fails if
+any of them overflows again.
 
 #### RadioListTile\<T\> (group)
 

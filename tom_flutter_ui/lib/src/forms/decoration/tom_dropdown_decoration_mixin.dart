@@ -65,6 +65,40 @@ mixin TomDropdownDecorationMixin<T> on TomField<T> {
     );
   }
 
+  /// A dropdown *field* always fills the width its column gives it — the
+  /// value to pass as [DropdownButton.isExpanded].
+  ///
+  /// Flutter defaults that flag to `false`, sizing the button to its content.
+  /// That is right for a general-purpose dropdown a caller places wherever it
+  /// likes — which is what `TomDropdownButton` in `widgets/selects` is, and
+  /// why it keeps the Flutter default and exposes the knob. It is wrong for a
+  /// form field. A field never chooses its own width: the form lays it into a
+  /// column sized by a breakpoint, a two-column section or a drawer, while its
+  /// items arrive from data — a country list, a set of display names, rows
+  /// loaded from the server. "The widest label is wider than the column" is
+  /// therefore an ordinary runtime state and not a mis-configuration, and a
+  /// button that sizes to content answers it with a `RenderFlex overflowed by
+  /// N pixels` — a red-striped band in release, a thrown `FlutterError` under
+  /// test.
+  bool get dropdownFillsColumnWidth => true;
+
+  /// Renders a menu-item label so that it elides rather than reflows.
+  ///
+  /// The closed button draws its selected item into a row of fixed height, so
+  /// a label that wrapped to a second line would trade a horizontal overflow
+  /// for a vertical one. One line plus an ellipsis is the only degradation
+  /// that stays inside both axes, and it is also the one a user can read: the
+  /// beginning of a label distinguishes the options, the end rarely does.
+  Widget dropdownItemLabel(String label, TextStyle? style) {
+    return Text(
+      label,
+      style: style,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
   /// Wraps [innerWidget] with the standard field anatomy. Mirrors
   /// [TomStringInputDecorationMixin] so dropdowns also honour the
   /// `actionIcon` + `onActionIconPressed` fields from `TomField`.

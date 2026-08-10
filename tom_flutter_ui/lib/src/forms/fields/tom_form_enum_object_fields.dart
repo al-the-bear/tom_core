@@ -348,12 +348,13 @@ class _EnumDropdownWidgetState<T> extends State<_EnumDropdownWidget<T>>
     final dropdown = DropdownButtonFormField<T>(
       initialValue:
           items.any((i) => i.value == current) ? current : null,
+      isExpanded: f.dropdownFillsColumnWidth,
       style: style.inputStyle,
       items: items
           .map((it) => DropdownMenuItem<T>(
                 value: it.value,
                 enabled: it.enabled,
-                child: Text(it.label, style: style.inputStyle),
+                child: f.dropdownItemLabel(it.label, style.inputStyle),
               ))
           .toList(),
       onChanged: f.isEditable
@@ -718,12 +719,13 @@ class _ObjectDropdownWidgetState<T> extends State<_ObjectDropdownWidget<T>>
 
     final dropdown = DropdownButtonFormField<T>(
       initialValue: items.any((i) => i.value == v) ? v : null,
+      isExpanded: f.dropdownFillsColumnWidth,
       style: style.inputStyle,
       items: items
           .map((it) => DropdownMenuItem<T>(
                 value: it.value,
                 enabled: it.enabled,
-                child: Text(it.label, style: style.inputStyle),
+                child: f.dropdownItemLabel(it.label, style.inputStyle),
               ))
           .toList(),
       onChanged: f.isEditable

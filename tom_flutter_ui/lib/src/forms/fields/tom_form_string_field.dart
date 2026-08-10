@@ -524,12 +524,13 @@ class _TomFormStringDropdownWidgetState
 
     final dropdown = DropdownButtonFormField<String>(
       initialValue: field.get().isEmpty ? null : field.get(),
+      isExpanded: field.dropdownFillsColumnWidth,
       style: style.inputStyle,
       items: _items.map((item) {
         return DropdownMenuItem<String>(
           value: item.value,
           enabled: item.enabled,
-          child: Text(item.label, style: style.inputStyle),
+          child: field.dropdownItemLabel(item.label, style.inputStyle),
         );
       }).toList(),
       onChanged: field.isEditable

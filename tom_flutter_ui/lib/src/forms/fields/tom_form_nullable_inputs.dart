@@ -696,9 +696,9 @@ class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
           height: kMinInteractiveDimension,
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: Text(
+            child: f.dropdownItemLabel(
               nullLabel,
-              style: inputStyle?.copyWith(fontStyle: FontStyle.italic),
+              inputStyle?.copyWith(fontStyle: FontStyle.italic),
             ),
           ),
         ),
@@ -707,7 +707,7 @@ class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
         DropdownMenuItem<T?>(
           value: it.value,
           enabled: it.enabled,
-          child: Text(it.label, style: inputStyle),
+          child: f.dropdownItemLabel(it.label, inputStyle),
         ),
     ];
 
@@ -718,6 +718,7 @@ class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
               _items.any((i) => i.value == current)
           ? current
           : null,
+      isExpanded: f.dropdownFillsColumnWidth,
       style: inputStyle,
       items: menuItems,
       onChanged: f.isEditable ? f.setValue : null,
