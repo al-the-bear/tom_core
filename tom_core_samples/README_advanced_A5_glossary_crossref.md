@@ -45,7 +45,7 @@ writing (the symbol in the same cell still locates it if a line drifts).
 
 ## Cross-reference: package README → guide section
 
-Each of the seven `advanced_*` packages has its own `README.md` describing that
+Each of the eight `advanced_*` packages has its own `README.md` describing that
 package in isolation. The guide section in the right column is where the package
 is explained *in the context of the whole system*.
 

@@ -2,14 +2,20 @@
 
 *Part 01 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
-This part draws the shape of the system: **two servers, two databases, two
+This part draws the shape of the system: **two HTTP servers, two databases, two
 clients**, all agreeing on **one reflected domain** and **one wire contract**. It
 shows which package depends on which (and which way the arrows point), why the
 two servers can trust each other through a **shared JWT signing key**, and how an
 administrator's edit travels all the way to an end-user's screen — the
 **grant-propagation loop** the integration test asserts live.
 
-## The shape: two servers, two databases, two clients
+The suite has a third server, `advanced_ops_server`, which serves no HTTP and
+owns no database of its own — it runs scheduled work over `app_db`. It is
+outside the request-path architecture this part draws; see
+[Operations](README_advanced_14_operations.md) for it. Every "two servers" below
+means the two HTTP tiers.
+
+## The shape: two HTTP servers, two databases, two clients
 
 The system is split along two seams at once — an **authority seam** (who you are
 and what you may do) and an **application seam** (the task data itself) — and each

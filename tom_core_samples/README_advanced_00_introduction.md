@@ -4,9 +4,10 @@
 
 This guide teaches how to build a **full-scale, secured, full-stack application
 on `tom_core`**, using the *advanced full-stack sample* as the worked example.
-The sample is a small but technically complete task manager: two servers, two
-databases, two Flutter clients, one shared reflected domain, one wire contract,
-live four-state field authorization, and cross-user sharing. Every part of this
+The sample is a small but technically complete task manager: three servers —
+two serving HTTP, one running scheduled back-office work with no port of its
+own — two databases, two Flutter clients, one shared reflected domain, one wire
+contract, live four-state field authorization, and cross-user sharing. Every part of this
 guide explains one cross-cutting concern of that system — and, just as
 importantly, the **implementation rules** the framework imposes — then points at
 the exact code that enforces it.

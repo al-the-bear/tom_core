@@ -33,9 +33,9 @@ bottom; each links to the next.
 
 | Part | Document | Covers |
 | --- | --- | --- |
-| 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the seven packages at a glance; reading order; conventions. |
-| 01 | [Full-stack architecture](README_advanced_01_architecture.md) | Two servers / two databases / two clients; layering; dependency arrows; the shared JWT key; the request + grant-propagation loop. |
-| 02 | [Project layout, packages & build](README_advanced_02_project_layout_build.md) | The seven pubspecs and their wiring; `publish_to: none`; build order; reflection generation; running build_runner; local run. |
+| 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the eight packages at a glance; reading order; conventions. |
+| 01 | [Full-stack architecture](README_advanced_01_architecture.md) | Two HTTP servers / two databases / two clients; layering; dependency arrows; the shared JWT key; the request + grant-propagation loop. |
+| 02 | [Project layout, packages & build](README_advanced_02_project_layout_build.md) | The eight pubspecs and their wiring; `publish_to: none`; build order; reflection generation; running build_runner; local run. |
 | 03 | [Domain model & reflection](README_advanced_03_domain_reflection.md) | The reflected `TomClass` entities; `@tomReflector`; the single reflection seed; enums; scope + `tomId`/`formId` addressing resolved by convention (no key catalogue). |
 | 04 | [Wire contracts & DTOs](README_advanced_04_wire_contracts_dtos.md) | The contracts package: DTOs, the typed service interfaces, the api registry, the domain↔wire boundary. |
 | 05 | [Persistence & the two databases](README_advanced_05_persistence_database.md) | Persistence mapping; CRUD repositories; the two-database design; datasources config; the schema vs sample-data migration split. |
