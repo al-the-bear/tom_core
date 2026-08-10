@@ -5,7 +5,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -368,7 +367,7 @@ class TomAppBar extends StatelessWidget
   @override
   final String? tomId;
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
   @override
   final TomScope? scope;
   @override
@@ -1882,7 +1881,7 @@ class TomExpansionPanel {
   final String? tomId;
 
   /// Optional group membership.
-  final TomUIGroup? authorizationGroup;
+  final TomAuthorizationGroup? authorizationGroup;
 
   /// Callback that builds the header widget.
   final ExpansionPanelHeaderBuilder headerBuilder;
@@ -2072,7 +2071,7 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -2123,7 +2122,7 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -2171,7 +2170,7 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -2358,7 +2357,7 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -4113,7 +4112,7 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;

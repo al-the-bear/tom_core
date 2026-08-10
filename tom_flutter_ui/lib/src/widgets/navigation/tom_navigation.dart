@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -1057,7 +1056,7 @@ class TomTab extends Tab with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -1129,7 +1128,7 @@ class TomNavigationDestination extends NavigationDestination
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -1202,7 +1201,7 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;

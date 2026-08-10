@@ -6,6 +6,7 @@ export 'package:tom_core_kernel/src/tombase/security/tom_authorization.dart'
         TomAuthState,
         TomAuthorizable,
         TomAuthorizationGroup,
+        AuthGroupMode,
         TomAuthorizationAdapter,
         TomAuthorization,
         TomAuthorizer,

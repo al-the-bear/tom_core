@@ -20,11 +20,27 @@
   `TomInputDatePickerFormField(...)` unconstructible. They are now looked up
   only when the widget has a `tomId`.
 
+### Removed
+
+- **`TomUIGroup` is gone; use `TomAuthorizationGroup`.** The alias was
+  documented as deprecated yet was the declared type of `tomGroup` in ~20
+  widget classes, while its two siblings (`TomUIAuthorization`,
+  `TomUIAuthorizationAdapter`) had already been deleted — so the package
+  carried one spelling that was simultaneously discouraged and canonical. Every
+  declaration, example, test and document now names the kernel type directly,
+  leaving one spelling per type across the framework. `lib/src/groups/` keeps
+  only `TomWidgetMixin`; the group type reaches consumers through the
+  `resource_auth` re-export as before.
+
 ### Changed
 
 - The two byte-identical private `_resolveDecoration` methods on the text
   inputs are replaced by one shared `_resolveInputDecoration` helper carrying
   the precedence rule and its rationale.
+- **`AuthGroupMode` is re-exported by `tom_flutter_ui`.** It was omitted from
+  the `resource_auth/tom_auth_state.dart` `show` list, so group code that named
+  a mode had to import `tom_core_kernel` as well. Importing `tom_flutter_ui` is
+  now sufficient for the group type and its mode enum together.
 
 ## 1.1.0
 

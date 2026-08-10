@@ -169,7 +169,7 @@ resource resolution.
 | Demo | Source file | `tom_flutter_ui` feature validated |
 | ---- | ----------- | ---------------------------------- |
 | Resource Resolution | `demo_21_resource_resolution.dart` | Widget label / icon / tooltip resolution from resources (same screen as the Widget Demos tab) |
-| Authorization | `demo_28_authorization.dart` | Widget visibility, readonly state, group authorization, `TomUIGroup` |
+| Authorization | `demo_28_authorization.dart` | Widget visibility, readonly state, group authorization, `TomAuthorizationGroup` |
 
 ---
 

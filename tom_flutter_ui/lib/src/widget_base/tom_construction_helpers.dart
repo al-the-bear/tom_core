@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../groups/tom_ui_group.dart';
 import '../resource_auth/tom_colors.dart';
 import '../resource_auth/tom_icons.dart';
 import '../widgets/labels/tom_labels.dart';
@@ -507,7 +506,7 @@ class TomCtr {
   static TomText? defaultText(
     String? tomId, [
     TomScope? scope,
-    TomUIGroup? tomGroup,
+    TomAuthorizationGroup? tomGroup,
   ]) {
     if (tomId == null) return null;
     return TomText(
@@ -524,7 +523,7 @@ class TomCtr {
   static Widget defaultTextOrEmpty(
     String? tomId, [
     TomScope? scope,
-    TomUIGroup? tomGroup,
+    TomAuthorizationGroup? tomGroup,
   ]) {
     if (tomId == null) return const SizedBox.shrink();
     return TomText(

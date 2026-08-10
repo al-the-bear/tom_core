@@ -9,7 +9,6 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ===========================================================================

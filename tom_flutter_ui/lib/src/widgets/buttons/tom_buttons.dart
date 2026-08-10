@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../groups/tom_ui_group.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -2194,7 +2193,7 @@ class TomSnackBarAction extends SnackBarAction {
   final String? tomId;
 
   /// Optional group membership.
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;

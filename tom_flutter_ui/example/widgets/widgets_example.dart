@@ -94,7 +94,7 @@ void run() {
   print('freeLabel auth (no rule → full): ${freeLabel.effectiveAuthState}');
 
   // A widget in a group is narrowed to the group ceiling: full ⊓ read = read.
-  final tools = TomUIGroup('tools'); // default mode: controlsWidest
+  final tools = TomAuthorizationGroup('tools'); // default mode: controlsWidest
   final grouped =
       TomContainer(tomId: 'panel', tomGroup: tools, child: const SizedBox());
   print('grouped auth (full ⊓ read ceiling): ${grouped.effectiveAuthState}');

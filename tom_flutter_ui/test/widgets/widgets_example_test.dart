@@ -85,7 +85,7 @@ void main() {
     test('a group narrows the member to its ceiling', () {
       TomAuthorization.adapter =
           _PathAuthAdapter({'tools': TomAuthState.read});
-      final tools = TomUIGroup('tools'); // controlsWidest
+      final tools = TomAuthorizationGroup('tools'); // controlsWidest
       final grouped = TomContainer(
         tomId: 'panel',
         tomGroup: tools,

@@ -163,7 +163,7 @@ atomic transactions, undo/redo history, composites, and widget triggers.
 | `TomNodeBase`, `TomPolicyNodeBase`, `TomWidgetFamily` | The widget / family base classes |
 | `TomStatelessWidget`, `TomStatefulWidget`, `TomState` | Construction-time helpers |
 | `TomScreenElementsProviderBase`, `TomStyleResolvers`, `TomCtr` | Element provider & resolvers |
-| `TomUIGroup` | Collective visibility control without an id on every leaf |
+| `TomAuthorizationGroup` | Collective visibility control without an id on every leaf |
 | `TomAuthGuard`, `TomAuthTreeView`, `TomEmptyState`, `TomErrorBoundary` | Non-form composites |
 | `TomInfiniteScroll`, `TomLoadingOverlay`, `TomRadioGroup`, `TomSkeletonLoader` | More composites |
 
@@ -285,7 +285,7 @@ tom_flutter_ui
 │                                #   scope widgets, screen-elements provider, resolvers
 ├── theme/                       # TomTheme + style-variant system
 ├── resource_auth/               # TomUIColors / TomUIIcons / TomAuthorization adapters
-├── groups/                      # TomUIGroup collective visibility
+├── groups/                      # TomWidgetMixin — collective-visibility wiring
 ├── actions/                     # TomAction system (transactions, undo/redo, triggers)
 ├── advanced_container_layout/   # AclBuilder fluent row engine + Acl render widgets
 ├── forms/                       # TomForm model + FormFieldFamily field catalogue + styles
@@ -307,7 +307,7 @@ authorization) and `theme` (appearance). `forms`, `widgets`, and
 | `AclBuilder` / `Acl` | The fluent layout builder and its rendered widget |
 | `TomAction` / `TomActionController` | The action system entry points |
 | `TomUIColors` / `TomUIIcons` | Resource-resolved colour / icon namespaces |
-| `TomUIGroup` | Collective visibility control |
+| `TomAuthorizationGroup` | Collective visibility control |
 
 ## Ecosystem
 

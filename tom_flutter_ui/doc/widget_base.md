@@ -202,10 +202,11 @@ than an error.
 - `package:flutter/material.dart` — `TomCtr` and `TomStyleResolvers` require the
   Material library; the base classes use `package:flutter/widgets.dart`.
 - `tom_core_kernel` — `TomScope`, `TomAuthorization`, `TomAuthState`,
-  `TomAuthorizable`, `TomAuthorizer`, `TomTextResourceProvider`.
+  `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`,
+  `TomTextResourceProvider`.
 - Sibling modules: `resource_auth/` (`TomUIColors`, `TomUIIcons`), `theme/`
-  (`TomThemeScope`, `TomReadonlyStyle`), `groups/` (`TomUIGroup`), `widgets/`
-  (`TomText` for the default-widget helpers).
+  (`TomThemeScope`, `TomReadonlyStyle`), `widgets/` (`TomText` for the
+  default-widget helpers).
 
 > Because the barrel pulls in `flutter/material` (→ `dart:ui`), code that
 > imports `widget_base` runs under the Flutter toolchain. See

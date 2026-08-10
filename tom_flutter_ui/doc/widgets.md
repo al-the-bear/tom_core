@@ -122,7 +122,7 @@ TomAuthorization.adapter = myAdapter; // 'save' → read
 TomElevatedButton(tomId: 'save', …).effectiveAuthState; // TomAuthState.read
 ```
 
-Membership in a `TomUIGroup` narrows (or replaces/lifts) the member per the
+Membership in a `TomAuthorizationGroup` narrows (or replaces/lifts) the member per the
 group mode, and constructing a widget inside `TomScope.withScope('settings', …)`
 prefixes its `basePath` (`settings.<tomId>`) — see [groups](groups.md) and
 [widget_base](widget_base.md) for the full resolution rules.
@@ -131,11 +131,12 @@ prefixes its `basePath` (`settings.<tomId>`) — see [groups](groups.md) and
 
 - `package:flutter/material.dart` + `package:flutter/cupertino.dart` — the
   underlying widgets every wrapper delegates to.
-- `package:tom_core_kernel/...` — `TomAuthState`, `TomAuthorization`, `TomScope`,
-  `TomTextResourceProvider`, and the authorizer/UI-state types.
+- `package:tom_core_kernel/...` — `TomAuthState`, `TomAuthorization`,
+  `TomAuthorizationGroup`, `TomScope`, `TomTextResourceProvider`, and the
+  authorizer/UI-state types.
 - `../widget_base/...` — the family base classes, `TomCtr`, and the style
-  resolvers; `../groups/...` for `TomUIGroup`; `../theme/...` for the read-only
-  style used by the readonly treatment.
+  resolvers; `../groups/...` for `TomWidgetMixin`; `../theme/...` for the
+  read-only style used by the readonly treatment.
 
 > The family tags, `basePath`, `effectiveAuthState`, and resource resolution
 > are all pure (no widget tree), but the package barrel pulls in

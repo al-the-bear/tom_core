@@ -3,19 +3,20 @@
 `groups/` is the **collective-visibility** layer of `tom_flutter_ui`. A group
 controls the authorization of a whole region of related widgets without putting
 an id (and an auth rule) on every leaf: tag the widgets with one
-`TomUIGroup`, and the group's resolved state flows into each member according to
-the group's mode.
+`TomAuthorizationGroup`, and the group's resolved state flows into each member
+according to the group's mode.
 
 The module is deliberately thin. The group *implementation*
-(`TomAuthorizationGroup`) lives in `tom_core_kernel`; `groups/` adds the
-backward-compatible `TomUIGroup` typedef and the `TomWidgetMixin` that wires the
-Tom UI concerns (id, group, authorization, resources) into widgets that extend
-Flutter widgets directly.
+(`TomAuthorizationGroup`) lives in `tom_core_kernel` and is re-exported by
+`resource_auth/tom_auth_state.dart` together with its `AuthGroupMode`, so
+importing `tom_flutter_ui` is enough to name both. What `groups/` itself adds is
+the `TomWidgetMixin` that wires the Tom UI concerns (id, group, authorization,
+resources) into widgets that extend Flutter widgets directly.
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [`TomUIGroup`](#tomuigroup)
+- [`TomAuthorizationGroup`](#tomauthorizationgroup)
 - [Group modes](#group-modes)
 - [`TomWidgetMixin`](#tomwidgetmixin)
 - [Effective authorization](#effective-authorization)
@@ -28,18 +29,16 @@ Flutter widgets directly.
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `TomUIGroup` | typedef | Backward-compatible alias for `TomAuthorizationGroup` (from `tom_core_kernel`). |
-| `TomAuthorizationGroup` | class | A group of `TomAuthorizable` members with weak-reference tracking, a mode, and collective auth resolution. |
-| `AuthGroupMode` | enum | `controlsAll` / `controlsWidest` / `controlsNarrowest` — how the group's state applies to members. |
+| `TomAuthorizationGroup` | class | A group of `TomAuthorizable` members with weak-reference tracking, a mode, and collective auth resolution. Defined in `tom_core_kernel`, re-exported here. |
+| `AuthGroupMode` | enum | `controlsAll` / `controlsWidest` / `controlsNarrowest` — how the group's state applies to members. Re-exported alongside the group. |
 | `TomWidgetMixin` | mixin | Gives a Flutter-widget subclass the Tom id/group/auth/resource API; implements `TomAuthorizable`. |
 
-## `TomUIGroup`
+## `TomAuthorizationGroup`
 
-`TomUIGroup` is a `typedef` for `TomAuthorizationGroup`; the two names are the
-same type. Create a group and pass it to each related widget:
+Create a group and pass it to each related widget:
 
 ```dart
-final shipping = TomUIGroup('shipping'); // default mode: controlsWidest
+final shipping = TomAuthorizationGroup('shipping'); // default mode: controlsWidest
 
 TomTextField(tomId: 'street', tomGroup: shipping, ...),
 TomTextField(tomId: 'city',   tomGroup: shipping, ...),

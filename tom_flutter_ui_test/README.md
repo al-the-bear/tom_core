@@ -17,7 +17,7 @@ of `DemoTile`s that open a single full-screen demo:
 | **ACL Demos** | `lib/acl_demos/` | The Advanced Container Layout engine: rows, alignment, expand flags, spacing, min/preferred/max sizing, character-width sizing, reference & cross-row constraints, titled/bordered groups, nested containers, responsive shrink/grow, row breakpoints, and the fluent `AclBuilder` API. |
 | **Widget Demos** | `lib/widget_demos/` | 27 widget showcases grouped into Input & Actions, Layout & Structure, Display & Info, Advanced, and Scope & Architecture — the Tom wrappers over buttons, inputs, selection, toggles, sliders, cards, tables, navigation, slivers, animation, effects, plus resource resolution and scoped element providers. |
 | **Forms/Actions** | `lib/forms_demos/` | The Tom form framework: `TomForm` field types with validation, selection/boolean variants over a shared `TomSelectableSource`, `TomFormStyleScope` breakpoint overrides, and complex action/authorization gating. |
-| **Authorization/Resources** | `lib/widget_demos/demo_21…`, `demo_28…` | Resource resolution (labels/icons/tooltips by `tomId`) and widget authorization (visibility, readonly, `TomUIGroup`). |
+| **Authorization/Resources** | `lib/widget_demos/demo_21…`, `demo_28…` | Resource resolution (labels/icons/tooltips by `tomId`) and widget authorization (visibility, readonly, `TomAuthorizationGroup`). |
 
 ## Running it
 

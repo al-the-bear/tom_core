@@ -1,13 +1,13 @@
 /// Demo 28: Authorization
 ///
 /// Demonstrates the Tom UI authorization system. Shows how widgets can be
-/// hidden or made readonly based on authorization state, how [TomUIGroup]
+/// hidden or made readonly based on authorization state, how [TomAuthorizationGroup]
 /// controls collective visibility, and how [TomAuthorization] resolves
 /// auth state from resource paths.
 ///
 /// Key concepts:
 /// - Per-widget visibility/readonly via [TomAuthorization]
-/// - Group-based visibility via [TomUIGroup]
+/// - Group-based visibility via [TomAuthorizationGroup]
 /// - Authorization with scoped providers
 /// - Readonly styling applied by [TomThemeScope]
 library;
@@ -88,8 +88,8 @@ class AdminSectionProvider extends TomScreenElementsProviderBase {
 class GroupedSectionProvider extends TomScreenElementsProviderBase {
   GroupedSectionProvider() : super('grouped');
 
-  final premiumGroup = TomUIGroup('premium');
-  final basicGroup = TomUIGroup('basic');
+  final premiumGroup = TomAuthorizationGroup('premium');
+  final basicGroup = TomAuthorizationGroup('basic');
 
   late final premiumFeature1 = TomChip(
     tomId: 'premium1',

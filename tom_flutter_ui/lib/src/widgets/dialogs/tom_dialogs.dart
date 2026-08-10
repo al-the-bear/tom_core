@@ -19,7 +19,6 @@ import 'package:flutter/material.dart' as material
         showSearch;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../groups/tom_ui_group.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_node_base.dart';
@@ -488,7 +487,7 @@ class TomSnackBar extends SnackBar {
   final String? tomId;
 
   /// Optional group membership.
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;

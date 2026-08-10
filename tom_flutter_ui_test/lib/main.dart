@@ -605,7 +605,7 @@ class AuthorizationResourcesTab extends StatelessWidget {
         TomScope.withScope('demo28', () => DemoTile(
           title: 'Authorization',
           description:
-              'Widget visibility, readonly state, group authorization, TomUIGroup',
+              'Widget visibility, readonly state, group authorization, TomAuthorizationGroup',
           screen: AuthorizationDemo(),
         )),
       ],

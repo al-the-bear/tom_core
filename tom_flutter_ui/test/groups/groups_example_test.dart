@@ -37,15 +37,15 @@ void main() {
     });
   });
 
-  group('TomUIGroup typedef', () {
+  group('TomAuthorizationGroup typedef', () {
     test('aliases TomAuthorizationGroup', () {
       // A typedef's type literal evaluates to the aliased type.
-      expect(TomUIGroup, equals(TomAuthorizationGroup));
-      expect(TomUIGroup('g'), isA<TomAuthorizationGroup>());
+      expect(TomAuthorizationGroup, equals(TomAuthorizationGroup));
+      expect(TomAuthorizationGroup('g'), isA<TomAuthorizationGroup>());
     });
 
     test('default mode is controlsWidest', () {
-      expect(TomUIGroup('g').mode, AuthGroupMode.controlsWidest);
+      expect(TomAuthorizationGroup('g').mode, AuthGroupMode.controlsWidest);
     });
   });
 
@@ -53,7 +53,7 @@ void main() {
     test('controlsWidest narrows a member to the group ceiling', () {
       TomAuthorization.adapter =
           _PathAuthAdapter({'g': TomAuthState.read});
-      final g = TomUIGroup('g'); // controlsWidest
+      final g = TomAuthorizationGroup('g'); // controlsWidest
       expect(g.applyMode(TomAuthState.full), TomAuthState.read);
       // A member already narrower than the ceiling is unaffected.
       expect(g.applyMode(TomAuthState.disabled), TomAuthState.disabled);
@@ -62,7 +62,7 @@ void main() {
     test('controlsAll replaces the member state', () {
       TomAuthorization.adapter =
           _PathAuthAdapter({'g': TomAuthState.disabled});
-      final g = TomUIGroup('g', mode: AuthGroupMode.controlsAll);
+      final g = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
       expect(g.applyMode(TomAuthState.full), TomAuthState.disabled);
       expect(g.applyMode(TomAuthState.none), TomAuthState.disabled);
     });
@@ -70,7 +70,7 @@ void main() {
     test('controlsNarrowest lifts a restrictive member to the group floor', () {
       TomAuthorization.adapter =
           _PathAuthAdapter({'g': TomAuthState.read});
-      final g = TomUIGroup('g', mode: AuthGroupMode.controlsNarrowest);
+      final g = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsNarrowest);
       expect(g.applyMode(TomAuthState.disabled), TomAuthState.read);
       // A member already wider than the floor is unaffected.
       expect(g.applyMode(TomAuthState.full), TomAuthState.full);
@@ -83,7 +83,7 @@ void main() {
         'shipping': TomAuthState.read, // group ceiling
         'street': TomAuthState.full, // member resource auth
       });
-      final shipping = TomUIGroup('shipping');
+      final shipping = TomAuthorizationGroup('shipping');
       final street = _GroupedField('street', tomGroup: shipping);
       expect(street.getAuth(), TomAuthState.read);
       expect(street.effectiveAuthState, TomAuthState.read);
@@ -91,7 +91,7 @@ void main() {
     });
 
     test('register/unregister updates member tracking and findMember', () {
-      final g = TomUIGroup('g');
+      final g = TomAuthorizationGroup('g');
       final a = _GroupedField('a', tomGroup: g);
       final b = _GroupedField('b', tomGroup: g);
       a.registerWithGroup();
@@ -104,7 +104,7 @@ void main() {
     });
 
     test('basePath is scope-prefixed inside a TomScope', () {
-      final g = TomUIGroup('shipping');
+      final g = TomAuthorizationGroup('shipping');
       TomScope.withScope('checkout', () {
         final field = _GroupedField('street', tomGroup: g);
         expect(field.basePath, 'checkout.street');

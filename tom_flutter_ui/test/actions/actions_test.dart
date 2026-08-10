@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart' show AuthGroupMode;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../../example/actions/actions_example.dart' as example;

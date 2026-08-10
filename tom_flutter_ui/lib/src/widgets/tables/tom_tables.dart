@@ -6,7 +6,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
-import '../../groups/tom_ui_group.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [DataTable].
@@ -565,7 +564,7 @@ class _TomAuthContent extends StatelessWidget {
   }) : basePath = TomCtr.resolvePath(tomId, scope);
 
   final String? tomId;
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
   final TomScope? scope;
   final Widget child;
   final String? basePath;
@@ -624,7 +623,7 @@ class TomDataCell extends DataCell {
   final String? tomId;
 
   /// Optional group membership.
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
@@ -699,7 +698,7 @@ class TomDataColumn extends DataColumn {
   final String? tomId;
 
   /// Optional group membership.
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
@@ -780,7 +779,7 @@ class TomDataRow extends DataRow {
   final String? tomId;
 
   /// Optional group membership.
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;

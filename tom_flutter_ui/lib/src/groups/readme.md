@@ -3,18 +3,22 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-Collective visibility and authorization control. A `TomUIGroup` lets many
-widgets share one authorization ceiling without tagging every leaf with an id:
-each member registers with the group, and its `effectiveAuthState` is narrowed by
-the group's mode. `TomUIGroup` is a typedef onto the kernel's
-`TomAuthorizationGroup`, so the same grouping concept spans widgets, forms, and
-actions.
+Collective visibility and authorization control. A `TomAuthorizationGroup` lets
+many widgets share one authorization ceiling without tagging every leaf with an
+id: each member registers with the group, and its `effectiveAuthState` is
+narrowed by the group's mode. The group type is the kernel's, so the same
+grouping concept spans widgets, forms, and actions.
+
+This module owns only the widget-side wiring. The group itself
+(`TomAuthorizationGroup`, `AuthGroupMode`) is defined in `tom_core_kernel` and
+re-exported by `resource_auth/tom_auth_state.dart`, so importing
+`tom_flutter_ui` is enough to name both.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomUIGroup` | `typedef TomUIGroup = TomAuthorizationGroup` — a named visibility/auth group |
+| `TomAuthorizationGroup` | A named visibility/auth group — defined in `tom_core_kernel`, re-exported here |
 | `AuthGroupMode` | How the group combines member states (`controlsWidest` default / `controlsAll`) |
 | `TomWidgetMixin` | Mixed into a widget to give it a `tomId` + `tomGroup` and `registerWithGroup()` |
 
@@ -23,7 +27,6 @@ actions.
 ```dart
 import 'package:flutter/widgets.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 class MyField extends StatelessWidget with TomWidgetMixin {
   @override final String? tomId;
@@ -34,7 +37,7 @@ class MyField extends StatelessWidget with TomWidgetMixin {
 }
 
 void groupFields() {
-  final shipping = TomUIGroup('shipping'); // mode: controlsWidest (default)
+  final shipping = TomAuthorizationGroup('shipping'); // mode: controlsWidest (default)
   final field = MyField('street', tomGroup: shipping);
   field.registerWithGroup();
   print(field.effectiveAuthState); // narrowed by the group ceiling

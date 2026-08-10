@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -771,7 +770,7 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -835,7 +834,7 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -912,7 +911,7 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -1121,7 +1120,7 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   final TomScope? scope;

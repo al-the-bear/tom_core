@@ -1,5 +1,9 @@
 ## Unreleased — cleanup pass
 
+- Follows `tom_flutter_ui`'s removal of the `TomUIGroup` alias: the demo app
+  names `TomAuthorizationGroup` throughout. `phase2_demos.dart` also drops its
+  `tom_core_kernel` import, which became redundant once `tom_flutter_ui` began
+  re-exporting `AuthGroupMode`.
 - Documentation: added intent-explaining `// Why:` comments to the bootstrap
   seams (`main.dart` ordering contract, `demo_resources.dart` merge rationale,
   `locale_settings.dart` idempotent-init / notify-before-persist), and a

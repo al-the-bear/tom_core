@@ -487,8 +487,6 @@ class TomAuthorizationGroup {
 }
 ```
 
-> **Migration note:** `TomUIGroup` is available as a deprecated typedef for backward compatibility.
-
 ### Widget registration
 
 Widgets with an `authorizationGroup` register on mount and unregister on dispose. The mixin provides the registration hook:

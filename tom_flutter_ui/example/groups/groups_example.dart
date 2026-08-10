@@ -2,7 +2,7 @@
 ///
 /// `groups/` is the **collective-visibility** layer: a group controls the
 /// authorization of a whole region of related widgets without putting an id on
-/// every leaf. The module itself is thin — `TomUIGroup` is a backward-compatible
+/// every leaf. The module itself is thin — `TomAuthorizationGroup` is a backward-compatible
 /// typedef for `TomAuthorizationGroup` (the real implementation lives in
 /// `tom_core_kernel`), and `TomWidgetMixin` wires the Tom UI concerns (id,
 /// group, authorization, resources) into widgets that extend Flutter widgets.
@@ -64,12 +64,12 @@ void run() {
   });
 
   // ---------------------------------------------------------------------------
-  // 1. TomUIGroup is a typedef for TomAuthorizationGroup.
+  // 1. TomAuthorizationGroup is a typedef for TomAuthorizationGroup.
   // ---------------------------------------------------------------------------
   final shipping =
-      TomUIGroup('shipping'); // default mode: controlsWidest
-  print('TomUIGroup is TomAuthorizationGroup: '
-      '${identical(TomUIGroup, TomAuthorizationGroup)}');
+      TomAuthorizationGroup('shipping'); // default mode: controlsWidest
+  print('TomAuthorizationGroup is TomAuthorizationGroup: '
+      '${identical(TomAuthorizationGroup, TomAuthorizationGroup)}');
   print('shipping mode: ${shipping.mode}');
 
   // ---------------------------------------------------------------------------
@@ -93,9 +93,9 @@ void run() {
   // 4. The three AuthGroupMode behaviours via applyMode.
   // ---------------------------------------------------------------------------
   final billing =
-      TomUIGroup('billing', mode: AuthGroupMode.controlsAll);
+      TomAuthorizationGroup('billing', mode: AuthGroupMode.controlsAll);
   final contact =
-      TomUIGroup('contact', mode: AuthGroupMode.controlsNarrowest);
+      TomAuthorizationGroup('contact', mode: AuthGroupMode.controlsNarrowest);
 
   final widest = shipping.applyMode(TomAuthState.full); // ceiling → read
   final all = billing.applyMode(TomAuthState.full); // replace → disabled
@@ -122,7 +122,7 @@ void run() {
   // ---------------------------------------------------------------------------
   // Assertions
   // ---------------------------------------------------------------------------
-  assert(identical(TomUIGroup, TomAuthorizationGroup));
+  assert(identical(TomAuthorizationGroup, TomAuthorizationGroup));
   assert(shipping.mode == AuthGroupMode.controlsWidest);
 
   assert(shipping.memberCount == 2);
