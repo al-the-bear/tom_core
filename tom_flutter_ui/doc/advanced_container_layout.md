@@ -13,13 +13,21 @@ returns an [`Acl`] widget. Everything the builder accumulates is plain data, so
 a layout can be *constructed* (and asserted on) with no widget tree; only
 *rendering* needs `BuildContext`.
 
+Rows do not have to be written by hand. [`AclFlowContainer`] takes a flat child
+list and *generates* the rows for it under one of two rules — `wrap` or `grid`
+— then hands them to the same engine, so a flowed layout keeps ids, anchors,
+gap rows, variants, and authorization hiding intact.
+
 ## Table of Contents
 
 - [Overview](#overview)
 - [`AclBuilder` and `Acl`](#aclbuilder-and-acl)
 - [Layout attribute flags](#layout-attribute-flags)
+- [Sizing and the default preferred width](#sizing-and-the-default-preferred-width)
 - [Row alignment](#row-alignment)
+- [Flow containers — `wrap` and `grid`](#flow-containers--wrap-and-grid)
 - [Responsive variants and breakpoints](#responsive-variants-and-breakpoints)
+- [Breakpoint resolution](#breakpoint-resolution)
 - [Device context and variant detection](#device-context-and-variant-detection)
 - [Group visibility controllers](#group-visibility-controllers)
 - [Scopes, ids, and groups](#scopes-ids-and-groups)
@@ -35,6 +43,11 @@ a layout can be *constructed* (and asserted on) with no widget tree; only
 | `AclBuilder` | class | Fluent builder; `build()` returns an `Acl` widget. |
 | `Acl` | widget | The built layout (`Acl extends AclLayout extends StatelessWidget`). |
 | `AclContainer` | widget | The stateful render engine that lays rows/components out. |
+| `AclComponent` / `AclRow` | class | The engine's data model — one placed child, and an ordered row of them. |
+| `AclFlowContainer` | widget | An `AclContainer` whose rows are **generated** from a flat child list. |
+| `AclFlowKind` | enum | `wrap` / `grid` — the two row-generation rules. |
+| `aclWrapRows` / `aclGridRows` | function | The pure row generators behind those rules. |
+| `aclResolveBreakpointed<T>` | function | The one `(minWidth, value)` "widest match wins" rule. |
 | `AclFlags` | class | AWT-style attribute bit constants (`expandX`, `expandY`, …). |
 | `RowAlignment` | enum | Horizontal row alignment (`left` / `center` / `right`). |
 | `AclVariant` / `AclRowBreakpoint` | class | Responsive layout overrides keyed by width. |
@@ -91,12 +104,150 @@ so misuse fails loudly at build time, not silently at render time.
 The `AclBuilderExtensions` extension surfaces `expandX()` / `expandY()` /
 `expand()` shortcuts over `setAttr`.
 
+## Sizing and the default preferred width
+
+A component appended with no `setPSize` / `setMSize` / `setXSize` and no
+`expandX` receives `AclBuilder.defaultPreferredWidth` (150) and is marked
+`AclComponent.preferredWidthIsDefault`. That flag is what separates a
+*fabricated* width from a *declared* one, and the fabricated one is a **floor,
+not a cap**:
+
+- content narrower than 150 still occupies 150, so a short label or a button
+  does not collapse next to an elastic gap;
+- content that needs more — a `Row` of controls, which cannot shrink below the
+  sum of its children — is measured and the component is widened to fit before
+  the fit/shrink distribution runs, so the geometry the engine pre-calculates
+  in pure Dart is the geometry that renders;
+- content that still does not fit is **clipped**, never overflowed. The child
+  keeps the width it laid out at, so narrowing the container changes how much
+  is visible and nothing reflows.
+
+```dart
+// No size hint at all — the three buttons are measured and the component is
+// widened past the 150 default to hold them.
+final Acl actions = AclBuilder()
+    .append(TomRow(children: [saveButton, cancelButton, helpButton]))
+    .build();
+```
+
+An author-declared `maximumSize.width` still caps the widening; the fabricated
+default is the only value this pass may overrule. A declared width is honoured
+literally. Measurement lands one frame after the component first renders, and
+until then the plain default applies with the clip covering the difference; a
+child that cannot answer the intrinsics protocol (a `LayoutBuilder`, a
+scrolling viewport) keeps the plain default. Size hints are therefore a
+statement of *intent* — "this field is 220 wide", "these two line up" — not a
+guard against overflow.
+
 ## Row alignment
 
 [`RowAlignment`] (`left` / `center` / `right`) controls a row's horizontal
 packing. Set it per row with `setRowHorizontalAlignment`, or via the
 extension shortcuts `setRowAlignLeft` / `setRowAlignCenter` /
-`setRowAlignRight`. Vertical (cross-axis) packing uses `AclRowCrossAlignment`.
+`setRowAlignRight`. Vertical (cross-axis) packing uses `AclRowCrossAlignment`,
+set per row with `setRowVerticalAlignment` and per component with
+`setVerticalAlignment`.
+
+`setAclDefaultRowHorizontalAlignment` sets the builder-wide default and applies
+it **retroactively** to every row that has not set its own alignment —
+including the first row, which `AclBuilder` creates eagerly in its constructor.
+Call order in the chain is therefore irrelevant:
+
+```dart
+// Both rows are centred: the default reaches back to the eagerly-created
+// first row as well as forward to the one newRow() starts.
+final Acl centred = AclBuilder()
+    .append(const Text('one'))
+    .newRow()
+    .append(const Text('two'))
+    .setAclDefaultRowHorizontalAlignment(RowAlignment.center)
+    .build();
+```
+
+A row that called `setRowHorizontalAlignment` keeps its own value, so an
+explicit per-row override is never clobbered by a later default change.
+`setAclDefaultRowVerticalAlignment` is the cross-axis counterpart.
+
+## Flow containers — `wrap` and `grid`
+
+[`AclFlowContainer`] is an `AclContainer` whose rows are **generated** from a
+flat, ordered child list instead of being written one `newRow()` at a time.
+[`AclFlowKind`] names the two rules:
+
+| Kind | Rule |
+| ---- | ---- |
+| `wrap` | Fill a row until the next component no longer fits, then break. |
+| `grid` | Break every `columns` components, each cell the same width. |
+
+Because both rules produce ordinary `AclRow`s that go to the ordinary engine,
+everything downstream — id addressing, alignment anchors, gap rows, responsive
+variants, the hide-unauthorized pass — keeps working on a flowed layout.
+
+```dart
+Widget buildTagCloud(List<String> tags) {
+  return AclFlowContainer(
+    kind: AclFlowKind.wrap,
+    aclId: 'tags',
+    gutterWidth: 8,
+    runSpacing: 8,
+    components: [
+      for (final tag in tags)
+        AclComponent(
+          child: Chip(label: Text(tag)),
+          id: tag,
+          preferredSize: const Size(120, 0),
+        ),
+    ],
+  );
+}
+```
+
+Declare a `preferredSize` on flowed children whose natural width matters: the
+break decision happens *before* layout and so cannot measure. `aclFlowItemWidth`
+mirrors the engine's own order — preferred → minimum → `defaultItemWidth` —
+and an unsized component is assumed to be `kAclDefaultFlowItemWidth` (150) wide.
+
+`grid` carries per-breakpoint column counts, which is what a responsive
+dashboard needs and what a variant per column count used to cost:
+
+```dart
+AclFlowContainer(
+  kind: AclFlowKind.grid,
+  aclId: 'dashboard',
+  columns: 1,
+  columnsBpOverrides: const [(600.0, 2), (1024.0, 4)],
+  components: cards.map((c) => AclComponent(child: c)).toList(),
+);
+```
+
+One column on a phone, two from 600 px, four from 1024; each cell gets
+`(availableWidth - gutterWidth * (columns - 1)) / columns`. `columns < 1`
+throws `ArgumentError`. Setting `aclId` makes the generated rows addressable as
+`dashboard.r0`, `dashboard.r1`, … — which is how a resource or authorization
+rule reaches a row no author ever wrote.
+
+The container measures the line with a `LayoutBuilder` and subtracts its own
+horizontal padding, so the rule breaks against the *content* width; an
+unbounded width means "never break". The row assignment itself is a pure
+function of plain data, exposed both as `buildRows(availableWidth)` on the
+container and as the free functions [`aclWrapRows`] / [`aclGridRows`], so it can
+be asserted with no widget tree at all:
+
+```dart
+// 3 × 100 wide + 2 × 10 gutter = 320 fits in 340; a 4th would need 430.
+final rows = aclWrapRows(
+  List.generate(
+    4,
+    (i) => AclComponent(child: Text('c$i'), preferredSize: const Size(100, 0)),
+  ),
+  availableWidth: 340,
+  gutterWidth: 10,
+);
+
+expect(rows.length, 2);
+expect(rows[0].components.length, 3);
+expect(rows[1].components.length, 1);
+```
 
 ## Responsive variants and breakpoints
 
@@ -108,6 +259,38 @@ Two complementary mechanisms adapt a layout to width:
 - **Row breakpoints** (`addRowBreakpoint(atWidth:, splitRowDist:)`) split a
   single row into two when the container narrows past `atWidth`, recording the
   split index from the components appended so far.
+
+## Breakpoint resolution
+
+Three attributes carry `(minWidth, value)` override lists — a row's
+`defaultAppendGap`, a row's `height`, and `AclFlowContainer.columns`. All three
+resolve through one public function:
+
+```dart
+T aclResolveBreakpointed<T>(T base, List<(double, T)> overrides, double? availableWidth);
+```
+
+The override with the **largest** `minWidth` still `<= availableWidth` wins;
+`base` applies when no override qualifies, when the list is empty, or when the
+width is not yet known. Being public means a caller can predict a gap or a
+height exactly the way the engine will, without rendering:
+
+```dart
+const gaps = <(double, double)>[(600.0, 12.0), (1024.0, 24.0)];
+aclResolveBreakpointed(8.0, gaps, 500);   // 8.0  — nothing qualifies
+aclResolveBreakpointed(8.0, gaps, 800);   // 12.0
+aclResolveBreakpointed(8.0, gaps, 1400);  // 24.0 — widest match wins
+```
+
+Two thin wrappers read the values off a row: `aclEffectiveGapBefore(comp, row,
+availableWidth)` returns a component's resolved leading gap (falling back to the
+row's breakpointed default only when the component set none of its own), and
+`aclResolveRowHeight(row, availableWidth)` returns the row's resolved height, or
+`null` when the row sets none.
+
+Note the direction: these lists read "**at this width and above**", the
+opposite of `AclVariant.atWidth` / `AclRowBreakpoint.atWidth`, which apply
+*below* their width.
 
 ## Device context and variant detection
 

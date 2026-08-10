@@ -1,22 +1,27 @@
 # Widgets Module
 
-`widgets/` is the **general widget kit** of `tom_flutter_ui`: roughly 200 thin
-Tom wrappers over the Flutter and Cupertino widget set. Each wrapper adds the
+`widgets/` is the **general widget kit** of `tom_flutter_ui`: 301 thin Tom
+wrappers over the Flutter and Cupertino widget set. Each wrapper adds the
 Tom concerns — a `tomId`, scope-resolved `basePath`, authorization, group
 membership, and resource-driven display values — on top of the Flutter widget
 it delegates to, while keeping the familiar Flutter constructor shape.
 
-The wrappers are organised into **21 families**, one Dart file per family
-behind the `widgets.dart` barrel. Every wrapper extends its family base class
+The kit spans **20 sub-folders**, one per widget family, behind the
+`widgets.dart` barrel. Every wrapper extends its family base class
 (`TomButtonBase`, `TomLabelBase`, …) from `widget_base/`, so the whole kit
 shares one contract; see [`doc/widget_base.md`](widget_base.md) for the node
 hierarchy and the four-state authorization gate that underpins it.
+
+Two of the sub-folders also carry a type that is *not* a widget — a page route
+and a static messenger facade. They are catalogued under
+[Navigation and messaging](#navigation-and-messaging), below the family table.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [The shared family contract](#the-shared-family-contract)
 - [Family catalogue](#family-catalogue)
+- [Navigation and messaging](#navigation-and-messaging)
 - [Resource-driven construction](#resource-driven-construction)
 - [Authorization, groups, and scope](#authorization-groups-and-scope)
 - [Dependencies](#dependencies)
@@ -80,17 +85,58 @@ without `testWidgets`.
 | `interaction` | `TomInteractionBase` | `TomGestureDetector`, `TomInkWell`, `TomDraggable`, `TomDragTarget`, `TomMouseRegion` |
 | `builder` | `TomBuilderBase` | `TomStreamBuilder`, `TomFutureBuilder`, `TomValueListenableBuilder`, `TomLayoutBuilder` |
 
-The `containers/acl/` subfolder additionally hosts `TomAclBuilder<T>`, the
-widget-side bridge to the [advanced container layout](advanced_container_layout.md)
-engine. (Five further families — `formField`, `dateTimePicker`, `listEditor`,
-`masterDetail`, `searchField`, `fileUpload` — belong to the [forms](forms.md)
-module, not this kit.)
+Twenty rows, twenty sub-folders. The `containers/acl/` subfolder additionally
+hosts `TomAclBuilder<T>`, the widget-side bridge to the
+[advanced container layout](advanced_container_layout.md) engine.
+`TomWidgetFamily` declares six further families — `formField`,
+`dateTimePicker`, `listEditor`, `masterDetail`, `searchField`, `fileUpload` —
+which belong to the [forms](forms.md) module, not this kit.
 
 A handful of wrappers extend a Flutter widget directly and mix in
 `TomWidgetMixin` instead of a family base (`TomExpanded`, `TomFlexible`,
 `TomSpacer`, the `Tom*PopupMenuItem`/`Tom*DropdownMenuItem` entries) — these
 exist because their Flutter originals must be a specific subtype to satisfy
 their parent (`Flex`, `PopupMenuButton`, …).
+
+## Navigation and messaging
+
+Two types in the kit are not widgets and so have no family row above. Both
+exist for the same reason the wrappers do: to give a Flutter *mechanism* a
+Tom-owned surface, so a screen does not have to reach past the framework.
+
+**`TomPageRoute<T>`** (`navigation/tom_page_route.dart`) is a
+`MaterialPageRoute` that carries the active `TomScope` across a push. Flutter
+builds a route's child lazily — inside the `Navigator`'s build, not at the push
+site — so a screen pushed with a raw `MaterialPageRoute` captures whatever
+scope is current *there* (normally `TomScope.defaultScope`) and silently drops
+the one that was active when the push happened. `TomPageRoute` captures
+`TomScope.current` at construction and re-enters it around the builder, so the
+pushed screen resolves its resources and identity against the pushing scope.
+Pass `scope:` to override the captured one.
+
+```dart
+Navigator.of(context).push(
+  TomPageRoute<bool>(builder: (_) => DetailScreen(item: item)),
+);
+```
+
+**`TomMessenger`** (`dialogs/tom_messenger.dart`) is an `abstract final` class —
+a static facade, no state — over `ScaffoldMessenger`. Every method forwards to
+the ambient messenger:
+
+| Method | Behaviour |
+| ------ | --------- |
+| `showSnackBar(context, snackBar)` | `ScaffoldMessenger.of` — **throws** when none is in scope. |
+| `showSnackBarIfPresent(context, snackBar)` | `ScaffoldMessenger.maybeOf` — a no-op returning `null` instead. |
+| `showMessage(context, message)` | Wraps the string in a `TomSnackBar`/`TomText`, the one-line case. |
+
+```dart
+TomMessenger.showSnackBar(context, TomSnackBar(tomId: 'saveSuccess'));
+TomMessenger.showMessage(context, 'Saved.');
+```
+
+Reach for `showSnackBarIfPresent` from code paths that may run without a
+surrounding `Scaffold` — a field callback, for instance.
 
 ## Resource-driven construction
 
