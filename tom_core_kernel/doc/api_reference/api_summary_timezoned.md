@@ -331,7 +331,7 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 | `allWithOffset(int utcOffsetMinutes)` | `List<TomTimezone>?` | All timezones matching the given UTC offset, or `null`. |
 | `findTimezone(String? name, int? utcOffsetMinutes)` | `TomTimezone?` | Looks up a zone by name, optionally validating its offset. A name-only lookup returns the named zone; an unknown name, or a name whose current offset differs from a supplied `utcOffsetMinutes`, throws `TomTimezoneException`. With `name` null, returns the first zone at the given offset (or `null` if both arguments are null). |
 | `convertMinutesToUtcOffset(int totalMinutes)` | `String` | Formats a minute offset as `Z`, `+HH:MM`, or `-HH:MM`. |
-| `changeLocation(DateTime dt, TomTimezone inTimezone, TomTimezone toTimezone)` | `DateTime` | Renders the instant of `dt` as a `TZDateTime` in `toTimezone`. Note that `inTimezone` does not reinterpret `dt`'s reading and has no effect on the result — pass an unambiguous `DateTime` (`DateTime.utc(...)` or `toUtc()`), since a non-UTC `DateTime` is read against the host's local zone. |
+| `changeLocation(DateTime dt, TomTimezone inTimezone, TomTimezone toTimezone)` | `DateTime` | Reads the calendar fields of `dt` as a wall-clock reading **in `inTimezone`**, resolves them to an instant there, and renders that instant in `toTimezone`. The instant `dt` itself denotes is ignored, so the result never depends on the host's local zone and `DateTime(...)` / `DateTime.utc(...)` with the same fields convert alike. Use `toTZDateTime` instead to re-render an instant you already hold. |
 | `populateFromLocations(Map<String, tz.Location> locations)` | `void` | *(`@visibleForTesting`)* Fills the lookup caches from `locations` and registers the `utc` singleton, which the IANA database does not supply under that name. Logs an ERROR when `locations` is empty. Exists so a test can drive the empty-database branch, which the public entry points cannot provoke on a native platform. |
 
 #### Properties
@@ -354,7 +354,7 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 | `getCurrentUtcOffsetString` | `String getCurrentUtcOffsetString()` | The current UTC offset as a formatted string. |
 | `toTZDateTime` | `tz.TZDateTime toTZDateTime(DateTime dt)` | Converts `dt` to a `TZDateTime` in this timezone. |
 | `now` | `DateTime now()` | The current time in this timezone. |
-| `changeToThisLocation` | `DateTime changeToThisLocation(DateTime dt, TomTimezone inTimezone)` | The instance form of `changeLocation` — renders the instant of `dt` in this timezone. `inTimezone` likewise has no effect on the result. |
+| `changeToThisLocation` | `DateTime changeToThisLocation(DateTime dt, TomTimezone inTimezone)` | The instance form of `changeLocation` with this timezone as the target; it delegates to it, so the reinterpretation semantics are identical. |
 
 ## Global Functions and Constants
 

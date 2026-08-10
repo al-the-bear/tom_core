@@ -482,30 +482,58 @@ class TomTimezone {
     return tz.TZDateTime.now(location);
   }
 
-  /// Converts a DateTime from another timezone to this timezone.
+  /// Reads [dt] as a wall-clock reading in [inTimezone] and re-renders it in
+  /// this timezone.
   ///
-  /// [dt] The DateTime to convert.
-  /// [inTimezone] The source timezone of the DateTime.
+  /// The instance form of [changeLocation], with this timezone as the target.
+  /// See there for the full semantics — in particular that only the calendar
+  /// fields of [dt] are read, never the instant it denotes.
+  ///
+  /// [dt] The wall-clock reading to convert.
+  /// [inTimezone] The timezone the reading is expressed in.
   ///
   /// Example:
   /// ```dart
   /// final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
   /// final newYork = TomTimezone.fromName('America/New_York')!;
   ///
-  /// final tokyoTime = DateTime.utc(2024, 6, 15, 12, 0); // 12 PM in Tokyo
-  /// final nyTime = newYork.changeToThisLocation(tokyoTime, tokyo);
-  /// // nyTime is the equivalent time in New York
+  /// // Noon on a Tokyo clock.
+  /// final tokyoNoon = DateTime.utc(2024, 6, 15, 12, 0);
+  /// final nyTime = newYork.changeToThisLocation(tokyoNoon, tokyo);
+  /// print('${nyTime.day} ${nyTime.hour}'); // 14 23 (11 PM the previous day)
   /// ```
-  DateTime changeToThisLocation(DateTime dt, TomTimezone inTimezone) {
-    var dtIn = tz.TZDateTime.from(dt, inTimezone.location);
-    return tz.TZDateTime.from(dtIn, location);
-  }
+  DateTime changeToThisLocation(DateTime dt, TomTimezone inTimezone) =>
+      changeLocation(dt, inTimezone, this);
 
-  /// Converts a DateTime between two timezones.
+  /// Reads [dt] as a wall-clock reading in [inTimezone] and re-renders it in
+  /// [toTimezone].
   ///
-  /// [dt] The DateTime to convert.
-  /// [inTimezone] The source timezone of the DateTime.
-  /// [toTimezone] The target timezone.
+  /// This is a *reinterpretation*, not a rendering: only the calendar fields of
+  /// [dt] are read — year, month, day, hour, minute, second and the sub-second
+  /// parts. Whatever instant [dt] itself denotes, and whether it was built with
+  /// `DateTime()` or `DateTime.utc()`, is ignored. Those fields are resolved to
+  /// an instant *in [inTimezone]*, and that instant is then rendered in
+  /// [toTimezone].
+  ///
+  /// Two consequences worth knowing:
+  ///
+  /// - The result never depends on the host machine's timezone, so the same
+  ///   call answers the same everywhere. `DateTime(2024, 6, 15, 12)` and
+  ///   `DateTime.utc(2024, 6, 15, 12)` are the same reading and convert alike.
+  /// - To re-render an instant you already hold — the other, equally common
+  ///   operation — use [toTZDateTime] instead, which preserves the moment.
+  ///
+  /// A reading that no clock in [inTimezone] ever showed (the spring-forward
+  /// gap) or that it showed twice (the autumn fall-back) still resolves to
+  /// exactly one instant. Which one is `package:timezone`'s choice, not a
+  /// policy stated here: both cases fall out of its guess-and-correct
+  /// `Location.translateToUtc`, and for Europe/Berlin in 2024 both land on
+  /// standard time. It is deterministic, so it is safe to rely on — but pin it
+  /// with a test if a caller depends on the exact side.
+  ///
+  /// [dt] The wall-clock reading to convert.
+  /// [inTimezone] The timezone the reading is expressed in.
+  /// [toTimezone] The timezone to render the resulting instant in.
   ///
   /// Example:
   /// ```dart
@@ -515,13 +543,30 @@ class TomTimezone {
   /// final utcMidnight = DateTime.utc(2024, 6, 15, 0, 0);
   /// final tokyoTime = TomTimezone.changeLocation(utcMidnight, utc, tokyo);
   /// print(tokyoTime.hour); // 9 (9 AM in Tokyo)
+  ///
+  /// // The source zone is what makes the answer differ: the same reading,
+  /// // taken as a Tokyo clock rather than a UTC one, is already 9 AM there.
+  /// print(TomTimezone.changeLocation(utcMidnight, tokyo, tokyo).hour); // 0
   /// ```
   static DateTime changeLocation(
     DateTime dt,
     TomTimezone inTimezone,
     TomTimezone toTimezone,
   ) {
-    var dtIn = tz.TZDateTime.from(dt, inTimezone.location);
-    return tz.TZDateTime.from(dtIn, toTimezone.location);
+    // Construct rather than convert: `TZDateTime(location, ...)` resolves a
+    // wall-clock reading to an instant, whereas `TZDateTime.from` would carry
+    // the instant of `dt` across unchanged and discard `inTimezone` entirely.
+    final instant = tz.TZDateTime(
+      inTimezone.location,
+      dt.year,
+      dt.month,
+      dt.day,
+      dt.hour,
+      dt.minute,
+      dt.second,
+      dt.millisecond,
+      dt.microsecond,
+    );
+    return tz.TZDateTime.from(instant, toTimezone.location);
   }
 }

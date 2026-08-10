@@ -315,13 +315,131 @@ void main() {
       test('should convert time from Tokyo to New York', () {
         final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
         final newYork = TomTimezone.fromName('America/New_York')!;
-        // 12 PM Tokyo on July 15 = 11 PM July 14 in NYC (EDT, UTC-4)
-        // Tokyo is UTC+9, so 12 PM Tokyo = 3 AM UTC
-        // 3 AM UTC = 11 PM July 14 NYC (UTC-4)
-        final tokyoTime = DateTime.utc(2024, 7, 15, 3, 0, 0); // This is 12 PM in Tokyo
-        final nyTime = TomTimezone.changeLocation(tokyoTime, tokyo, newYork);
+        // Noon on a Tokyo clock. Tokyo is UTC+9, so this is 3 AM UTC, which is
+        // 11 PM on July 14 in New York (EDT, UTC-4). Note the reading is given
+        // as it stands: resolving it against Tokyo is the method's own job.
+        final tokyoNoon = DateTime.utc(2024, 7, 15, 12, 0, 0);
+        final nyTime = TomTimezone.changeLocation(tokyoNoon, tokyo, newYork);
         expect(nyTime.hour, equals(23));
         expect(nyTime.day, equals(14));
+      });
+
+      // The assertion whose absence let the source zone sit dead: everything
+      // is held fixed except `inTimezone`, so a result that ignored it would
+      // return the same hour three times.
+      test('should vary the result with the source timezone alone', () {
+        final utc = TomTimezone.utc;
+        final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+        final berlin = TomTimezone.fromName('Europe/Berlin')!;
+        final reading = DateTime.utc(2024, 6, 15, 5, 0, 0);
+
+        // Read as a UTC clock: 5 AM UTC is 7 AM in Berlin (CEST, UTC+2).
+        final fromUtc = TomTimezone.changeLocation(reading, utc, berlin);
+        expect(fromUtc.hour, equals(7));
+        // Read as a Tokyo clock: 5 AM there is 8 PM UTC the previous day,
+        // which is 10 PM on June 14 in Berlin.
+        final fromTokyo = TomTimezone.changeLocation(reading, tokyo, berlin);
+        expect(fromTokyo.hour, equals(22));
+        expect(fromTokyo.day, equals(14));
+        // Read as a Berlin clock, rendered in Berlin: unchanged.
+        expect(
+          TomTimezone.changeLocation(reading, berlin, berlin).hour,
+          equals(5),
+        );
+      });
+
+      // A non-UTC `DateTime` is the constructor most callers reach for, and it
+      // used to make the answer depend on the host machine's zone. Only the
+      // calendar fields are read now, so the two constructions agree and the
+      // result is the same on every machine.
+      test('should read the calendar fields of a non-UTC DateTime', () {
+        final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+        final newYork = TomTimezone.fromName('America/New_York')!;
+        final localReading = DateTime(2024, 7, 15, 12, 0, 0);
+        final utcReading = DateTime.utc(2024, 7, 15, 12, 0, 0);
+
+        final fromLocal = TomTimezone.changeLocation(
+          localReading,
+          tokyo,
+          newYork,
+        );
+        final fromUtc = TomTimezone.changeLocation(utcReading, tokyo, newYork);
+
+        expect(fromLocal.isAtSameMomentAs(fromUtc), isTrue);
+        expect(fromLocal.hour, equals(23));
+        expect(fromLocal.day, equals(14));
+      });
+
+      test('should carry sub-second parts through the conversion', () {
+        final utc = TomTimezone.utc;
+        final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+        final reading = DateTime.utc(2024, 6, 15, 0, 0, 30, 250, 125);
+        final converted = TomTimezone.changeLocation(reading, utc, tokyo);
+        expect(converted.second, equals(30));
+        expect(converted.millisecond, equals(250));
+        expect(converted.microsecond, equals(125));
+      });
+
+      // Pins the two readings a wall clock cannot express unambiguously. The
+      // choice is `package:timezone`'s, made by its guess-and-correct
+      // `Location.translateToUtc`, not a policy this method states; these
+      // tests exist so that a change in it is caught here rather than in a
+      // caller. Berlin springs forward 2 AM -> 3 AM on 2024-03-31 and falls
+      // back 3 AM -> 2 AM on 2024-10-27; both edge readings land on CET.
+      test('should resolve a spring-forward gap reading deterministically', () {
+        final berlin = TomTimezone.fromName('Europe/Berlin')!;
+        final utc = TomTimezone.utc;
+        // 2:30 AM never showed on a Berlin clock that day.
+        final gap = DateTime.utc(2024, 3, 31, 2, 30, 0);
+        final asUtc = TomTimezone.changeLocation(gap, berlin, utc);
+        // Taken as CET (UTC+1), the offset in force before the jump.
+        expect(asUtc.hour, equals(1));
+        expect(asUtc.minute, equals(30));
+      });
+
+      test('should resolve an ambiguous fall-back reading predictably', () {
+        final berlin = TomTimezone.fromName('Europe/Berlin')!;
+        final utc = TomTimezone.utc;
+        // 2:30 AM showed twice that day: once as CEST (UTC+2), then as CET.
+        final ambiguous = DateTime.utc(2024, 10, 27, 2, 30, 0);
+        final asUtc = TomTimezone.changeLocation(ambiguous, berlin, utc);
+        // Taken as CET (UTC+1), the second of the two passes.
+        expect(asUtc.hour, equals(1));
+        expect(asUtc.minute, equals(30));
+      });
+    });
+
+    group('changeToThisLocation', () {
+      test('should agree with changeLocation targeting this timezone', () {
+        final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+        final newYork = TomTimezone.fromName('America/New_York')!;
+        final reading = DateTime.utc(2024, 7, 15, 12, 0, 0);
+
+        expect(
+          newYork.changeToThisLocation(reading, tokyo),
+          equals(TomTimezone.changeLocation(reading, tokyo, newYork)),
+        );
+      });
+
+      test('should read the reading in the given source timezone', () {
+        final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+        final newYork = TomTimezone.fromName('America/New_York')!;
+        // Noon on a Tokyo clock is 11 PM the previous day in New York.
+        final tokyoNoon = DateTime.utc(2024, 7, 15, 12, 0, 0);
+        final nyTime = newYork.changeToThisLocation(tokyoNoon, tokyo);
+        expect(nyTime.hour, equals(23));
+        expect(nyTime.day, equals(14));
+      });
+
+      test('should vary the result with the source timezone alone', () {
+        final utc = TomTimezone.utc;
+        final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+        final berlin = TomTimezone.fromName('Europe/Berlin')!;
+        final reading = DateTime.utc(2024, 6, 15, 5, 0, 0);
+
+        expect(berlin.changeToThisLocation(reading, utc).hour, equals(7));
+        expect(berlin.changeToThisLocation(reading, tokyo).hour, equals(22));
+        expect(berlin.changeToThisLocation(reading, berlin).hour, equals(5));
       });
     });
   });
