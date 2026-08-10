@@ -1253,6 +1253,98 @@ void main() {
         expect(list, contains('text'));
       });
     });
+
+    // A TomJsonSerializable used to fall through the type dispatch to the
+    // catch-all `return null` and be filtered out by the caller, so a value
+    // object nested in a config map vanished with no error and no log line.
+    // These assert it is present *and* converted.
+    group('TomJsonSerializable values', () {
+      test('should convert a serializable at the top level', () {
+        final dirty = {
+          'name': 'App',
+          'service': _ExampleSerializable('svc', 8080, true),
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        expect(clean.containsKey('service'), isTrue);
+        final service = clean['service'] as Map;
+        expect(service['name'], equals('svc'));
+        expect(service['port'], equals(8080));
+        expect(service['enabled'], isTrue);
+      });
+
+      test('should convert a serializable nested in a sub-map', () {
+        final dirty = {
+          'outer': {
+            'inner': {'service': _ExampleSerializable('nested', 1234, false)},
+          },
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        final inner = (clean['outer'] as Map)['inner'] as Map;
+        final service = inner['service'] as Map;
+        expect(service['name'], equals('nested'));
+        expect(service['port'], equals(1234));
+      });
+
+      test('should convert serializables inside a list', () {
+        final dirty = {
+          'services': [
+            _ExampleSerializable('first', 1, true),
+            'plain',
+            _ExampleSerializable('second', 2, false),
+          ],
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        final services = clean['services'] as List;
+        expect(services.length, equals(3));
+        expect((services[0] as Map)['name'], equals('first'));
+        expect(services[1], equals('plain'));
+        expect((services[2] as Map)['name'], equals('second'));
+      });
+
+      // The reason the branch recurses through makeCleanJsonMap rather than
+      // returning toJson() as it stands: a toJson that nests a serializable of
+      // its own must be cleaned too, or the nested one is dropped again.
+      test('should clean a serializable returned by another toJson', () {
+        final dirty = {
+          'wrapper': _NestingSerializable(
+            _ExampleSerializable('inner', 99, true),
+          ),
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        final wrapper = clean['wrapper'] as Map;
+        expect(wrapper['label'], equals('wrapped'));
+        final inner = wrapper['inner'] as Map;
+        expect(inner['name'], equals('inner'));
+        expect(inner['port'], equals(99));
+      });
+
+      // The same recursion has to keep filtering: a toJson that returns a
+      // genuinely unserializable value must not smuggle it past the sanitiser.
+      test('should still filter unserializable values from a toJson', () {
+        final dirty = {'wrapper': _DirtySerializable(DateTime(2024, 1, 1))};
+        final clean = makeCleanJsonMap(dirty);
+
+        final wrapper = clean['wrapper'] as Map;
+        expect(wrapper['label'], equals('dirty'));
+        expect(wrapper.containsKey('when'), isFalse);
+      });
+
+      test('should produce output that jsonEncode accepts', () {
+        final dirty = {
+          'service': _ExampleSerializable('svc', 8080, true),
+          'dropped': DateTime(2024, 1, 1),
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        final decoded = jsonDecode(jsonEncode(clean)) as Map<String, dynamic>;
+        expect((decoded['service'] as Map)['port'], equals(8080));
+        expect(decoded.containsKey('dropped'), isFalse);
+      });
+    });
   });
 
   // ===========================================================================
@@ -1325,4 +1417,26 @@ class _NullableSerializable implements TomJsonSerializable {
 
   @override
   Map<String, Object?> toJson() => {'value': value};
+}
+
+/// Test double whose `toJson` nests a second [TomJsonSerializable], so the
+/// sanitiser has to keep recursing rather than trusting one `toJson` call.
+class _NestingSerializable implements TomJsonSerializable {
+  _NestingSerializable(this.inner);
+
+  final _ExampleSerializable inner;
+
+  @override
+  Map<String, Object?> toJson() => {'label': 'wrapped', 'inner': inner};
+}
+
+/// Test double whose `toJson` returns a value that is not JSON-encodable, so
+/// the sanitiser has to keep filtering inside a converted map.
+class _DirtySerializable implements TomJsonSerializable {
+  _DirtySerializable(this.when);
+
+  final DateTime when;
+
+  @override
+  Map<String, Object?> toJson() => {'label': 'dirty', 'when': when};
 }

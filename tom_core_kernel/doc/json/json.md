@@ -42,9 +42,17 @@ class Money implements TomJsonSerializable {
 }
 ```
 
-Call `toJson()` yourself before the value enters a map tree. `makeCleanJsonMap`
-keeps only scalars, maps and lists — it does **not** recognise the interface, so
-a `TomJsonSerializable` left in place is dropped rather than converted.
+A value implementing the interface may be left in place inside a map tree:
+`makeCleanJsonMap` recognises it and converts it through `toJson()`, wherever it
+sits — at the top level, nested in a sub-map, or inside a list. The result is
+cleaned in turn, so a `toJson()` that itself nests a serializable is converted
+too, and one that returns a genuinely non-JSON value still has it filtered out.
+
+The rest of the module does not know the interface exists, and deliberately so.
+`traverseAndProcess`, `traverseAndCreate` and `substituteEnvVars` rewrite strings
+*in place* inside mutable maps and lists, and operate on decoded JSON — which
+never holds a Dart object. Sanitization is the one point where a live object tree
+meets JSON, so it is the one place the interface belongs.
 
 ## Quick Start
 
@@ -186,15 +194,25 @@ Keys matching the pattern `keyName@path@profileName` are resolved using the prov
 
 Creates a sanitized copy containing only JSON-compatible types (String, int, double, bool, Map, List).
 
+A `TomJsonSerializable` is the one exception: it is converted through its
+`toJson()` rather than dropped, and the result cleaned in turn. Everything else
+is filtered out **silently** — a `DateTime` disappears with no error and no log
+line, so give a type a `toJson()` when its value must survive.
+
 ```dart
 final dirty = {
   'name': 'App',
-  'created': DateTime.now(),  // Not JSON-compatible
+  'created': DateTime.now(),      // Not JSON-compatible — dropped
+  'price': Money(12, 'EUR'),      // TomJsonSerializable — converted
   'port': 8080
 };
 
 final clean = makeCleanJsonMap(dirty);
-// clean == {'name': 'App', 'port': 8080}
+// clean == {
+//   'name': 'App',
+//   'price': {'amount': 12, 'currency': 'EUR'},
+//   'port': 8080,
+// }
 ```
 
 ### Pretty JSON (`pretty_json.dart`)

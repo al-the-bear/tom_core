@@ -114,7 +114,7 @@ declarations are omitted.
 | `getPathFromTree` | function | Resolves a dotted path from a tree. |
 | `getObjectFromTree` | function | Resolves an object at a dotted path. |
 | `processTree` | function | Applies `@`-directive processing to a tree. |
-| `makeCleanJsonMap` | function | Normalizes a map into a clean JSON map. |
+| `makeCleanJsonMap` | function | Normalizes a map into a clean JSON map, converting `TomJsonSerializable` values. |
 | `substituteEnvVars` | function | Substitutes `${VAR}` references in a tree. |
 | `prettyJson` | function | Indent-formats a JSON string. |
 | `prettyJsonLine` | function | Single-line pretty JSON. |

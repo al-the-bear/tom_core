@@ -25,6 +25,8 @@ library;
 
 import 'package:tom_basics/tom_basics.dart';
 
+import 'json_serializable.dart';
+
 // =============================================================================
 // Private Helpers
 // =============================================================================
@@ -485,11 +487,21 @@ void processTree(
 
 /// Recursively cleans a map to ensure it contains only JSON-compatible types.
 ///
-/// Creates a new map containing only valid JSON types (String, int, double, bool,
-/// Map, List). Filters out entries with non-String keys or unsupported value types.
+/// Creates a new map containing valid JSON types (String, int, double, bool,
+/// Map, List). Entries with non-String keys, and values of any other type, are
+/// filtered out.
 ///
-/// This is useful when working with maps that may contain non-serializable types
-/// (e.g., DateTime, custom objects) and need to be converted to pure JSON.
+/// The one exception is [TomJsonSerializable]: a value implementing it is
+/// converted through its `toJson()` and the result cleaned in turn, wherever it
+/// appears in the tree — at the top level, nested in a sub-map, or inside a
+/// list. That is the interface's whole purpose, and dropping such a value would
+/// discard state the object was explicitly written to expose.
+///
+/// This is useful when working with maps that may contain non-serializable
+/// types (e.g. `DateTime`, custom objects) and need to be converted to pure
+/// JSON. Note that filtering is silent: a `DateTime` disappears without an
+/// error, so give a type a `toJson()` via [TomJsonSerializable] when its value
+/// must survive.
 ///
 /// ## Parameters
 /// - [map]: The source map to clean (not modified)
@@ -502,6 +514,11 @@ void processTree(
 /// final dirty = {'name': 'App', 'created': DateTime.now(), 'port': 8080};
 /// final clean = makeCleanJsonMap(dirty);
 /// // clean = {'name': 'App', 'port': 8080}  (DateTime filtered out)
+///
+/// // A TomJsonSerializable is converted rather than dropped.
+/// final withValue = {'name': 'App', 'price': Money(12, 'EUR')};
+/// final cleaned = makeCleanJsonMap(withValue);
+/// // cleaned = {'name': 'App', 'price': {'amount': 12, 'currency': 'EUR'}}
 /// ```
 Map<String, Object> makeCleanJsonMap(Map map) {
   var result = <String, Object>{};
@@ -534,11 +551,28 @@ List _cleanList(List list) {
 /// JSON-compatible type (in which case the caller filters it out).
 ///
 /// Shared by [makeCleanJsonMap] and [_cleanList] so the type dispatch —
-/// scalars pass through, maps and lists recurse, everything else is dropped —
-/// is defined in exactly one place.
+/// scalars pass through, [TomJsonSerializable] converts, maps and lists
+/// recurse, everything else is dropped — is defined in exactly one place.
+///
+/// This is the only function in the module that knows [TomJsonSerializable]
+/// exists, and deliberately so. The tree functions ([traverseAndProcess],
+/// [traverseAndCreate], [substituteEnvVars]) rewrite strings *in place* inside
+/// mutable maps and lists; a value object is immutable and opaque, so there is
+/// nothing for them to step into. They also operate on decoded JSON, which
+/// never contains a Dart object in the first place. Sanitisation is the one
+/// point where a live object tree meets JSON, so it is the one place the
+/// interface belongs.
 Object? _cleanJsonValue(Object? value) {
   if (value is String || value is int || value is double || value is bool) {
     return value;
+  }
+  // Ahead of the Map check so a type that implements both is still given the
+  // chance to describe itself, rather than being read as a raw map.
+  if (value is TomJsonSerializable) {
+    // Recurse through [makeCleanJsonMap] rather than returning `toJson()` as
+    // it stands: a `toJson` that nests a non-JSON value of its own would
+    // otherwise smuggle it past the sanitiser and fail at `jsonEncode`.
+    return makeCleanJsonMap(value.toJson());
   }
   if (value is Map) {
     return makeCleanJsonMap(value);

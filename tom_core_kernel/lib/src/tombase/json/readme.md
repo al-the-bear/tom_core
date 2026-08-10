@@ -17,7 +17,7 @@ pretty-printing. These are plain top-level functions — no types to instantiate
 | `traverseAndProcess(tree, test, processor)` | Visit every node, processing matches. |
 | `traverseAndCreate(tree, nameTest, creator)` | Visit every node, inserting derived nodes. |
 | `substituteEnvVars(tree, env)` | Replace `${VAR}` placeholders from an env map. |
-| `makeCleanJsonMap(map)` | Produce a JSON-safe `Map<String, Object>`. |
+| `makeCleanJsonMap(map)` | Produce a JSON-safe `Map<String, Object>`, converting any `TomJsonSerializable` it meets. |
 | `prettyJson(json)` / `prettyJsonLine(json)` | Indented / single-line formatting. |
 
 ## Quick start
