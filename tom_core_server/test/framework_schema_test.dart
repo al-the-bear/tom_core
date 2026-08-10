@@ -146,9 +146,11 @@ void main() {
     });
 
     test('the authentication chain builds the OAuth state descriptor', () {
-      // The chain's `[1]` creates the two-factor enrolment table, which is an
-      // *entity* and so is covered by the application convergence check rather
-      // than this one; restricting to the descriptors' tables drops it.
+      // Only `[2]` builds a descriptor table. The chain's `[1]`, `[3]` and `[4]`
+      // create the two-factor enrolment, retained-token and identity-link
+      // tables, which are *entities* and so are covered by the application
+      // convergence check rather than this one; restricting to the descriptors'
+      // tables drops them.
       converges('example/authentication/migrations/main/tomcore', [
         oauthStateTable(defaultOAuthStateTable),
       ]);

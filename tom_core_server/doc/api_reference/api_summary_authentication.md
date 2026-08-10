@@ -1828,7 +1828,8 @@ One persisted link row. `@tomReflector`, `@TomDbTable(table: 'tom_external_ident
 `createTableSql` makes `(issuer, subject)` unique — a duplicate would make which
 local account a sign-in reaches depend on row order — and indexes
 `local_username`, which turns "every identity linked to this account" into a
-lookup rather than a scan.
+lookup rather than a scan. The reference migration is
+`example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
 
 ### TomExternalIdentityLinkRepository
 
@@ -1863,7 +1864,9 @@ const TomPersistentExternalIdentityStore(
 
 `tokenStore` is what `unlink` cascades into; left unset it follows the installed
 `TomOAuthTokenStore` bean at *call* time, so a deployment that wires its token
-store after its identity store still gets the cascade.
+store after its identity store still gets the cascade. Requires the
+`tom_external_identity` table; the reference migration is
+`example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
 
 ### TomMemoryExternalIdentityStore
 

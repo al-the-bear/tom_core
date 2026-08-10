@@ -1106,6 +1106,37 @@ void main() {
         ),
       );
     });
+
+    group('reference db_migration SQL for identity links', () {
+      final file = File(
+        'example/authentication/migrations/main/tomcore/'
+        '[4]-create_tom_external_identity.sql',
+      );
+
+      test('ships under the db_migration directory convention', () {
+        expect(
+          file.existsSync(),
+          isTrue,
+          reason: 'the reference migration must exist under example/',
+        );
+      });
+
+      test('filename matches the migration discovery regex', () {
+        // Mirrors db_migration.dart: RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').
+        final name = file.uri.pathSegments.last.replaceAll('.sql', '');
+        final match = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)').firstMatch(name);
+        expect(match, isNotNull);
+        expect(match!.group(1), '4');
+        expect(match.group(2), 'create_tom_external_identity');
+      });
+
+      test('reproduces the entity DDL verbatim', () {
+        expect(
+          file.readAsStringSync(),
+          contains(TomExternalIdentityLink.createTableSql.trim()),
+        );
+      });
+    });
   });
 
   // ===========================================================================

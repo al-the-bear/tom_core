@@ -1217,6 +1217,9 @@ tests. There is no in-memory *default*: a link that vanishes on restart sends a
 returning user through provisioning again, so a deployment that installs no
 store is told what is missing rather than given a store that loses its rows.
 
+The persistent store needs `TomExternalIdentityLink.createTableSql`, shipped as
+`example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
+
 A link pointing at an account that no longer exists **refuses** the login rather
 than provisioning a replacement — recreating a deleted account from a stale row
 is exactly the state an administrator was trying to reach when they deleted it.
@@ -1667,7 +1670,9 @@ resolves the pending record for its context and calls
   wanting one implements the same three-method contract. See
   [Where pending authorizations live](#where-pending-authorizations-live).
 - **The identity *store* has no default at all**, deliberately — see
-  [The linking table](#the-linking-table).
+  [The linking table](#the-linking-table). `TomPersistentExternalIdentityStore`
+  needs `TomExternalIdentityLink.createTableSql`, shipped as
+  `example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
 - **The framework retains no provider token unless a provider opts in.**
   `storeTokens` defaults to `false`, so a deployment that only wants "Sign in
   with …" never acquires a third-party credential. The grant is still handed to
