@@ -64,10 +64,25 @@ name.reset();           // restore the initial value and clear validation state
 await name.validate();  // run validators → ValidationResult
 ```
 
-Authorization is resolved through five layers (field override → form → group →
-authorizer → adapter) into a `TomAuthState` (`none` < `disabled` < `read` <
-`full`), so a field can be hidden, shown read-only, or made interactive without
-the form knowing why.
+Authorization is resolved by `TomField.resolveEffectiveAuth()` into a
+`TomAuthState` (`none` < `disabled` < `read` < `full`), so a field can be
+hidden, shown read-only, or made interactive without the form knowing why. Five
+layers apply, in this order:
+
+| # | Layer | Effect on the state so far |
+| - | ----- | -------------------------- |
+| 1 | The field's own resource, `TomAuthorization.resolveAuth(basePath)` | the starting state |
+| 2 | Its `TomAuthorizationGroup`, via `applyMode` | narrows (`controlsWidest`, the default), replaces (`controlsAll`) or widens (`controlsNarrowest`) |
+| 3 | The form's resource, under `<scopePath>.<formId>` | always narrows |
+| 4 | A per-field `TomAuthorizer` | narrows (`authorizerNarrowsOnly`, the default) or decides outright (`authorizerDecides`) |
+| 5 | A build-time `TomUIStateController` | can only narrow |
+
+Only layers 3 and 5 are unconditionally restrictive; the group and the
+authorizer can each widen, which is what makes "this whole group is editable
+even though the individual fields are not" expressible. Every layer runs on
+every resolution — skipping the group layer in particular is a severe bug,
+because a group is the only thing that can restore a state an earlier layer
+withheld.
 
 ## Validation
 
@@ -151,8 +166,13 @@ Form rendering is themeable and responsive, kept separate from the model:
   resolvers (`resolveColorSchemeToken` / `resolveAnyColor` / `isColorSchemeToken`)
   map token strings to concrete `Color`s against the active `ColorScheme`.
 - `TomBreakpoint` holds the shared `mobile` / `tablet` / `desktop` ladder
-  (mutable, retuned once at startup) and `resolve(name)` maps a named key to its
-  current pixel value (unknown names → `null`, i.e. "skip this entry").
+  (`600` / `900` / `1200` by default) as **read-only getters**, retuned through
+  the single `configure({mobile, tablet, desktop})` entry point — called once
+  early at startup, and passing only the thresholds you want changed. There is
+  no settable field, so a ladder cannot be reassigned from scattered call sites;
+  `reset()` restores the defaults and exists so breakpoint state cannot leak
+  between tests. `resolve(name)` maps a named key to its current pixel value
+  (unknown names → `null`, i.e. "skip this entry").
 - The anatomy enums (`LabelPlacement`, `ErrorPlacement`, `RequiredIndicator`,
   `DescriptionPlacement`, `ActionIconPlacement`) configure where each part of a
   field sits, consumed by the decoration mixins

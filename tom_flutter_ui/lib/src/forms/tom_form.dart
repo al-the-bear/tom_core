@@ -797,7 +797,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Resolve the effective authorization state for this field.
   ///
-  /// CRITICAL: All four layers must be evaluated. Skipping any layer
+  /// CRITICAL: All five layers must be evaluated. Skipping any layer
   /// (especially group auth) is a severe bug.
   ///
   /// Resolution order (§19):
