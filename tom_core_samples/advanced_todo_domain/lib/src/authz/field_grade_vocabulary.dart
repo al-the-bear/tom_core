@@ -49,6 +49,25 @@ import '../enums.dart';
 /// toggle nothing — `status` renders disabled while the rest are read-only. A
 /// field absent from a role's map (or a role absent here) resolves closed-safe to
 /// [TomAuthState.none].
+///
+/// This is the **client's** copy, used to shape the item form without a round
+/// trip; the *authoritative* copy is the `tom_resource_grant` row the auth server
+/// seeds and the authadmin console edits, which the app server resolves on every
+/// write. The two are seeded identically and may then diverge — an administrator
+/// who narrows `editor`'s `title` to `read` changes the server's answer, not this
+/// map, and the server's answer is the binding one; the shaping here is
+/// cooperation rather than enforcement. That both *start* identical is not left
+/// to care: `advanced_auth_server/test/grant_matrix_key_consistency_test.dart`
+/// parses the seed SQL and asserts it against this map cell-for-cell, so a
+/// regrade applied to one side alone fails there rather than silently at runtime.
+/// [projectRoleAttachmentGrades] carries the same duality for the file column.
+///
+/// One consequence of the `viewer`/`status` cell is worth naming, because it is
+/// the matrix's only [TomAuthState.disabled] and `disabled` is *masked*
+/// (`showsContent` is false): the server's write path preserves a changed
+/// `disabled` field silently instead of rejecting it the way it rejects a change
+/// to a visible `read` field. Both are non-writable; they differ in the shape of
+/// the refusal. See `TomColumnAuthorization.decideWrites`.
 const Map<ProjectRole, Map<String, TomAuthState>> projectRoleFieldGrades = {
   ProjectRole.owner: {
     'todo.item.title': TomAuthState.full,

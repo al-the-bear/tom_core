@@ -64,26 +64,40 @@ A role's field grades are **data**, not code — rows in the auth server's
 `auth_db` `tom_resource_grant` table (`(role_name, resource_key, access_level)`),
 seeded by `[003]-auth_demo_seed@dev,test.sql` (dev/test only) and editable through
 the admin console.
-The sample seeds the full §A.4 matrix — **7 gradable item fields × 4 project
-roles = 28 rows**:
+The sample seeds the full §A.4 matrix — **8 graded item keys × 4 project
+roles = 32 rows** (the seven form fields below plus the item's file column,
+`todo.item.attachment`, covered in
+[13 · File transfer](README_advanced_13_file_transfer.md)):
 
 | `todo.item.*` field | owner | editor | commenter | viewer |
 | --- | --- | --- | --- | --- |
 | `title` | full | full | read | read |
-| `status` | full | full | **full** | read |
-| `priority` | full | full | read | read |
-| `assigneeId` | full | full | read | **none** |
+| `status` | full | full | read | **disabled** |
+| `priority` | full | full | **none** | read |
+| `assigneeId` | full | **read** | read | read |
 | `dueDate` | full | full | read | read |
 | `estimate` | full | **read** | **none** | none |
 | `description` | full | full | read | read |
 
-The shape is intentional: an *owner* edits everything; an *editor* edits all but
-the estimate; a *commenter* can change only `status` and otherwise reads (and
-cannot see the estimate); a *viewer* reads everything except the assignee and
-estimate, which are hidden. Several rows for one key fold to the **most
-permissive** grade (`widen`) via the framework's
+The shape is intentional, and it is the one place all four `TomAuthState` values
+are visible at once: an *owner* edits everything; an *editor* edits all but the
+assignee and the estimate (`read`); a *commenter* reads most fields but cannot
+see `priority`/`estimate` (`none`); a *viewer* edits nothing — `status` renders
+as a `disabled` control and the rest are read-only. Several rows for one key
+fold to the **most permissive** grade (`widen`) via the framework's
 `TomGradedAccessControlInformation.fromGrants` — the same projection the auth
 server's admin API uses, so the two tiers agree on grade semantics.
+
+**The matrix exists twice, and the two copies are pinned equal at the seam.**
+These rows are the *server's* copy — what the app server enforces on a write and
+what the authadmin console edits. The app client shapes its item form from a
+second copy, `projectRoleFieldGrades` in `advanced_todo_domain`, which never
+crosses the wire. The duality is deliberate: the client's shaping is cooperation,
+the server's row is enforcement, and an administrator's runtime edit moves the
+server's answer alone. But the two must *start* identical, so
+`advanced_auth_server/test/grant_matrix_key_consistency_test.dart` parses this
+seed file and asserts every cell against the domain map — offline, no database.
+Changing a grade on one side alone fails there.
 
 ## The two server resolvers
 

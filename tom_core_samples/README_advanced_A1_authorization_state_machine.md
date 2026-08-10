@@ -214,20 +214,25 @@ resource key is gated). The per-field authorizer holds
 | Role | field grade `todo.item.assigneeId` | resourceState (ceiling) | `resourceState.narrow(grade)` | renders as |
 | --- | --- | --- | --- | --- |
 | owner | `full` | `full` | `full` | editable |
-| editor | `full` | `full` | `full` | editable |
+| editor | `read` | `full` | `read` | **read-only** |
 | commenter | `read` | `read` | `read` | read-only |
-| viewer | *(no row → `none`)* | `read` | `none` | **hidden** |
+| viewer | `read` | `read` | `read` | read-only |
 
-The viewer row is the instructive one: the shared `projectRoleFieldGrades[viewer]`
-row carries no entry for `assigneeId`, so `grades[basePath] ?? none` is `none`,
-and `resourceState.narrow(none)` collapses the field. A
-different field tells the rest of the story:
+The editor row is the instructive one: it is the only row here where the narrow
+*does* something. An editor's resource-level ceiling is `full` — the registry
+collapses owner and editor — and it is the per-field grade alone that stops them
+reassigning the item. For commenter and viewer the ceiling already equals the
+grade, so the narrow is an identity; for the editor the two disagree, and the
+composition is what resolves them. Two other fields tell the rest of the story:
 
 - **`estimate`** is `full / read / none / none` for owner / editor / commenter /
   viewer — the editor reads it, both commenter and viewer lose it entirely. This
   is what TC-30-02/04 assert ([Part 12](README_advanced_12_testing_integration.md)).
-- **`status`** is `full / full / full / read` — uniquely, the **commenter** can
-  edit status (the one field a commenter changes) while everything else is read.
+- **`status`** is `full / full / read / disabled` — the matrix's only `disabled`
+  cell, and the only place the fourth state is reachable from the seed. A viewer
+  gets the status control rendered and inert, with no value in it: `disabled` is
+  *masked* (`showsContent` is false), which is a stronger statement than
+  `read`-and-greyed and is why the state exists separately at all.
 
 Crucially the same rendering is **re-checked server-side on write**:
 `AppWriteService._enforceFieldWrites` requires every field a payload *changes* to

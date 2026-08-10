@@ -175,17 +175,27 @@ the authadmin client (`adminGetGrants` / `adminPutGrants`, carrying
 | Field (`todo.item.*`) | `owner` | `editor` | `commenter` | `viewer` |
 | --------------------- | ------- | -------- | ----------- | -------- |
 | `title` | `full` | `full` | `read` | `read` |
-| `status` | `full` | `full` | `full` | `read` |
-| `priority` | `full` | `full` | `read` | `read` |
-| `assigneeId` | `full` | `full` | `read` | `none` |
+| `status` | `full` | `full` | `read` | `disabled` |
+| `priority` | `full` | `full` | `none` | `read` |
+| `assigneeId` | `full` | `read` | `read` | `read` |
 | `dueDate` | `full` | `full` | `read` | `read` |
 | `estimate` | `full` | `read` | `none` | `none` |
 | `description` | `full` | `full` | `read` | `read` |
 
 Reading the matrix: an `owner` edits everything; an `editor` can do likewise
-except `estimate` (read-only); a `commenter` may move `status` and read most
-fields but cannot see `estimate` (`none`); a `viewer` reads the visible fields
-but `assigneeId`/`estimate` are hidden.
+except `assigneeId` and `estimate` (read-only); a `commenter` reads most fields
+but cannot see `priority`/`estimate` (`none`); a `viewer` edits nothing — the
+`status` control renders `disabled` and the rest are read-only. Read down the
+columns and all four states appear, which is what makes this matrix the sample's
+worked example of the state machine rather than a two-state permission list.
+
+The same values are declared in code as `projectRoleFieldGrades`
+(`advanced_todo_domain`) — the *client's* copy, used to shape the item form
+without a round trip. That copy and this seed are independent artifacts (the
+client shapes, the server enforces, and an administrator's edit moves only the
+server's row), but they must start identical:
+`advanced_auth_server/test/grant_matrix_key_consistency_test.dart` parses the
+seed SQL and asserts it cell-for-cell against the domain map.
 
 An eighth graded key rides alongside the seven form fields:
 `todo.item.attachment`, the item's file column (`full` for `owner`/`editor`,

@@ -47,15 +47,31 @@ ON DUPLICATE KEY UPDATE user_id = VALUES(user_id);
 --
 --   Field        owner  editor  commenter  viewer
 --   title        full   full    read       read
---   status       full   full    full       read
---   priority     full   full    read       read
---   assigneeId   full   full    read       none
+--   status       full   full    read       disabled
+--   priority     full   full    none       read
+--   assigneeId   full   read    read       read
 --   dueDate      full   full    read       read
 --   estimate     full   read    none       none
 --   description  full   full    read       read
 --
 --   Column       owner  editor  commenter  viewer
 --   attachment   full   full    read       read
+--
+-- These are the *initial* values of a table an administrator may edit at
+-- runtime; what is seeded here is the **server-side twin** of the shared domain
+-- map `projectRoleFieldGrades` / `projectRoleAttachmentGrades` in
+-- advanced_todo_domain, which the app client uses to shape its item form. The
+-- two are independent artifacts — the client's copy is cooperation, this table
+-- is enforcement — but they must *start* identical, or a first run tells two
+-- different stories about the same role. `test/grant_matrix_key_consistency_test.dart`
+-- parses this file and asserts every cell against the domain map, so a change
+-- made on one side alone fails there rather than silently at runtime.
+--
+-- `viewer`/`status` is the matrix's only `disabled` cell, and it is what makes
+-- all four TomAuthState values reachable from the seed. Note that `disabled` is
+-- *masked* (`showsContent` is false), so the write path preserves a changed
+-- value silently instead of rejecting it the way a visible `read` field does —
+-- see TomColumnAuthorization.decideWrites.
 --
 -- The last row is the item's **file column**, not a form field: no client ever
 -- sends `attachment` in an item payload (the blob key is minted server-side by
@@ -79,15 +95,15 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('editor',    'todo.item.title',       'full'),
   ('editor',    'todo.item.status',      'full'),
   ('editor',    'todo.item.priority',    'full'),
-  ('editor',    'todo.item.assigneeId',  'full'),
+  ('editor',    'todo.item.assigneeId',  'read'),
   ('editor',    'todo.item.dueDate',     'full'),
   ('editor',    'todo.item.estimate',    'read'),
   ('editor',    'todo.item.description', 'full'),
   ('editor',    'todo.item.attachment',  'full'),
 
   ('commenter', 'todo.item.title',       'read'),
-  ('commenter', 'todo.item.status',      'full'),
-  ('commenter', 'todo.item.priority',    'read'),
+  ('commenter', 'todo.item.status',      'read'),
+  ('commenter', 'todo.item.priority',    'none'),
   ('commenter', 'todo.item.assigneeId',  'read'),
   ('commenter', 'todo.item.dueDate',     'read'),
   ('commenter', 'todo.item.estimate',    'none'),
@@ -95,9 +111,9 @@ INSERT INTO tom_resource_grant (role_name, resource_key, access_level) VALUES
   ('commenter', 'todo.item.attachment',  'read'),
 
   ('viewer',    'todo.item.title',       'read'),
-  ('viewer',    'todo.item.status',      'read'),
+  ('viewer',    'todo.item.status',      'disabled'),
   ('viewer',    'todo.item.priority',    'read'),
-  ('viewer',    'todo.item.assigneeId',  'none'),
+  ('viewer',    'todo.item.assigneeId',  'read'),
   ('viewer',    'todo.item.dueDate',     'read'),
   ('viewer',    'todo.item.estimate',    'none'),
   ('viewer',    'todo.item.description', 'read'),

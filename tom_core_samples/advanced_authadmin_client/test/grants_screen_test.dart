@@ -30,9 +30,23 @@ void main() {
 
   const ownerTitle = Key('grant-cell-owner-todo.item.title');
 
-  // The label the cell renders for each state (distinct per state).
+  // The label the cell renders for each state (distinct per state). Reading is
+  // position-independent — the finder walks the element tree, not the screen.
   String labelOf(WidgetTester tester, Key cell) =>
       tester.widget<Text>(find.descendant(of: find.byKey(cell), matching: find.byType(Text))).data!;
+
+  // Tapping is *not* position-independent. The grid scrolls horizontally and the
+  // matrix spans eight graded keys (the seven form fields plus
+  // `todo.item.attachment`), so `todo.item.title` — last in the sorted column
+  // order — lies beyond the right edge of the 800×600 test surface. A tap at an
+  // off-screen offset hit-tests nothing and silently does nothing, so scroll the
+  // cell into view first. This is a property of the narrow test viewport, not of
+  // the screen: a real window either fits the grid or lets the user scroll to it.
+  Future<void> tapCell(WidgetTester tester, Key cell) async {
+    await tester.ensureVisible(find.byKey(cell));
+    await tester.pump();
+    await tester.tap(find.byKey(cell));
+  }
 
   testWidgets('TC-35-01: the Grants tab renders the seeded matrix',
       (tester) async {
@@ -55,13 +69,13 @@ void main() {
 
     // owner.title starts Full; the next tap wraps to Hidden, then climbs.
     expect(labelOf(tester, ownerTitle), 'Full');
-    await tester.tap(find.byKey(ownerTitle));
+    await tapCell(tester, ownerTitle);
     await tester.pump();
     expect(labelOf(tester, ownerTitle), 'Hidden');
-    await tester.tap(find.byKey(ownerTitle));
+    await tapCell(tester, ownerTitle);
     await tester.pump();
     expect(labelOf(tester, ownerTitle), 'Disabled');
-    await tester.tap(find.byKey(ownerTitle));
+    await tapCell(tester, ownerTitle);
     await tester.pump();
     expect(labelOf(tester, ownerTitle), 'Read');
   });
@@ -80,7 +94,7 @@ void main() {
         );
     expect(saveButton().onPressed, isNull); // pristine
 
-    await tester.tap(find.byKey(ownerTitle));
+    await tapCell(tester, ownerTitle);
     await tester.pump();
     expect(saveButton().onPressed, isNotNull); // dirty
   });
@@ -92,7 +106,7 @@ void main() {
     await openDestination(tester, 'Grants');
 
     // owner.title Full → Hidden (one wrap), then persist.
-    await tester.tap(find.byKey(ownerTitle));
+    await tapCell(tester, ownerTitle);
     await tester.pump();
     await tester.tap(find.byKey(const Key('grants-save')));
     await tester.pumpAndSettle();
@@ -111,8 +125,8 @@ void main() {
     await openDestination(tester, 'Grants');
 
     // Edit two taps (Full → Hidden → Disabled) and save.
-    await tester.tap(find.byKey(ownerTitle));
-    await tester.tap(find.byKey(ownerTitle));
+    await tapCell(tester, ownerTitle);
+    await tapCell(tester, ownerTitle);
     await tester.pump();
     expect(labelOf(tester, ownerTitle), 'Disabled');
     await tester.tap(find.byKey(const Key('grants-save')));

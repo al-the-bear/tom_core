@@ -1,5 +1,15 @@
-/// Drift guard: the seeded `tom_resource_grant` matrix and the graded item
-/// resource keys must name the same set of `todo.item.*` resources.
+/// Drift guard: the seeded `tom_resource_grant` matrix must agree with the
+/// shared domain grade maps — same `todo.item.*` keys, same grade in every cell.
+///
+/// The sample carries the four-state grade matrix twice on purpose. The domain's
+/// [projectRoleFieldGrades] / [projectRoleAttachmentGrades] are the **client's**
+/// copy, used to shape the item form; the rows this seed writes are the
+/// **server's**, and are what the app server enforces on a write and the
+/// authadmin console edits. The duality is the point — an administrator's edit
+/// changes the server's answer and not the client's map, and the server's answer
+/// is the binding one. But the two must *start* identical, or a first run tells
+/// two different stories about the same role, and nothing at runtime compares
+/// them. This test is that comparison.
 ///
 /// Three artifacts have to agree on the scope/form/field keys — the graded item
 /// key set (`todo.item.<name>`, the wire contract each side addresses), the app
@@ -18,13 +28,14 @@
 /// `saveFile`/`openFile`). Splitting them here keeps that distinction visible
 /// instead of letting a column silently join the form-field set.
 ///
-/// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class;
-/// steps 21/24/26 derive the gradable set from reflection/the resource bundle.
-/// Until then the expected set is the inline literals below.)
+/// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class —
+/// the expected key set is the domain's own [gradableItemKeys] plus
+/// [itemAttachmentGradeKey], not a list re-typed here.)
 ///
 /// Reading the SQL directly (rather than booting MariaDB) keeps this a pure unit
-/// test: a key typo or a forgotten field in the seed fails here without a
-/// database. The app server's text-tree half of the same invariant is pinned by
+/// test: a key typo, a forgotten field or a changed grade fails here without a
+/// database and without the live two-server stack. The app server's text-tree
+/// half of the same invariant is pinned by
 /// `advanced_app_server/test/resource_key_consistency_test.dart`.
 library;
 
@@ -33,27 +44,14 @@ import 'dart:io';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
 
-/// The gradable item **field** resource keys — the JSON members a client sends
-/// back in an item payload. Steps 21/24/26 derive this from reflection/the
-/// resource bundle; here it is the inline expectation this drift guard checks
-/// the seed against.
-const _gradableItemFieldKeys = <String>[
-  'todo.item.title',
-  'todo.item.status',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-  'todo.item.dueDate',
-  'todo.item.estimate',
-  'todo.item.description',
-];
-
 /// The graded item **column** resource keys — values no client may write
 /// directly, graded on the file endpoint instead of in the item payload.
 const _gradedItemColumnKeys = <String>[itemAttachmentGradeKey];
 
-/// Every `todo.item.*` resource the seed must grant, of either kind.
+/// Every `todo.item.*` resource the seed must grant, of either kind: the
+/// gradable form fields plus the graded columns.
 const _gradedItemKeys = <String>[
-  ..._gradableItemFieldKeys,
+  ...gradableItemKeys,
   ..._gradedItemColumnKeys,
 ];
 
@@ -124,6 +122,26 @@ void main() {
           equals(_gradedItemKeys.toSet()),
           reason: 'role "${role.name}" is missing or has stray grant keys',
         );
+      }
+    });
+
+    test('every seeded field grade equals the shared domain map', () {
+      final seeded = {
+        for (final row in rows)
+          if (row.key != itemAttachmentGradeKey) (row.role, row.key): row.access,
+      };
+      for (final role in ProjectRole.values) {
+        for (final key in gradableItemKeys) {
+          expect(
+            seeded[(role.name, key)],
+            projectRoleFieldGrades[role]![key]!.name,
+            reason: 'seeded grade for "${role.name}" × "$key" must match '
+                'projectRoleFieldGrades — the client shapes its item form from '
+                'the domain map and this table is what the app server enforces, '
+                'so a first run would tell two different stories about the '
+                'same role',
+          );
+        }
       }
     });
 

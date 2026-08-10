@@ -100,8 +100,9 @@
 /// replaces grants *per role* (`replaceGrantsForRole`), so a partial row would
 /// drop the keys it omits. Rather than read-modify-write the matrix, the test
 /// posts the complete intended `viewer` row (the §A.4 seed with just `title`
-/// flipped); that preserves the other six fields and keeps the scenario
-/// independent of whatever else the matrix holds. The test normalises
+/// flipped — see [_seededRow]); that preserves the role's other seven graded
+/// keys and keeps the scenario independent of whatever else the matrix holds.
+/// The test normalises
 /// `title` to `read` first (carol's write is rejected), regrades it to `full`
 /// (the same write now succeeds), and restores it to `read` in `finally`, so it
 /// leaves `auth_db` exactly as seeded and is re-runnable. carol's successful
@@ -810,49 +811,45 @@ Future<TodoItem?> _findVisibleItem(AppApiClient app, String itemId) async {
   return null;
 }
 
-/// The complete `viewer` row from the §A.4 seed with `title` set to [title].
-///
-/// Posting the whole row (not just the one cell) is deliberate:
-/// `adminPutGrants` replaces a role's grants wholesale, so a partial row would
-/// drop the other seven grants. See the library doc.
-///
-/// The **attachment** grant is part of that row and must be posted with it: it
-/// is the same table and the same role, so omitting it here would silently
-/// revoke the viewer's file access — leaving carol graded `none` and refused
-/// even the download that TC-FT-05 asserts she gets, in a suite that never
-/// mentions files.
-GrantMatrixDto _viewerRow(TomAuthState title) => GrantMatrixDto.fromGrades({
-      'viewer': [
-        GradedFieldDto(resourceKey: _titleKey, access: title),
-        GradedFieldDto(
-            resourceKey: 'todo.item.status', access: TomAuthState.read),
-        GradedFieldDto(
-            resourceKey: 'todo.item.priority', access: TomAuthState.read),
-        GradedFieldDto(
-            resourceKey: 'todo.item.assigneeId', access: TomAuthState.none),
-        GradedFieldDto(
-            resourceKey: 'todo.item.dueDate', access: TomAuthState.read),
-        GradedFieldDto(
-            resourceKey: 'todo.item.estimate', access: TomAuthState.none),
-        GradedFieldDto(
-            resourceKey: 'todo.item.description', access: TomAuthState.read),
-        GradedFieldDto(
-            resourceKey: itemAttachmentGradeKey, access: TomAuthState.read),
-      ],
-    });
+/// The complete `viewer` row as seeded, with `title` set to [title].
+GrantMatrixDto _viewerRow(TomAuthState title) =>
+    _seededRow(ProjectRole.viewer, overrides: {_titleKey: title});
 
-/// The complete `owner` row from the §A.4 seed — every gradable field `full` —
-/// with the item's **file column** graded [attachment].
+/// The complete `owner` row as seeded, with the item's **file column** graded
+/// [attachment] — the one cell TC-37-09 moves, so the owner's seven fields stay
+/// exactly as seeded and the beat under test is the file grade alone.
+GrantMatrixDto _ownerRow(TomAuthState attachment) =>
+    _seededRow(ProjectRole.owner, overrides: {itemAttachmentGradeKey: attachment});
+
+/// [role]'s complete row of the §A.4 grant matrix — its eight graded keys at the
+/// values `[003]-auth_demo_seed@dev,test.sql` seeds — with [overrides] applied.
 ///
-/// The same wholesale-replace caveat as [_viewerRow]: the seven field grants are
-/// posted alongside the one cell TC-37-09 moves, so narrowing the attachment
-/// leaves the owner's fields exactly as seeded and the beat under test is the
-/// file grade alone.
-GrantMatrixDto _ownerRow(TomAuthState attachment) => GrantMatrixDto.fromGrades({
-      ProjectRole.owner.name: [
-        for (final key in gradableItemKeys)
-          GradedFieldDto(resourceKey: key, access: TomAuthState.full),
-        GradedFieldDto(
-            resourceKey: itemAttachmentGradeKey, access: attachment),
-      ],
-    });
+/// Posting the whole row (not just the one cell under test) is forced by the
+/// API: `adminPutGrants` replaces a role's grants wholesale
+/// (`replaceGrantsForRole`), so a partial row would drop the keys it omits. The
+/// **attachment** grant is part of that row and must be posted with it —
+/// omitting it would silently revoke the role's file access, leaving carol
+/// graded `none` and refused even the download TC-FT-05 asserts she gets, in a
+/// suite that never mentions files.
+///
+/// The seeded values are read from the shared domain maps rather than re-typed
+/// here. The seed and the domain maps are pinned equal by
+/// `advanced_auth_server/test/grant_matrix_key_consistency_test.dart`, so this
+/// really is "the row as seeded" — and a future regrade of the seed reaches this
+/// test automatically instead of leaving it restoring stale values in `finally`.
+GrantMatrixDto _seededRow(
+  ProjectRole role, {
+  required Map<String, TomAuthState> overrides,
+}) {
+  final row = <String, TomAuthState>{
+    for (final key in gradableItemKeys) key: projectRoleFieldGrades[role]![key]!,
+    itemAttachmentGradeKey: projectRoleAttachmentGrades[role]!,
+    ...overrides,
+  };
+  return GrantMatrixDto.fromGrades({
+    role.name: [
+      for (final entry in row.entries)
+        GradedFieldDto(resourceKey: entry.key, access: entry.value),
+    ],
+  });
+}

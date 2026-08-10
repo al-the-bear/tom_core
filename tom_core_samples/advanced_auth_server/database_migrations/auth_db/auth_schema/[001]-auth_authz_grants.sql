@@ -5,8 +5,8 @@
 -- four TomAuthState tokens, so the database itself rejects an out-of-range grade.
 --
 -- This migration is DDL only. The seed grant matrix (§A.4) is data owned by
--- auth_db and lives in the separate sample-data migration
--- [100]-auth_sample_data.sql, applied after this one.
+-- auth_db and lives in the separate, environment-tagged sample-data migration
+-- [003]-auth_demo_seed@dev,test.sql, applied after this one.
 
 CREATE TABLE IF NOT EXISTS tom_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,

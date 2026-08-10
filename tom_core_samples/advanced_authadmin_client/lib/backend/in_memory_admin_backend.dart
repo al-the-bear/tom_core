@@ -265,6 +265,13 @@ class InMemoryAdminBackend implements AdminBackend {
   static const String _kEstimate = 'todo.item.estimate';
   static const String _kDescription = 'todo.item.description';
 
+  /// The item's **file column** — graded per role like the seven fields above,
+  /// but enforced on the file endpoint rather than in the item payload. It is
+  /// part of the same table and the same role rows, so the demo matrix carries
+  /// it too: without it the demo console would offer one fewer column than the
+  /// live one, and the screen it teaches would not be the screen that ships.
+  static const String _kAttachment = 'todo.item.attachment';
+
   void _seed() {
     // Demo accounts mirror the app client's (alice/bob/carol) plus a dedicated
     // administrator. Only `admin` holds the `admin` role, so the others are the
@@ -301,8 +308,12 @@ class InMemoryAdminBackend implements AdminBackend {
       memberUserIds: const ['u-bob', 'u-carol'],
     ));
 
-    // The four-state grant matrix, identical to the app client's twin so the two
-    // consoles describe the same authorization model.
+    // The four-state grant matrix at the values the auth server's
+    // `[003]-auth_demo_seed@dev,test.sql` seeds, so the demo console opens on the
+    // same matrix the live one does. It is re-typed rather than imported: this
+    // console is domain-agnostic on purpose (it edits whatever resource keys the
+    // server reports), so it does not depend on advanced_todo_domain and cannot
+    // read `projectRoleFieldGrades`.
     _grants.addAll({
       'owner': {
         _kTitle: TomAuthState.full,
@@ -312,6 +323,7 @@ class InMemoryAdminBackend implements AdminBackend {
         _kDueDate: TomAuthState.full,
         _kEstimate: TomAuthState.full,
         _kDescription: TomAuthState.full,
+        _kAttachment: TomAuthState.full,
       },
       'editor': {
         _kTitle: TomAuthState.full,
@@ -321,6 +333,7 @@ class InMemoryAdminBackend implements AdminBackend {
         _kDueDate: TomAuthState.full,
         _kEstimate: TomAuthState.read,
         _kDescription: TomAuthState.full,
+        _kAttachment: TomAuthState.full,
       },
       'commenter': {
         _kTitle: TomAuthState.read,
@@ -330,6 +343,7 @@ class InMemoryAdminBackend implements AdminBackend {
         _kDueDate: TomAuthState.read,
         _kEstimate: TomAuthState.none,
         _kDescription: TomAuthState.read,
+        _kAttachment: TomAuthState.read,
       },
       'viewer': {
         _kTitle: TomAuthState.read,
@@ -339,6 +353,7 @@ class InMemoryAdminBackend implements AdminBackend {
         _kDueDate: TomAuthState.read,
         _kEstimate: TomAuthState.none,
         _kDescription: TomAuthState.read,
+        _kAttachment: TomAuthState.read,
       },
     });
   }
