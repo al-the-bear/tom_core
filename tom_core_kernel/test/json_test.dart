@@ -1206,6 +1206,89 @@ void main() {
       });
     });
 
+    // `null` is a JSON value, and an absent field and a field that is present
+    // and null mean different things to a PATCH-style update, a settings map
+    // where null means "explicitly cleared", or a DTO whose schema declares
+    // the field nullable. These assert the sanitiser keeps that distinction
+    // while still dropping what it genuinely cannot encode.
+    group('null values', () {
+      test('should preserve a deliberate null value', () {
+        final dirty = {'name': 'Test', 'discount': null};
+        final clean = makeCleanJsonMap(dirty);
+
+        expect(clean.containsKey('discount'), isTrue);
+        expect(clean['discount'], isNull);
+      });
+
+      test('should preserve a null nested in a sub-map', () {
+        final dirty = {
+          'outer': {'inner': null, 'kept': 1},
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        final outer = clean['outer'] as Map;
+        expect(outer.containsKey('inner'), isTrue);
+        expect(outer['inner'], isNull);
+        expect(outer['kept'], equals(1));
+      });
+
+      test('should preserve nulls inside lists', () {
+        final dirty = {
+          'items': [1, null, 2],
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        final items = clean['items'] as List;
+        expect(items.length, equals(3));
+        expect(items, equals([1, null, 2]));
+      });
+
+      // The interface promises a type can describe its own state, and its
+      // dartdoc explicitly allows nulls; the sanitiser must not edit that
+      // description on the way through.
+      test('should preserve nulls reported by a serializable', () {
+        final dirty = {'nullable': _NullableSerializable(null)};
+        final clean = makeCleanJsonMap(dirty);
+
+        final nullable = clean['nullable'] as Map;
+        expect(nullable.containsKey('value'), isTrue);
+        expect(nullable['value'], isNull);
+      });
+
+      // The point of the change: null and not-encodable were the same signal,
+      // and must not be again.
+      test('should keep dropping non-encodable values beside a null', () {
+        final dirty = {
+          'cleared': null,
+          'dropped': DateTime(2024, 1, 1),
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        expect(clean.containsKey('cleared'), isTrue);
+        expect(clean['cleared'], isNull);
+        expect(clean.containsKey('dropped'), isFalse);
+      });
+
+      test('should drop non-encodable list entries but keep null ones', () {
+        final dirty = {
+          'mixed': [1, null, DateTime(2024, 1, 1), 'text'],
+        };
+        final clean = makeCleanJsonMap(dirty);
+
+        expect(clean['mixed'], equals([1, null, 'text']));
+      });
+
+      test('should produce output that jsonEncode accepts with nulls', () {
+        final dirty = {'cleared': null, 'kept': 'value'};
+        final clean = makeCleanJsonMap(dirty);
+
+        final decoded = jsonDecode(jsonEncode(clean)) as Map<String, dynamic>;
+        expect(decoded.containsKey('cleared'), isTrue);
+        expect(decoded['cleared'], isNull);
+        expect(decoded['kept'], equals('value'));
+      });
+    });
+
     group('edge cases', () {
       test('should return empty map for empty input', () {
         final dirty = <String, Object>{};

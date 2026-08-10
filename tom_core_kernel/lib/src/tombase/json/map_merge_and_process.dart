@@ -487,15 +487,22 @@ void processTree(
 
 /// Recursively cleans a map to ensure it contains only JSON-compatible types.
 ///
-/// Creates a new map containing valid JSON types (String, int, double, bool,
-/// Map, List). Entries with non-String keys, and values of any other type, are
-/// filtered out.
+/// Creates a new map containing valid JSON values (String, int, double, bool,
+/// `null`, Map, List). Entries with non-String keys, and values of any other
+/// type, are filtered out.
 ///
-/// The one exception is [TomJsonSerializable]: a value implementing it is
-/// converted through its `toJson()` and the result cleaned in turn, wherever it
-/// appears in the tree — at the top level, nested in a sub-map, or inside a
-/// list. That is the interface's whole purpose, and dropping such a value would
-/// discard state the object was explicitly written to expose.
+/// `null` is a JSON value and is **kept**. An absent field and a field that is
+/// present and null mean different things — to a PATCH-style partial update, to
+/// a settings map where null means "explicitly cleared", to a DTO whose schema
+/// declares the field nullable — and the sanitiser preserves that distinction
+/// rather than collapsing it.
+///
+/// The one exception to the type filter is [TomJsonSerializable]: a value
+/// implementing it is converted through its `toJson()` and the result cleaned
+/// in turn, wherever it appears in the tree — at the top level, nested in a
+/// sub-map, or inside a list. That is the interface's whole purpose, and
+/// dropping such a value would discard state the object was explicitly written
+/// to expose.
 ///
 /// This is useful when working with maps that may contain non-serializable
 /// types (e.g. `DateTime`, custom objects) and need to be converted to pure
@@ -507,7 +514,7 @@ void processTree(
 /// - [map]: The source map to clean (not modified)
 ///
 /// ## Returns
-/// A new `Map<String, Object>` containing only JSON-compatible entries.
+/// A new `Map<String, Object?>` containing only JSON-compatible entries.
 ///
 /// ## Example
 /// ```dart
@@ -515,17 +522,22 @@ void processTree(
 /// final clean = makeCleanJsonMap(dirty);
 /// // clean = {'name': 'App', 'port': 8080}  (DateTime filtered out)
 ///
+/// // A deliberate null survives; only what cannot be encoded is dropped.
+/// final patch = {'discount': null, 'when': DateTime.now()};
+/// makeCleanJsonMap(patch);
+/// // {'discount': null}
+///
 /// // A TomJsonSerializable is converted rather than dropped.
 /// final withValue = {'name': 'App', 'price': Money(12, 'EUR')};
 /// final cleaned = makeCleanJsonMap(withValue);
 /// // cleaned = {'name': 'App', 'price': {'amount': 12, 'currency': 'EUR'}}
 /// ```
-Map<String, Object> makeCleanJsonMap(Map map) {
-  var result = <String, Object>{};
+Map<String, Object?> makeCleanJsonMap(Map map) {
+  var result = <String, Object?>{};
   for (var entry in map.entries) {
     if (entry.key is String) {
       final cleaned = _cleanJsonValue(entry.value);
-      if (cleaned != null) {
+      if (!identical(cleaned, _notJsonEncodable)) {
         result[entry.key] = cleaned;
       }
     }
@@ -535,24 +547,44 @@ Map<String, Object> makeCleanJsonMap(Map map) {
 
 /// Recursively cleans a list to ensure it contains only JSON-compatible types.
 ///
-/// Internal helper for [makeCleanJsonMap].
-List _cleanList(List list) {
-  var result = [];
+/// Internal helper for [makeCleanJsonMap]. `null` elements are kept — a JSON
+/// array may hold them, and dropping them would silently shift every later
+/// element's index.
+List<Object?> _cleanList(List list) {
+  var result = <Object?>[];
   for (var listEntry in list) {
     final cleaned = _cleanJsonValue(listEntry);
-    if (cleaned != null) {
+    if (!identical(cleaned, _notJsonEncodable)) {
       result.add(cleaned);
     }
   }
   return result;
 }
 
-/// Returns a JSON-clean copy of [value], or `null` when it is not a
-/// JSON-compatible type (in which case the caller filters it out).
+/// Marker returned by [_cleanJsonValue] for a value that has no JSON form.
+///
+/// The helper cannot signal "drop this" with `null`, because `null` is itself a
+/// value it must be able to return: conflating the two made a deliberate null
+/// indistinguishable from a `DateTime`, and both were filtered out. A private
+/// sentinel separates the two answers, so the callers test identity against
+/// this object rather than nullness.
+const Object _notJsonEncodable = _NotJsonEncodable();
+
+/// The type of [_notJsonEncodable]. Private, and never instantiated elsewhere,
+/// so no caller-supplied value can be mistaken for the sentinel.
+class _NotJsonEncodable {
+  const _NotJsonEncodable();
+}
+
+/// Returns a JSON-clean copy of [value], or [_notJsonEncodable] when it is not
+/// a JSON-compatible type (in which case the caller filters it out).
+///
+/// A `null` [value] returns `null` — it is a JSON value, not a failure — which
+/// is why the "no JSON form" answer needs its own sentinel.
 ///
 /// Shared by [makeCleanJsonMap] and [_cleanList] so the type dispatch —
-/// scalars pass through, [TomJsonSerializable] converts, maps and lists
-/// recurse, everything else is dropped — is defined in exactly one place.
+/// scalars and `null` pass through, [TomJsonSerializable] converts, maps and
+/// lists recurse, everything else is dropped — is defined in exactly one place.
 ///
 /// This is the only function in the module that knows [TomJsonSerializable]
 /// exists, and deliberately so. The tree functions ([traverseAndProcess],
@@ -563,6 +595,9 @@ List _cleanList(List list) {
 /// point where a live object tree meets JSON, so it is the one place the
 /// interface belongs.
 Object? _cleanJsonValue(Object? value) {
+  if (value == null) {
+    return null;
+  }
   if (value is String || value is int || value is double || value is bool) {
     return value;
   }
@@ -580,7 +615,7 @@ Object? _cleanJsonValue(Object? value) {
   if (value is List) {
     return _cleanList(value);
   }
-  return null;
+  return _notJsonEncodable;
 }
 
 // =============================================================================

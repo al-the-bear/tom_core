@@ -18,17 +18,23 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// A small domain object that opts into JSON serialization via the framework
 /// contract [TomJsonSerializable].
 class ServiceEndpoint implements TomJsonSerializable {
-  ServiceEndpoint(this.name, this.url, this.enabled);
+  ServiceEndpoint(this.name, this.url, this.enabled, {this.region});
 
   final String name;
   final String url;
   final bool enabled;
+
+  /// Absent for a globally routed endpoint. Reported as an explicit `null`
+  /// rather than omitted, so a consumer can tell "no region" from "the sender
+  /// did not say".
+  final String? region;
 
   @override
   Map<String, Object?> toJson() => {
     'name': name,
     'url': url,
     'enabled': enabled,
+    'region': region,
   };
 }
 
@@ -148,10 +154,13 @@ void run() {
   final endpointJson = endpoint.toJson();
 
   // toJson output can be fed straight into makeCleanJsonMap for serialization.
+  // The deliberate null the endpoint reports for `region` survives: null is a
+  // JSON value, and only what has no JSON form at all is filtered out.
   final cleanEndpoint = makeCleanJsonMap(endpointJson);
 
   print('   - endpoint.toJson(): $endpointJson');
   print('   - cleaned:           $cleanEndpoint');
+  print('   - region present:    ${cleanEndpoint.containsKey('region')}');
   print('');
 
   // ===========================================================================
@@ -180,6 +189,9 @@ void run() {
   // Example 4: TomJsonSerializable
   assert(endpointJson['name'] == 'auth');
   assert(endpointJson['enabled'] == true);
-  assert(cleanEndpoint.length == 3);
+  assert(cleanEndpoint.length == 4);
   assert(cleanEndpoint['url'] == 'https://api.example.com/auth');
+  // The null is kept, so "no region" stays distinguishable from "not stated".
+  assert(cleanEndpoint.containsKey('region'));
+  assert(cleanEndpoint['region'] == null);
 }

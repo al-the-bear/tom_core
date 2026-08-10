@@ -2000,7 +2000,7 @@ class TomCoreKernelBridge {
       'getPathFromTree': 'Map<String, dynamic> getPathFromTree(Map<String, dynamic> baseTree, String path, String name)',
       'getObjectFromTree': 'Object getObjectFromTree(Map<String, dynamic> baseTree, String path)',
       'processTree': 'void processTree(Map<String, dynamic> tree, Map<String, dynamic> Function(String keyName, String path, String profileName) provider)',
-      'makeCleanJsonMap': 'Map<String, Object> makeCleanJsonMap(Map map)',
+      'makeCleanJsonMap': 'Map<String, Object?> makeCleanJsonMap(Map map)',
       'substituteEnvVars': 'void substituteEnvVars(Map<String, dynamic> tree, Map<String, String> environment)',
       'prettyJson': 'String prettyJson(String json)',
       'prettyJsonLine': 'String prettyJsonLine(String json)',

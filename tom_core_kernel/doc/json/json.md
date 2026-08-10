@@ -192,17 +192,25 @@ Keys matching the pattern `keyName@path@profileName` are resolved using the prov
 
 #### `makeCleanJsonMap(map)`
 
-Creates a sanitized copy containing only JSON-compatible types (String, int, double, bool, Map, List).
+Creates a sanitized copy containing only JSON-compatible values (String, int,
+double, bool, `null`, Map, List).
 
-A `TomJsonSerializable` is the one exception: it is converted through its
-`toJson()` rather than dropped, and the result cleaned in turn. Everything else
-is filtered out **silently** — a `DateTime` disappears with no error and no log
-line, so give a type a `toJson()` when its value must survive.
+`null` is a JSON value and is **kept**. An absent field and a field that is
+present and null mean different things — to a PATCH-style partial update, to a
+settings map where null means "explicitly cleared", to a DTO whose schema
+declares the field nullable — so the sanitizer preserves the distinction instead
+of collapsing it.
+
+A `TomJsonSerializable` is the one exception to the type filter: it is converted
+through its `toJson()` rather than dropped, and the result cleaned in turn.
+Everything else is filtered out **silently** — a `DateTime` disappears with no
+error and no log line, so give a type a `toJson()` when its value must survive.
 
 ```dart
 final dirty = {
   'name': 'App',
   'created': DateTime.now(),      // Not JSON-compatible — dropped
+  'discount': null,               // A JSON value — kept
   'price': Money(12, 'EUR'),      // TomJsonSerializable — converted
   'port': 8080
 };
@@ -210,6 +218,7 @@ final dirty = {
 final clean = makeCleanJsonMap(dirty);
 // clean == {
 //   'name': 'App',
+//   'discount': null,
 //   'price': {'amount': 12, 'currency': 'EUR'},
 //   'port': 8080,
 // }

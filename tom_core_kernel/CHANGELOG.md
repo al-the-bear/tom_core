@@ -155,6 +155,20 @@ anyone who was writing them.
   `{"rate": 2}` decodes to an `int` and a whole-number `double` was previously
   unrepresentable. The converse is deliberately absent: narrowing would need a
   rounding policy, and truncating `2.5` silently loses data.
+- **Breaking: `makeCleanJsonMap` keeps null values and returns
+  `Map<String, Object?>` (tcdocc1).** The sanitiser's helper used `null` to mean
+  both "this *is* JSON's null" and "this has no JSON form", so a deliberate null
+  was dropped alongside a `DateTime` — losing the distinction between an absent
+  field and one that is present and null, which is exactly the distinction a
+  PATCH-style update, a "explicitly cleared" setting, or a nullable-by-schema DTO
+  is built on. It bit hardest through `TomJsonSerializable`, whose `toJson`
+  returns `Map<String, Object?>` and is documented to carry nulls: converting a
+  value object routes its map through the sanitiser automatically, so the
+  interface promised the type could describe its own state and the sanitiser then
+  edited the description. The two answers are now separated by a private
+  sentinel; `null` passes through in maps and in lists (where dropping it also
+  shifted every later index), and only genuinely unencodable values are filtered.
+  Callers that stored the result in a `Map<String, Object>` need the wider type.
 - **Registering the UTC singleton is no longer reported as an ERROR (tccc3).**
   The IANA database ships `Etc/UTC` and has no location keyed exactly `UTC`, so
   `TomTimezone` registers its documented `utc` singleton on every start of every
