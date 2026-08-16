@@ -562,6 +562,21 @@ void main() {
         expect(context.contextMap['tenant']?.type, equals(String));
         expect(tenant, equals('acme'));
       });
+
+      test('the match is exact, not assignable — a supertype read misses', () {
+        // The likeliest wrong assumption is that the read is covariant, since
+        // every other typed lookup in Dart is. It is not: getEntry compares
+        // entry.type == T, so neither a supertype nor a sibling type of the
+        // declared type reaches the entry.
+        final context = TomExecutionContext({
+          'tenant': TomContextEntry<String>(() => 'acme'),
+        });
+
+        expect(context.getEntry<Object>('tenant'), isNull,
+            reason: 'Object is a supertype of String, and still misses');
+        expect(context.getEntry<int>('tenant'), isNull);
+        expect(context.getEntry<String>('tenant')?.value, equals('acme'));
+      });
     });
   });
 

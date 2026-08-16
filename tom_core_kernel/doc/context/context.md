@@ -102,7 +102,7 @@ void main() {
   // Create a context with custom values
   final context = TomExecutionContext({
     'requestId': TomContextEntry<String>(() => 'req-12345'),
-    'userId': TomContextEntry<int>(() => 42),
+    'userId': TomContextEntry<String>(() => 'user-12345'),
   });
 
   // Run code within the context
@@ -112,10 +112,14 @@ void main() {
 }
 
 void processRequest() {
-  // Access context entries from anywhere in the zone, by entry name
+  // Access context entries from anywhere in the zone, by entry name. The type
+  // argument must match the declared entry type exactly — reading 'userId'
+  // as <int> here would return null, not 'user-12345'.
   final requestId =
       TomExecutionContext.getValueFromCurrentZone<String>('requestId');
-  print('Processing request: $requestId');
+  final userId =
+      TomExecutionContext.getValueFromCurrentZone<String>('userId');
+  print('Processing request $requestId for $userId');
 }
 ```
 
@@ -147,12 +151,15 @@ final childContext = TomExecutionContext(
 #### Getting Context Entries
 
 ```dart
-// Get entry by name with type checking
+// Get entry by name with type checking. 'tenant' was declared above as
+// TomContextEntry<String>, and getEntry matches that type exactly — asking
+// for getEntry<Object>('tenant') would return null.
 final entry = context.getEntry<String>('tenant');
 final value = entry?.value;  // Access via value getter
 
-// Static method to get value from current zone
-final userId = TomExecutionContext.getValueFromCurrentZone<String>('userId');
+// Static method to read the same entry from the current zone, inside a
+// runInContext body. The same exact-match rule applies.
+final tenant = TomExecutionContext.getValueFromCurrentZone<String>('tenant');
 ```
 
 #### Modifying a Context
