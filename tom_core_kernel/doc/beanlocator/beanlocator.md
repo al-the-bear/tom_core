@@ -28,6 +28,7 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
     - [Environment-Specific Beans](#environment-specific-beans)
     - [Selecting an Implementation by Environment Name](#selecting-an-implementation-by-environment-name)
     - [Platform-Specific Beans](#platform-specific-beans)
+    - [Selectors Match by Name](#selectors-match-by-name)
   - [Resetting the Bean Context](#resetting-the-bean-context)
   - [Implementation Resolution](#implementation-resolution)
   - [Startup validation](#startup-validation)
@@ -418,6 +419,37 @@ class AndroidStorageService implements StorageService { ... }
 @platformWeb
 class WebStorageService implements StorageService { ... }
 ```
+
+### Selectors Match by Name
+
+A selector matches the active deployment when the **names** agree. Which
+`TomEnvironment` or `TomPlatform` instance carries the name does not matter, so
+the environment may be built wherever it is most convenient — including from
+configuration, at runtime:
+
+```dart
+// Read the environment name at start-up; no `const` in sight.
+final name = Platform.environment['APP_ENV'] ?? 'development';
+TomRuntime.addEnvironment(TomEnvironment(name));
+TomRuntime.setCurrentEnvironment(name);
+
+initializeBeanContext();   // @TomEnvironment('production') matches when name is 'production'
+```
+
+This follows from how `TomRuntime` identifies an environment in the first place:
+`setCurrentEnvironment` takes a *name*, and registering a second environment
+under a name already present is a duplicate registration rather than a second
+environment. The name is the identity, and selection agrees with that.
+
+Two consequences:
+
+- Two environments that share a name are the same environment as far as
+  selection is concerned, whatever else differs between them — `isTest`,
+  `isDevelopment` and `parent` describe an environment but do not distinguish
+  one. Give distinct environments distinct names.
+- `'none'` is reserved: it is the name of the `noTomEnvironment` and
+  `noTomPlatform` sentinels, so a component annotated `@TomEnvironment('none')`
+  reads as carrying no environment constraint at all.
 
 ## Resetting the Bean Context
 

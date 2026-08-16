@@ -221,6 +221,78 @@ void main() {
   });
 
   // ==========================================================================
+  // Selectors are matched by name, not by instance
+  // ==========================================================================
+  group('selectors matched by name, not by instance', () {
+    // An annotation is necessarily a `const`, and const expressions are
+    // canonicalised — so as long as the value handed to `TomRuntime` is also
+    // written as an identical `const`, the two are the same instance and an
+    // identity comparison happens to work. Nothing keeps them written that
+    // way. `TomRuntime`'s own documented setup builds environments with a
+    // plain constructor call, and an application taking its environment name
+    // from configuration cannot do otherwise. Those instances are not the
+    // annotation's, so an identity comparison would silently match nothing:
+    // the implementation is right there, looks identical, and discovery
+    // reports the interface as having no implementation at all.
+    //
+    // The fixtures below are the same ones the tier tests use; only the way
+    // the active environment and platform are constructed differs.
+
+    test('a runtime-built environment selects as the const one does', () {
+      discoverBeansIn(environmentNamed('prod'), platformWeb);
+
+      expect(
+        TomBean<RankedService>().get().tier(),
+        equals('tier-1'),
+        reason: 'the active environment names "prod" and the tier-1 candidate '
+            'is annotated for "prod" — which instance carries the name is not '
+            'something a deployment gets to control',
+      );
+    });
+
+    test('a runtime-built platform selects as the const one does', () {
+      discoverBeansIn(prodEnvironment, platformNamed('web'));
+
+      expect(TomBean<RankedService>().get().tier(), equals('tier-1'));
+    });
+
+    test('both built at runtime still select', () {
+      discoverBeansIn(environmentNamed('prod'), platformNamed('web'));
+
+      expect(TomBean<RankedService>().get().tier(), equals('tier-1'));
+    });
+
+    test('a runtime-built environment still discriminates', () {
+      // Matching by name must not degrade into matching everything: the
+      // candidates annotated for "prod" and "web" have to lose here.
+      discoverBeansIn(environmentNamed('dev'), platformNamed('macos'));
+
+      expect(TomBean<RankedService>().get().tier(), equals('tier-4'));
+    });
+
+    test('a runtime-built environment selects between two candidates', () {
+      discoverBeansIn(environmentNamed('prod'), platformMacos);
+      expect(TomBean<GreetingService>().get().greet(), equals('production'));
+
+      discoverBeansIn(environmentNamed('dev'), platformMacos);
+      expect(TomBean<GreetingService>().get().greet(), equals('development'));
+    });
+
+    test('an environment differing only in its flags selects', () {
+      // The other way two instances end up distinct, and the easier one to
+      // write by accident: `isTest`/`isDevelopment` set on the runtime's
+      // environment but not on the annotation. They describe an environment
+      // rather than distinguishing one, so both name 'prod' and both are it.
+      discoverBeansIn(
+        const TomEnvironment('prod', isTest: true, isDevelopment: true),
+        platformWeb,
+      );
+
+      expect(TomBean<RankedService>().get().tier(), equals('tier-1'));
+    });
+  });
+
+  // ==========================================================================
   // Pre-binding an interface: selection must leave an occupied key alone
   // ==========================================================================
   group('interface bound before discovery', () {

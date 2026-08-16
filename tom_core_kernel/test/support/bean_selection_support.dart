@@ -11,17 +11,27 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// The environments the selection fixtures are annotated with.
 ///
-/// Selection compares environments and platforms with `==`, and neither
-/// [TomEnvironment] nor [TomPlatform] overrides it — so the comparison is
-/// identity. Const expressions are canonicalised, which makes an annotation
-/// and an identically written `const` value the same instance; a *runtime*
-/// `TomEnvironment('prod')` would not match. Naming the constants here keeps
-/// that requirement visible and lets the annotation and the value handed to
-/// [TomRuntime] be literally the same thing.
+/// Naming them once lets the annotation and the value handed to [TomRuntime]
+/// be written the same way, which is how a reader checks at a glance that a
+/// test activates the environment it thinks it does.
 const prodEnvironment = TomEnvironment('prod');
 
 /// The second environment used to show that a selector actually selects.
 const devEnvironment = TomEnvironment('dev');
+
+/// Builds an environment at runtime, as an application reading its name from
+/// configuration does.
+///
+/// Because [name] is a parameter the constructor cannot be `const`, so the
+/// result is a fresh instance rather than the canonicalised `const` that the
+/// fixtures' annotations carry. That is the whole point: selection matches on
+/// the environment *name*, so where the instance came from must not matter.
+/// `TomRuntime`'s own documented setup — `addEnvironment(TomEnvironment("dev",
+/// isDevelopment: true))` — takes exactly this form.
+TomEnvironment environmentNamed(String name) => TomEnvironment(name);
+
+/// Builds a platform at runtime, the counterpart to [environmentNamed].
+TomPlatform platformNamed(String name) => TomPlatform(name);
 
 /// Activates [environment] and [platform], then runs one full discovery pass.
 ///

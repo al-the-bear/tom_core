@@ -28,7 +28,9 @@ lazily resolved handle onto that registry: it resolves a bean by type
 assignability, by registered name (`TomBean.fromName`), or from an explicit
 registration (`TomBean.withName` / `TomBean.withType` / `installByEnvironment`).
 Environment (`@TomEnvironment`) and platform (`@TomPlatform`) annotations pick
-the best-matching implementation for the active runtime.
+the best-matching implementation for the active runtime; a selector matches on
+the environment or platform **name**, so the value handed to `TomRuntime` may be
+built at runtime from configuration rather than written as a `const`.
 `TomBeanLocatorException` is raised for duplicate registrations, unresolved
 beans, type mismatches, ambiguous or missing implementations, and an
 unconfigured runtime. It is the module's *only* exception type: a failure
@@ -79,7 +81,9 @@ TomBeanLocatorException(
 Annotation to mark a class as a Tom component / service bean. When applied
 alongside `@tomReflector`, the bean locator discovers and instantiates the class
 during initialization. Combine with `@TomEnvironment` or `@TomPlatform` for
-environment- or platform-specific implementations.
+environment- or platform-specific implementations; both are matched by name, so
+`TomEnvironment("test")` and `TomEnvironment("test", isTest: true)` select
+identically and `"none"` is reserved for the unconstrained sentinels.
 
 #### Constructors
 

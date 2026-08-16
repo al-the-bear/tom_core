@@ -135,6 +135,14 @@ class TomBeanLocatorException extends TomException {
 /// @TomEnvironment("test", isTest: true)
 /// class MockUserService implements UserService { ... }
 /// ```
+///
+/// A selector matches the active deployment when the **names** agree — which
+/// `TomEnvironment` or `TomPlatform` instance carries the name is irrelevant, so
+/// the environment `TomRuntime` is given may be built at runtime from
+/// configuration. The name is the identity: `TomEnvironment("test")` and
+/// `TomEnvironment("test", isTest: true)` are the same environment as far as
+/// selection is concerned, and `"none"` is reserved for the sentinels that mean
+/// "unconstrained".
 class TomComponent extends Object {
   /// Creates a TomComponent annotation.
   ///
@@ -665,6 +673,40 @@ TomEnvironment _requireCurrentEnvironment(String operation, Object subject) {
 }
 
 // =============================================================================
+// Selector Matching
+// =============================================================================
+
+/// Whether the `@TomEnvironment` selector [selector] designates [active].
+///
+/// Environments are matched **by name**, never by instance. `TomRuntime` keys
+/// its registry by name — [TomRuntime.setCurrentEnvironment] takes a name, and
+/// registering a second environment under a name already present is a duplicate
+/// rather than a second environment — so the name *is* the environment's
+/// identity, and this comparison simply agrees with that.
+///
+/// The distinction is not academic. An annotation is necessarily a `const`, and
+/// const expressions are canonicalised, so comparing instances happens to work
+/// for as long as the value handed to the runtime is written as an identical
+/// `const`. Nothing keeps it written that way: `TomRuntime`'s own documented
+/// setup builds environments with a plain constructor call, and an application
+/// reading its environment name from configuration has no `const` to write. An
+/// instance comparison would then match nothing, and the report would be
+/// [initializeBeanContext] announcing that an interface has no implementation
+/// while the implementation sits right there carrying what looks like the very
+/// same selector.
+bool _environmentMatches(TomEnvironment selector, TomEnvironment? active) =>
+    selector.env == active?.env;
+
+/// Whether the `@TomPlatform` selector [selector] designates [active].
+///
+/// Platforms are matched by name for the same reason environments are — see
+/// [_environmentMatches]. A null [active] matches nothing, so a component that
+/// constrains its platform stays unbound until the platform is known rather
+/// than being bound on the assumption that it fits.
+bool _platformMatches(TomPlatform selector, TomPlatform? active) =>
+    selector.name == active?.name;
+
+// =============================================================================
 // Bean Context Initialization
 // =============================================================================
 
@@ -773,18 +815,20 @@ void _instantiateConcreteBean(ClassMirror classMirror) {
   // without a configured runtime — the lookup stays inside the condition.
   for (var meta in classMirror.metadata) {
     if (meta is TomEnvironment &&
-        meta.env !=
-            _requireCurrentEnvironment(
-              "environment selection",
-              classMirror.qualifiedName,
-            ).env) {
+        !_environmentMatches(
+          meta,
+          _requireCurrentEnvironment(
+            "environment selection",
+            classMirror.qualifiedName,
+          ),
+        )) {
       tomLog.trace(
         "Discarding service class $classMirror because environments don't match.",
       );
       return;
     }
     if (meta is TomPlatform &&
-        meta.name != TomRuntime.getCurrentPlatform()?.name) {
+        !_platformMatches(meta, TomRuntime.getCurrentPlatform())) {
       tomLog.trace(
         "Discarding service class $classMirror because platforms don't match.",
       );
@@ -943,32 +987,42 @@ class _TomImplementationInfo {
     );
     final platform = TomRuntime.getCurrentPlatform();
 
+    // Selectors are compared by name, never by instance — see
+    // [_environmentMatches]. The two "unconstrained" tests below read the
+    // sentinel the same way, so a component annotated with a literal
+    // `TomEnvironment('none')` is treated as carrying no environment
+    // constraint. That is the sentinel's name being reserved, which is what a
+    // sentinel is for.
     return _findSingleMatch(
           infos,
           tc,
-          (info) => info.environment == env && info.platform == platform,
+          (info) =>
+              _environmentMatches(info.environment, env) &&
+              _platformMatches(info.platform, platform),
           "platform and environment match",
         ) ??
         _findSingleMatch(
           infos,
           tc,
           (info) =>
-              info.platform == platform && info.environment == noTomEnvironment,
+              _platformMatches(info.platform, platform) &&
+              _environmentMatches(info.environment, noTomEnvironment),
           "platform match",
         ) ??
         _findSingleMatch(
           infos,
           tc,
           (info) =>
-              info.environment == env && info.platform == noTomPlatform,
+              _environmentMatches(info.environment, env) &&
+              _platformMatches(info.platform, noTomPlatform),
           "environment match",
         ) ??
         _findSingleMatch(
           infos,
           tc,
           (info) =>
-              info.environment == noTomEnvironment &&
-              info.platform == noTomPlatform,
+              _environmentMatches(info.environment, noTomEnvironment) &&
+              _platformMatches(info.platform, noTomPlatform),
           "default match without environment or platform",
         );
   }

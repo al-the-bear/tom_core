@@ -441,6 +441,60 @@ void main() {
   });
 
   // ==========================================================================
+  // Selector matching on the concrete path: by name, not by instance
+  // ==========================================================================
+  group('concrete bean with a runtime-built environment', () {
+    /// Builds an environment the way an application reading its name from
+    /// configuration does.
+    ///
+    /// Because the name is a parameter the constructor cannot be `const`, so
+    /// the result is a fresh instance rather than the canonicalised `const`
+    /// that [EnvNarrowedConcreteService]'s annotation carries. Selection
+    /// matches on the *name*, so where the instance came from must not matter
+    /// — and `TomRuntime`'s own documented setup takes exactly this form.
+    TomEnvironment environmentNamed(String name) => TomEnvironment(name);
+
+    setUp(() {
+      TomBean.resetBeanContext();
+    });
+
+    test('is bound when the runtime-built environment names its own', () {
+      TomRuntime.addEnvironment(environmentNamed('prod'));
+      TomRuntime.setCurrentEnvironment('prod');
+      initializeBeanContext();
+
+      expect(
+        TomBean.getBeanByType(EnvNarrowedConcreteService),
+        isA<EnvNarrowedConcreteService>(),
+      );
+    });
+
+    test('is still discarded when the names differ', () {
+      // Matching by name must not degrade into matching everything.
+      TomRuntime.addEnvironment(environmentNamed('dev'));
+      TomRuntime.setCurrentEnvironment('dev');
+      initializeBeanContext();
+
+      expect(TomBean.getBeanByType(EnvNarrowedConcreteService), isNull);
+    });
+
+    test('is bound when only the environment flags differ', () {
+      // `isTest` and `isDevelopment` describe an environment; they do not
+      // distinguish one. Two environments named 'prod' are one environment.
+      TomRuntime.addEnvironment(
+        const TomEnvironment('prod', isTest: true, isDevelopment: true),
+      );
+      TomRuntime.setCurrentEnvironment('prod');
+      initializeBeanContext();
+
+      expect(
+        TomBean.getBeanByType(EnvNarrowedConcreteService),
+        isA<EnvNarrowedConcreteService>(),
+      );
+    });
+  });
+
+  // ==========================================================================
   // Substituting an implementation: the route a test takes to inject a mock
   // ==========================================================================
   group('overriding a registered bean', () {
