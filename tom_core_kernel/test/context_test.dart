@@ -419,6 +419,53 @@ void main() {
             reason: 'zoneValues are not entries of the context map');
       });
     });
+
+    // ------------------------------------------------------------------------
+    // The inference trap
+    //
+    // The constructor parameter is Map<String, TomContextEntry>, so a raw
+    // TomContextEntry(() => x) written directly in that map literal gets
+    // TomContextEntry<dynamic> as its downward inference context — the value
+    // expression never gets a say. Since getEntry requires entry.type == T
+    // exactly, every typed read of such an entry then returns null. The same
+    // expression assigned to a local infers from the value instead, so the
+    // trap is *positional*: it is pinned here from both sides.
+    // ------------------------------------------------------------------------
+    group('raw vs parameterised entry (type inference)', () {
+      test('a raw entry in the constructor map infers dynamic, not the value '
+          'type', () {
+        final context = TomExecutionContext({
+          'tenant': TomContextEntry(() => 'acme'),
+        });
+
+        expect(context.contextMap['tenant']?.type, equals(dynamic));
+        expect(context.getEntry<String>('tenant'), isNull,
+            reason: 'getEntry requires entry.type == T exactly');
+        expect(context.getEntry<dynamic>('tenant')?.value, equals('acme'),
+            reason: 'the value is there — only the typed read misses it');
+      });
+
+      test('the same raw expression infers the value type outside the map', () {
+        final entry = TomContextEntry(() => 'acme');
+
+        expect(entry.type, equals(String),
+            reason: 'no downward context, so inference comes from the value');
+      });
+
+      test('a parameterised entry is read back by its value type', () {
+        final context = TomExecutionContext({
+          'tenant': TomContextEntry<String>(() => 'acme'),
+        });
+
+        String? tenant;
+        context.runInContext(() {
+          tenant = TomExecutionContext.getValueFromCurrentZone<String>('tenant');
+        });
+
+        expect(context.contextMap['tenant']?.type, equals(String));
+        expect(tenant, equals('acme'));
+      });
+    });
   });
 
   // ==========================================================================

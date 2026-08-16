@@ -101,7 +101,7 @@ final context = TomExecutionContext({
 
 // With parent context (entries are inherited)
 final childContext = TomExecutionContext(
-  {'childKey': TomContextEntry(() => 'value')},
+  {'childKey': TomContextEntry<String>(() => 'value')},
   parentContext: parentContext,
 );
 ```
@@ -126,7 +126,8 @@ final context = TomExecutionContext({});
 context.add('locale', TomContextEntry<String>(() => 'en-US'));
 
 // Merge another context
-final otherContext = TomExecutionContext({'theme': TomContextEntry(() => 'dark')});
+final otherContext =
+    TomExecutionContext({'theme': TomContextEntry<String>(() => 'dark')});
 context.combineWith(otherContext);
 
 // Clear all entries
@@ -285,18 +286,32 @@ tomExecutionContext.runInContext(() {
 
 ## Best Practices
 
-### 1. Use Type-Safe Entries
-
-Always specify the type parameter for type safety:
+### 1. Always write the entry's type parameter
 
 ```dart
 // Good
-TomContextEntry<String>(() => 'value')
-TomContextEntry<User>(() => currentUser)
+final context = TomExecutionContext({
+  'tenant': TomContextEntry<String>(() => 'value'),
+  'user': TomContextEntry<User>(() => currentUser),
+});
 
-// Avoid
-TomContextEntry(() => 'value')  // Type inferred as dynamic
+// Broken — reads back as null
+final context = TomExecutionContext({
+  'tenant': TomContextEntry(() => 'value'),
+});
 ```
+
+This is not a style preference; omitting the type parameter breaks the entry.
+The constructor takes a `Map<String, TomContextEntry>`, so a raw
+`TomContextEntry(() => 'value')` written inside that map literal gets
+`TomContextEntry<dynamic>` as its inference context — the value expression never
+gets a say. `getEntry<T>` requires `entry.type == T` exactly, so
+`getValueFromCurrentZone<String>('tenant')` then returns `null` rather than
+`'value'`, with no error to point at the cause.
+
+The same expression assigned to a local infers `String`, which is what makes the
+trap easy to miss: it is the *position* inside the map literal that changes the
+inference, not the way the entry is written.
 
 ### 2. Handle Missing Context
 
@@ -318,7 +333,7 @@ Create contexts at request boundaries, not inside loops:
 // Good: Create once per request
 void handleRequest(Request req) {
   final context = TomExecutionContext({
-    'requestId': TomContextEntry(() => req.id),
+    'requestId': TomContextEntry<String>(() => req.id),
   });
   
   context.runInContext(() => processRequest(req));

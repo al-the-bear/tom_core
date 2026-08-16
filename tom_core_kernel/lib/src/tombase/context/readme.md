@@ -23,7 +23,11 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
   final ctx = TomExecutionContext({
-    'tenant': TomContextEntry(() => 'acme'),
+    // Always write the type parameter: the constructor takes a
+    // Map<String, TomContextEntry>, so a raw TomContextEntry(() => 'acme')
+    // here infers TomContextEntry<dynamic> and the typed read below would
+    // silently return null.
+    'tenant': TomContextEntry<String>(() => 'acme'),
   });
 
   ctx.runInContext(() {

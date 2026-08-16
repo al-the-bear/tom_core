@@ -77,8 +77,10 @@ import '../security/user_principal_aci.dart';
 /// Contexts can be nested and combined:
 ///
 /// ```dart
-/// final baseContext = TomExecutionContext({'tenant': TomContextEntry(() => 'acme')});
-/// final userContext = TomExecutionContext({'user': TomContextEntry(() => 'john')});
+/// final baseContext =
+///     TomExecutionContext({'tenant': TomContextEntry<String>(() => 'acme')});
+/// final userContext =
+///     TomExecutionContext({'user': TomContextEntry<String>(() => 'john')});
 ///
 /// baseContext.runInContext(() {
 ///   userContext.runInContext(() {
@@ -124,7 +126,10 @@ class TomExecutionContext {
 
   /// Creates an execution context with the given entries.
   ///
-  /// [contextMap] A map of entry names to [TomContextEntry] objects.
+  /// [contextMap] A map of entry names to [TomContextEntry] objects. Write each
+  /// entry's type parameter explicitly — `TomContextEntry<String>(...)`, not
+  /// `TomContextEntry(...)` — or it infers `dynamic` from this parameter's type
+  /// and no typed read will find it; see [TomContextEntry].
   TomExecutionContext( Map<String, TomContextEntry> contextMap, { TomExecutionContext? parentContext }) {
     // Merge into this context's own fresh map, never the caller's argument:
     // the parent supplies the base entries and the child (`contextMap`)
@@ -310,7 +315,17 @@ class TomZoneValues {
 ///
 /// ## Type Parameter
 ///
-/// The type parameter [T] specifies the type of value this entry provides.
+/// The type parameter [T] specifies the type of value this entry provides, and
+/// [TomExecutionContext.getEntry] matches it exactly — an entry is only found
+/// by a read for the very same [T].
+///
+/// **Always write [T] explicitly when registering an entry.** The context
+/// constructor takes a `Map<String, TomContextEntry>`, which supplies
+/// `TomContextEntry<dynamic>` as the downward inference context, so a raw
+/// `TomContextEntry(() => 'acme')` written inside that map literal is a
+/// `TomContextEntry<dynamic>` regardless of the value it returns — and every
+/// typed read of it then yields `null`. (The same expression assigned to a
+/// local infers `String`, which is what makes the trap easy to miss.)
 ///
 /// ## Example
 ///
