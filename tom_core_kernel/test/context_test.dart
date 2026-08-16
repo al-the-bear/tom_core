@@ -582,6 +582,41 @@ void main() {
         expect(added, equals('i'));
         expect(overridden, equals('inner'), reason: 'inner wins on collision');
       });
+
+      test('a nested run\'s writes do not leak back to the enclosing run', () {
+        // The counterweight to mutability: the values are mutable, but the
+        // nested run mutates its *own* container, since _buildZoneValues
+        // copies rather than aliases. Without this, "mutable zone values"
+        // would read as a channel for handing results back up, which it is
+        // not.
+        final outer = TomExecutionContext({});
+        final inner = TomExecutionContext({});
+
+        Object? inheritedByInner;
+        Object? outerAfter;
+        Object? addedLeaked;
+
+        outer.runInContext(() {
+          getFromCurrentZone<TomZoneValues>()?['k'] = 'outer';
+
+          inner.runInContext(() {
+            inheritedByInner = getFromCurrentZone<TomZoneValues>()?['k'];
+            getFromCurrentZone<TomZoneValues>()?['k'] = 'inner';
+            getFromCurrentZone<TomZoneValues>()?['added'] = 'x';
+          });
+
+          final values = getFromCurrentZone<TomZoneValues>();
+          outerAfter = values?['k'];
+          addedLeaked = values?['added'];
+        });
+
+        expect(inheritedByInner, equals('outer'),
+            reason: 'the write made before nesting is inherited');
+        expect(outerAfter, equals('outer'),
+            reason: "the inner run's overwrite stayed inside it");
+        expect(addedLeaked, isNull,
+            reason: 'a key added by the inner run never escaped');
+      });
     });
 
     // ------------------------------------------------------------------------

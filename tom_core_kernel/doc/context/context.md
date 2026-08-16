@@ -11,6 +11,7 @@ The Tom Execution Context System provides zone-based context propagation for pas
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
   - [TomExecutionContext](#tomexecutioncontext)
+  - [TomZoneValues](#tomzonevalues)
   - [TomContextEntry](#tomcontextentry)
   - [TomContextProviders](#tomcontextproviders)
 - [Context Propagation](#context-propagation)
@@ -20,13 +21,18 @@ The Tom Execution Context System provides zone-based context propagation for pas
 
 ## Overview
 
-The context system consists of three main components:
+The context system consists of four public types:
 
 1. **`TomExecutionContext`**: Container for context entries that runs code in a Dart Zone with those values available.
 
 2. **`TomContextEntry<T>`**: A typed wrapper for a function that provides a context value.
 
-3. **`TomContextProviders`**: Static methods that extract common values from the current zone's `TomPrincipal`.
+3. **`TomZoneValues`**: The mutable container for the untyped, ad-hoc values passed as `zoneValues:`.
+
+4. **`TomContextProviders`**: Static methods that extract common values from the current zone's `TomPrincipal`.
+
+A run installs two of these in the zone — the `TomExecutionContext` and the
+`TomZoneValues` — and everything else is reached through one of them.
 
 ### How It Works
 
@@ -198,6 +204,100 @@ context.runInContext(() {
   final custom = getFromCurrentZone<TomZoneValues>()?['customKey'];
 }, zoneValues: {'customKey': 'customValue'});
 ```
+
+### TomZoneValues
+
+The mutable container holding everything passed as `zoneValues:`. It is what
+`runInContext` installs in the zone under the `TomZoneValues` type key, which is
+why an ad-hoc value is read back through the container rather than by its own
+key — see [The `zoneValues:` argument is not zone values](#the-zonevalues-argument-is-not-zone-values).
+
+Unlike a context entry, a zone value is untyped (`Object?` key, `Object?` value)
+and eagerly stored rather than computed on access. Reach for it when a value
+does not warrant a named, typed `TomContextEntry`.
+
+#### Reading and writing
+
+Inside a run, get the container by type and index it. Writes are visible for
+the rest of that run:
+
+```dart
+context.runInContext(() {
+  final values = getFromCurrentZone<TomZoneValues>();
+
+  final requestId = values?['requestId'];   // 'req-1'
+  values?['stage'] = 'validated';           // add or overwrite
+  values?['requestId'] = 'req-2';           // mutate an inherited value
+
+  print(getFromCurrentZone<TomZoneValues>()?['stage']);  // validated
+}, zoneValues: {'requestId': 'req-1'});
+```
+
+The container is a single instance per run — every
+`getFromCurrentZone<TomZoneValues>()` in the same run returns the same object,
+so a write through one read is seen by the next.
+
+#### Members
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `operator []` | `Object? operator [](Object? key)` | Reads a value; null when the key is absent. |
+| `operator []=` | `void operator []=(Object? key, Object? value)` | Adds or overwrites a value. |
+| `addAll` | `TomZoneValues addAll(Map<Object?, Object?> other)` | Adds every entry from `other`, returning `this` so calls chain. |
+| `containsKey` | `bool containsKey(Object? key)` | Whether the key is present — distinguishes "absent" from "present and null". |
+| `remove` | `Object? remove(Object? key)` | Removes the key, returning the removed value, or null if it was absent. |
+| `clear` | `void clear()` | Removes every value. |
+| `zoneValues` | `Map<Object?, Object?>` | The underlying map, exposed directly. |
+
+```dart
+final values = TomZoneValues({'a': 1}).addAll({'b': 2}).addAll({'c': 3});
+
+values.containsKey('a');   // true
+values.remove('a');        // 1
+values.remove('a');        // null — already gone
+values.clear();            // {}
+```
+
+#### Inheriting from an enclosing run
+
+The `existingValues` constructor argument is how a nested run inherits: the
+enclosing container supplies the base values and the new map is added on top,
+so the inner run wins on a colliding key.
+
+```dart
+final parent = TomZoneValues({'shared': 'parent', 'onlyParent': 'p'});
+final child = TomZoneValues({'shared': 'child'}, existingValues: parent);
+
+child.zoneValues;   // {shared: child, onlyParent: p}
+parent.zoneValues;  // unchanged — both source maps are copied, not aliased
+```
+
+`runInContext` applies exactly this when a run is nested inside another, so an
+inner run sees the outer run's values without restating them.
+
+#### Nested writes do not leak outward
+
+Because the nested run gets its **own** container, mutations inside it are
+scoped to it. The outer run's values are restored when it returns:
+
+```dart
+outer.runInContext(() {
+  getFromCurrentZone<TomZoneValues>()?['k'] = 'outer';
+
+  inner.runInContext(() {
+    getFromCurrentZone<TomZoneValues>()?['k'];        // 'outer' — inherited
+    getFromCurrentZone<TomZoneValues>()?['k'] = 'inner';
+    getFromCurrentZone<TomZoneValues>()?['added'] = 'x';
+  });
+
+  getFromCurrentZone<TomZoneValues>()?['k'];      // 'outer' — not 'inner'
+  getFromCurrentZone<TomZoneValues>()?['added'];  // null — never escaped
+});
+```
+
+Mutability is therefore per-run, not shared upward: a nested run cannot use
+zone values to hand a result back to its caller. Return a value from the run
+instead.
 
 ### TomContextEntry
 
