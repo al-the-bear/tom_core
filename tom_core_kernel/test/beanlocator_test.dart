@@ -97,6 +97,18 @@ void main() {
     return '<did-not-throw>';
   }
 
+  /// Runs [body] and returns the [TomBeanLocatorException] it threw, or `null`
+  /// if it completed. Where [keyOfThrow] pins which error was raised, this lets
+  /// a test compare two raises to each other — same key *and* same parameters.
+  TomBeanLocatorException? errorOfThrow(void Function() body) {
+    try {
+      body();
+    } on TomBeanLocatorException catch (e) {
+      return e;
+    }
+    return null;
+  }
+
   // ==========================================================================
   // TomComponent Tests
   // ==========================================================================
@@ -467,6 +479,38 @@ void main() {
       TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
       expect(
         keyOfThrow(() => TomBean<AmbiguousService>().get()),
+        equals('beanlocator.bean_access.more_than_one_implementation_found'),
+      );
+    });
+
+    test('ambiguity is raised on every call, not only the first', () {
+      // Ambiguity is an error, not a preference. A handle that reported it once
+      // and then answered with whichever implementation the registry happened to
+      // iterate first would be doing exactly the arbitrary resolution the error
+      // exists to prevent — and it would do it silently, since the caller who
+      // sees the answer is not the caller who saw the throw.
+      TomBean.withType(AmbiguousServiceA, AmbiguousServiceA());
+      TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
+
+      final handle = TomBean<AmbiguousService>();
+      final first = errorOfThrow(handle.get);
+      final second = errorOfThrow(handle.get);
+
+      expect(
+        first?.key,
+        equals('beanlocator.bean_access.more_than_one_implementation_found'),
+      );
+      expect(
+        second,
+        isNotNull,
+        reason: 'the second get() resolved the ambiguity to an arbitrary bean',
+      );
+      expect(second!.key, equals(first!.key));
+      expect(second.parameters, equals(first.parameters));
+
+      // And it stays an error: no number of calls wears the ambiguity down.
+      expect(
+        errorOfThrow(handle.call)?.key,
         equals('beanlocator.bean_access.more_than_one_implementation_found'),
       );
     });

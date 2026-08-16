@@ -440,7 +440,7 @@ try {
 | `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered |
 | `beanlocator.initialization.no_matching_implementation_found` | No matching implementation |
 | `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
-| `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type |
+| `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type. Raised on *every* `get()` — a handle that failed to resolve caches nothing, so the ambiguity never wears down into an arbitrary answer |
 | `beanlocator.environment.no_factory_for_environment` | `installByEnvironment` has no factory for the active environment |
 
 ## Best Practices

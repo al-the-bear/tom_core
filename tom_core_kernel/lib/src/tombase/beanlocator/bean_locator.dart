@@ -390,6 +390,12 @@ class TomBean<T> {
   /// 2. If named, look up by name in context
   /// 3. Otherwise, search by type assignability
   ///
+  /// Only a *successful* resolution caches. A handle that failed — nothing
+  /// registered, or two implementations satisfying the same type — holds no
+  /// instance, so every later call re-runs the lookup and throws again with the
+  /// same key and the same parameters. A failure that answered once and then
+  /// started returning a value would be worse than the failure.
+  ///
   /// Throws [TomBeanLocatorException] if resolution fails.
   T get() {
     if (_bean != null) {
@@ -434,36 +440,27 @@ class TomBean<T> {
   }
 
   /// Resolves bean by type assignability.
+  ///
+  /// The walk collects **every** assignable bean before deciding anything, and
+  /// nothing writes [_bean] until exactly one candidate is known. That ordering
+  /// is the point: assigning the first match as it is found and only raising on
+  /// the second leaves the handle holding that first match, so [get] short-
+  /// circuits on the cache and every later call answers with whichever
+  /// implementation the registry happened to iterate first — the arbitrary
+  /// resolution the ambiguity error exists to prevent, and silent, because the
+  /// caller who receives the answer is not the caller who saw the throw.
+  /// Ambiguity is an error, not a preference, so it is raised on every call.
   T _resolveByType() {
+    final matches = <MapEntry<Type, T>>[];
+
     try {
       for (var serviceType in _tomBeanContext.keys) {
-        if (serviceType is Type) {
-          if (_assignableFrom(_tomBeanContext[serviceType]!)) {
-            if (_bean == null) {
-              _bean = _tomBeanContext[serviceType]! as T;
-            } else {
-              throw TomBeanLocatorException(
-                "beanlocator.bean_access.more_than_one_implementation_found",
-                "More than one bean for type $T found, found additional bean "
-                    "of type $serviceType after having found ${_bean.runtimeType} "
-                    "instance: $_bean",
-                parameters: {
-                  "bean": _bean,
-                  "beanType": _bean.runtimeType,
-                  "type": T,
-                  "secondBean": _tomBeanContext[serviceType],
-                  "secondType": serviceType,
-                },
-                autoLog: true,
-              );
-            }
-          }
+        if (serviceType is! Type) continue;
+        final candidate = _tomBeanContext[serviceType]!;
+        if (_assignableFrom(candidate)) {
+          matches.add(MapEntry(serviceType, candidate as T));
         }
       }
-
-      tomLog.trace(
-        "Bean of type $T linked to type ${_bean.runtimeType} instance $_bean.",
-      );
     } on TomException {
       rethrow;
     } catch (exception, stacktrace) {
@@ -477,7 +474,7 @@ class TomBean<T> {
       );
     }
 
-    if (_bean == null) {
+    if (matches.isEmpty) {
       throw TomBeanLocatorException(
         "beanlocator.bean_access.no_bean_found_uninitialized",
         "Uninitialized bean without name for type $T",
@@ -486,6 +483,30 @@ class TomBean<T> {
       );
     }
 
+    if (matches.length > 1) {
+      final first = matches[0];
+      final second = matches[1];
+      throw TomBeanLocatorException(
+        "beanlocator.bean_access.more_than_one_implementation_found",
+        "More than one bean for type $T found (${matches.length} candidates), "
+            "found additional bean of type ${second.key} after having found "
+            "${first.value.runtimeType} instance: ${first.value}",
+        parameters: {
+          "bean": first.value,
+          "beanType": first.value.runtimeType,
+          "type": T,
+          "secondBean": second.value,
+          "secondType": second.key,
+          "matchCount": matches.length,
+        },
+        autoLog: true,
+      );
+    }
+
+    _bean = matches.single.value;
+    tomLog.trace(
+      "Bean of type $T linked to type ${_bean.runtimeType} instance $_bean.",
+    );
     return _bean!;
   }
 
