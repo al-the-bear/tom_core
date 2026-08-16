@@ -87,8 +87,14 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomComponent` | A registrable framework component |
-| `TomBean<T>` | A located/injected bean instance |
+| `TomComponent` | The discovery annotation, carrying the interface `Type` the annotated class registers under |
+| `TomBean<T>` | Typed handle that resolves its bean lazily, by type or by name |
+| `TomNoInterface` | The `Type` `@tomComponent` carries, for a bean registered under its own type |
+
+`initializeBeanContext()` runs the discovery pass: it finds the
+`@TomComponent`-annotated classes, selects one implementation per interface for
+the active environment and platform, instantiates it, and then resolves every
+handle declared so far so a missing binding fails at start-up.
 
 ### Security (`security`)
 
@@ -196,9 +202,27 @@ TomTextResourceProvider.setAppResourceProvider(
 
 ### Locating a bean
 
-Components are registered as `TomComponent`s and resolved as `TomBean<T>`s
-through the locator — the container wires dependencies by reflected type rather
-than by manual construction.
+`initializeBeanContext()` discovers the classes annotated `@TomComponent`,
+selects one implementation per interface for the active environment and
+platform, and instantiates it. A consumer then holds a `TomBean<T>` handle,
+which resolves itself on first use:
+
+```dart
+@tomReflector
+@TomComponent(UserService)
+class UserServiceImpl implements UserService { /* … */ }
+
+class OrderService {
+  final TomBean<UserService> users = TomBean();
+
+  Order create(int userId) => Order(users().getUser(userId));
+}
+```
+
+Nothing is injected into a bean: it is built through its unnamed no-argument
+constructor, and each handle it declares resolves on its own. What discovery
+does provide is the *choice* — which implementation a deployment gets — and a
+start-up check that every declared handle can be resolved.
 
 ### Ordered shutdown
 
@@ -232,7 +256,7 @@ are largely independent.
 | `TomExecutionContext` | Ambient context carried through a call tree |
 | `TomAuthorization` / `TomAuthState` | Authorization decision + four-state model |
 | `TomAccessControl` | Base access-control rule |
-| `TomBean<T>` / `TomComponent` | DI bean / registrable component |
+| `TomBean<T>` / `TomComponent` | Lazily resolved bean handle / the discovery annotation |
 | `TomWorker` / `TomWorkerPool` | Isolate worker-pool execution |
 | `TomTextResourceProvider` | Text resource resolution |
 | `TomShutdownCleanup` | Ordered teardown registry |

@@ -742,9 +742,16 @@ bool _platformMatches(TomPlatform selector, TomPlatform? active) =>
 /// ## Usage
 ///
 /// ```dart
-/// // Set up environment first
+/// // Set up the runtime first. The environment has to be registered before it
+/// // can be made current — `setCurrentEnvironment` resolves a *name* against
+/// // the registry and falls back when the name is unknown.
+/// TomRuntime.addEnvironment(const TomEnvironment("dev"));
 /// TomRuntime.setCurrentEnvironment("dev");
-/// TomRuntime.initializePlatform();
+///
+/// // The platform likewise: `TomRuntime.initializePlatform()` detects it, but
+/// // only once `TomPlatformUtils.setCurrentPlatform` has supplied a real
+/// // implementation — the fallback throws. Naming it directly also works.
+/// TomRuntime.setCurrentPlatform(platformLinux);
 ///
 /// // Then initialize beans
 /// initializeBeanContext();
