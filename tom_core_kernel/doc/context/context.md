@@ -367,7 +367,14 @@ inference, not the way the entry is written.
 
 ### 2. Handle Missing Context
 
-Always check for null when retrieving context:
+Every read in this module returns null rather than throwing.
+`getFromCurrentZone` yields null outside a `runInContext` body;
+`getValueFromCurrentZone` yields null there too, and also for an entry that was
+never declared — or was declared with a different type parameter, which is
+Best Practice 1's trap. So always check.
+
+What the check does next depends on whether the value is optional or required.
+Optional — fall back:
 
 ```dart
 final ctx = getFromCurrentZone<TomExecutionContext>();
@@ -376,6 +383,21 @@ if (ctx == null) {
   return defaultValue;
 }
 ```
+
+Required — throw, naming the entry:
+
+```dart
+final tenant = TomExecutionContext.getValueFromCurrentZone<String>('tenant');
+if (tenant == null) {
+  throw StateError('No "tenant" entry in the current execution context.');
+}
+```
+
+Do not substitute `!` for the required case. It does enforce the requirement,
+but it reports the violation as a bare null-check failure — which does not say
+which entry was missing, and does not distinguish a missing entry from code
+that never ran inside `runInContext` at all. Those are different bugs with
+different fixes, and the two reads above cannot tell them apart on their own.
 
 ### 3. Create Context Once
 
@@ -446,10 +468,18 @@ Document which context values your functions expect:
 /// - `tenantId`: The tenant identifier
 Future<void> processOrder(Order order) async {
   final userId =
-      TomExecutionContext.getValueFromCurrentZone<String>('userId')!;
+      TomExecutionContext.getValueFromCurrentZone<String>('userId');
+  if (userId == null) {
+    throw StateError('processOrder requires a "userId" context entry.');
+  }
   // ...
 }
 ```
+
+A documented requirement is worth enforcing at the point of use: the doc
+comment tells the caller what to install, and the check tells them, by name,
+when they did not. See Best Practice 2 for why this is a null check rather
+than a `!`.
 
 ---
 

@@ -406,6 +406,25 @@ void main() {
 
         expect(result, isNull);
       });
+
+      test('reads outside a context yield null rather than throwing', () {
+        // Why the docs require a null check on every read instead of a `!`:
+        // neither read signals its own failure. Note also that the two nulls
+        // below mean different things — no context at all vs. a context
+        // without that entry — which is why a bare null-check failure is not
+        // enough to diagnose the cause.
+        expect(getFromCurrentZone<TomExecutionContext>(), isNull);
+        expect(TomExecutionContext.getValueFromCurrentZone<String>('userId'),
+            isNull);
+
+        TomExecutionContext({}).runInContext(() {
+          expect(getFromCurrentZone<TomExecutionContext>(), isNotNull,
+              reason: 'the context is present here');
+          expect(TomExecutionContext.getValueFromCurrentZone<String>('userId'),
+              isNull,
+              reason: 'but the entry is not — same null, different cause');
+        });
+      });
     });
 
     // ------------------------------------------------------------------------
