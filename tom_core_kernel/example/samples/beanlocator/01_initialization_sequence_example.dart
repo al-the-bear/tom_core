@@ -1,204 +1,228 @@
-/// Initialization Sequence Example
+/// Demonstrates the startup sequence that makes the bean locator usable, and
+/// what `initializeBeanContext()` checks on the way through.
 ///
-/// This example demonstrates the complete initialization sequence for
-/// dependency injection. The bean context requires the runtime system
-/// to be properly configured before it can be used.
+/// Every other sample in this folder starts with beans already available. This
+/// one is about getting there:
 ///
-/// Initialization sequence:
-/// 1. Set environment variables
-/// 2. Set platform utilities
-/// 3. Initialize reflection
-/// 4. Initialize runtime
-/// 5. Initialize bean context
+/// 1. **Reflection** — `initializeReflection()` is what makes an annotated
+///    class visible to discovery at all.
+/// 2. **The runtime** — an environment has to be *registered* before it can be
+///    made current, because selection compares each candidate implementation
+///    against the active deployment.
+/// 3. **`initializeBeanContext()`** — the discovery pass: one implementation
+///    chosen per interface and instantiated.
+/// 4. **The first resolution** — and the fact that nothing was injected to
+///    obtain it.
+/// 5. **Startup validation** — a handle whose binding is missing fails *here*,
+///    not at first use, which is the whole reason the pass resolves handles.
+///
+/// The runtime half of this — platform detection, environment hierarchies,
+/// initializers — is the subject of `samples/runtime/03_…`; this sample
+/// configures the minimum the locator needs and moves on.
 library;
 
-import 'package:tom_core_server/tom_core_server.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../../run_all_samples.reflection.dart';
 
 // ============================================================================
-// Environment Definitions
+// The beans this sample discovers
 // ============================================================================
 
-/// Production environment - root of the hierarchy.
-const environmentProd = TomEnvironment('prod');
-
-/// Integration environment - child of prod.
-const environmentInt = TomEnvironment(
-  'int',
-  parent: environmentProd,
-  isTest: true,
-);
-
-/// Development environment - child of prod.
-const environmentDev = TomEnvironment(
-  'dev',
-  parent: environmentProd,
-  isDevelopment: true,
-  isTest: true,
-);
-
-// ============================================================================
-// Example Class
-// ============================================================================
-
-class InitializationSequenceExample {
-  // Captured results
-  static late String envValue;
-  static late String currentEnvName;
-  static late bool isDevelopment;
-  static late String? platformName;
-  static late List<String> registeredEnvs;
-
-  // -------------------------------------------------------------------------
-  // Example 1: Set environment variables (STEP 1)
-  // -------------------------------------------------------------------------
-  static void example1SetEnvironmentVariables() {
-    print('1. Setting environment variables:');
-
-    // Set environment to "dev" - determines which environment will be active
-    TomPlatformUtils.envVars['env'] = 'dev';
-    TomPlatformUtils.envVars['useRemoteLogging'] = 'false';
-    TomPlatformUtils.envVars['apiBaseUrl'] = 'http://localhost:9080/';
-
-    // Capture results
-    envValue = TomPlatformUtils.envVars['env']!;
-
-    print('   - env: $envValue');
-    print('   - useRemoteLogging: ${TomPlatformUtils.envVars['useRemoteLogging']}');
-    print('   - apiBaseUrl: ${TomPlatformUtils.envVars['apiBaseUrl']}');
-
-    // Assertions
-    assert(TomPlatformUtils.envVars['env'] == 'dev', 'Env should be dev');
-    assert(TomPlatformUtils.envVars['useRemoteLogging'] == 'false', 'Remote logging should be false');
-  }
-
-  // -------------------------------------------------------------------------
-  // Example 2: Set platform utilities (STEP 2)
-  // -------------------------------------------------------------------------
-  static void example2SetPlatformUtilities() {
-    print('\n2. Setting platform utilities:');
-
-    // Set platform utilities - must be done before initializeRuntime()
-    TomPlatformUtils.setCurrentPlatform(standalonePlatformUtils);
-
-    // Verify platform is set
-    final platform = TomPlatformUtils.current;
-    final envVars = platform.getTomEnvVars();
-
-    print('   - Platform type: ${platform.runtimeType}');
-    print('   - EnvVars accessible: ${envVars['env']}');
-
-    // Assertions
-    assert(platform is TomStandalonePlatformUtils, 'Should be standalone platform');
-    assert(envVars['env'] == 'dev', 'EnvVars should be accessible');
-  }
-
-  // -------------------------------------------------------------------------
-  // Example 3: Initialize runtime (STEP 3)
-  // -------------------------------------------------------------------------
-  static void example3InitializeRuntime() {
-    print('\n3. Initializing runtime:');
-
-    // Register all environments
-    TomRuntime.addEnvironment(environmentProd);
-    TomRuntime.addEnvironment(environmentInt);
-    TomRuntime.addEnvironment(environmentDev);
-
-    // Set root environment (base of hierarchy)
-    TomRuntime.setRootEnvironment(environmentProd);
-
-    // Set current environment from envVars (defaults to "prod" if not set)
-    TomRuntime.setCurrentEnvironment(
-      TomPlatformUtils.current.getTomEnvVars()['env'],
-      'prod',
-    );
-
-    // Initialize platform detection
-    TomRuntime.initializePlatform();
-
-    // Capture results
-    final currentEnv = TomRuntime.getCurrentEnvironment();
-    currentEnvName = currentEnv.env;
-    isDevelopment = currentEnv.isDevelopment;
-    platformName = TomRuntime.getCurrentPlatform()?.name;
-    registeredEnvs = ['prod', 'int', 'dev'];
-
-    print('   - Registered environments: ${registeredEnvs.join(', ')}');
-    print('   - Current environment: $currentEnvName');
-    print('   - Is development: $isDevelopment');
-    print('   - Platform: $platformName');
-
-    // Assertions
-    assert(currentEnvName == 'dev', 'Current env should be dev');
-    assert(isDevelopment == true, 'Should be development mode');
-    assert(platformName != null, 'Platform name should be set');
-    assert(currentEnv.isTest == true, 'Should be test mode');
-  }
-
-  // -------------------------------------------------------------------------
-  // Example 4: Query runtime information
-  // -------------------------------------------------------------------------
-  static void example4QueryRuntimeInfo() {
-    print('\n4. Querying runtime information:');
-
-    final currentEnv = TomRuntime.getCurrentEnvironment();
-    final platform = TomRuntime.getCurrentPlatform();
-
-    // Query environment hierarchy
-    final hasParent = currentEnv.parent != null;
-    final parentName = currentEnv.parent?.env;
-
-    // Query environment flags
-    final isDevMode = currentEnv.isDevelopment;
-    final isTestMode = currentEnv.isTest;
-
-    // Query platform capabilities
-    final isWeb = platform?.name.contains('web') ?? false;
-    final isServer = platform?.name.contains('standalone') ?? true;
-
-    print('   - Parent environment: $parentName');
-    print('   - Is test environment: $isTestMode');
-    print('   - Is web: $isWeb');
-    print('   - Is server: $isServer');
-
-    // Assertions
-    assert(hasParent == true, 'Should have parent');
-    assert(parentName == 'prod', 'Parent should be prod');
-    assert(isDevMode == true, 'Should be dev mode');
-    assert(isTestMode == true, 'Should be test mode');
-    assert(isWeb == false, 'Should not be web');
-  }
-
-  // -------------------------------------------------------------------------
-  // Example 5: Print runtime report
-  // -------------------------------------------------------------------------
-  static void example5GetRuntimeReport() {
-    print('\n5. Runtime diagnostic report:');
-
-    final report = TomRuntime.printReport();
-
-    // Report contains environment info
-    print('   $report');
-
-    // Assertions
-    assert(report.isNotEmpty, 'Report should not be empty');
-  }
-
-  // -------------------------------------------------------------------------
-  // Run all examples
-  // -------------------------------------------------------------------------
-  static void run() {
-    print('=== 01: Initialization Sequence Example ===\n');
-
-    example1SetEnvironmentVariables();
-    example2SetPlatformUtilities();
-    example3InitializeRuntime();
-    example4QueryRuntimeInfo();
-    example5GetRuntimeReport();
-
-    print('\n=== Initialization Sequence Example Complete ===\n');
-  }
+/// The interface a consumer depends on.
+abstract class GreetingService {
+  String greet(String name);
 }
 
-void run() => InitializationSequenceExample.run();
+/// A bean registered under its own concrete type.
+///
+/// `@tomComponent` names no interface, so discovery registers this instance
+/// under `StartupConfig` itself rather than under some abstraction.
+@tomReflector
+@tomComponent
+class StartupConfig {
+  String get salutation => 'Hello';
+}
 
-void main() => run();
+/// The implementation discovery selects for [GreetingService].
+///
+/// Its dependency is a *handle*, not a constructor parameter: discovery builds
+/// this class by calling `StartupGreetingService()` and passing nothing, and
+/// the handle resolves itself the first time it is read. That is also why a
+/// bean must not call `get()` from its constructor — at that moment the pass
+/// has not finished registering everything.
+@tomReflector
+@TomComponent(GreetingService)
+class StartupGreetingService implements GreetingService {
+  final TomBean<StartupConfig> config = TomBean();
+
+  @override
+  String greet(String name) => '${config().salutation} $name';
+}
+
+/// An interface no class implements, used in step 5 to show what startup
+/// validation catches. It carries no annotation, so discovery never looks for
+/// an implementation — only the handle declared against it does.
+abstract class UnboundService {
+  void doSomething();
+}
+
+// ============================================================================
+// Captured results
+// ============================================================================
+
+late int annotatedClassCount;
+late String environmentBeforeRegistering;
+late String environmentAfterRegistering;
+late String greeting;
+late String discoveredImplementation;
+late String validationErrorKey;
+
+// ============================================================================
+// Step 1: Reflection
+// ============================================================================
+
+void step1Reflection() {
+  print('1. Reflection — the precondition for discovery:');
+
+  // `initializeReflection()` (from the generated *.reflection.dart) is called
+  // by the runner, or by this file's own main(). Without it `annotatedClasses`
+  // is empty and initializeBeanContext() would quietly discover nothing —
+  // there is no error to catch, just no beans.
+  annotatedClassCount = tomReflector.annotatedClasses.length;
+
+  print('   - annotated classes visible to discovery: $annotatedClassCount');
+  print('   - among them: StartupConfig, StartupGreetingService');
+
+  assert(annotatedClassCount > 0, 'initializeReflection() must run first');
+}
+
+// ============================================================================
+// Step 2: The runtime
+// ============================================================================
+
+void step2Runtime() {
+  print('\n2. The runtime — registered before it can be made current:');
+
+  // setCurrentEnvironment resolves a *name* against the registry. An unknown
+  // name is not an error: it falls back. So getting the order wrong does not
+  // fail loudly here — it silently selects implementations for the fallback
+  // environment instead of the one that was asked for.
+  TomRuntime.setCurrentEnvironment('dev');
+  environmentBeforeRegistering = TomRuntime.getCurrentEnvironment().env;
+  print('   - setCurrentEnvironment("dev") before registering it '
+      '-> "$environmentBeforeRegistering"');
+
+  TomRuntime.addEnvironment(const TomEnvironment('dev', isDevelopment: true));
+  TomRuntime.setCurrentEnvironment('dev');
+  environmentAfterRegistering = TomRuntime.getCurrentEnvironment().env;
+  print('   - after addEnvironment(...) -> "$environmentAfterRegistering"');
+
+  // Naming the platform keeps this sample self-contained. An application
+  // detects it instead: TomPlatformUtils.setCurrentPlatform(...) followed by
+  // TomRuntime.initializePlatform() — see samples/runtime/03_….
+  TomRuntime.setCurrentPlatform(platformLinux);
+  print('   - platform: ${TomRuntime.getCurrentPlatform()?.name}');
+
+  assert(environmentBeforeRegistering == 'default', 'unknown name falls back');
+  assert(environmentAfterRegistering == 'dev', 'registered name resolves');
+}
+
+// ============================================================================
+// Step 3: Discovery
+// ============================================================================
+
+void step3DiscoverBeans() {
+  print('\n3. initializeBeanContext() — the discovery pass:');
+
+  initializeBeanContext();
+
+  // Discovery registers under Type keys: a concrete bean under its own runtime
+  // type, an interface implementation under the interface.
+  final config = TomBean.getBeanByType(StartupConfig);
+  final greeter = TomBean.getBeanByType(GreetingService);
+  discoveredImplementation = greeter.runtimeType.toString();
+
+  print('   - StartupConfig   -> ${config.runtimeType}  (own type)');
+  print('   - GreetingService -> $discoveredImplementation  (interface)');
+
+  assert(config is StartupConfig, 'concrete bean registered under its type');
+  assert(greeter is StartupGreetingService, 'implementation chosen');
+}
+
+// ============================================================================
+// Step 4: The first resolution
+// ============================================================================
+
+void step4ResolveFirstBean() {
+  print('\n4. The first resolution — nothing was injected to get it:');
+
+  greeting = TomBean<GreetingService>().get().greet('Ada');
+
+  print('   - TomBean<GreetingService>().get().greet("Ada") -> "$greeting"');
+  print('   - the "Hello" came from StartupConfig, which the greeter resolved');
+  print('     through its own handle on first use');
+
+  assert(greeting == 'Hello Ada', 'the bean resolved its own dependency');
+}
+
+// ============================================================================
+// Step 5: Startup validation
+// ============================================================================
+
+void step5StartupValidation() {
+  print('\n5. Startup validation — a missing binding fails at boot:');
+
+  // A handle constructed before the pass is pending, and the pass resolves it.
+  // Nothing implements UnboundService, so this is a wiring bug — and it is
+  // reported now rather than whenever some request first happens to need it.
+  TomBean<UnboundService>();
+
+  try {
+    initializeBeanContext();
+    print('   - ERROR: the unresolvable handle should have been reported');
+  } on TomBeanLocatorException catch (e) {
+    validationErrorKey = e.key;
+    print('   - declaring TomBean<UnboundService>() then re-running the pass:');
+    print('     ${e.key}');
+  }
+
+  assert(
+    validationErrorKey == 'beanlocator.bean_access.no_bean_found_uninitialized',
+    'the unbound handle is reported by the pass',
+  );
+}
+
+// ============================================================================
+// Run
+// ============================================================================
+
+void run() {
+  print('=== 01: Startup Sequence Example ===\n');
+
+  // Both registries are process-global and the samples runner executes every
+  // module in one process, so this sample brackets itself: it starts from a
+  // clean slate and leaves one behind. Its output is then a property of this
+  // file, and the samples that follow build their own registrations.
+  TomRuntime.reset();
+  TomBean.resetBeanContext();
+
+  step1Reflection();
+  step2Runtime();
+  step3DiscoverBeans();
+  step4ResolveFirstBean();
+  step5StartupValidation();
+
+  TomBean.resetBeanContext();
+  TomRuntime.reset();
+
+  print('\n=== Startup Sequence Example Complete ===\n');
+}
+
+/// Standalone entry point. The runner calls `initializeReflection()` once for
+/// the whole sample tree; run on its own, this file has to call it itself —
+/// step 1 is precisely about that precondition.
+void main() {
+  initializeReflection();
+  run();
+}
