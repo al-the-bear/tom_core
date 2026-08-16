@@ -429,6 +429,93 @@ void main() {
   });
 
   // ==========================================================================
+  // Startup validation: which pending handles initialization must vouch for
+  // ==========================================================================
+  group('startup validation', () {
+    // initializeBeanContext resolves the handles constructed since the last
+    // reset, so that a missing binding surfaces at boot rather than at the
+    // first call that needed it. The question these tests pin is *which*
+    // handles it can meaningfully vouch for.
+    //
+    // Discovery registers under `Type` keys only — a concrete bean under its
+    // runtime type, an interface implementation under the interface. Nothing in
+    // the pass ever registers a *name*; names enter the registry solely through
+    // the imperative TomBean.withName. So a typed handle and a named handle are
+    // not the same kind of promise: discovery is exactly what supplies the
+    // former, and cannot supply the latter no matter what it discovers.
+
+    setUp(() {
+      // Discovery consults the active environment for this domain's
+      // @TomEnvironment fixture, so the environment is part of the fixture.
+      // Initialization is not — these tests choose when it runs.
+      TomRuntime.addEnvironment(const TomEnvironment('prod'));
+      TomRuntime.setCurrentEnvironment('prod');
+    });
+
+    test('an unsatisfiable typed handle fails initialization', () {
+      // The fail-fast contract, unweakened: discovery is what would have
+      // registered AnotherService, so a handle still unresolvable at the end of
+      // the pass is a wiring bug and must be reported at boot.
+      final orphan = TomBean<AnotherService>();
+
+      expect(
+        keyOfThrow(initializeBeanContext),
+        equals('beanlocator.bean_access.no_bean_found_uninitialized'),
+      );
+    });
+
+    test('a named handle awaiting its registration does not fail startup', () {
+      // The "resolve before registration" pattern: hold the handle as a field
+      // now, register the bean later in startup. Initialization must not
+      // convert that into a boot failure — it cannot register the name itself,
+      // so demanding the name be present is demanding something the pass has no
+      // way to provide.
+      final config = TomBean<AnotherService>.fromName('lateConfig');
+
+      expect(keyOfThrow(initializeBeanContext), equals('<did-not-throw>'));
+
+      TomBean.withName('lateConfig', AnotherService('late'));
+      expect(
+        config.get().value,
+        equals('late'),
+        reason: 'the handle resolves once the registration lands, which is '
+            'exactly why startup had no business failing on it',
+      );
+    });
+
+    test('a named handle registered with the wrong type still fails startup',
+        () {
+      // The skip is narrow: it covers "not registered yet", not "named
+      // resolution is unchecked". Here the name *is* registered, so the
+      // question is answerable at boot — and the answer is a type mismatch,
+      // which no later registration will repair.
+      TomBean.withName('wrongType', TestServiceImpl());
+      final handle = TomBean<int>.fromName('wrongType');
+
+      expect(
+        keyOfThrow(initializeBeanContext),
+        equals('beanlocator.bean_access.bean_not_found_by_type'),
+      );
+    });
+
+    test('a handle created after a pass is validated by the next one', () {
+      // Validation must not depend on which side of an initializeBeanContext
+      // call a handle happened to be constructed on. A handle created between
+      // two passes is pending for the second one exactly as a handle created
+      // before the first is pending for it.
+      initializeBeanContext();
+
+      final orphan = TomBean<AnotherService>();
+
+      expect(
+        keyOfThrow(initializeBeanContext),
+        equals('beanlocator.bean_access.no_bean_found_uninitialized'),
+        reason: 'a handle constructed between two passes was dropped unchecked',
+      );
+    });
+  });
+
+  // ==========================================================================
   // Unconfigured runtime: the locator's own exception, not the runtime's
   // ==========================================================================
   group('unconfigured runtime', () {

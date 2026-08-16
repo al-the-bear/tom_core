@@ -29,6 +29,7 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
     - [Platform-Specific Beans](#platform-specific-beans)
   - [Resetting the Bean Context](#resetting-the-bean-context)
   - [Implementation Resolution](#implementation-resolution)
+  - [Startup validation](#startup-validation)
   - [Error Handling](#error-handling)
     - [TomBeanLocatorException](#tombeanlocatorexception)
     - [Error Keys](#error-keys)
@@ -275,6 +276,26 @@ final primaryDb = TomBean<DatabaseConnection>.fromName('primaryDb').get();
 final replicaDb = TomBean<DatabaseConnection>.fromName('replicaDb').get();
 ```
 
+The handle may be created before the bean exists. `fromName` records the name
+whether or not anything is registered under it, so a handle held as a field
+resolves once the registration lands:
+
+```dart
+class ReportJob {
+  // Created at construction; nothing is registered under this name yet.
+  final TomBean<DatabaseConnection> db = TomBean.fromName('primaryDb');
+
+  void run() => db().query(...);   // resolves here, on first use
+}
+
+// …later in startup:
+TomBean.withName('primaryDb', DatabaseConnection(host: 'primary.db'));
+```
+
+`initializeBeanContext()` does not force such a handle to resolve — see
+[Startup validation](#startup-validation) — so it is safe to run the discovery
+pass while named registrations are still outstanding.
+
 ### Optional Typed Beans Registration
 
 To resolve to service instances that are not marked with @tomReflector/@tomComponent, you can register beans by type:
@@ -416,6 +437,46 @@ class StripePaymentService implements PaymentService { ... }
 class IosProductionPaymentService implements PaymentService { ... }
 ```
 
+## Startup validation
+
+The last step of `initializeBeanContext()` resolves the pending handles, so a
+missing binding is reported at boot rather than at the first call that needed
+it. A pending handle is any `TomBean` constructed since the previous pass (or
+since `resetBeanContext()`) — including one constructed *between* two passes,
+which the next pass validates. Whether a dependency is checked does not depend
+on which side of an `initializeBeanContext()` call it was declared on.
+
+Validation vouches for what the pass could itself have supplied. Discovery
+registers under `Type` keys only: a concrete bean under its runtime type, an
+interface implementation under the interface. So a **typed** handle still
+unresolvable at the end of the pass names a binding nothing produced — a wiring
+bug, reported as `no_bean_found_uninitialized`:
+
+```dart
+final missing = TomBean<UnregisteredService>();
+initializeBeanContext();   // throws: nothing registers UnregisteredService
+```
+
+A handle **awaiting a named registration** is skipped. Nothing in discovery ever
+registers a name — names enter the registry solely through `TomBean.withName` —
+so resolving such a handle here would demand at boot something the pass has no
+way to provide, and would turn the supported "create the handle now, register
+the bean later" pattern into a startup failure:
+
+```dart
+final config = TomBean<AppConfig>.fromName('lateConfig');
+
+initializeBeanContext();   // fine: the name is simply not registered yet
+
+TomBean.withName('lateConfig', AppConfig());
+config.get();              // resolves
+```
+
+The skip is narrow. A named handle whose name **is** registered is validated
+like any other, so a name bound to an instance of the wrong type still fails at
+boot with `bean_not_found_by_type` — that question is answerable now, and no
+later registration repairs a mismatch.
+
 ## Error Handling
 
 ### TomBeanLocatorException
@@ -444,9 +505,9 @@ so the handler above is sufficient and does not need a second `catch`.
 | `beanlocator.initialization.duplicate_bean_with_type` | Duplicate typed bean registration via `TomBean.withType` |
 | `beanlocator.initialization.no_matching_implementation_found` | No matching implementation |
 | `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
-| `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found |
-| `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean |
-| `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered |
+| `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found. Raised on `get()`, never by [startup validation](#startup-validation) — a name that is not registered yet is a supported state |
+| `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean. Also raised by [startup validation](#startup-validation), since the name is registered and the mismatch is answerable at boot |
+| `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered. Also raised by [startup validation](#startup-validation) for a typed handle nothing bound |
 | `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type. Raised on *every* `get()` — a handle that failed to resolve caches nothing, so the ambiguity never wears down into an arbitrary answer |
 | `beanlocator.bean_access.no_bean_found_unknown_error` | The type walk failed for a reason the locator does not model; the cause travels as the root exception |
 | `beanlocator.environment.no_factory_for_environment` | `installByEnvironment` has no factory for the active environment |

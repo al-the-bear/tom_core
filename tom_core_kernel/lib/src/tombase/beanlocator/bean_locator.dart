@@ -245,6 +245,12 @@ class TomBean<T> {
   /// ```dart
   /// final config = TomBean<AppConfig>.fromName("appConfig").get();
   /// ```
+  ///
+  /// The name need not be registered yet. A handle may be held as a field and
+  /// the bean registered later in startup; the handle resolves on first use.
+  /// [initializeBeanContext] does not force such a handle to resolve — see
+  /// [_validateBeanReferences] — so a still-unregistered name is not a boot
+  /// failure.
   factory TomBean.fromName(String name) {
     TomBean<T> result = TomBean();
     // Record the name unconditionally so that get() always routes through
@@ -546,6 +552,15 @@ class TomBean<T> {
     return service is T;
   }
 
+  /// Whether this handle names a bean that has not been registered yet.
+  ///
+  /// Such a handle is the "resolve before registration" case: the name was
+  /// recorded now and [TomBean.withName] will supply the instance later. It is
+  /// deliberately excluded from startup validation — see
+  /// [_validateBeanReferences].
+  bool get _awaitsNamedRegistration =>
+      _bean == null && _name != null && !_tomBeanContext.containsKey(_name);
+
   /// Returns the bean type [T].
   Type getBeanType() {
     return T;
@@ -606,11 +621,23 @@ TomEnvironment _requireCurrentEnvironment(String operation, Object subject) {
 ///
 /// ## Initialization Order
 ///
-/// 1. Clear any existing context if re-initializing
+/// 1. Clear any existing registry if re-initializing
 /// 2. Discover annotated classes via reflection
 /// 3. Filter by environment and platform constraints
 /// 4. Instantiate and register beans
-/// 5. Validate all TomBean references
+/// 5. Validate the pending TomBean references
+///
+/// ## Which handles are validated
+///
+/// Every handle constructed since the last pass (or since
+/// [TomBean.resetBeanContext]) is pending, and validation resolves it — so a
+/// handle created *between* two passes is checked by the second one exactly as
+/// a handle created before the first is checked by the first. Whether a
+/// dependency is verified must not depend on which side of a call it happened
+/// to be declared on.
+///
+/// Handles awaiting a named registration are the documented exception; see
+/// [_validateBeanReferences].
 ///
 /// ## Usage
 ///
@@ -626,14 +653,19 @@ TomEnvironment _requireCurrentEnvironment(String operation, Object subject) {
 /// final service = TomBean<MyService>().get();
 /// ```
 void initializeBeanContext() {
+  // Re-initializing rebuilds the registry from scratch. The pending-handle list
+  // is *not* cleared here: those handles are references still held by live
+  // code, and dropping them unresolved would silently exempt everything
+  // declared since the previous pass from validation.
   if (TomBean._initialized) {
     TomBean._tomBeanContext.clear();
-    TomBean._tomBeanList.clear();
   }
 
   _discoverAndInstantiateBeans();
   _validateBeanReferences();
 
+  // Validated handles have served their purpose; keeping them would grow the
+  // list for the lifetime of the process.
   TomBean._tomBeanList.clear();
   TomBean._initialized = true;
 }
@@ -764,9 +796,30 @@ List<_TomImplementationInfo> _findImplementors(TomComponent tc) {
   return implementors;
 }
 
-/// Validates all bean references by resolving them.
+/// Resolves every pending handle so that wiring errors surface at startup.
+///
+/// Validation vouches for what the pass itself could have supplied. Discovery
+/// registers under `Type` keys only — a concrete bean under its runtime type,
+/// an interface implementation under the interface — so a typed handle that is
+/// still unresolvable at the end of the pass names a binding nothing produced.
+/// That is a wiring bug, and reporting it at boot is the whole point of
+/// validating at all.
+///
+/// A handle awaiting a *named* registration is a different case and is skipped.
+/// Nothing in discovery ever registers a name: names enter the registry solely
+/// through the imperative [TomBean.withName]. Resolving such a handle here would
+/// therefore demand, at boot, something the pass has no way to provide — turning
+/// the supported "create the handle now, register the bean later in startup"
+/// pattern into a startup failure for the sole reason that the handle happened
+/// to exist when the pass ran.
+///
+/// The skip is narrow on purpose. A named handle whose name *is* registered is
+/// validated like any other, so a name bound to the wrong type is still caught
+/// at boot — that question is answerable now, and no later registration repairs
+/// a mismatch.
 void _validateBeanReferences() {
   for (var bean in TomBean._tomBeanList) {
+    if (bean._awaitsNamedRegistration) continue;
     bean();
   }
 }

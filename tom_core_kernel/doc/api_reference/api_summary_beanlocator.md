@@ -131,7 +131,9 @@ factory TomBean.withName(String name, Object bean)
 factory TomBean.withType(Type t, Object bean)
 ```
 
-`fromName` creates a handle that resolves by registered name. `withName`
+`fromName` creates a handle that resolves by registered name; the name need not
+be registered yet, so a handle may be held as a field and the bean registered
+later in startup. `withName`
 registers a named bean and returns a handle for it, throwing
 `TomBeanLocatorException` if the name already exists. `withType` registers a
 bean by type (taking precedence over `@TomComponent` registrations for the same
@@ -167,4 +169,12 @@ type), throwing `TomBeanLocatorException` if the type is already registered.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `initializeBeanContext` | `void initializeBeanContext()` | Initializes the bean context by discovering `@TomComponent`-annotated classes via reflection, filtering by environment/platform, instantiating and registering beans, and validating all `TomBean` references. Requires a configured runtime whenever a discovered class carries a selector or an interface has candidates to choose between. |
+| `initializeBeanContext` | `void initializeBeanContext()` | Initializes the bean context by discovering `@TomComponent`-annotated classes via reflection, filtering by environment/platform, instantiating and registering beans, and validating the pending `TomBean` references. Requires a configured runtime whenever a discovered class carries a selector or an interface has candidates to choose between. |
+
+Validation resolves every handle constructed since the previous pass — including
+one constructed *between* two passes, which the next pass validates — so a typed
+handle nothing bound fails at boot rather than at first use. A handle awaiting a
+*named* registration is skipped: discovery registers only under `Type` keys, so
+it can never supply a name, and demanding one would make the supported
+"register later" pattern a startup failure. A named handle whose name *is*
+registered is validated normally, so a type mismatch still fails at boot.
