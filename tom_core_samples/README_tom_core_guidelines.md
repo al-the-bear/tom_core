@@ -171,8 +171,12 @@ round-trip via reflection.
 - **G-DTO-1** — Every wire DTO MUST be `@tomReflectable` and rely on
   **reflection** for JSON serialization. All wire serialization goes through
   reflection unless there is a real technical need for a manual path.
-- **G-DTO-2** — DTO members are **non-`final`** (reflection populates them);
-  declare them as plain mutable fields.
+- **G-DTO-2** — DTO members are **non-`final`**; declare them as plain mutable
+  fields. This is not a style preference: a `final` field cannot be assigned
+  after construction, so a reflective deserializer can never populate it. An
+  all-`final` DTO is un-deserializable by construction, and outbound it
+  serializes to an empty map. **`final` members in request and response classes
+  are discouraged throughout tom_core.**
 - **G-DTO-3** — A DTO SHOULD have **no `toJson`/`fromJson` at all**. When one is
   genuinely required (a real technical reason — e.g. a legacy external wire
   shape), it MUST contain **no business or security logic**. It is a shape
@@ -183,6 +187,22 @@ round-trip via reflection.
   the design default.
 - **G-DTO-5** — DTOs carry data only. No client drafting logic, no server
   authorization logic inside a DTO.
+- **G-DTO-6** — The rules above apply to **framework classes as well as
+  application classes**. There is no "the generator never saw this type"
+  exemption: every entrypoint runs `reflection_generator`, and the generated
+  seed covers the entire dependency closure — `tom_core_kernel` types included.
+  A framework type that hand-writes its codec to stay independent of the
+  application's reflection domain is solving a problem that does not exist.
+- **G-DTO-7** — Serialization has **two central entry points**, one outbound and
+  one inbound, and both live in the reflective path. They honour the custom
+  hooks — `toJson` / `jsonEncode` on the way out, `fromJson` / `jsonDecode` on
+  the way in — so a type that needs a manual path is still reached through the
+  same call. `TomJsonSerializable` is the **cheap type test** by which a custom
+  path is detected (an `is` check, not exception-driven probing) — that is its
+  purpose, not a workaround for a serializer limitation.
+- **G-DTO-8** — **Client and server serialize uniformly.** Neither side grows a
+  hook chain of its own; both reduce to the two central entry points, so a type
+  that round-trips on one side round-trips identically on the other.
 
 ---
 

@@ -19,10 +19,14 @@ Sources:
 - `lib/src/tombase/json/map_merge_and_process.dart`
 - `lib/src/tombase/json/pretty_json.dart`
 
-`TomJsonSerializable` is a first-class serialization contract: a value object
-that implements it renders itself to a JSON-encodable map via `toJson`, giving
-all-`final` immutable DTOs an explicit serialization path that consumers (notably
-the server endpoint pipeline) prefer over reflection.
+`TomJsonSerializable` is the declaration that a value object serializes itself.
+Reflection is the default path for wire types, so this interface is the escape
+hatch for the remainder — a type that must match an external wire shape it does
+not own. Its value is that the declaration is a **cheap type test**: consumers
+resolve it with an `is` check before the reflected field walk, rather than
+probing for a speculative member. (`final` members are discouraged on wire types:
+a `final` field is unassignable after construction, so reflection can never
+populate it.)
 
 `map_merge_and_process.dart` exposes top-level functions for working with nested
 `Map<String, dynamic>` trees: one-sided deep merge (`mergeMapsOneSided`),
@@ -44,10 +48,10 @@ Object
 
 ### TomJsonSerializable
 
-Marks a value object that renders itself to a JSON-encodable map, giving
-immutable, all-`final` DTOs an explicit reflection-free serialization path.
-Consumers that render a value to JSON check for this interface before falling
-back to the reflection serializer.
+Marks a value object that renders itself to a JSON-encodable map. Consumers that
+render a value to JSON resolve this interface with an `is` check — the cheap type
+test — before the reflected field walk. It is an escape hatch for types that must
+match a wire shape they do not own, not the design default.
 
 - **Extends:** none (abstract interface class)
 

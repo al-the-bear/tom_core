@@ -18,29 +18,46 @@ The JSON utilities module consists of three files:
 
 | File | Purpose |
 |------|---------|
-| `json_serializable.dart` | The `TomJsonSerializable` contract for hand-written `toJson` |
+| `json_serializable.dart` | The `TomJsonSerializable` contract — the cheap type test declaring a hand-written `toJson` |
 | `map_merge_and_process.dart` | Deep merging, tree traversal, path access, environment substitution, and sanitization |
 | `pretty_json.dart` | JSON formatting for human readability |
 
 ### TomJsonSerializable
 
-For types that cannot be reflected — an immutable value object with `final`
-fields and no zero-argument constructor — `TomJsonSerializable` names the
-hand-written serialization contract:
+**Reflection is the default path.** Wire types — requests, responses, DTOs, and
+the framework's own value objects — serialize through the reflection path, and a
+type should need nothing beyond `@tomReflectable` plain mutable fields to cross
+the wire. Note the consequence for `final`: a `final` field cannot be assigned
+after construction, so a reflective deserializer can never populate it. An
+immutable all-`final` value object is un-deserializable by construction, which is
+why **`final` members in request and response classes are discouraged**
+throughout Tom Core.
+
+`TomJsonSerializable` is for the remainder — a type that genuinely must control
+its own JSON, typically to match an external wire shape it does not own. Its
+value is that the declaration is **cheap to detect**: an `is` check, not a
+speculative member invocation with the failure caught to decide whether the
+member existed.
 
 ```dart
 class Money implements TomJsonSerializable {
-  const Money(this.amount, this.currency);
-  final int amount;
-  final String currency;
+  Money(this.amount, this.currency);
+  int amount;
+  String currency;
 
+  // The upstream price feed spells these `value` and `ccy`.
   @override
-  Map<String, dynamic> toJson() => {'amount': amount, 'currency': currency};
+  Map<String, dynamic> toJson() => {'value': amount, 'ccy': currency};
 
   static Money fromJson(Map<String, dynamic> json) =>
-      Money(json['amount'] as int, json['currency'] as String);
+      Money(json['value'] as int, json['ccy'] as String);
 }
 ```
+
+It is an escape hatch, not the design default. A type implementing it should be
+a shape adapter carrying no business or security logic; if the only reason for
+the manual path is a member name that does not match the wire name, rename the
+member or the field instead.
 
 A value implementing the interface may be left in place inside a map tree:
 `makeCleanJsonMap` recognises it and converts it through `toJson()`, wherever it
