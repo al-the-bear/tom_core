@@ -41,8 +41,9 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
     - [2. Prefer Interfaces](#2-prefer-interfaces)
     - [3. Store Bean References](#3-store-bean-references)
     - [4. Use Specific Environments](#4-use-specific-environments)
-    - [5. No Bean-Resultion in Constructors](#5-no-bean-resultion-in-constructors)
+    - [5. No Bean Resolution in Constructors](#5-no-bean-resolution-in-constructors)
     - [6. For Client/Flutter Apps: Use Environment-Specific main\_xxx.dart Files](#6-for-clientflutter-apps-use-environment-specific-main_xxxdart-files)
+  - [Dependencies](#dependencies)
 
 ## Overview
 
@@ -94,8 +95,8 @@ void initializeRuntime() {
 // Application main
 void main() {
   // 1. Set environment variable (before anything else)
-  //    for standalone/server envVar will contain the actual environment 
-  //    valuesm so there should be no need to do this
+  //    for standalone/server envVar will contain the actual environment
+  //    values, so there should be no need to do this
   TomPlatformUtils.envVars["env"] = "dev"; 
   
   // 2. Set platform utilities using the predefined constants/field
@@ -674,7 +675,7 @@ const devEnv = TomEnvironment('dev', parent: baseEnv, isDevelopment: true);
 const prodEnv = TomEnvironment('prod', parent: baseEnv);
 ```
 
-### 5. No Bean-Resultion in Constructors
+### 5. No Bean Resolution in Constructors
 
 The bean locator uses lazy resolution, but circular dependencies during construction will fail:
 
