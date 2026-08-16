@@ -374,7 +374,7 @@ abstract class _NonExistentService {
 
 void run() {
   print('═══════════════════════════════════════════════════════════════════');
-  print('INTERFACE AND TYPE REGISTRATION EXAMPLE');
+  print('04: INTERFACE AND TYPE REGISTRATION EXAMPLE');
   print('═══════════════════════════════════════════════════════════════════\n');
 
   InterfaceAndTypeRegistrationExample.example1ManualTypeRegistration();

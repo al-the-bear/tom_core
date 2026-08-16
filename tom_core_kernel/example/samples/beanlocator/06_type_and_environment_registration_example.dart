@@ -44,7 +44,7 @@ class EmailNotifier implements Notifier {}
 class SmsNotifier implements Notifier {}
 
 void run() {
-  print('=== 04: Type & Environment Registration Example ===\n');
+  print('=== 06: Type & Environment Registration Example ===\n');
 
   // Isolate this example's registrations from any earlier example.
   TomBean.resetBeanContext();
@@ -157,3 +157,5 @@ void run() {
   assert(uninitializedKey == 'beanlocator.bean_access.no_bean_found_uninitialized');
   assert(ambiguousKey == 'beanlocator.bean_access.more_than_one_implementation_found');
 }
+
+void main() => run();

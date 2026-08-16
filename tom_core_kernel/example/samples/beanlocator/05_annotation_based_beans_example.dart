@@ -305,7 +305,7 @@ class AnnotationBasedBeansExample {
   // -------------------------------------------------------------------------
   static void run() {
     print('═══════════════════════════════════════════════════════════════════');
-    print('ANNOTATION-BASED BEANS EXAMPLE');
+    print('05: ANNOTATION-BASED BEANS EXAMPLE');
     print('═══════════════════════════════════════════════════════════════════\n');
 
     // Note: initializeReflection() should be called by 00_run_all_examples.dart
