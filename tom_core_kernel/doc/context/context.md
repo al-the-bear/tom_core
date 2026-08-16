@@ -32,9 +32,17 @@ The context system consists of three main components:
 
 1. Create a `TomExecutionContext` with named entries
 2. Call `runInContext()` or `runInContextAsync()` with your code
-3. Inside that code, read an entry by name with
-   `TomExecutionContext.getValueFromCurrentZone<T>('name')`
-4. Context flows automatically through async boundaries
+3. Inside that code, read an entry **by name** with
+   `TomExecutionContext.getValueFromCurrentZone<T>('name')` — *not* with
+   `getFromCurrentZone<T>()`, which is keyed by type and never sees an entry
+4. Use `getFromCurrentZone<T>()` only for the two containers the zone actually
+   holds: `getFromCurrentZone<TomExecutionContext>()` for the context itself and
+   `getFromCurrentZone<TomZoneValues>()` for ad-hoc values passed as
+   `zoneValues:`
+5. Context flows automatically through async boundaries
+
+Steps 3 and 4 are the whole trick, and picking the wrong one fails silently —
+see [Two reads, and which one to use](#two-reads-and-which-one-to-use) below.
 
 ### Two reads, and which one to use
 
