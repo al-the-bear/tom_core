@@ -359,6 +359,66 @@ void main() {
         expect(result, isNull);
       });
     });
+
+    // ------------------------------------------------------------------------
+    // Which read reaches which store
+    //
+    // runInContext installs exactly two zone keys, both Types:
+    // TomExecutionContext and TomZoneValues. Named entries live *inside* the
+    // context; ad-hoc zone values live *inside* the container. Neither is
+    // reachable by the other's read, and both mistakes fail silently as null,
+    // so they are pinned here.
+    // ------------------------------------------------------------------------
+    group('type-keyed vs name-keyed reads', () {
+      test('a named entry is not reachable by its value type', () {
+        final context = TomExecutionContext({
+          'userId': TomContextEntry<String>(() => '12345'),
+        });
+
+        String? byType;
+        String? byName;
+        context.runInContext(() {
+          byType = getFromCurrentZone<String>();
+          byName = TomExecutionContext.getValueFromCurrentZone<String>('userId');
+        });
+
+        expect(byType, isNull,
+            reason: 'the zone holds no String key, only Type keys');
+        expect(byName, equals('12345'));
+      });
+
+      test('runInContext installs the context and the zone values by Type', () {
+        final context = TomExecutionContext({
+          'userId': TomContextEntry<String>(() => '12345'),
+        });
+
+        TomExecutionContext? ctx;
+        TomZoneValues? values;
+        context.runInContext(() {
+          ctx = getFromCurrentZone<TomExecutionContext>();
+          values = getFromCurrentZone<TomZoneValues>();
+        }, zoneValues: {'requestId': 'req-7'});
+
+        expect(ctx, isNotNull);
+        expect(values, isNotNull);
+      });
+
+      test('a zone value is read through the container, not by entry name', () {
+        final context = TomExecutionContext({});
+
+        Object? viaContainer;
+        String? viaEntryName;
+        context.runInContext(() {
+          viaContainer = getFromCurrentZone<TomZoneValues>()?['requestId'];
+          viaEntryName =
+              TomExecutionContext.getValueFromCurrentZone<String>('requestId');
+        }, zoneValues: {'requestId': 'req-7'});
+
+        expect(viaContainer, equals('req-7'));
+        expect(viaEntryName, isNull,
+            reason: 'zoneValues are not entries of the context map');
+      });
+    });
   });
 
   // ==========================================================================

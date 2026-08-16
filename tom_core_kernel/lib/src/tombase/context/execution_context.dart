@@ -21,10 +21,31 @@
 /// });
 ///
 /// context.runInContext(() {
-///   // Access context values from anywhere in this zone
-///   final userId = getFromCurrentZone<String>();
+///   // Access context values from anywhere in this zone, by entry name
+///   final userId = TomExecutionContext.getValueFromCurrentZone<String>('userId');
 /// });
 /// ```
+///
+/// ## Two reads, and which one to use
+///
+/// A zone is keyed by `Type`, and [runInContext] installs exactly two keys:
+/// [TomExecutionContext] and [TomZoneValues]. Everything else lives *inside*
+/// one of those two containers, so which read applies depends on what is being
+/// fetched:
+///
+/// - **The containers themselves** are read by type, with
+///   `getFromCurrentZone<TomExecutionContext>()` and
+///   `getFromCurrentZone<TomZoneValues>()`.
+/// - **A named context entry** is read by name, with
+///   [TomExecutionContext.getValueFromCurrentZone]. Its type parameter selects
+///   the entry's *value* type; it is not a zone key.
+/// - **An ad-hoc zone value** passed as `zoneValues:` is read through the
+///   container: `getFromCurrentZone<TomZoneValues>()?['requestId']`.
+///
+/// Reaching for the wrong one returns `null` rather than failing, so it is
+/// worth being deliberate: `getFromCurrentZone<String>()` never sees an entry
+/// named `'userId'`, however that entry is typed, because nothing ever
+/// installs `String` as a zone key.
 library;
 
 import 'dart:async';
@@ -45,8 +66,11 @@ import '../security/user_principal_aci.dart';
 /// ## How It Works
 ///
 /// When code runs inside a context via [runInContext] or [runInContextAsync],
-/// the context values are stored in the zone and can be retrieved anywhere
-/// in that zone using [getFromCurrentZone].
+/// this context is installed in the zone under the [TomExecutionContext] type
+/// key, so its entries are available anywhere in that zone. A single entry is
+/// read by *name* with [getValueFromCurrentZone]; the context object itself is
+/// read by *type* with `getFromCurrentZone<TomExecutionContext>()`. See the
+/// library documentation for the full distinction.
 ///
 /// ## Context Composition
 ///
@@ -77,7 +101,18 @@ class TomExecutionContext {
     return null;
   }
   
-  /// Get value of a context in the current zone type and named
+  /// Reads the entry named [name] from the [TomExecutionContext] installed in
+  /// the current zone, and returns its value.
+  ///
+  /// This is the read for a context entry. [T] is the entry's *value* type, not
+  /// a zone key: the lookup finds the context by type and then the entry by
+  /// name, so `getFromCurrentZone<T>()` does not reach an entry (see the
+  /// library documentation).
+  ///
+  /// Returns `null` when no context is installed, when no entry carries [name],
+  /// or when the entry found is not typed [T] — the same answer for all three,
+  /// so a caller that needs to tell them apart should use [getEntry] on the
+  /// context directly.
   static T? getValueFromCurrentZone<T>(String name) {
     var ctx = getFromCurrentZone<TomExecutionContext>();
     if (ctx != null) {
@@ -140,16 +175,18 @@ class TomExecutionContext {
   /// through alongside the typed context: they are wrapped in a
   /// [TomZoneValues] container that is merged with any [TomZoneValues] already
   /// in the current zone (existing values are preserved unless overridden by a
-  /// matching key in [zoneValues]) and read back via
-  /// [getValueFromCurrentZone]. Use [zoneValues] for ad-hoc values that do not
-  /// warrant a typed [TomContextEntry]; use the context map for the structured,
-  /// type-keyed entries.
+  /// matching key in [zoneValues]). They are read back through that container —
+  /// `getFromCurrentZone<TomZoneValues>()?['requestId']` — and *not* with
+  /// [getValueFromCurrentZone], which looks in the context map. Use
+  /// [zoneValues] for ad-hoc values that do not warrant a typed
+  /// [TomContextEntry]; use the context map for the structured, named entries.
   ///
   /// Example:
   /// ```dart
   /// final result = context.runInContext(() {
-  ///   // Typed context entries and zone values available here
-  ///   return computeResult();
+  ///   final user = TomExecutionContext.getValueFromCurrentZone<String>('userId');
+  ///   final requestId = getFromCurrentZone<TomZoneValues>()?['requestId'];
+  ///   return computeResult(user, requestId);
   /// }, zoneValues: {'requestId': id});
   /// ```
   T runInContext<T>(T Function() body, {Map<Object?, Object?> zoneValues = const {}, }) {
@@ -188,14 +225,17 @@ class TomExecutionContext {
   /// through alongside the typed context: they are wrapped in a
   /// [TomZoneValues] container that is merged with any [TomZoneValues] already
   /// in the current zone (existing values are preserved unless overridden by a
-  /// matching key in [zoneValues]) and read back via
-  /// [getValueFromCurrentZone]. See [runInContext] for the synchronous variant.
+  /// matching key in [zoneValues]), and read back through that container rather
+  /// than with [getValueFromCurrentZone]. See [runInContext] for the
+  /// synchronous variant and for the read that reaches each store.
   ///
   /// Example:
   /// ```dart
   /// final result = await context.runInContextAsync(() async {
-  ///   // Typed context entries and zone values available here and in awaited calls
-  ///   return await fetchData();
+  ///   // Entries and zone values stay available here and across every await
+  ///   final user = TomExecutionContext.getValueFromCurrentZone<String>('userId');
+  ///   final requestId = getFromCurrentZone<TomZoneValues>()?['requestId'];
+  ///   return await fetchData(user, requestId);
   /// }, zoneValues: {'requestId': id});
   /// ```
   Future<T> runInContextAsync<T>(Future<T> Function() body, {Map<Object?, Object?> zoneValues = const {}, }) {
@@ -380,8 +420,8 @@ class TomContextProviders {
 ///
 /// ```dart
 /// tomExecutionContext.runInContext(() {
-///   // Access organization, language, etc. via context map
-///   final org = tomExecutionContext.contextMap['organization']?.contextFunction();
+///   // Access organization, language, etc. by entry name
+///   final org = TomExecutionContext.getValueFromCurrentZone<String>('organization');
 /// });
 /// ```
 var tomExecutionContext = TomExecutionContext({

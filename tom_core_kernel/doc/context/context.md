@@ -5,6 +5,8 @@ The Tom Execution Context System provides zone-based context propagation for pas
 ## Table of Contents
 
 - [Overview](#overview)
+  - [How It Works](#how-it-works)
+  - [Two reads, and which one to use](#two-reads-and-which-one-to-use)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
   - [TomExecutionContext](#tomexecutioncontext)
@@ -29,8 +31,29 @@ The context system consists of three main components:
 
 1. Create a `TomExecutionContext` with named entries
 2. Call `runInContext()` or `runInContextAsync()` with your code
-3. Inside that code, use `getFromCurrentZone<T>()` to retrieve values
+3. Inside that code, read an entry by name with
+   `TomExecutionContext.getValueFromCurrentZone<T>('name')`
 4. Context flows automatically through async boundaries
+
+### Two reads, and which one to use
+
+A Dart zone is keyed by `Type`, and `runInContext()` installs exactly two keys:
+`TomExecutionContext` and `TomZoneValues`. Everything else lives *inside* one of
+those two containers, so which read applies depends on what is being fetched:
+
+- **The containers themselves** are read by type, with
+  `getFromCurrentZone<TomExecutionContext>()` and
+  `getFromCurrentZone<TomZoneValues>()`.
+- **A named context entry** is read by name, with
+  `TomExecutionContext.getValueFromCurrentZone<T>('name')`. Its type parameter
+  selects the entry's *value* type; it is not a zone key.
+- **An ad-hoc zone value** passed as `zoneValues:` is read through the
+  container: `getFromCurrentZone<TomZoneValues>()?['requestId']`.
+
+Reaching for the wrong one returns `null` rather than failing, so it is worth
+being deliberate: `getFromCurrentZone<String>()` never sees an entry named
+`'userId'`, however that entry is typed, because nothing ever installs `String`
+as a zone key.
 
 ## Quick Start
 
@@ -51,9 +74,9 @@ void main() {
 }
 
 void processRequest() {
-  // Access context from anywhere in the zone
-  final ctx = getFromCurrentZone<TomExecutionContext>();
-  final requestId = ctx?.contextMap['requestId']?.contextFunction();
+  // Access context entries from anywhere in the zone, by entry name
+  final requestId =
+      TomExecutionContext.getValueFromCurrentZone<String>('requestId');
   print('Processing request: $requestId');
 }
 ```
@@ -123,9 +146,10 @@ final result = await context.runInContextAsync(() async {
   return await fetchData();
 });
 
-// With additional zone values
+// With additional zone values, read back through the TomZoneValues container
+// (they are not context entries, so getValueFromCurrentZone does not see them)
 context.runInContext(() {
-  // Custom zone values available
+  final custom = getFromCurrentZone<TomZoneValues>()?['customKey'];
 }, zoneValues: {'customKey': 'customValue'});
 ```
 
@@ -330,8 +354,8 @@ Document which context values your functions expect:
 /// - `userId`: The current user's ID
 /// - `tenantId`: The tenant identifier
 Future<void> processOrder(Order order) async {
-  final ctx = getFromCurrentZone<TomExecutionContext>()!;
-  final userId = ctx.contextMap['userId']!.contextFunction();
+  final userId =
+      TomExecutionContext.getValueFromCurrentZone<String>('userId')!;
   // ...
 }
 ```
