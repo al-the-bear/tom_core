@@ -54,15 +54,25 @@ import '../reflection/reflection.dart';
 /// locator arrives as this type, so `on TomBeanLocatorException` is a sufficient
 /// handler.
 ///
-/// - `beanlocator.initialization.duplicate_bean_with_name`: Duplicate named bean
-/// - `beanlocator.initialization.duplicate_bean_with_type`: Duplicate typed bean
-/// - `beanlocator.initialization.no_matching_implementation_found`: No implementation
-/// - `beanlocator.initialization.ambiguous_implementation`: Two implementations
+/// - `beanlocator.initialization.duplicate_bean_with_name`: [TomBean.withName]
+///   was given a name another bean already occupies. Use
+///   [TomBean.overrideWithName] to replace a binding deliberately
+/// - `beanlocator.initialization.duplicate_bean_with_type`: [TomBean.withType]
+///   was given a type another bean already occupies, including one discovery
+///   has bound. Use [TomBean.overrideWithType] to replace a binding deliberately
+/// - `beanlocator.initialization.no_matching_implementation_found`: every
+///   implementation of an interface was ruled out by its `@TomEnvironment` or
+///   `@TomPlatform` selector, leaving discovery nothing to bind
+/// - `beanlocator.initialization.ambiguous_implementation`: two implementations
 ///   qualify equally for one interface
-/// - `beanlocator.bean_access.bean_not_found_by_name`: Named bean not found
-/// - `beanlocator.bean_access.bean_not_found_by_type`: Type mismatch for named bean
-/// - `beanlocator.bean_access.no_bean_found_uninitialized`: Unresolved bean
-/// - `beanlocator.bean_access.more_than_one_implementation_found`: Two registered
+/// - `beanlocator.bean_access.bean_not_found_by_name`: nothing is registered
+///   under the name the handle resolves by
+/// - `beanlocator.bean_access.bean_not_found_by_type`: a bean is registered
+///   under the name, but is not an instance of the type the handle asks for
+/// - `beanlocator.bean_access.no_bean_found_uninitialized`: nothing is
+///   registered for the requested type — typically a handle resolved before
+///   [initializeBeanContext] ran, or an interface with no component
+/// - `beanlocator.bean_access.more_than_one_implementation_found`: two registered
 ///   beans satisfy one requested type
 /// - `beanlocator.bean_access.no_bean_found_unknown_error`: The type walk failed
 ///   for a reason the locator does not model; the cause travels as the root

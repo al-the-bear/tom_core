@@ -537,7 +537,7 @@ so the handler above is sufficient and does not need a second `catch`.
 |-----|-------------|
 | `beanlocator.initialization.duplicate_bean_with_name` | Duplicate named bean registration via `TomBean.withName`. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
 | `beanlocator.initialization.duplicate_bean_with_type` | Duplicate typed bean registration via `TomBean.withType` — including a type discovery has already bound. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
-| `beanlocator.initialization.no_matching_implementation_found` | No matching implementation |
+| `beanlocator.initialization.no_matching_implementation_found` | Every implementation of an interface was ruled out by its `@TomEnvironment` or `@TomPlatform` selector, leaving discovery nothing to bind — see [Environment-Specific Beans](#environment-specific-beans) |
 | `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
 | `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found. Raised on `get()`, never by [startup validation](#startup-validation) — a name that is not registered yet is a supported state |
 | `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean. Also raised by [startup validation](#startup-validation), since the name is registered and the mismatch is answerable at boot |
