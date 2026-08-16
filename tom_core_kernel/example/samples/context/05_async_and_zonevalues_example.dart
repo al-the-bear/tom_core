@@ -17,7 +17,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // =============================================================================
 
 Future<void> run() async {
-  print('=== 04: Async Context & Zone Values Example ===\n');
+  print('=== 05: Async Context & Zone Values Example ===\n');
 
   // ---------------------------------------------------------------------------
   // Example 1: Context survives an await boundary
@@ -32,8 +32,7 @@ Future<void> run() async {
     // The context is installed before the await...
     await Future<void>.delayed(Duration.zero);
     // ...and is still installed after it resumes on the microtask queue.
-    final ctx = getFromCurrentZone<TomExecutionContext>();
-    return ctx?.contextMap['requestId']?.contextFunction() as String?;
+    return TomExecutionContext.getValueFromCurrentZone<String>('requestId');
   });
 
   assert(resolved == 'req-async-001', 'context lost across await');
@@ -58,9 +57,8 @@ Future<void> run() async {
   await outer.runInContextAsync(() async {
     await inner.runInContextAsync(() async {
       await Future<void>.delayed(Duration.zero);
-      final ctx = getFromCurrentZone<TomExecutionContext>();
-      tenant = ctx?.contextMap['tenant']?.contextFunction() as String?;
-      scope = ctx?.contextMap['scope']?.contextFunction() as String?;
+      tenant = TomExecutionContext.getValueFromCurrentZone<String>('tenant');
+      scope = TomExecutionContext.getValueFromCurrentZone<String>('scope');
     });
   });
 

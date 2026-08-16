@@ -2,6 +2,11 @@
 ///
 /// This example shows how contexts can be combined and nested, with inner
 /// contexts having access to outer context values.
+///
+/// Values are read the way the module intends: `getEntry<T>(name)?.value` on a
+/// context you hold, and [TomExecutionContext.getValueFromCurrentZone] once you
+/// are inside a `runInContext` body. Direct `contextMap` access appears only
+/// where the map itself is the subject — entry counts and key listings.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -17,6 +22,8 @@ class CombineContextsExample {
   static int entryCountAfterCombine = 0;
 
   static void example1CombiningContexts() {
+    print('1. Combining contexts with combineWith:');
+
     final baseContext = TomExecutionContext({
       'tenant': TomContextEntry<String>(() => 'acme-corp'),
       'environment': TomContextEntry<String>(() => 'production'),
@@ -31,12 +38,14 @@ class CombineContextsExample {
     baseContext.combineWith(userContext);
 
     entryCountAfterCombine = baseContext.contextMap.length;
-    combinedTenant =
-        baseContext.contextMap['tenant']?.contextFunction() as String?;
-    combinedUserId =
-        baseContext.contextMap['userId']?.contextFunction() as String?;
-    combinedRole =
-        baseContext.contextMap['role']?.contextFunction() as String?;
+    combinedTenant = baseContext.getEntry<String>('tenant')?.value;
+    combinedUserId = baseContext.getEntry<String>('userId')?.value;
+    combinedRole = baseContext.getEntry<String>('role')?.value;
+
+    print('   - Entries after combine: $entryCountAfterCombine');
+    print('   - tenant (from base): $combinedTenant');
+    print('   - userId (merged in): $combinedUserId');
+    print('   - role (merged in): $combinedRole');
 
     assert(entryCountAfterCombine == 4, 'Should have 4 entries after combine');
     assert(combinedTenant == 'acme-corp', 'Tenant should be preserved');
@@ -56,6 +65,8 @@ class OverwriteContextExample {
   static int entryCountAfterOverwrite = 0;
 
   static void example2OverwritingValues() {
+    print('\n2. Overwriting values with combineWith:');
+
     final originalContext = TomExecutionContext({
       'version': TomContextEntry<String>(() => 'v1.0'),
       'debug': TomContextEntry<bool>(() => false),
@@ -66,16 +77,19 @@ class OverwriteContextExample {
       'newFeature': TomContextEntry<bool>(() => true),
     });
 
-    versionBefore =
-        originalContext.contextMap['version']?.contextFunction() as String?;
+    versionBefore = originalContext.getEntry<String>('version')?.value;
 
     originalContext.combineWith(overrideContext);
 
-    versionAfter =
-        originalContext.contextMap['version']?.contextFunction() as String?;
-    hasNewFeature =
-        originalContext.contextMap['newFeature']?.contextFunction() as bool?;
+    versionAfter = originalContext.getEntry<String>('version')?.value;
+    hasNewFeature = originalContext.getEntry<bool>('newFeature')?.value;
     entryCountAfterOverwrite = originalContext.contextMap.length;
+
+    print('   - version before: $versionBefore');
+    print('   - version after: $versionAfter');
+    print('   - newFeature: $hasNewFeature');
+    print('   - Entries after overwrite: $entryCountAfterOverwrite '
+        '(the colliding key was replaced, not duplicated)');
 
     assert(versionBefore == 'v1.0', 'Original version should be v1.0');
     assert(versionAfter == 'v2.0', 'Version should be overwritten to v2.0');
@@ -98,6 +112,8 @@ class NestedZoneExample {
   static bool innerZoneExecuted = false;
 
   static void example3NestedZoneExecution() {
+    print('\n3. Nested context execution (zone within zone):');
+
     final outerContext = TomExecutionContext({
       'level': TomContextEntry<String>(() => 'outer'),
       'sharedValue': TomContextEntry<int>(() => 100),
@@ -110,21 +126,28 @@ class NestedZoneExample {
 
     outerContext.runInContext(() {
       outerZoneExecuted = true;
-      final ctx = getFromCurrentZone<TomExecutionContext>();
-      outerLevel = ctx?.contextMap['level']?.contextFunction() as String?;
-      outerShared = ctx?.contextMap['sharedValue']?.contextFunction() as int?;
+      outerLevel = TomExecutionContext.getValueFromCurrentZone<String>('level');
+      outerShared =
+          TomExecutionContext.getValueFromCurrentZone<int>('sharedValue');
 
       innerContext.runInContext(() {
         innerZoneExecuted = true;
-        final innerCtx = getFromCurrentZone<TomExecutionContext>();
         innerLevel =
-            innerCtx?.contextMap['level']?.contextFunction() as String?;
+            TomExecutionContext.getValueFromCurrentZone<String>('level');
         innerShared =
-            innerCtx?.contextMap['sharedValue']?.contextFunction() as int?;
+            TomExecutionContext.getValueFromCurrentZone<int>('sharedValue');
         innerOnly =
-            innerCtx?.contextMap['innerOnly']?.contextFunction() as String?;
+            TomExecutionContext.getValueFromCurrentZone<String>('innerOnly');
       });
     });
+
+    print('   In the outer zone:');
+    print('   - level: $outerLevel');
+    print('   - sharedValue: $outerShared');
+    print('   In the nested inner zone:');
+    print('   - level: $innerLevel (shadows the outer entry)');
+    print('   - sharedValue: $innerShared (inherited from the outer zone)');
+    print('   - innerOnly: $innerOnly');
 
     assert(outerZoneExecuted, 'Outer zone should have executed');
     assert(innerZoneExecuted, 'Inner zone should have executed');
@@ -147,6 +170,8 @@ class ContextInheritanceExample {
   static bool childZoneExecuted = false;
 
   static void example4ContextInheritance() {
+    print('\n4. Context inheritance in nested zones:');
+
     final parentContext = TomExecutionContext({
       'parentValue': TomContextEntry<String>(() => 'from-parent'),
     });
@@ -159,14 +184,17 @@ class ContextInheritanceExample {
       parentZoneExecuted = true;
       childContext.runInContext(() {
         childZoneExecuted = true;
-        final ctx = getFromCurrentZone<TomExecutionContext>();
         // Child zone should have access to both parent and child values
         inheritedParent =
-            ctx?.contextMap['parentValue']?.contextFunction() as String?;
+            TomExecutionContext.getValueFromCurrentZone<String>('parentValue');
         inheritedChild =
-            ctx?.contextMap['childValue']?.contextFunction() as String?;
+            TomExecutionContext.getValueFromCurrentZone<String>('childValue');
       });
     });
+
+    print('   Read from inside the child zone:');
+    print('   - parentValue: $inheritedParent');
+    print('   - childValue: $inheritedChild');
 
     assert(parentZoneExecuted, 'Parent zone should have executed');
     assert(childZoneExecuted, 'Child zone should have executed');
@@ -193,6 +221,8 @@ class ContextChainExample {
   static String? traceId;
 
   static void example5BuildingContextChains() {
+    print('\n5. Building a context chain for request processing:');
+
     // Build a chain of contexts for request processing
     final requestContext = TomExecutionContext({
       'requestId': TomContextEntry<String>(() => 'req-001'),
@@ -208,13 +238,17 @@ class ContextChainExample {
     requestContext.combineWith(authContext);
 
     totalEntryCount = requestContext.contextMap.length;
-    requestId =
-        requestContext.contextMap['requestId']?.contextFunction() as String?;
-    userId = requestContext.contextMap['userId']?.contextFunction() as String?;
-    tenantId =
-        requestContext.contextMap['tenantId']?.contextFunction() as String?;
-    traceId =
-        requestContext.contextMap['traceId']?.contextFunction() as String?;
+    requestId = requestContext.getEntry<String>('requestId')?.value;
+    userId = requestContext.getEntry<String>('userId')?.value;
+    tenantId = requestContext.getEntry<String>('tenantId')?.value;
+    traceId = requestContext.getEntry<String>('traceId')?.value;
+
+    print('   - Entry names: ${requestContext.contextMap.keys.join(', ')}');
+    print('   - Total entries: $totalEntryCount');
+    print('   - requestId: $requestId');
+    print('   - traceId: $traceId');
+    print('   - userId: $userId');
+    print('   - tenantId: $tenantId');
 
     assert(totalEntryCount == 4, 'Should have 4 entries in combined context');
     assert(requestId == 'req-001', 'Request ID should be preserved');
@@ -234,6 +268,8 @@ class LazyEvaluationExample {
   static String? secondAccess;
 
   static void example6LazyEvaluation() {
+    print('\n6. Entries are evaluated lazily, on every access:');
+
     evaluationCount = 0;
 
     final lazyContext = TomExecutionContext({
@@ -243,11 +279,15 @@ class LazyEvaluationExample {
       }),
     });
 
+    print('   - Evaluations before any access: $evaluationCount');
+
     // Access the value twice - each access should re-evaluate
-    firstAccess =
-        lazyContext.contextMap['lazyValue']?.contextFunction() as String?;
-    secondAccess =
-        lazyContext.contextMap['lazyValue']?.contextFunction() as String?;
+    firstAccess = lazyContext.getEntry<String>('lazyValue')?.value;
+    secondAccess = lazyContext.getEntry<String>('lazyValue')?.value;
+
+    print('   - First access: $firstAccess');
+    print('   - Second access: $secondAccess');
+    print('   - Evaluations after two accesses: $evaluationCount');
 
     // The function is called each time
     assert(evaluationCount == 2, 'Should have evaluated twice');
@@ -267,6 +307,7 @@ void run() {
   ContextInheritanceExample.example4ContextInheritance();
   ContextChainExample.example5BuildingContextChains();
   LazyEvaluationExample.example6LazyEvaluation();
+  print('');
 }
 
 void main() => run();

@@ -2,6 +2,11 @@
 ///
 /// This example shows how to use the built-in context providers that extract
 /// values from the current zone's TomPrincipal.
+///
+/// Values are read the way the module intends: `getEntry<T>(name)?.value` on a
+/// context you hold, and [TomExecutionContext.getValueFromCurrentZone] once you
+/// are inside a `runInContext` body. Direct `contextMap` access appears only
+/// where the map itself is the subject — entry counts and key listings.
 library;
 
 import 'dart:async';
@@ -21,12 +26,21 @@ class DefaultProvidersExample {
   static String? defaultTimezone;
 
   static void example1DefaultProviders() {
+    print('1. TomContextProviders without a principal (defaults):');
+
     defaultOrg = TomContextProviders.getOrganization();
     defaultApp = TomContextProviders.getApplication();
     defaultProcess = TomContextProviders.getProcess();
     defaultLang = TomContextProviders.getLanguage();
     defaultCountry = TomContextProviders.getCountry();
     defaultTimezone = TomContextProviders.getTimezone();
+
+    print('   - organization: $defaultOrg');
+    print('   - application: $defaultApp');
+    print('   - process: $defaultProcess');
+    print('   - language: $defaultLang');
+    print('   - country: $defaultCountry');
+    print('   - timezone: $defaultTimezone');
 
     assert(defaultOrg == 'default', 'Default organization should be "default"');
     assert(defaultApp == 'default', 'Default application should be "default"');
@@ -52,6 +66,8 @@ class PrincipalProvidersExample {
   static String? principalTimezone;
 
   static void example2PrincipalProviders() {
+    print('\n2. TomContextProviders with a TomPrincipal in the zone:');
+
     final principal = TomPrincipal(
       organization: 'acme-corp',
       application: 'billing-app',
@@ -72,6 +88,12 @@ class PrincipalProvidersExample {
       principalCountry = TomContextProviders.getCountry();
       principalTimezone = TomContextProviders.getTimezone();
     }, zoneValues: {TomPrincipal: principal});
+
+    print('   - organization: $principalOrg');
+    print('   - application: $principalApp');
+    print('   - language: $principalLang');
+    print('   - country: $principalCountry');
+    print('   - timezone: $principalTimezone');
 
     assert(principalOrg == 'acme-corp', 'Principal org should be acme-corp');
     assert(principalApp == 'billing-app', 'Principal app should be billing-app');
@@ -95,6 +117,8 @@ class ClientContextExample {
   static String? serverLang;
 
   static void example3ClientContextValues() {
+    print('\n3. Server-side and client-side values are tracked separately:');
+
     final principal = TomPrincipal(
       organization: 'org',
       application: 'app',
@@ -113,6 +137,11 @@ class ClientContextExample {
       clientCountry = TomContextProviders.getClientCountry();
       clientTimezone = TomContextProviders.getClientTimezone();
     }, zoneValues: {TomPrincipal: principal});
+
+    print('   - server language: $serverLang');
+    print('   - client language: $clientLang');
+    print('   - client country: $clientCountry');
+    print('   - client timezone: $clientTimezone');
 
     // Server and client values are different
     assert(serverLang == 'de', 'Server language should be de');
@@ -134,16 +163,22 @@ class DefaultExecutionContextExample {
   static bool hasClientLanguage = false;
 
   static void example4DefaultExecutionContext() {
-    // The tomExecutionContext has all providers pre-configured
+    print('\n4. The pre-configured tomExecutionContext:');
+
+    // The tomExecutionContext has all providers pre-configured. Listing the
+    // registered names is a question about the map itself, so it reads the map.
     contextEntries = tomExecutionContext.contextMap.keys.toList();
 
     hasOrganization = contextEntries.contains('organization');
     hasApplication = contextEntries.contains('application');
     hasClientLanguage = contextEntries.contains('clientLanguage');
 
-    // Access organization entry from default context
-    final orgEntry = tomExecutionContext.contextMap['organization'];
-    orgValue = orgEntry?.contextFunction() as String?;
+    // The value of one entry is a typed read.
+    orgValue = tomExecutionContext.getEntry<String>('organization')?.value;
+
+    print('   - Registered entries (${contextEntries.length}): '
+        '${contextEntries.join(', ')}');
+    print('   - organization value (no principal in zone): $orgValue');
 
     assert(hasOrganization, 'Should have organization entry');
     assert(hasApplication, 'Should have application entry');
@@ -163,6 +198,8 @@ class ContextWithPrincipalExample {
   static bool contextRetrieved = false;
 
   static void example5ContextWithPrincipal() {
+    print('\n5. tomExecutionContext resolving against a principal:');
+
     final principal = TomPrincipal(
       organization: 'acme-corp',
       application: 'billing-app',
@@ -179,13 +216,21 @@ class ContextWithPrincipalExample {
     runZoned(() {
       tomExecutionContext.runInContext(() {
         contextRetrieved = true;
-        final ctx = getFromCurrentZone<TomExecutionContext>();
-        ctxOrg = ctx?.contextMap['organization']?.contextFunction() as String?;
-        ctxApp = ctx?.contextMap['application']?.contextFunction() as String?;
-        ctxClientLang =
-            ctx?.contextMap['clientLanguage']?.contextFunction() as String?;
+        ctxOrg =
+            TomExecutionContext.getValueFromCurrentZone<String>('organization');
+        ctxApp =
+            TomExecutionContext.getValueFromCurrentZone<String>('application');
+        ctxClientLang = TomExecutionContext.getValueFromCurrentZone<String>(
+          'clientLanguage',
+        );
       });
     }, zoneValues: {TomPrincipal: principal});
+
+    print('   - organization: $ctxOrg');
+    print('   - application: $ctxApp');
+    print('   - clientLanguage: $ctxClientLang');
+    print('   - The entries are lazy, so they resolve against whichever '
+        'principal is in the zone at read time');
 
     assert(contextRetrieved, 'Context should have been retrieved');
     assert(ctxOrg == 'acme-corp', 'Context org should match principal');
@@ -206,10 +251,13 @@ class ZoneValuesHelperExample {
   static int afterAddSize = 0;
 
   static void example6ZoneValuesHelper() {
+    print('\n6. The TomZoneValues container:');
+
     final zoneVals = TomZoneValues({'key1': 'value1', 'key2': 42});
     initialSize = zoneVals.zoneValues.length;
 
-    // Read values
+    // Zone values are untyped (Object? keys and values), so a cast is part of
+    // the API here — unlike a context entry, which carries its own type.
     key1Val = zoneVals['key1'] as String?;
     key2Val = zoneVals['key2'] as int?;
 
@@ -217,6 +265,12 @@ class ZoneValuesHelperExample {
     zoneVals['key3'] = true;
     key3Val = zoneVals['key3'] as bool?;
     afterAddSize = zoneVals.zoneValues.length;
+
+    print('   - Initial size: $initialSize');
+    print('   - key1: $key1Val');
+    print('   - key2: $key2Val');
+    print('   - Added key3: $key3Val');
+    print('   - Size after add: $afterAddSize');
 
     assert(initialSize == 2, 'Initial size should be 2');
     assert(key1Val == 'value1', 'key1 should be value1');
@@ -242,6 +296,8 @@ class PrincipalCreationExample {
   static String? clientTimezone;
 
   static void example7PrincipalCreation() {
+    print('\n7. TomPrincipal properties:');
+
     final principal = TomPrincipal(
       organization: 'test-org',
       application: 'test-app',
@@ -263,6 +319,12 @@ class PrincipalCreationExample {
     clientLang = principal.clientLanguage;
     clientCountry = principal.clientCountry;
     clientTimezone = principal.clientTimezone;
+
+    print('   - organization: $org');
+    print('   - application: $app');
+    print('   - process: $process');
+    print('   - server locale: $lang / $country / $timezone');
+    print('   - client locale: $clientLang / $clientCountry / $clientTimezone');
 
     assert(org == 'test-org', 'Organization should match');
     assert(app == 'test-app', 'Application should match');
@@ -288,6 +350,7 @@ void run() {
   ContextWithPrincipalExample.example5ContextWithPrincipal();
   ZoneValuesHelperExample.example6ZoneValuesHelper();
   PrincipalCreationExample.example7PrincipalCreation();
+  print('');
 }
 
 void main() => run();

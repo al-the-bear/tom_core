@@ -2,6 +2,11 @@
 ///
 /// This example shows how to create contexts, add entries, and run code within
 /// a context to make values available throughout the call chain.
+///
+/// Values are read the way the module intends: `getEntry<T>(name)?.value` on a
+/// context you hold, and [TomExecutionContext.getValueFromCurrentZone] once you
+/// are inside a `runInContext` body. Direct `contextMap` access appears only
+/// where the map itself is the subject — entry counts and key listings.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -17,18 +22,23 @@ class BasicContextCreationExample {
   static int? capturedTimestamp;
 
   static void example1CreatingSimpleContext() {
+    print('1. Creating a simple context:');
+
     final context = TomExecutionContext({
       'userId': TomContextEntry<String>(() => 'user-12345'),
       'requestId': TomContextEntry<String>(() => 'req-abc-xyz'),
       'timestamp': TomContextEntry<int>(() => 1700000000000),
     });
 
-    // Access entries directly from the context map
-    capturedUserId = context.contextMap['userId']?.contextFunction() as String?;
-    capturedRequestId =
-        context.contextMap['requestId']?.contextFunction() as String?;
-    capturedTimestamp =
-        context.contextMap['timestamp']?.contextFunction() as int?;
+    // Typed read on a context you hold: getEntry<T> matches the entry's
+    // declared type, and .value invokes its provider function.
+    capturedUserId = context.getEntry<String>('userId')?.value;
+    capturedRequestId = context.getEntry<String>('requestId')?.value;
+    capturedTimestamp = context.getEntry<int>('timestamp')?.value;
+
+    print('   - userId: $capturedUserId');
+    print('   - requestId: $capturedRequestId');
+    print('   - timestamp: $capturedTimestamp');
 
     assert(capturedUserId == 'user-12345', 'User ID should be user-12345');
     assert(
@@ -46,9 +56,12 @@ class BasicContextCreationExample {
 class ContextExecutionExample {
   static String? retrievedUserId;
   static String? retrievedRequestId;
+  static int entriesVisibleInZone = 0;
   static bool zoneExecuted = false;
 
   static void example2RunningCodeInContext() {
+    print('\n2. Running code within a context:');
+
     final context = TomExecutionContext({
       'userId': TomContextEntry<String>(() => 'user-12345'),
       'requestId': TomContextEntry<String>(() => 'req-abc-xyz'),
@@ -56,15 +69,25 @@ class ContextExecutionExample {
 
     context.runInContext(() {
       zoneExecuted = true;
-      // Inside this zone, we can retrieve the context
+
+      // The context object itself is installed in the zone under its own type.
       final currentContext = getFromCurrentZone<TomExecutionContext>();
+      entriesVisibleInZone = currentContext?.contextMap.length ?? 0;
+
+      // Individual values come from the named, typed read.
       retrievedUserId =
-          currentContext?.contextMap['userId']?.contextFunction() as String?;
-      retrievedRequestId = currentContext?.contextMap['requestId']
-          ?.contextFunction() as String?;
+          TomExecutionContext.getValueFromCurrentZone<String>('userId');
+      retrievedRequestId =
+          TomExecutionContext.getValueFromCurrentZone<String>('requestId');
     });
 
+    print('   - Zone executed: $zoneExecuted');
+    print('   - Entries visible in zone: $entriesVisibleInZone');
+    print('   - userId: $retrievedUserId');
+    print('   - requestId: $retrievedRequestId');
+
     assert(zoneExecuted, 'Zone code should have executed');
+    assert(entriesVisibleInZone == 2, 'Both entries should be in the zone');
     assert(
       retrievedUserId == 'user-12345',
       'Retrieved user ID should match original',
@@ -86,6 +109,8 @@ class DynamicEntriesExample {
   static int entryCountAfterAdding = 0;
 
   static void example3AddingEntriesDynamically() {
+    print('\n3. Adding entries dynamically:');
+
     final dynamicContext = TomExecutionContext({});
 
     // Add entries one at a time
@@ -95,10 +120,15 @@ class DynamicEntriesExample {
       TomContextEntry<List<String>>(() => ['read', 'write', 'delete']),
     );
 
+    // The count is a property of the map, so it is read from the map.
     entryCountAfterAdding = dynamicContext.contextMap.length;
-    capturedRole = dynamicContext.contextMap['role']?.contextFunction() as String?;
-    capturedPermissions = dynamicContext.contextMap['permissions']
-        ?.contextFunction() as List<String>?;
+    capturedRole = dynamicContext.getEntry<String>('role')?.value;
+    capturedPermissions =
+        dynamicContext.getEntry<List<String>>('permissions')?.value;
+
+    print('   - Entry count after adding: $entryCountAfterAdding');
+    print('   - role: $capturedRole');
+    print('   - permissions: ${capturedPermissions?.join(', ')}');
 
     assert(entryCountAfterAdding == 2, 'Should have 2 entries');
     assert(capturedRole == 'admin', 'Role should be admin');
@@ -117,6 +147,8 @@ class ClearContextExample {
   static int afterClearCount = 0;
 
   static void example4ClearingContextEntries() {
+    print('\n4. Clearing context entries:');
+
     final clearableContext = TomExecutionContext({
       'temp1': TomContextEntry<String>(() => 'value1'),
       'temp2': TomContextEntry<String>(() => 'value2'),
@@ -125,6 +157,9 @@ class ClearContextExample {
     beforeClearCount = clearableContext.contextMap.length;
     clearableContext.clear();
     afterClearCount = clearableContext.contextMap.length;
+
+    print('   - Entries before clear: $beforeClearCount');
+    print('   - Entries after clear: $afterClearCount');
 
     assert(beforeClearCount == 2, 'Should have 2 entries before clear');
     assert(afterClearCount == 0, 'Should have 0 entries after clear');
@@ -141,6 +176,8 @@ class ContextEntryTypeExample {
   static Type? listType;
 
   static void example5ContextEntryTypeInfo() {
+    print('\n5. TomContextEntry type information:');
+
     final stringEntry = TomContextEntry<String>(() => 'hello');
     final intEntry = TomContextEntry<int>(() => 42);
     final listEntry = TomContextEntry<List<double>>(() => [1.0, 2.0, 3.0]);
@@ -148,6 +185,10 @@ class ContextEntryTypeExample {
     stringType = stringEntry.type;
     intType = intEntry.type;
     listType = listEntry.type;
+
+    print('   - TomContextEntry<String>.type: $stringType');
+    print('   - TomContextEntry<int>.type: $intType');
+    print('   - TomContextEntry<List<double>>.type: $listType');
 
     assert(stringType == String, 'String entry type should be String');
     assert(intType == int, 'Int entry type should be int');
@@ -166,6 +207,8 @@ class EntryValueAccessExample {
   static String? viaTildeOperator;
 
   static void example6MultipleAccessMethods() {
+    print('\n6. Multiple ways to access an entry value:');
+
     final entry = TomContextEntry<String>(() => 'test-value');
 
     // Method 1: contextFunction() (original)
@@ -180,6 +223,11 @@ class EntryValueAccessExample {
     // Method 4: ~ operator (alternative)
     viaTildeOperator = ~entry;
 
+    print('   - entry.contextFunction(): $viaContextFunction');
+    print('   - entry.value: $viaValueGetter');
+    print('   - entry(): $viaCallOperator');
+    print('   - ~entry: $viaTildeOperator');
+
     assert(viaContextFunction == 'test-value', 'contextFunction() should work');
     assert(viaValueGetter == 'test-value', '.value should work');
     assert(viaCallOperator == 'test-value', 'call operator should work');
@@ -192,6 +240,7 @@ class EntryValueAccessExample {
           viaCallOperator == viaTildeOperator,
       'All access methods should return the same value',
     );
+    print('   - All four return the same value');
   }
 }
 
@@ -205,6 +254,8 @@ class TypeSafeAccessExample {
   static TomContextEntry<bool>? wrongTypeEntry;
 
   static void example7TypeSafeAccess() {
+    print('\n7. Type-safe access with getEntry:');
+
     final typedContext = TomExecutionContext({
       'count': TomContextEntry<int>(() => 100),
       'name': TomContextEntry<String>(() => 'example'),
@@ -217,8 +268,13 @@ class TypeSafeAccessExample {
     countEntryValue = countEntry?.value;
     nameEntryValue = nameEntry?.value;
 
-    // Get entry with wrong type returns null
+    // The type parameter must match the entry's declared type exactly — a
+    // mismatch is not an error, it simply misses.
     wrongTypeEntry = typedContext.getEntry<bool>('count');
+
+    print('   - getEntry<int>("count")?.value: $countEntryValue');
+    print('   - getEntry<String>("name")?.value: $nameEntryValue');
+    print('   - getEntry<bool>("count") (wrong type): $wrongTypeEntry');
 
     assert(countEntryValue == 100, 'Count should be 100');
     assert(nameEntryValue == 'example', 'Name should be example');
@@ -236,6 +292,8 @@ class StaticZoneAccessExample {
   static String? staticMissing;
 
   static void example8GetValueFromCurrentZone() {
+    print('\n8. Reading values from the current zone:');
+
     final staticContext = TomExecutionContext({
       'sessionId': TomContextEntry<String>(() => 'sess-abc-123'),
       'maxRetries': TomContextEntry<int>(() => 3),
@@ -250,6 +308,10 @@ class StaticZoneAccessExample {
       staticMissing =
           TomExecutionContext.getValueFromCurrentZone<String>('notThere');
     });
+
+    print('   - sessionId: $staticSessionId');
+    print('   - maxRetries: $staticMaxRetries');
+    print('   - notThere (undeclared entry): $staticMissing');
 
     assert(staticSessionId == 'sess-abc-123', 'Session ID should match');
     assert(staticMaxRetries == 3, 'Max retries should be 3');
@@ -270,6 +332,7 @@ void run() {
   EntryValueAccessExample.example6MultipleAccessMethods();
   TypeSafeAccessExample.example7TypeSafeAccess();
   StaticZoneAccessExample.example8GetValueFromCurrentZone();
+  print('');
 }
 
 void main() => run();
