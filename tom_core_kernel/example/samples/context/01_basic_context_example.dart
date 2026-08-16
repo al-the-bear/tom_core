@@ -4,8 +4,7 @@
 /// a context to make values available throughout the call chain.
 library;
 
-import 'package:tom_core_kernel/src/tombase/context/execution_context.dart';
-import 'package:tom_core_kernel/src/tombase/little_things/little_things.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // =============================================================================
 // EXAMPLE 1: Creating a simple context

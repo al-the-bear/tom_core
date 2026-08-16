@@ -4,8 +4,7 @@
 /// contexts having access to outer context values.
 library;
 
-import 'package:tom_core_kernel/src/tombase/context/execution_context.dart';
-import 'package:tom_core_kernel/src/tombase/little_things/little_things.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // =============================================================================
 // EXAMPLE 1: Combining contexts with combineWith

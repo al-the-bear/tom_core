@@ -6,9 +6,7 @@ library;
 
 import 'dart:async';
 
-import 'package:tom_core_kernel/src/tombase/context/execution_context.dart';
-import 'package:tom_core_kernel/src/tombase/little_things/little_things.dart';
-import 'package:tom_core_kernel/src/tombase/security/user_principal_aci.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // =============================================================================
 // EXAMPLE 1: Using TomContextProviders without a principal (defaults)
