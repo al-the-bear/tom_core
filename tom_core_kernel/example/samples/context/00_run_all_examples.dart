@@ -16,8 +16,7 @@ import '../../run_all_samples.reflection.dart';
 import '01_basic_context_example.dart' as basic_context;
 import '02_context_nesting_example.dart' as context_nesting;
 import '03_context_providers_example.dart' as context_providers;
-import '04_advanced_context_example.dart' as advanced_context;
-import '05_async_and_zonevalues_example.dart' as async_zonevalues;
+import '04_async_and_zonevalues_example.dart' as async_zonevalues;
 
 /// Standalone entry point for running context examples.
 Future<void> main() async {
@@ -46,12 +45,7 @@ Future<void> run() async {
   context_providers.run();
   print('✓ Context providers examples passed\n');
 
-  print('04: Advanced Context Example');
-  print('-' * 40);
-  await advanced_context.run();
-  print('✓ Advanced context examples passed\n');
-
-  print('05: Async and Zone Values Example');
+  print('04: Async and Zone Values Example');
   print('-' * 40);
   await async_zonevalues.run();
   print('✓ Async and zone-values examples passed\n');

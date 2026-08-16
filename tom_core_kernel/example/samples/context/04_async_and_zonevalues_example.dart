@@ -1,14 +1,20 @@
-/// Demonstrates asynchronous context propagation and the full [TomZoneValues]
-/// container API.
+/// Demonstrates asynchronous context propagation and the [TomZoneValues]
+/// container.
 ///
-/// This example complements the synchronous examples (01–03) by covering the
-/// two parts of the public surface they do not exercise:
+/// Examples 01-03 cover the context itself: creating entries, reading them,
+/// composing and nesting contexts, and the principal-backed providers. All of
+/// that is synchronous, and none of it touches the second thing `runInContext`
+/// installs in the zone. This example covers the remainder:
 ///
 /// - [TomExecutionContext.runInContextAsync] — context and zone values remain
 ///   available across `await` boundaries, including inside nested async runs.
-/// - The complete [TomZoneValues] mutation API: `addAll`, `containsKey`,
-///   `remove`, and `clear`, plus the `existingValues` merge constructor.
+/// - The `zoneValues:` argument of `runInContext` — what it is, and what it is
+///   deliberately not.
+/// - The [TomZoneValues] mutation API: `[]`/`[]=`, `addAll`, `containsKey`,
+///   `remove` and `clear`, plus the `existingValues` merge constructor.
 library;
+
+import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -17,8 +23,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // =============================================================================
 
 Future<void> run() async {
-  print('=== 05: Async Context & Zone Values Example ===\n');
-
   // ---------------------------------------------------------------------------
   // Example 1: Context survives an await boundary
   // ---------------------------------------------------------------------------
@@ -36,12 +40,13 @@ Future<void> run() async {
   });
 
   assert(resolved == 'req-async-001', 'context lost across await');
-  print('   - Request ID after await: $resolved\n');
+  print('   - Request ID after await: $resolved');
+  print('   - The body\'s return value is what runInContextAsync resolves to');
 
   // ---------------------------------------------------------------------------
   // Example 2: Nested async contexts inherit and override
   // ---------------------------------------------------------------------------
-  print('2. Nested async contexts (inherit outer, inner wins on collision):');
+  print('\n2. Nested async contexts (inherit outer, inner wins on collision):');
 
   final outer = TomExecutionContext({
     'tenant': TomContextEntry<String>(() => 'acme'),
@@ -65,12 +70,49 @@ Future<void> run() async {
   assert(tenant == 'acme', 'inherited outer entry lost');
   assert(scope == 'inner', 'inner context did not win on collision');
   print('   - Inherited tenant: $tenant');
-  print('   - Overridden scope: $scope\n');
+  print('   - Overridden scope: $scope');
 
   // ---------------------------------------------------------------------------
-  // Example 3: The full TomZoneValues mutation API
+  // Example 3: The zoneValues: argument of runInContext
   // ---------------------------------------------------------------------------
-  print('3. TomZoneValues mutation API:');
+  print('\n3. The zoneValues: argument — mutable state beside the context:');
+
+  var counterAfterIncrement = 0;
+
+  TomExecutionContext({}).runInContext(
+    () {
+      // The argument is wrapped in a TomZoneValues container installed under
+      // that type — its keys are NOT installed as zone keys. So this lookup is
+      // the only one that reaches it: getValueFromCurrentZone resolves named
+      // context entries, and Zone.current['initialKey'] finds nothing.
+      final zoneValues = getFromCurrentZone<TomZoneValues>();
+
+      final passedIn = zoneValues?['initialKey'];
+      print('   - Value passed as zoneValues: $passedIn');
+      print('   - Zone.current[\'initialKey\']: ${Zone.current['initialKey']} '
+          '(the key itself is not a zone key)');
+
+      assert(passedIn == 'initialValue', 'zoneValues argument should arrive');
+      assert(Zone.current['initialKey'] == null,
+          'the key itself is not installed in the zone');
+
+      // Unlike context entries, which are read-only providers, the container is
+      // mutable in place — this is where per-request scratch state lives.
+      zoneValues?['counter'] = 0;
+      zoneValues?['counter'] = (zoneValues['counter'] as int) + 1;
+      counterAfterIncrement = zoneValues?['counter'] as int;
+
+      print('   - Counter after in-place increment: $counterAfterIncrement');
+    },
+    zoneValues: {'initialKey': 'initialValue'},
+  );
+
+  assert(counterAfterIncrement == 1, 'zone values should be mutable in place');
+
+  // ---------------------------------------------------------------------------
+  // Example 4: The full TomZoneValues mutation API
+  // ---------------------------------------------------------------------------
+  print('\n4. TomZoneValues mutation API:');
 
   final values = TomZoneValues({'a': 1});
 
@@ -97,12 +139,12 @@ Future<void> run() async {
   values.clear();
   assert(!values.containsKey('a') && !values.containsKey('c'),
       'clear left entries behind');
-  print('   - After clear: containsKey("a")=${values.containsKey('a')}\n');
+  print('   - After clear: containsKey("a")=${values.containsKey('a')}');
 
   // ---------------------------------------------------------------------------
-  // Example 4: existingValues merge (child overrides parent)
+  // Example 5: existingValues merge (child overrides parent)
   // ---------------------------------------------------------------------------
-  print('4. TomZoneValues existingValues merge:');
+  print('\n5. TomZoneValues existingValues merge:');
 
   final parent = TomZoneValues({'shared': 'parent', 'onlyParent': 'p'});
   final child = TomZoneValues({'shared': 'child'}, existingValues: parent);
@@ -110,5 +152,8 @@ Future<void> run() async {
   assert(child['shared'] == 'child', 'child did not override parent');
   assert(child['onlyParent'] == 'p', 'parent-only value not inherited');
   print('   - shared=${child['shared']} (child wins), '
-      'onlyParent=${child['onlyParent']} (inherited)\n');
+      'onlyParent=${child['onlyParent']} (inherited)');
+  print('   - Nesting a runInContext merges the container this way, just as '
+      'parentContext merges the context (see example 02)');
+  print('');
 }

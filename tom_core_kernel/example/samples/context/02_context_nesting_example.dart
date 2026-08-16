@@ -99,7 +99,59 @@ class OverwriteContextExample {
 }
 
 // =============================================================================
-// EXAMPLE 3: Nested context execution (zone within zone)
+// EXAMPLE 3: Composing at construction with the parentContext parameter
+// =============================================================================
+
+class ExplicitParentExample {
+  static String? inheritedBase;
+  static String? ownChild;
+  static String? overriddenShared;
+  static int childEntryCount = 0;
+  static int parentEntryCount = 0;
+
+  static void example3ExplicitParentContext() {
+    print('\n3. Composing at construction with parentContext:');
+
+    final parentCtx = TomExecutionContext({
+      'base': TomContextEntry<String>(() => 'parent-value'),
+      'shared': TomContextEntry<String>(() => 'from-parent'),
+    });
+
+    // The constructor merges the parent's entries first and the child's over
+    // them, so the child wins on collision — the same rule combineWith uses,
+    // applied once at construction instead of afterwards.
+    final childCtx = TomExecutionContext(
+      {
+        'child': TomContextEntry<String>(() => 'child-value'),
+        'shared': TomContextEntry<String>(() => 'from-child'),
+      },
+      parentContext: parentCtx,
+    );
+
+    childEntryCount = childCtx.contextMap.length;
+    parentEntryCount = parentCtx.contextMap.length;
+    inheritedBase = childCtx.getEntry<String>('base')?.value;
+    ownChild = childCtx.getEntry<String>('child')?.value;
+    overriddenShared = childCtx.getEntry<String>('shared')?.value;
+
+    print('   - Entries in the child: $childEntryCount');
+    print('   - base (inherited from the parent): $inheritedBase');
+    print('   - child (the child\'s own): $ownChild');
+    print('   - shared (child overrides parent): $overriddenShared');
+    print('   - Parent is left unchanged: $parentEntryCount entries');
+    print('   - This is the mechanism runInContext nests with: it builds a new '
+        'context whose parent is the zone\'s current one');
+
+    assert(childEntryCount == 3, 'Child should hold base, shared and child');
+    assert(inheritedBase == 'parent-value', 'Base should come from the parent');
+    assert(ownChild == 'child-value', 'Child should keep its own entry');
+    assert(overriddenShared == 'from-child', 'Child should win on collision');
+    assert(parentEntryCount == 2, 'Parent map must not be mutated');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 4: Nested context execution (zone within zone)
 // =============================================================================
 
 class NestedZoneExample {
@@ -111,8 +163,8 @@ class NestedZoneExample {
   static bool outerZoneExecuted = false;
   static bool innerZoneExecuted = false;
 
-  static void example3NestedZoneExecution() {
-    print('\n3. Nested context execution (zone within zone):');
+  static void example4NestedZoneExecution() {
+    print('\n4. Nested context execution (zone within zone):');
 
     final outerContext = TomExecutionContext({
       'level': TomContextEntry<String>(() => 'outer'),
@@ -160,7 +212,7 @@ class NestedZoneExample {
 }
 
 // =============================================================================
-// EXAMPLE 4: Context inheritance in nested zones
+// EXAMPLE 5: Context inheritance in nested zones
 // =============================================================================
 
 class ContextInheritanceExample {
@@ -169,8 +221,8 @@ class ContextInheritanceExample {
   static bool parentZoneExecuted = false;
   static bool childZoneExecuted = false;
 
-  static void example4ContextInheritance() {
-    print('\n4. Context inheritance in nested zones:');
+  static void example5ContextInheritance() {
+    print('\n5. Context inheritance in nested zones:');
 
     final parentContext = TomExecutionContext({
       'parentValue': TomContextEntry<String>(() => 'from-parent'),
@@ -210,7 +262,7 @@ class ContextInheritanceExample {
 }
 
 // =============================================================================
-// EXAMPLE 5: Building context chains
+// EXAMPLE 6: Building context chains
 // =============================================================================
 
 class ContextChainExample {
@@ -220,8 +272,8 @@ class ContextChainExample {
   static String? tenantId;
   static String? traceId;
 
-  static void example5BuildingContextChains() {
-    print('\n5. Building a context chain for request processing:');
+  static void example6BuildingContextChains() {
+    print('\n6. Building a context chain for request processing:');
 
     // Build a chain of contexts for request processing
     final requestContext = TomExecutionContext({
@@ -259,7 +311,7 @@ class ContextChainExample {
 }
 
 // =============================================================================
-// EXAMPLE 6: Context with lazy evaluation
+// EXAMPLE 7: Context with lazy evaluation
 // =============================================================================
 
 class LazyEvaluationExample {
@@ -267,8 +319,8 @@ class LazyEvaluationExample {
   static String? firstAccess;
   static String? secondAccess;
 
-  static void example6LazyEvaluation() {
-    print('\n6. Entries are evaluated lazily, on every access:');
+  static void example7LazyEvaluation() {
+    print('\n7. Entries are evaluated lazily, on every access:');
 
     evaluationCount = 0;
 
@@ -303,10 +355,11 @@ class LazyEvaluationExample {
 void run() {
   CombineContextsExample.example1CombiningContexts();
   OverwriteContextExample.example2OverwritingValues();
-  NestedZoneExample.example3NestedZoneExecution();
-  ContextInheritanceExample.example4ContextInheritance();
-  ContextChainExample.example5BuildingContextChains();
-  LazyEvaluationExample.example6LazyEvaluation();
+  ExplicitParentExample.example3ExplicitParentContext();
+  NestedZoneExample.example4NestedZoneExecution();
+  ContextInheritanceExample.example5ContextInheritance();
+  ContextChainExample.example6BuildingContextChains();
+  LazyEvaluationExample.example7LazyEvaluation();
   print('');
 }
 

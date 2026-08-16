@@ -24,6 +24,9 @@ class DefaultProvidersExample {
   static String? defaultLang;
   static String? defaultCountry;
   static String? defaultTimezone;
+  static String? defaultClientLang;
+  static String? defaultClientCountry;
+  static String? defaultClientTimezone;
 
   static void example1DefaultProviders() {
     print('1. TomContextProviders without a principal (defaults):');
@@ -34,13 +37,17 @@ class DefaultProvidersExample {
     defaultLang = TomContextProviders.getLanguage();
     defaultCountry = TomContextProviders.getCountry();
     defaultTimezone = TomContextProviders.getTimezone();
+    defaultClientLang = TomContextProviders.getClientLanguage();
+    defaultClientCountry = TomContextProviders.getClientCountry();
+    defaultClientTimezone = TomContextProviders.getClientTimezone();
 
     print('   - organization: $defaultOrg');
     print('   - application: $defaultApp');
     print('   - process: $defaultProcess');
-    print('   - language: $defaultLang');
-    print('   - country: $defaultCountry');
-    print('   - timezone: $defaultTimezone');
+    print('   - server locale: $defaultLang / $defaultCountry / '
+        '$defaultTimezone');
+    print('   - client locale: $defaultClientLang / $defaultClientCountry / '
+        '$defaultClientTimezone');
 
     assert(defaultOrg == 'default', 'Default organization should be "default"');
     assert(defaultApp == 'default', 'Default application should be "default"');
@@ -51,6 +58,18 @@ class DefaultProvidersExample {
     assert(defaultLang == 'en', 'Default language should be "en"');
     assert(defaultCountry == 'XX', 'Default country should be "XX"');
     assert(defaultTimezone == 'utc', 'Default timezone should be "utc"');
+
+    // With no principal in the zone the client-side providers fall back to the
+    // same defaults as their server-side counterparts.
+    assert(defaultClientLang == 'en', 'Default client language should be "en"');
+    assert(
+      defaultClientCountry == 'XX',
+      'Default client country should be "XX"',
+    );
+    assert(
+      defaultClientTimezone == 'utc',
+      'Default client timezone should be "utc"',
+    );
   }
 }
 
@@ -166,7 +185,8 @@ class DefaultExecutionContextExample {
     print('\n4. The pre-configured tomExecutionContext:');
 
     // The tomExecutionContext has all providers pre-configured. Listing the
-    // registered names is a question about the map itself, so it reads the map.
+    // registered names and their declared types is a question about the map
+    // itself, so it reads the map.
     contextEntries = tomExecutionContext.contextMap.keys.toList();
 
     hasOrganization = contextEntries.contains('organization');
@@ -176,8 +196,12 @@ class DefaultExecutionContextExample {
     // The value of one entry is a typed read.
     orgValue = tomExecutionContext.getEntry<String>('organization')?.value;
 
-    print('   - Registered entries (${contextEntries.length}): '
-        '${contextEntries.join(', ')}');
+    print('   - Registered entries (${contextEntries.length}):');
+    tomExecutionContext.contextMap.forEach((name, entry) {
+      print('     - $name: ${entry.type}');
+    });
+    print('   - Every entry is declared TomContextEntry<String>, which is what '
+        'makes getEntry<String> find them');
     print('   - organization value (no principal in zone): $orgValue');
 
     assert(hasOrganization, 'Should have organization entry');
