@@ -4,8 +4,9 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Platform-neutral HTTP client primitives used by the remote-call layer: typed
-methods, headers, MIME types, endpoint/API descriptors, and the server-call
-machinery that the server and Flutter layers build their transports on.
+methods, headers, MIME types, endpoint/API descriptors, the server-call
+machinery that the server and Flutter layers build their transports on, and the
+streaming file-transfer client that moves large payloads without buffering them.
 
 ## Key types
 
@@ -19,6 +20,8 @@ machinery that the server and Flutter layers build their transports on.
 | `TomServerChannel` / `TomServerEndpoint` | Channel and endpoint abstractions. |
 | `TomHttpClientFactory` / `TomDefaultHttpClientFactory` | Pluggable HTTP-client construction. |
 | `TomClientRemoteContext` | Carries client-side remote-call context. |
+| `TomFileTransferClient` / `TomHttpFileTransferClient` / `TomMemoryFileTransferClient` | Streaming file transfer — upload, download, describe, remove — addressed by application-owned *slot* rather than by storage key. Neither direction buffers a whole file; the in-memory client honours the same contract for tests and offline modes. |
+| `TomFileSource` / `TomFileMetadata` / `TomTransferProgress` / `TomTransferCancellation` | The transfer value types: the bytes to send (re-openable, so a retry sees them again), what the server stored, how far a transfer has got, and the shared cancel signal. |
 
 ## Quick start
 

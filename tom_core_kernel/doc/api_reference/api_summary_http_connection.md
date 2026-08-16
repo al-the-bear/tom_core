@@ -6,8 +6,10 @@ types HTTP endpoints are described with (`TomHttpMethod`, `TomMimeType`,
 `TomHeader`, `TomContentDisposition`), the client-side request/response
 machinery (`TomServerCall`, `TomServerChannel`, `TomServerEndpoint`, the HTTP
 client factories), client remote-server configuration
-(`TomClientRemoteContext`), and a pluggable expired-token refresh-and-retry
-policy (`TomAuthRefresher`, `TomAuthRetryPolicy`, `tomRunWithAuthRetry`).
+(`TomClientRemoteContext`), a pluggable expired-token refresh-and-retry policy
+(`TomAuthRefresher`, `TomAuthRetryPolicy`, `tomRunWithAuthRetry`), and the
+streaming file-transfer client (`TomFileTransferClient`,
+`TomHttpFileTransferClient`, `TomFileSource`, `TomFileMetadata`).
 
 ## Table of Contents
 
@@ -47,6 +49,15 @@ policy (`TomAuthRefresher`, `TomAuthRetryPolicy`, `tomRunWithAuthRetry`).
     - [TomServerEndpoint&lt;T, R&gt;](#tomserverendpointt-r)
     - [TomServerConnectionException](#tomserverconnectionexception)
     - [TomRequestAbortedException](#tomrequestabortedexception)
+  - [File Transfer](#file-transfer)
+    - [TomFileSource](#tomfilesource)
+    - [TomFileMetadata](#tomfilemetadata)
+    - [TomTransferProgress](#tomtransferprogress)
+    - [TomTransferCancellation](#tomtransfercancellation)
+    - [TomFileTransferClient](#tomfiletransferclient)
+    - [TomHttpFileTransferClient](#tomhttpfiletransferclient)
+    - [TomMemoryFileTransferClient](#tommemoryfiletransferclient)
+    - [TomFileTransferException](#tomfiletransferexception)
 - [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -54,7 +65,9 @@ policy (`TomAuthRefresher`, `TomAuthRetryPolicy`, `tomRunWithAuthRetry`).
 
 Source: `lib/src/tombase/http_connection/auth_retry.dart`,
 `lib/src/tombase/http_connection/endpoints_apis.dart`,
+`lib/src/tombase/http_connection/file_transfer.dart`,
 `lib/src/tombase/http_connection/headers.dart`,
+`lib/src/tombase/http_connection/http_file_transfer.dart`,
 `lib/src/tombase/http_connection/httpmethods.dart`,
 `lib/src/tombase/http_connection/mimetypes.dart`,
 `lib/src/tombase/http_connection/remote_context.dart`,
@@ -75,6 +88,15 @@ client's target servers come from `TomClientRemoteContext`, and
 `tomRunWithAuthRetry` wraps any transport in the transport-agnostic
 expired-token refresh-and-retry policy (`TomAuthRefresher` /
 `TomAuthRetryPolicy`).
+
+Payloads too large to hold in memory take a second path: `TomFileTransferClient`
+moves bytes to and from an application-owned *slot* without materializing the
+file, reporting `TomTransferProgress` and honouring a `TomTransferCancellation`.
+`TomHttpFileTransferClient` implements it over the module's own wire contract
+(`POST`/`GET`/`HEAD`/`DELETE` against `<baseUri>/<slot>`, with a JSON descriptor
+answering the first and the `x-tom-file` header answering the third), and
+`TomMemoryFileTransferClient` implements the same contract over a map for tests
+and offline modes.
 
 ## Class Hierarchy
 
@@ -99,7 +121,14 @@ Object
     ├── TomHttpClientAbstractFactory
     ├── TomHttpClientFactory  (implements TomHttpClientAbstractFactory)
     │       └── TomDefaultHttpClientFactory
-    └── TomServerEndpoint<T, R>
+    ├── TomServerEndpoint<T, R>
+    ├── TomFileSource
+    ├── TomFileMetadata
+    ├── TomTransferProgress
+    ├── TomTransferCancellation
+    └── TomFileTransferClient  (abstract)
+            ├── TomHttpFileTransferClient
+            └── TomMemoryFileTransferClient
 
 TomException  (kernel)
     ├── TomAuthExpiredException
@@ -107,7 +136,8 @@ TomException  (kernel)
     ├── TomMimeTypeException
     ├── TomClientRemoteContextException
     ├── TomServerConnectionException
-    └── TomRequestAbortedException
+    ├── TomRequestAbortedException
+    └── TomFileTransferException
 ```
 
 ## Classes
@@ -960,6 +990,306 @@ TomRequestAbortedException(
 })
 ```
 
+### File Transfer
+
+#### TomFileSource
+
+The bytes to upload together with what the server needs to know about them.
+`open` is a *factory* rather than a stream because a Dart stream can be listened
+to once, and retry-after-failure needs the same bytes a second time.
+
+##### Constructors
+
+```dart
+TomFileSource.stream({
+  required String fileName,
+  required Stream<List<int>> Function() open,
+  int? byteCount,
+  String? mediaType,
+})
+```
+
+##### Factory Constructors
+
+```dart
+factory TomFileSource.bytes(String fileName, List<int> bytes, {String? mediaType})
+```
+
+The buffer is copied into a `Uint8List`, so a caller mutating its own list
+afterwards cannot change what a retry uploads.
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `guessMediaType` | `static String guessMediaType(String fileName)` | The media type for `fileName` via `StaticFileMimetypeMapping`, falling back to `application/octet-stream` — deliberately conservative, so an unknown extension becomes a binary blob rather than something a browser might render. |
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `fileName` | `String` | The *display* name; the server derives the storage key itself and keeps this only for `Content-Disposition` when serving the file back. |
+| `byteCount` | `int?` | Total size, or `null` when not known in advance — the upload is then sent chunked and progress is indeterminate. |
+| `mediaType` | `String` | The media type sent as `Content-Type` (defaults to `guessMediaType(fileName)`). |
+| `hasKnownSize` | `bool` | Whether `byteCount` is known, which decides whether a transfer over this source can report a determinate fraction. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `open` | `Stream<List<int>> open()` | Starts a fresh read of the file's bytes; every call returns an independent stream. |
+| `toString` | `String toString()` | *(override)* Renders name, media type and byte count. |
+
+#### TomFileMetadata
+
+What the server knows about a stored file, returned by
+`TomFileTransferClient.upload` and `TomFileTransferClient.describe`. The `key` is
+the server-generated storage key — opaque to the client, but worth carrying
+because it identifies this exact stored revision.
+
+##### Constructors
+
+```dart
+const TomFileMetadata({
+  required String key,
+  required String mediaType,
+  required int byteCount,
+  String? fileName,
+  DateTime? storedAt,
+})
+```
+
+##### Factory Constructors
+
+```dart
+factory TomFileMetadata.fromJson(Map<String, dynamic> json)
+```
+
+Tolerant of missing optional members so a server can grow the descriptor without
+breaking older clients; a missing or mistyped `key`, `mediaType` or `byteCount`
+is a protocol error and throws `TomFileTransferException` keyed
+`file_transfer.invalid_descriptor`.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `key` | `String` | The server-generated storage key. |
+| `mediaType` | `String` | The media type the file was stored with. |
+| `byteCount` | `int` | The stored size in bytes. |
+| `fileName` | `String?` | The original file name, when the server kept one. |
+| `storedAt` | `DateTime?` | When the file was stored, when the server reports it. |
+| `hashCode` | `int` | *(override)* Hash over key, media type, byte count, file name and `storedAt`. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, dynamic> toJson()` | The JSON descriptor; optional members are omitted rather than written as `null`, so a round trip through `fromJson` produces an equal object. |
+| `toString` | `String toString()` | *(override)* Renders key, media type, byte count and file name. |
+
+##### Operators
+
+| Operator | Signature | Description |
+| -------- | --------- | ----------- |
+| `operator ==` | `bool operator ==(Object other)` | *(override)* Equal when every field matches. |
+
+#### TomTransferProgress
+
+How far a transfer has got. `total` is `null` whenever the size is not known
+ahead of time — an upload from an unmeasurable source, or a download whose
+response carries no `Content-Length`.
+
+##### Constructors
+
+```dart
+const TomTransferProgress(int transferred, int? total)
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `transferred` | `int` | Bytes moved so far. |
+| `total` | `int?` | Total bytes, or `null` when unknown. |
+| `isDeterminate` | `bool` | Whether a meaningful percentage can be shown; a UI should read this rather than guess, and fall back to a spinner when it is `false`. |
+| `fraction` | `double?` | The completed fraction in `0.0 .. 1.0`, or `null` when indeterminate. Clamped, because a server may report a `Content-Length` that a chunked re-encoding then exceeds. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Renders `"TomTransferProgress(<transferred>/<total>)"`. |
+
+#### TomTransferCancellation
+
+A cancel signal shared with an in-flight transfer, wrapping the `Future`-based
+abort trigger `package:http` expects. One instance covers one transfer, and
+`cancel` is idempotent so a UI can wire it to a button without tracking whether
+it already fired.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `trigger` | `Future<void>` | The future that completes when `cancel` is called. |
+| `isCancelled` | `bool` | Whether cancellation has been requested. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `cancel` | `void cancel()` | Requests cancellation; does nothing if already cancelled. |
+| `throwIfCancelled` | `void throwIfCancelled()` | Throws `file_transfer.cancelled` when cancellation was already requested — used at the start of a transfer so a cancellation that arrived early produces the same error as one arriving mid-flight. |
+
+#### TomFileTransferClient
+
+Moves file bytes between an application and a file store. Four operations,
+matching the server-side blob-store contract one for one, addressed by
+application-owned **slot** (`invoices/4711/scan`) rather than by storage key:
+keys are server-generated, and a client that could name its own would turn any
+upload endpoint into an open write surface. Implementations must stream —
+neither `upload` nor `download` may buffer a whole file.
+
+- **Extends:** none (abstract base)
+
+##### Constructors
+
+```dart
+const TomFileTransferClient()
+```
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `upload` | `Future<TomFileMetadata> upload({required String slot, required TomFileSource source, void Function(TomTransferProgress progress)? onProgress, TomTransferCancellation? cancellation})` | Uploads `source` into `slot` and returns what the server stored. `onProgress` is called as bytes leave the client; `cancellation` aborts the request, completing the future with `file_transfer.cancelled`. |
+| `download` | `Stream<List<int>> download(String slot, {void Function(TomTransferProgress progress)? onProgress, TomTransferCancellation? cancellation})` | Streams the file stored in `slot`. Lazy — nothing is requested until the stream is listened to — and errors with `file_transfer.not_found` when the slot is empty. |
+| `describe` | `Future<TomFileMetadata?> describe(String slot)` | Describes the file in `slot`, or `null` when the slot is empty. Must not transfer the file's bytes, so a UI can show name, type and size without downloading anything. |
+| `remove` | `Future<bool> remove(String slot)` | Deletes the file in `slot`, returning whether anything was deleted. An empty slot returns `false` rather than throwing — the caller's intent is already satisfied. |
+| `close` | `void close()` | Releases any connections held by this client. |
+
+#### TomHttpFileTransferClient
+
+The HTTP implementation. Uploads use `AbortableStreamedRequest`, so bytes reach
+the socket as the source produces them; downloads read the streamed response
+directly. Connections are pooled by a `TomServerChannel`.
+
+- **Extends:** `TomFileTransferClient`
+
+The wire contract — every operation addresses `<baseUri>/<slot>`:
+
+| Method | Request | Response |
+|--------|---------|----------|
+| `POST` | the file's bytes, `Content-Type`, optional `Content-Length`, `Content-Disposition` | `200`/`201` + JSON descriptor |
+| `GET` | — | `200` + the file's bytes, `404` when empty |
+| `HEAD` | — | `200` + descriptor headers, `404` when empty |
+| `DELETE` | — | `200`/`204` when deleted, `404` when empty |
+
+`HEAD` answers `describe` from headers alone, because a describe that
+transferred the file would defeat its purpose.
+
+##### Constructors
+
+```dart
+TomHttpFileTransferClient({
+  required Uri baseUri,
+  TomServerChannel? channel,
+  bool includeBearerAuthentication = true,
+  Map<String, String> headers = const {},
+  Map<String, String> Function()? headerProvider,
+})
+```
+
+`channel` is optional; when omitted one is created for `baseUri`'s host and port.
+Pass an existing channel to share a connection pool — only a channel this client
+created is closed by `close`. `headerProvider` supplies headers that must be
+computed *per request*, which `headers` cannot: a credential rotates, and a
+client built once at startup would otherwise keep presenting the value it
+captured. Returning an `Authorization` header from it suppresses the built-in
+bearer, so there is one credential on the request rather than two spellings of
+one.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `baseUri` | `Uri` | The root slot paths are resolved against (trailing slash removed). |
+| `channel` | `TomServerChannel` | The channel providing the pooled HTTP client. |
+| `includeBearerAuthentication` | `bool` | Whether to send the bearer token from `TomBearerAuthentication`. Leave it on unless the endpoints are genuinely public — a file store is exactly the kind of endpoint that should not be. |
+| `headers` | `Map<String, String>` | Extra headers sent with every request (unmodifiable). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `uriForSlot` | `Uri uriForSlot(String slot)` | The URL for `slot`, with each path segment escaped individually so a slot cannot smuggle a `..` or a query string past the base URI. Throws `file_transfer.invalid_slot` for an empty slot or one containing `.` / `..` segments. |
+| `upload` | `Future<TomFileMetadata> upload({required String slot, required TomFileSource source, void Function(TomTransferProgress progress)? onProgress, TomTransferCancellation? cancellation})` | *(override)* `POST`s the streamed body and decodes the JSON descriptor from the response. |
+| `download` | `Stream<List<int>> download(String slot, {void Function(TomTransferProgress progress)? onProgress, TomTransferCancellation? cancellation})` | *(override)* `GET`s the slot and yields the response stream, translating an abort into `file_transfer.cancelled`. |
+| `describe` | `Future<TomFileMetadata?> describe(String slot)` | *(override)* `HEAD`s the slot and builds metadata from the `x-tom-file` descriptor header, or from `content-length` / `content-type` / `content-disposition` when it is absent. |
+| `remove` | `Future<bool> remove(String slot)` | *(override)* `DELETE`s the slot; `404` returns `false`. |
+| `close` | `void close()` | *(override)* Closes the channel only when this client created it — a shared one belongs to whoever passed it in. |
+
+#### TomMemoryFileTransferClient
+
+A `TomFileTransferClient` that keeps everything in a map. For tests, previews and
+offline modes: it honours the same progress and cancellation contract as the HTTP
+client (cancellation is checked per chunk in both directions), so a widget wired
+to it exercises the real code paths without a server.
+
+- **Extends:** `TomFileTransferClient`
+
+##### Constructors
+
+```dart
+TomMemoryFileTransferClient({int chunkSize = 64 * 1024})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `chunkSize` | `int` | How large the pieces handed to `onProgress` are; the default is small enough that a test observes several progress events for a modest payload. |
+| `slots` | `Iterable<String>` | The slots currently holding a file. |
+
+##### Methods
+
+The five `TomFileTransferClient` operations, all overridden. Storage keys are
+minted as `memory/<counter>/<fileName>`; `close` clears the stored bytes and
+metadata.
+
+#### TomFileTransferException
+
+Exception thrown when a file transfer fails.
+
+- **Extends:** `TomException`
+
+##### Constructors
+
+```dart
+TomFileTransferException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool? autoLog,
+  String? requestUuid,
+  String? uuid,
+})
+```
+
+##### Error keys
+
+| Key | Meaning |
+| --- | ------- |
+| `file_transfer.not_found` | No file is stored in the requested slot. |
+| `file_transfer.cancelled` | The caller cancelled the transfer. |
+| `file_transfer.rejected` | The server refused the transfer (status code in `parameters['statusCode']`). |
+| `file_transfer.source_exhausted` | A `TomFileSource` was re-opened but its stream could only be listened to once. |
+| `file_transfer.invalid_descriptor` | The server's file descriptor was not valid JSON, not a JSON object, or lacked `key` / `mediaType` / `byteCount`. |
+| `file_transfer.invalid_slot` | A slot was empty or contained `.` / `..` segments. |
+
 ## Enums
 
 None — this module exposes no public enums.
@@ -978,3 +1308,7 @@ None — this module exposes no public enums.
 | -------- | --------- | ----------- |
 | `tomRemoteApis` | `TomRemoteApis get tomRemoteApis` | Global accessor (getter) for the `TomRemoteApis` singleton. |
 | `tomRunWithAuthRetry` | `Future<R> tomRunWithAuthRetry<R>({required Future<R> Function() send, required int Function(R response) statusOf, required TomAuthRefresher refresher, TomAuthRetryPolicy? policy, String? Function(R response)? errorKeyOf})` | Runs `send` under the active refresh/retry policy: replays the request after refreshing the token on an expiry status, and throws `TomAuthExpiredException` when the status persists after the retries. |
+| `decodeFileDescriptor` | `TomFileMetadata decodeFileDescriptor(String body)` | Decodes the JSON descriptor body shared by the upload and describe responses; throws `file_transfer.invalid_descriptor` when the body is not valid JSON or not a JSON object. Extracted so both the HTTP client and any server implementing the wire contract read the same shape. |
+| `tomFileDescriptorHeaders` | `Map<String, String> tomFileDescriptorHeaders(TomFileMetadata metadata)` | Writes the `x-tom-file` descriptor header (plus `Content-Type` / `Content-Length` / `Content-Disposition`) that a `HEAD` response needs so `describe` can answer without a body. Lives beside the client because it is the *contract*, not an implementation. |
+| `tomEscapeFileNameForDisposition` | `String tomEscapeFileNameForDisposition(String fileName)` | Escapes a file name for a quoted `Content-Disposition` parameter. Only the two characters that can terminate or escape the quoted string are touched; anything more aggressive would mangle legitimate names. |
+| `tomFileNameFromDisposition` | `String? tomFileNameFromDisposition(String? disposition)` | Extracts `filename="…"` (including the RFC 5987 `filename*=` form) from a `Content-Disposition` header, or `null` when the header is absent or names no file. Public, beside its writing counterpart, so the two halves cannot drift. |
