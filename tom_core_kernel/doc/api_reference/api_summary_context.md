@@ -94,7 +94,13 @@ the `TomZoneValues` type key, so a value threaded through `zoneValues:` is read
 back through the container — `getFromCurrentZone<TomZoneValues>()?[key]` — and
 not with `getValueFromCurrentZone`, which resolves named entries of the context
 map. The keys are not installed in the zone under themselves, so
-`Zone.current[key]` stays `null`.
+`Zone.current[key]` stays `null` — including for a `Type` key, which means
+`zoneValues: {TomPrincipal: p}` does not make `getFromCurrentZone<TomPrincipal>()`
+resolve even though that is the correct idiom for `runZoned`.
+
+The container exists because it makes the values mutable from inside the zone
+and mergeable across nested runs; raw zone values are fixed once installed and a
+nested zone replaces them wholesale.
 
 #### Constructors
 

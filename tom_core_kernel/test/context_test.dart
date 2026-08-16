@@ -452,6 +452,69 @@ void main() {
         expect(requestId, equals('req-7'));
         expect(user, equals('12345'));
       });
+
+      test('a Type key passed as a zone value is not reachable by its type', () {
+        // The higher-consequence form of the same surprise. `zoneValues:
+        // {TomPrincipal: p}` is the *correct* idiom for runZoned — this file
+        // uses it that way in the TomContextProviders group below — so it is
+        // easy to carry over to runInContext, where it silently installs
+        // nothing and every provider falls back to its default.
+        final principal = TomPrincipal(organization: 'acme');
+        final context = TomExecutionContext({});
+
+        TomPrincipal? viaType;
+        Object? viaContainer;
+        String? organization;
+        context.runInContext(() {
+          viaType = getFromCurrentZone<TomPrincipal>();
+          viaContainer =
+              getFromCurrentZone<TomZoneValues>()?[TomPrincipal];
+          organization = TomContextProviders.getOrganization();
+        }, zoneValues: {TomPrincipal: principal});
+
+        expect(viaType, isNull,
+            reason: 'the Type key goes into the container, not the zone');
+        expect(identical(viaContainer, principal), isTrue);
+        expect(organization, equals('default'),
+            reason: 'providers read the zone, so they never see the principal');
+      });
+
+      // The two properties that justify the container indirection. Neither is
+      // achievable by handing the caller's map straight to runZoned: raw zone
+      // values are fixed once installed, and a nested run replaces rather than
+      // merges them.
+      test('zone values stay mutable from inside the zone', () {
+        final context = TomExecutionContext({});
+
+        Object? afterWrite;
+        context.runInContext(() {
+          getFromCurrentZone<TomZoneValues>()?['requestId'] = 'req-8';
+          afterWrite = getFromCurrentZone<TomZoneValues>()?['requestId'];
+        }, zoneValues: {'requestId': 'req-7'});
+
+        expect(afterWrite, equals('req-8'));
+      });
+
+      test('a nested run merges its zone values into the inherited ones', () {
+        final outer = TomExecutionContext({});
+        final inner = TomExecutionContext({});
+
+        Object? inherited;
+        Object? added;
+        Object? overridden;
+        outer.runInContext(() {
+          inner.runInContext(() {
+            final values = getFromCurrentZone<TomZoneValues>();
+            inherited = values?['outerOnly'];
+            added = values?['innerOnly'];
+            overridden = values?['shared'];
+          }, zoneValues: {'innerOnly': 'i', 'shared': 'inner'});
+        }, zoneValues: {'outerOnly': 'o', 'shared': 'outer'});
+
+        expect(inherited, equals('o'), reason: 'outer values survive');
+        expect(added, equals('i'));
+        expect(overridden, equals('inner'), reason: 'inner wins on collision');
+      });
     });
 
     // ------------------------------------------------------------------------

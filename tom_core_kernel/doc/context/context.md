@@ -7,6 +7,7 @@ The Tom Execution Context System provides zone-based context propagation for pas
 - [Overview](#overview)
   - [How It Works](#how-it-works)
   - [Two reads, and which one to use](#two-reads-and-which-one-to-use)
+  - [The `zoneValues:` argument is not zone values](#the-zonevalues-argument-is-not-zone-values)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
   - [TomExecutionContext](#tomexecutioncontext)
@@ -54,6 +55,35 @@ Reaching for the wrong one returns `null` rather than failing, so it is worth
 being deliberate: `getFromCurrentZone<String>()` never sees an entry named
 `'userId'`, however that entry is typed, because nothing ever installs `String`
 as a zone key.
+
+### The `zoneValues:` argument is not zone values
+
+`runInContext(..., zoneValues: {...})` borrows the name, the type and the
+position of `runZoned`'s own `zoneValues:` parameter, but not its semantics. The
+caller's keys are never installed in the zone — they are put inside the
+`TomZoneValues` container, and the container is what gets installed. So
+`Zone.current[key]` stays `null`, and that holds for a `Type` key too:
+
+```dart
+// Correct for runZoned — TomContextProviders will find the principal.
+runZoned(() => TomContextProviders.getOrganization(),
+    zoneValues: {TomPrincipal: principal});   // 'acme'
+
+// The same line under runInContext installs nothing readable by type.
+context.runInContext(() => TomContextProviders.getOrganization(),
+    zoneValues: {TomPrincipal: principal});   // 'default' — silently
+```
+
+The indirection is deliberate. Routing the values through a container is what
+makes them **mutable** from inside the zone
+(`getFromCurrentZone<TomZoneValues>()?['requestId'] = id`) and **mergeable**
+across nested runs — an inner `runInContext` folds its values into the ones it
+inherits rather than shadowing them. Raw zone values offer neither: they are
+fixed once installed and a nested zone replaces the whole map.
+
+If code needs a value under a real zone type key — because a third-party library
+reads it the ordinary Dart way — pass it to `runZoned` yourself, outside the
+context run.
 
 ## Quick Start
 

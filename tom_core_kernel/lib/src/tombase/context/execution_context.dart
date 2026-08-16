@@ -184,12 +184,27 @@ class TomExecutionContext {
   /// `getFromCurrentZone<TomZoneValues>()?['requestId']` — and *not* with
   /// [getValueFromCurrentZone], which looks in the context map.
   ///
-  /// Despite sharing its name with `runZoned`'s own `zoneValues:`, this
-  /// parameter does not install its keys in the zone directly: they go into the
-  /// [TomZoneValues] container, which is the only thing installed, so
-  /// `Zone.current['requestId']` stays null. Use [zoneValues] for ad-hoc values
-  /// that do not warrant a typed [TomContextEntry]; use the context map for the
-  /// structured, named entries.
+  /// Despite sharing its name, its type and its position with `runZoned`'s own
+  /// `zoneValues:`, this parameter does not install its keys in the zone
+  /// directly: they go into the [TomZoneValues] container, which — alongside the
+  /// [TomExecutionContext] — is the only thing installed. `Zone.current[key]`
+  /// therefore stays null for every key passed here, and that holds for a `Type`
+  /// key just as much as for a `String` one: `zoneValues: {TomPrincipal: p}`
+  /// does *not* make `getFromCurrentZone<TomPrincipal>()` resolve. (That form is
+  /// correct when calling `runZoned` directly, which is what makes it an easy
+  /// mistake to carry over — and a silent one, since the failed read yields null
+  /// rather than an error.)
+  ///
+  /// The indirection is deliberate. Routing the values through a container is
+  /// what makes them *mutable* — code inside the zone can write
+  /// `getFromCurrentZone<TomZoneValues>()?['requestId'] = id` — and what makes
+  /// them *mergeable* across nested runs, since an inner `runInContext` folds
+  /// its values into the values it inherits instead of shadowing them wholesale.
+  /// Raw zone values are immutable once installed and replace rather than merge,
+  /// so neither is achievable by passing the map straight to `runZoned`.
+  ///
+  /// Use [zoneValues] for ad-hoc values that do not warrant a typed
+  /// [TomContextEntry]; use the context map for the structured, named entries.
   ///
   /// Example:
   /// ```dart
@@ -239,7 +254,10 @@ class TomExecutionContext {
   /// `getFromCurrentZone<TomZoneValues>()?['requestId']` — and *not* with
   /// [getValueFromCurrentZone], which looks in the context map. The keys are
   /// not installed in the zone under themselves either, so `Zone.current[key]`
-  /// stays null. See [runInContext] for the synchronous variant.
+  /// stays null — including for a `Type` key, which means
+  /// `zoneValues: {TomPrincipal: p}` does not make
+  /// `getFromCurrentZone<TomPrincipal>()` resolve. See [runInContext] for the
+  /// synchronous variant and for why the values are routed through a container.
   ///
   /// Example:
   /// ```dart
@@ -263,6 +281,18 @@ class TomExecutionContext {
 /// A mutable container for zone values.
 ///
 /// Provides indexed access to zone values for easier manipulation.
+///
+/// This container — not the caller's keys — is what
+/// [TomExecutionContext.runInContext] installs in the zone, under the
+/// `TomZoneValues` type key. A value threaded through `zoneValues:` is
+/// therefore read back through the container,
+/// `getFromCurrentZone<TomZoneValues>()?[key]`; `Zone.current[key]` stays null
+/// whatever the key's type.
+///
+/// The extra hop buys the two things raw zone values cannot offer: the entries
+/// stay **mutable** after the zone is entered, and a nested `runInContext`
+/// **merges** its values into the inherited ones (see the `existingValues`
+/// constructor argument) instead of replacing them.
 class TomZoneValues {
   /// The underlying zone values map.
   late Map<Object?, Object?> zoneValues;
