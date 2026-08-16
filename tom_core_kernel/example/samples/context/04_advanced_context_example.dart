@@ -9,6 +9,8 @@
 /// - getValueFromCurrentZone helper
 library;
 
+import 'dart:async';
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // ============================================================================
@@ -69,8 +71,18 @@ class AdvancedContextExample {
     // Run with zone values
     context.runInContext(
       () {
-        // Access zone values from the zone
+        // Access zone values from the zone. This is the only read that reaches
+        // them: the `zoneValues:` argument below is wrapped in this container
+        // rather than installed as zone keys, so neither
+        // TomExecutionContext.getValueFromCurrentZone (which resolves named
+        // context entries) nor Zone.current['initialKey'] would find it.
         final zoneValues = getFromCurrentZone<TomZoneValues>();
+
+        final passedIn = zoneValues?['initialKey'];
+        print('   - Value passed as zoneValues: $passedIn');
+        assert(passedIn == 'initialValue', 'zoneValues argument should arrive');
+        assert(Zone.current['initialKey'] == null,
+            'the key itself is not installed in the zone');
 
         // Modify zone values
         zoneValues?['counter'] = 0;

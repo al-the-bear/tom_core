@@ -89,6 +89,13 @@ Merges `parentContext`'s entries (if any) as the base and overwrites them with
 
 A mutable container for arbitrary untyped zone values, offering indexed access.
 
+`runInContext` / `runInContextAsync` install this container in the zone under
+the `TomZoneValues` type key, so a value threaded through `zoneValues:` is read
+back through the container — `getFromCurrentZone<TomZoneValues>()?[key]` — and
+not with `getValueFromCurrentZone`, which resolves named entries of the context
+map. The keys are not installed in the zone under themselves, so
+`Zone.current[key]` stays `null`.
+
 #### Constructors
 
 ```dart

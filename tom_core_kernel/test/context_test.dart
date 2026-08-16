@@ -418,6 +418,40 @@ void main() {
         expect(viaEntryName, isNull,
             reason: 'zoneValues are not entries of the context map');
       });
+
+      test('a zone value key is not installed in the zone under itself', () {
+        // The parameter shares its name with runZoned's own zoneValues:, but
+        // the keys go into the TomZoneValues container rather than the zone,
+        // so the direct read a reader would expect from runZoned finds nothing.
+        final context = TomExecutionContext({});
+
+        Object? viaZoneDirect;
+        Object? viaContainer;
+        context.runInContext(() {
+          viaZoneDirect = Zone.current['requestId'];
+          viaContainer = getFromCurrentZone<TomZoneValues>()?['requestId'];
+        }, zoneValues: {'requestId': 'req-7'});
+
+        expect(viaZoneDirect, isNull);
+        expect(viaContainer, equals('req-7'));
+      });
+
+      test('zone values survive an await inside runInContextAsync', () async {
+        final context = TomExecutionContext({
+          'userId': TomContextEntry<String>(() => '12345'),
+        });
+
+        Object? requestId;
+        String? user;
+        await context.runInContextAsync(() async {
+          await Future<void>.delayed(Duration.zero);
+          requestId = getFromCurrentZone<TomZoneValues>()?['requestId'];
+          user = TomExecutionContext.getValueFromCurrentZone<String>('userId');
+        }, zoneValues: {'requestId': 'req-7'});
+
+        expect(requestId, equals('req-7'));
+        expect(user, equals('12345'));
+      });
     });
 
     // ------------------------------------------------------------------------

@@ -182,9 +182,14 @@ class TomExecutionContext {
   /// in the current zone (existing values are preserved unless overridden by a
   /// matching key in [zoneValues]). They are read back through that container —
   /// `getFromCurrentZone<TomZoneValues>()?['requestId']` — and *not* with
-  /// [getValueFromCurrentZone], which looks in the context map. Use
-  /// [zoneValues] for ad-hoc values that do not warrant a typed
-  /// [TomContextEntry]; use the context map for the structured, named entries.
+  /// [getValueFromCurrentZone], which looks in the context map.
+  ///
+  /// Despite sharing its name with `runZoned`'s own `zoneValues:`, this
+  /// parameter does not install its keys in the zone directly: they go into the
+  /// [TomZoneValues] container, which is the only thing installed, so
+  /// `Zone.current['requestId']` stays null. Use [zoneValues] for ad-hoc values
+  /// that do not warrant a typed [TomContextEntry]; use the context map for the
+  /// structured, named entries.
   ///
   /// Example:
   /// ```dart
@@ -230,9 +235,11 @@ class TomExecutionContext {
   /// through alongside the typed context: they are wrapped in a
   /// [TomZoneValues] container that is merged with any [TomZoneValues] already
   /// in the current zone (existing values are preserved unless overridden by a
-  /// matching key in [zoneValues]), and read back through that container rather
-  /// than with [getValueFromCurrentZone]. See [runInContext] for the
-  /// synchronous variant and for the read that reaches each store.
+  /// matching key in [zoneValues]). They are read back through that container —
+  /// `getFromCurrentZone<TomZoneValues>()?['requestId']` — and *not* with
+  /// [getValueFromCurrentZone], which looks in the context map. The keys are
+  /// not installed in the zone under themselves either, so `Zone.current[key]`
+  /// stays null. See [runInContext] for the synchronous variant.
   ///
   /// Example:
   /// ```dart
