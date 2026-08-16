@@ -277,10 +277,6 @@ class TomBean<T> {
   /// TomBean.withName("config", AppConfig());
   /// ```
   factory TomBean.withName(String name, Object bean) {
-    TomBean<T> result = TomBean();
-    result._bean = bean as T;
-    result._name = name;
-
     if (_tomBeanContext[name] != null) {
       throw TomBeanLocatorException(
         "beanlocator.initialization.duplicate_bean_with_name",
@@ -289,6 +285,32 @@ class TomBean<T> {
         autoLog: true,
       );
     }
+
+    return TomBean<T>.overrideWithName(name, bean);
+  }
+
+  /// Registers a named bean, replacing whatever was registered under [name].
+  ///
+  /// Where [TomBean.withName] refuses a name that is already taken — the guard
+  /// that stops two startup paths from silently clobbering each other — this
+  /// factory is the deliberate exception, for substituting an implementation in
+  /// a test.
+  ///
+  /// Example:
+  /// ```dart
+  /// TomBean.overrideWithName("config", StubAppConfig());
+  /// ```
+  ///
+  /// Two consequences are worth knowing, because both fail silently:
+  ///
+  /// - A handle that has already resolved keeps the instance it resolved. Only
+  ///   handles created (or first used) after the override see the replacement.
+  /// - [initializeBeanContext] empties the registry, so an override must be
+  ///   applied *after* the pass that would otherwise bind the original.
+  factory TomBean.overrideWithName(String name, Object bean) {
+    TomBean<T> result = TomBean();
+    result._bean = bean as T;
+    result._name = name;
 
     _tomBeanContext[name] = bean;
     return result;
@@ -306,13 +328,12 @@ class TomBean<T> {
   /// TomBean.withType(UserService, UserServiceImpl());
   /// ```
   ///
-  /// Note: This will take precedence over any @TomComponent registrations for the same type.
-  /// This is useful for testing or if environment/platform-specific selection is not desired or
-  /// cannot be expressed via annotations.
+  /// Note: registering a type *before* [initializeBeanContext] takes precedence
+  /// over any `@TomComponent` registration for the same type — discovery leaves
+  /// a key that is already bound alone. To substitute an implementation once the
+  /// context is initialized, use [TomBean.overrideWithType]; this factory throws
+  /// there rather than replacing.
   factory TomBean.withType(Type t, Object bean) {
-    TomBean<T> result = TomBean();
-    result._bean = bean as T;
-
     if (_tomBeanContext[t] != null) {
       throw TomBeanLocatorException(
         "beanlocator.initialization.duplicate_bean_with_type",
@@ -321,6 +342,33 @@ class TomBean<T> {
         autoLog: true,
       );
     }
+
+    return TomBean<T>.overrideWithType(t, bean);
+  }
+
+  /// Registers a bean by type, replacing whatever was registered under [t].
+  ///
+  /// Where [TomBean.withType] refuses a type that is already bound — the guard
+  /// that stops two startup paths from silently clobbering each other — this
+  /// factory is the deliberate exception, for substituting an implementation in
+  /// a test:
+  ///
+  /// ```dart
+  /// initializeBeanContext();
+  /// TomBean.overrideWithType(UserService, MockUserService());
+  /// ```
+  ///
+  /// Three consequences are worth knowing, because all three fail silently:
+  ///
+  /// - A handle that has already resolved keeps the instance it resolved. Only
+  ///   handles created (or first used) after the override see the replacement.
+  /// - [initializeBeanContext] empties the registry, so an override must be
+  ///   applied *after* the pass, and re-applied after every later pass.
+  /// - [bean] must be assignable to the type consumers ask for, or resolution
+  ///   skips it and reports the bean as missing.
+  factory TomBean.overrideWithType(Type t, Object bean) {
+    TomBean<T> result = TomBean();
+    result._bean = bean as T;
 
     _tomBeanContext[t] = bean;
     return result;
@@ -695,6 +743,20 @@ void _instantiateConcreteBean(ClassMirror classMirror) {
   tomLog.trace(
     "Service class candidate ${classMirror.qualifiedName} without interface found.",
   );
+
+  // A key that is already bound is an answer, not a candidate — so leave it
+  // alone, exactly as _instantiateInterfaceBean does. This is what makes
+  // "register before initializeBeanContext()" mean the same thing for a
+  // concrete bean as it does for an interface implementation. The check runs
+  // before newInstance so the pass does not construct an object it would only
+  // discard.
+  if (TomBean._tomBeanContext[classMirror.reflectedType] != null) {
+    tomLog.trace(
+      "Service instance for ${classMirror.reflectedType} already assigned to "
+      "${TomBean._tomBeanContext[classMirror.reflectedType]}",
+    );
+    return;
+  }
 
   // Check environment constraint. The runtime is consulted only for a class
   // that actually carries a selector, so an unannotated bean is discoverable

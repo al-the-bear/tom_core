@@ -53,6 +53,18 @@ class DiscoveredConcreteService {
   String ping() => 'concrete';
 }
 
+/// A stand-in for [DiscoveredConcreteService], as a test would write one.
+///
+/// Deliberately *not* annotated: discovery must never find it on its own. An
+/// annotated stub would be registered under its own runtime type as well, and
+/// `TomBean<DiscoveredConcreteService>()` would then see two assignable
+/// entries and fail as ambiguous — so the fixture would be testing the
+/// ambiguity rule rather than the override.
+class MockConcreteService extends DiscoveredConcreteService {
+  @override
+  String ping() => 'mock';
+}
+
 /// A concrete bean narrowed to one environment.
 ///
 /// Discovery reads the active environment *only* for a class that carries
@@ -424,6 +436,107 @@ void main() {
       expect(
         TomBean.getBeanByType(EnvNarrowedConcreteService),
         isA<EnvNarrowedConcreteService>(),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // Substituting an implementation: the route a test takes to inject a mock
+  // ==========================================================================
+  group('overriding a registered bean', () {
+    // Registration is guarded: `withType` / `withName` refuse a key that is
+    // already bound, which is what stops two unrelated startup paths from
+    // silently clobbering each other. A test replacing a collaborator with a
+    // mock wants exactly the opposite, so it says so — `overrideWithType` /
+    // `overrideWithName` replace, and the guarded factories keep throwing.
+
+    setUp(() {
+      TomRuntime.addEnvironment(const TomEnvironment('prod'));
+      TomRuntime.setCurrentEnvironment('prod');
+    });
+
+    test('overrideWithType replaces a binding discovery made', () {
+      initializeBeanContext();
+      expect(TomBean<DiscoveredConcreteService>().get().ping(),
+          equals('concrete'));
+
+      TomBean.overrideWithType(DiscoveredConcreteService, MockConcreteService());
+
+      expect(TomBean<DiscoveredConcreteService>().get().ping(), equals('mock'));
+    });
+
+    test('withType still refuses a type discovery already bound', () {
+      initializeBeanContext();
+
+      expect(
+        keyOfThrow(() => TomBean.withType(
+            DiscoveredConcreteService, MockConcreteService())),
+        equals('beanlocator.initialization.duplicate_bean_with_type'),
+        reason: 'the guard is the whole reason the override has to be named',
+      );
+    });
+
+    test('a handle that already resolved keeps its instance', () {
+      // get() caches, so a collaborator held as a field since before the
+      // override still answers with the original. Overriding is a startup-time
+      // move, not a live swap — the caveat is worth pinning because the failure
+      // it produces is silent.
+      initializeBeanContext();
+      final resolved = TomBean<DiscoveredConcreteService>();
+      expect(resolved.get().ping(), equals('concrete'));
+
+      TomBean.overrideWithType(DiscoveredConcreteService, MockConcreteService());
+
+      expect(resolved.get().ping(), equals('concrete'));
+      expect(TomBean<DiscoveredConcreteService>().get().ping(), equals('mock'));
+    });
+
+    test('a concrete bean registered before discovery is not overwritten', () {
+      // The other order: bind the stub first, then let the pass run. Discovery
+      // must leave an occupied key alone — otherwise "register before
+      // initializeBeanContext()" would work for interface components and fail,
+      // silently, for concrete ones.
+      TomBean.withType(DiscoveredConcreteService, MockConcreteService());
+
+      initializeBeanContext();
+
+      expect(TomBean<DiscoveredConcreteService>().get().ping(), equals('mock'));
+    });
+
+    test('re-initializing discards an override', () {
+      // resetBeanContext + initializeBeanContext is what the testing guidance
+      // puts in setUp, and it empties the registry — so an override has to be
+      // re-applied after every pass, not merely applied once.
+      initializeBeanContext();
+      TomBean.overrideWithType(DiscoveredConcreteService, MockConcreteService());
+
+      TomBean.resetBeanContext();
+      initializeBeanContext();
+
+      expect(
+        TomBean<DiscoveredConcreteService>().get().ping(),
+        equals('concrete'),
+      );
+    });
+
+    test('overrideWithName replaces a named binding', () {
+      TomBean.withName('config', AnotherService('real'));
+
+      TomBean.overrideWithName('config', AnotherService('stub'));
+
+      expect(
+        TomBean<AnotherService>.fromName('config').get().value,
+        equals('stub'),
+      );
+    });
+
+    test('withName still refuses a name already registered', () {
+      TomBean.withName('config', AnotherService('real'));
+
+      expect(
+        keyOfThrow(
+            () => TomBean.withName('config', AnotherService('stub'))),
+        equals('beanlocator.initialization.duplicate_bean_with_name'),
       );
     });
   });

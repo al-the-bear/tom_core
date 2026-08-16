@@ -102,6 +102,15 @@ class DevGreetingService implements GreetingService {
   String greet() => 'development';
 }
 
+/// A stand-in for the selected [GreetingService], as a test would write one.
+///
+/// Unannotated on purpose: discovery must not find it, so the only way it can
+/// end up bound is the registration the test performs itself.
+class StubGreetingService implements GreetingService {
+  @override
+  String greet() => 'stub';
+}
+
 /// An interface no class declares itself an implementation of.
 abstract class UnimplementedService {}
 
@@ -208,6 +217,30 @@ void main() {
 
       expect(TomBean.getBeanByType(GreetingService), isA<DevGreetingService>());
       expect(TomBean.getBeanByType(ProdGreetingService), isNull);
+    });
+  });
+
+  // ==========================================================================
+  // Pre-binding an interface: selection must leave an occupied key alone
+  // ==========================================================================
+  group('interface bound before discovery', () {
+    test('keeps the registered implementation instead of selecting one', () {
+      // Selection runs only for interfaces nothing has bound yet. A binding
+      // that is already there is an answer, not a candidate — so the pass has
+      // no business replacing it, whatever its four tiers would have chosen.
+      discoverBeansIn(
+        prodEnvironment,
+        platformMacos,
+        beforeDiscovery: () =>
+            TomBean.withType(GreetingService, StubGreetingService()),
+      );
+
+      expect(
+        TomBean<GreetingService>().get().greet(),
+        equals('stub'),
+        reason: 'the prod candidate matches the active environment and must '
+            'not displace an implementation already bound',
+      );
     });
   });
 

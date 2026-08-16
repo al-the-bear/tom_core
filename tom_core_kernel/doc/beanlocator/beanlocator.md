@@ -23,6 +23,7 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
     - [Interface-Based Beans](#interface-based-beans)
     - [Named Beans](#named-beans)
     - [Optional Typed Beans Registration](#optional-typed-beans-registration)
+    - [Substituting an Implementation](#substituting-an-implementation)
   - [Environment and Platform Beans](#environment-and-platform-beans)
     - [Environment-Specific Beans](#environment-specific-beans)
     - [Selecting an Implementation by Environment Name](#selecting-an-implementation-by-environment-name)
@@ -311,7 +312,41 @@ TomBean.withType(MyService, MyServiceImplementation());
 final myService = TomBean<MyService>().get();
 ```
 
-Note: these manual registrations take precedence over annotated components and can be used to override the hardcoded service setup for test, e.g. to inject mock bean implementations.
+### Substituting an Implementation
+
+Discovery only binds a key nothing has bound yet, so a registration made *before*
+`initializeBeanContext()` takes precedence over the annotated component for the
+same type — the pass leaves it alone.
+
+Once the context is initialized, however, that route is closed: `withType` and
+`withName` refuse a key that is already bound and throw
+`beanlocator.initialization.duplicate_bean_with_type` (respectively
+`…duplicate_bean_with_name`). That guard is what stops two startup paths from
+silently clobbering each other, so replacing a binding has to say so:
+
+```dart
+initializeBeanContext();
+
+// Substitute the collaborator under test.
+TomBean.overrideWithType(PaymentGateway, MockPaymentGateway());
+
+final gateway = TomBean<PaymentGateway>().get(); // the mock
+```
+
+`TomBean.overrideWithName` does the same for a named registration.
+
+Three things about an override fail silently, so they are worth knowing:
+
+- **A handle that has already resolved keeps its instance.** `get()` caches, so a
+  collaborator held as a field since before the override still answers with the
+  original. Override before the code under test resolves its dependencies.
+- **Re-initializing discards it.** `initializeBeanContext()` empties the registry
+  (see [Resetting the Bean Context](#resetting-the-bean-context)), so an override
+  belongs *after* the pass in `setUp`, and must be re-applied after every later
+  pass.
+- **The replacement must be assignable** to the type consumers ask for. If it is
+  not, resolution skips it and reports the bean as missing rather than as a type
+  mismatch.
 
 ## Environment and Platform Beans
 
@@ -500,8 +535,8 @@ so the handler above is sufficient and does not need a second `catch`.
 
 | Key | Description |
 |-----|-------------|
-| `beanlocator.initialization.duplicate_bean_with_name` | Duplicate named bean registration |
-| `beanlocator.initialization.duplicate_bean_with_type` | Duplicate typed bean registration via `TomBean.withType` |
+| `beanlocator.initialization.duplicate_bean_with_name` | Duplicate named bean registration via `TomBean.withName`. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
+| `beanlocator.initialization.duplicate_bean_with_type` | Duplicate typed bean registration via `TomBean.withType` — including a type discovery has already bound. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
 | `beanlocator.initialization.no_matching_implementation_found` | No matching implementation |
 | `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
 | `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found. Raised on `get()`, never by [startup validation](#startup-validation) — a name that is not registered yet is a supported state |

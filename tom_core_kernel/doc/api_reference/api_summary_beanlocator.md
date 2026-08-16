@@ -129,6 +129,10 @@ factory TomBean.fromName(String name)
 factory TomBean.withName(String name, Object bean)
 
 factory TomBean.withType(Type t, Object bean)
+
+factory TomBean.overrideWithName(String name, Object bean)
+
+factory TomBean.overrideWithType(Type t, Object bean)
 ```
 
 `fromName` creates a handle that resolves by registered name; the name need not
@@ -136,8 +140,16 @@ be registered yet, so a handle may be held as a field and the bean registered
 later in startup. `withName`
 registers a named bean and returns a handle for it, throwing
 `TomBeanLocatorException` if the name already exists. `withType` registers a
-bean by type (taking precedence over `@TomComponent` registrations for the same
-type), throwing `TomBeanLocatorException` if the type is already registered.
+bean by type, throwing `TomBeanLocatorException` if the type is already
+registered — including a type discovery has bound; a registration made before
+`initializeBeanContext` does take precedence, since discovery leaves an occupied
+key alone.
+
+`overrideWithName` and `overrideWithType` replace whatever is registered under
+the key instead of refusing it, for substituting an implementation in a test.
+Note that a handle which has already resolved keeps its instance, that
+`initializeBeanContext` discards overrides, and that the replacement must be
+assignable to the type consumers request.
 
 #### Static Methods
 

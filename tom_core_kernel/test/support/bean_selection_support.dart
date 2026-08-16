@@ -30,13 +30,24 @@ const devEnvironment = TomEnvironment('dev');
 /// by an earlier pass cannot short-circuit this one — `_instantiateInterfaceBean`
 /// returns early when the interface is already registered, which would
 /// silently make a re-selection test assert the *previous* selection.
-void discoverBeansIn(TomEnvironment environment, TomPlatform platform) {
+///
+/// [beforeDiscovery] runs in the one window where a manual registration can
+/// take precedence over discovery: after the context is emptied, before the
+/// pass reads it. Registering earlier is wiped by the reset and registering
+/// later throws, so the window is the whole mechanism — which is why it lives
+/// here rather than being re-derived by each test that needs it.
+void discoverBeansIn(
+  TomEnvironment environment,
+  TomPlatform platform, {
+  void Function()? beforeDiscovery,
+}) {
   TomRuntime.reset();
   TomRuntime.addEnvironment(environment);
   TomRuntime.setCurrentEnvironment(environment.env);
   TomRuntime.setCurrentPlatform(platform);
 
   TomBean.resetBeanContext();
+  beforeDiscovery?.call();
   initializeBeanContext();
 }
 
