@@ -83,7 +83,13 @@ Merges `parentContext`'s entries (if any) as the base and overwrites them with
 | `clear` | `void clear()` | Removes all entries from this context. |
 | `combineWith` | `void combineWith(TomExecutionContext other)` | Merges `other`'s entries into this context; colliding names are overwritten by `other`. |
 | `runInContext` | `T runInContext<T>(T Function() body, {Map<Object?, Object?> zoneValues = const {}})` | Runs `body` synchronously in a new zone whose typed entries are this context merged over any inherited context (this context wins), threading `zoneValues` through a merged `TomZoneValues`. |
-| `runInContextAsync` | `Future<T> runInContextAsync<T>(Future<T> Function() body, {Map<Object?, Object?> zoneValues = const {}})` | Asynchronous variant of `runInContext`; the merged context and zone values remain available across `await` boundaries in `body`. |
+| `runInContextAsync` | `Future<T> runInContextAsync<T>(Future<T> Function() body, {Map<Object?, Object?> zoneValues = const {}})` | Installs the same zone as `runInContext` and differs only in signature: `body` must return a `Future<T>`, which is handed back, so `T` names the awaited value. |
+
+Both run methods install the same zone, so the context and zone values survive
+`await` boundaries under either, and reach callbacks scheduled from the body
+that fire after the call has returned. `runInContextAsync` is the right choice
+when the body is asynchronous not because of propagation but because its
+signature makes a dropped future a compile error.
 
 ### TomZoneValues
 

@@ -281,6 +281,13 @@ Future<void> step1() async {
 }
 ```
 
+This is a property of the zone, not of `runInContextAsync`. A body run by the
+synchronous `runInContext` gets the same treatment: it keeps the context across
+its own awaits, and a callback it schedules still reads the context when it
+fires, after `runInContext` has returned. See
+[Best Practice 4](#4-choose-the-variant-by-what-the-body-returns-not-by-whether-it-is-async)
+for what the two variants actually differ in.
+
 ## Context Composition
 
 Contexts can be nested, with inner contexts overriding outer values:
@@ -387,21 +394,45 @@ void handleRequest(Request req) {
 // Avoid: Creating context in inner loops
 ```
 
-### 4. Use Async Version for Async Code
+### 4. Choose the variant by what the body returns, not by whether it is async
 
-Use `runInContextAsync` for async code to ensure proper zone handling:
+Both variants install exactly the same zone — each is a single `runZoned` call
+over the same merged entries — so the context survives every `await` in either
+one, and it also reaches callbacks scheduled from inside the body and read long
+after the call returned. Zone propagation is not what distinguishes them.
+
+What distinguishes them is the signature. `runInContextAsync` takes a
+`Future<T> Function()` and hands that future back, so `T` names the awaited
+value; `runInContext` takes a `T Function()` and returns whatever the body
+returns. Choose on whether the caller needs the future:
 
 ```dart
-// Good
-await context.runInContextAsync(() async {
-  await asyncOperation();
+// The body is asynchronous and its result is needed: T is the awaited type.
+final data = await context.runInContextAsync(() async {
+  return await fetchData();
 });
 
-// May have issues
+// The body is genuinely synchronous.
+final total = context.runInContext(() => computeTotal());
+```
+
+The failure mode of the synchronous form is a *discarded future*, not a lost
+zone:
+
+```dart
+// Broken — but not for the reason it looks. asyncOperation() does run in the
+// context and keeps it across its awaits. What is lost is the future: the
+// void body drops it, so the caller returns before the work finishes and
+// cannot await completion or observe a failure.
 context.runInContext(() {
-  asyncOperation();  // Zone might not propagate correctly
+  asyncOperation();
 });
 ```
+
+Writing that body under `runInContextAsync` is a compile error, because a
+`Future<T> Function()` may not complete without returning one. The synchronous
+form leaves the same mistake to the optional `discarded_futures` lint — which
+is the practical reason to reach for the async variant when the body is async.
 
 ### 5. Document Context Dependencies
 

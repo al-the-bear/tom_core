@@ -292,6 +292,54 @@ void main() {
       });
     });
 
+    // Both run methods are a single runZoned over the same merged entries, so
+    // they install the same zone; the async variant differs only in its
+    // signature. The docs used to claim the synchronous form "might not
+    // propagate correctly" across async work, which would make the choice
+    // between them a correctness question rather than a typing one.
+    group('async propagation is identical in both run variants', () {
+      test('the synchronous variant keeps the context across an await', () async {
+        final context = TomExecutionContext({
+          'traceId': TomContextEntry<String>(() => 'trace-1'),
+        });
+
+        final result = await context.runInContext(() async {
+          final before =
+              TomExecutionContext.getValueFromCurrentZone<String>('traceId');
+          await Future<void>.delayed(Duration.zero);
+          final after =
+              TomExecutionContext.getValueFromCurrentZone<String>('traceId');
+          return [before, after];
+        });
+
+        expect(result, equals(['trace-1', 'trace-1']));
+      });
+
+      test('a callback scheduled from a synchronous body still sees the context',
+          () async {
+        // The exact shape the old warning called out: a void body that fires
+        // off async work. The context reaches the callback even though it runs
+        // after runInContext has already returned.
+        final context = TomExecutionContext({
+          'traceId': TomContextEntry<String>(() => 'trace-1'),
+        });
+
+        final seen = <String?>[];
+        context.runInContext(() {
+          // unawaited() only marks the drop as intentional for the linter; the
+          // dropped future is the point of the test.
+          unawaited(Future<void>.delayed(Duration.zero).then((_) {
+            seen.add(
+                TomExecutionContext.getValueFromCurrentZone<String>('traceId'));
+          }));
+        });
+
+        expect(seen, isEmpty, reason: 'the call returned before the callback');
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(seen, equals(['trace-1']));
+      });
+    });
+
     group('getEntry', () {
       test('should return entry by name with correct type', () {
         final context = TomExecutionContext({

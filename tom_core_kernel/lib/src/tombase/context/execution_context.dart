@@ -243,8 +243,15 @@ class TomExecutionContext {
   /// merged with any [TomExecutionContext] already installed in the current
   /// zone. On a colliding key **this context's entry wins** (the inner/child
   /// context overrides the inherited one); the parent's map is never mutated.
-  /// The merged context and zone values remain available across `await`
-  /// boundaries inside [body].
+  ///
+  /// This differs from [runInContext] only in its signature, not in the zone it
+  /// installs: [body] is typed `Future<T> Function()` and its future is handed
+  /// back, so `T` names the *awaited* value. Zone propagation is not the
+  /// distinction — the merged context and zone values remain available across
+  /// `await` boundaries under [runInContext] just as much as here, and reach
+  /// callbacks scheduled from the body that fire after the call has returned.
+  /// What this signature buys is that a body which drops its future is a
+  /// compile error rather than a silent early return.
   ///
   /// The optional [zoneValues] are arbitrary, untyped zone values threaded
   /// through alongside the typed context: they are wrapped in a
