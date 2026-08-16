@@ -51,7 +51,7 @@ The bean locator system consists of several key components:
 
 2. **`TomComponent`**: An annotation to mark classes as beans, optionally specifying the interface they implement.
 
-The bean locator integrates with the [Runtime Module](../runtime/runtime.md) for environment and platform configuration:
+The bean locator integrates with the [Runtime System](../../../../basics/tom_basics/doc/runtime/runtime.md), which `tom_basics` provides, for environment and platform configuration:
 
 - **`TomEnvironment`**: Configuration for runtime environments (dev, test, prod) with hierarchy support
 - **`TomPlatform`**: Configuration for target platforms (iOS, Android, Web, etc.)
@@ -350,9 +350,9 @@ Three things about an override fail silently, so they are worth knowing:
 
 ## Environment and Platform Beans
 
-The bean locator integrates with `TomEnvironment` and `TomPlatform` from the [Runtime Module](../runtime/runtime.md) to select different bean implementations based on the current context.
+The bean locator integrates with `TomEnvironment` and `TomPlatform` from the [Runtime System](../../../../basics/tom_basics/doc/runtime/runtime.md) to select different bean implementations based on the current context.
 
-> **Note**: For detailed documentation on `TomEnvironment`, `TomPlatform`, and `TomRuntime`, see the [Runtime Module Documentation](../runtime/runtime.md).
+> **Note**: `TomEnvironment`, `TomPlatform` and `TomRuntime` are declared in `tom_basics`, not here. For their own documentation — the environment hierarchy, platform detection, and the `initializeRuntime` sequence this module expects to have run — see [`tom_basics/doc/runtime/runtime.md`](../../../../basics/tom_basics/doc/runtime/runtime.md).
 
 ### Environment-Specific Beans
 
@@ -682,5 +682,5 @@ void main() {
 
 This module depends on:
 
-- **Runtime Module**: `TomEnvironment` and `TomPlatform` for environment and platform-specific bean selection
-- **Reflection Module**: For bean discovery and instantiation via reflection
+- [**Runtime System**](../../../../basics/tom_basics/doc/runtime/runtime.md) (`tom_basics`): `TomEnvironment` and `TomPlatform` for environment and platform-specific bean selection
+- [**Reflection Module**](../reflection/reflection.md): For bean discovery and instantiation via reflection

@@ -2115,6 +2115,6 @@ Create corresponding test files:
 
 ## Related Documents
 
-- [tom_ui_flutter_widgets.md](../_doc/tom/tom_ui_flutter_widgets.md) — Complete widget reference
-- [tom_ui_widgets_forms.md](../_doc/tom/tom_ui_widgets_forms.md) — Custom widgets and forms
-- [tom_ui_design_architecture.md](../_doc/tom/tom_ui_design_architecture.md) — UI architecture
+- [tom_ui_flutter_widgets.md](../../tom_flutter_ui/doc/tom_ui_flutter_widgets.md) — Complete widget reference
+- [tom_ui_widgets_forms.md](../../tom_flutter_ui/doc/tom_ui_widgets_forms.md) — Custom widgets and forms
+- [tom_ui_design_architecture.md](../../tom_flutter_ui/doc/tom_ui_design_architecture.md) — UI architecture
