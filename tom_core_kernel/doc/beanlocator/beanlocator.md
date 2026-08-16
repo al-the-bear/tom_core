@@ -285,7 +285,8 @@ class ReportJob {
   // Created at construction; nothing is registered under this name yet.
   final TomBean<DatabaseConnection> db = TomBean.fromName('primaryDb');
 
-  void run() => db().query(...);   // resolves here, on first use
+  // The name resolves here, on first use.
+  Object? run() => db().query('select * from reports');
 }
 
 // …later in startup:
@@ -301,15 +302,13 @@ pass while named registrations are still outstanding.
 To resolve to service instances that are not marked with @tomReflector/@tomComponent, you can register beans by type:
 
 ```dart
-
 // Register, for example in platform initialization, environment initialization...
 TomBean.withType(MyService, MyServiceImplementation());
 
-...
+// ... elsewhere, once that registration has run:
 
 // Resolve
-final myService = TomBean<MyService>.get();
-
+final myService = TomBean<MyService>().get();
 ```
 
 Note: these manual registrations take precedence over annotated components and can be used to override the hardcoded service setup for test, e.g. to inject mock bean implementations.
@@ -395,7 +394,7 @@ so a subsequent `initializeBeanContext` starts clean:
 ```dart
 setUp(() {
   TomBean.resetBeanContext();
-  TomBean.initializeBeanContext();
+  initializeBeanContext();
 });
 ```
 
@@ -556,16 +555,27 @@ void main() {
 
 ### 2. Prefer Interfaces
 
-Use interface-based registration for testability:
+Register an implementation under the interface it fulfils. Consumers then depend
+on the interface, and a test can bind a different implementation without
+touching them:
 
 ```dart
-// Good: Interface-based, easy to mock
+@tomReflector
 @TomComponent(UserRepository)
 class SqlUserRepository implements UserRepository { ... }
 
-// Less flexible: Concrete type only
+final users = TomBean<UserRepository>().get();
+```
+
+Registering the same class by its concrete type is less flexible: every consumer
+names the implementation, so substituting another one means editing all of them.
+
+```dart
+@tomReflector
 @tomComponent
 class SqlUserRepository { ... }
+
+final users = TomBean<SqlUserRepository>().get();
 ```
 
 ### 3. Store Bean References
