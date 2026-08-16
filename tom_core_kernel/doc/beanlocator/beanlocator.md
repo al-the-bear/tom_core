@@ -31,7 +31,8 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
   - [Implementation Resolution](#implementation-resolution)
   - [Error Handling](#error-handling)
     - [TomBeanLocatorException](#tombeanlocatorexception)
-    - [Common Error Keys](#common-error-keys)
+    - [Error Keys](#error-keys)
+    - [The runtime must be configured before the bean context](#the-runtime-must-be-configured-before-the-bean-context)
   - [Best Practices](#best-practices)
     - [1. Initialize in Correct Sequence](#1-initialize-in-correct-sequence)
     - [2. Prefer Interfaces](#2-prefer-interfaces)
@@ -430,18 +431,40 @@ try {
 }
 ```
 
-### Common Error Keys
+### Error Keys
+
+Every failure inside the bean locator arrives as a `TomBeanLocatorException`,
+including the ones that originate one layer down — an unconfigured runtime is
+translated at the boundary rather than surfacing `TomRuntime`'s own exception,
+so the handler above is sufficient and does not need a second `catch`.
 
 | Key | Description |
 |-----|-------------|
 | `beanlocator.initialization.duplicate_bean_with_name` | Duplicate named bean registration |
+| `beanlocator.initialization.duplicate_bean_with_type` | Duplicate typed bean registration via `TomBean.withType` |
+| `beanlocator.initialization.no_matching_implementation_found` | No matching implementation |
+| `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
 | `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found |
 | `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean |
 | `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered |
-| `beanlocator.initialization.no_matching_implementation_found` | No matching implementation |
-| `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
 | `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type. Raised on *every* `get()` — a handle that failed to resolve caches nothing, so the ambiguity never wears down into an arbitrary answer |
+| `beanlocator.bean_access.no_bean_found_unknown_error` | The type walk failed for a reason the locator does not model; the cause travels as the root exception |
 | `beanlocator.environment.no_factory_for_environment` | `installByEnvironment` has no factory for the active environment |
+| `beanlocator.environment.runtime_environment_not_initialized` | An operation needed the active environment and the runtime was never configured — see [Initialize in Correct Sequence](#1-initialize-in-correct-sequence). The `operation` and `subject` parameters name what was being wired |
+
+### The runtime must be configured before the bean context
+
+Environment selection reads the active environment from `TomRuntime`, so
+anything that consults a selector requires a configured runtime:
+`installByEnvironment` without an explicit `environment:`, discovery of a class
+carrying `@TomEnvironment`, and the four-tier interface selection. Each of them
+raises `beanlocator.environment.runtime_environment_not_initialized` naming the
+bean or interface it was resolving.
+
+The lookup is deliberately not hoisted: a bean that carries no selector is
+discovered without a configured runtime, and passing `environment:` explicitly
+answers the question the runtime would have been asked. Only code that actually
+depends on the active environment is required to have one.
 
 ## Best Practices
 

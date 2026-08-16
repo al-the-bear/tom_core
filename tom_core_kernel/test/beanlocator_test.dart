@@ -53,6 +53,21 @@ class DiscoveredConcreteService {
   String ping() => 'concrete';
 }
 
+/// A concrete bean narrowed to one environment.
+///
+/// Discovery reads the active environment *only* for a class that carries
+/// `@TomEnvironment`, so this is the fixture that reaches the runtime lookup on
+/// the concrete path. It is the only class in this domain that does — no
+/// `@TomComponent(SomeInterface)` fixture lives here (interface selection has
+/// its own domains), so the concrete path is the only one that can reach the
+/// runtime, and a failure in this file is unambiguously attributable to it.
+@tomReflector
+@tomComponent
+@TomEnvironment('prod')
+class EnvNarrowedConcreteService {
+  String ping() => 'narrowed';
+}
+
 // ----------------------------------------------------------------------------
 // Environment-selection fixtures: one interface, two environment-specific
 // implementations. installByEnvironment must install exactly the one named by
@@ -83,6 +98,11 @@ void main() {
   setUp(() {
     // Isolate the process-global bean context between tests.
     TomBean.resetBeanContext();
+    // …and the runtime with it. Environment selection reads process-global
+    // state too, so a test that activates an environment would otherwise leave
+    // it active for every test that follows — which is exactly how a suite
+    // comes to depend on an environment none of its tests set.
+    TomRuntime.reset();
   });
 
   /// Runs [body] and returns the `key` of the [TomBeanLocatorException] it
@@ -387,12 +407,90 @@ void main() {
   group('bean discovery', () {
     setUp(() {
       TomBean.resetBeanContext();
+      // Discovery consults the active environment for every class carrying
+      // @TomEnvironment, so the environment is part of this group's fixture,
+      // not something it may inherit from whichever test ran before it.
+      TomRuntime.addEnvironment(const TomEnvironment('prod'));
+      TomRuntime.setCurrentEnvironment('prod');
       initializeBeanContext();
     });
 
     test('instantiates concrete @tomComponent beans by runtime type', () {
       final bean = TomBean.getBeanByType(DiscoveredConcreteService);
       expect(bean, isA<DiscoveredConcreteService>());
+    });
+
+    test('instantiates a concrete bean narrowed to the active environment', () {
+      expect(
+        TomBean.getBeanByType(EnvNarrowedConcreteService),
+        isA<EnvNarrowedConcreteService>(),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // Unconfigured runtime: the locator's own exception, not the runtime's
+  // ==========================================================================
+  group('unconfigured runtime', () {
+    // TomRuntime.getCurrentEnvironment throws a bare Exception when nothing has
+    // been configured. That is tom_basics' contract, not the locator's: every
+    // example and every line of this module's documentation teaches callers to
+    // write `on TomBeanLocatorException`, and a bare Exception walks straight
+    // past such a handler. Each locator entry point that reaches for the
+    // environment must therefore translate the failure into its own contract,
+    // and name what was being resolved when it happened.
+
+    test('discovery raises the locator exception, naming the class', () {
+      // The runtime is already pristine — the global setUp reset it.
+      final failure = errorOfThrow(initializeBeanContext);
+
+      expect(
+        failure,
+        isNotNull,
+        reason: 'a bare Exception escaped the locator exception contract',
+      );
+      expect(
+        failure!.key,
+        equals('beanlocator.environment.runtime_environment_not_initialized'),
+      );
+      expect(
+        failure.parameters?['subject'],
+        contains('$EnvNarrowedConcreteService'),
+        reason: 'the failure must name the bean whose selector asked for the '
+            'environment, not merely that some environment was missing',
+      );
+    });
+
+    test('installByEnvironment raises the locator exception, naming the type',
+        () {
+      final failure = errorOfThrow(
+        () => TomBean.installByEnvironment<EnvBackend>({
+          'prod': LiveEnvBackend.new,
+        }),
+      );
+
+      expect(
+        failure,
+        isNotNull,
+        reason: 'a bare Exception escaped the locator exception contract',
+      );
+      expect(
+        failure!.key,
+        equals('beanlocator.environment.runtime_environment_not_initialized'),
+      );
+      expect(failure.parameters?['subject'], equals('$EnvBackend'));
+    });
+
+    test('an explicit environment needs no configured runtime', () {
+      // The guard must only fire where the environment is actually consulted:
+      // naming the environment at the call site answers the question the
+      // runtime would have been asked.
+      TomBean.installByEnvironment<EnvBackend>(
+        {'test': TestEnvBackend.new},
+        environment: 'test',
+      );
+
+      expect(TomBean<EnvBackend>().get(), isA<TestEnvBackend>());
     });
   });
 

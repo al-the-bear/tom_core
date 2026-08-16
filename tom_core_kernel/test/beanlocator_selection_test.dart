@@ -231,4 +231,34 @@ void main() {
       );
     });
   });
+
+  // ==========================================================================
+  // Failure mode 2: selection runs before the runtime is configured
+  // ==========================================================================
+  group('selection without a configured runtime', () {
+    test('fails with the locator exception, naming the interface', () {
+      // Selection compares each candidate's selectors against the active
+      // deployment, so it cannot proceed without one. `getCurrentEnvironment`
+      // signals that with a bare `Exception` — which a caller writing
+      // `on TomBeanLocatorException`, as every example here does, would not
+      // catch, and which names neither the interface nor the operation. Every
+      // class in this domain implements an interface, so the tier scan is the
+      // only path that can reach the runtime from here.
+      TomRuntime.reset();
+      TomBean.resetBeanContext();
+
+      final failure = locatorExceptionOf(initializeBeanContext);
+
+      expect(
+        failure,
+        isNotNull,
+        reason: 'a bare Exception escaped the locator exception contract',
+      );
+      expect(
+        failure!.key,
+        equals('beanlocator.environment.runtime_environment_not_initialized'),
+      );
+      expect(failure.parameters?['subject'], isNotNull);
+    });
+  });
 }

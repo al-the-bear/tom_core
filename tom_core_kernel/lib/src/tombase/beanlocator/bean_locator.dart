@@ -50,13 +50,28 @@ import '../reflection/reflection.dart';
 ///
 /// ## Exception Keys
 ///
+/// This is the complete set the module raises — every failure inside the bean
+/// locator arrives as this type, so `on TomBeanLocatorException` is a sufficient
+/// handler.
+///
 /// - `beanlocator.initialization.duplicate_bean_with_name`: Duplicate named bean
-/// - `beanlocator.bean_access.bean_not_found_by_name`: Named bean not found
-/// - `beanlocator.bean_access.bean_not_found_by_type`: Type mismatch for named bean
-/// - `beanlocator.bean_access.no_bean_found_uninitialized`: Unresolved bean
+/// - `beanlocator.initialization.duplicate_bean_with_type`: Duplicate typed bean
 /// - `beanlocator.initialization.no_matching_implementation_found`: No implementation
 /// - `beanlocator.initialization.ambiguous_implementation`: Two implementations
 ///   qualify equally for one interface
+/// - `beanlocator.bean_access.bean_not_found_by_name`: Named bean not found
+/// - `beanlocator.bean_access.bean_not_found_by_type`: Type mismatch for named bean
+/// - `beanlocator.bean_access.no_bean_found_uninitialized`: Unresolved bean
+/// - `beanlocator.bean_access.more_than_one_implementation_found`: Two registered
+///   beans satisfy one requested type
+/// - `beanlocator.bean_access.no_bean_found_unknown_error`: The type walk failed
+///   for a reason the locator does not model; the cause travels as the root
+///   exception
+/// - `beanlocator.environment.no_factory_for_environment`: `installByEnvironment`
+///   has no factory for the active environment
+/// - `beanlocator.environment.runtime_environment_not_initialized`: An operation
+///   needed the active environment and the runtime was never configured. The
+///   `operation` and `subject` parameters name what was being wired.
 class TomBeanLocatorException extends TomException {
   /// Creates a new bean locator exception.
   ///
@@ -323,12 +338,17 @@ class TomBean<T> {
   ///
   /// Throws [TomBeanLocatorException] if no factory is registered for the
   /// active environment. A missing mapping is a wiring bug, not a silent
-  /// fallback.
+  /// fallback. The same exception type — key
+  /// `beanlocator.environment.runtime_environment_not_initialized` — reports an
+  /// unconfigured runtime when [environment] is omitted and there is no active
+  /// environment to read. Passing [environment] answers that question at the
+  /// call site, so it needs no configured runtime at all.
   static TomBean<T> installByEnvironment<T>(
     Map<String, T Function()> factories, {
     String? environment,
   }) {
-    final env = environment ?? TomRuntime.getCurrentEnvironment().env;
+    final env =
+        environment ?? _requireCurrentEnvironment("installByEnvironment", T).env;
     final factory = factories[env];
     if (factory == null) {
       throw TomBeanLocatorException(
@@ -533,6 +553,45 @@ class TomBean<T> {
 }
 
 // =============================================================================
+// Runtime Access
+// =============================================================================
+
+/// Returns the active environment, raising the locator's own exception when the
+/// runtime has not been configured.
+///
+/// [TomRuntime.getCurrentEnvironment] signals an unconfigured runtime with a
+/// bare `Exception`. That is `tom_basics`' contract, not this module's: every
+/// example and every line of the bean locator's documentation teaches callers
+/// to write `on TomBeanLocatorException`, and a bare `Exception` walks straight
+/// past such a handler — the caller does not get a worse message, it gets no
+/// handler at all. The bare exception also names neither the bean nor the
+/// interface whose selector asked for the environment, which is the only
+/// context that makes the failure actionable: "environment has not been
+/// initialized" does not say *what was being wired* when it was needed.
+///
+/// So the boundary is translated here, once, rather than at each call site.
+/// [operation] names what the locator was doing and [subject] what it was doing
+/// it to; both travel in the exception parameters so a handler can react to
+/// them without parsing the message.
+TomEnvironment _requireCurrentEnvironment(String operation, Object subject) {
+  try {
+    return TomRuntime.getCurrentEnvironment();
+  } on TomException {
+    rethrow;
+  } catch (exception) {
+    throw TomBeanLocatorException(
+      "beanlocator.environment.runtime_environment_not_initialized",
+      "No runtime environment is configured, but $operation for $subject "
+          "requires one. Configure the runtime (initializeRuntime() or "
+          "TomRuntime.setCurrentEnvironment(...)) before the bean context.",
+      parameters: {"operation": operation, "subject": "$subject"},
+      rootException: exception,
+      autoLog: true,
+    );
+  }
+}
+
+// =============================================================================
 // Bean Context Initialization
 // =============================================================================
 
@@ -605,10 +664,16 @@ void _instantiateConcreteBean(ClassMirror classMirror) {
     "Service class candidate ${classMirror.qualifiedName} without interface found.",
   );
 
-  // Check environment constraint
+  // Check environment constraint. The runtime is consulted only for a class
+  // that actually carries a selector, so an unannotated bean is discoverable
+  // without a configured runtime — the lookup stays inside the condition.
   for (var meta in classMirror.metadata) {
     if (meta is TomEnvironment &&
-        meta.env != TomRuntime.getCurrentEnvironment().env) {
+        meta.env !=
+            _requireCurrentEnvironment(
+              "environment selection",
+              classMirror.qualifiedName,
+            ).env) {
       tomLog.trace(
         "Discarding service class $classMirror because environments don't match.",
       );
@@ -747,7 +812,10 @@ class _TomImplementationInfo {
   ) {
     // The active environment/platform are stable for the duration of one
     // resolution, so read them once rather than per candidate per tier.
-    final env = TomRuntime.getCurrentEnvironment();
+    final env = _requireCurrentEnvironment(
+      "implementation selection",
+      tc.getType(),
+    );
     final platform = TomRuntime.getCurrentPlatform();
 
     return _findSingleMatch(

@@ -30,7 +30,10 @@ registration (`TomBean.withName` / `TomBean.withType` / `installByEnvironment`).
 Environment (`@TomEnvironment`) and platform (`@TomPlatform`) annotations pick
 the best-matching implementation for the active runtime.
 `TomBeanLocatorException` is raised for duplicate registrations, unresolved
-beans, type mismatches, and ambiguous or missing implementations.
+beans, type mismatches, ambiguous or missing implementations, and an
+unconfigured runtime. It is the module's *only* exception type: a failure
+originating in `TomRuntime` is translated at the boundary, so `on
+TomBeanLocatorException` is a sufficient handler.
 
 ## Class Hierarchy
 
@@ -51,7 +54,10 @@ TomBean<T>
 ### TomBeanLocatorException
 
 Exception thrown when bean locator operations fail, e.g. bean instantiation and
-registration, resolution by name or type, and duplicate bean detection.
+registration, resolution by name or type, duplicate bean detection, and an
+operation that needed the active environment before the runtime was configured
+(`beanlocator.environment.runtime_environment_not_initialized`, whose
+`operation` / `subject` parameters name what was being wired).
 
 - **Extends:** `TomException`
 
@@ -135,7 +141,7 @@ type), throwing `TomBeanLocatorException` if the type is already registered.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `installByEnvironment` | `static TomBean<T> installByEnvironment<T>(Map<String, T Function()> factories, {String? environment})` | Selects and installs exactly one implementation of `T` by the active environment name (from `environment` or `TomRuntime.getCurrentEnvironment`); registers the built instance by type. Throws `TomBeanLocatorException` if no factory is registered for the active environment. |
+| `installByEnvironment` | `static TomBean<T> installByEnvironment<T>(Map<String, T Function()> factories, {String? environment})` | Selects and installs exactly one implementation of `T` by the active environment name (from `environment` or `TomRuntime.getCurrentEnvironment`); registers the built instance by type. Throws `TomBeanLocatorException` if no factory is registered for the active environment, or if `environment` is omitted and no runtime environment is configured. |
 | `getBeanByType` | `static Object? getBeanByType(Type type)` | Returns the bean registered for `type`, or `null` if not found. |
 | `getBeanByName` | `static Object? getBeanByName(String name)` | Returns the bean registered with `name`, or `null` if not found. |
 | `resetBeanContext` | `static void resetBeanContext()` | Clears all registered beans, drops pending unresolved handles, and marks the context uninitialized so a later `initializeBeanContext` starts clean. |
@@ -161,4 +167,4 @@ type), throwing `TomBeanLocatorException` if the type is already registered.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `initializeBeanContext` | `void initializeBeanContext()` | Initializes the bean context by discovering `@TomComponent`-annotated classes via reflection, filtering by environment/platform, instantiating and registering beans, and validating all `TomBean` references. |
+| `initializeBeanContext` | `void initializeBeanContext()` | Initializes the bean context by discovering `@TomComponent`-annotated classes via reflection, filtering by environment/platform, instantiating and registering beans, and validating all `TomBean` references. Requires a configured runtime whenever a discovered class carries a selector or an interface has candidates to choose between. |
