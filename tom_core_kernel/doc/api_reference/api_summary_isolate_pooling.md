@@ -43,7 +43,8 @@ are busy — and, when a `healthCheckInterval` is supplied, supervises their
 liveness so a dead worker fails its in-flight command and is replaced.
 `TomWorkerException` signals worker communication and state errors;
 `TomWorkerDiedException` signals that a supervised worker's isolate terminated
-unexpectedly.
+unexpectedly — raised by `TomWorker` itself for any worker supervised via
+`superviseExit`, with or without a pool.
 
 The whole surface below is **native-only**: it is built on `dart:isolate`,
 which both web compilers mark as unsupported. Nothing here has a web
@@ -101,10 +102,20 @@ worker's isolate terminated unexpectedly — an uncaught error, `Isolate.kill`, 
 an out-of-memory kill. Without supervision such requests hang on their completer
 forever.
 
+Raised by `TomWorker._handleUnexpectedDeath`, so **any** worker supervised via
+`TomWorker.superviseExit` produces it — a bare standalone worker just as much as
+one inside a pool. `TomWorkerPool` is a client of that mechanism, not its
+source: it registers the same callback and uses it to respawn.
+
 The failed command is **not** re-dispatched: re-running work that may already
 have produced side effects risks executing non-idempotent work twice. Recovery
-restores capacity (the pool respawns a replacement worker) while the caller
-observes the failure and decides how to react.
+means restoring capacity — a pool respawns a replacement automatically, a bare
+worker leaves that to your `onDeath` callback — while the caller observes the
+failure and decides how to react.
+
+The caller is resumed **before** the `onDeath` callback runs: the request
+completers are `Completer.sync()`, so state maintained by the supervisor (a
+pool's `workerCount`, for instance) is still stale inside the `catch`.
 
 - **Extends:** `TomException`
 - **Key:** `isolate.worker_died.in_flight_request`
@@ -236,7 +247,7 @@ bidirectional command/response messaging with the main isolate.
 | `isBusy` | `bool isBusy()` | Returns `true` if this worker has pending requests. |
 | `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result, or `TomExecutor.noResult` when nothing there handled it. Every command is answered, so the future always resolves. It never resolves to `null`: a result of `null` — from a `TomCommand.execute` or from an executor — is delivered as the four-character *string* `"null"`, so a caller writing `await worker.executeCommand(c) as String?` against a nullable-returning command gets `"null"` rather than an error. Throws `TomWorkerException` (`isolate.worker_closed.execute_after_close`) if the worker is closed — the same fail-fast `TomWorkerPool.execute` gives one layer up, rather than a dispatch nothing will answer. |
 | `sendExecutorToIsolate` | `void sendExecutorToIsolate(TomExecutor te)` | Sends an executor to the worker isolate, adding it to the worker's executor list. One-way — there is no acknowledgement. Throws `TomWorkerException` (`isolate.worker_closed.send_executor_after_close`) if the worker is closed, rather than dropping the executor on a shutting-down port. |
-| `superviseExit` | `void superviseExit(void Function() onDeath)` | Registers a one-shot death callback via `Isolate.addOnExitListener`. On an unexpected exit, every in-flight request is failed with `TomWorkerDiedException` before `onDeath` runs. Idempotent; a no-op once closed. An orderly `close` does not trigger it. |
+| `superviseExit` | `void superviseExit(void Function() onDeath)` | Registers a one-shot death callback via `Isolate.addOnExitListener`. On an unexpected exit, every in-flight request is failed with `TomWorkerDiedException` before `onDeath` runs. Idempotent; a no-op once closed. An orderly `close` does not trigger it. This is the whole death-detection mechanism — `TomWorkerPool` just calls it per worker and respawns from the callback — so a standalone worker gets the same protection by registering it directly. Nothing is respawned for you; that is the callback's job. |
 | `ping` | `Future<bool> ping(Duration timeout)` | Liveness probe; `true` if the worker answered within `timeout`, `false` otherwise. Answered before any command or executor dispatch, so asynchronous in-flight work does not delay it — but a command occupying the isolate *synchronously* does, and this returns `false` for a healthy worker that is merely busy computing. No `isBusy` check is made; pool supervision probes only idle workers for exactly that reason. A timed-out probe abandons its request slot so a late answer is discarded. Never kills the isolate. |
 | `killUnresponsive` | `void killUnresponsive()` | Force-kills the isolate at `Isolate.immediate` priority, routing it through the same death/respawn path as a crash. |
 | `close` | `void close()` | Closes this worker: tears down exit supervision first (so the shutdown is not read as a death), sends the isolate a shutdown signal, and closes the response port once the last in-flight request resolves. Afterwards `executeCommand` and `sendExecutorToIsolate` throw; commands accepted *before* the close still resolve. Idempotent. |
@@ -278,7 +289,9 @@ run:
    primary signal: it fires for every way an isolate can terminate, including
    the cases a request/response probe cannot observe once a command is hung.
    Each in-flight command is failed with `TomWorkerDiedException` and the pool
-   respawns a replacement.
+   respawns a replacement. Note the division of labour — the failing is
+   `TomWorker`'s, and is available on a bare worker by calling `superviseExit`
+   directly; only the respawn is the pool's contribution.
 2. **Periodic pings of idle workers only**, to catch hangs that emit no exit
    signal. The ping is answered at the top of the worker's message handler,
    before any command or executor dispatch, so it does *not* queue behind

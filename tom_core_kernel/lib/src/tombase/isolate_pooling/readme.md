@@ -24,7 +24,7 @@ this module. See
 | `TomWorkerPool` | Fixed pool of workers; `withSize(n, context)` builds it (rejecting an `n` below 1, and non-positive supervision durations, rather than returning a pool that cannot work), `execute(cmd)` dispatches to a free worker, `close()` tears it down. |
 | `TomWorkerContext` | The state handed to a worker isolate at spawn time, plus the two setup hooks (`initializeIsolate` inside the isolate, `initializeWorker` on the creator side). Both refuse by throwing — see below. |
 | `TomWorkerException` | Thrown on worker spawn / communication failures, on a startup that never reaches ready, on dispatch to a closed worker or pool, and on pool arguments that cannot yield a working pool. |
-| `TomWorkerDiedException` | Fails an in-flight command whose worker isolate died, when liveness supervision is enabled. |
+| `TomWorkerDiedException` | Fails an in-flight command whose worker isolate died, on any worker supervised via `TomWorker.superviseExit` — with or without a pool. |
 
 ## Quick start
 
@@ -158,10 +158,18 @@ and forwards it to every worker it spawns, replacements included.
 
 ## Liveness supervision (opt-in)
 
-Pass a `healthCheckInterval` to `withSize` and the pool watches its workers: an
-isolate that dies fails its in-flight command with a `TomWorkerDiedException`
-instead of hanging the caller forever, and a replacement is spawned. Idle
-workers are additionally pinged to catch hangs that emit no exit signal.
+Supervision belongs to `TomWorker`, not to the pool. `superviseExit` registers
+an exit listener, and the worker fails its own in-flight commands with a
+`TomWorkerDiedException` instead of hanging the caller forever:
+
+```dart
+worker.superviseExit(() => print('worker ${worker.name} died'));
+```
+
+`TomWorkerPool` is a client of that mechanism: pass a `healthCheckInterval` to
+`withSize` and the pool registers the callback on every worker and uses it to
+spawn a replacement. Idle workers are additionally pinged to catch hangs that
+emit no exit signal.
 
 ```dart
 final pool = await TomWorkerPool.withSize(
@@ -170,6 +178,10 @@ final pool = await TomWorkerPool.withSize(
   healthCheckInterval: const Duration(seconds: 5),
 );
 ```
+
+So the difference is the respawn, not the exception: a bare supervised worker
+reports the death just as a pooled one does, but restoring capacity is left to
+its `onDeath` callback.
 
 A failed command is deliberately **not** re-dispatched — only the caller knows
 whether the work is idempotent.

@@ -1319,6 +1319,69 @@ void main() {
       });
     });
 
+    group('superviseExit', () {
+      // TomWorkerPool is a CLIENT of this mechanism, not its source: the pool
+      // calls superviseExit on each worker and TomWorker itself raises the
+      // TomWorkerDiedException. These tests pin the primitive on a bare worker,
+      // with no pool involved, because that is the supported answer for a
+      // caller who is not using a pool.
+
+      test('fails an in-flight command on a bare worker when the isolate dies',
+          () async {
+        final context = TestWorkerContext(namePrefix: 'SupervisedBare');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final order = <String>[];
+        worker.superviseExit(() => order.add('onDeath'));
+
+        // Without supervision this future would never complete.
+        try {
+          await worker.executeCommand(SuicideCommand());
+          fail('a command on a dead isolate must not resolve');
+        } on TomWorkerDiedException {
+          order.add('caller');
+        }
+
+        // Ordering is load-bearing, not incidental. The request completers are
+        // Completer.sync(), so completeError resumes the awaiting caller
+        // BEFORE _handleUnexpectedDeath reaches the onDeath callback three
+        // lines later. A caller that inspects supervisor-maintained state the
+        // instant it catches this exception therefore reads it stale — which
+        // is why the pool's recovery is polled rather than checked once.
+        expect(order, equals(['caller']),
+            reason: 'the caller resumes before the supervisor callback runs');
+
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(order, equals(['caller', 'onDeath']),
+            reason: 'the onDeath callback must run on an unexpected exit');
+        expect(worker.isClosed, isTrue,
+            reason: 'an unexpectedly dead worker marks itself closed');
+      });
+
+      test('does not fire onDeath for an orderly close', () async {
+        final context = TestWorkerContext(namePrefix: 'SupervisedOrderly');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        var deaths = 0;
+        worker.superviseExit(() => deaths++);
+
+        worker.close();
+        // close() tears the exit port down before the isolate terminates, so
+        // the listener must stay silent; otherwise every clean shutdown would
+        // look like a crash to a supervisor.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+
+        expect(deaths, isZero);
+        expect(worker.isClosed, isTrue);
+      });
+    });
+
     group('close', () {
       test('should set isClosed to true', () async {
         final context = TestWorkerContext();

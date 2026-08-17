@@ -126,9 +126,10 @@ class TomWorkerException extends TomException {
 ///
 /// The command is **not** re-dispatched: re-running a command that may have
 /// already produced side effects before the isolate died would risk executing
-/// non-idempotent work twice. Recovery instead means the pool respawns a
-/// replacement worker to restore capacity, while the in-flight caller observes
-/// this failure and decides how to react.
+/// non-idempotent work twice. Recovery instead means restoring capacity — a
+/// pool respawns a replacement worker automatically, a directly supervised
+/// worker leaves that to its `onDeath` callback — while the in-flight caller
+/// observes this failure and decides how to react.
 class TomWorkerDiedException extends TomException {
   /// Creates a [TomWorkerDiedException] with the given error details.
   TomWorkerDiedException(
@@ -1258,8 +1259,14 @@ class TomWorker {
   ///
   /// Marks the worker closed, fails every in-flight request with a
   /// [TomWorkerDiedException] (so callers stop hanging on their completers),
-  /// releases the ports, and finally invokes the supervisor callback so the
-  /// owning pool can respawn a replacement.
+  /// releases the ports, and finally invokes the supervisor callback — which an
+  /// owning [TomWorkerPool] uses to respawn a replacement, and a directly
+  /// supervised worker uses for whatever recovery it chose.
+  ///
+  /// The requests are completed *before* the callback, and they are
+  /// [Completer.sync] completers, so the awaiting caller resumes first. State
+  /// the callback maintains is therefore still stale inside the caller's
+  /// `catch` — a pool's `workerCount` still counts this worker at that point.
   void _handleUnexpectedDeath() {
     if (_closed) return;
     _closed = true;
@@ -1321,7 +1328,8 @@ class TomWorker {
   ///
   /// Intended for supervisors that detected an unresponsive (hung) worker via
   /// [ping]. The kill triggers the [superviseExit] listener, which fails any
-  /// in-flight requests and notifies the pool to respawn a replacement.
+  /// in-flight requests and runs the death callback — respawning a replacement
+  /// in a pool, or whatever recovery a directly supervised worker registered.
   void killUnresponsive() {
     isolate.kill(priority: Isolate.immediate);
   }

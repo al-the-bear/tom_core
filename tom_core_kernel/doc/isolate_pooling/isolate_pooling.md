@@ -360,6 +360,14 @@ mistake is, instead of at a dispatch somewhere else in the program.
 
 ### Liveness Supervision
 
+Supervision is a property of a **worker**, not of a pool. `TomWorker` owns the
+mechanism: `superviseExit` registers an exit listener, and `TomWorker` itself
+fails the in-flight requests with a `TomWorkerDiedException`. `TomWorkerPool` is
+one *client* of that mechanism — it calls `superviseExit` on each worker it
+spawns and uses the callback to respawn a replacement. Read this section for
+what a pool adds; see [Supervising a bare worker](#supervising-a-bare-worker)
+for the primitive underneath, which is the answer if you are not using a pool.
+
 By default the pool performs no supervision. Pass a `healthCheckInterval` to
 turn it on:
 
@@ -451,6 +459,58 @@ still in flight, reporting a failure that has not happened.
 A failed in-flight command is deliberately **not** re-dispatched: re-running
 work that may already have produced side effects risks doing non-idempotent work
 twice. Only the caller knows whether a retry is safe.
+
+Note that the loop above polls rather than reading `workerCount` once. That is
+not stylistic — see [the ordering
+note](#the-caller-resumes-before-the-supervisor) below.
+
+#### Supervising a bare worker
+
+A single long-lived worker gets the same protection without a pool. Register
+`superviseExit` and the worker fails its own in-flight requests:
+
+```dart
+final worker = await TomWorker.spawn(TomWorker.startRemoteIsolate, context);
+
+worker.superviseExit(() {
+  // The isolate died unexpectedly. The worker is already closed and its
+  // in-flight requests already failed; this is where you decide what next —
+  // respawn, escalate, or give up. Nothing respawns it for you.
+  print('worker ${worker.name} died');
+});
+
+try {
+  await worker.executeCommand(SomeCommand());
+} on TomWorkerDiedException catch (e) {
+  // Without the superviseExit above, this await would hang forever instead.
+  print('worker died: ${e.parameters?['isolateName']}');
+}
+```
+
+Three properties are worth knowing:
+
+- **An orderly `close()` is not a death.** `close` tears the exit port down
+  before the isolate terminates, so `onDeath` does not fire for a clean
+  shutdown. A supervisor therefore never mistakes your own shutdown for a crash.
+- **It is one-shot and idempotent.** The callback runs at most once, and calling
+  `superviseExit` again while already supervised is a no-op — so you cannot
+  accidentally stack two respawn handlers on one worker.
+- **Nothing is respawned for you.** That is the whole of what `TomWorkerPool`
+  adds on top: it registers this same callback and uses it to spawn a
+  replacement. On a bare worker, restoring capacity is your callback's job.
+
+##### The caller resumes before the supervisor
+
+When the isolate dies, the awaiting caller is resumed **before** the `onDeath`
+callback runs. The request completers are `Completer.sync()`, so completing them
+with the error hands control straight back to whoever was awaiting, and the
+supervisor callback is invoked only afterwards.
+
+The consequence is practical: state that the callback maintains is still stale
+at the moment you catch the exception. On a pool, `_handleWorkerDeath` *is* that
+callback, so reading `pool.workerCount` immediately inside the `catch` still
+counts the worker that just died. This is why the recovery snippet above polls
+towards the expected count instead of asserting it once.
 
 ## Architecture
 
@@ -575,8 +635,9 @@ class DatabaseWorkerContext extends TomWorkerContext {
 
 A command that throws inside the worker surfaces as a `RemoteError`. A worker
 that *dies* while a command is in flight surfaces as a `TomWorkerDiedException`
-— but only on a supervised pool; without supervision the future never
-completes.
+— on any worker that is supervised, whether you registered
+[`superviseExit`](#supervising-a-bare-worker) yourself or let a supervised pool
+do it for you. Only an *un*supervised worker leaves the future hanging forever.
 
 ```dart
 try {
@@ -599,9 +660,11 @@ try {
   Dispatching afterwards is refused with a `TomWorkerException` at both levels —
   `TomWorker.executeCommand` and `TomWorkerPool.execute` alike — so a
   use-after-close surfaces as a catchable error rather than a silent deadlock
-- **Handle worker failures**: Enable supervision (`healthCheckInterval`) on
-  long-running pools rather than writing your own health checks — an
-  unsupervised pool hangs the caller forever when a worker dies
+- **Handle worker failures**: any unsupervised worker hangs its caller forever
+  when the isolate dies, pool or not. On a pool, enable supervision with
+  `healthCheckInterval`; on a standalone worker, register
+  [`superviseExit`](#supervising-a-bare-worker). Either way, prefer the built-in
+  mechanism to writing your own health checks
 - **Don't return `null` from a command**: it is substituted before it is sent
   (with the string `"null"` towards the worker, with `TomExecutor.noResult`
   towards the creator), so a `null`-checking caller never sees the case it is
