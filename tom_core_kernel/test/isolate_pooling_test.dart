@@ -2136,6 +2136,14 @@ void main() {
 
         pool.close();
       });
+    });
+
+    group('close', () {
+      // The pool's counterpart to `TomWorker > close`, and deliberately not
+      // part of `liveness supervision`: the closed-pool guard stands whether
+      // or not a healthCheckInterval was ever passed. Every pool here is
+      // built unsupervised, so a failure in this group can only mean the
+      // lifecycle guard broke.
 
       test('execute after close throws instead of hanging', () async {
         final context = TestWorkerContext(namePrefix: 'ClosedPool');
@@ -2146,6 +2154,54 @@ void main() {
           pool.execute(FixedValueCommand('x')),
           throwsA(isA<TomWorkerException>()),
         );
+      });
+
+      test('a caller already waiting for a free worker fails when the pool '
+          'closes', () async {
+        // The guard sits in two places, and this is the branch that actually
+        // rescues a caller: `execute` re-checks `_closed` on every turn of the
+        // loop it parks in while all workers are busy. Without that check the
+        // caller would spin forever, because close() clears the free list and
+        // nothing will ever refill it — the entry check above cannot help
+        // someone who got past it before the close.
+        final context = TestWorkerContext(namePrefix: 'ClosedWhileWaiting');
+        final pool = await TomWorkerPool.withSize(1, context);
+
+        // Occupy the only worker, so the next call has to wait for it.
+        final inFlight = pool.execute(DelayedCommand(200, 'first'));
+        final waiting = pool.execute(FixedValueCommand('second'));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        pool.close();
+
+        await expectLater(
+          waiting.timeout(const Duration(seconds: 5)),
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              'isolate.pool_closed.execute_after_close',
+            ),
+          ),
+        );
+        // Work already accepted is unaffected: close() only refuses new
+        // dispatch, so the command that had a worker still resolves.
+        expect(await inFlight, equals('first'));
+      });
+
+      test('close empties the pool and is idempotent', () async {
+        final context = TestWorkerContext(namePrefix: 'ClosedTwice');
+        final pool = await TomWorkerPool.withSize(2, context);
+
+        expect(pool.workerCount, equals(2));
+
+        pool.close();
+        pool.close();
+        pool.close();
+
+        // A pool is commonly closed from both a tearDown and the code under
+        // test, so a second call must be a no-op rather than an error.
+        expect(pool.workerCount, isZero);
       });
     });
   });
