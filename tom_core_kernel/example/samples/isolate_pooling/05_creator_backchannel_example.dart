@@ -11,7 +11,7 @@
 /// - Request/response into the creator with TomWorker.executeInCreator()
 /// - Fire-and-forget messages with TomWorker.sendToCreator()
 /// - Handling creator-side messages with a TomExecutor
-/// - Customizing startup via TomWorkerContext.initializeIsolate/initializeWorker
+/// - Customizing startup via TomWorkerContext.initializeWorker
 /// - Error propagation: a command that throws surfaces as a RemoteError
 /// - Recognizing TomExecutor.noResult, the answer a creator gives when nothing
 ///   on its side claimed the message
@@ -25,13 +25,13 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // Custom Worker Context
 // ============================================================================
 
-/// A worker context that records which initialization hooks ran.
+/// A worker context that records that its creator-side hook ran.
 ///
-/// [initializeIsolate] runs *inside* the new isolate before its message loop
-/// starts; [initializeWorker] runs on the creator side against the freshly
-/// created [TomWorker]. The two run in different isolates, so the isolate-side
-/// flag is never observable from the creator — it is asserted indirectly via a
-/// probe command below.
+/// [initializeWorker] runs on the creator side against the freshly created
+/// [TomWorker], so setting a field here is visible below. [initializeIsolate]
+/// runs *inside* the new isolate and could not report back the same way; what
+/// it can do, and how to prove it did it, is shown in
+/// `03_worker_setup_and_guards_example.dart`.
 class BackchannelWorkerContext extends TomWorkerContext {
   bool workerInitialized = false;
 
@@ -155,7 +155,7 @@ class CreatorInboxExecutor extends TomExecutor {
 // ============================================================================
 
 Future<void> run() async {
-  print('=== 03: Creator Back-Channel Example ===\n');
+  print('=== 05: Creator Back-Channel Example ===\n');
 
   // Register a creator-side inbox for fire-and-forget notifications.
   final inbox = CreatorInboxExecutor();

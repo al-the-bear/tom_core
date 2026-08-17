@@ -17,7 +17,7 @@ import '../../run_all_samples.reflection.dart';
 
 import '01_worker_basics_example.dart' as worker_basics;
 import '02_worker_pool_example.dart' as worker_pool;
-import '03_worker_creator_communication_example.dart' as worker_creator;
+import '03_worker_setup_and_guards_example.dart' as worker_setup;
 import '04_worker_pool_supervision_example.dart' as worker_pool_supervision;
 import '05_creator_backchannel_example.dart' as creator_backchannel;
 
@@ -63,10 +63,10 @@ Future<void> run() async {
   await worker_pool.run();
   print('✓ Worker pool examples passed\n');
 
-  print('03: Worker-Creator Communication Example');
+  print('03: Worker Setup and Creator-Side Guards Example');
   print('-' * 40);
-  await worker_creator.run();
-  print('✓ Worker-creator communication examples passed\n');
+  await worker_setup.run();
+  print('✓ Worker setup and guard examples passed\n');
 
   print('04: Worker Pool Liveness Supervision Example');
   print('-' * 40);

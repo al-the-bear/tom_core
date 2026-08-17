@@ -48,6 +48,38 @@ Future<void> main() async {
 }
 ```
 
+## Commands, executors and the back-channel
+
+A message sent with `worker.executeCommand(...)` is dispatched one of two ways.
+A `TomCommand` carries its own `execute()` and runs it in the worker; anything
+else cannot execute itself, so the worker offers it to its executor chain
+instead. Use a command when the logic belongs to the message, an executor when
+one handler serves many message shapes. Seed a worker's own chain with
+`worker.sendExecutorToIsolate(...)` — that send is one-way and unacknowledged,
+so it is ordering on the shared port, not an acknowledgement, that makes the
+next command see it.
+
+Code running inside a worker can call back the other way:
+
+| Call | Shape | Answered by |
+| ---- | ----- | ----------- |
+| `TomWorker.sendToCreator(obj)` | fire-and-forget; nothing is awaited | the creator's executor chain |
+| `TomWorker.executeInCreator(cmd)` | request/response; the worker awaits the answer | the creator, which runs a `TomCommand` itself and offers anything else to its executor chain |
+
+Both exist only where there *is* a creator to reach. Called in the creator they
+throw `TomWorkerException`, keyed
+`isolate.state_error.attempt_to_send_to_creator_in_creator` and
+`isolate.state_error.attempt_to_execute_in_creator_in_creator`;
+`TomWorker.canSendToCreator()` answers the same question without the throw.
+
+The split between the static and the instance API follows that boundary. The
+registry (`addExecutor` / `removeExecutor` / `clearExecutors` / `executors`),
+the isolate's own identity (`isMainIsolate`) and the two back-channel calls are
+static, because the code making them runs inside an isolate and holds no worker
+handle. `executeCommand`, `sendExecutorToIsolate`, `isReady`, `isBusy()`,
+`isClosed` and `close()` are instance members of the `TomWorker` the creator
+holds.
+
 ## Failing initialization
 
 `TomWorkerContext.initializeIsolate` and `initializeWorker` return `Future<void>`
