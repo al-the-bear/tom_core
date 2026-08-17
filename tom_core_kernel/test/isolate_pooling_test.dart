@@ -275,8 +275,12 @@ class RecordingLogOutput extends TomLogOutput {
 }
 
 /// Simple test worker context.
+///
+/// Only [initializeWorker] records anything, and deliberately so: it runs on
+/// the creator side against *this* instance, so [workerInitialized] is readable
+/// from a test. A matching `isolateInitialized` field would not be — see
+/// [IsolateInitProbeContext] for why, and for the pattern that does work.
 class TestWorkerContext extends TomWorkerContext {
-  bool isolateInitialized = false;
   bool workerInitialized = false;
 
   TestWorkerContext({String namePrefix = 'Test'})
@@ -288,13 +292,44 @@ class TestWorkerContext extends TomWorkerContext {
         );
 
   @override
-  Future<void> initializeIsolate() async {
-    isolateInitialized = true;
-  }
-
-  @override
   Future<void> initializeWorker(TomWorker worker) async {
     workerInitialized = true;
+  }
+}
+
+/// Per-isolate marker filled in by [IsolateInitProbeContext.initializeIsolate].
+///
+/// Top-level state exists once *per isolate*, so the hook fills the worker's
+/// copy and leaves the creator's `false`. That gap is what makes the hook's
+/// effect provable in both directions.
+bool isolateHookRan = false;
+
+/// Reads [isolateHookRan] from inside the worker isolate.
+class ReadIsolateHookFlagCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => isolateHookRan;
+}
+
+/// Context that records its isolate-side hook where it can actually be read.
+///
+/// A field on the context cannot work: [initializeIsolate] runs inside the new
+/// isolate against the *copy* of the context that travelled there, so mutating
+/// it leaves the creator's instance untouched. Writing per-isolate top-level
+/// state instead lets a command read the result back out — the same pattern
+/// `example/samples/isolate_pooling/03_worker_setup_and_guards_example.dart`
+/// demonstrates.
+class IsolateInitProbeContext extends TomWorkerContext {
+  IsolateInitProbeContext({String namePrefix = 'IsolateInit'})
+      : super(
+          const TomEnvironment('test', isTest: true),
+          platformLinux,
+          [],
+          namePrefix,
+        );
+
+  @override
+  Future<void> initializeIsolate() async {
+    isolateHookRan = true;
   }
 }
 
@@ -609,6 +644,33 @@ void main() {
         );
 
         await expectLater(context.initializeIsolate(), completes);
+      });
+
+      test('initializeIsolate runs in the worker, not in the creator',
+          () async {
+        // The other initializeIsolate tests all pin a refusal — a throw aborts
+        // the spawn, a hang trips readyTimeout. This one pins the success path,
+        // and with it the asymmetry that makes the success path awkward to
+        // observe at all.
+        final context = IsolateInitProbeContext();
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+        addTearDown(worker.close);
+
+        final ranInWorker = await worker.executeCommand(
+          ReadIsolateHookFlagCommand(),
+        );
+        expect(ranInWorker, isTrue,
+            reason: 'the hook must have run before the worker accepts work');
+
+        // The same top-level variable, read here, is still false: top-level
+        // state is per-isolate. This is the half that traps readers — a field
+        // on the context would look identical from the creator's side, which
+        // is to say indistinguishable from a hook that never ran.
+        expect(isolateHookRan, isFalse,
+            reason: 'the creator must not see the worker isolate\'s state');
       });
 
       test('a throwing initializeWorker aborts the spawn', () async {
