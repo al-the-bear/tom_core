@@ -334,9 +334,18 @@ void _processList(
 
 /// Traverses a nested map tree and creates new entries based on key names.
 ///
-/// Similar to [traverseAndProcess], but focuses on key names rather than values.
-/// When a key name matches [nameTest], the [creator] callback is invoked with
-/// the key, value, and parent map location, allowing insertion of new nodes.
+/// Similar to [traverseAndProcess], but selects on key names rather than value
+/// contents. When a key name matches [nameTest] *and its value is a `String`*,
+/// the [creator] callback is invoked with the key, that string, and the parent
+/// map location, allowing insertion of new nodes.
+///
+/// ## Which keys reach the creator
+/// The value's shape is part of the match, not just the name. A matching key
+/// whose value is a map is recursed into instead of being reported, and one
+/// whose value is a list is taken by the list branch and likewise never
+/// reported — the branches are mutually exclusive. A matching key whose value
+/// is an `int`, `bool` or `null` is skipped outright. This is not incidental:
+/// [creator] takes a `String value`, so no other shape could be handed to it.
 ///
 /// This is particularly useful for expanding shorthand notations or creating
 /// links/references in configuration trees.

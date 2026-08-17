@@ -208,8 +208,8 @@ same as one built in Dart code.
 
 #### `traverseAndCreate(tree, nameTest, creator)`
 
-Traverses a tree and invokes a callback for each key matching `nameTest`,
-handing it the key, its string value, and the map that contains it.
+Traverses a tree and invokes a callback for each *string-valued* key matching
+`nameTest`, handing it the key, that string, and the map that contains it.
 
 ```dart
 final config = {'ref@profiles@dev': 'value'};
@@ -223,6 +223,22 @@ traverseAndCreate(
 );
 // config == {'ref@profiles@dev': 'value', 'resolved': 'VALUE'}
 ```
+
+##### The value's shape is part of the match
+
+`nameTest` sees only the key, but the name is not the whole condition: the
+value has to be a `String` as well. The branches are mutually exclusive, so a
+matching key whose value is a map is recursed into instead of being reported,
+and one whose value is a list is taken by the list branch and likewise never
+reported. A matching key whose value is an `int`, `bool` or `null` is skipped
+outright.
+
+This is not an incidental restriction to be relaxed later — the callback's
+signature is `void Function(String key, String value, Map location)`, so there
+is no shape other than `String` it could be handed. A directive vocabulary
+designed around map- or list-valued keys is therefore one this function cannot
+deliver, however well the names match; express such a directive as a string
+value, the way `processTree` does.
 
 ##### The creator may edit the map it is given
 

@@ -19,7 +19,7 @@ value object implements rather than a class to instantiate.
 | `getObjectFromTree(tree, path)` | Resolve a dotted path (`a.b.c`) to a value, returning `null` for a key that is present and null, and throwing only for one that is absent. |
 | `getPathFromTree(tree, path, name)` | Resolve a dotted path to the map at that path, wrapping a non-map terminal (`null` included) under `name`. |
 | `traverseAndProcess(tree, test, processor)` | Visit every string in the tree — through nested maps, lists, and lists inside lists — processing matches. |
-| `traverseAndCreate(tree, nameTest, creator)` | Visit every node, handing each matching key's containing map to a creator that may insert into, remove from, or overwrite it. |
+| `traverseAndCreate(tree, nameTest, creator)` | Visit every node, handing each matching *string-valued* key's containing map to a creator that may insert into, remove from, or overwrite it. Only strings reach the creator: a map- or list-valued key is handled by the recursion instead, whatever its name. |
 | `processTree(tree, provider)` | Resolve `keyName@path@profileName` keys in place, injecting what the provider returns per the value directive (`"..."` spread, `"@"` replace-key, else replace). Every directive resolves before any is applied, so a failure leaves the tree untouched. |
 | `substituteEnvVars(tree, env)` | Replace `${VAR}` placeholders from an env map; an empty value counts as unset, so use `${VAR:}` to resolve to empty. |
 | `makeCleanJsonMap(map)` | Produce a JSON-safe `Map<String, Object?>`, keeping deliberate nulls and converting any `TomJsonSerializable` it meets. |
