@@ -528,6 +528,31 @@ final jsonString = jsonEncode(safeData);
 
 ## Dependencies
 
-This module has no internal Tom dependencies. It uses:
+| Dependency | Imported by | For |
+| ---------- | ----------- | --- |
+| `package:tom_basics` | `map_merge_and_process.dart` | `tomLog`, for the reports listed below |
+| `dart:convert` | `pretty_json.dart` | The `JsonEncoder` behind the formatters |
 
-- **dart:convert**: Built-in JSON encoding/decoding
+`json_serializable.dart` imports nothing — the interface is plain Dart. Note
+that `map_merge_and_process.dart` does *not* use `dart:convert`:
+`makeCleanJsonMap` prepares a map for `jsonEncode` but leaves the encoding to
+the caller.
+
+`tomLog` is a live global with a working default, so nothing has to be wired up
+before calling into this module. The package dependency is nonetheless real —
+the module does not compile without `tom_basics`.
+
+### What the module logs
+
+Two functions report through `tomLog`, and both report *only* there. Neither
+throws, and neither returns anything that indicates the report happened:
+
+| Function | Level | Reported when |
+| -------- | ----- | ------------- |
+| `mergeMapsOneSided` | `error` | A structured override lands on a base value of another shape and is refused: a map onto a non-map, a list onto a non-list, or either onto a differently-shaped element at an array index. The base value is kept and the merge continues. |
+| `getPathFromTree` | `warn` | The path resolves to a terminal non-map value, which is then wrapped as `{name: value}`. |
+
+The consequence is worth stating plainly: a caller that discards log output has
+no way to learn that a merge silently kept the base value instead of applying
+part of its override. If that matters, capture `tomLog` output around the call
+rather than inspecting the merged tree, which looks the same either way.
