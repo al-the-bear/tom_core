@@ -505,6 +505,17 @@ const TomMimeType(
 factory TomMimeType.parse(String type)
 ```
 
+Parses a `Content-Type` value: a media type optionally followed by parameters,
+with optional whitespace after each `;`, quoted values allowed, and parameter
+names matched case-insensitively. `charset` and `codecs` are read; **any other
+parameter is ignored** rather than rejected, because a real request carries
+parameters this class has no field for — a multipart boundary always does. A
+charset the header does not state stays `null` rather than defaulting to
+`UTF-8`, which makes the factory the exact inverse of `toHeaderValue`:
+`TomMimeType.parse(x.toHeaderValue()) == x` for every value. Throws
+`TomMimeTypeException` when the media type is not `primary/sub` with both parts
+present.
+
 ##### Static Properties
 
 | Property | Type | Description |

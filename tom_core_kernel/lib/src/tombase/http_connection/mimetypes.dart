@@ -178,21 +178,41 @@ class TomMimeType {
     this.codecs = const [],
   });
 
-  /// Parses a MIME type string into a [TomMimeType] instance.
+  /// Parses a `Content-Type` value into a [TomMimeType] instance.
   ///
-  /// Expects format: `primaryType/subType` (e.g., "application/json").
+  /// Accepts a media type optionally followed by parameters — the shape a real
+  /// header has: `application/json;charset=UTF-8`, `text/html; charset="utf-8"`,
+  /// `multipart/form-data; boundary=----abc`. Optional whitespace after each
+  /// `;` and a quoted parameter value are both allowed, and parameter names are
+  /// matched case-insensitively.
   ///
-  /// Throws [TomMimeTypeException] if the string is not a valid MIME type.
+  /// [charset] and [codecs] are read from the parameters; **any other parameter
+  /// is ignored** rather than rejected, because a request this is asked to read
+  /// carries parameters this class has no field for (a multipart boundary
+  /// always does).
+  ///
+  /// A charset the header does not state stays `null` rather than defaulting to
+  /// `UTF-8` — a header states what it states, and inventing an encoding here
+  /// would make a parsed `application/pdf` differ from [pdf]. This makes the
+  /// factory the exact inverse of [toHeaderValue]:
+  /// `TomMimeType.parse(x.toHeaderValue()) == x` for every value.
+  ///
+  /// Throws [TomMimeTypeException] if the media type is not `primary/sub` with
+  /// both parts present.
   ///
   /// ## Example
   ///
   /// ```dart
-  /// final mimeType = TomMimeType.parse('text/html');
+  /// final mimeType = TomMimeType.parse('text/html;charset=UTF-8');
   /// print(mimeType.primaryType); // "text"
   /// print(mimeType.subType);     // "html"
+  /// print(mimeType.charset);     // "UTF-8"
   /// ```
   factory TomMimeType.parse(final String type) {
-    final parts = type.split('/');
+    final separator = type.indexOf(';');
+    final mediaType = separator < 0 ? type : type.substring(0, separator);
+
+    final parts = mediaType.split('/');
     if (parts.length != 2) {
       throw TomMimeTypeException(
         "mime_type.parse.invalid_number_of_parts",
@@ -200,8 +220,8 @@ class TomMimeType {
       );
     }
 
-    final primaryType = parts[0];
-    final subType = parts[1];
+    final primaryType = parts[0].trim();
+    final subType = parts[1].trim();
 
     if (primaryType.isEmpty || subType.isEmpty) {
       throw TomMimeTypeException(
@@ -210,7 +230,46 @@ class TomMimeType {
       );
     }
 
-    return TomMimeType(primaryType, subType);
+    if (separator < 0) {
+      return TomMimeType(primaryType, subType, charset: null);
+    }
+
+    String? charset;
+    var codecs = const <String>[];
+    for (final parameter in type.substring(separator + 1).split(';')) {
+      final assignment = parameter.indexOf('=');
+      // A parameter with no value carries nothing this class stores; skipping
+      // it keeps a stray `;` from failing a header that is otherwise readable.
+      if (assignment < 0) continue;
+      final name = parameter.substring(0, assignment).trim().toLowerCase();
+      final value = _unquote(parameter.substring(assignment + 1).trim());
+      switch (name) {
+        case 'charset':
+          charset = value;
+        case 'codecs':
+          codecs = value
+              .split(',')
+              .map((codec) => codec.trim())
+              .where((codec) => codec.isNotEmpty)
+              .toList(growable: false);
+      }
+    }
+
+    return TomMimeType(
+      primaryType,
+      subType,
+      charset: charset,
+      codecs: codecs,
+    );
+  }
+
+  /// Strips one pair of surrounding double quotes, which a parameter value is
+  /// allowed to carry. The content is returned verbatim otherwise — a charset
+  /// is echoed as the sender spelled it.
+  static String _unquote(String value) {
+    if (value.length < 2) return value;
+    if (!value.startsWith('"') || !value.endsWith('"')) return value;
+    return value.substring(1, value.length - 1);
   }
 
   /// Whether this MIME type represents text-based content.

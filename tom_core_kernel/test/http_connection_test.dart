@@ -328,6 +328,103 @@ void main() {
           throwsA(isA<TomMimeTypeException>()),
         );
       });
+
+      test('reads back every constant this class renders', () {
+        // `parse` exists to read a `Content-Type` header, and the header this
+        // module writes is the one case it is guaranteed to meet. Asserted over
+        // every constant rather than a sample, because the ones that differ are
+        // precisely the ones with no charset — the default would otherwise
+        // invent a `UTF-8` the header never carried.
+        const constants = <TomMimeType>[
+          TomMimeType.none,
+          TomMimeType.plainText,
+          TomMimeType.ics,
+          TomMimeType.html,
+          TomMimeType.css,
+          TomMimeType.csv,
+          TomMimeType.javascript,
+          TomMimeType.json,
+          TomMimeType.xml,
+          TomMimeType.octetStream,
+          TomMimeType.pdf,
+          TomMimeType.rtf,
+          TomMimeType.pkcs8,
+          TomMimeType.zip,
+          TomMimeType.multipartFormData,
+          TomMimeType.multipartByteranges,
+          TomMimeType.urlEncoded,
+        ];
+
+        for (final constant in constants) {
+          final header = constant.toHeaderValue();
+          expect(
+            TomMimeType.parse(header),
+            equals(constant),
+            reason: 'round trip failed for $header',
+          );
+        }
+      });
+
+      test('reads back a value carrying codecs', () {
+        // Codecs are rendered as a second parameter and count towards equality,
+        // so a round trip that stopped at charset would still be a half one.
+        const value = TomMimeType(
+          'video',
+          'mp4',
+          charset: null,
+          codecs: ['avc1.42E01E', 'mp4a.40.2'],
+        );
+
+        expect(TomMimeType.parse(value.toHeaderValue()), equals(value));
+      });
+
+      test('reads the charset a header actually carries', () {
+        final parsed = TomMimeType.parse('text/html;charset=ISO-8859-1');
+
+        expect(parsed.charset, equals('ISO-8859-1'));
+        expect(parsed, equals(TomMimeType('text', 'html', charset: 'ISO-8859-1')));
+      });
+
+      test('leaves charset null when the header names none', () {
+        // A header states what it states: reporting UTF-8 for a `Content-Type`
+        // that never mentioned a charset is an invention, and it is the reason
+        // a parsed `application/pdf` used to mismatch the constant.
+        expect(TomMimeType.parse('application/pdf').charset, isNull);
+      });
+
+      test('tolerates the spacing and quoting real headers use', () {
+        // `Content-Type: text/html; charset="utf-8"` is ordinary — RFC 9110
+        // allows optional whitespace after the separator and a quoted parameter
+        // value. Parameter *names* are case-insensitive; the value is kept
+        // verbatim, since that is what the sender said.
+        final parsed = TomMimeType.parse('text/html; CharSet="utf-8"');
+
+        expect(parsed.primaryType, equals('text'));
+        expect(parsed.subType, equals('html'));
+        expect(parsed.charset, equals('utf-8'));
+      });
+
+      test('ignores parameters it has no field for', () {
+        // A multipart request always carries a boundary. Rejecting or
+        // mis-storing it would make `parse` unusable on exactly the header it
+        // exists to read.
+        final parsed = TomMimeType.parse(
+          'multipart/form-data; boundary=----WebKitFormBoundary7MA4YWx',
+        );
+
+        expect(parsed.isEqualType(TomMimeType.multipartFormData), isTrue);
+        expect(parsed.charset, isNull);
+      });
+
+      test('still rejects a media type with multiple slashes and parameters',
+          () {
+        // The parameter section must not become a way to smuggle a malformed
+        // media type past the check.
+        expect(
+          () => TomMimeType.parse('application/json/extra;charset=UTF-8'),
+          throwsA(isA<TomMimeTypeException>()),
+        );
+      });
     });
 
     group('isText', () {

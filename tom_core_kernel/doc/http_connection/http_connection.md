@@ -249,6 +249,30 @@ TomMimeType.urlEncoded  // application/x-www-form-urlencoded
 TomMimeType.multipartFormData  // multipart/form-data
 ```
 
+#### Reading a Content-Type Header
+
+`TomMimeType.parse` reads the shape a real header has — a media type followed by
+whatever parameters the sender chose to append:
+
+```dart
+TomMimeType.parse('application/json;charset=UTF-8');
+TomMimeType.parse('text/html; charset="utf-8"');
+TomMimeType.parse('multipart/form-data; boundary=----abc');
+```
+
+`charset` and `codecs` are read into the value; every other parameter is
+ignored rather than rejected, because a multipart request always carries a
+boundary this class has no field for. A charset the header does not state stays
+`null` — a header states what it states — which makes `parse` the exact inverse
+of `toHeaderValue`:
+
+```dart
+TomMimeType.parse(TomMimeType.pdf.toHeaderValue()) == TomMimeType.pdf; // true
+```
+
+A media type that is not `primary/sub` with both parts present throws
+`TomMimeTypeException`.
+
 #### Comparing Two Media Types
 
 There are two comparisons, and which one to use depends on where the value came
