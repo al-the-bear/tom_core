@@ -95,10 +95,15 @@ class. For the complete surface with full signatures see
 
 | Method | Description |
 |--------|-------------|
-| `sendToCreator()` | Send a message to the creator (fire-and-forget) |
-| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.noResult` if nothing there handled it |
-| `canSendToCreator()` | Check if backchannel is available |
-| `isMainIsolate` | Whether running in the main isolate (read-only) |
+| `sendToCreator()` | Send a message to the creator (fire-and-forget); throws in the creator |
+| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.noResult` if nothing there handled it; throws in the creator |
+| `canSendToCreator()` | Whether a backchannel is available — answers on either side rather than throwing |
+
+#### Static Properties
+
+| Property | Description |
+|----------|-------------|
+| `isMainIsolate` | Whether the current code runs in the main isolate; `false` inside a worker isolate. Read-only — the flag is load-bearing, and tests reach the other side with `simulateWorkerIsolate` / `resetIsMainIsolate` |
 
 ### TomWorkerContext
 
