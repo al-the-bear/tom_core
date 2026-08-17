@@ -4685,14 +4685,6 @@ BridgedClass _createTomServerCallLoadBridge() {
       'byteBody': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomServerCallLoad>(target, 'TomServerCallLoad').byteBody,
       'bodyFields': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomServerCallLoad>(target, 'TomServerCallLoad').bodyFields,
     },
-    setters: {
-      'contentLength': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_11.TomServerCallLoad>(target, 'TomServerCallLoad').contentLength = D4.extractBridgedArgOrNull<int>(value, 'contentLength'),
-      'stringBody': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_11.TomServerCallLoad>(target, 'TomServerCallLoad').stringBody = D4.extractBridgedArgOrNull<String>(value, 'stringBody'),
-      'byteBody': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_11.TomServerCallLoad>(target, 'TomServerCallLoad').byteBody = D4.extractBridgedArgOrNull<Uint8List>(value, 'byteBody'),
-    },
     constructorSignatures: {
       '': 'TomServerCallLoad({String? stringBody, Uint8List? byteBody, Map<String, String>? bodyFields, String? contentType, Encoding? encoding, int? contentLength})',
     },
@@ -4703,12 +4695,6 @@ BridgedClass _createTomServerCallLoadBridge() {
       'stringBody': 'String? get stringBody',
       'byteBody': 'Uint8List? get byteBody',
       'bodyFields': 'Map<String, String>? get bodyFields',
-    },
-    setterSignatures: {
-      'contentLength': 'set contentLength(dynamic value)',
-      'stringBody': 'set stringBody(dynamic value)',
-      'byteBody': 'set byteBody(dynamic value)',
-      'bodyFields': 'set bodyFields(dynamic value)',
     },
   );
 }

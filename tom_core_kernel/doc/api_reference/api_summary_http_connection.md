@@ -746,6 +746,11 @@ TomServerCallSpecs(
 
 Payload data for an HTTP request. Supports three mutually exclusive body kinds:
 `stringBody` (text), `byteBody` (binary), or `bodyFields` (URL-encoded form).
+Supplying more than one throws `TomServerConnectionException`.
+
+Every field is final, so that check describes the object for its whole life: a
+load that exists carries exactly one body, and consumers such as
+`TomServerCall.applyLoadValues` need not re-check it.
 
 ##### Constructors
 
@@ -762,6 +767,8 @@ TomServerCallLoad({
 
 ##### Properties
 
+All properties are final.
+
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `contentType` | `String?` | The `Content-Type` header value. |
@@ -769,7 +776,7 @@ TomServerCallLoad({
 | `contentLength` | `int?` | `Content-Length` header value. |
 | `stringBody` | `String?` | String body content (mutually exclusive with `byteBody` / `bodyFields`). |
 | `byteBody` | `Uint8List?` | Binary body content (mutually exclusive with `stringBody` / `bodyFields`). |
-| `bodyFields` | `Map<String, String>?` | Form-field body (mutually exclusive with `stringBody` / `byteBody`). |
+| `bodyFields` | `Map<String, String>?` | Form-field body (mutually exclusive with `stringBody` / `byteBody`). A copy of the map the constructor was given; `null` stays `null` rather than becoming an empty form. |
 
 #### TomServerCallError
 
@@ -860,9 +867,9 @@ TomServerCall(Client client, TomServerCallSpecs specs)
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `applySpecValues` | `void applySpecValues()` | Applies the specification values to the request. |
-| `applyLoadValues` | `void applyLoadValues(TomServerCallLoad load)` | Applies the payload values to the request. |
+| `applyLoadValues` | `void applyLoadValues(TomServerCallLoad load)` | Applies the payload values to the request. Writes whichever body `load` carries; because a load is immutable and validated on construction, it carries at most one and nothing is re-checked here. |
 | `reset` | `void reset({String? stringBody, Uint8List? byteBody, Map<String, String>? bodyFields})` | Resets the call for reuse, optionally with new body content. |
-| `send` | `TomServerCall send(TomServerCallLoad load)` | Sends the request with `load`; may be called once. Throws `TomServerConnectionException` if called more than once, or if `load` sets more than one body. Both rejections happen before anything is applied, so a refused `send` leaves the request describing what was actually sent. |
+| `send` | `TomServerCall send(TomServerCallLoad load)` | Sends the request with `load`; may be called once. Throws `TomServerConnectionException` if called more than once. The rejection happens before anything is applied, so a refused `send` leaves the request describing what was actually sent. |
 | `read` | `Future<Uint8List> read()` | Reads the response body as bytes (once, after `send`). Throws `TomRequestAbortedException` if aborted — whether the abort lands while awaiting the response or mid-body — and `TomRequestTimeoutException` if `specs.timeout` elapses first. |
 | `readAsString` | `Future<String> readAsString(Encoding ec)` | Reads the response body as a string with encoding `ec`. Delegates to `read`, so it is the same single read and refuses a second one identically. |
 | `getResponseHeaders` | `Future<Map<String, String>> getResponseHeaders()` | Gets the response headers after sending. |

@@ -189,7 +189,10 @@ class TomServerCallSpecs {
 /// - [byteBody] - Binary content (files, images, etc.)
 /// - [bodyFields] - Form fields for URL-encoded requests
 ///
-/// Only one type of body can be set at a time.
+/// Only one type of body can be set at a time, and a load never changes after
+/// it is built: every field is final, so the constructor's check is a promise
+/// about the whole object rather than about one moment in its life. A load that
+/// exists describes exactly one request body — no consumer has to re-check it.
 ///
 /// ## Example
 ///
@@ -214,30 +217,62 @@ class TomServerCallLoad {
   final Encoding? encoding;
 
   /// Content-Length header value.
-  int? contentLength;
+  final int? contentLength;
 
   /// String body content (mutually exclusive with [byteBody] and [bodyFields]).
-  String? stringBody;
+  final String? stringBody;
 
   /// Binary body content (mutually exclusive with [stringBody] and [bodyFields]).
-  Uint8List? byteBody;
+  final Uint8List? byteBody;
 
   /// Form field body (mutually exclusive with [stringBody] and [byteBody]).
-  Map<String, String>? bodyFields;
+  ///
+  /// A copy of what the constructor was given, so later edits to the caller's
+  /// map cannot add a body to a load that was built without one.
+  final Map<String, String>? bodyFields;
 
   /// Creates a new request payload.
   ///
-  /// Only one of [stringBody], [byteBody], or [bodyFields] may be set.
-  /// Setting multiple will throw [TomServerConnectionException].
+  /// Only one of [stringBody], [byteBody], or [bodyFields] may be set; supplying
+  /// more than one throws [TomServerConnectionException]. Because the fields are
+  /// final, passing that check is the only way a load can come into existence.
   TomServerCallLoad({
     this.stringBody,
     this.byteBody,
-    this.bodyFields,
+    Map<String, String>? bodyFields,
     this.contentType,
     this.encoding,
     this.contentLength,
-  }) {
-    TomServerCall._bodyTest(stringBody, byteBody, bodyFields);
+    // Null must survive the copy: an empty map is a body, and turning "no form
+    // fields" into "an empty form" would both change the body count and make
+    // applyLoadValues write form fields nobody asked for.
+  }) : bodyFields = bodyFields == null ? null : {...bodyFields} {
+    _bodyTest(stringBody, byteBody, this.bodyFields);
+  }
+
+  /// Validates that at most one type of body is provided.
+  static void _bodyTest(
+    String? string,
+    Uint8List? byte,
+    Map<String, String>? fields,
+  ) {
+    if (_bodyCount(string, byte, fields) > 1) {
+      throw TomServerConnectionException(
+        "server.connect.only_one_type_of_body_possible",
+        "You may set only one of stringBody, byteBody or bodyFields",
+      );
+    }
+  }
+
+  /// Counts how many body types are set.
+  static int _bodyCount(
+    String? string,
+    Uint8List? byte,
+    Map<String, String>? fields,
+  ) {
+    return (byte == null ? 0 : 1) +
+        (string == null ? 0 : 1) +
+        (fields == null ? 0 : 1);
   }
 }
 
@@ -444,6 +479,12 @@ class TomServerCall {
   }
 
   /// Applies payload values to the request.
+  ///
+  /// Writes whichever body [load] carries. It carries at most one — the type
+  /// checks that when it is built and cannot be changed afterwards — so nothing
+  /// is re-checked here. Were two ever to arrive, the fields would be applied in
+  /// order and `package:http` would reject the second against the content type
+  /// the first had already set, leaving the request half-written.
   void applyLoadValues(TomServerCallLoad load) {
     if (load.encoding != null) abortableRequest.encoding = load.encoding!;
     if (load.contentLength != null) {
@@ -452,32 +493,6 @@ class TomServerCall {
     if (load.stringBody != null) abortableRequest.body = load.stringBody!;
     if (load.byteBody != null) abortableRequest.bodyBytes = load.byteBody!;
     if (load.bodyFields != null) abortableRequest.bodyFields = load.bodyFields!;
-  }
-
-  /// Validates that only one type of body is provided.
-  static bool _bodyTest(
-    String? string,
-    Uint8List? byte,
-    Map<String, String>? fields,
-  ) {
-    if (_bodyCount(string, byte, fields) > 1) {
-      throw TomServerConnectionException(
-        "server.connect.only_one_type_of_body_possible",
-        "You may set only one of stringBody, byteBody or bodyFields",
-      );
-    }
-    return true;
-  }
-
-  /// Counts how many body types are set.
-  static int _bodyCount(
-    String? string,
-    Uint8List? byte,
-    Map<String, String>? fields,
-  ) {
-    return (byte == null ? 0 : 1) +
-        (string == null ? 0 : 1) +
-        (fields == null ? 0 : 1);
   }
 
   /// Completer used to trigger request abort.
@@ -530,15 +545,16 @@ class TomServerCall {
   /// Can only be called once per call instance (use [reset] to retry).
   /// Returns this instance for method chaining.
   ///
-  /// Both rejections — an already-sent call and a [load] carrying more than one
-  /// body — happen before anything is applied, so a refused `send` leaves the
-  /// request describing what was actually sent. A rejection that still mutated
-  /// would leave the object describing a request that never happened, which a
-  /// caller inspecting it after the throw, or a later [reset], would read back
-  /// as real.
+  /// The rejection of an already-sent call happens before anything is applied,
+  /// so a refused `send` leaves the request describing what was actually sent. A
+  /// rejection that still mutated would leave the object describing a request
+  /// that never happened, which a caller inspecting it after the throw, or a
+  /// later [reset], would read back as real.
   ///
-  /// Throws [TomServerConnectionException] if called more than once, or if
-  /// [load] sets more than one body.
+  /// [load] needs no check here: it is immutable and validated its single body
+  /// on construction, so the value that arrives is the value that was built.
+  ///
+  /// Throws [TomServerConnectionException] if called more than once.
   TomServerCall send(TomServerCallLoad load) {
     if (response != null) {
       throw TomServerConnectionException(
@@ -546,10 +562,6 @@ class TomServerCall {
         "There is already a response. You may only call send() once. Reset the ServerCall first if you want to repeat.",
       );
     }
-    // Re-checked here even though the load validates itself on construction:
-    // its body fields are mutable, so the value that arrives need not be the
-    // value that was built.
-    _bodyTest(load.stringBody, load.byteBody, load.bodyFields);
     applyLoadValues(load);
     final tempResponse = client.send(abortableRequest);
     response = tempResponse;

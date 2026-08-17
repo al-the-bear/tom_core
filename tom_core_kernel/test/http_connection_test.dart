@@ -1761,6 +1761,77 @@ void main() {
           throwsA(isA<TomServerConnectionException>()),
         );
       });
+
+      test('the caller keeps no handle on the form fields it passed in', () {
+        // Without the copy the load would share the caller's map, and a body
+        // could be added to — or emptied out of — a validated load through a
+        // reference the load never sees.
+        final fields = {'key': 'value'};
+        final load = TomServerCallLoad(bodyFields: fields);
+
+        fields['smuggled'] = 'in';
+
+        expect(load.bodyFields, equals({'key': 'value'}));
+      });
+
+      test('an absent form body stays absent rather than becoming an empty one',
+          () {
+        // An empty map is a body: it counts towards the single-body rule and
+        // applyLoadValues writes it to the request. Copying null into `{}`
+        // would quietly give every load a form body.
+        final load = TomServerCallLoad(stringBody: 'text');
+
+        expect(load.bodyFields, isNull);
+      });
+    });
+
+    group('immutability', () {
+      // The single-body rule is checked once, in the constructor. That check is
+      // only worth anything if it describes the object for as long as the object
+      // exists — a settable body field would let a caller build a valid load and
+      // hand a different, invalid one to applyLoadValues, which applies fields in
+      // order and would half-write the request before package:http rejected the
+      // second body with a message naming none of this.
+      //
+      // The guarantee is the compiler's, so nothing at runtime can observe it
+      // being lost. It is asserted against the declarations instead: this fails
+      // the moment a `final` is dropped, which is the only way to reintroduce the
+      // defect.
+      test('every field of TomServerCallLoad is final', () {
+        const path = 'lib/src/tombase/http_connection/server_connection.dart';
+        final file = File(path);
+        expect(
+          file.existsSync(),
+          isTrue,
+          reason: 'Expected to find $path relative to ${Directory.current.path}',
+        );
+        final source = file.readAsStringSync();
+
+        final classStart = source.indexOf('class TomServerCallLoad {');
+        expect(classStart, greaterThan(-1),
+            reason: 'TomServerCallLoad is no longer declared in $path');
+        final constructorStart =
+            source.indexOf('TomServerCallLoad({', classStart);
+        expect(constructorStart, greaterThan(classStart),
+            reason: 'TomServerCallLoad has no generative constructor');
+        final fieldSection =
+            source.substring(classStart, constructorStart);
+
+        // Field declarations only: `<type> <name>;` at class-body indentation.
+        final declarations = RegExp(r'^  ((?:final )?)([\w<>,? ]+?) (\w+);$',
+                multiLine: true)
+            .allMatches(fieldSection);
+        expect(declarations, isNotEmpty,
+            reason: 'No field declarations matched — the pattern has drifted');
+
+        final mutable = [
+          for (final m in declarations)
+            if (m.group(1)!.isEmpty) m.group(3)!,
+        ];
+        expect(mutable, isEmpty,
+            reason: 'These fields are settable after construction, so the '
+                'constructor check no longer holds for the object: $mutable');
+      });
     });
   });
 
@@ -2242,9 +2313,8 @@ void main() {
       expect(load.contentLength, equals(4));
     });
 
-    test('should allow setting content length after creation', () {
-      final load = TomServerCallLoad(stringBody: 'test');
-      load.contentLength = 100;
+    test('should carry a content length that differs from the body length', () {
+      final load = TomServerCallLoad(stringBody: 'test', contentLength: 100);
 
       expect(load.contentLength, equals(100));
     });
@@ -2546,23 +2616,6 @@ void main() {
         expect(client.sendCount, equals(1));
       });
 
-      test('a load with two bodies is refused before it touches the request', () {
-        // The load validates itself on construction, but its body fields are
-        // mutable, so send() re-checks — and must do so before applying
-        // anything, or a half-applied load outlives the rejection.
-        final client = _MockClient((_) async => _streamed('hello'));
-        final call = TomServerCall(client, specs());
-        final load = TomServerCallLoad(stringBody: 'text')
-          ..bodyFields = {'field': 'value'};
-
-        expect(
-          () => call.send(load),
-          throwsA(isA<TomServerConnectionException>()),
-        );
-
-        expect(call.abortableRequest.body, isEmpty);
-        expect(client.sendCount, equals(0));
-      });
     });
 
     group('read / readAsString', () {
