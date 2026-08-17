@@ -366,7 +366,7 @@ TomApiEndpoint({
 | `requestEncoding` | `Encoding?` | Encoding for request bodies (overrides the API-level setting). |
 | `responseEncoding` | `Encoding?` | Encoding for response bodies (overrides the API-level setting). |
 | `statusCodeResponseTypes` | `Map<int, Type>?` | Maps HTTP status codes to response types for error handling. |
-| `urlParameterMapping` | `Map<String, String>` | Binds URL parameters — path captures *and* query-string parameters — to request-DTO field names. Keys are the name as it appears on the URL, values the field it is injected under. **The key decides which kind an entry is:** a key that appears as a `{capture}` in the endpoint's `uri` substitutes into the path; every other key is emitted as a query parameter. The two bind asymmetrically on purpose — a path capture that is *not* listed still binds under its own name, so an empty map suffices for an endpoint whose captures already match its field names, whereas a query parameter binds *only* when named here. There is no identity fallback for query parameters: a query string is whatever a caller chose to append, so an identity fallback would let any caller write any field of the request DTO. |
+| `urlParameterMapping` | `Map<String, String>` | Binds URL parameters — path captures *and* query-string parameters — to request-DTO field names. Keys are the name as it appears on the URL, values the field it is injected under. **The key decides which kind an entry is:** a key that appears as a `{capture}` in the endpoint's `uri` substitutes into the path; every other key is emitted as a query parameter, unless the path already carried its field — a path capture wins over a query parameter mapped to the same field, so two keys pointing at one field put the value in the path only. The two bind asymmetrically on purpose — a path capture that is *not* listed still binds under its own name, so an empty map suffices for an endpoint whose captures already match its field names, whereas a query parameter binds *only* when named here. There is no identity fallback for query parameters: a query string is whatever a caller chose to append, so an identity fallback would let any caller write any field of the request DTO. |
 | `access` | `TomAccessControl?` | The contract-side access policy the endpoint is served under (`null` = fall back to the server default or a handler annotation). |
 | `api` | `TomApi` | The parent API; throws `TomEndpointException` if the endpoint has not been added to an API. |
 
@@ -398,7 +398,8 @@ keyed by **request-DTO field name**, the right-hand side of
   `apis.endpoint.missing_url_parameter` rather than producing a URL with a hole
   in it;
 - every *other* `urlParameterMapping` entry becomes a query parameter, omitted
-  when its value is `null`.
+  when its value is `null` — and omitted too when the path already carried its
+  field, since a capture wins over a query parameter for the same field.
 
 Path segments already carried by `baseUri` are kept, so a base pointing at an
 API-gateway prefix still resolves correctly.

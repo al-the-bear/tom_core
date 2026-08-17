@@ -1151,6 +1151,26 @@ void main() {
         expect(resolved.hasQuery, isFalse);
       });
 
+      test('binds a field reached by two URL names only as the capture', () {
+        // Capture-wins is a rule about the *field*, not about the URL name that
+        // happens to spell it: the server folds query parameters into the
+        // request DTO first and lets the path capture overwrite the same field,
+        // so a second URL name for an already-captured field would put the same
+        // value on the wire twice and leak the field mapping into the query.
+        final endpoint = endpointIn(
+          itemsApi(mapping: const {'id': 'itemId', 'item_id': 'itemId'}),
+          'byId',
+        );
+
+        final resolved = endpoint.resolveUri(
+          Uri.parse('https://api.example.com'),
+          parameters: {'itemId': 42},
+        );
+
+        expect(resolved.path, equals('/api/items/42'));
+        expect(resolved.hasQuery, isFalse);
+      });
+
       test('resolves the preferences contract exactly as the server mounts '
           'it', () {
         // The contract this whole resolver exists to serve, asserted against the

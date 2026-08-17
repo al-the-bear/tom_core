@@ -350,7 +350,13 @@ class TomApiEndpoint<ReturnType, RequestType> {
   ///   identity fallback would let any caller write any field of the request DTO.
   ///   Naming them makes query binding opt-in per endpoint and per parameter.
   ///
-  /// A path capture wins over a query parameter mapped to the same field.
+  /// A path capture wins over a query parameter mapped to the same field — the
+  /// route is the stronger statement. The rule is about the **field**, not the
+  /// URL name that spells it: when two keys map to one field and the first is a
+  /// capture, the second is not also emitted as a query parameter. The server
+  /// gets this structurally (it folds query values into the request DTO first
+  /// and lets the path overwrite them under the same field name);
+  /// [TomApiEndpoint.resolveUri] applies the same rule when building the URL.
   final Map<String, String> urlParameterMapping;
 
   /// The access policy this endpoint is served under, **declared here on the
@@ -415,10 +421,13 @@ class TomApiEndpoint<ReturnType, RequestType> {
   ///   `parameters[urlParameterMapping[name] ?? name]`, so an unmapped capture
   ///   binds by its own name. A capture with no value is an error, not an empty
   ///   segment: the URL would address a different route.
-  /// * **Query parameters** are the mapping entries whose URL name is *not* a
-  ///   path capture. Each is appended when [parameters] carries a non-`null`
-  ///   value for its field, and omitted otherwise — an optional query parameter
-  ///   is ordinary, whereas a missing path capture is a broken address.
+  /// * **Query parameters** are the mapping entries whose field the path did
+  ///   *not* already carry. Each is appended when [parameters] holds a
+  ///   non-`null` value for its field, and omitted otherwise — an optional query
+  ///   parameter is ordinary, whereas a missing path capture is a broken
+  ///   address. Skipping by field rather than by URL name is what keeps
+  ///   capture-wins true when two keys map to one field: the value goes in the
+  ///   path once instead of the path and the query both.
   ///
   /// Values are converted with `toString()` and escaped per path segment, so a
   /// key containing `/` or `?` addresses one segment rather than smuggling a
@@ -436,7 +445,10 @@ class TomApiEndpoint<ReturnType, RequestType> {
   /// a path capture has no answering parameter.
   Uri resolveUri(Uri baseUri, {Map<String, Object?> parameters = const {}}) {
     final template = '${api.uri ?? ''}${uri ?? ''}';
-    final captureNames = <String>{};
+    // The *fields* the path already carries, not the URL names that spelled
+    // them: capture-wins is a rule about the value, so a second URL name for an
+    // already-captured field must not re-emit it as a query parameter.
+    final capturedFields = <String>{};
     final segments = <String>[
       ...baseUri.pathSegments.where((segment) => segment.isNotEmpty),
     ];
@@ -447,8 +459,8 @@ class TomApiEndpoint<ReturnType, RequestType> {
         segments.add(segment);
         continue;
       }
-      captureNames.add(capture);
       final field = urlParameterMapping[capture] ?? capture;
+      capturedFields.add(field);
       final value = parameters[field];
       if (value == null) {
         throw TomEndpointException(
@@ -463,7 +475,7 @@ class TomApiEndpoint<ReturnType, RequestType> {
 
     final query = <String, String>{};
     urlParameterMapping.forEach((urlName, field) {
-      if (captureNames.contains(urlName)) return;
+      if (capturedFields.contains(field)) return;
       final value = parameters[field];
       if (value != null) query[urlName] = '$value';
     });

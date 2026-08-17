@@ -155,7 +155,8 @@ TomApiEndpoint<OrderResponse, CreateOrderRequest>(
 Keys are the name as it appears on the URL; values are the DTO field the value
 travels in. **The key decides which half an entry belongs to:** a key that
 appears as a `{capture}` in `uri` fills that path segment, and every other key
-is appended to the query string.
+is appended to the query string — unless the path already carried its field
+(see capture-wins below).
 
 ```dart
 TomApiEndpoint<UserResponse, void>(
@@ -194,6 +195,13 @@ The two kinds bind asymmetrically, deliberately:
   fallback: a query string is whatever a caller chose to append, so an identity
   fallback would let any caller write any field of the request DTO. Naming them
   makes query binding opt-in per endpoint and per parameter.
+- **A path capture wins over a query parameter mapped to the same field.** The
+  rule is about the *field*, not the URL name spelling it: with
+  `{'id': 'itemId', 'item_id': 'itemId'}` on `uri: '/{id}'`, `{'itemId': 42}`
+  resolves to `…/items/42` and no `?item_id=42` follows it. The server reads a
+  request the same way round — it folds query values into the request DTO first
+  and lets the path overwrite them under the same field — so the value is
+  stated once, by the route, in both directions.
 
 A capture with no answering parameter raises `TomEndpointException`
 (`apis.endpoint.missing_url_parameter`) rather than leaving an empty segment —
