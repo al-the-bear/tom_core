@@ -634,37 +634,35 @@ Object? _readSegment(
 /// Encapsulates a deferred modification to be applied to a tree structure.
 /// Modifications are collected during traversal and applied afterward to
 /// avoid modifying the tree while iterating.
+///
+/// Every field is `final` and non-nullable, so an instance that exists is
+/// always applicable. The class used to carry nullable fields that [apply]
+/// cleared on its way out, which created a half-applied state that could only
+/// be described by a defensive throw reading "Modification already applied or
+/// tree was null" — a message that could not say which of the two had
+/// happened, guarding a state the module had no path to (bug §85). A
+/// non-directive key is now represented by returning `null` from [_modifyTree]
+/// rather than by a mutable singleton standing in for "nothing to do".
 class _TreeModification {
-  /// Creates an empty (no-op) modification.
-  _TreeModification();
-
   /// Creates a modification with the specified parameters.
   ///
   /// - [value]: The directive value ("...", "@", or other)
   /// - [tree]: The parent map where modification will be applied
   /// - [keyName]: The key to modify or insert
   /// - [insertTree]: The data to insert
-  _TreeModification.of(this.value, this.tree, this.keyName, this.insertTree) {
-    empty = false;
-  }
-
-  /// Singleton empty modification for no-op cases.
-  static _TreeModification emptyModification = _TreeModification();
-
-  /// Whether this modification is a no-op.
-  bool empty = true;
+  const _TreeModification(this.value, this.tree, this.keyName, this.insertTree);
 
   /// The directive value determining how to apply the modification.
-  String? value;
+  final String value;
 
   /// The parent map to modify.
-  Map<String, dynamic>? tree;
+  final Map<String, dynamic> tree;
 
   /// The key name for the modification.
-  String? keyName;
+  final String keyName;
 
   /// The data to insert into the tree.
-  Map<String, dynamic>? insertTree;
+  final Map<String, dynamic> insertTree;
 
   /// Applies this modification to the tree.
   ///
@@ -676,27 +674,17 @@ class _TreeModification {
   /// The `"@"` directive assumes [insertTree] contains [keyName]; that is
   /// checked in [_modifyTree], before any modification is applied.
   void apply() {
-    if (empty) return;
-    if (tree == null) {
-      throw Exception(
-        "Modification already applied or tree was null for key $keyName value $value",
-      );
-    }
     if ("..." == value) {
-      insertTree!.forEach((key, val) {
-        if (!tree!.containsKey(key)) tree![key] = val;
+      insertTree.forEach((key, val) {
+        if (!tree.containsKey(key)) tree[key] = val;
       });
     } else if ("@" == value) {
       // Not null-asserted: a key present with a null value is a value here, as
       // everywhere else in this file, and assigning it is the honest result.
-      tree![keyName!] = insertTree![keyName!];
+      tree[keyName] = insertTree[keyName];
     } else {
-      tree![keyName!] = insertTree!;
+      tree[keyName] = insertTree;
     }
-    value = null;
-    tree = null;
-    insertTree = null;
-    keyName = null;
   }
 }
 
@@ -738,7 +726,7 @@ String _describeProviderKeys(Map<String, dynamic> insertTree) =>
 /// not a well-formed one, if the provider itself fails, or if the `"@"`
 /// directive is used and the provider's result has no entry named `keyName` —
 /// the value that directive exists to take.
-_TreeModification _modifyTree(
+_TreeModification? _modifyTree(
   String name,
   String value,
   Map<String, dynamic> tree,
@@ -759,7 +747,7 @@ _TreeModification _modifyTree(
         "not meant as a directive.",
       );
     }
-    return _TreeModification.emptyModification;
+    return null;
   }
 
   // All three groups are required parts of the pattern, so a match guarantees
@@ -793,7 +781,7 @@ _TreeModification _modifyTree(
     );
   }
 
-  return _TreeModification.of(value, tree, keyName, insertTree);
+  return _TreeModification(value, tree, keyName, insertTree);
 }
 
 /// Processes a tree by resolving profile-based references.
@@ -846,15 +834,25 @@ void processTree(
   Map<String, dynamic> Function(String keyName, String path, String profileName)
   provider,
 ) {
-  var modifications = <_TreeModification>[];
+  final List<_TreeModification> modifications = <_TreeModification>[];
   traverseAndCreate(tree, (String s) => s.contains("@"), (
     String name,
     String value,
     Map<String, dynamic> tree,
   ) {
-    modifications.add(_modifyTree(name, value, tree, provider));
+    // A key that is not a directive yields null and contributes nothing; only
+    // real modifications are collected, so the apply loop has no no-op case.
+    final _TreeModification? modification = _modifyTree(
+      name,
+      value,
+      tree,
+      provider,
+    );
+    if (modification != null) {
+      modifications.add(modification);
+    }
   });
-  for (var m in modifications) {
+  for (final _TreeModification m in modifications) {
     m.apply();
   }
 }

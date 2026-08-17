@@ -1552,6 +1552,40 @@ void main() {
       expect(result, equals('deep'));
     });
 
+    group('the walk always terminates inside itself (§85)', () {
+      // The function used to end with a trailing `throw Exception("...
+      // IllegalState detected. This is an anomaly.")` guarding a fall-through
+      // that cannot happen. These pin the two shapes where the interior loop
+      // body never runs at all, which is the region that trailing throw
+      // nominally covered: every path still leaves through a return or a
+      // throw that names the segment and its position.
+
+      test('a single-segment path skips the interior loop entirely', () {
+        // pathParts.length - 1 == 0, so the loop body never executes and the
+        // terminal read after it is the only thing that runs.
+        final tree = <String, dynamic>{'only': 'value'};
+
+        expect(getObjectFromTree(tree, 'only'), equals('value'));
+      });
+
+      test('an empty path throws a segment-naming exception, not an anomaly', () {
+        // ''.split('.') is [''] — one segment, not zero — so the loop is
+        // skipped and the terminal read reports the missing key by position.
+        final tree = <String, dynamic>{'a': 1};
+
+        expect(
+          () => getObjectFromTree(tree, ''),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(contains('position 0'), isNot(contains('anomaly'))),
+            ),
+          ),
+        );
+      });
+    });
+
     group('present-but-null values (§79)', () {
       // A deliberate null is a value, not an absence — the position
       // makeCleanJsonMap already takes. The path reader used to collapse the
