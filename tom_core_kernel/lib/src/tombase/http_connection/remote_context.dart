@@ -110,12 +110,18 @@ class TomClientRemoteContext {
   static TomClientRemoteContext? get current =>
       getFromCurrentZone<TomClientRemoteContext>() ?? _processContext;
 
-  /// The URI for authentication requests.
+  /// The URI for authentication requests, and for nothing else.
   ///
-  /// Defaults to [baseUri] if not specified separately.
+  /// Defaults to [baseUri] if not specified separately, which is why a call
+  /// that addresses this one by mistake still works in a single-host
+  /// deployment: only when the two are configured apart does the misrouting
+  /// become visible. An endpoint reaches for this URI only if it is served by
+  /// the authentication server; everything else uses [baseUri].
   late Uri authenticationUri;
 
   /// The base URI for all API requests.
+  ///
+  /// The default base for [TomServerEndpoint.createApiServerEndpoint].
   Uri baseUri;
 
   /// Creates a new remote context.

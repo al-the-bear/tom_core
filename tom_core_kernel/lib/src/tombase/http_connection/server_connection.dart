@@ -1145,7 +1145,12 @@ class TomServerEndpoint<T extends Object, R extends Object> {
   /// - [apiEndpoint]: The endpoint definition from a [TomApi]
   /// - [specs]: Optional custom call specs
   /// - [channel]: Optional custom server channel
-  /// - [baseUri]: Optional base URI override
+  /// - [baseUri]: Where to address the call, defaulting to
+  ///   [TomClientRemoteContext.baseUri] — the API server. An authentication
+  ///   endpoint passes [TomClientRemoteContext.authenticationUri] here
+  ///   explicitly; that URI addresses the authentication server and nothing
+  ///   else, and the two differ only in a split deployment, so a call that
+  ///   named the wrong one would look correct on a single host.
   static TomServerEndpoint<requestType, responseType> createApiServerEndpoint<
     requestType extends Object,
     responseType extends Object
@@ -1161,7 +1166,7 @@ class TomServerEndpoint<T extends Object, R extends Object> {
         "The provided endpoint does not match the required type parameters for response and request types.",
       );
     }
-    Uri callUri = baseUri ?? TomClientRemoteContext.current!.authenticationUri;
+    Uri callUri = baseUri ?? TomClientRemoteContext.current!.baseUri;
     TomServerChannel callChannel =
         channel ??
         TomServerChannel(callUri.host, callUri.hasPort ? callUri.port : 80);

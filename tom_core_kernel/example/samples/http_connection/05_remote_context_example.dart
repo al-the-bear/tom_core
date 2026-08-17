@@ -8,6 +8,7 @@
 /// - Configuring separate authentication server
 /// - Accessing the current context
 /// - Error handling for double initialization
+/// - Which of the two URIs a built endpoint addresses
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -238,6 +239,58 @@ class RemoteContextExample {
     assert(intCtx.baseUri.host == 'int-api.example.com', 'Int should use int-api');
     assert(prodCtx.authenticationUri.host == 'sso.example.com', 'Prod auth should use SSO');
   }
+
+  // --------------------------------------------------------------------------
+  // Example 8: Which URI an endpoint actually addresses
+  // --------------------------------------------------------------------------
+  static void example8EndpointRouting() {
+    print('\n8. Which server an endpoint addresses:');
+
+    // The examples above compose URIs by hand. This one builds a real endpoint
+    // and reads back where it points, under a context whose two URIs differ —
+    // the only configuration in which the choice is observable.
+    final api = TomApi(
+      id: 'catalogApi',
+      uri: '/api/v1',
+      endpoints: [
+        TomApiEndpoint<String, String>(
+          id: 'items',
+          uri: '/items',
+          method: TomHttpMethod.get,
+        ),
+      ],
+    );
+
+    final context = TomClientRemoteContext(
+      Uri.parse('https://api.example.com'),
+      Uri.parse('https://auth.example.com'),
+    );
+
+    // An API endpoint with no explicit base goes to the API server.
+    final apiEndpoint = TomClientRemoteContext.runWithContext(
+      context,
+      () => TomServerEndpoint.createApiServerEndpoint<String, String>(
+        api['items'],
+      ),
+    );
+
+    // An authentication endpoint names the authentication URI explicitly.
+    final authEndpoint = TomClientRemoteContext.runWithContext(
+      context,
+      () => TomServerEndpoint.createApiServerEndpoint<String, String>(
+        api['items'],
+        baseUri: context.authenticationUri,
+      ),
+    );
+
+    print('   - API endpoint:  ${apiEndpoint.specs.url}');
+    print('   - Auth endpoint: ${authEndpoint.specs.url}');
+
+    assert(apiEndpoint.specs.url.host == 'api.example.com',
+        'An API endpoint must address the API server');
+    assert(authEndpoint.specs.url.host == 'auth.example.com',
+        'An authentication endpoint must address the authentication server');
+  }
 }
 
 // ============================================================================
@@ -256,6 +309,7 @@ void run() {
   RemoteContextExample.example5DoubleInitError();
   RemoteContextExample.example6UriManipulation();
   RemoteContextExample.example7EnvironmentPatterns();
+  RemoteContextExample.example8EndpointRouting();
 
   print('\n✓ All remote context examples passed!\n');
 }

@@ -2935,6 +2935,69 @@ void main() {
         throwsA(isA<TomEndpointException>()),
       );
     });
+
+    test('an API endpoint with no baseUri addresses the API server, not the '
+        'authentication server', () {
+      // The two URIs coincide in a single-host deployment, so a default that
+      // named the wrong one would route every API call to the authentication
+      // server and only show it in the split deployment the type exists for.
+      // Every other test here passes baseUri explicitly, which is why this was
+      // not caught: the default itself needs a context whose URIs differ.
+      final api = TomApi(
+        id: 'routingApi',
+        uri: '/api/v1',
+        endpoints: [
+          TomApiEndpoint<String, String>(
+            id: 'thing',
+            uri: '/thing',
+            method: TomHttpMethod.get,
+          ),
+        ],
+      );
+
+      final endpoint = TomClientRemoteContext.runWithContext(
+        TomClientRemoteContext(
+          Uri.parse('https://api.example.com'),
+          Uri.parse('https://auth.example.com'),
+        ),
+        () => TomServerEndpoint.createApiServerEndpoint<String, String>(
+          api['thing'],
+        ),
+      );
+
+      expect(endpoint.specs.url.host, equals('api.example.com'));
+      // The channel is built from the same URI, so a wrong default misroutes
+      // the connection as well as the address written into the specs.
+      expect(endpoint.channel.host, equals('api.example.com'));
+      expect(endpoint.specs.url.path, equals('/api/v1/thing'));
+    });
+
+    test('an explicit baseUri still overrides the context', () {
+      final api = TomApi(
+        id: 'overrideApi',
+        uri: '/api/v1',
+        endpoints: [
+          TomApiEndpoint<String, String>(
+            id: 'thing',
+            uri: '/thing',
+            method: TomHttpMethod.get,
+          ),
+        ],
+      );
+
+      final endpoint = TomClientRemoteContext.runWithContext(
+        TomClientRemoteContext(
+          Uri.parse('https://api.example.com'),
+          Uri.parse('https://auth.example.com'),
+        ),
+        () => TomServerEndpoint.createApiServerEndpoint<String, String>(
+          api['thing'],
+          baseUri: Uri.parse('https://reporting.example.com'),
+        ),
+      );
+
+      expect(endpoint.specs.url.host, equals('reporting.example.com'));
+    });
   });
 
   // ==========================================================================

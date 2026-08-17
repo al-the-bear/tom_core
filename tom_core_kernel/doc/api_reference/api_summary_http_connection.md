@@ -1003,7 +1003,7 @@ TomServerEndpoint(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `createApiServerEndpoint` | `static TomServerEndpoint<requestType, responseType> createApiServerEndpoint<requestType extends Object, responseType extends Object>(TomApiEndpoint apiEndpoint, {TomServerCallSpecs? specs, TomServerChannel? channel, Uri? baseUri})` | Creates a server endpoint from a `TomApiEndpoint` definition, configuring channel, specs, and error handling; throws `TomEndpointException` on a type-parameter mismatch. |
+| `createApiServerEndpoint` | `static TomServerEndpoint<requestType, responseType> createApiServerEndpoint<requestType extends Object, responseType extends Object>(TomApiEndpoint apiEndpoint, {TomServerCallSpecs? specs, TomServerChannel? channel, Uri? baseUri})` | Creates a server endpoint from a `TomApiEndpoint` definition, configuring channel, specs, and error handling; throws `TomEndpointException` on a type-parameter mismatch. `baseUri` defaults to `TomClientRemoteContext.baseUri` — the API server. An authentication endpoint passes `TomClientRemoteContext.authenticationUri` explicitly. |
 | `removeLeadingSlash` | `static String removeLeadingSlash(String s)` | Removes a leading slash from `s` if present. |
 
 ##### Properties
