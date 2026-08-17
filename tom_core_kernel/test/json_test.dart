@@ -1744,6 +1744,92 @@ void main() {
 
       expect(callCount, equals(0));
     });
+
+    group('the "@" directive without the key (§82)', () {
+      test('reports a missing key as an Exception, not a TypeError', () {
+        final tree = <String, dynamic>{'wanted@some.path@prod': '@'};
+
+        expect(
+          () => processTree(
+            tree,
+            (keyName, path, profileName) => <String, dynamic>{'other': 1},
+          ),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('names the key, the path, the profile and what came back', () {
+        final tree = <String, dynamic>{'wanted@some.path@prod': '@'};
+
+        expect(
+          () => processTree(
+            tree,
+            (keyName, path, profileName) =>
+                <String, dynamic>{'other': 1, 'another': 2},
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(
+                contains('wanted'),
+                contains('some.path'),
+                contains('prod'),
+                contains('other'),
+                contains('another'),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('says the provider returned nothing when the map is empty', () {
+        final tree = <String, dynamic>{'wanted@some.path@prod': '@'};
+
+        expect(
+          () => processTree(
+            tree,
+            (keyName, path, profileName) => <String, dynamic>{},
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('no keys'),
+            ),
+          ),
+        );
+      });
+
+      test('leaves the tree untouched when the key is missing', () {
+        final tree = <String, dynamic>{
+          'wanted@some.path@prod': '@',
+          'untouched': 'kept',
+        };
+
+        expect(
+          () => processTree(
+            tree,
+            (keyName, path, profileName) => <String, dynamic>{'other': 1},
+          ),
+          throwsA(isA<Exception>()),
+        );
+        expect(tree['untouched'], equals('kept'));
+        expect(tree.containsKey('wanted'), isFalse);
+      });
+
+      test('assigns a key that is present and null rather than throwing', () {
+        final tree = <String, dynamic>{'wanted@some.path@prod': '@'};
+
+        processTree(
+          tree,
+          (keyName, path, profileName) => <String, dynamic>{'wanted': null},
+        );
+
+        expect(tree.containsKey('wanted'), isTrue);
+        expect(tree['wanted'], isNull);
+      });
+    });
   });
 
   group('makeCleanJsonMap', () {

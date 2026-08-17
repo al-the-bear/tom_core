@@ -305,6 +305,23 @@ Keys matching the pattern `keyName@path@profileName` are resolved using the prov
 - `"@"` - Replace with value at same key from resolved data
 - Other - Replace with entire resolved structure
 
+##### The `"@"` directive needs the key it names
+
+`"@"` takes the value the provider returned *under the same key*, so
+`wanted@path@profile: "@"` needs a provider result containing `wanted`. When it
+is absent, `processTree` throws an `Exception` naming the directive key, the
+resolved path, the profile, and the keys the provider did return — enough to see
+whether the provider looked in the wrong place or the profile is simply missing
+the entry.
+
+A provider result containing the key with a `null` value is a value like any
+other and is assigned; only an **absent** key is a failure. This is the same
+present-vs-absent distinction `getObjectFromTree` and `makeCleanJsonMap` draw.
+
+Every directive in the tree is resolved before any is applied, so a failure
+leaves the tree exactly as it was passed — the operation does not half-complete,
+and a caller that catches can retry with a corrected provider on the same tree.
+
 #### `makeCleanJsonMap(map)`
 
 Creates a sanitized copy containing only JSON-compatible values (String, int,

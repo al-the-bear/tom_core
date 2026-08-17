@@ -585,6 +585,9 @@ class _TreeModification {
   /// - `"..."`: Spreads [insertTree] entries into [tree] (non-overwriting)
   /// - `"@"`: Replaces the value at [keyName] with the corresponding value from [insertTree]
   /// - Other: Sets [keyName] to the entire [insertTree]
+  ///
+  /// The `"@"` directive assumes [insertTree] contains [keyName]; that is
+  /// checked in [_modifyTree], before any modification is applied.
   void apply() {
     if (empty) return;
     if (tree == null) {
@@ -597,7 +600,9 @@ class _TreeModification {
         if (!tree!.containsKey(key)) tree![key] = val;
       });
     } else if ("@" == value) {
-      tree![keyName!] = insertTree![keyName!]!;
+      // Not null-asserted: a key present with a null value is a value here, as
+      // everywhere else in this file, and assigning it is the honest result.
+      tree![keyName!] = insertTree![keyName!];
     } else {
       tree![keyName!] = insertTree!;
     }
@@ -611,10 +616,21 @@ class _TreeModification {
 /// Pattern for matching profile-based key references: `keyName@path@profileName`
 RegExp _namePattern = RegExp("([^@]+)@([^@]+)@([^@]+)");
 
+/// Names a provider result's keys for an error message.
+///
+/// An empty map is spelled out rather than rendered as an empty list, so the
+/// message reads as a sentence in both cases.
+String _describeProviderKeys(Map<String, dynamic> insertTree) =>
+    insertTree.isEmpty ? "no keys" : "the keys ${insertTree.keys.join(", ")}";
+
 /// Creates a tree modification from a profile-based key pattern.
 ///
 /// Parses keys matching the pattern `keyName@path@profileName` and creates
 /// a modification that will inject data from the specified profile.
+///
+/// Throws [Exception] if the provider itself fails, or if the `"@"` directive
+/// is used and the provider's result has no entry named `keyName` — the value
+/// that directive exists to take.
 _TreeModification _modifyTree(
   String name,
   String value,
@@ -623,20 +639,40 @@ _TreeModification _modifyTree(
   provider,
 ) {
   RegExpMatch? m = _namePattern.firstMatch(name);
-  if (m != null) {
-    try {
-      String keyName = m.group(1)!;
-      String path = m.group(2)!;
-      String profileName = m.group(3)!;
-      Map<String, dynamic> insertTree = provider(keyName, path, profileName);
-      return _TreeModification.of(value, tree, keyName, insertTree);
-    } catch (exception, stacktrace) {
-      throw Exception(
-        "Failed to get tree modification for $name with value $value, exception $exception stacktrace $stacktrace",
-      );
-    }
+  if (m == null) return _TreeModification.emptyModification;
+
+  // All three groups are required parts of the pattern, so a match guarantees
+  // them; reading them cannot fail and so does not belong inside the try.
+  final String keyName = m.group(1)!;
+  final String path = m.group(2)!;
+  final String profileName = m.group(3)!;
+
+  final Map<String, dynamic> insertTree;
+  try {
+    insertTree = provider(keyName, path, profileName);
+  } catch (exception, stacktrace) {
+    throw Exception(
+      "Failed to get tree modification for $name with value $value, exception $exception stacktrace $stacktrace",
+    );
   }
-  return _TreeModification.emptyModification;
+
+  // Why here and not in apply(): processTree collects every modification before
+  // applying any, so a failure raised now leaves the tree exactly as the caller
+  // passed it, while the same failure raised at apply time would leave earlier
+  // directives already written. The provider has already returned, so
+  // insertTree cannot change between the two points — the check is equally
+  // valid here and strictly safer. It also sits outside the catch above, so the
+  // context it carries is not swallowed and re-wrapped.
+  if ("@" == value && !insertTree.containsKey(keyName)) {
+    throw Exception(
+      'Cannot resolve the "@" directive of key $name: the provider for path '
+      "$path and profile $profileName returned "
+      "${_describeProviderKeys(insertTree)}, so there is no $keyName to take a "
+      "value from",
+    );
+  }
+
+  return _TreeModification.of(value, tree, keyName, insertTree);
 }
 
 /// Processes a tree by resolving profile-based references.
@@ -659,6 +695,22 @@ _TreeModification _modifyTree(
 /// - `"..."`: Spread the resolved data into the current map
 /// - `"@"`: Replace with the value at the same key from resolved data
 /// - Other: Replace with the entire resolved data structure
+///
+/// The `"@"` directive takes the value the provider returned *under the same
+/// key*, so `wanted@path@profile: "@"` needs a provider result containing
+/// `wanted`. A result containing the key with a `null` value is a value like
+/// any other and is assigned; only an absent key is a failure.
+///
+/// ## Failures
+/// Throws [Exception] if:
+/// - the [provider] itself throws — the original error and its stack trace are
+///   carried in the message;
+/// - a `"@"` directive's provider result has no entry under the directive's key
+///   — the message names the key, the resolved path, the profile and the keys
+///   the provider did return.
+///
+/// Every directive is resolved before any is applied, so a failure leaves
+/// [tree] exactly as it was passed: the operation does not half-complete.
 void processTree(
   Map<String, dynamic> tree,
   Map<String, dynamic> Function(String keyName, String path, String profileName)
