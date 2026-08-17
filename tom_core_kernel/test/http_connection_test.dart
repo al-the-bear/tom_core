@@ -488,6 +488,55 @@ void main() {
         // ignore: unrelated_type_equality_checks
         expect(type1 == 'application/json', isFalse);
       });
+
+      test('should not be equal for different charsets', () {
+        // Charset is part of identity: `text/html;charset=UTF-8` and the same
+        // type in Latin-1 decode to different characters, so a value is not
+        // interchangeable with one that differs only there. `isEqualType` is
+        // the comparison that ignores parameters, and the server reaches for it
+        // by name where parameter-blind matching is what it wants.
+        final utf8Html = TomMimeType('text', 'html', charset: 'UTF-8');
+        final latin1Html = TomMimeType('text', 'html', charset: 'ISO-8859-1');
+
+        expect(utf8Html == latin1Html, isFalse);
+        expect(utf8Html.isEqualType(latin1Html), isTrue);
+      });
+
+      test('equal values hash equally and collapse in a hash set', () {
+        // The equals/hashCode contract, asserted on values built separately
+        // rather than on canonicalized constants — a `const` pair shares one
+        // instance and so cannot detect a hashCode that disagrees with `==`.
+        final left = TomMimeType('application', 'json');
+        final right = TomMimeType('application', 'json');
+
+        expect(left == right, isTrue);
+        expect(left.hashCode, equals(right.hashCode));
+        expect({left, right}, hasLength(1));
+        expect({left: 'v'}[right], equals('v'));
+      });
+
+      test('equal codecs hash equally though the lists are distinct objects',
+          () {
+        // `Object.hash` on a List hashes the list *object*, so two values with
+        // equal codec content hashed differently while `==` compared them
+        // element-wise — the same contract break as charset, one field over.
+        final left = TomMimeType(
+          'video',
+          'mp4',
+          charset: null,
+          codecs: ['avc1', 'mp4a'],
+        );
+        final right = TomMimeType(
+          'video',
+          'mp4',
+          charset: null,
+          codecs: ['avc1', 'mp4a'],
+        );
+
+        expect(left == right, isTrue);
+        expect(left.hashCode, equals(right.hashCode));
+        expect({left, right}, hasLength(1));
+      });
     });
 
     group('isEqualType', () {

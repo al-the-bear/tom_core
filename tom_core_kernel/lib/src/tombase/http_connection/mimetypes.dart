@@ -58,6 +58,13 @@ class TomMimeTypeException extends TomException {
 /// - Multipart: [multipartFormData], [multipartByteranges]
 /// - Form: [urlEncoded]
 ///
+/// ## Equality
+///
+/// [operator ==] is whole-value — charset and codecs count, because they change
+/// how the bytes are read. [isEqualType] is the media-type-only comparison, and
+/// is the one to use against an incoming `content-type`: a real request carries
+/// parameters the declaration never named.
+///
 /// ## Example
 ///
 /// ```dart
@@ -243,33 +250,51 @@ class TomMimeType {
   String toString() =>
       '$primaryType/$subType${charset != null ? ";charset:$charset" : ""}${codecs.isNotEmpty ? codecs.toString() : ""}';
 
+  /// Whole-value equality: the media type **and** its parameters.
+  ///
+  /// Two values are equal when their primary type, subtype, charset and codecs
+  /// all match. Parameters are part of identity because they change how the
+  /// bytes are read: `text/html;charset=UTF-8` and the same type in Latin-1
+  /// decode to different characters, and `video/mp4;codecs=avc1` is playable by
+  /// a client that cannot decode `hevc`.
+  ///
+  /// [isEqualType] is the deliberately weaker comparison for the cases where
+  /// only the media type matters — matching a declared constant against the
+  /// `content-type` of a real request, which always carries parameters the
+  /// declaration does not name.
   @override
   bool operator ==(final Object other) {
+    if (identical(this, other)) return true;
     if (other is! TomMimeType) return false;
-    if (isEqualType(other)) {
-      if (other.codecs.length == codecs.length) {
-        for (var i = 0; i < codecs.length; i++) {
-          if (codecs[i] != other.codecs[i]) {
-            return false;
-          }
-        }
-        return true;
-      } else {
-        return false;
-      }
+    if (!isEqualType(other)) return false;
+    if (charset != other.charset) return false;
+    if (codecs.length != other.codecs.length) return false;
+    for (var i = 0; i < codecs.length; i++) {
+      if (codecs[i] != other.codecs[i]) return false;
     }
-    return false;
+    return true;
   }
 
   /// Checks if this MIME type has the same primary and sub type as another.
   ///
-  /// Does not compare charset or codecs.
+  /// Does not compare charset or codecs — unlike [operator ==], which is
+  /// whole-value. This is the comparison to reach for when matching a declared
+  /// constant against an incoming `content-type`: a real request carries a
+  /// boundary or a charset the declaration never named, so whole-value equality
+  /// would never match.
   bool isEqualType(TomMimeType other) {
     return primaryType == other.primaryType && subType == other.subType;
   }
 
+  /// Hashes exactly the fields [operator ==] compares, as the contract requires.
+  ///
+  /// [codecs] goes through [Object.hashAll] rather than into [Object.hash]
+  /// directly: a `List` hashes by identity, so two values with equal codec
+  /// content would land in different buckets while comparing equal — a
+  /// `Set` would hold both and a `Map` lookup would miss.
   @override
-  int get hashCode => Object.hash(primaryType, subType, charset, codecs);
+  int get hashCode =>
+      Object.hash(primaryType, subType, charset, Object.hashAll(codecs));
 }
 
 // =============================================================================

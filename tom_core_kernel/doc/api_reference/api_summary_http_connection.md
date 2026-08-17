@@ -536,7 +536,7 @@ factory TomMimeType.parse(String type)
 | `charset` | `String?` | Optional charset for text-based types (e.g. `"UTF-8"`). |
 | `codecs` | `List<String>` | Optional codecs for media types (e.g. for video). |
 | `isText` | `bool` | Whether this MIME type represents text-based content (all `text/*`, `application/json` / `xml` / `javascript`, and `+json` / `+xml` suffixes). |
-| `hashCode` | `int` | *(override)* Hash over primary type, subtype, charset, and codecs. |
+| `hashCode` | `int` | *(override)* Hash over primary type, subtype, charset and codec *contents* — exactly the fields `operator ==` compares, so equal values share a hash bucket. |
 
 ##### Methods
 
@@ -550,7 +550,7 @@ factory TomMimeType.parse(String type)
 
 | Operator | Signature | Description |
 | -------- | --------- | ----------- |
-| `operator ==` | `bool operator ==(Object other)` | *(override)* Equal when primary/sub type and all codecs match. |
+| `operator ==` | `bool operator ==(Object other)` | *(override)* Whole-value equality: equal when primary type, subtype, charset **and** codecs all match. Parameters are part of identity because they change how the bytes are read. Use `isEqualType` to match a declared constant against a real `content-type`, which carries parameters the declaration never named. |
 
 #### StaticFileMimetypeMapping
 

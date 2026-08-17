@@ -249,6 +249,33 @@ TomMimeType.urlEncoded  // application/x-www-form-urlencoded
 TomMimeType.multipartFormData  // multipart/form-data
 ```
 
+#### Comparing Two Media Types
+
+There are two comparisons, and which one to use depends on where the value came
+from:
+
+- **`==` is whole-value** — primary type, subtype, charset *and* codecs must all
+  match. Parameters belong to identity because they change how the bytes are
+  read: `text/html;charset=UTF-8` and the same type in Latin-1 decode to
+  different characters. This is the comparison for two values you declared
+  yourself.
+- **`isEqualType` compares the media type only**, ignoring charset and codecs.
+  This is the comparison for an incoming `content-type`, because a real request
+  carries parameters the declaration never named — a `multipart/form-data` body
+  always arrives with a boundary. Comparing whole values there would never
+  match, and every form endpoint would silently decode as JSON.
+
+```dart
+const declared = TomMimeType.multipartFormData;
+const arrived = TomMimeType('multipart', 'form-data', charset: 'UTF-8');
+
+declared == arrived;              // false — the charsets differ
+declared.isEqualType(arrived);    // true  — the same media type
+```
+
+`hashCode` covers exactly the fields `==` compares, so equal values collapse in
+a `Set` and answer a `Map` lookup.
+
 ### TomServerChannel
 
 Manages HTTP client connections with pooling:
