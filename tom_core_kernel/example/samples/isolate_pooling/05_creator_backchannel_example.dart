@@ -157,7 +157,10 @@ class CreatorInboxExecutor extends TomExecutor {
 Future<void> run() async {
   print('=== 05: Creator Back-Channel Example ===\n');
 
-  // Register a creator-side inbox for fire-and-forget notifications.
+  // Register a creator-side inbox for fire-and-forget notifications. The
+  // registry is process-global and outlives this function, so note what the
+  // chain held on entry: the cleanup below has to leave it exactly that way.
+  final executorsOnEntry = TomWorker.executors.length;
   final inbox = CreatorInboxExecutor();
   TomWorker.addExecutor(inbox);
 
@@ -240,7 +243,13 @@ Future<void> run() async {
   // Cleanup
   // -------------------------------------------------------------------------
   worker.close();
-  TomWorker.clearExecutors();
+
+  // Withdraw exactly the one registration made above. `clearExecutors()` would
+  // be wrong here even though it looks tidier: the chain belongs to the whole
+  // process, so clearing it would discard registrations this example never
+  // made and silently disarm whoever depends on them.
+  final removed = TomWorker.removeExecutor(inbox);
+  final executorsOnExit = TomWorker.executors.length;
 
   print('\n');
 
@@ -267,4 +276,9 @@ Future<void> run() async {
   // Example 5: an unclaimed message is answered with the sentinel, and the
   // sentinel survives both hops as the same canonical instance.
   assert(wasUnclaimed);
+
+  // Cleanup: the shared registry is handed back as it was found, which is what
+  // lets this file run in any position among the samples.
+  assert(removed);
+  assert(executorsOnExit == executorsOnEntry);
 }

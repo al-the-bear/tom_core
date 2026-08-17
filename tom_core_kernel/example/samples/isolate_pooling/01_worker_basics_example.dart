@@ -192,11 +192,10 @@ class ExecutorExample {
   static bool executorWorks = false;
 
   static Future<void> example5UsingExecutor(TomWorker worker) async {
-    // Send the executor to the worker isolate
+    // Send the executor to the worker isolate. No wait is needed before the
+    // commands below: the registration and the commands travel the same port,
+    // and the isolate processes them in the order they were sent.
     worker.sendExecutorToIsolate(StringExecutor());
-
-    // Give the executor time to be registered
-    await Future.delayed(Duration(milliseconds: 50));
 
     reverseResult = await worker.executeCommand({
       'type': 'reverse',
