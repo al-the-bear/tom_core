@@ -144,6 +144,23 @@ class DataProcessorExecutor extends TomExecutor {
 TomWorker.executors.add(DataProcessorExecutor());
 ```
 
+Executors are tried in order and the first to return anything other than
+`noResult` wins. If the chain is exhausted — or the worker has no executor
+registered at all — the command is nonetheless answered, with `noResult`
+itself:
+
+```dart
+final result = await worker.executeCommand('nothing handles this');
+if (identical(result, TomExecutor.noResult)) {
+  // The worker received the message but no executor claimed it.
+}
+```
+
+Answering matters more than it looks. A command left unanswered leaves the
+caller's completer pending forever, and liveness supervision cannot rescue it:
+the isolate is healthy and still answers pings, so nothing observes the hang.
+Every message therefore gets a reply, even if the reply is "nobody took this".
+
 ### TomCommand
 
 Base class for self-executing commands that encapsulate both data and behavior.

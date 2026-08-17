@@ -176,7 +176,13 @@ abstract class TomExecutor {
   /// Sentinel value indicating that an executor did not process a command.
   ///
   /// Return this value from [execute] to allow the next executor in the
-  /// chain to handle the command.
+  /// chain to handle the command. When the whole chain declines — or when no
+  /// executor is registered at all — this same sentinel is what the dispatch
+  /// answers with, so it also reaches the caller of
+  /// [TomWorker.executeCommand] as the value meaning "nothing handled this".
+  ///
+  /// It carries no value equality, so recognising it relies on the `const`
+  /// instance staying canonical when a response crosses an isolate boundary.
   static const Object noResult = _TomNoResult();
 
   /// Executes a command and returns the result.
@@ -739,20 +745,31 @@ class TomWorker {
             var result = await command.execute();
             sendPort.send(_TomIsolateResponse(message.id, result ?? "null"));
             return;
-          } else if (executors.isNotEmpty) {
-            TomExecutor? executor;
-            Object? result;
-            for (executor in executors) {
-              result = executor.execute(message.command);
-              if (result is Future) {
-                result = await result;
-              }
-              if (result != TomExecutor.noResult) {
-                sendPort.send(_TomIsolateResponse(message.id, result ?? "null"));
-                break;
-              }
-            }
           }
+          // Not self-executing: offer the message to each registered executor
+          // in turn until one claims it. Starting from the sentinel makes an
+          // empty [executors] list take the same exit as a chain that declined.
+          Object? result = TomExecutor.noResult;
+          for (final executor in executors) {
+            final candidate = executor.execute(message.command);
+            result = candidate is Future ? await candidate : candidate;
+            if (result != TomExecutor.noResult) break;
+          }
+          if (result == TomExecutor.noResult) {
+            // Nothing handled it. Answer anyway, as the creator side does:
+            // staying silent leaves the caller's completer pending forever,
+            // and liveness supervision cannot see that hang because the
+            // isolate is perfectly healthy and still answers pings.
+            tomLog.warn(
+              "Isolate command resulting in NO_RESULT in "
+              "${Isolate.current.debugName}: ${message.command}",
+            );
+            sendPort.send(
+              _TomIsolateResponse(message.id, TomExecutor.noResult),
+            );
+            return;
+          }
+          sendPort.send(_TomIsolateResponse(message.id, result ?? "null"));
         } catch (e) {
           sendPort.send(
             _TomIsolateResponse(message.id, RemoteError(e.toString(), '')),
@@ -876,7 +893,13 @@ class TomWorker {
   ///
   /// - [command]: The command to execute
   ///
-  /// Returns the result of executing the command.
+  /// Returns the result of executing the command, or [TomExecutor.noResult]
+  /// when nothing in the worker handled it — because no executor is registered
+  /// there, or because every registered executor declined. Every command is
+  /// answered: an unanswered one would leave this future pending forever, and
+  /// liveness supervision could not rescue it, since the isolate is healthy and
+  /// still answers pings. Compare the result against [TomExecutor.noResult] if
+  /// "nothing handled this" is a case the caller must distinguish.
   ///
   /// Example:
   /// ```dart

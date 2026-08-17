@@ -12,7 +12,7 @@ unit of work; a `TomWorker` runs it on a dedicated isolate, and a
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomCommand` | An encapsulated unit of work with an async `execute()`. |
-| `TomExecutor` | Custom command handler chain (returns a value or passes to the next executor). |
+| `TomExecutor` | Custom command handler chain (returns a value or passes to the next executor). When the whole chain declines — or none is registered — the dispatch answers `TomExecutor.noResult` rather than staying silent, so a caller is never left awaiting an answer that will not come. |
 | `TomWorker` | A single worker isolate; `spawn(...)` creates one, `executeCommand(cmd)` runs work on it. |
 | `TomWorkerPool` | Fixed pool of workers; `withSize(n, context)` builds it, `execute(cmd)` dispatches to a free worker, `close()` tears it down. |
 | `TomWorkerContext` | The state handed to a worker isolate at spawn time. |

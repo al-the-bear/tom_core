@@ -29,7 +29,10 @@ back into the creator (`sendToCreator` / `executeInCreator`). Work is expressed
 either as a self-executing `TomCommand` (data plus behavior, its `execute` run
 automatically) or as an arbitrary object handled by registered `TomExecutor`
 instances, which are tried in order until one returns something other than
-`TomExecutor.noResult`. `TomWorkerContext` carries the environment/platform
+`TomExecutor.noResult`. Should the whole chain decline — or should the worker
+have no executor registered at all — the command is still answered, with
+`noResult` itself, so `executeCommand` always resolves. `TomWorkerContext`
+carries the environment/platform
 configuration and initialization hooks used when spawning. `TomWorkerPool`
 manages several workers, distributing commands across them and queuing when all
 are busy — and, when a `healthCheckInterval` is supplied, supervises their
@@ -122,7 +125,7 @@ isolates. Executors are called in order until one produces a result other than
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noResult` | `Object` | Sentinel returned from `execute` to indicate the command was not handled, letting the next executor in the chain try it. |
+| `noResult` | `Object` | Sentinel returned from `execute` to indicate the command was not handled, letting the next executor in the chain try it. Also the value the dispatch answers with once the chain is exhausted, so it reaches the caller of `executeCommand` meaning "nothing handled this". Identity-compared — it has no value equality. |
 
 #### Methods
 
@@ -212,7 +215,7 @@ bidirectional command/response messaging with the main isolate.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `isBusy` | `bool isBusy()` | Returns `true` if this worker has pending requests. |
-| `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result. |
+| `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result, or `TomExecutor.noResult` when nothing there handled it. Every command is answered, so the future always resolves. |
 | `sendExecutorToIsolate` | `void sendExecutorToIsolate(TomExecutor te)` | Sends an executor to the worker isolate, adding it to the worker's executor list. One-way — there is no acknowledgement. |
 | `superviseExit` | `void superviseExit(void Function() onDeath)` | Registers a one-shot death callback via `Isolate.addOnExitListener`. On an unexpected exit, every in-flight request is failed with `TomWorkerDiedException` before `onDeath` runs. Idempotent; a no-op once closed. An orderly `close` does not trigger it. |
 | `ping` | `Future<bool> ping(Duration timeout)` | Liveness probe; `true` if the worker answered within `timeout`, `false` otherwise. A timed-out probe abandons its request slot so a late answer is discarded. Never kills the isolate. |

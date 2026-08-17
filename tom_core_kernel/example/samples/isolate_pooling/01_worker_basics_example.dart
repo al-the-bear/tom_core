@@ -2,7 +2,8 @@
 ///
 /// This example demonstrates the fundamental concepts of TomWorker:
 /// spawning worker isolates, executing commands, using the TomCommand
-/// pattern, and managing worker lifecycle.
+/// pattern, what happens to a message no executor claims, and managing
+/// worker lifecycle.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -217,14 +218,42 @@ class ExecutorExample {
 }
 
 // =============================================================================
-// EXAMPLE 6: Worker lifecycle management
+// EXAMPLE 6: Messages that nothing handles
+// =============================================================================
+
+class UnhandledMessageExample {
+  static Object? unclaimedResult;
+  static bool wasReportedAsUnhandled = false;
+  static bool workerStillUsable = false;
+
+  static Future<void> example6UnhandledMessage(TomWorker worker) async {
+    // The StringExecutor registered in example 5 only claims the two Map
+    // shapes it knows; a plain String walks the whole chain unclaimed.
+    unclaimedResult = await worker.executeCommand('no executor claims this');
+
+    // The command is still answered — with the sentinel — so the caller learns
+    // that nothing handled it instead of waiting on a reply that never comes.
+    wasReportedAsUnhandled = identical(unclaimedResult, TomExecutor.noResult);
+
+    // And the worker carries on normally afterwards.
+    final followUp = await worker.executeCommand(FactorialCommand(4));
+    workerStillUsable = followUp == 24;
+
+    assert(wasReportedAsUnhandled,
+        'An unclaimed message must answer with TomExecutor.noResult');
+    assert(workerStillUsable, 'The worker must stay usable afterwards');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 7: Worker lifecycle management
 // =============================================================================
 
 class WorkerLifecycleExample {
   static bool wasReadyBeforeClose = false;
   static bool isClosedAfterClose = false;
 
-  static Future<void> example6WorkerLifecycle(TomWorker worker) async {
+  static Future<void> example7WorkerLifecycle(TomWorker worker) async {
     wasReadyBeforeClose = worker.isReady;
 
     // Close the worker
@@ -250,5 +279,6 @@ Future<void> run() async {
   await CpuIntensiveCommandExample.example3CpuIntensiveCommand(worker);
   await ComplexDataCommandExample.example4ComplexDataCommand(worker);
   await ExecutorExample.example5UsingExecutor(worker);
-  await WorkerLifecycleExample.example6WorkerLifecycle(worker);
+  await UnhandledMessageExample.example6UnhandledMessage(worker);
+  await WorkerLifecycleExample.example7WorkerLifecycle(worker);
 }

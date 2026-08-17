@@ -837,6 +837,95 @@ void main() {
       });
     });
 
+    group('unhandled messages', () {
+      // A request that is never answered leaves the caller's completer pending
+      // forever. Liveness supervision cannot rescue it: the isolate is healthy
+      // and answers pings, so nothing observes the hang. The protocol must
+      // therefore answer every command, whether or not anything handled it.
+
+      test('answers when the worker has no executors registered', () async {
+        final context = TestWorkerContext(namePrefix: 'NoExecutors');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // A plain String is not a TomCommand, and nothing was ever sent with
+        // sendExecutorToIsolate, so no handler exists in the worker at all.
+        final result = await worker
+            .executeCommand('unhandled')
+            .timeout(Duration(seconds: 5));
+        // `same`, not `equals`: the sentinel carries no value equality, so a
+        // caller can only recognise it if the const instance stays canonical
+        // across the isolate hop. That is the invariant the answer rests on.
+        expect(result, same(TomExecutor.noResult));
+
+        worker.close();
+      });
+
+      test('answers when every registered executor declines', () async {
+        final context = TestWorkerContext(namePrefix: 'AllDecline');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        worker.sendExecutorToIsolate(NoOpExecutor());
+        await Future.delayed(Duration(milliseconds: 50));
+
+        // The executor runs and returns noResult, so the loop exhausts without
+        // ever producing a value — the second way to reach an unanswered call.
+        final result = await worker
+            .executeCommand('declined')
+            .timeout(Duration(seconds: 5));
+        expect(result, equals(TomExecutor.noResult));
+
+        worker.close();
+      });
+
+      test('a later executor still handles what an earlier one declines',
+          () async {
+        final context = TestWorkerContext(namePrefix: 'Chain');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // Order matters: the declining executor must not short-circuit the
+        // chain into the unhandled answer while a later one can still handle
+        // the message.
+        worker.sendExecutorToIsolate(NoOpExecutor());
+        worker.sendExecutorToIsolate(TestStringExecutor());
+        await Future.delayed(Duration(milliseconds: 50));
+
+        final result = await worker
+            .executeCommand('payload')
+            .timeout(Duration(seconds: 5));
+        expect(result, equals('Processed: payload'));
+
+        worker.close();
+      });
+
+      test('the worker stays usable after an unhandled message', () async {
+        final context = TestWorkerContext(namePrefix: 'StillUsable');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        await worker.executeCommand('unhandled').timeout(Duration(seconds: 5));
+        // The unhandled answer must consume exactly its own request slot; a
+        // stray extra response would resolve the *next* command's completer
+        // with the wrong payload.
+        final result = await worker
+            .executeCommand(ComputeCommand(2, 3))
+            .timeout(Duration(seconds: 5));
+        expect(result, equals(5));
+
+        worker.close();
+      });
+    });
+
     group('back-channel', () {
       test('canSendToCreator is true inside a worker isolate', () async {
         final context = TestWorkerContext(namePrefix: 'CanSend');
