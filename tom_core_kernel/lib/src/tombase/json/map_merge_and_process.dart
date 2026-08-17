@@ -614,7 +614,23 @@ class _TreeModification {
 }
 
 /// Pattern for matching profile-based key references: `keyName@path@profileName`
-RegExp _namePattern = RegExp("([^@]+)@([^@]+)@([^@]+)");
+///
+/// Anchored, so the key must be *entirely* three non-empty parts. Unanchored,
+/// `firstMatch` accepted any key that merely contained the shape: `a@b@c@d`
+/// matched its first three parts and the `@d` was discarded, and `@a@b@c`
+/// matched from the second character with the leading `@` discarded — both
+/// resolved against a truncated path and injected under a truncated key,
+/// silently.
+final RegExp _namePattern = RegExp(r"^([^@]+)@([^@]+)@([^@]+)$");
+
+/// The number of `@` in a key above which it can only be a broken directive.
+///
+/// A directive uses exactly two, so three or more means a separator too many.
+/// Two is deliberately *not* enough to accuse a key: the timezoned module
+/// serializes zoned values as `@D@<iso>_<offset>_<zone>` and npm-style
+/// identifiers read `@scope/name@version`, both of which are ordinary strings
+/// carrying two `@`. One is likewise ordinary — an email address.
+const int _malformedDirectiveAtCount = 3;
 
 /// Names a provider result's keys for an error message.
 ///
@@ -628,9 +644,13 @@ String _describeProviderKeys(Map<String, dynamic> insertTree) =>
 /// Parses keys matching the pattern `keyName@path@profileName` and creates
 /// a modification that will inject data from the specified profile.
 ///
-/// Throws [Exception] if the provider itself fails, or if the `"@"` directive
-/// is used and the provider's result has no entry named `keyName` — the value
-/// that directive exists to take.
+/// A key that does not match is an ordinary key and yields no modification —
+/// an email address is not a directive.
+///
+/// Throws [Exception] if the key carries enough `@` to be a directive but is
+/// not a well-formed one, if the provider itself fails, or if the `"@"`
+/// directive is used and the provider's result has no entry named `keyName` —
+/// the value that directive exists to take.
 _TreeModification _modifyTree(
   String name,
   String value,
@@ -638,8 +658,22 @@ _TreeModification _modifyTree(
   Map<String, dynamic> Function(String keyName, String path, String profileName)
   provider,
 ) {
-  RegExpMatch? m = _namePattern.firstMatch(name);
-  if (m == null) return _TreeModification.emptyModification;
+  final RegExpMatch? m = _namePattern.firstMatch(name);
+  if (m == null) {
+    // Why report rather than ignore: a key this far past the directive shape
+    // cannot be anything else, and ignoring it would trade the old silent
+    // truncation for an equally silent no-op — the caller's injection would
+    // simply not happen. Below the threshold the key is ordinary and is left
+    // alone, so no working tree starts failing.
+    if ("@".allMatches(name).length >= _malformedDirectiveAtCount) {
+      throw Exception(
+        "Malformed profile directive key $name: a directive is exactly three "
+        "non-empty parts, keyName@path@profileName. Rename the key if it was "
+        "not meant as a directive.",
+      );
+    }
+    return _TreeModification.emptyModification;
+  }
 
   // All three groups are required parts of the pattern, so a match guarantees
   // them; reading them cannot fail and so does not belong inside the try.
@@ -686,10 +720,17 @@ _TreeModification _modifyTree(
 ///   Takes (keyName, path, profileName) and returns the data to inject.
 ///
 /// ## Key Pattern Format
-/// Keys should match: `keyName@path@profileName`
+/// Keys must match `keyName@path@profileName` *in full*:
 /// - `keyName`: The resulting key name after resolution
 /// - `path`: The path within the profile to extract
 /// - `profileName`: The name of the profile to use
+///
+/// All three parts are non-empty and the match covers the whole key, so a key
+/// with a fourth part is not resolved against its first three. A key that does
+/// not match is an ordinary key and is left untouched — `user@example.com` and
+/// `@scope/package@1.0.0` are keys, not directives. Only a key carrying three
+/// or more `@`, which no ordinary string in this framework does, is reported as
+/// a malformed directive rather than ignored.
 ///
 /// ## Value Directives
 /// - `"..."`: Spread the resolved data into the current map
@@ -703,6 +744,8 @@ _TreeModification _modifyTree(
 ///
 /// ## Failures
 /// Throws [Exception] if:
+/// - a key carries three or more `@` but is not a well-formed directive — the
+///   message names the key and restates the expected form;
 /// - the [provider] itself throws — the original error and its stack trace are
 ///   carried in the message;
 /// - a `"@"` directive's provider result has no entry under the directive's key

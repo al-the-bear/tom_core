@@ -1745,6 +1745,99 @@ void main() {
       expect(callCount, equals(0));
     });
 
+    group('a key that is not exactly three parts (§83)', () {
+      test('rejects a four-part key instead of using its first three', () {
+        final tree = <String, dynamic>{'a@b@c@d': 'replace'};
+
+        expect(
+          () => processTree(
+            tree,
+            (keyName, path, profileName) => <String, dynamic>{'x': 1},
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('a@b@c@d'),
+            ),
+          ),
+        );
+      });
+
+      test('does not resolve a four-part key against a truncated path', () {
+        final tree = <String, dynamic>{'a@b@c@d': 'replace'};
+        final calls = <String>[];
+
+        expect(
+          () => processTree(tree, (keyName, path, profileName) {
+            calls.add('$keyName|$path|$profileName');
+            return <String, dynamic>{'x': 1};
+          }),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(calls, isEmpty);
+        expect(tree.containsKey('a'), isFalse);
+        expect(tree.keys, equals(['a@b@c@d']));
+      });
+
+      test('rejects a leading empty part rather than dropping it', () {
+        final tree = <String, dynamic>{'@a@b@c': 'replace'};
+
+        expect(
+          () => processTree(
+            tree,
+            (keyName, path, profileName) => <String, dynamic>{'x': 1},
+          ),
+          throwsA(isA<Exception>()),
+        );
+        expect(tree.containsKey('a'), isFalse);
+      });
+
+      test('leaves an email-shaped key alone', () {
+        final tree = <String, dynamic>{'user@example.com': 'v'};
+        int callCount = 0;
+
+        processTree(tree, (keyName, path, profileName) {
+          callCount++;
+          return <String, dynamic>{'x': 1};
+        });
+
+        expect(callCount, equals(0));
+        expect(tree, equals({'user@example.com': 'v'}));
+      });
+
+      test('leaves a two-part key with an empty segment alone', () {
+        final tree = <String, dynamic>{'a@@c': 'v', '@b@c': 'v', 'a@b@': 'v'};
+        int callCount = 0;
+
+        processTree(tree, (keyName, path, profileName) {
+          callCount++;
+          return <String, dynamic>{'x': 1};
+        });
+
+        expect(callCount, equals(0));
+        expect(tree.length, equals(3));
+      });
+
+      test('leaves a serialized zoned value alone as a key', () {
+        // The timezoned module writes `@D@<iso>_<offset>_<zone>`, which has two
+        // '@' and so is an ordinary key, not a mistyped directive.
+        final tree = <String, dynamic>{
+          '@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo': 'v',
+        };
+        int callCount = 0;
+
+        processTree(tree, (keyName, path, profileName) {
+          callCount++;
+          return <String, dynamic>{'x': 1};
+        });
+
+        expect(callCount, equals(0));
+        expect(tree.length, equals(1));
+      });
+    });
+
     group('the "@" directive without the key (§82)', () {
       test('reports a missing key as an Exception, not a TypeError', () {
         final tree = <String, dynamic>{'wanted@some.path@prod': '@'};

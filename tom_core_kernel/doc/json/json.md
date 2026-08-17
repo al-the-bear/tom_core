@@ -300,6 +300,23 @@ Processes profile-based references in configuration trees.
 
 Keys matching the pattern `keyName@path@profileName` are resolved using the provider function.
 
+##### A directive key is the whole key
+
+The match is anchored: the key must be *entirely* three non-empty
+`@`-separated parts. A key with a fourth part is not resolved against its first
+three — the shape is either the documented one or it is not a directive at all.
+
+A key that does not match is an ordinary key and is left untouched.
+`user@example.com` is a map key, and so are `@scope/package@1.0.0` and the
+timezoned module's own `@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo`; all
+carry `@` without meaning a directive.
+
+The one exception is a key carrying **three or more** `@`. A directive uses
+exactly two, so a third can only be a separator too many — no ordinary string in
+this framework reaches three. Such a key throws an `Exception` naming it and
+restating the expected form, rather than being silently skipped, because a
+skipped directive is an injection the caller believes happened and did not.
+
 **Value Directives:**
 - `"..."` - Spread resolved data into current map
 - `"@"` - Replace with value at same key from resolved data
