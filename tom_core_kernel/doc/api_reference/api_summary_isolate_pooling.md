@@ -65,7 +65,8 @@ TomWorkerPool
 
 Exception thrown when worker-related operations fail, e.g. starting an isolate
 without a configured SendPort, sending to the creator from the creator isolate,
-executing on a closed `TomWorkerPool`, or general worker communication failures.
+executing on a closed `TomWorkerPool`, a startup that never reaches ready, or
+general worker communication failures.
 
 - **Extends:** `TomException`
 
@@ -204,7 +205,7 @@ bidirectional command/response messaging with the main isolate.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `spawn` | `static Future<TomWorker> spawn(void Function(TomWorkerContext) initializer, TomWorkerContext workerContext)` | Primary factory: spawns a worker isolate, sets up ports, runs initialization, and completes when the worker is ready. |
+| `spawn` | `static Future<TomWorker> spawn(void Function(TomWorkerContext) initializer, TomWorkerContext workerContext, {Duration readyTimeout = const Duration(seconds: 30)})` | Primary factory: spawns a worker isolate, sets up ports, runs initialization, and completes when the worker is ready. The startup is supervised, so a worker that cannot become ready fails the future instead of stalling it: an isolate that dies first is reported as soon as its exit is seen (`isolate.died_before_ready.spawn`), and one that stays alive but silent is given up on when `readyTimeout` expires (`isolate.ready_timeout.spawn`). Either way the isolate is killed, since a failed spawn hands back no `TomWorker` to close it with. `readyTimeout` bounds the whole startup — the isolate's first message plus both initialization hooks — and must be positive (`isolate.invalid_ready_timeout.spawn`). |
 | `resetWorkerCount` | `@visibleForTesting static void resetWorkerCount()` | Rewinds the worker-name counter. Test-only — rewinding it in production hands two live workers the same `debugName`. |
 | `startRemoteIsolate` | `static void startRemoteIsolate(TomWorkerContext context)` | Isolate entry point passed to `spawn`; wires up communication channels and runs the context's isolate initialization. Throws `TomWorkerException` if the context's SendPort is null. |
 | `canSendToCreator` | `static bool canSendToCreator()` | Returns `true` only inside a worker isolate, where a backchannel to the creator exists. |
@@ -240,7 +241,7 @@ supervision is available but **off by default**.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `withSize` | `static Future<TomWorkerPool> withSize(int size, TomWorkerContext context, {Duration? healthCheckInterval, Duration healthCheckTimeout = const Duration(seconds: 5)})` | Creates a pool of `size` workers, each spawned with `context`, completing when all workers are ready. The context is retained so dead workers can be respawned. A non-null `healthCheckInterval` enables liveness supervision; `healthCheckTimeout` bounds how long a probed idle worker has to answer. Throws `TomWorkerException` for arguments that would produce a pool unable to do useful work: `size` below 1 (`isolate.invalid_pool_size.with_size`, and the exception carries the rejected `size`), or — when supervision is enabled — a non-positive `healthCheckInterval` (`isolate.invalid_health_check_interval.with_size`) or `healthCheckTimeout` (`isolate.invalid_health_check_timeout.with_size`). The two durations are validated only when `healthCheckInterval` is non-null, since an unsupervised caller never chose them. |
+| `withSize` | `static Future<TomWorkerPool> withSize(int size, TomWorkerContext context, {Duration? healthCheckInterval, Duration healthCheckTimeout = const Duration(seconds: 5), Duration readyTimeout = const Duration(seconds: 30)})` | Creates a pool of `size` workers, each spawned with `context`, completing when all workers are ready. The context is retained so dead workers can be respawned. A non-null `healthCheckInterval` enables liveness supervision; `healthCheckTimeout` bounds how long a probed idle worker has to answer. `readyTimeout` is forwarded to `TomWorker.spawn` for every worker the pool creates, replacements included — the pool performs all of its callers' spawns, so a bound it did not forward would be one nobody could set. Throws `TomWorkerException` for arguments that would produce a pool unable to do useful work: `size` below 1 (`isolate.invalid_pool_size.with_size`, and the exception carries the rejected `size`), or — when supervision is enabled — a non-positive `healthCheckInterval` (`isolate.invalid_health_check_interval.with_size`) or `healthCheckTimeout` (`isolate.invalid_health_check_timeout.with_size`). The two durations are validated only when `healthCheckInterval` is non-null, since an unsupervised caller never chose them. |
 
 #### Methods
 

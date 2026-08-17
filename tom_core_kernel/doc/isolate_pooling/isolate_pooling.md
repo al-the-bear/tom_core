@@ -130,6 +130,48 @@ never takes work. An isolate-side refusal reaches the caller as a
 `TomWorkerException` with key `isolate.initialize_isolate_failed.spawn`, carrying
 the isolate's error and stack in its parameters.
 
+A hook that fails *silently* is bounded too — see
+[Bounding the startup](#bounding-the-startup) below.
+
+### Bounding the startup
+
+`spawn` never waits indefinitely for a worker to become ready. Until the ready
+signal arrives, the isolate is live but unreachable — no `TomWorker` has been
+returned, so the caller has nothing to `close()` — and a startup that quietly
+fails to finish would strand the caller on a future that will never complete.
+Two watchers cover it, because the ways it can fail are not alike:
+
+- an isolate that **dies** before signalling readiness emits an exit signal but
+  no message. An exit listener catches it and fails the spawn at once, with
+  `isolate.died_before_ready.spawn`.
+- an isolate that **hangs** — an `initializeIsolate` awaiting a resource that
+  never arrives — emits nothing at all, and stays perfectly alive. Only a
+  deadline ends that wait: `isolate.ready_timeout.spawn`, after `readyTimeout`.
+
+```dart
+final worker = await TomWorker.spawn(
+  TomWorker.startRemoteIsolate,
+  context,
+  readyTimeout: const Duration(seconds: 10), // default: 30 seconds
+);
+```
+
+`readyTimeout` bounds the whole startup rather than each step of it — the first
+message from the isolate, `initializeWorker`, and `initializeIsolate` share one
+budget, because what a caller can state is how long `spawn` may take, not how
+that time ought to be divided. It must be positive; a zero or negative bound
+expires before any isolate could answer, so it is rejected up front with
+`isolate.invalid_ready_timeout.spawn` rather than failing every spawn made under
+it.
+
+Whichever watcher fires, the isolate is killed before the error is thrown. The
+two overlap on purpose: exit detection is prompt but has a blind spot in the
+first instants after `Isolate.spawn`, where a death can precede the exit
+listener's registration, and the deadline is the backstop that covers it.
+
+`TomWorkerPool.withSize` takes the same `readyTimeout` and forwards it to every
+worker it spawns, including the replacements supervision creates.
+
 ### TomExecutor
 
 Base class for command handlers. Register multiple executors to handle different command types.

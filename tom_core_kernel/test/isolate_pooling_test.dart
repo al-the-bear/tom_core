@@ -239,21 +239,46 @@ class ExecutorWorkerContext extends TomWorkerContext {
   }
 }
 
-/// Worker context whose initialization hooks can be made to fail on demand.
+/// The ways a worker can fail to become ready, as exercised by
+/// [FailingInitContext].
 ///
-/// [exitPort] is registered as the isolate's own exit listener *before* either
-/// hook can throw, so a test can observe whether the isolate was torn down —
-/// the creator never receives a [TomWorker] on a failed spawn and so has no
-/// other handle on it.
+/// Modelled as one enum rather than a set of flags because the cases are
+/// mutually exclusive — a hook cannot both throw and hang — and a bool per case
+/// would make most of the combinations meaningless.
+enum InitFailure {
+  /// Both hooks succeed; the worker reaches ready normally.
+  none,
+
+  /// `initializeIsolate` throws inside the worker isolate.
+  isolateHookThrows,
+
+  /// `initializeWorker` throws on the creator side.
+  workerHookThrows,
+
+  /// `initializeIsolate` never returns. The isolate stays alive and silent, so
+  /// no exit signal is ever emitted — only a timeout can end this wait.
+  isolateHookHangs,
+
+  /// The isolate terminates itself mid-initialization, standing in for any
+  /// external kill between spawn and ready. There is nothing to time out on:
+  /// the isolate is gone, and only an exit listener can notice.
+  isolateDiesBeforeReady,
+}
+
+/// Worker context whose initialization can be made to fail in any of the ways
+/// [InitFailure] describes.
+///
+/// [exitPort] is registered as the isolate's own exit listener *before* the
+/// chosen failure is triggered, so a test can observe whether the isolate was
+/// torn down — the creator never receives a [TomWorker] on a failed spawn and
+/// so has no other handle on it.
 class FailingInitContext extends TomWorkerContext {
   final SendPort exitPort;
-  final bool failIsolateHook;
-  final bool failWorkerHook;
+  final InitFailure failure;
 
   FailingInitContext(
     this.exitPort, {
-    this.failIsolateHook = false,
-    this.failWorkerHook = false,
+    this.failure = InitFailure.none,
     String namePrefix = 'FailInit',
   }) : super(
           const TomEnvironment('test', isTest: true),
@@ -265,14 +290,35 @@ class FailingInitContext extends TomWorkerContext {
   @override
   Future<void> initializeIsolate() async {
     Isolate.current.addOnExitListener(exitPort, response: 'exited');
-    if (failIsolateHook) {
-      throw StateError('initializeIsolate refused');
+    switch (failure) {
+      case InitFailure.isolateHookThrows:
+        throw StateError('initializeIsolate refused');
+      case InitFailure.isolateHookHangs:
+        // A future nothing ever completes: the exact shape of a hook awaiting
+        // a resource that is not there.
+        await Completer<void>().future;
+      case InitFailure.isolateDiesBeforeReady:
+        // The beat before the kill is not cosmetic. addOnExitListener is a
+        // control *message*, so the creator's listener only takes effect once
+        // this isolate processes it; killing synchronously here outruns that
+        // registration and the death goes unannounced. An external kill — the
+        // case this stands in for — cannot arrive that early anyway, and the
+        // unobservable window is what the ready timeout is the backstop for.
+        await Future<void>.delayed(Duration(milliseconds: 200));
+        Isolate.current.kill(priority: Isolate.immediate);
+        // Give the kill a turn to take effect; if it somehow does not, the
+        // hook still never returns, so the worker cannot reach ready either
+        // way and the test's assertion stays honest.
+        await Completer<void>().future;
+      case InitFailure.none:
+      case InitFailure.workerHookThrows:
+        break;
     }
   }
 
   @override
   Future<void> initializeWorker(TomWorker worker) async {
-    if (failWorkerHook) {
+    if (failure == InitFailure.workerHookThrows) {
       throw StateError('initializeWorker refused');
     }
   }
@@ -503,7 +549,10 @@ void main() {
         await expectLater(
           TomWorker.spawn(
             TomWorker.startRemoteIsolate,
-            FailingInitContext(exits.sendPort, failWorkerHook: true),
+            FailingInitContext(
+              exits.sendPort,
+              failure: InitFailure.workerHookThrows,
+            ),
           ),
           throwsA(isA<StateError>()),
         );
@@ -520,7 +569,10 @@ void main() {
             try {
               await TomWorker.spawn(
                 TomWorker.startRemoteIsolate,
-                FailingInitContext(exits.sendPort, failWorkerHook: true),
+                FailingInitContext(
+                  exits.sendPort,
+                  failure: InitFailure.workerHookThrows,
+                ),
               );
             } on StateError {
               // The refusal itself is asserted by the previous test.
@@ -550,7 +602,10 @@ void main() {
         await expectLater(
           TomWorker.spawn(
             TomWorker.startRemoteIsolate,
-            FailingInitContext(exits.sendPort, failIsolateHook: true),
+            FailingInitContext(
+              exits.sendPort,
+              failure: InitFailure.isolateHookThrows,
+            ),
           ).timeout(Duration(seconds: 10)),
           throwsA(isA<TomWorkerException>()),
         );
@@ -575,7 +630,7 @@ void main() {
             TomWorker.startRemoteIsolate,
             FailingInitContext(
               exits.sendPort,
-              failIsolateHook: true,
+              failure: InitFailure.isolateHookThrows,
               namePrefix: 'NamedFail',
             ),
           ).timeout(Duration(seconds: 10));
@@ -595,7 +650,10 @@ void main() {
             try {
               await TomWorker.spawn(
                 TomWorker.startRemoteIsolate,
-                FailingInitContext(exits.sendPort, failIsolateHook: true),
+                FailingInitContext(
+                  exits.sendPort,
+                  failure: InitFailure.isolateHookThrows,
+                ),
               ).timeout(Duration(seconds: 10));
             } on TomWorkerException {
               // The refusal itself is asserted by the previous tests.
@@ -605,6 +663,190 @@ void main() {
         );
 
         expect(seen, contains('exited'));
+      });
+
+      test('a hanging initializeIsolate fails the spawn once readyTimeout '
+          'expires', () async {
+        final exits = ReceivePort();
+        addTearDown(() {
+          try {
+            exits.close();
+          } on Object {
+            // Already closed by the helper.
+          }
+        });
+
+        // A hook that never returns emits nothing at all: no ready signal, no
+        // failure message, and no exit signal either, because the isolate is
+        // still perfectly alive. Only a bound on the wait can end it.
+        await expectLater(
+          TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            FailingInitContext(
+              exits.sendPort,
+              failure: InitFailure.isolateHookHangs,
+            ),
+            readyTimeout: Duration(milliseconds: 500),
+          ).timeout(Duration(seconds: 10)),
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              equals('isolate.ready_timeout.spawn'),
+            ),
+          ),
+        );
+      });
+
+      test('the ready timeout names the worker and the bound it exceeded',
+          () async {
+        final exits = ReceivePort();
+        addTearDown(() {
+          try {
+            exits.close();
+          } on Object {
+            // Already closed by the helper.
+          }
+        });
+
+        // "Timed out" on its own tells the caller nothing actionable: which of
+        // several workers stalled, and whether the bound was simply too tight
+        // for this workload, are the two questions the message has to answer.
+        try {
+          await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            FailingInitContext(
+              exits.sendPort,
+              failure: InitFailure.isolateHookHangs,
+              namePrefix: 'SlowInit',
+            ),
+            readyTimeout: Duration(milliseconds: 500),
+          ).timeout(Duration(seconds: 10));
+          fail('a hanging initializeIsolate must abort the spawn');
+        } on TomWorkerException catch (e) {
+          expect(e.key, equals('isolate.ready_timeout.spawn'));
+          expect(e.parameters?['isolateName'], startsWith('SlowInit'));
+          expect(e.parameters?['readyTimeout'], equals('0:00:00.500000'));
+        }
+      });
+
+      test('a timed-out spawn leaves no live isolate behind', () async {
+        // The hung isolate is unreachable — spawn returned no TomWorker — so if
+        // the timeout only failed the future, the isolate would stay parked in
+        // its hook for the life of the process.
+        final exits = ReceivePort();
+        final seen = await exitsWhileSpawning(
+          () async {
+            try {
+              await TomWorker.spawn(
+                TomWorker.startRemoteIsolate,
+                FailingInitContext(
+                  exits.sendPort,
+                  failure: InitFailure.isolateHookHangs,
+                ),
+                readyTimeout: Duration(milliseconds: 500),
+              ).timeout(Duration(seconds: 10));
+            } on TomWorkerException {
+              // The refusal itself is asserted by the previous tests.
+            }
+          },
+          exits,
+        );
+
+        expect(seen, contains('exited'));
+      });
+
+      test('an isolate that dies before ready fails the spawn without waiting '
+          'for the timeout', () async {
+        final exits = ReceivePort();
+        addTearDown(() {
+          try {
+            exits.close();
+          } on Object {
+            // Already closed by the helper.
+          }
+        });
+
+        // The bound here is a minute, and the test allows ten seconds: passing
+        // therefore proves the exit listener — not the timeout — noticed the
+        // death. A dead isolate is knowable immediately, so making the caller
+        // serve out the full timeout for it would be a needless stall.
+        await expectLater(
+          TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            FailingInitContext(
+              exits.sendPort,
+              failure: InitFailure.isolateDiesBeforeReady,
+              namePrefix: 'DyingInit',
+            ),
+            readyTimeout: Duration(minutes: 1),
+          ).timeout(Duration(seconds: 10)),
+          throwsA(
+            isA<TomWorkerException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  equals('isolate.died_before_ready.spawn'),
+                )
+                .having(
+                  (e) => e.parameters?['isolateName'],
+                  'isolateName',
+                  startsWith('DyingInit'),
+                ),
+          ),
+        );
+      });
+
+      test('a non-positive readyTimeout is rejected', () async {
+        final exits = ReceivePort();
+        addTearDown(exits.close);
+
+        // A zero or negative bound would expire before the isolate could
+        // possibly answer, so every spawn would fail. Refusing it up front
+        // beats spawning an isolate only to abandon it.
+        for (final bound in [Duration.zero, Duration(seconds: -1)]) {
+          await expectLater(
+            TomWorker.spawn(
+              TomWorker.startRemoteIsolate,
+              FailingInitContext(exits.sendPort),
+              readyTimeout: bound,
+            ),
+            throwsA(
+              isA<TomWorkerException>().having(
+                (e) => e.key,
+                'key',
+                equals('isolate.invalid_ready_timeout.spawn'),
+              ),
+            ),
+            reason: 'readyTimeout $bound must be rejected',
+          );
+        }
+      });
+
+      test('the pool passes its readyTimeout down to the workers it spawns',
+          () async {
+        final exits = ReceivePort();
+        addTearDown(exits.close);
+
+        // The pool owns every spawn its callers ever make, so a bound it did
+        // not forward would be a bound nobody could set.
+        await expectLater(
+          TomWorkerPool.withSize(
+            1,
+            FailingInitContext(
+              exits.sendPort,
+              failure: InitFailure.isolateHookHangs,
+            ),
+            readyTimeout: Duration(milliseconds: 500),
+          ).timeout(Duration(seconds: 10)),
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              equals('isolate.ready_timeout.spawn'),
+            ),
+          ),
+        );
       });
     });
   });

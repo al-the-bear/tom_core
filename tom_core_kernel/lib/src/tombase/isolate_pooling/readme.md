@@ -16,7 +16,7 @@ unit of work; a `TomWorker` runs it on a dedicated isolate, and a
 | `TomWorker` | A single worker isolate; `spawn(...)` creates one, `executeCommand(cmd)` runs work on it, `close()` shuts it down. Dispatching after the close — `executeCommand` or `sendExecutorToIsolate` — throws `TomWorkerException` instead of waiting on an isolate that will never answer. |
 | `TomWorkerPool` | Fixed pool of workers; `withSize(n, context)` builds it (rejecting an `n` below 1, and non-positive supervision durations, rather than returning a pool that cannot work), `execute(cmd)` dispatches to a free worker, `close()` tears it down. |
 | `TomWorkerContext` | The state handed to a worker isolate at spawn time, plus the two setup hooks (`initializeIsolate` inside the isolate, `initializeWorker` on the creator side). Both refuse by throwing — see below. |
-| `TomWorkerException` | Thrown on worker spawn / communication failures, on dispatch to a closed worker or pool, and on pool arguments that cannot yield a working pool. |
+| `TomWorkerException` | Thrown on worker spawn / communication failures, on a startup that never reaches ready, on dispatch to a closed worker or pool, and on pool arguments that cannot yield a working pool. |
 | `TomWorkerDiedException` | Fails an in-flight command whose worker isolate died, when liveness supervision is enabled. |
 
 ## Quick start
@@ -78,6 +78,33 @@ class DatabaseContext extends TomWorkerContext {
 Identify a worker in messages with `worker.name` (e.g. `"W001"`), not
 `worker.isolate.debugName` — the latter is only populated inside the isolate and
 reads `null` on the creator side.
+
+## Bounding the startup
+
+Until the ready signal arrives the isolate is live but unreachable — `spawn` has
+returned no `TomWorker` to `close()` — so a startup that fails silently would
+leave the caller waiting forever. `spawn` watches for both shapes of that:
+
+| The isolate… | Emits | Caught by | Key |
+| ------------ | ----- | --------- | --- |
+| dies before signalling ready | an exit signal, no message | an exit listener, at once | `isolate.died_before_ready.spawn` |
+| stays alive but never answers | nothing at all | the `readyTimeout` deadline | `isolate.ready_timeout.spawn` |
+
+Neither watcher would do on its own, which is why both are armed. In each case
+the isolate is killed before the error is thrown.
+
+```dart
+final worker = await TomWorker.spawn(
+  TomWorker.startRemoteIsolate,
+  context,
+  readyTimeout: const Duration(seconds: 10), // default: 30 seconds
+);
+```
+
+`readyTimeout` is one budget for the whole startup — the isolate's first
+message and both initialization hooks — and must be positive
+(`isolate.invalid_ready_timeout.spawn`). `TomWorkerPool.withSize` accepts it too
+and forwards it to every worker it spawns, replacements included.
 
 ## Liveness supervision (opt-in)
 

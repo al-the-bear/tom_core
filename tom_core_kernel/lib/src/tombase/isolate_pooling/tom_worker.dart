@@ -564,8 +564,25 @@ class TomWorker {
   /// - [initializer]: Function to run in the new isolate (typically
   ///   [startRemoteIsolate])
   /// - [workerContext]: Configuration for the new worker
+  /// - [readyTimeout]: How long the new isolate has to signal readiness before
+  ///   the spawn is abandoned. Covers the whole startup — the isolate's first
+  ///   message, [TomWorkerContext.initializeWorker] and
+  ///   [TomWorkerContext.initializeIsolate] — because the caller cares how long
+  ///   `spawn` may take, not how that time is divided. Must be positive.
   ///
   /// Returns a [Future] that completes when the worker is ready.
+  ///
+  /// A startup that cannot finish fails the future rather than stalling it: an
+  /// isolate that dies before signalling readiness is reported at once
+  /// (`isolate.died_before_ready.spawn`), and one that stays alive but silent
+  /// is given up on when [readyTimeout] expires
+  /// (`isolate.ready_timeout.spawn`). Either way the isolate is killed, because
+  /// a failed spawn returns no [TomWorker] and so leaves the caller no handle
+  /// with which to [close] it.
+  ///
+  /// Throws [TomWorkerException] if [readyTimeout] is not positive: such a
+  /// bound expires before any isolate could answer, so every spawn under it
+  /// would fail.
   ///
   /// Example:
   /// ```dart
@@ -576,8 +593,17 @@ class TomWorker {
   /// ```
   static Future<TomWorker> spawn(
     void Function(TomWorkerContext) initializer,
-    TomWorkerContext workerContext,
-  ) async {
+    TomWorkerContext workerContext, {
+    Duration readyTimeout = const Duration(seconds: 30),
+  }) async {
+    if (readyTimeout <= Duration.zero) {
+      throw TomWorkerException(
+        'isolate.invalid_ready_timeout.spawn',
+        'readyTimeout must be positive, was $readyTimeout.',
+        parameters: {'readyTimeout': readyTimeout.toString()},
+      );
+    }
+
     // Create a receive port and add its initial message handler.
     final initPort = RawReceivePort();
     final connection = Completer<(ReceivePort, SendPort)>.sync();
@@ -605,27 +631,97 @@ class TomWorker {
       rethrow;
     }
 
-    final (ReceivePort receivePort, SendPort sendPort) =
-        await connection.future;
+    final spawned = isolate;
 
-    TomWorker worker = TomWorker._(receivePort, sendPort, isolate, workerName);
-    tomLog.trace(
-      "starting initialization of creator/worker ${Isolate.current.debugName}",
-    );
-    var timer = Stopwatch()..start();
     // Everything from here on runs with a live isolate that the caller cannot
     // yet reach: spawn has not returned, so no TomWorker reference exists to
     // close(). A failure must therefore tear the isolate down here, or it stays
-    // in its message loop holding its ports open for the life of the process.
+    // in its message loop holding its ports open for the life of the process —
+    // and it must be *noticed*, or the caller waits on a startup that is never
+    // going to finish.
+    //
+    // Two things can go wrong silently, and they need different watchers: an
+    // isolate that dies emits an exit signal but no message, while one that
+    // hangs emits nothing at all yet stays alive. So neither an exit listener
+    // nor a deadline alone would cover the startup; both are armed, and the
+    // first to fire fails it.
+    final startupFailure = Completer<Never>();
+    void failStartup(TomWorkerException reason) {
+      if (!startupFailure.isCompleted) startupFailure.completeError(reason);
+    }
+
+    // A dedicated port: reusing _exitPort would make the pool's later
+    // superviseExit() a silent no-op, leaving the running worker unsupervised.
+    final readyExitPort = RawReceivePort();
+    readyExitPort.handler = (_) => failStartup(
+          TomWorkerException(
+            'isolate.died_before_ready.spawn',
+            'TomWorker $workerName died before signalling readiness.',
+            parameters: {'isolateName': workerName},
+          ),
+        );
+    spawned.addOnExitListener(readyExitPort.sendPort);
+
+    Timer? deadline = Timer(
+      readyTimeout,
+      () => failStartup(
+        TomWorkerException(
+          'isolate.ready_timeout.spawn',
+          'TomWorker $workerName did not signal readiness within '
+              '$readyTimeout.',
+          parameters: {
+            'isolateName': workerName,
+            'readyTimeout': readyTimeout.toString(),
+          },
+        ),
+      ),
+    );
+
+    /// Disarms both watchers. Called before the kill below, so that tearing the
+    /// isolate down does not itself look like a startup failure, and on success
+    /// so that a pending deadline stops holding the event loop open.
+    void endStartupSupervision() {
+      deadline?.cancel();
+      deadline = null;
+      spawned.removeOnExitListener(readyExitPort.sendPort);
+      readyExitPort.close();
+    }
+
+    ReceivePort? receivePort;
     try {
-      await workerContext.initializeWorker(worker);
+      final (ReceivePort port, SendPort sendPort) = await Future.any([
+        connection.future,
+        startupFailure.future,
+      ]);
+      receivePort = port;
+
+      TomWorker worker = TomWorker._(port, sendPort, spawned, workerName);
+      tomLog.trace(
+        "starting initialization of creator/worker ${Isolate.current.debugName}",
+      );
+      var timer = Stopwatch()..start();
+      await Future.any([
+        workerContext.initializeWorker(worker),
+        startupFailure.future,
+      ]);
       tomLog.info(
         "finished initialization of creator/worker ${Isolate.current.debugName}, took ${timer.elapsedMilliseconds}ms",
       );
-      return await worker._instanceCompleter.future;
+      final ready = await Future.any([
+        worker._instanceCompleter.future,
+        startupFailure.future,
+      ]);
+      endStartupSupervision();
+      return ready;
     } on Object {
-      isolate.kill(priority: Isolate.immediate);
-      receivePort.close();
+      endStartupSupervision();
+      spawned.kill(priority: Isolate.immediate);
+      if (receivePort != null) {
+        receivePort.close();
+      } else {
+        // The isolate never sent its command port, so nothing wrapped initPort.
+        initPort.close();
+      }
       rethrow;
     }
   }
@@ -638,13 +734,18 @@ class TomWorker {
   /// - Commands from the worker requesting execution in the creator
   /// - General messages processed by registered executors
   void _handleResponsesFromIsolate(dynamic message) async {
+    // Both startup outcomes are guarded: spawn abandons the wait once its
+    // readyTimeout expires, so a slow isolate can still arrive afterwards, and
+    // completing an already-settled completer would throw here — in a port
+    // handler, where nothing would catch it.
     if (message is String && message == readyMessage) {
       isReady = true;
-      _instanceCompleter.complete(this);
+      if (!_instanceCompleter.isCompleted) _instanceCompleter.complete(this);
     } else if (message is _TomIsolateInitFailure) {
       // The isolate could not set itself up, so it will never send the ready
       // signal. Fail the spawn with the isolate-side reason rather than let
       // the caller wait for a message that is not coming.
+      if (_instanceCompleter.isCompleted) return;
       _instanceCompleter.completeError(
         TomWorkerException(
           'isolate.initialize_isolate_failed.spawn',
@@ -1223,6 +1324,11 @@ class TomWorkerPool {
   /// Maximum time a probed idle worker has to answer before being force-killed.
   Duration _healthCheckTimeout = const Duration(seconds: 5);
 
+  /// Startup bound applied to every worker this pool spawns, including the
+  /// replacements supervision creates; stored because those respawns happen
+  /// long after [withSize] returned.
+  Duration _readyTimeout = const Duration(seconds: 30);
+
   /// Periodic supervision timer; `null` when supervision is off or closed.
   Timer? _healthTimer;
 
@@ -1257,6 +1363,10 @@ class TomWorkerPool {
   /// - [healthCheckTimeout]: how long a probed idle worker has to answer a
   ///   ping before it is treated as hung and force-killed. Only used — and
   ///   only validated — when [healthCheckInterval] is set; must be positive.
+  /// - [readyTimeout]: startup bound handed to [TomWorker.spawn] for every
+  ///   worker, including later replacements. The pool performs every spawn its
+  ///   callers ever make, so a bound it did not forward would be one nobody
+  ///   could set; see [TomWorker.spawn] for what it covers.
   ///
   /// Returns a [Future] that completes when all workers are ready.
   ///
@@ -1271,6 +1381,7 @@ class TomWorkerPool {
     TomWorkerContext context, {
     Duration? healthCheckInterval,
     Duration healthCheckTimeout = const Duration(seconds: 5),
+    Duration readyTimeout = const Duration(seconds: 30),
   }) async {
     if (size < 1) {
       // A pool with no workers can never acquire one: workers are added at
@@ -1315,6 +1426,7 @@ class TomWorkerPool {
     twp._context = context;
     twp._healthCheckInterval = healthCheckInterval;
     twp._healthCheckTimeout = healthCheckTimeout;
+    twp._readyTimeout = readyTimeout;
     for (int i = 0; i < size; i++) {
       tomLog.info(
         'Creating worker #$i for workerpool in  ${Isolate.current.debugName}',
@@ -1335,7 +1447,11 @@ class TomWorkerPool {
   /// exit listener. If the pool was closed while the spawn was in flight, the
   /// fresh worker is closed immediately instead of being added.
   Future<void> _spawnAndRegister() async {
-    final tw = await TomWorker.spawn(TomWorker.startRemoteIsolate, _context);
+    final tw = await TomWorker.spawn(
+      TomWorker.startRemoteIsolate,
+      _context,
+      readyTimeout: _readyTimeout,
+    );
     if (_closed) {
       tw.close();
       return;
