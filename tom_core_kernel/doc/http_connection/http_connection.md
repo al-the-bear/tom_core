@@ -592,6 +592,34 @@ and the response object keeps its default values. Any other status that promised
 a body and sent none is still a parse failure, reported through
 `internalError == TomServerCallError.serverError`.
 
+### When No Response Arrives At All
+
+A refused connection, an expired deadline and an aborted request all mean the
+same thing to the caller: there is no response to inspect. `TomServerEndpoint`
+reports each of them through the same `(response, error)` tuple as every other
+failure, so the `if (error?.hasError ?? false)` shape above covers a dropped
+network as well as it covers a `500`:
+
+```dart
+final (user, error) = await endpoint.send(CreateUserRequest(name: 'John'));
+if (error?.hasError ?? false) {
+  if (error!.internalError == TomServerCallError.noResponseError) {
+    // No response: no status, no body, no headers. Which way the connection
+    // failed is in error.exception — a TomRequestTimeoutException for an
+    // expired deadline, a ClientException for a refused connection.
+    print('unreachable: ${error.exception}');
+  }
+}
+```
+
+Such an error carries `statusCode` `0` — there is no status to report, and
+leaving it at the `200` default would describe a success that never happened.
+
+`TomServerCall`, the layer beneath, still signals these by throwing
+`TomRequestTimeoutException` and `TomRequestAbortedException`; a caller working
+at that level catches them as before. The translation to `noResponseError`
+belongs to the endpoint, because the tuple is the endpoint's contract.
+
 ### Custom HTTP Client Factory
 
 ```dart

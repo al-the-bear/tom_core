@@ -4,7 +4,12 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart'
-    show BaseClient, BaseRequest, StreamedResponse, RequestAbortedException;
+    show
+        BaseClient,
+        BaseRequest,
+        ClientException,
+        StreamedResponse,
+        RequestAbortedException;
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -2917,6 +2922,95 @@ void main() {
       expect(error!.hasError, isTrue);
       expect(error.statusCode, equals(503));
       expect(error.statusCodeResponse, isNull);
+    });
+  });
+
+  // ==========================================================================
+  // TomServerEndpoint.send — when no response ever arrives
+  // ==========================================================================
+  group('TomServerEndpoint.send with no response', () {
+    // An endpoint whose client never produces a response. How it fails is the
+    // axis under test: refusing the connection outright, or going silent until
+    // the deadline. Both are "the server sent no response", and both have to
+    // reach the caller through the (response, error) tuple the endpoint
+    // promises rather than as an exception thrown past it.
+    TomServerEndpoint<EndpointRequest, EndpointResponse> endpointWith(
+      Future<StreamedResponse> Function(BaseRequest request) handler, {
+      Duration? timeout,
+    }) {
+      final channel = TomServerChannel(
+        'api.example.com',
+        443,
+        clientFactory: _MockClientFactory(_MockClient(handler)),
+      );
+      return TomServerEndpoint<EndpointRequest, EndpointResponse>(
+        channel,
+        TomServerCallSpecs(
+          'POST',
+          Uri.parse('https://api.example.com/resources'),
+          includeBearerAuthentication: false,
+          timeout: timeout,
+        ),
+      );
+    }
+
+    test('a refused connection is reported as noResponseError', () async {
+      // The most ordinary failure a network client meets. Every HTTP failure
+      // already comes back through the tuple; this one used to be the single
+      // case that threw instead, so a caller who followed the documented
+      // `if (error?.hasError ?? false)` shape crashed on a dropped network.
+      final (response, error) = await endpointWith(
+        (_) async => throw ClientException('Connection refused'),
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error, isNotNull);
+      expect(error!.hasError, isTrue);
+      expect(error.internalError, equals(TomServerCallError.noResponseError));
+      // The identity of the branch, pinned without leaning on the constant:
+      // noResponseError and serverError share the value 2 (tcopen13), so the
+      // code alone cannot distinguish "no response" from "the response failed
+      // to parse". No status and no body can only be the former.
+      expect(error.statusCode, equals(0));
+      expect(error.response, isNull);
+      expect(error.headers, isEmpty);
+      expect(error.exception, isA<ClientException>());
+      expect(error.stackTrace, isNotNull);
+      // The caller still receives a usable R, defaults intact.
+      expect(response.id, isEmpty);
+    });
+
+    test('a request that times out is reported as noResponseError', () async {
+      // A deadline expiring is literally "no response arrived". TomServerCall
+      // still raises its typed TomRequestTimeoutException — that is its own
+      // contract and its tests pin it — and the endpoint translates it, keeping
+      // the original reachable through `exception` for callers that care which
+      // way the connection failed.
+      final (_, error) = await endpointWith(
+        (_) => Completer<StreamedResponse>().future,
+        timeout: const Duration(milliseconds: 50),
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error!.internalError, equals(TomServerCallError.noResponseError));
+      expect(error.statusCode, equals(0));
+      expect(error.exception, isA<TomRequestTimeoutException>());
+      expect(
+        (error.exception! as TomRequestTimeoutException).key,
+        equals('server.send.request_timeout'),
+      );
+    });
+
+    test('a response that does arrive is never a no-response error', () async {
+      // The other side of the boundary: a body that will not parse is a
+      // failure of the response, not an absence of one. The two share the
+      // internal code today, so this pins them apart by what only a delivered
+      // response can carry.
+      final (_, error) = await endpointWith(
+        (_) async => _streamed('not json at all'),
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error!.hasError, isTrue);
+      expect(error.statusCode, equals(200));
+      expect(error.response, equals('not json at all'));
     });
   });
 

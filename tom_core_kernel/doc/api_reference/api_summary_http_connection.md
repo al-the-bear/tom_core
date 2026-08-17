@@ -797,7 +797,7 @@ TomServerCallError({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `jsonDecodingError` | `int` | Internal error code for JSON decoding failures (`1`). |
-| `noResponseError` | `int` | Internal error code when no response was received (`2`). |
+| `noResponseError` | `int` | Internal error code when no response was received (`2`). Raised by `TomServerEndpoint.send` when the request never produced a response — a refused connection, an expired deadline, an aborted request. Such an error carries `statusCode` `0` and no body; the underlying failure is in `exception`. |
 | `serverError` | `int` | Internal error code for general server errors (`2`). |
 
 ##### Static Methods
@@ -1011,7 +1011,7 @@ TomServerEndpoint(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<(R result, TomServerCallError? ts)> send(T load, [R? responseObject])` | Sends `load` and returns a `(response, error)` tuple; check `TomServerCallError.hasError` to determine success. Any 2xx is a success and its body is deserialized into `R` — except `204`/`205`, which have no body, so `R` keeps its defaults. May throw `TomServerConnectionException` when the server requests a client rethrow. |
+| `send` | `Future<(R result, TomServerCallError? ts)> send(T load, [R? responseObject])` | Sends `load` and returns a `(response, error)` tuple; check `TomServerCallError.hasError` to determine success. Any 2xx is a success and its body is deserialized into `R` — except `204`/`205`, which have no body, so `R` keeps its defaults. A request that never yields a response (refused connection, expired deadline, abort) comes back through the same tuple as `internalError == noResponseError` with the underlying failure in `exception`, not as a throw past it. May throw `TomServerConnectionException` when the server requests a client rethrow. |
 
 #### TomServerConnectionException
 

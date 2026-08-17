@@ -260,6 +260,11 @@ class TomServerCallError {
   static const jsonDecodingError = 1;
 
   /// Internal error code when no response was received.
+  ///
+  /// Raised by [TomServerEndpoint.send] when the request never produced a
+  /// response — a refused connection, an expired deadline, an aborted request.
+  /// Such an error carries no status (`statusCode` is 0) and no body; the
+  /// underlying failure is in [exception].
   static const noResponseError = 2;
 
   /// Internal error code for general server errors.
@@ -974,6 +979,14 @@ class TomServerEndpoint<T extends Object, R extends Object> {
   /// Returns a tuple of (response, error). Check [TomServerCallError.hasError]
   /// to determine if the request succeeded.
   ///
+  /// Every way a call can fail reaches the caller through that tuple, including
+  /// the ones where no response arrives at all — a refused connection, an
+  /// expired deadline, an aborted request all come back as
+  /// [TomServerCallError.noResponseError] with the underlying failure in
+  /// `exception`, not as a throw past the tuple. The one exception is a server
+  /// error that asks the client to rethrow, which raises
+  /// [TomServerConnectionException] by request of the server.
+  ///
   /// - [load]: The request object to send
   /// - [responseObject]: Optional pre-created response object to populate
   Future<(R result, TomServerCallError? ts)> send(
@@ -984,25 +997,47 @@ class TomServerEndpoint<T extends Object, R extends Object> {
     String json = tomReflectionInfo.convertToJsonString(load);
     TomServerCall serverCall = channel.prepareCall(specs);
 
-    String result = await serverCall
-        .send(
-          TomServerCallLoad(
-            stringBody: json,
-            contentType: "application/json",
-            encoding: specs.requestEncoding ?? Encoding.getByName("utf-8"),
-          ),
-        )
-        .readAsString(
-          specs.fallbackResponseEncoding ?? Encoding.getByName("utf-8")!,
-        );
-
-    if (serverCall.serverResponse == null) {
+    final String result;
+    try {
+      result = await serverCall
+          .send(
+            TomServerCallLoad(
+              stringBody: json,
+              contentType: "application/json",
+              encoding: specs.requestEncoding ?? Encoding.getByName("utf-8"),
+            ),
+          )
+          .readAsString(
+            specs.fallbackResponseEncoding ?? Encoding.getByName("utf-8")!,
+          );
+    } catch (ex, stack) {
+      // No response arrived at all — the connection was refused, the deadline
+      // expired, or the request was aborted. [TomServerCall] reports each of
+      // those by throwing, which is its own contract; this endpoint's contract
+      // is the `(response, error)` tuple, so it translates instead of letting
+      // the exception past. The original stays reachable through [exception]
+      // for a caller that needs to know which way the connection failed.
+      //
+      // The test for this used to sit *after* the read, asking whether
+      // `serverCall.serverResponse` was null — but the read dereferences that
+      // same field non-null on its way to producing a body, so the condition
+      // could not hold where it was asked and the failure it named surfaced as
+      // a raw throw instead of as [noResponseError].
       return (
         response,
-        TomServerCallError(internalError: TomServerCallError.noResponseError),
+        TomServerCallError(
+          // There is no status and no body to report: leaving the status at its
+          // 200 default would describe a success that never happened.
+          statusCode: 0,
+          internalError: TomServerCallError.noResponseError,
+          exception: ex,
+          stackTrace: stack,
+        ),
       );
     }
 
+    // Reaching here means the body was read, and reading it required a
+    // response, so [serverResponse] is non-null from this point on.
     final int statusCode = serverCall.serverResponse!.statusCode;
 
     TomServerCallError? error;
