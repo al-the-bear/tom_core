@@ -1070,6 +1070,44 @@ void main() {
       expect(tree['host'], equals('localhost'));
     });
 
+    group('an empty environment value counts as unset', () {
+      // `${VAR:default}` is the colon form, and follows the shell's `:-`
+      // convention: an empty value is treated the same as an unset one. The
+      // three tests below pin all three arms of that rule, so a future change
+      // to the `isNotEmpty` guard cannot pass unnoticed.
+
+      test('the placeholder survives when the value is empty and there '
+          'is no default', () {
+        final tree = <String, dynamic>{'host': r'${DB_HOST}'};
+
+        substituteEnvVars(tree, {'DB_HOST': ''});
+
+        // Not the empty string: `{'DB_HOST': ''}` is indistinguishable from
+        // DB_HOST being absent, so this is the no-value-no-default arm and the
+        // placeholder is left visible.
+        expect(tree['host'], equals(r'${DB_HOST}'));
+      });
+
+      test('an empty default is honoured', () {
+        // The counterpart that makes the rule look asymmetric until the shell
+        // convention is named: an empty *default* is a default that happens to
+        // be empty and resolves, while an empty *value* does not.
+        final tree = <String, dynamic>{'host': r'${DB_HOST:}'};
+
+        substituteEnvVars(tree, {});
+
+        expect(tree['host'], equals(''));
+      });
+
+      test('an empty value with an empty default resolves to empty', () {
+        final tree = <String, dynamic>{'host': r'${DB_HOST:}'};
+
+        substituteEnvVars(tree, {'DB_HOST': ''});
+
+        expect(tree['host'], equals(''));
+      });
+    });
+
     test('leaves the placeholder when absent with no default', () {
       final tree = <String, dynamic>{'host': r'${DB_HOST}'};
 

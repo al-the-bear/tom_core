@@ -836,8 +836,33 @@ final RegExp _envVarPattern = RegExp(r'\$\{([^:}]+)(?::([^}]*))?\}');
 /// - [environment]: Map of environment variable names to values
 ///
 /// ## Placeholder Syntax
-/// - `${VAR_NAME}` - Replaced with environment value, or left unchanged if not found
-/// - `${VAR_NAME:default}` - Replaced with environment value, or `default` if not found
+/// - `${VAR_NAME}` — replaced with the environment value, or left unchanged if
+///   there is none
+/// - `${VAR_NAME:default}` — replaced with the environment value, or `default`
+///   if there is none
+///
+/// ## An empty value counts as unset
+/// A variable present in [environment] with an empty value is treated exactly
+/// as an absent one: `{'VAR': ''}` and `{}` produce the same result. This
+/// follows the shell's `${VAR:-default}` convention, which the `:` in
+/// `${VAR:default}` mirrors — the colon form is precisely the one that folds
+/// empty into unset.
+///
+/// The consequence is worth stating plainly, because it looks asymmetric until
+/// the convention is named:
+///
+/// ```dart
+/// substituteEnvVars({'a': r'${V:fallback}'}, {'V': ''});  // 'fallback'
+/// substituteEnvVars({'a': r'${V}'},          {'V': ''});  // '${V}' survives
+/// substituteEnvVars({'a': r'${V:}'},         {});         // '' — empty default
+/// ```
+///
+/// An empty *default* is a default that happens to be empty, and resolves; an
+/// empty *value* does not. So a caller passing `Platform.environment` cannot
+/// express "this variable is deliberately empty" — a `VAR=` in the environment
+/// leaves a literal `${VAR}` in the tree unless a default is supplied. Give the
+/// placeholder an explicit empty default, `${VAR:}`, when empty is the intended
+/// resolution.
 ///
 /// ## Example
 /// ```dart
@@ -860,12 +885,20 @@ void substituteEnvVars(
 /// Substitutes environment variable placeholders in a single string.
 ///
 /// Internal helper for [substituteEnvVars].
-String _substituteEnvVarsInString(String input, Map<String, String> environment) {
+String _substituteEnvVarsInString(
+  String input,
+  Map<String, String> environment,
+) {
   return input.replaceAllMapped(_envVarPattern, (match) {
     final varName = match.group(1)!;
     final defaultValue = match.group(2);
     final envValue = environment[varName];
-    
+
+    // `isNotEmpty`, not just a null check: an empty value counts as unset,
+    // following the shell's `${VAR:-default}` convention that the `:` in
+    // `${VAR:default}` mirrors. `defaultValue` is tested for null rather than
+    // emptiness, so `${VAR:}` still resolves to the empty string — an empty
+    // default is a default, an empty value is not a value.
     if (envValue != null && envValue.isNotEmpty) {
       return envValue;
     }

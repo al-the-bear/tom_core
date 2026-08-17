@@ -17,7 +17,7 @@ pretty-printing. These are plain top-level functions — no types to instantiate
 | `getPathFromTree(tree, path)` | Resolve a dotted path to its containing map, wrapping a non-map terminal (`null` included) under the supplied name. |
 | `traverseAndProcess(tree, test, processor)` | Visit every string in the tree — through nested maps, lists, and lists inside lists — processing matches. |
 | `traverseAndCreate(tree, nameTest, creator)` | Visit every node, handing each matching key's containing map to a creator that may insert into, remove from, or overwrite it. |
-| `substituteEnvVars(tree, env)` | Replace `${VAR}` placeholders from an env map. |
+| `substituteEnvVars(tree, env)` | Replace `${VAR}` placeholders from an env map; an empty value counts as unset, so use `${VAR:}` to resolve to empty. |
 | `makeCleanJsonMap(map)` | Produce a JSON-safe `Map<String, Object?>`, keeping deliberate nulls and converting any `TomJsonSerializable` it meets. |
 | `prettyJson(json)` / `prettyJsonLine(json)` | Indented / single-line formatting. |
 

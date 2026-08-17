@@ -395,6 +395,25 @@ entry is left in the tree unchanged, so an unresolved placeholder is visible
 rather than silently blank. Multiple placeholders in one string are all
 replaced.
 
+#### An empty value counts as unset
+
+A variable present in the environment map with an empty value is treated exactly
+as an absent one — `{'VAR': ''}` and `{}` give the same result. This follows the
+shell's `${VAR:-default}` convention, which the `:` in `${VAR:default}` mirrors:
+the colon form is the one that folds empty into unset.
+
+```dart
+substituteEnvVars({'a': r'${V:fallback}'}, {'V': ''});  // 'fallback'
+substituteEnvVars({'a': r'${V}'},          {'V': ''});  // '${V}' survives
+substituteEnvVars({'a': r'${V:}'},         {});         // '' — empty default
+```
+
+The third line is the one to hold on to. An empty *default* is a default that
+happens to be empty, and resolves; an empty *value* does not. So a caller
+passing `Platform.environment` cannot express "this variable is deliberately
+empty" — a `VAR=` in the environment leaves a literal `${VAR}` in the config.
+Write `${VAR:}` when empty is the intended resolution.
+
 ### Debugging API Responses
 
 ```dart
