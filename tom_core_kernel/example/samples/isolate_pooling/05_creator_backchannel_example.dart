@@ -13,6 +13,8 @@
 /// - Handling creator-side messages with a TomExecutor
 /// - Customizing startup via TomWorkerContext.initializeIsolate/initializeWorker
 /// - Error propagation: a command that throws surfaces as a RemoteError
+/// - Recognizing TomExecutor.noResult, the answer a creator gives when nothing
+///   on its side claimed the message
 library;
 
 import 'dart:isolate' show RemoteError;
@@ -102,6 +104,20 @@ class NotifyCreatorCommand extends TomCommand {
     TomWorker.sendToCreator({'kind': 'notify', 'payload': payload});
     return 'sent';
   }
+}
+
+/// Delegates a payload to the creator that no creator-side executor claims.
+///
+/// The payload is a plain `String` rather than a [TomCommand], so the creator
+/// offers it to its executor chain — and the only executor registered here
+/// answers `notify` maps, so it declines. The creator still replies, with
+/// [TomExecutor.noResult]: an unanswered message would leave this `await`
+/// pending forever, and liveness supervision could not see the hang, since the
+/// isolate is healthy and still answers pings.
+class DelegateUnclaimedToCreator extends TomCommand {
+  @override
+  Future<Object?> execute() async =>
+      await TomWorker.executeInCreator('nothing on the creator handles this');
 }
 
 /// A command that throws, to demonstrate error propagation.
@@ -204,6 +220,23 @@ Future<void> run() async {
   print('   caught: ${caught.runtimeType}\n');
 
   // -------------------------------------------------------------------------
+  // Example 5: Nothing on the creator claimed the message
+  // -------------------------------------------------------------------------
+  print('5. A message no creator-side executor claims:');
+
+  final unclaimed = await worker.executeCommand(DelegateUnclaimedToCreator());
+
+  // `identical`, not `==`: the sentinel is a const instance with no value
+  // equality of its own. Recognizing it relies on that instance staying
+  // canonical across the isolate hop — which is exactly why casting the result
+  // instead would throw a TypeError naming a private type, far from the
+  // addExecutor that was forgotten.
+  final wasUnclaimed = identical(unclaimed, TomExecutor.noResult);
+
+  print('   result is TomExecutor.noResult: $wasUnclaimed');
+  print('   (the creator also logged a warning naming the command)\n');
+
+  // -------------------------------------------------------------------------
   // Cleanup
   // -------------------------------------------------------------------------
   worker.close();
@@ -230,4 +263,8 @@ Future<void> run() async {
 
   // Example 4: thrown command becomes a RemoteError on the future.
   assert(caught is RemoteError);
+
+  // Example 5: an unclaimed message is answered with the sentinel, and the
+  // sentinel survives both hops as the same canonical instance.
+  assert(wasUnclaimed);
 }

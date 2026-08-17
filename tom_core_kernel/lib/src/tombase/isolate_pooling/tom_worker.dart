@@ -822,7 +822,12 @@ class TomWorker {
       }
     } else if (message is _TomCreatorCommand) {
       TomExecutor? executor;
-      Object? result;
+      // Start from the sentinel, as the worker side does: an empty executor
+      // list must reach the same "nothing handled it" exit as a chain that
+      // declined. Starting from null would send the sentinel anyway — the
+      // `??` below sees to that — but skip the warning in exactly the case a
+      // forgotten addExecutor produces, the one worth reporting.
+      Object? result = TomExecutor.noResult;
       try {
         if (message.command is TomCommand) {
           TomCommand command = message.command as TomCommand;
@@ -1099,12 +1104,28 @@ class TomWorker {
   ///
   /// - [command]: The command to execute in the creator
   ///
-  /// Returns the result of executing the command.
+  /// Returns the result of executing the command, or [TomExecutor.noResult]
+  /// when nothing on the creator side handled it — because no executor is
+  /// registered there, or because every registered executor declined. As on
+  /// the worker side, every command is answered; an unanswered one would leave
+  /// this future pending forever. Compare with [TomExecutor.noResult] if
+  /// "nothing handled this" is a case the caller must distinguish:
   ///
-  /// Never resolves to `null`: a creator result of `null` is substituted with
-  /// [TomExecutor.noResult] before the response is sent. This is *not* the
-  /// substitution the opposite direction makes — [executeCommand] uses the
-  /// string `"null"` — so the two are not interchangeable.
+  /// ```dart
+  /// final result = await TomWorker.executeInCreator(command);
+  /// if (identical(result, TomExecutor.noResult)) {
+  ///   // The creator received the message but nothing claimed it.
+  /// }
+  /// ```
+  ///
+  /// Never resolves to `null` either: a creator result of `null` is
+  /// substituted with [TomExecutor.noResult] before the response is sent. So
+  /// the sentinel carries *two* meanings on this call — "nobody handled it"
+  /// and "the handler returned `null`" — and the caller cannot tell them
+  /// apart. A command that must distinguish them has to return a sentinel of
+  /// its own instead of `null`. Note also that this is not the substitution
+  /// the opposite direction makes — [executeCommand] uses the string `"null"`
+  /// — so the two are not interchangeable.
   ///
   /// Throws [TomWorkerException] if called from the main isolate.
   ///

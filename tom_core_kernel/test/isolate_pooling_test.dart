@@ -239,6 +239,41 @@ class DelegateNullToCreator extends TomCommand {
   }
 }
 
+/// Runs in the worker and delegates a payload the creator does not handle.
+///
+/// The payload is a plain `String`, not a [TomCommand], so the creator offers
+/// it to its executor chain instead of executing it itself — the only path on
+/// which the creator can run out of handlers. The chain then either is empty
+/// or declines, and [TomWorker.executeInCreator] resolves with
+/// [TomExecutor.noResult]. The sentinel is not `null`, so it survives the
+/// worker's own substitution and reaches the original caller unchanged.
+class DelegateUnhandledToCreator extends TomCommand {
+  @override
+  Future<Object?> execute() async =>
+      await TomWorker.executeInCreator('nothing handles this');
+}
+
+/// Log output that records every emitted message, so the diagnostics the
+/// unhandled path emits can be asserted rather than merely assumed.
+class RecordingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel.matches(loggerLevel)) {
+      messages.add(convertToString(message));
+    }
+  }
+}
+
 /// Simple test worker context.
 class TestWorkerContext extends TomWorkerContext {
   bool isolateInitialized = false;
@@ -1634,6 +1669,76 @@ void main() {
 
         final result = await worker.executeCommand(DelegateNullToCreator());
         expect(result, same(TomExecutor.noResult));
+
+        worker.close();
+      });
+
+      test('executeInCreator resolves with noResult when the creator has no '
+          'executor registered', () async {
+        // The mirror image of the worker-side unhandled answer: the creator
+        // also replies rather than staying silent, so the worker's await
+        // resolves instead of hanging. `same`, not `equals` — the sentinel
+        // carries no value equality, so a caller can only recognise it if the
+        // const instance stays canonical across both isolate hops.
+        final context = TestWorkerContext(namePrefix: 'CreatorNoExec');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final result = await worker
+            .executeCommand(DelegateUnhandledToCreator())
+            .timeout(Duration(seconds: 5));
+        expect(result, same(TomExecutor.noResult));
+
+        worker.close();
+      });
+
+      test('executeInCreator resolves with noResult when every creator '
+          'executor declines', () async {
+        final declining = NoOpExecutor();
+        TomWorker.addExecutor(declining);
+
+        final context = TestWorkerContext(namePrefix: 'CreatorDecline');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final result = await worker
+            .executeCommand(DelegateUnhandledToCreator())
+            .timeout(Duration(seconds: 5));
+        expect(result, same(TomExecutor.noResult));
+        // The chain really was consulted — otherwise the assertion above would
+        // also pass for a creator that never dispatched at all.
+        expect(declining.executeCallCount, equals(1));
+
+        worker.close();
+      });
+
+      test('the creator warns whenever nothing handled the message', () async {
+        // Both ways of reaching the unhandled answer must be diagnosable. The
+        // empty-chain case is the one that matters most — it is the shape a
+        // forgotten addExecutor takes — so it must not be the silent one.
+        final recorder = RecordingLogOutput();
+        final previousOutput = tomLog.logOutput;
+        tomLog.logOutput = recorder;
+        addTearDown(() => tomLog.logOutput = previousOutput);
+
+        final context = TestWorkerContext(namePrefix: 'CreatorWarn');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        await worker
+            .executeCommand(DelegateUnhandledToCreator())
+            .timeout(Duration(seconds: 5));
+
+        expect(
+          recorder.messages.where((m) => m.contains('NO_RESULT')),
+          isNotEmpty,
+        );
 
         worker.close();
       });

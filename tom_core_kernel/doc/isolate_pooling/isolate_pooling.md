@@ -92,7 +92,7 @@ The main class for managing worker isolates. Handles spawning, communication, an
 | Method | Description |
 |--------|-------------|
 | `sendToCreator()` | Send a message to the creator (fire-and-forget) |
-| `executeInCreator()` | Execute a command in the creator and await result |
+| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.noResult` if nothing there handled it |
 | `canSendToCreator()` | Check if backchannel is available |
 | `isMainIsolate` | Whether running in the main isolate (read-only) |
 
@@ -206,16 +206,31 @@ list, so a caller that could replace or edit it directly would silently detach
 dispatch from every later registration.
 
 Executors are tried in order and the first to return anything other than
-`noResult` wins. If the chain is exhausted — or the worker has no executor
-registered at all — the command is nonetheless answered, with `noResult`
-itself:
+`noResult` wins. If the chain is exhausted — or the receiving side has no
+executor registered at all — the command is nonetheless answered, with
+`noResult` itself. **This holds in both directions**, and a caller that must
+distinguish "nobody handled this" from a real result has to test for the
+sentinel:
 
 ```dart
+// creator → worker
 final result = await worker.executeCommand('nothing handles this');
 if (identical(result, TomExecutor.noResult)) {
   // The worker received the message but no executor claimed it.
 }
+
+// worker → creator, from inside a worker isolate
+final answer = await TomWorker.executeInCreator('nothing handles this');
+if (identical(answer, TomExecutor.noResult)) {
+  // The creator received the message but no executor claimed it.
+}
 ```
+
+`identical` rather than `==`: the sentinel is a `const` instance with no value
+equality of its own, and it stays canonical across the isolate hop — that
+canonicality is exactly what makes it recognisable. Both sides also log a
+warning naming the unclaimed command, so a forgotten `addExecutor` shows up in
+the log rather than only as a puzzling sentinel at the call site.
 
 Answering matters more than it looks. A command left unanswered leaves the
 caller's completer pending forever, and liveness supervision cannot rescue it:
@@ -248,6 +263,14 @@ values:
 | --------- | ---- | -------------------------- |
 | creator → worker | `worker.executeCommand(cmd)` | the string `"null"` |
 | worker → creator | `TomWorker.executeInCreator(cmd)` | `TomExecutor.noResult` |
+
+The creator-bound row reuses the same sentinel the unhandled answer uses, so
+`noResult` from `executeInCreator` is ambiguous: it means *either* "no executor
+claimed the message" *or* "a handler ran and returned `null`". Nothing in the
+response distinguishes them — only the creator's warning log does. A command
+whose caller must tell the two apart should return a sentinel of its own rather
+than `null`. The worker-bound direction has no such ambiguity, because its
+`null` becomes the string `"null"` instead.
 
 So `executeCommand` can never resolve to `null` despite its signature. The same
 substitution applies to a `null` returned by a `TomExecutor`, not just by a
@@ -535,6 +558,12 @@ try {
   towards the creator), so a `null`-checking caller never sees the case it is
   checking for. Send an explicit sentinel instead — see
   [TomCommand](#tomcommand)
+- **Don't cast a dispatch result unchecked**: both `executeCommand` and
+  `executeInCreator` may resolve with `TomExecutor.noResult` when nothing
+  handled the message, so `await worker.executeCommand(c) as Report` throws a
+  `TypeError` naming a private type, far from the `addExecutor` that was
+  forgotten. Test with `identical(result, TomExecutor.noResult)` first — see
+  [TomExecutor](#tomexecutor)
 
 ### 5. Logging Considerations
 
