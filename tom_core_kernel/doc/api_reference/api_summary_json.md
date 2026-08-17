@@ -71,6 +71,18 @@ match a wire shape they do not own, not the design default.
 
 ### Functions
 
+**What counts as a subtree.** Every function below that walks a tree —
+`mergeMapsOneSided`, `traverseAndProcess`, `traverseAndCreate`,
+`substituteEnvVars`, `getPathFromTree`, `getObjectFromTree` — treats any map
+whose keys are all `String` as a subtree, whatever its reified type. A
+`Map<dynamic, dynamic>` (from `TomYaml` or a round trip through an untyped
+container) and a `Map<String, String>` (from a literal) are descended into just
+like the `Map<String, dynamic>` that `jsonDecode` produces. The traversals still
+edit in place: the string-keyed view they walk writes through to the caller's
+map. A map with a non-`String` key is *not* a subtree — it cannot be a JSON
+object and every callback here takes a `String key`, so it is skipped whole
+rather than walked halfway.
+
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
 | `mergeMapsOneSided` | `void mergeMapsOneSided(Map<String, dynamic> base, Map<String, dynamic> override)` | Recursively merges `override` into `base` in-place: nested maps merge recursively, and primitives/new keys from `override` are applied. Arrays merge element-by-element over the overlapping prefix and then take `override`'s tail, with base elements past `override`'s length kept; each element pair follows the same rules as a key/value pair, so a non-map, non-list override element replaces the base element. The merged array is a new `List<dynamic>` rather than the base array mutated in place. An `override` map or list landing on a base value of another shape — at a key or at an array index — is refused with a logged error and the base value kept. `override` is deep-copied before the merge, so it is never modified and the merged tree shares no map or list with it; use `deepCopyJsonTree` on `base` if the original must survive. |

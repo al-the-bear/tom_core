@@ -10,6 +10,20 @@
 /// where base configurations need to be merged with environment-specific
 /// overrides while preserving nested structure.
 ///
+/// ## What counts as a subtree
+/// Every function here that walks a tree treats **any map whose keys are all
+/// `String`** as a subtree, whatever its reified type: `Map<dynamic, dynamic>`,
+/// `Map<String, String>` and `Map<String, dynamic>` are descended into alike.
+/// The reified type is not under the caller's control as often as it looks —
+/// `jsonDecode` always yields `Map<String, dynamic>`, but `TomYaml`, a
+/// hand-written literal and anything round-tripped through an untyped container
+/// do not, and such maps used to be walked past silently (bug §84).
+///
+/// A map with a non-`String` key is *not* a subtree: it cannot be a JSON object
+/// and every callback here takes a `String key`, so it is skipped whole rather
+/// than walked halfway. The in-place traversals still edit in place — the
+/// string-keyed view they walk writes through to the caller's map.
+///
 /// ## Example: Merging configurations
 /// ```dart
 /// final base = {'database': {'host': 'localhost', 'port': 5432}};
@@ -30,6 +44,43 @@ import 'json_serializable.dart';
 // =============================================================================
 // Private Helpers
 // =============================================================================
+
+/// A `Map<String, dynamic>` view of [value], or `null` if it is not a map this
+/// module can walk.
+///
+/// The tree functions used to test children with `is Map<String, dynamic>`
+/// directly. That is a *reified* test: a `Map<dynamic, dynamic>` fails it and
+/// was walked past without an error or a log line, so its contents were
+/// silently left untransformed (bug §84 — the same defect as §45, which fixed
+/// the list guards and the top-level signature but left the nested-map ones).
+/// `jsonDecode` never produces such a map, so the common path was safe, but
+/// `TomYaml.loadYamlFile`, hand-built maps and anything round-tripped through
+/// an untyped container all do.
+///
+/// The returned view **writes through** to [value], which is what lets the
+/// in-place traversals keep their contract: a caller holding the original map
+/// sees the edits. Callers that need to store the result in a tree should
+/// prefer a real copy, because a `cast` view revalidates on every write.
+///
+/// A map with a non-String key returns `null` and is skipped. It cannot be a
+/// JSON object, and every callback here takes a `String key`, so there is
+/// nothing meaningful to hand them; walking it halfway would be worse than not
+/// walking it. The scan that establishes this is O(keys), paid only for a map
+/// that is not already `Map<String, dynamic>`.
+Map<String, dynamic>? _asStringKeyedMap(Object? value) {
+  if (value is Map<String, dynamic>) {
+    return value;
+  }
+  if (value is! Map) {
+    return null;
+  }
+  for (final Object? key in value.keys) {
+    if (key is! String) {
+      return null;
+    }
+  }
+  return value.cast<String, dynamic>();
+}
 
 /// Merges [override] into [base] positionally and returns the merged list.
 ///
@@ -67,9 +118,19 @@ List<dynamic> _mergeListsOneSided(
   for (int i = 0; i < overlap; i++) {
     final Object? baseElement = base[i];
     final Object? overrideElement = override[i];
-    if (baseElement is Map<String, dynamic> &&
-        overrideElement is Map<String, dynamic>) {
-      _mergeMapsOneSided(baseElement, overrideElement);
+    final Map<String, dynamic>? baseElementMap = _asStringKeyedMap(baseElement);
+    if (baseElementMap != null && overrideElement is Map<String, dynamic>) {
+      // Merge into a widened copy and write it back rather than mutating the
+      // base element in place, exactly as the map branch of _mergeMapsOneSided
+      // does: a narrowly reified element (`Map<String, String>`) passes the
+      // test by covariance and then throws on the first entry of another type
+      // the merge adds. Nothing observes the element identity — the result
+      // list replaces the base list wholesale anyway.
+      final Map<String, dynamic> merged = Map<String, dynamic>.of(
+        baseElementMap,
+      );
+      _mergeMapsOneSided(merged, overrideElement);
+      result[i] = merged;
     } else if (baseElement is List && overrideElement is List) {
       result[i] =
           _mergeListsOneSided(baseElement, overrideElement, '$name[$i]');
@@ -171,6 +232,9 @@ dynamic _deepCopyJsonValue(dynamic value) {
 /// would write back into the first. Scalar leaves are shared rather than
 /// copied, which is safe because JSON scalars are immutable.
 ///
+/// A base subtree counts whatever its reified type, as long as its keys are all
+/// `String`; see the library doc's *What counts as a subtree*.
+///
 /// ## Parameters
 /// - [base]: The target map that will be modified with merged values
 /// - [override]: The source map whose values will be merged into [base]
@@ -216,16 +280,14 @@ void _mergeMapsOneSided(
     Object? baseObject = base[oKey];
     if (oValue is Map<String, dynamic>) {
       if (base.containsKey(oKey)) {
-        if (baseObject is Map<String, dynamic>) {
+        final Map<String, dynamic>? baseMap = _asStringKeyedMap(baseObject);
+        if (baseMap != null) {
           // Merge into a widened copy and write it back, exactly as the list
-          // branch below does. `baseObject is Map<String, dynamic>` is true
-          // even for a narrowly reified map — Dart generics are covariant, so
-          // the literal `{'host': 'h'}` is a `Map<String, String>` that
-          // satisfies the test and then throws on the first entry of another
-          // type the merge adds to it.
-          final Map<String, dynamic> merged = Map<String, dynamic>.of(
-            baseObject,
-          );
+          // branch below does. A narrowly reified map reaches here too — Dart
+          // generics are covariant, so the literal `{'host': 'h'}` is a
+          // `Map<String, String>` that would throw on the first entry of
+          // another type the merge adds to it.
+          final Map<String, dynamic> merged = Map<String, dynamic>.of(baseMap);
           _mergeMapsOneSided(merged, oValue);
           base[oKey] = merged;
         } else {
@@ -269,6 +331,8 @@ void _mergeMapsOneSided(
 /// value's runtime shape rather than on a container's declared type, which is
 /// what makes a document straight out of `jsonDecode` — `Map<String, dynamic>`
 /// and `List<dynamic>` throughout — behave the same as one built in Dart code.
+/// A map child counts whatever its reified type, as long as its keys are all
+/// `String`; see the library doc's *What counts as a subtree*.
 ///
 /// ## Parameters
 /// - [tree]: The nested map structure to traverse
@@ -291,8 +355,9 @@ void traverseAndProcess(
   String Function(String) processor,
 ) {
   tree.forEach((String oKey, dynamic oValue) {
-    if (oValue is Map<String, dynamic>) {
-      traverseAndProcess(oValue, test, processor);
+    final Map<String, dynamic>? childMap = _asStringKeyedMap(oValue);
+    if (childMap != null) {
+      traverseAndProcess(childMap, test, processor);
     } else if (oValue is List) {
       _processList(oValue, test, processor);
     } else if (oValue is String) {
@@ -322,8 +387,9 @@ void _processList(
 ) {
   for (int i = 0; i < list.length; i++) {
     final element = list[i];
-    if (element is Map<String, dynamic>) {
-      traverseAndProcess(element, test, processor);
+    final Map<String, dynamic>? elementMap = _asStringKeyedMap(element);
+    if (elementMap != null) {
+      traverseAndProcess(elementMap, test, processor);
     } else if (element is List) {
       _processList(element, test, processor);
     } else if (element is String && test(element)) {
@@ -367,6 +433,9 @@ void _processList(
 ///
 /// An entry the creator removes is simply skipped when the walk reaches it.
 ///
+/// A map child counts whatever its reified type, as long as its keys are all
+/// `String`; see the library doc's *What counts as a subtree*.
+///
 /// ## Example
 /// ```dart
 /// final config = {'ref@profiles@dev': 'value'};
@@ -398,8 +467,9 @@ void traverseAndCreate(
     // may have removed this entry, which reads back as null and matches no
     // branch below. That makes removal as safe as insertion, at no cost.
     final Object? oValue = tree[oKey];
-    if (oValue is Map<String, dynamic>) {
-      traverseAndCreate(oValue, nameTest, creator);
+    final Map<String, dynamic>? childMap = _asStringKeyedMap(oValue);
+    if (childMap != null) {
+      traverseAndCreate(childMap, nameTest, creator);
     } else if (oValue is List) {
       if (oValue is List<Map<String, dynamic>>) {
         List<Map<String, dynamic>> mapArray = oValue;
@@ -432,6 +502,10 @@ void traverseAndCreate(
 /// `{name: null}`. That keeps it distinguishable from an absent path, which
 /// throws — see [getObjectFromTree] for why the two are not collapsed.
 ///
+/// A map at the path is a subtree, and so returned rather than wrapped,
+/// whatever its reified type, as long as its keys are all `String`; see the
+/// library doc's *What counts as a subtree*.
+///
 /// ## Throws
 /// - [Exception] if the path cannot be resolved or contains invalid segments
 ///
@@ -450,8 +524,9 @@ Map<String, dynamic> getPathFromTree(
   // [getObjectFromTree]; the only difference is what happens at a terminal
   // *non-map* value, which the two functions handle after the walk.
   final Object? value = getObjectFromTree(baseTree, path);
-  if (value is Map<String, dynamic>) {
-    return value;
+  final Map<String, dynamic>? subtree = _asStringKeyedMap(value);
+  if (subtree != null) {
+    return subtree;
   }
   // A terminal non-map value only surfaces at the last path segment (an
   // interior non-map throws inside [getObjectFromTree]), so the reporting
@@ -487,7 +562,9 @@ Map<String, dynamic> getPathFromTree(
 /// - [Exception] if a segment names a key that is not there.
 /// - [Exception] if an interior segment resolves to something with no subtree
 ///   to descend into — including `null`, which is a fine terminal value but
-///   cannot be walked through. The message distinguishes the two cases.
+///   cannot be walked through. The message distinguishes the two cases. An
+///   interior map is walked through whatever its reified type, as long as its
+///   keys are all `String`; see the library doc's *What counts as a subtree*.
 ///
 /// ## Example
 /// ```dart
@@ -506,14 +583,15 @@ Object? getObjectFromTree(Map<String, dynamic> baseTree, String path) {
   // from an absent key, and why the two are split apart here.
   for (int i = 0; i < pathParts.length - 1; i++) {
     final Object? value = _readSegment(tree, pathParts[i], path, i);
-    if (value is! Map<String, dynamic>) {
+    final Map<String, dynamic>? subtree = _asStringKeyedMap(value);
+    if (subtree == null) {
       throw Exception(
         "Path $path cannot be resolved. Key ${pathParts[i]} at position $i "
         "holds ${value == null ? "null" : "a non-map value"}, which has no "
         "subtree to descend into.",
       );
     }
-    tree = value;
+    tree = subtree;
   }
 
   // `split` never yields an empty list, so there is always a terminal segment

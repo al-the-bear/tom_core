@@ -2328,6 +2328,169 @@ void main() {
       expect(json['value'], isNull);
     });
   });
+
+  // ===========================================================================
+  // Cross-function contract: string-keyed maps of any reified type (§84)
+  // ===========================================================================
+
+  group('a Map<dynamic, dynamic> child (§84)', () {
+    // The same defect class as §45, one level down. §45 fixed the *list*
+    // guards and the top-level signature; the nested-map guards still tested
+    // `is Map<String, dynamic>`, which a Map<dynamic, dynamic> fails. Such a
+    // map never comes out of jsonDecode, but TomYaml.loadYamlFile, hand-built
+    // maps and anything round-tripped through an untyped container all produce
+    // one — and the module already accepts a bare Map in makeCleanJsonMap, so
+    // it knows they arrive. The whole group is stated per function because the
+    // guard was repeated per function.
+
+    test('traverseAndProcess descends into an untyped map child', () {
+      final tree = <String, dynamic>{
+        'typed': <String, dynamic>{'s': r'${X}'},
+        'untyped': <dynamic, dynamic>{'s': r'${X}'},
+      };
+
+      traverseAndProcess(
+        tree,
+        (s) => s.contains(r'${X}'),
+        (s) => s.replaceAll(r'${X}', 'Y'),
+      );
+
+      expect((tree['typed'] as Map)['s'], equals('Y'));
+      expect((tree['untyped'] as Map)['s'], equals('Y'));
+    });
+
+    test('traverseAndProcess edits the original untyped map in place', () {
+      // The cast is a view, not a copy: the caller still holds the map it
+      // passed in, so the substitution has to be visible through that
+      // reference and not only through the tree.
+      final untyped = <dynamic, dynamic>{'s': r'${X}'};
+      final tree = <String, dynamic>{'child': untyped};
+
+      traverseAndProcess(
+        tree,
+        (s) => s.contains(r'${X}'),
+        (s) => s.replaceAll(r'${X}', 'Y'),
+      );
+
+      expect(untyped['s'], equals('Y'));
+    });
+
+    test('traverseAndProcess descends into an untyped map inside a list', () {
+      final tree = <String, dynamic>{
+        'list': <dynamic>[
+          <dynamic, dynamic>{'s': r'${X}'},
+        ],
+      };
+
+      traverseAndProcess(
+        tree,
+        (s) => s.contains(r'${X}'),
+        (s) => s.replaceAll(r'${X}', 'Y'),
+      );
+
+      expect(((tree['list'] as List)[0] as Map)['s'], equals('Y'));
+    });
+
+    test('traverseAndCreate reports a key inside an untyped map child', () {
+      final tree = <String, dynamic>{
+        'child': <dynamic, dynamic>{'ref@a@b': 'value'},
+      };
+
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        location['resolved'] = value.toUpperCase();
+      });
+
+      expect((tree['child'] as Map)['resolved'], equals('VALUE'));
+    });
+
+    test('mergeMapsOneSided merges into an untyped base child', () {
+      final base = <String, dynamic>{
+        'db': <dynamic, dynamic>{'host': 'localhost', 'port': 5432},
+      };
+
+      mergeMapsOneSided(base, <String, dynamic>{
+        'db': <String, dynamic>{'host': 'remote'},
+      });
+
+      final db = base['db'] as Map;
+      expect(db['host'], equals('remote'), reason: 'the override applies');
+      expect(db['port'], equals(5432), reason: 'the untouched key survives');
+    });
+
+    test('mergeMapsOneSided merges into an untyped map inside an array', () {
+      final base = <String, dynamic>{
+        'items': <dynamic>[
+          <dynamic, dynamic>{'name': 'a', 'keep': 1},
+        ],
+      };
+
+      mergeMapsOneSided(base, <String, dynamic>{
+        'items': <dynamic>[
+          <String, dynamic>{'name': 'b'},
+        ],
+      });
+
+      final item = (base['items'] as List)[0] as Map;
+      expect(item['name'], equals('b'));
+      expect(item['keep'], equals(1));
+    });
+
+    test('getObjectFromTree descends through an untyped interior map', () {
+      final tree = <String, dynamic>{
+        'db': <dynamic, dynamic>{
+          'primary': <dynamic, dynamic>{'port': 5432},
+        },
+      };
+
+      expect(getObjectFromTree(tree, 'db.primary.port'), equals(5432));
+    });
+
+    test('getPathFromTree returns an untyped map rather than wrapping it', () {
+      final tree = <String, dynamic>{
+        'db': <dynamic, dynamic>{'port': 5432},
+      };
+
+      final result = getPathFromTree(tree, 'db', 'wrapped');
+
+      expect(result['port'], equals(5432));
+      expect(
+        result.containsKey('wrapped'),
+        isFalse,
+        reason: 'a map at the path is a subtree, not a terminal value',
+      );
+    });
+
+    test('substituteEnvVars reaches an untyped map child', () {
+      final tree = <String, dynamic>{
+        'child': <dynamic, dynamic>{'host': r'${DB_HOST}'},
+      };
+
+      substituteEnvVars(tree, <String, String>{'DB_HOST': 'db.internal'});
+
+      expect((tree['child'] as Map)['host'], equals('db.internal'));
+    });
+
+    test('a map with a non-String key is left alone, not walked', () {
+      // The boundary of the fix, pinned deliberately. Such a map cannot be a
+      // JSON object, and the callbacks take a String key, so there is nothing
+      // sensible to hand them. It is skipped rather than half-walked.
+      final tree = <String, dynamic>{
+        'child': <dynamic, dynamic>{1: r'${X}'},
+      };
+
+      traverseAndProcess(
+        tree,
+        (s) => s.contains(r'${X}'),
+        (s) => s.replaceAll(r'${X}', 'Y'),
+      );
+
+      expect((tree['child'] as Map)[1], equals(r'${X}'));
+    });
+  });
 }
 
 /// Test double implementing [TomJsonSerializable] with typical scalar state.

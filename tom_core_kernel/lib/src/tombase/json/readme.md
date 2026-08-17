@@ -26,6 +26,15 @@ value object implements rather than a class to instantiate.
 | `prettyJson(json)` / `prettyJsonLine(json)` | Indented / single-line formatting. |
 | `indentEncoder` | The shared 2-space `JsonEncoder` behind both formatters, exported for callers that encode directly. |
 
+## What counts as a subtree
+
+Every function that walks a tree treats **any map whose keys are all `String`**
+as a subtree, whatever its reified type — `Map<dynamic, dynamic>` from
+`TomYaml`, `Map<String, String>` from a literal and `Map<String, dynamic>` from
+`jsonDecode` are descended into alike. A map with a non-`String` key is not a
+subtree and is skipped whole: it cannot be a JSON object, and every callback
+here takes a `String key`.
+
 ## Quick start
 
 ```dart

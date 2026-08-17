@@ -139,6 +139,32 @@ mergeMapsOneSided(base, production);
 
 ### Map Merge and Process (`map_merge_and_process.dart`)
 
+#### What counts as a subtree
+
+Every function in this module that walks a tree — `mergeMapsOneSided`,
+`traverseAndProcess`, `traverseAndCreate`, `substituteEnvVars`,
+`getObjectFromTree`, `getPathFromTree` — treats **any map whose keys are all
+`String`** as a subtree, whatever its reified type. A `Map<dynamic, dynamic>`,
+a `Map<String, String>` and a `Map<String, dynamic>` are all descended into
+alike.
+
+This matters because the reified type is not under the caller's control as
+often as it looks. `jsonDecode` always produces `Map<String, dynamic>`, but
+`TomYaml.loadYamlFile`, a hand-written map literal and anything round-tripped
+through an untyped container do not — and those maps used to be walked past
+without an error or a log line, leaving their contents untransformed (bug §84,
+the same defect class as §45 one level down).
+
+The one map that is *not* a subtree is one with a non-`String` key. It cannot
+be a JSON object, and every callback in this module takes a `String key`, so
+there is nothing meaningful to hand them; it is skipped whole rather than
+walked halfway. A merge that lands an override subtree on such a map reports
+the structural mismatch like any other.
+
+The traversals still edit in place: the string-keyed view they walk writes
+through to the map the caller passed in, so a caller holding a reference to an
+untyped child sees the substitutions through it.
+
 #### `mergeMapsOneSided(base, override)`
 
 Performs a deep merge of two maps, modifying `base` in-place.
