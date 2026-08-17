@@ -1835,12 +1835,41 @@ void main() {
   // TomHttpClientFactory Tests
   // ==========================================================================
   group('TomHttpClientFactory', () {
+    // The global factory is process-wide state, so every test here restores it.
+    // Without this a test that installs a factory decides what the *next* test
+    // resolves to, and the suite's outcome starts depending on its order.
+    tearDown(TomHttpClientFactory.resetGlobalHttpClientFactory);
+
     group('initialize', () {
       test('should allow initialization', () {
         // Should not throw when called
         TomHttpClientFactory.initialize();
         // Can be called multiple times without throwing
         TomHttpClientFactory.initialize();
+      });
+
+      test('takes a default factory again after a reset, not before', () {
+        // initialize() is deliberately one-shot, so the second call below is
+        // ignored — which is why a reset has to exist: without one, the first
+        // initialize in a process is final and no later test can install its
+        // own default.
+        final first = _MockClientFactory(_MockClient((_) async => _streamed('1')));
+        final second = _MockClientFactory(_MockClient((_) async => _streamed('2')));
+
+        TomHttpClientFactory.resetGlobalHttpClientFactory();
+        TomHttpClientFactory.initialize(first);
+        expect(TomHttpClientFactory().getClient(), same(first.getClient()));
+
+        TomHttpClientFactory.initialize(second);
+        expect(
+          TomHttpClientFactory().getClient(),
+          same(first.getClient()),
+          reason: 'initialize is one-shot until reset',
+        );
+
+        TomHttpClientFactory.resetGlobalHttpClientFactory();
+        TomHttpClientFactory.initialize(second);
+        expect(TomHttpClientFactory().getClient(), same(second.getClient()));
       });
     });
 
@@ -1851,6 +1880,25 @@ void main() {
         // Should not throw
         TomHttpClientFactory.setGlobalHttpClientFactory(customFactory);
       });
+
+      test('a global that only delegates is refused, not run out of stack', () {
+        // A plain TomHttpClientFactory creates no clients — it forwards to the
+        // global. Registering one as the global makes it forward to itself, and
+        // an unbounded self-call is the worst way to report a wiring mistake:
+        // StackOverflowError names neither the factory nor the registration.
+        TomHttpClientFactory.setGlobalHttpClientFactory(TomHttpClientFactory());
+
+        expect(
+          () => TomHttpClientFactory().getClient(),
+          throwsA(
+            isA<TomServerConnectionException>().having(
+              (e) => e.key,
+              'key',
+              'server.connect.client_factory_delegation_cycle',
+            ),
+          ),
+        );
+      });
     });
 
     group('constructor', () {
@@ -1859,6 +1907,51 @@ void main() {
 
         expect(factory, isNotNull);
         expect(factory.instanceClientFactory, isNull);
+      });
+    });
+
+    group('delegation', () {
+      test('resolves through a delegate that does create clients', () {
+        final producer = _MockClientFactory(_MockClient((_) async => _streamed('x')));
+        final delegating = TomHttpClientFactory()
+          ..instanceClientFactory = producer;
+
+        expect(delegating.getClient(), same(producer.getClient()));
+      });
+
+      test('refuses a cycle between two factories that both only delegate', () {
+        // instanceClientFactory is public and writable, so a cycle need not
+        // involve the global at all. Detecting only self-delegation would miss
+        // this one and it would still overflow.
+        final a = TomHttpClientFactory();
+        final b = TomHttpClientFactory();
+        a.instanceClientFactory = b;
+        b.instanceClientFactory = a;
+
+        expect(
+          () => a.getClient(),
+          throwsA(
+            isA<TomServerConnectionException>().having(
+              (e) => e.key,
+              'key',
+              'server.connect.client_factory_delegation_cycle',
+            ),
+          ),
+        );
+      });
+
+      test('stays usable after a refused delegation', () {
+        // The guard is re-entrancy state on the instance; if a throw left it
+        // set, the factory would refuse every later call and one bad wiring
+        // would poison an object that had been repaired.
+        final a = TomHttpClientFactory();
+        a.instanceClientFactory = a;
+        expect(() => a.getClient(), throwsA(isA<TomServerConnectionException>()));
+
+        final producer = _MockClientFactory(_MockClient((_) async => _streamed('x')));
+        a.instanceClientFactory = producer;
+
+        expect(a.getClient(), same(producer.getClient()));
       });
     });
   });

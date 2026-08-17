@@ -904,6 +904,13 @@ Factory for creating HTTP clients, supporting a global configuration and
 per-instance overrides. Falls back to `TomDefaultHttpClientFactory` when no
 custom factory is set.
 
+This class creates no clients of its own — it only forwards, to
+`instanceClientFactory` or, failing that, to the global factory. A subclass
+overriding `getClient` is what eventually produces one, so the factory
+registered as the global must be such a subclass. A chain that leads back to a
+factory already in it is refused with
+`server.connect.client_factory_delegation_cycle`.
+
 - **Implements:** `TomHttpClientAbstractFactory`
 
 ##### Constructors
@@ -916,8 +923,9 @@ TomHttpClientFactory()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `setGlobalHttpClientFactory` | `static void setGlobalHttpClientFactory(TomHttpClientFactory factory)` | Sets the global HTTP client factory used by instances without their own factory. |
-| `initialize` | `static void initialize([TomHttpClientFactory? defaultFactory])` | Initializes the factory system, setting the global factory to `defaultFactory` or the default. |
+| `setGlobalHttpClientFactory` | `static void setGlobalHttpClientFactory(TomHttpClientFactory factory)` | Sets the global HTTP client factory used by instances without their own factory. The factory must override `getClient`; a plain `TomHttpClientFactory` only forwards, and forwards to itself. |
+| `initialize` | `static void initialize([TomHttpClientFactory? defaultFactory])` | Initializes the factory system, setting the global factory to `defaultFactory` or the default. One-shot: `defaultFactory` is ignored once anything has initialized, until `resetGlobalHttpClientFactory`. |
+| `resetGlobalHttpClientFactory` | `static void resetGlobalHttpClientFactory()` | Returns the factory system to its unconfigured state so a later `initialize` or `setGlobalHttpClientFactory` takes effect again. Restores the statics only — instances that already resolved keep their cached `instanceClientFactory`. |
 
 ##### Properties
 
@@ -929,7 +937,7 @@ TomHttpClientFactory()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getClient` | `Client getClient()` | *(override)* Creates and returns an HTTP client, resolving the instance/global factory. |
+| `getClient` | `Client getClient()` | *(override)* Resolves an HTTP client by delegating to the instance factory, or to the global one when none is set. Throws `TomServerConnectionException` (`server.connect.client_factory_delegation_cycle`) if the delegation leads back to a factory already resolving. |
 
 #### TomHttpClientAbstractFactory
 

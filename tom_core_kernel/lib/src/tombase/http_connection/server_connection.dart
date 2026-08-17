@@ -804,6 +804,12 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
   ///
   /// If not already initialized, sets the global factory to the
   /// provided factory or the default.
+  ///
+  /// Deliberately one-shot: the first caller in a process wins, so a library
+  /// initializing on the way past cannot displace the host's choice. The
+  /// consequence is that [defaultFactory] is *ignored* once anything has
+  /// initialized — call [resetGlobalHttpClientFactory] first if you need a
+  /// second initialization to take effect.
   static void initialize([TomHttpClientFactory? defaultFactory]) {
     if (_initialized == false) {
       _defaultHttpClientFactory = defaultFactory ?? _defaultHttpClientFactory;
@@ -812,19 +818,72 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
     }
   }
 
+  /// Returns the factory system to its unconfigured state, so a later
+  /// [initialize] or [setGlobalHttpClientFactory] takes effect again.
+  ///
+  /// The global factory is process-wide state and [initialize] is one-shot, so
+  /// without this a test suite would be stuck with whatever the first test
+  /// installed, and every test after it would silently share that decision.
+  ///
+  /// Only the statics are restored. A [TomHttpClientFactory] that has already
+  /// resolved keeps the delegate it cached in [instanceClientFactory]; discard
+  /// such instances rather than expecting this to reach them.
+  static void resetGlobalHttpClientFactory() {
+    _initialized = false;
+    _globalClientFactory = null;
+    _defaultHttpClientFactory = TomDefaultHttpClientFactory();
+  }
+
   /// Creates a new HTTP client factory.
   TomHttpClientFactory();
 
   /// Instance-specific client factory override.
   TomHttpClientFactory? instanceClientFactory;
 
+  /// Whether this instance is part of a delegation currently in progress.
+  ///
+  /// Reading it inside [getClient] is what turns a delegation cycle into an
+  /// error. Safe as plain instance state because [getClient] is synchronous:
+  /// no other call can interleave between setting and clearing it.
+  bool _resolvingClient = false;
+
+  /// Resolves a client, delegating to [instanceClientFactory] — or, if none was
+  /// set, to the global factory.
+  ///
+  /// This class creates no clients of its own; it only forwards. A subclass
+  /// that overrides this method is what eventually produces one. Delegation
+  /// therefore has to end somewhere, and it does not when the chain leads back
+  /// to a factory already in it — most easily by registering a plain
+  /// `TomHttpClientFactory` as the global, which then forwards to itself.
+  ///
+  /// Such a chain used to recurse until the stack ran out, reporting a wiring
+  /// mistake as a `StackOverflowError` that named neither the factory nor the
+  /// registration. It is now refused under
+  /// `server.connect.client_factory_delegation_cycle`.
   @override
   Client getClient() {
+    if (_resolvingClient) {
+      throw TomServerConnectionException(
+        "server.connect.client_factory_delegation_cycle",
+        "This HTTP client factory delegates back to itself, so it can never "
+            "produce a client. The usual cause is registering a plain "
+            "TomHttpClientFactory as the global factory: it creates no clients, "
+            "so it forwards to the global — which is itself. Register a factory "
+            "that overrides getClient(), such as TomDefaultHttpClientFactory.",
+      );
+    }
     if (instanceClientFactory == null) {
       initialize();
       instanceClientFactory = _globalClientFactory;
     }
-    return instanceClientFactory!.getClient();
+    _resolvingClient = true;
+    try {
+      return instanceClientFactory!.getClient();
+    } finally {
+      // Cleared even when the delegate throws, so one refused resolution does
+      // not leave this factory permanently refusing.
+      _resolvingClient = false;
+    }
   }
 }
 

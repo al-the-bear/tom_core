@@ -574,6 +574,18 @@ class MyCustomClientFactory extends TomHttpClientFactory {
 TomHttpClientFactory.setGlobalHttpClientFactory(MyCustomClientFactory());
 ```
 
+The `@override getClient` is not optional. `TomHttpClientFactory` creates no
+clients itself — it forwards to its instance factory, or to the global one when
+it has none — so a factory that does not override it can only pass the request
+on. Register such a factory as the global and it forwards to itself; that is
+refused with `server.connect.client_factory_delegation_cycle` rather than
+recursing until the stack runs out.
+
+Tests that install a global factory should undo it with
+`TomHttpClientFactory.resetGlobalHttpClientFactory()`. The global is
+process-wide and `initialize` is one-shot, so without a reset the first test to
+configure it decides what every later test resolves to.
+
 ### Separate Authentication Server
 
 ```dart
