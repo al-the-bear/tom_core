@@ -1,31 +1,33 @@
 # HTTP Connection Module
 
-The HTTP Connection module provides a comprehensive infrastructure for making HTTP requests from client applications to remote servers. It offers type-safe API definitions, configurable HTTP clients, automatic serialization/deserialization, and a streaming file-transfer client for payloads too large to hold in memory.
+The HTTP Connection module provides a comprehensive infrastructure for making HTTP requests from client applications to remote servers. It offers type-safe API definitions, configurable HTTP clients, automatic serialization/deserialization, transparent refresh-and-retry for expired tokens, and a streaming file-transfer client for payloads too large to hold in memory.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
-- [Architecture](#architecture)
+- [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
+- [Architecture](#architecture)
 - [Dependencies](#dependencies)
 
 ---
 
 ## Overview
 
-This module consists of several interconnected components:
+The module is made up of nine files:
 
 | File | Description |
 |------|-------------|
+| `auth_retry.dart` | The pluggable "expired token → refresh → retry once" policy for authenticated clients |
 | `endpoints_apis.dart` | API and endpoint definitions with type-safe configuration |
 | `file_transfer.dart` | The streaming file-transfer contract: sources, metadata, progress, cancellation, the client interface, and an in-memory implementation |
 | `headers.dart` | Common HTTP header name constants |
 | `http_file_transfer.dart` | The HTTP implementation of that contract, plus the descriptor/`Content-Disposition` helpers both ends of the wire share |
 | `httpmethods.dart` | HTTP method definitions (GET, POST, PUT, etc.) |
 | `mimetypes.dart` | MIME type definitions and file extension mapping |
-| `remote_context.dart` | Server connection configuration |
+| `remote_context.dart` | Client-side configuration of the target API and authentication server URIs |
 | `server_connection.dart` | HTTP client infrastructure and request execution |
 
 ## Quick Start
@@ -210,6 +212,60 @@ final text = await call.readAsString(utf8);
 // Or abort if needed
 call.abort();
 ```
+
+### Authentication Retry
+
+When a bearer token goes stale the server answers `401`, and the client should
+refresh the token **once** and replay the request — but a *second* consecutive
+rejection is a genuinely dead session that must surface as an error rather than
+loop. `tomRunWithAuthRetry` is the framework home of that sequence, so no
+application writes it by hand.
+
+The caller supplies only the two things it actually knows: how to re-mint a token
+(`TomAuthRefresher`) and how to read a status code out of its own response type.
+The decision logic — which status counts as an expiry, how many retries, when to
+give up — lives in `TomAuthRetryPolicy`.
+
+```dart
+class MyRefresher extends TomAuthRefresher {
+  @override
+  Future<bool> refresh() async {
+    // Call the auth server, store the new token pair, return whether it worked.
+  }
+}
+
+final (response, error) = await tomRunWithAuthRetry(
+  send: () => endpoint.send(request),
+  statusOf: (result) => result.$2?.statusCode ?? 200,
+  refresher: MyRefresher(),
+);
+```
+
+`send` must re-read the current bearer on each call, so the replay picks up the
+refreshed token. A non-expiry error status (`403`, `404`, …) is returned
+unchanged for the caller to interpret; a refresher returning `false` means there
+was no session to refresh, so the original response stands; and an expiry status
+that persists after the retries throws `TomAuthExpiredException`.
+
+The coordinator is transport-agnostic on purpose — it works over any
+`send()`-shaped callback returning any response type — so a Flutter client and a
+Flutter-free client core inherit the same mechanism despite using different HTTP
+seams.
+
+`TomAuthRetryPolicy.active` resolves a registered `TomAuthRetryPolicy` bean if
+there is one and `tomDefaultAuthRetryPolicy` (a single `401`, one retry)
+otherwise, resolved fresh on each call so a test or a late environment
+registration is honoured:
+
+```dart
+TomBean.withType(
+  TomAuthRetryPolicy,
+  const TomAuthRetryPolicy(expiryStatusCodes: {401, 419}, maxRefreshRetries: 2),
+);
+```
+
+See `example/samples/http_connection/06_auth_retry_example.dart` for a runnable
+walkthrough.
 
 ### File Transfer
 
@@ -469,5 +525,6 @@ This module depends on:
 
 - **Little Things Module**: `TomException` base class for error handling
 - **Security Module**: `TomBearerAuthentication` for authentication
+- **Bean Locator Module**: `TomBean` for resolving the active `TomAuthRetryPolicy`
 - **Reflection Module**: `TomReflectionInfo` for JSON serialization support
 - **Runtime Module**: Platform utilities for HTTP client creation
