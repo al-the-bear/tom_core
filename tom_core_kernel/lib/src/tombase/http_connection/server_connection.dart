@@ -533,22 +533,32 @@ class TomServerCall {
   }
 
   /// Guards against reading the response more than once, throwing
-  /// [TomServerConnectionException] with the caller-supplied [key] when the body
-  /// has already been consumed.
-  void _ensureNotYetRead(String key) {
+  /// [TomServerConnectionException] when the body has already been consumed.
+  ///
+  /// The key lives here rather than at each reader: there is one "already
+  /// consumed" condition, so it has to raise one key. Letting each caller pass
+  /// its own turned a single condition into a contract that could drift — and
+  /// it did, one reader having spelled the key `read_only_once`.
+  void _ensureNotYetRead() {
     if (_read) {
-      throw TomServerConnectionException(key, "You can only read the call once.");
+      throw TomServerConnectionException(
+        "server.send.illegal_state_only_read_once",
+        "You can only read the call once.",
+      );
     }
   }
 
   /// Reads the response body as bytes.
   ///
-  /// Can only be called once after [send].
+  /// Can only be called once after [send] — the body is a stream, and draining
+  /// it leaves nothing for a second reader. Every reader reaches the body
+  /// through here, so all of them refuse a second read under the one key
+  /// `server.send.illegal_state_only_read_once`.
   ///
   /// Throws [TomServerConnectionException] if called before send or more than once.
   /// Throws [TomRequestAbortedException] if the request was aborted.
   Future<Uint8List> read() async {
-    _ensureNotYetRead("server.send.illegal_state_only_read_once");
+    _ensureNotYetRead();
     if (response == null) {
       throw TomServerConnectionException(
         "server.send.illegal_state_read_must_be_after_send",
@@ -606,9 +616,10 @@ class TomServerCall {
 
   /// Reads the response body as a string with the given encoding.
   ///
-  /// Can only be called once after [send].
+  /// Can only be called once after [send], and refuses a second read exactly as
+  /// [read] does — it *is* [read], with a decode on the end, so it carries no
+  /// guard of its own.
   Future<String> readAsString(Encoding ec) async {
-    _ensureNotYetRead("server.send.illegal_state_read_only_once");
     return ec.decoder.convert(await read());
   }
 

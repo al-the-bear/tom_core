@@ -857,7 +857,7 @@ TomServerCall(Client client, TomServerCallSpecs specs)
 | `reset` | `void reset({String? stringBody, Uint8List? byteBody, Map<String, String>? bodyFields})` | Resets the call for reuse, optionally with new body content. |
 | `send` | `TomServerCall send(TomServerCallLoad load)` | Sends the request with `load`; may be called once. Throws `TomServerConnectionException` if called more than once, or if `load` sets more than one body. Both rejections happen before anything is applied, so a refused `send` leaves the request describing what was actually sent. |
 | `read` | `Future<Uint8List> read()` | Reads the response body as bytes (once, after `send`). Throws `TomRequestAbortedException` if aborted — whether the abort lands while awaiting the response or mid-body — and `TomRequestTimeoutException` if `specs.timeout` elapses first. |
-| `readAsString` | `Future<String> readAsString(Encoding ec)` | Reads the response body as a string with encoding `ec`. |
+| `readAsString` | `Future<String> readAsString(Encoding ec)` | Reads the response body as a string with encoding `ec`. Delegates to `read`, so it is the same single read and refuses a second one identically. |
 | `getResponseHeaders` | `Future<Map<String, String>> getResponseHeaders()` | Gets the response headers after sending. |
 | `getResponseStatusCode` | `Future<int> getResponseStatusCode()` | Gets the HTTP status code after sending. |
 | `getResponseContentLength` | `Future<int?> getResponseContentLength()` | Gets the response content length after sending. |

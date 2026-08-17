@@ -352,9 +352,10 @@ call.send(TomServerCallLoad(
   contentType: 'application/json',
 ));
 
-// Read the response
+// Read the response — one of these, not both
 final bytes = await call.read();
-final text = await call.readAsString(utf8);
+// ...or, equivalently, decoded:
+// final text = await call.readAsString(utf8);
 
 // Or abort if needed
 call.abort();
@@ -364,6 +365,12 @@ A call sends **once**. A second `send` throws, and so does a load that sets more
 than one body — but both refusals happen before the load is applied, so the
 request still describes what was actually sent rather than what was refused.
 Use `reset()` to send the same call again.
+
+A call is also read **once**: the body is a stream, and draining it leaves
+nothing behind. `readAsString` *is* `read` with a decode on the end, so the two
+are not alternatives you can take in turn — either one consumes the body, and
+whichever comes second is refused under the same key,
+`server.send.illegal_state_only_read_once`.
 
 ### Authentication Retry
 

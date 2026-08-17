@@ -2395,6 +2395,35 @@ void main() {
         await call.read();
         expect(call.read(), throwsA(isA<TomServerConnectionException>()));
       });
+
+      test('both readers report a second read under the same key', () async {
+        // One condition, one key. A caller catching the key from read() must
+        // also catch it from readAsString(), otherwise the branch that handles
+        // "already consumed" works or not depending on which reader happened to
+        // be called — and error keys are the contract callers match on.
+        Future<String> keyOfSecondRead(
+          Future<Object?> Function(TomServerCall call) secondRead,
+        ) async {
+          final call = TomServerCall(
+            _MockClient((_) async => _streamed('once')),
+            specs(),
+          )..send(TomServerCallLoad());
+          await call.read();
+          try {
+            await secondRead(call);
+            fail('the second read was allowed');
+          } on TomServerConnectionException catch (e) {
+            return e.key;
+          }
+        }
+
+        final fromRead = await keyOfSecondRead((call) => call.read());
+        final fromString =
+            await keyOfSecondRead((call) => call.readAsString(utf8));
+
+        expect(fromRead, equals('server.send.illegal_state_only_read_once'));
+        expect(fromString, equals(fromRead));
+      });
     });
 
     group('response accessors', () {
