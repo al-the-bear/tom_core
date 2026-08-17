@@ -72,12 +72,15 @@ Future<void> run() async {
     print('  In-flight command failed with TomWorkerDiedException (expected)');
   }
 
-  // The pool respawns a replacement; wait for full capacity.
+  // The pool respawns a replacement; wait for full capacity. The deadline is
+  // what stops this becoming an endless spin: the respawn is attempted once
+  // and a failure is only logged, so a pool that cannot recover never will.
   final deadline = DateTime.now().add(const Duration(seconds: 10));
   while (pool.workerCount < 2 && DateTime.now().isBefore(deadline)) {
     await Future<void>.delayed(const Duration(milliseconds: 20));
   }
-  print('  Recovered: workerCount=${pool.workerCount}');
+  final recovered = pool.workerCount;
+  print('  Recovered: workerCount=$recovered');
 
   // The recovered pool keeps serving requests.
   final after = await pool.execute(AddCommand(20, 22)) as int;
@@ -87,5 +90,6 @@ Future<void> run() async {
 
   assert(before == 5, 'normal command before death should compute 2 + 3');
   assert(sawDeath, 'the in-flight command must fail with TomWorkerDiedException');
+  assert(recovered == 2, 'the pool should respawn a replacement after a death');
   assert(after == 42, 'recovered pool should compute 20 + 22');
 }

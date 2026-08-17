@@ -422,11 +422,31 @@ try {
   print('worker died: ${e.parameters?['isolateName']}');
 }
 
-// Capacity is restored asynchronously.
-while (pool.workerCount < 4) {
+// Capacity is restored asynchronously. Wait for it against a deadline — never
+// open-ended — and check the outcome, because the respawn can fail.
+final deadline = DateTime.now().add(const Duration(seconds: 30));
+while (pool.workerCount < 4 && DateTime.now().isBefore(deadline)) {
   await Future<void>.delayed(const Duration(milliseconds: 20));
 }
+if (pool.workerCount < 4) {
+  // The replacement never arrived. The pool still works, just smaller; decide
+  // whether to carry on degraded or to close it and build a new one.
+}
 ```
+
+The deadline is not defensive padding. A replacement is attempted **exactly
+once**: the exit listener drops the dead worker and starts one respawn. If that
+spawn throws — an `initializeIsolate` that cannot reach the very resource whose
+loss killed the first worker, say — the pool logs the failure and gives up.
+Nothing retries it, so `workerCount` stays down for the rest of the pool's life.
+An unbounded `while (pool.workerCount < 4)` would therefore not merely risk
+spinning forever in theory; it would spin forever in exactly the case the caller
+is waiting for news about.
+
+Size the deadline against `readyTimeout`, not against intuition: the respawn is
+a full `TomWorker.spawn` running on the pool's `readyTimeout` budget, 30 seconds
+by default. A deadline shorter than that can expire while a legitimate spawn is
+still in flight, reporting a failure that has not happened.
 
 A failed in-flight command is deliberately **not** re-dispatched: re-running
 work that may already have produced side effects risks doing non-idempotent work
