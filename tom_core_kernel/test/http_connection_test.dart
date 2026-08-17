@@ -2319,6 +2319,45 @@ void main() {
           throwsA(isA<TomServerConnectionException>()),
         );
       });
+
+      test('a rejected second send leaves the request it refused untouched', () {
+        // Rejecting the call but keeping its effect is the worst of both: the
+        // object would describe a request that was never made, so a caller
+        // inspecting it after catching the error — or a later reset() that
+        // reuses the request — reads a body the server never saw.
+        final client = _MockClient((_) async => _streamed('hello'));
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad(stringBody: 'first'));
+
+        expect(
+          () => call.send(
+            TomServerCallLoad(stringBody: 'second', encoding: latin1),
+          ),
+          throwsA(isA<TomServerConnectionException>()),
+        );
+
+        expect(call.abortableRequest.body, equals('first'));
+        expect(call.abortableRequest.encoding, same(utf8));
+        expect(client.sendCount, equals(1));
+      });
+
+      test('a load with two bodies is refused before it touches the request', () {
+        // The load validates itself on construction, but its body fields are
+        // mutable, so send() re-checks — and must do so before applying
+        // anything, or a half-applied load outlives the rejection.
+        final client = _MockClient((_) async => _streamed('hello'));
+        final call = TomServerCall(client, specs());
+        final load = TomServerCallLoad(stringBody: 'text')
+          ..bodyFields = {'field': 'value'};
+
+        expect(
+          () => call.send(load),
+          throwsA(isA<TomServerConnectionException>()),
+        );
+
+        expect(call.abortableRequest.body, isEmpty);
+        expect(client.sendCount, equals(0));
+      });
     });
 
     group('read / readAsString', () {

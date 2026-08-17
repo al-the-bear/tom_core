@@ -491,16 +491,27 @@ class TomServerCall {
   /// Can only be called once per call instance (use [reset] to retry).
   /// Returns this instance for method chaining.
   ///
-  /// Throws [TomServerConnectionException] if called more than once.
+  /// Both rejections — an already-sent call and a [load] carrying more than one
+  /// body — happen before anything is applied, so a refused `send` leaves the
+  /// request describing what was actually sent. A rejection that still mutated
+  /// would leave the object describing a request that never happened, which a
+  /// caller inspecting it after the throw, or a later [reset], would read back
+  /// as real.
+  ///
+  /// Throws [TomServerConnectionException] if called more than once, or if
+  /// [load] sets more than one body.
   TomServerCall send(TomServerCallLoad load) {
-    _bodyTest(load.stringBody, load.byteBody, load.bodyFields);
-    applyLoadValues(load);
     if (response != null) {
       throw TomServerConnectionException(
         "server.send.illegal_state_only_send_once",
         "There is already a response. You may only call send() once. Reset the ServerCall first if you want to repeat.",
       );
     }
+    // Re-checked here even though the load validates itself on construction:
+    // its body fields are mutable, so the value that arrives need not be the
+    // value that was built.
+    _bodyTest(load.stringBody, load.byteBody, load.bodyFields);
+    applyLoadValues(load);
     final tempResponse = client.send(abortableRequest);
     response = tempResponse;
     return this;

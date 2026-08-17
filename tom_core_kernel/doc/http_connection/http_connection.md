@@ -360,6 +360,11 @@ final text = await call.readAsString(utf8);
 call.abort();
 ```
 
+A call sends **once**. A second `send` throws, and so does a load that sets more
+than one body — but both refusals happen before the load is applied, so the
+request still describes what was actually sent rather than what was refused.
+Use `reset()` to send the same call again.
+
 ### Authentication Retry
 
 When a bearer token goes stale the server answers `401`, and the client should
