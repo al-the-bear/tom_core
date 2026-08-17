@@ -7,6 +7,7 @@ This module provides utilities for working with JSON data structures in Dart, in
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
+- [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
 - [Dependencies](#dependencies)
 
@@ -47,7 +48,7 @@ class Money implements TomJsonSerializable {
 
   // The upstream price feed spells these `value` and `ccy`.
   @override
-  Map<String, dynamic> toJson() => {'value': amount, 'ccy': currency};
+  Map<String, Object?> toJson() => {'value': amount, 'ccy': currency};
 
   static Money fromJson(Map<String, dynamic> json) =>
       Money(json['value'] as int, json['ccy'] as String);
