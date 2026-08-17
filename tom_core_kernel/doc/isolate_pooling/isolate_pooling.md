@@ -336,9 +336,29 @@ of hanging its caller forever, and the pool respawns a replacement.
 exit signal; a worker that misses `healthCheckTimeout` is force-killed and
 routed through the same death/respawn path.
 
-Only idle workers are pinged, because a probe queued behind a busy worker's
-in-flight command is indistinguishable from legitimately slow work — and a busy
-worker that actually crashes is already covered by exit detection.
+Only idle workers are pinged. The reason is not that a probe would queue behind
+the in-flight command: the worker answers a ping at the top of its message
+handler, before any command or executor dispatch, so a worker running
+*asynchronous* work answers immediately and the probe would be perfectly
+meaningful.
+
+The reason is **synchronous** work. A command that occupies its isolate without
+yielding — a tight compute loop, precisely the workload this module exists for
+— stops the event loop from reading the ping at all. The probe would then time
+out against a worker that is not merely healthy but actively productive, and
+force-kill it mid-computation. A busy worker that genuinely crashes is covered
+by exit detection anyway, so skipping it costs nothing.
+
+Skipping busy workers is what keeps `healthCheckTimeout` easy to choose. A
+probed worker is pulled out of the free list first, and `execute` only returns a
+worker to that list once its command has resolved, so a probe never races a
+running command: the timeout bounds a round trip to an idle isolate, not the
+runtime of any command. Sub-second values are therefore reasonable regardless of
+how long the work itself takes.
+
+The synchronous-blocking caveat still reaches you through `TomWorker.ping`,
+which is public and does not check whether the worker is busy. Pinging a worker
+that is mid-computation reports `false` for a perfectly healthy isolate.
 
 ```dart
 try {

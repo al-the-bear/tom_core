@@ -227,7 +227,7 @@ bidirectional command/response messaging with the main isolate.
 | `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result, or `TomExecutor.noResult` when nothing there handled it. Every command is answered, so the future always resolves. It never resolves to `null`: a result of `null` — from a `TomCommand.execute` or from an executor — is delivered as the four-character *string* `"null"`, so a caller writing `await worker.executeCommand(c) as String?` against a nullable-returning command gets `"null"` rather than an error. Throws `TomWorkerException` (`isolate.worker_closed.execute_after_close`) if the worker is closed — the same fail-fast `TomWorkerPool.execute` gives one layer up, rather than a dispatch nothing will answer. |
 | `sendExecutorToIsolate` | `void sendExecutorToIsolate(TomExecutor te)` | Sends an executor to the worker isolate, adding it to the worker's executor list. One-way — there is no acknowledgement. Throws `TomWorkerException` (`isolate.worker_closed.send_executor_after_close`) if the worker is closed, rather than dropping the executor on a shutting-down port. |
 | `superviseExit` | `void superviseExit(void Function() onDeath)` | Registers a one-shot death callback via `Isolate.addOnExitListener`. On an unexpected exit, every in-flight request is failed with `TomWorkerDiedException` before `onDeath` runs. Idempotent; a no-op once closed. An orderly `close` does not trigger it. |
-| `ping` | `Future<bool> ping(Duration timeout)` | Liveness probe; `true` if the worker answered within `timeout`, `false` otherwise. A timed-out probe abandons its request slot so a late answer is discarded. Never kills the isolate. |
+| `ping` | `Future<bool> ping(Duration timeout)` | Liveness probe; `true` if the worker answered within `timeout`, `false` otherwise. Answered before any command or executor dispatch, so asynchronous in-flight work does not delay it — but a command occupying the isolate *synchronously* does, and this returns `false` for a healthy worker that is merely busy computing. No `isBusy` check is made; pool supervision probes only idle workers for exactly that reason. A timed-out probe abandons its request slot so a late answer is discarded. Never kills the isolate. |
 | `killUnresponsive` | `void killUnresponsive()` | Force-kills the isolate at `Isolate.immediate` priority, routing it through the same death/respawn path as a crash. |
 | `close` | `void close()` | Closes this worker: tears down exit supervision first (so the shutdown is not read as a death), sends the isolate a shutdown signal, and closes the response port once the last in-flight request resolves. Afterwards `executeCommand` and `sendExecutorToIsolate` throw; commands accepted *before* the close still resolve. Idempotent. |
 
@@ -270,12 +270,19 @@ run:
    Each in-flight command is failed with `TomWorkerDiedException` and the pool
    respawns a replacement.
 2. **Periodic pings of idle workers only**, to catch hangs that emit no exit
-   signal. Only idle workers are probed — a ping queued behind a busy worker's
-   in-flight command cannot be distinguished from legitimately slow work, and a
-   busy worker that crashes is already covered by mechanism 1. Each probed
-   worker is reserved out of the free list for the duration of its ping so
-   `execute` cannot dispatch onto it mid-probe. A worker that misses
-   `healthCheckTimeout` is force-killed, routing it through mechanism 1.
+   signal. The ping is answered at the top of the worker's message handler,
+   before any command or executor dispatch, so it does *not* queue behind
+   in-flight work — a worker running asynchronous work answers it immediately.
+   Busy workers are skipped because **synchronous** work blocks the isolate's
+   event loop: a tight compute loop, the workload this module exists for, would
+   leave the probe unread past `healthCheckTimeout` and force-kill a worker
+   that is healthy and computing. A busy worker that genuinely crashes is
+   covered by mechanism 1 regardless. Each probed worker is reserved out of the
+   free list for the duration of its ping, and `execute` returns a worker to
+   that list only after its command resolves, so a probe never races a running
+   command — `healthCheckTimeout` bounds a round trip to an idle isolate, not
+   the runtime of any command. A worker that misses it is force-killed, routing
+   it through mechanism 1.
 
 A failed in-flight command is deliberately **not** re-dispatched.
 

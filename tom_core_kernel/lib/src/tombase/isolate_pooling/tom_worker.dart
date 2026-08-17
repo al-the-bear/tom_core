@@ -1206,6 +1206,14 @@ class TomWorker {
   /// ignored (see the null-safe branch in [_handleResponsesFromIsolate]); it
   /// deliberately does **not** kill the isolate — that decision belongs to the
   /// supervisor, which only pings idle workers.
+  ///
+  /// The worker answers before any command or executor dispatch, so a command
+  /// running *asynchronously* does not delay the reply. A command occupying the
+  /// isolate *synchronously* does: nothing in that isolate runs until the loop
+  /// yields, so this returns `false` for a worker that is healthy and merely
+  /// busy computing. This method does not check [isBusy] — a caller probing a
+  /// worker it also dispatches to must interpret `false` accordingly, or probe
+  /// only when idle as pool supervision does.
   Future<bool> ping(Duration timeout) async {
     if (_closed) return false;
     final completer = Completer<Object?>.sync();
@@ -1325,11 +1333,18 @@ class TomWorker {
 ///   hanging forever, and the pool respawns a replacement worker (via
 ///   [TomWorker.spawn] with the pool's stored context) to restore capacity.
 /// - A periodic timer pings **idle** workers to catch hangs that never emit an
-///   exit signal. Only idle workers are probed: a ping queued behind a busy
-///   worker's in-flight command cannot be distinguished from legitimately slow
-///   work, and busy-worker crashes are already covered by the exit listener. A
-///   worker that fails to answer within [healthCheckTimeout] is force-killed,
-///   which routes it through the same death/respawn path.
+///   exit signal. A ping is answered before any command or executor dispatch,
+///   so it does not queue behind in-flight work; a worker running asynchronous
+///   work answers it at once. Busy workers are skipped because *synchronous*
+///   work blocks the isolate's event loop — a tight compute loop would leave
+///   the probe unread past [healthCheckTimeout] and force-kill a worker that is
+///   healthy and computing. Busy-worker crashes are covered by the exit
+///   listener regardless. Because a probed worker is reserved out of the free
+///   list and only returns to it once its command has resolved, a probe never
+///   races a running command: [healthCheckTimeout] bounds a round trip to an
+///   idle isolate, not the runtime of any command. A worker that fails to
+///   answer in time is force-killed, which routes it through the same
+///   death/respawn path.
 ///
 /// A failed in-flight command is deliberately **not** re-dispatched:
 /// re-running a command that may have already produced side effects before the

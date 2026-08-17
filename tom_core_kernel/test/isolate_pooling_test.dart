@@ -92,6 +92,27 @@ class DelayedCommand extends TomCommand {
   }
 }
 
+/// Test command that occupies its isolate SYNCHRONOUSLY for [blockMs].
+///
+/// Unlike [DelayedCommand] it never yields to the event loop, so nothing else
+/// in that isolate runs while it works — including the health-ping reply. This
+/// is the shape of the CPU-bound work isolate pooling exists for, and the
+/// reason supervision must not probe a busy worker.
+class BlockingCommand extends TomCommand {
+  final int blockMs;
+
+  BlockingCommand(this.blockMs);
+
+  @override
+  Future<Object?> execute() async {
+    final deadline = DateTime.now().add(Duration(milliseconds: blockMs));
+    while (DateTime.now().isBefore(deadline)) {
+      // Spin. A Future.delayed here would defeat the point of the command.
+    }
+    return 'blocked';
+  }
+}
+
 /// Test command that kills its own worker isolate mid-execution.
 ///
 /// Simulates an unexpected worker death (a crash / `Isolate.kill` / OOM): the
@@ -1159,6 +1180,56 @@ void main() {
       });
     });
 
+    group('ping', () {
+      // These two tests pin the reason supervision probes idle workers only.
+      // It is NOT that a probe queues behind in-flight work — the worker
+      // answers a ping before any dispatch, so asynchronous work does not
+      // delay it at all. It is that synchronous work blocks the isolate's
+      // event loop, which is exactly the CPU-bound workload this module
+      // exists for.
+
+      test('is answered while an asynchronous command is in flight', () async {
+        final context = TestWorkerContext(namePrefix: 'PingAsync');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // DelayedCommand awaits, so the worker's message loop stays free.
+        final pending = worker.executeCommand(DelayedCommand(300, 'done'));
+        expect(worker.isBusy(), isTrue);
+
+        expect(await worker.ping(const Duration(milliseconds: 100)), isTrue);
+        // The probe does not disturb the command it overtook.
+        expect(await pending, equals('done'));
+
+        worker.close();
+      });
+
+      test('is NOT answered while a synchronous command blocks the isolate',
+          () async {
+        final context = TestWorkerContext(namePrefix: 'PingBlocked');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // A tight compute loop never yields, so the ping cannot be read until
+        // the loop ends. This is why supervision probes idle workers only —
+        // probing here would force-kill a worker that is healthy and computing.
+        // ping() itself makes no isBusy check, so a direct caller meets it.
+        final pending = worker.executeCommand(BlockingCommand(1000));
+
+        expect(await worker.ping(const Duration(milliseconds: 150)), isFalse);
+        // The worker was healthy all along: its command still resolves, and a
+        // later ping is answered once the isolate is free again.
+        expect(await pending, equals('blocked'));
+        expect(await worker.ping(const Duration(seconds: 5)), isTrue);
+
+        worker.close();
+      });
+    });
+
     group('close', () {
       test('should set isClosed to true', () async {
         final context = TestWorkerContext();
@@ -1755,6 +1826,29 @@ void main() {
             reason: 'healthy workers must not be killed by pings');
         final result = await pool.execute(ComputeCommand(4, 5));
         expect(result, equals(9));
+
+        pool.close();
+      });
+
+      test('supervision never probes a worker running synchronous work',
+          () async {
+        // The payoff of probing idle workers only. A busy worker is out of the
+        // free list, so the health pass cannot reserve it — even though the
+        // command blocks the isolate for eight times the ping timeout, which
+        // would force-kill the worker if it were probed while busy.
+        final context = TestWorkerContext(namePrefix: 'BusySync');
+        final pool = await TomWorkerPool.withSize(
+          1,
+          context,
+          healthCheckInterval: const Duration(milliseconds: 20),
+          healthCheckTimeout: const Duration(milliseconds: 100),
+        );
+
+        final result = await pool.execute(BlockingCommand(800));
+
+        expect(result, equals('blocked'),
+            reason: 'a computing worker must not be killed as unresponsive');
+        expect(pool.workerCount, equals(1));
 
         pool.close();
       });
