@@ -232,6 +232,38 @@ class CalculateHashCommand extends TomCommand {
 }
 ```
 
+#### A result of `null` never reaches the caller as `null`
+
+`execute` is declared `Future<Object?>`, but a `null` result is substituted
+before the response is sent — and the two directions substitute *different*
+values:
+
+| Direction | Call | A `null` result arrives as |
+| --------- | ---- | -------------------------- |
+| creator → worker | `worker.executeCommand(cmd)` | the string `"null"` |
+| worker → creator | `TomWorker.executeInCreator(cmd)` | `TomExecutor.noResult` |
+
+So `executeCommand` can never resolve to `null` despite its signature. The same
+substitution applies to a `null` returned by a `TomExecutor`, not just by a
+`TomCommand`. The consequence worth remembering is that a nullable-returning
+command is not distinguishable from one that returned the literal text:
+
+```dart
+// Suppose lookup() returned null inside the worker.
+final name = await worker.executeCommand(LookupCommand(id)) as String?;
+// name is "null" — four characters, not null. No error is raised here; it
+// fails somewhere later, wherever the value is finally used.
+```
+
+To carry "absent" across the boundary, send an explicit value you can test for
+— `TomExecutor.noResult`, an empty collection, or a sentinel of your own —
+rather than relying on `null` surviving the trip.
+
+`TomCommand.execute`'s base implementation returns the string `"null"` for the
+same reason: it guarantees a sendable, non-null response from a subclass that
+forgot to override it. That means an unoverridden command and a command that
+legitimately resolved to `null` produce identical results.
+
 ### TomWorkerPool
 
 Manages a pool of workers for automatic load distribution.
@@ -472,6 +504,11 @@ try {
 - **Handle worker failures**: Enable supervision (`healthCheckInterval`) on
   long-running pools rather than writing your own health checks — an
   unsupervised pool hangs the caller forever when a worker dies
+- **Don't return `null` from a command**: it is substituted before it is sent
+  (with the string `"null"` towards the worker, with `TomExecutor.noResult`
+  towards the creator), so a `null`-checking caller never sees the case it is
+  checking for. Send an explicit sentinel instead — see
+  [TomCommand](#tomcommand)
 
 ### 5. Logging Considerations
 

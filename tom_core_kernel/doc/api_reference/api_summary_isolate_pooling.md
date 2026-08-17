@@ -31,8 +31,12 @@ automatically) or as an arbitrary object handled by registered `TomExecutor`
 instances, which are tried in order until one returns something other than
 `TomExecutor.noResult`. Should the whole chain decline — or should the worker
 have no executor registered at all — the command is still answered, with
-`noResult` itself, so `executeCommand` always resolves. `TomWorkerContext`
-carries the environment/platform
+`noResult` itself, so `executeCommand` always resolves. No response payload is
+ever `null`: a result of `null` is substituted before it is sent, with the
+string `"null"` in the worker-bound direction and with `noResult` in the
+creator-bound one, so neither `executeCommand` nor `executeInCreator` can
+resolve to `null` despite their `Future<Object?>` signatures.
+`TomWorkerContext` carries the environment/platform
 configuration and initialization hooks used when spawning. `TomWorkerPool`
 manages several workers, distributing commands across them and queuing when all
 are busy — and, when a `healthCheckInterval` is supplied, supervises their
@@ -143,7 +147,7 @@ command is received, its `execute` method is called automatically.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Future<Object?> execute()` | Executes this command and returns the result; override to implement the command's logic. The default returns the string `"null"`. |
+| `execute` | `Future<Object?> execute()` | Executes this command and returns the result; override to implement the command's logic. The default returns the string `"null"` — the same value the worker-bound dispatch substitutes for a `null` result, so an unoverridden command is indistinguishable from one that legitimately resolved to `null`. |
 
 ### TomWorkerContext
 
@@ -213,14 +217,14 @@ bidirectional command/response messaging with the main isolate.
 | `startRemoteIsolate` | `static void startRemoteIsolate(TomWorkerContext context)` | Isolate entry point passed to `spawn`; wires up communication channels and runs the context's isolate initialization. Throws `TomWorkerException` if the context's SendPort is null. |
 | `canSendToCreator` | `static bool canSendToCreator()` | Returns `true` only inside a worker isolate, where a backchannel to the creator exists. |
 | `sendToCreator` | `static void sendToCreator(Object o)` | Fire-and-forget send of `o` to the creator isolate. Throws `TomWorkerException` if called from the main isolate. |
-| `executeInCreator` | `static Future<Object?> executeInCreator(Object command)` | Executes `command` in the creator isolate and awaits its result. Throws `TomWorkerException` if called from the main isolate. |
+| `executeInCreator` | `static Future<Object?> executeInCreator(Object command)` | Executes `command` in the creator isolate and awaits its result. A creator result of `null` is substituted with `TomExecutor.noResult` — *not* with the string `"null"` the worker-bound direction uses — so this never resolves to `null` either, but the two directions are not interchangeable. Throws `TomWorkerException` if called from the main isolate. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `isBusy` | `bool isBusy()` | Returns `true` if this worker has pending requests. |
-| `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result, or `TomExecutor.noResult` when nothing there handled it. Every command is answered, so the future always resolves. Throws `TomWorkerException` (`isolate.worker_closed.execute_after_close`) if the worker is closed — the same fail-fast `TomWorkerPool.execute` gives one layer up, rather than a dispatch nothing will answer. |
+| `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result, or `TomExecutor.noResult` when nothing there handled it. Every command is answered, so the future always resolves. It never resolves to `null`: a result of `null` — from a `TomCommand.execute` or from an executor — is delivered as the four-character *string* `"null"`, so a caller writing `await worker.executeCommand(c) as String?` against a nullable-returning command gets `"null"` rather than an error. Throws `TomWorkerException` (`isolate.worker_closed.execute_after_close`) if the worker is closed — the same fail-fast `TomWorkerPool.execute` gives one layer up, rather than a dispatch nothing will answer. |
 | `sendExecutorToIsolate` | `void sendExecutorToIsolate(TomExecutor te)` | Sends an executor to the worker isolate, adding it to the worker's executor list. One-way — there is no acknowledgement. Throws `TomWorkerException` (`isolate.worker_closed.send_executor_after_close`) if the worker is closed, rather than dropping the executor on a shutting-down port. |
 | `superviseExit` | `void superviseExit(void Function() onDeath)` | Registers a one-shot death callback via `Isolate.addOnExitListener`. On an unexpected exit, every in-flight request is failed with `TomWorkerDiedException` before `onDeath` runs. Idempotent; a no-op once closed. An orderly `close` does not trigger it. |
 | `ping` | `Future<bool> ping(Duration timeout)` | Liveness probe; `true` if the worker answered within `timeout`, `false` otherwise. A timed-out probe abandons its request slot so a late answer is discarded. Never kills the isolate. |

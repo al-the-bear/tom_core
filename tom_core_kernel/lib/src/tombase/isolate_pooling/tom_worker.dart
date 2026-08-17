@@ -250,6 +250,15 @@ abstract class TomCommand {
   ///
   /// Override this method to implement the command's logic.
   /// The result is sent back to the caller.
+  ///
+  /// Returning `null` does not deliver `null`: the dispatch substitutes it
+  /// before sending, with the string `"null"` towards the worker and with
+  /// [TomExecutor.noResult] towards the creator. Return an explicit sentinel
+  /// if the caller has to recognise "absent".
+  ///
+  /// The default returns that same `"null"` string, so an unoverridden
+  /// command guarantees a sendable, non-null response — and is therefore
+  /// indistinguishable from a command that resolved to `null`.
   Future<Object?> execute() async {
     return "null";
   }
@@ -1047,6 +1056,11 @@ class TomWorker {
   ///
   /// Returns the result of executing the command.
   ///
+  /// Never resolves to `null`: a creator result of `null` is substituted with
+  /// [TomExecutor.noResult] before the response is sent. This is *not* the
+  /// substitution the opposite direction makes — [executeCommand] uses the
+  /// string `"null"` — so the two are not interchangeable.
+  ///
   /// Throws [TomWorkerException] if called from the main isolate.
   ///
   /// Example:
@@ -1086,6 +1100,15 @@ class TomWorker {
   /// liveness supervision could not rescue it, since the isolate is healthy and
   /// still answers pings. Compare the result against [TomExecutor.noResult] if
   /// "nothing handled this" is a case the caller must distinguish.
+  ///
+  /// Never resolves to `null`, despite the `Object?` in the signature. A
+  /// command or executor result of `null` is substituted with the string
+  /// `"null"` before the response is sent, so a nullable-returning command is
+  /// indistinguishable from one that returned that literal text — and a
+  /// `null`-checking caller never sees the case it is checking for. Return an
+  /// explicit sentinel to carry "absent" across the boundary. Note that the
+  /// creator-bound direction differs: [executeInCreator] substitutes
+  /// [TomExecutor.noResult] instead.
   ///
   /// Throws [TomWorkerException] if this worker has been closed — the same
   /// fail-fast [TomWorkerPool.execute] gives for the identical mistake one

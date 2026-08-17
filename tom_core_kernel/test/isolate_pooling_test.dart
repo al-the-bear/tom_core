@@ -199,6 +199,25 @@ class DelegateThrowToCreator extends TomCommand {
   }
 }
 
+/// A command that resolves to `null` when run on the CREATOR side.
+class NullCreatorCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => null;
+}
+
+/// Runs in the worker and delegates a null-returning command to the creator.
+///
+/// The creator substitutes [TomExecutor.noResult] for the `null`, unlike the
+/// worker-bound direction which substitutes the string `"null"`. The sentinel
+/// is not null, so it survives the worker's own substitution unchanged and
+/// reaches the original caller as-is.
+class DelegateNullToCreator extends TomCommand {
+  @override
+  Future<Object?> execute() async {
+    return await TomWorker.executeInCreator(NullCreatorCommand());
+  }
+}
+
 /// Simple test worker context.
 class TestWorkerContext extends TomWorkerContext {
   bool isolateInitialized = false;
@@ -1472,6 +1491,24 @@ void main() {
 
         final result = await worker.executeCommand(DelegateThrowToCreator());
         expect(result, isA<Exception>());
+
+        worker.close();
+      });
+
+      test('a null creator result comes back as the noResult sentinel',
+          () async {
+        // The two directions substitute different things for a null result:
+        // worker-bound gives the string "null", creator-bound gives the
+        // sentinel. Pinning the creator side keeps the pair from silently
+        // converging on one of the two.
+        final context = TestWorkerContext(namePrefix: 'CreatorNull');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final result = await worker.executeCommand(DelegateNullToCreator());
+        expect(result, same(TomExecutor.noResult));
 
         worker.close();
       });
