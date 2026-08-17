@@ -58,8 +58,25 @@ A structured exception class that provides:
 - **UUID Tracking**: Every exception gets a unique identifier
 - **Request Correlation**: Link exceptions to specific requests via `requestUuid`
 - **Timestamps**: Know exactly when the error occurred
-- **Stack Traces**: Formatted traces stored for inspection
+- **Stack Traces**: Captured at the construction site and stored for inspection
 - **Auto Logging**: Optionally log exceptions automatically
+
+Pass `stack` only when you already hold a trace — the one from a `catch` clause,
+say. Otherwise it is captured for you when the exception is constructed, which
+is what lets `printStackTrace()` name the code that failed:
+
+```dart
+try {
+  await transfer(order);
+} catch (error, stack) {
+  // Wrapping: the caught trace points at the original failure, so pass it on.
+  throw TomException('TRANSFER_FAILED', 'Transfer rejected',
+      rootException: error, stack: stack);
+}
+
+// Originating: nothing to pass — the construction site *is* the failure site.
+throw TomException('ORDER_EMPTY', 'The order has no positions');
+```
 
 ```dart
 TomException(

@@ -60,7 +60,7 @@ TomException(
   Map<String, Object?>? parameters,
   Object? rootException,
   bool autoLog = false,
-  StackTrace? stack,
+  Object? stack,
   String? uuid,
   TomServerCallError? serverCallError,
 })
@@ -68,6 +68,11 @@ TomException(
 
 When `autoLog` is `true`, the exception and its stack trace are written to
 `tomLog.error` immediately upon construction.
+
+When `stack` is omitted it is captured at the construction site, so both the
+`stack` field and the formatted `stackTrace` string describe where the
+exception was created. The newest frame is `TomException`'s own constructor —
+the trace is taken inside it — and the creating code is the frame below.
 
 #### Properties
 
@@ -81,7 +86,7 @@ When `autoLog` is `true`, the exception and its stack trace are written to
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `printStackTrace` | `void printStackTrace([int depth = -1])` | *(override)* Prints the exception's stack trace to the log; `depth` limits the number of frames (`-1` prints all). |
+| `printStackTrace` | `void printStackTrace([int depth = -1])` | *(override)* Prints the exception's stack trace to the log; `depth` limits the number of frames (`-1` prints all). Reports the construction site whether or not a `stack` was supplied. |
 
 ## Global Functions and Constants
 

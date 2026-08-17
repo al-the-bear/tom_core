@@ -88,17 +88,41 @@ class TomException extends TomBaseException implements TomLoggable {
   /// The [defaultUserMessage] should be human-readable.
   ///
   /// If [autoLog] is true, the exception is logged immediately upon creation.
+  ///
+  /// When no [stack] is given the trace is captured here, at the construction
+  /// site, so [printStackTrace] can report where the failure arose.
   TomException(
-    super.key,
-    super.defaultUserMessage, {
-    super.requestUuid,
-    super.parameters,
-    super.rootException,
+    String key,
+    String defaultUserMessage, {
+    String? requestUuid,
+    Map<String, Object?>? parameters,
+    Object? rootException,
     this.autoLog = false,
-    super.stack,
-    super.uuid,
+    Object? stack,
+    String? uuid,
     this.serverCallError,
-  }) {
+  }) : super(
+          key,
+          defaultUserMessage,
+          requestUuid: requestUuid,
+          parameters: parameters,
+          rootException: rootException,
+          // Capture the trace *here* rather than leaving `stack` null. Left
+          // null it is captured later, inside the formatter, which by then is
+          // the only thing on the stack — so `printStackTrace` reported the
+          // formatter's call path and never the failure's. The capture belongs
+          // in the constructor because that is the last moment at which the
+          // creating code is still on the stack.
+          //
+          // Passing it to `super` rather than assigning it in the body is what
+          // keeps the two representations in step: the base constructor derives
+          // the formatted `stackTrace` string from this argument, so the raw
+          // trace and the string describe the same place. Assigning afterwards
+          // would leave `stackTrace` — which `autoLog` writes — pointing at the
+          // base class's own formatter.
+          stack: stack ?? StackTrace.current,
+          uuid: uuid,
+        ) {
     if (autoLog) {
       tomLog.error("EXCEPTION: $this");
       tomLog.error("EXCEPTION_STACKTRACE: $uuid-$requestUuid $stackTrace");

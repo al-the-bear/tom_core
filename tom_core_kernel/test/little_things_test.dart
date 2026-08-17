@@ -50,6 +50,12 @@ Future<StackTrace> _captureAsyncChainStack() async {
   return StackTrace.current;
 }
 
+// A construction site with a name that appears nowhere else in the stack, so
+// asserting on it proves the trace reached the code that created the exception
+// rather than the machinery that later rendered it.
+TomException _constructExceptionAtKnownSite() =>
+    TomException('ERROR', 'constructed without an explicit stack');
+
 void main() {
   // =========================================================================
   // ZONE UTILITIES
@@ -596,6 +602,22 @@ void main() {
         expect(exception.stackTrace, isNotEmpty);
       });
 
+      test('should populate stack when none is passed', () {
+        final exception = TomException('ERROR', 'message');
+        expect(
+          exception.stack,
+          isNotNull,
+          reason: 'the raw trace is what printStackTrace re-formats, so it '
+              'has to exist even when the caller supplied none',
+        );
+      });
+
+      test('should keep a provided stack unchanged', () {
+        final provided = _captureDeepStack();
+        final exception = TomException('ERROR', 'message', stack: provided);
+        expect(exception.stack, same(provided));
+      });
+
       test('should default autoLog to false', () {
         final exception = TomException('ERROR', 'message');
         expect(exception.autoLog, isFalse);
@@ -817,6 +839,57 @@ void main() {
           captured.messages.any(
             (m) => m.contains('uuid-123-req-456 exception stacktrace'),
           ),
+          isTrue,
+        );
+      });
+
+      test('should log the construction site when no stack was passed', () {
+        final exception = _constructExceptionAtKnownSite();
+        exception.printStackTrace();
+
+        // The whole point of the method: name the code that created the
+        // exception. Before the fix the trace was captured inside the
+        // formatter, so the record held only the formatter's own frames.
+        expect(
+          captured.messages.any(
+            (m) => m.contains('_constructExceptionAtKnownSite'),
+          ),
+          isTrue,
+          reason: 'printStackTrace must report where the exception was '
+              'constructed, not where it was formatted',
+        );
+      });
+
+      test('should reach the construction site directly below the '
+          'constructor frame', () {
+        final exception = _constructExceptionAtKnownSite();
+        exception.printStackTrace(2);
+
+        // The trace is captured inside the constructor, so `new TomException`
+        // is genuinely the newest frame and the construction site is the one
+        // below it. Pinning both positions keeps that ordering deliberate: it
+        // is why a useful `depth` here starts at 2 rather than 1.
+        final logged = captured.messages.last;
+        expect(logged, contains('new TomException'));
+        expect(logged, contains('_constructExceptionAtKnownSite'));
+        expect(
+          logged.indexOf('new TomException'),
+          lessThan(logged.indexOf('_constructExceptionAtKnownSite')),
+        );
+      });
+
+      test('should prefer an explicitly passed stack over the capture', () {
+        final exception = TomException(
+          'ERROR',
+          'message',
+          stack: _captureDeepStack(),
+        );
+        exception.printStackTrace();
+
+        // An explicit stack is the caller's considered choice — the automatic
+        // capture must never override it.
+        expect(
+          captured.messages.any((m) => m.contains('_deepLevelInnermost')),
           isTrue,
         );
       });
