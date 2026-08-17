@@ -800,13 +800,20 @@ TomServerCallError({
 | `noResponseError` | `int` | Internal error code when no response was received (`2`). |
 | `serverError` | `int` | Internal error code for general server errors (`2`). |
 
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `isSuccessStatusCode` | `static bool isSuccessStatusCode(int statusCode)` | Whether the status is in the 2xx range. The module's single definition of "the server accepted this" — `hasError` and `TomServerEndpoint.send` both read it rather than spelling the range again. |
+| `isNoContentStatusCode` | `static bool isNoContentStatusCode(int statusCode)` | Whether the status is defined to carry no body (`204`, `205`), so an empty response is the expected shape and there is nothing to deserialize. |
+
 ##### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `statusCode` | `int` | The HTTP status code from the server. |
 | `response` | `String?` | The raw response body as a string. |
-| `statusCodeResponse` | `Object?` | Deserialized response object for non-200 status codes. |
+| `statusCodeResponse` | `Object?` | The deserialized body. On a success, the same object `send` returns as its result; on a failure whose status has a `statusCodeResponseTypes` entry, an instance of that type; on a failure with no entry, `null`. |
 | `internalError` | `int` | Internal error code (`0` = no internal error). |
 | `headers` | `Map<String, Object>` | Response headers from the server. |
 | `isRedirect` | `bool` | Whether the response was a redirect. |
@@ -998,13 +1005,13 @@ TomServerEndpoint(
 | -------- | ---- | ----------- |
 | `channel` | `TomServerChannel` | The server channel for HTTP communication. |
 | `specs` | `TomServerCallSpecs` | The call specification. |
-| `statusCodeResponseTypes` | `Map<int, Type>?` | Maps status codes to response types for error handling. |
+| `statusCodeResponseTypes` | `Map<int, Type>?` | Maps *failing* status codes to the types their bodies carry. Consulted only when the response is not a 2xx, so declaring entries never diverts a success away from the endpoint's own response type. |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<(R result, TomServerCallError? ts)> send(T load, [R? responseObject])` | Sends `load` and returns a `(response, error)` tuple; check `TomServerCallError.hasError` to determine success. May throw `TomServerConnectionException` when the server requests a client rethrow. |
+| `send` | `Future<(R result, TomServerCallError? ts)> send(T load, [R? responseObject])` | Sends `load` and returns a `(response, error)` tuple; check `TomServerCallError.hasError` to determine success. Any 2xx is a success and its body is deserialized into `R` — except `204`/`205`, which have no body, so `R` keeps its defaults. May throw `TomServerConnectionException` when the server requests a client rethrow. |
 
 #### TomServerConnectionException
 

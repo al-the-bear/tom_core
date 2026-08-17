@@ -559,6 +559,39 @@ if (error != null && error.hasError) {
 }
 ```
 
+### Which Status Codes Count as a Success
+
+`hasError` is false for the whole **2xx** range, so `201 Created` and
+`204 No Content` are successes — the ordinary answers of the POST and DELETE
+endpoints this layer exists to call — and their bodies are deserialized into the
+endpoint's response type just as a `200` is.
+
+`statusCodeResponseTypes` describes **failure** bodies only. It maps a failing
+status to the type that status carries, and it is consulted only once the
+response is known not to be a success, so declaring entries never changes what
+happens to a 2xx:
+
+```dart
+final endpoint = TomServerEndpoint<CreateUserRequest, UserResponse>(
+  channel,
+  specs,
+  // Failure codes only. A 201 is still deserialized into UserResponse.
+  statusCodeResponseTypes: {409: ConflictDetails, 422: ValidationErrors},
+);
+
+final (user, error) = await endpoint.send(CreateUserRequest(name: 'John'));
+if (error?.hasError ?? false) {
+  final details = error!.statusCodeResponse; // ConflictDetails on a 409
+} else {
+  print(user.id); // populated from the 201 body
+}
+```
+
+`204` and `205` carry no body by definition, so nothing is deserialized for them
+and the response object keeps its default values. Any other status that promised
+a body and sent none is still a parse failure, reported through
+`internalError == TomServerCallError.serverError`.
+
 ### Custom HTTP Client Factory
 
 ```dart

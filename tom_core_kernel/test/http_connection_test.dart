@@ -8,11 +8,49 @@ import 'package:http/http.dart'
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'http_connection_test.reflection.dart';
+
+// ============================================================================
+// Reflected DTOs for the TomServerEndpoint.send tests
+// ============================================================================
+
+/// The request DTO sent by the endpoint tests.
+@tomReflector
+class EndpointRequest {
+  /// Free-text payload, echoed into the request body.
+  String note = '';
+
+  /// Creates an empty request.
+  EndpointRequest();
+}
+
+/// The response DTO the endpoint tests declare as `R`.
+@tomReflector
+class EndpointResponse {
+  /// Identifier the server assigns; empty when nothing was deserialized.
+  String id = '';
+
+  /// Creates an empty response.
+  EndpointResponse();
+}
+
+/// The DTO a `statusCodeResponseTypes` entry maps a failing status to.
+@tomReflector
+class EndpointFailure {
+  /// The server's reason for refusing.
+  String reason = '';
+
+  /// Creates an empty failure.
+  EndpointFailure();
+}
+
 // ============================================================================
 // Tests for the HTTP Connection Module
 // ============================================================================
 
 void main() {
+  initializeReflection();
+
   // ==========================================================================
   // TomHeader Tests
   // ==========================================================================
@@ -2769,6 +2807,154 @@ void main() {
         () => TomServerEndpoint.createApiServerEndpoint<int, int>(endpoint),
         throwsA(isA<TomEndpointException>()),
       );
+    });
+  });
+
+  // ==========================================================================
+  // TomServerEndpoint.send — which status codes count as a success
+  // ==========================================================================
+  group('TomServerEndpoint.send status handling', () {
+    // Builds an endpoint whose server answers once with the given status and
+    // body. statusCodeResponseTypes is the axis under test: it must not change
+    // whether a 2xx response is deserialized, only what a failing one carries.
+    TomServerEndpoint<EndpointRequest, EndpointResponse> endpointReturning(
+      int statusCode,
+      String body, {
+      Map<int, Type>? statusCodeResponseTypes,
+    }) {
+      final channel = TomServerChannel(
+        'api.example.com',
+        443,
+        clientFactory: _MockClientFactory(
+          _MockClient((_) async => _streamed(body, statusCode: statusCode)),
+        ),
+      );
+      return TomServerEndpoint<EndpointRequest, EndpointResponse>(
+        channel,
+        TomServerCallSpecs(
+          'POST',
+          Uri.parse('https://api.example.com/resources'),
+        ),
+        statusCodeResponseTypes: statusCodeResponseTypes,
+      );
+    }
+
+    // The map an endpoint would realistically declare: failure codes only.
+    const failureTypes = {400: EndpointFailure, 409: EndpointFailure};
+
+    for (final declaresTypes in [false, true]) {
+      final suffix = declaresTypes
+          ? 'with statusCodeResponseTypes declared'
+          : 'with no statusCodeResponseTypes';
+
+      test('200 deserializes the body $suffix', () async {
+        final (response, error) = await endpointReturning(
+          200,
+          '{"id":"r-200"}',
+          statusCodeResponseTypes: declaresTypes ? failureTypes : null,
+        ).send(EndpointRequest()..note = 'create');
+
+        expect(response.id, equals('r-200'));
+        expect(error?.hasError ?? false, isFalse);
+      });
+
+      test('201 deserializes the body $suffix', () async {
+        // 201 Created is the ordinary answer of the POST endpoints this layer
+        // exists to call, and it carries the created resource. Declaring types
+        // for the failure codes must not divert it into the failure branch —
+        // that branch never deserializes into R, so the caller would receive a
+        // default-valued response together with an error reporting no error.
+        final (response, error) = await endpointReturning(
+          201,
+          '{"id":"r-201"}',
+          statusCodeResponseTypes: declaresTypes ? failureTypes : null,
+        ).send(EndpointRequest()..note = 'create');
+
+        expect(response.id, equals('r-201'));
+        expect(error?.hasError ?? false, isFalse);
+      });
+
+      test('204 succeeds with no body to deserialize $suffix', () async {
+        // 204 has no payload by definition, so there is nothing to parse and
+        // the absence of a body is the expected shape, not a truncated one.
+        final (response, error) = await endpointReturning(
+          204,
+          '',
+          statusCodeResponseTypes: declaresTypes ? failureTypes : null,
+        ).send(EndpointRequest()..note = 'delete');
+
+        expect(response.id, isEmpty);
+        expect(error?.hasError ?? false, isFalse);
+        expect(error?.internalError, equals(0));
+      });
+    }
+
+    test('a declared failure code is deserialized into its own type', () async {
+      // The other half of the contract: statusCodeResponseTypes still has to
+      // work for what it is for, so the success fix cannot be "ignore the map".
+      final (response, error) = await endpointReturning(
+        409,
+        '{"reason":"duplicate"}',
+        statusCodeResponseTypes: failureTypes,
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error, isNotNull);
+      expect(error!.hasError, isTrue);
+      expect(error.statusCode, equals(409));
+      expect(error.statusCodeResponse, isA<EndpointFailure>());
+      expect((error.statusCodeResponse! as EndpointFailure).reason,
+          equals('duplicate'));
+      expect(response.id, isEmpty);
+    });
+
+    test('an undeclared failure code still reports the failure', () async {
+      final (_, error) = await endpointReturning(
+        503,
+        '{"reason":"down"}',
+        statusCodeResponseTypes: failureTypes,
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error!.hasError, isTrue);
+      expect(error.statusCode, equals(503));
+      expect(error.statusCodeResponse, isNull);
+    });
+  });
+
+  // ==========================================================================
+  // TomServerCallError status-code classification
+  // ==========================================================================
+  group('TomServerCallError status classification', () {
+    test('isSuccessStatusCode spans the 2xx range and nothing else', () {
+      expect(TomServerCallError.isSuccessStatusCode(199), isFalse);
+      expect(TomServerCallError.isSuccessStatusCode(200), isTrue);
+      expect(TomServerCallError.isSuccessStatusCode(201), isTrue);
+      expect(TomServerCallError.isSuccessStatusCode(204), isTrue);
+      expect(TomServerCallError.isSuccessStatusCode(299), isTrue);
+      expect(TomServerCallError.isSuccessStatusCode(300), isFalse);
+      expect(TomServerCallError.isSuccessStatusCode(404), isFalse);
+    });
+
+    test('hasError is the negation of it, plus the internal-error flag', () {
+      // Pinning that the two read the same definition: if hasError ever spells
+      // the range itself again, one of these disagrees with the other.
+      for (final status in [100, 200, 201, 204, 299, 301, 404, 500]) {
+        expect(
+          TomServerCallError(statusCode: status).hasError,
+          equals(!TomServerCallError.isSuccessStatusCode(status)),
+          reason: 'status $status',
+        );
+      }
+      expect(
+        TomServerCallError(statusCode: 200, internalError: 1).hasError,
+        isTrue,
+      );
+    });
+
+    test('isNoContentStatusCode names only the bodiless successes', () {
+      expect(TomServerCallError.isNoContentStatusCode(204), isTrue);
+      expect(TomServerCallError.isNoContentStatusCode(205), isTrue);
+      expect(TomServerCallError.isNoContentStatusCode(200), isFalse);
+      expect(TomServerCallError.isNoContentStatusCode(201), isFalse);
     });
   });
 

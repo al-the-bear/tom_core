@@ -271,7 +271,12 @@ class TomServerCallError {
   /// The raw response body as a string.
   String? response;
 
-  /// Deserialized response object for non-200 status codes.
+  /// The deserialized body, whichever type it was read as.
+  ///
+  /// On a success this is the same object [TomServerEndpoint.send] returns as
+  /// its result. On a failure whose status has an entry in the endpoint's
+  /// `statusCodeResponseTypes` it is an instance of *that* type; on a failure
+  /// with no entry it stays null.
   Object? statusCodeResponse;
 
   /// Internal error code (0 = no internal error).
@@ -329,12 +334,31 @@ class TomServerCallError {
     }
   }
 
+  /// Whether [statusCode] is in the HTTP 2xx success range.
+  ///
+  /// The one definition of "the server accepted this" in the module. Both
+  /// [hasError] and the response handling in [TomServerEndpoint.send] read it,
+  /// because when each spelled the test for itself they disagreed: `send`
+  /// treated anything other than exactly 200 as a failure, so a `201 Created`
+  /// was routed away from the deserializer while `hasError` went on reporting
+  /// no error.
+  static bool isSuccessStatusCode(int statusCode) =>
+      statusCode >= 200 && statusCode < 300;
+
+  /// Whether a response with [statusCode] is defined to carry no body.
+  ///
+  /// `204 No Content` and `205 Reset Content` have no payload by definition
+  /// (RFC 9110 §15.3.5–6), so for those an empty body is the expected shape and
+  /// there is nothing to deserialize — as opposed to a status that promised a
+  /// body and sent none, which stays a failure to parse.
+  static bool isNoContentStatusCode(int statusCode) =>
+      statusCode == 204 || statusCode == 205;
+
   /// Whether this represents an error condition.
   ///
   /// Returns `true` if the status code is outside the 2xx success range
   /// (so 201/202/204 are *not* errors) or there's an internal error.
-  bool get hasError =>
-      statusCode < 200 || statusCode >= 300 || internalError != 0;
+  bool get hasError => !isSuccessStatusCode(statusCode) || internalError != 0;
 
   @override
   String toString() =>
@@ -979,13 +1003,20 @@ class TomServerEndpoint<T extends Object, R extends Object> {
       );
     }
 
+    final int statusCode = serverCall.serverResponse!.statusCode;
+
     TomServerCallError? error;
     try {
       Object? statusCodeResponse;
-      if (serverCall.serverResponse!.statusCode != 200 &&
+      // Which branch a response takes turns on whether the server accepted it,
+      // not on whether it answered with exactly 200. `statusCodeResponseTypes`
+      // describes the *failure* bodies an endpoint can return, so consulting it
+      // for a 201 or a 204 sent an ordinary success down the failure branch —
+      // which never deserializes into [R], leaving the caller a default-valued
+      // response beside an error that reports no error.
+      if (!TomServerCallError.isSuccessStatusCode(statusCode) &&
           statusCodeResponseTypes != null) {
-        Type? responseType =
-            statusCodeResponseTypes![serverCall.serverResponse!.statusCode];
+        Type? responseType = statusCodeResponseTypes![statusCode];
         if (responseType != null && responseType != R) {
           statusCodeResponse = tomReflectionInfo.createInstance(responseType);
           statusCodeResponse = tomReflectionInfo.convertFromJsonString(
@@ -994,7 +1025,7 @@ class TomServerEndpoint<T extends Object, R extends Object> {
           );
         }
         error = TomServerCallError(
-          statusCode: serverCall.serverResponse!.statusCode,
+          statusCode: statusCode,
           response: result,
           headers: serverCall.serverResponse!.headers,
           isRedirect: serverCall.serverResponse!.isRedirect,
@@ -1002,9 +1033,18 @@ class TomServerEndpoint<T extends Object, R extends Object> {
           statusCodeResponse: statusCodeResponse,
         );
       } else {
-        response = tomReflectionInfo.convertFromJsonString<R>(response, result);
+        // A no-content status has no body by definition, so there is nothing to
+        // deserialize and [response] keeps its defaults. Every other status is
+        // parsed as before — a body that was promised and not sent stays a
+        // parse failure rather than becoming a silent empty result.
+        if (!TomServerCallError.isNoContentStatusCode(statusCode)) {
+          response = tomReflectionInfo.convertFromJsonString<R>(
+            response,
+            result,
+          );
+        }
         error = TomServerCallError(
-          statusCode: serverCall.serverResponse!.statusCode,
+          statusCode: statusCode,
           response: result,
           headers: serverCall.serverResponse!.headers,
           isRedirect: serverCall.serverResponse!.isRedirect,
@@ -1016,7 +1056,7 @@ class TomServerEndpoint<T extends Object, R extends Object> {
       error = TomServerCallError(
         internalError: TomServerCallError.serverError,
         response: result,
-        statusCode: serverCall.serverResponse!.statusCode,
+        statusCode: statusCode,
         headers: serverCall.serverResponse!.headers,
         isRedirect: serverCall.serverResponse!.isRedirect,
         reasonPhrase: serverCall.serverResponse!.reasonPhrase,
