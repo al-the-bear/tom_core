@@ -1093,7 +1093,12 @@ TomRequestTimeoutException(
 
 The bytes to upload together with what the server needs to know about them.
 `open` is a *factory* rather than a stream because a Dart stream can be listened
-to once, and retry-after-failure needs the same bytes a second time.
+to once, and retry-after-failure needs the same bytes a second time. A factory
+that returns the *same* single-subscription stream every call satisfies the type
+but breaks that contract; the second transfer fails with Dart's own
+`StateError: Stream has already been listened to`, which is left untranslated
+because it reports a defect in the calling code rather than a transfer
+condition.
 
 ##### Constructors
 
@@ -1378,13 +1383,16 @@ TomFileTransferException(
 
 ##### Error keys
 
+Each key names a condition a running system can meet, so a mistake in the
+calling code is deliberately not among them. The list is the whole contract:
+`file_transfer_test.dart` fails if it drifts from the keys actually thrown.
+
 | Key | Meaning |
 | --- | ------- |
 | `file_transfer.not_found` | No file is stored in the requested slot. |
 | `file_transfer.cancelled` | The caller cancelled the transfer. |
 | `file_transfer.rejected` | The server refused the transfer (status code in `parameters['statusCode']`). |
-| `file_transfer.source_exhausted` | A `TomFileSource` was re-opened but its stream could only be listened to once. |
-| `file_transfer.invalid_descriptor` | The server's file descriptor was not valid JSON, not a JSON object, or lacked `key` / `mediaType` / `byteCount`. |
+| `file_transfer.invalid_descriptor` | The server's description of a stored file was unreadable: not valid JSON, not a JSON object, missing `key` / `mediaType` / `byteCount`, or a `HEAD` that described nothing at all. |
 | `file_transfer.invalid_slot` | A slot was empty or contained `.` / `..` segments. |
 
 ## Enums

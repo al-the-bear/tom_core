@@ -58,14 +58,20 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// Exception thrown when a file transfer fails.
 ///
-/// Error keys are stable and worth matching on:
+/// Error keys are stable and worth matching on. Each names a condition a
+/// running system can meet — a caller may branch on one, and `tom_flutter_ui`
+/// turns each into a user-facing line — so a mistake in the calling code is
+/// deliberately not among them:
 ///
 /// - `file_transfer.not_found` — no file is stored in the requested slot.
 /// - `file_transfer.cancelled` — the caller cancelled the transfer.
 /// - `file_transfer.rejected` — the server refused the transfer (status code in
 ///   `parameters['statusCode']`).
-/// - `file_transfer.source_exhausted` — a [TomFileSource] was re-opened but its
-///   stream could only be listened to once.
+/// - `file_transfer.invalid_descriptor` — the server's description of a stored
+///   file was unreadable: not valid JSON, not a JSON object, missing `key` /
+///   `mediaType` / `byteCount`, or a `HEAD` that described nothing at all.
+/// - `file_transfer.invalid_slot` — the slot was empty or contained `.` or `..`
+///   segments (see [TomHttpFileTransferClient.uriForSlot]).
 class TomFileTransferException extends TomException {
   TomFileTransferException(
     super.key,
@@ -156,6 +162,13 @@ class TomFileSource {
   /// Starts a fresh read of the file's bytes.
   ///
   /// Every call returns an independent stream; see the class doc for why.
+  ///
+  /// A factory that hands back the *same* single-subscription stream instead of
+  /// building a new one satisfies the type but breaks that contract, and the
+  /// second transfer fails with Dart's own `StateError: Stream has already been
+  /// listened to`. That is left as it is rather than being translated into a
+  /// transfer error key: it is a defect in the calling code, not a condition a
+  /// running system can encounter, and Dart's message already names it exactly.
   Stream<List<int>> open() => _open();
 
   /// Whether the total size is known, which decides whether a transfer over

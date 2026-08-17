@@ -51,6 +51,10 @@ class _FileTestServer {
   /// When set, every response uses this status and an empty body.
   int? forcedStatus;
 
+  /// When set, `HEAD` answers 200 but describes nothing — the shape a server
+  /// that has not implemented the descriptor headers produces.
+  bool headWithoutDescriptor = false;
+
   /// Delay inserted between download chunks, so a cancel has time to land.
   Duration chunkDelay = Duration.zero;
 
@@ -134,6 +138,10 @@ class _FileTestServer {
           await response.close();
           return;
         }
+        if (headWithoutDescriptor) {
+          await response.close();
+          return;
+        }
         tomFileDescriptorHeaders(meta).forEach((name, value) {
           // Content-length is owned by the response object, not by us: a HEAD
           // response writes no body, and dart:io would object.
@@ -199,6 +207,84 @@ final String _authzJwt = _makeJwt({'sub': 'authz'});
 // =============================================================================
 
 void main() {
+  group('error key contract', () {
+    // The documented list is what callers match on, and `tom_flutter_ui`'s
+    // `tomTransferErrorMessage` turns each entry into a user-facing line. A
+    // list that has drifted is worse than no list: a documented key with no
+    // throw site invites a catch that never fires, and a thrown key with no
+    // entry leaves callers no name to match. Neither shows up in a compiler or
+    // a test of the throwing code itself, so the agreement is asserted here.
+
+    /// The two libraries that raise [TomFileTransferException].
+    ///
+    /// Read from disk rather than reflected over: the key is a string literal
+    /// at the throw site, which is exactly what a caller matches on and what
+    /// drifts, and no runtime surface exposes it.
+    const sourcePaths = [
+      'lib/src/tombase/http_connection/file_transfer.dart',
+      'lib/src/tombase/http_connection/http_file_transfer.dart',
+    ];
+
+    String readSource(String path) {
+      final file = File(path);
+      // A clear failure beats an ArgumentError from readAsStringSync: this
+      // resolves against the CWD, which `dart test` sets to the package root.
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason: 'Expected to find $path relative to ${Directory.current.path}',
+      );
+      return file.readAsStringSync();
+    }
+
+    /// Every key handed to a `TomFileTransferException` constructor.
+    ///
+    /// The keys are the only single-quoted `file_transfer.*` literals in these
+    /// libraries; documentation mentions them in backticks instead.
+    Set<String> thrownKeys() => {
+      for (final path in sourcePaths)
+        ...RegExp(r"'(file_transfer\.\w+)'")
+            .allMatches(readSource(path))
+            .map((m) => m.group(1)!),
+    };
+
+    /// Every key named in the bullet list on [TomFileTransferException].
+    Set<String> documentedKeys() {
+      final source = readSource(sourcePaths.first);
+      const listStart = 'Error keys are stable';
+      const listEnd = 'class TomFileTransferException';
+      final start = source.indexOf(listStart);
+      final end = source.indexOf(listEnd);
+      expect(start, greaterThanOrEqualTo(0), reason: 'Key list header moved');
+      expect(end, greaterThan(start), reason: 'Key list no longer precedes the class');
+      return RegExp(r'`(file_transfer\.\w+)`')
+          .allMatches(source.substring(start, end))
+          .map((m) => m.group(1)!)
+          .toSet();
+    }
+
+    test('every thrown key is documented and every documented key is thrown',
+        () {
+      expect(documentedKeys(), equals(thrownKeys()));
+    });
+
+    test('the contract is the five keys the layer actually raises', () {
+      // Spelled out so that adding a throw site is a deliberate act: the test
+      // above only checks the two lists agree, which a careless edit could
+      // satisfy by changing both.
+      expect(
+        thrownKeys(),
+        equals({
+          'file_transfer.not_found',
+          'file_transfer.cancelled',
+          'file_transfer.rejected',
+          'file_transfer.invalid_descriptor',
+          'file_transfer.invalid_slot',
+        }),
+      );
+    });
+  });
+
   group('TomFileSource', () {
     test('bytes() knows its size and can be opened repeatedly', () async {
       final source = TomFileSource.bytes('note.txt', utf8.encode('hello'));
@@ -288,14 +374,17 @@ void main() {
     });
 
     test('decodeFileDescriptor rejects non-JSON and non-object bodies', () {
-      expect(
-        () => decodeFileDescriptor('not json'),
-        throwsA(isA<TomFileTransferException>()),
+      // The key is asserted, not just the type: it is what a caller matches on,
+      // and these are two of the four sites that raise it.
+      final invalidDescriptor = throwsA(
+        isA<TomFileTransferException>().having(
+          (e) => e.key,
+          'key',
+          'file_transfer.invalid_descriptor',
+        ),
       );
-      expect(
-        () => decodeFileDescriptor('[1,2,3]'),
-        throwsA(isA<TomFileTransferException>()),
-      );
+      expect(() => decodeFileDescriptor('not json'), invalidDescriptor);
+      expect(() => decodeFileDescriptor('[1,2,3]'), invalidDescriptor);
     });
   });
 
@@ -578,6 +667,29 @@ void main() {
 
     test('describe of an empty slot is null', () async {
       expect(await client.describe('missing'), isNull);
+    });
+
+    test('a HEAD that describes nothing is a protocol error, not empty metadata',
+        () async {
+      // The fourth `invalid_descriptor` site: a 200 with neither the descriptor
+      // header nor the key/length pair. Answering `null` here would be
+      // indistinguishable from "no file stored", so a server that has not
+      // implemented the headers would look like an empty slot forever.
+      await client.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('x.bin', const [1]),
+      );
+      server.headWithoutDescriptor = true;
+      await expectLater(
+        client.describe('a'),
+        throwsA(
+          isA<TomFileTransferException>().having(
+            (e) => e.key,
+            'key',
+            'file_transfer.invalid_descriptor',
+          ),
+        ),
+      );
     });
 
     test('remove deletes and reports whether anything was there', () async {
