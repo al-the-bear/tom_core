@@ -1,5 +1,17 @@
-/// Demonstrates JSON serialization utilities including pretty printing
-/// and JSON formatting for human-readable output.
+/// Demonstrates the JSON *formatting* helpers — turning JSON that already
+/// exists into something a human, or a single log line, can read.
+///
+/// This example covers:
+/// - Indented pretty-printing of compact JSON (prettyJson)
+/// - Nested objects and arrays under the same formatter
+/// - Single-line formatting for log output (prettyJsonLine)
+/// - Encoding a Dart map directly with the shared indentEncoder
+/// - A formatting round-trip that preserves the data
+///
+/// Everything here takes JSON as given and changes only its *layout*.
+/// Producing that JSON from a value object in the first place is the
+/// serialization contract — `TomJsonSerializable.toJson()` and
+/// `makeCleanJsonMap` — demonstrated in `04_json_serialization_example.dart`.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
