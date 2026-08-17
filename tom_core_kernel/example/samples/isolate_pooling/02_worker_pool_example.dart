@@ -80,6 +80,7 @@ class IdentifiedTaskCommand extends TomCommand {
 class WorkerPoolCreationExample {
   static int poolSize = 0;
   static bool poolCreated = false;
+  static bool emptyPoolRejected = false;
 
   static Future<TomWorkerPool> example1CreatePool() async {
     final context = TomWorkerContext(
@@ -95,6 +96,21 @@ class WorkerPoolCreationExample {
 
     assert(poolCreated, 'Pool should be created');
     assert(poolSize == 4, 'Pool size should be 4');
+
+    // A pool needs at least one worker. An empty one could never acquire a
+    // worker, so every execute() would wait forever — withSize refuses at
+    // construction, where the mistake actually is. A computed size such as
+    // `numberOfProcessors - 1` reaches 0 on a single-core container.
+    Object? sizeError;
+    try {
+      await TomWorkerPool.withSize(0, context);
+    } on TomWorkerException catch (e) {
+      sizeError = e;
+    }
+    emptyPoolRejected = sizeError != null;
+
+    assert(emptyPoolRejected,
+        'withSize(0, ...) should throw TomWorkerException');
 
     return pool;
   }

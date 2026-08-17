@@ -1086,6 +1086,97 @@ void main() {
 
         pool.close();
       });
+
+      test('rejects a zero size instead of building an unusable pool', () async {
+        final context = TestWorkerContext(namePrefix: 'ZeroSize');
+
+        // A pool with no workers can never acquire one: workers are added at
+        // construction and on respawn-after-death only, so execute() would
+        // poll its 1 ms wait loop forever on a pool that is permanently empty.
+        await expectLater(
+          TomWorkerPool.withSize(0, context),
+          throwsA(isA<TomWorkerException>()),
+        );
+      });
+
+      test('rejects a negative size', () async {
+        final context = TestWorkerContext(namePrefix: 'NegSize');
+
+        // The spawn loop simply does not execute for a negative size, so the
+        // failure is identical to zero — reject it at the same door.
+        await expectLater(
+          TomWorkerPool.withSize(-1, context),
+          throwsA(isA<TomWorkerException>()),
+        );
+      });
+
+      test('the rejection names the invalid size', () async {
+        final context = TestWorkerContext(namePrefix: 'NamedSize');
+
+        // The caller's mistake is usually an arithmetic slip such as
+        // `numberOfProcessors - 1` on a single-core container. Echoing the
+        // computed value is what connects the error back to that expression.
+        try {
+          await TomWorkerPool.withSize(0, context);
+          fail('withSize(0, ...) must throw');
+        } on TomWorkerException catch (e) {
+          expect(e.key, equals('isolate.invalid_pool_size.with_size'));
+          expect(e.parameters?['size'], equals(0));
+          expect(e.toString(), contains('0'));
+        }
+      });
+
+      test('rejects a non-positive healthCheckInterval', () async {
+        final context = TestWorkerContext(namePrefix: 'ZeroInterval');
+
+        // Duration.zero is not a supervision cadence: Timer.periodic would run
+        // a health pass on every event-loop turn, pinning the CPU for probes
+        // no caller asked to repeat that often.
+        await expectLater(
+          TomWorkerPool.withSize(
+            1,
+            context,
+            healthCheckInterval: Duration.zero,
+          ),
+          throwsA(isA<TomWorkerException>()),
+        );
+      });
+
+      test('rejects a non-positive healthCheckTimeout', () async {
+        final context = TestWorkerContext(namePrefix: 'ZeroTimeout');
+
+        // A zero timeout gives every worker zero time to answer, so each probe
+        // declares a healthy worker dead and force-kills it. The pool respawns
+        // and probes again: an endless kill/respawn treadmill whose
+        // workerCount still reads healthy the whole time.
+        await expectLater(
+          TomWorkerPool.withSize(
+            1,
+            context,
+            healthCheckInterval: Duration(seconds: 1),
+            healthCheckTimeout: Duration.zero,
+          ),
+          throwsA(isA<TomWorkerException>()),
+        );
+      });
+
+      test('a supervision timeout is only validated when supervision is on',
+          () async {
+        final context = TestWorkerContext(namePrefix: 'UnsupTimeout');
+
+        // healthCheckTimeout has a default, so an unsupervised caller never
+        // chose it and must not be failed by it. Nothing reads it here.
+        final pool = await TomWorkerPool.withSize(
+          1,
+          context,
+          healthCheckTimeout: Duration.zero,
+        );
+
+        expect(pool.isSupervised, isFalse);
+        expect(await pool.execute(ComputeCommand(2, 3)), equals(5));
+
+        pool.close();
+      });
     });
 
     group('execute', () {

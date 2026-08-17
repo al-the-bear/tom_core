@@ -1130,6 +1130,8 @@ class TomWorker {
 /// ## Notes
 ///
 /// - Workers are created during pool initialization
+/// - A pool needs at least one worker; [withSize] rejects a smaller size
+///   rather than returning a pool on which every command would wait forever
 /// - Commands wait if all workers are busy (polling every 1ms)
 /// - Consider pool size based on CPU cores and task characteristics
 class TomWorkerPool {
@@ -1176,23 +1178,69 @@ class TomWorkerPool {
   /// [context]. The method waits for all workers to be ready before
   /// returning.
   ///
-  /// - [size]: Number of workers to create
+  /// - [size]: Number of workers to create; must be at least 1
   /// - [context]: Configuration for each worker (also retained to respawn
   ///   workers that die when supervision is enabled)
   /// - [healthCheckInterval]: opt-in; when non-null, enables liveness
-  ///   supervision (exit detection + idle-worker pings). Defaults to `null`
-  ///   (supervision off — existing behaviour unchanged).
+  ///   supervision (exit detection + idle-worker pings) and must be positive.
+  ///   Defaults to `null` (supervision off).
   /// - [healthCheckTimeout]: how long a probed idle worker has to answer a
-  ///   ping before it is treated as hung and force-killed. Only used when
-  ///   [healthCheckInterval] is set.
+  ///   ping before it is treated as hung and force-killed. Only used — and
+  ///   only validated — when [healthCheckInterval] is set; must be positive.
   ///
   /// Returns a [Future] that completes when all workers are ready.
+  ///
+  /// Throws [TomWorkerException] if any argument would produce a pool that
+  /// cannot do useful work. Each such value is a caller bug — an unvalidated
+  /// config entry, or an arithmetic slip like `numberOfProcessors - 1` on a
+  /// single-core container — and accepting it defers the symptom to a
+  /// dispatch far from the mistake. The rejection carries the offending value
+  /// so the error points back at the expression that produced it.
   static Future<TomWorkerPool> withSize(
     int size,
     TomWorkerContext context, {
     Duration? healthCheckInterval,
     Duration healthCheckTimeout = const Duration(seconds: 5),
   }) async {
+    if (size < 1) {
+      // A pool with no workers can never acquire one: workers are added at
+      // construction and on respawn-after-death only, so execute() would spin
+      // its 1 ms wait loop forever against a permanently empty free list.
+      throw TomWorkerException(
+        'isolate.invalid_pool_size.with_size',
+        'Cannot create a TomWorkerPool with $size workers: at least 1 is '
+            'required, because a pool that starts empty can never acquire a '
+            'worker and every execute() would wait forever.',
+        parameters: {'size': size},
+      );
+    }
+    if (healthCheckInterval != null) {
+      // Only meaningful when supervision is on. healthCheckTimeout has a
+      // default, so an unsupervised caller never chose it and must not be
+      // failed by it.
+      if (healthCheckInterval <= Duration.zero) {
+        // Timer.periodic would then run a health pass on every event-loop
+        // turn, pinning the CPU with probes no caller asked to repeat.
+        throw TomWorkerException(
+          'isolate.invalid_health_check_interval.with_size',
+          'Cannot supervise a TomWorkerPool with a healthCheckInterval of '
+              '$healthCheckInterval: it must be positive.',
+          parameters: {'healthCheckInterval': healthCheckInterval.toString()},
+        );
+      }
+      if (healthCheckTimeout <= Duration.zero) {
+        // Every probe would expire before a healthy worker could answer, so
+        // supervision would force-kill and respawn the whole pool on every
+        // pass — an endless treadmill whose workerCount still reads healthy.
+        throw TomWorkerException(
+          'isolate.invalid_health_check_timeout.with_size',
+          'Cannot supervise a TomWorkerPool with a healthCheckTimeout of '
+              '$healthCheckTimeout: it must be positive, or every probe '
+              'declares a healthy worker dead.',
+          parameters: {'healthCheckTimeout': healthCheckTimeout.toString()},
+        );
+      }
+    }
     final twp = TomWorkerPool._();
     twp._context = context;
     twp._healthCheckInterval = healthCheckInterval;

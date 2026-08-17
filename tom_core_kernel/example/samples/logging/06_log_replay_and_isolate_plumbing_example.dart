@@ -31,6 +31,7 @@
 /// ```
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -137,27 +138,36 @@ Future<void> run() async {
 
   print('3. TomIsolateLogOutput (routes to a worker pool; gated by level):');
 
-  // A zero-size pool spawns no isolates, so it is safe here while still
-  // exercising the real constructor and field wiring.
-  final pool = await TomWorkerPool.withSize(0, _emptyLoggingContext());
+  // A pool needs at least one worker, so this sample builds a real one and
+  // closes it again: a closed pool refuses dispatch, which is what makes the
+  // level gate below observable at all.
+  final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
+  pool.close();
   final isolateOutput = TomIsolateLogOutput(pool);
   final poolIsWired = identical(isolateOutput.workerPool, pool);
 
   print('   workerPool wired?        $poolIsWired');
 
-  // trace does not match a production logger level, so the gate short-circuits
-  // BEFORE touching the (blocking, zero-size) pool — it returns immediately.
-  var gatedOutReturned = true;
-  isolateOutput.output(
-    TomLogLevel.production,
-    TomLogLevel.trace,
-    TomLogger.TRACE,
-    'gated out — never reaches the pool',
-    'worker-1',
-    fixedTime,
-    null,
-  );
-  print('   gated-out output returned without blocking? $gatedOutReturned');
+  // output() never awaits its pooled delivery, so it always returns normally.
+  // Watching the zone for the closed pool's refusal is what actually shows
+  // whether a line reached the pool: trace does not match a production logger
+  // level, so the gate short-circuits and nothing is dispatched.
+  final escaped = <Object>[];
+  runZonedGuarded(() {
+    isolateOutput.output(
+      TomLogLevel.production,
+      TomLogLevel.trace,
+      TomLogger.TRACE,
+      'gated out — never reaches the pool',
+      'worker-1',
+      fixedTime,
+      null,
+    );
+  }, (e, _) => escaped.add(e));
+  await Future<void>.delayed(Duration(milliseconds: 50));
+
+  final gatedOutStayedOffThePool = escaped.isEmpty;
+  print('   gated-out line stayed off the pool? $gatedOutStayedOffThePool');
   print('');
 
   // ===========================================================================
@@ -473,9 +483,9 @@ Future<void> run() async {
   assert(ignoredString == TomExecutor.noResult);
   assert(ignoredInt == TomExecutor.noResult);
 
-  // Example 3: isolate output — pool wired, gated-out returns without blocking
+  // Example 3: isolate output — pool wired, gated-out line never dispatched
   assert(poolIsWired);
-  assert(gatedOutReturned);
+  assert(gatedOutStayedOffThePool);
 
   // Example 4: creator output — fallback off-isolate, gated-out dropped
   assert(creatorFallbackMessage == 'creator message');

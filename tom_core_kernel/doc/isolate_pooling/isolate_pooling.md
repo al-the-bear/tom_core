@@ -197,6 +197,26 @@ final results = await Future.wait([
 pool.close();
 ```
 
+A pool needs at least one worker, so `withSize` rejects a size below 1 with a
+`TomWorkerException` naming the value:
+
+```dart
+try {
+  // A single-core container makes this 0.
+  final pool = await TomWorkerPool.withSize(
+    Platform.numberOfProcessors - 1,
+    context,
+  );
+} on TomWorkerException catch (e) {
+  print('bad pool size: ${e.parameters?['size']}');
+}
+```
+
+An empty pool could never acquire a worker — workers are added at construction
+and on respawn-after-death only — so every `execute` would wait forever on a
+free list that stays empty. Failing at construction puts the error where the
+mistake is, instead of at a dispatch somewhere else in the program.
+
 ### Liveness Supervision
 
 By default the pool performs no supervision. Pass a `healthCheckInterval` to
@@ -213,6 +233,13 @@ final pool = await TomWorkerPool.withSize(
 print(pool.isSupervised); // true
 print(pool.workerCount);  // 4
 ```
+
+Both durations must be positive, and both are checked only when supervision is
+switched on — `healthCheckTimeout` has a default, so an unsupervised caller
+never chose it. A zero interval would run a health pass on every event-loop
+turn; a zero timeout would expire before any healthy worker could answer,
+force-killing and respawning the pool on every pass while `workerCount` still
+read healthy.
 
 Two mechanisms then run. **Exit detection** watches every worker: if an isolate
 dies for any reason — an uncaught error, `Isolate.kill`, an out-of-memory kill —
@@ -354,6 +381,9 @@ class DatabaseWorkerContext extends TomWorkerContext {
 - For CPU-bound tasks: `Platform.numberOfProcessors` workers
 - For I/O-bound tasks: More workers may be beneficial
 - Consider memory overhead per isolate
+- Clamp any computed size to at least 1 — an expression like
+  `numberOfProcessors - 1` yields 0 on a single-core container, which
+  `withSize` rejects
 
 ### 3. Error Handling
 

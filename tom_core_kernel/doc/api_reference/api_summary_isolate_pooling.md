@@ -239,7 +239,7 @@ supervision is available but **off by default**.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `withSize` | `static Future<TomWorkerPool> withSize(int size, TomWorkerContext context, {Duration? healthCheckInterval, Duration healthCheckTimeout = const Duration(seconds: 5)})` | Creates a pool of `size` workers, each spawned with `context`, completing when all workers are ready. The context is retained so dead workers can be respawned. A non-null `healthCheckInterval` enables liveness supervision; `healthCheckTimeout` bounds how long a probed idle worker has to answer. |
+| `withSize` | `static Future<TomWorkerPool> withSize(int size, TomWorkerContext context, {Duration? healthCheckInterval, Duration healthCheckTimeout = const Duration(seconds: 5)})` | Creates a pool of `size` workers, each spawned with `context`, completing when all workers are ready. The context is retained so dead workers can be respawned. A non-null `healthCheckInterval` enables liveness supervision; `healthCheckTimeout` bounds how long a probed idle worker has to answer. Throws `TomWorkerException` for arguments that would produce a pool unable to do useful work: `size` below 1 (`isolate.invalid_pool_size.with_size`, and the exception carries the rejected `size`), or — when supervision is enabled — a non-positive `healthCheckInterval` (`isolate.invalid_health_check_interval.with_size`) or `healthCheckTimeout` (`isolate.invalid_health_check_timeout.with_size`). The two durations are validated only when `healthCheckInterval` is non-null, since an unsupervised caller never chose them. |
 
 #### Methods
 

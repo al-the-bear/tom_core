@@ -1658,23 +1658,38 @@ void main() {
   group('TomIsolateLogOutput', () {
     group('constructor', () {
       test('should store the worker pool it is given', () async {
-        // A zero-size pool spawns no isolates, so it is safe to construct in a
-        // unit test while still exercising the real field wiring.
-        final pool = await TomWorkerPool.withSize(0, _emptyLoggingContext());
+        final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
+        addTearDown(pool.close);
+
         final output = TomIsolateLogOutput(pool);
+
         expect(output.workerPool, same(pool));
       });
     });
 
     group('output', () {
+      /// Runs [body] and collects anything the fire-and-forget dispatch throws.
+      ///
+      /// `output` deliberately does not await its pooled delivery, so it always
+      /// returns normally and the *call* proves nothing. Dispatching to a
+      /// closed pool does fail, though, and the rejected future reports to the
+      /// zone it was created in — which turns "did a log line reach the pool?"
+      /// into something a test can actually observe.
+      Future<List<Object>> escapedErrorsFrom(void Function() body) async {
+        final escaped = <Object>[];
+        runZonedGuarded(body, (e, _) => escaped.add(e));
+        await Future<void>.delayed(Duration(milliseconds: 50));
+        return escaped;
+      }
+
       test('does not route to the pool when the level is gated out', () async {
-        // With a zero-size pool, routing to the pool would block forever; the
-        // level gate must short-circuit before touching the pool. trace does
-        // not match a production logger level, so output must return at once.
-        final pool = await TomWorkerPool.withSize(0, _emptyLoggingContext());
+        final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
+        pool.close();
         final output = TomIsolateLogOutput(pool);
 
-        expect(
+        // trace does not match a production logger level, so the gate must
+        // short-circuit before the pool is ever asked to do anything.
+        final escaped = escapedErrorsFrom(
           () => output.output(
             TomLogLevel.production,
             TomLogLevel.trace,
@@ -1684,8 +1699,33 @@ void main() {
             DateTime(2026, 1, 2),
             null,
           ),
-          returnsNormally,
         );
+
+        expect(await escaped, isEmpty);
+      });
+
+      test('routes to the pool when the level matches', () async {
+        final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
+        pool.close();
+        final output = TomIsolateLogOutput(pool);
+
+        // The control for the test above: error matches a production logger
+        // level, so this line must reach the pool. Without this, an empty
+        // `escaped` list would be equally consistent with the detection
+        // never working at all.
+        final escaped = escapedErrorsFrom(
+          () => output.output(
+            TomLogLevel.production,
+            TomLogLevel.error,
+            'ERROR  ',
+            'routed',
+            'main',
+            DateTime(2026, 1, 2),
+            null,
+          ),
+        );
+
+        expect(await escaped, contains(isA<TomWorkerException>()));
       });
     });
   });
