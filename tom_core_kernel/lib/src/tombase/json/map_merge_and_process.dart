@@ -723,9 +723,12 @@ String _describeProviderKeys(Map<String, dynamic> insertTree) =>
 /// an email address is not a directive.
 ///
 /// Throws [Exception] if the key carries enough `@` to be a directive but is
-/// not a well-formed one, if the provider itself fails, or if the `"@"`
-/// directive is used and the provider's result has no entry named `keyName` —
-/// the value that directive exists to take.
+/// not a well-formed one, or if the `"@"` directive is used and the provider's
+/// result has no entry named `keyName` — the value that directive exists to
+/// take.
+///
+/// Whatever the provider throws is not caught: it reaches the caller with its
+/// own type and its own stack trace.
 _TreeModification? _modifyTree(
   String name,
   String value,
@@ -756,22 +759,23 @@ _TreeModification? _modifyTree(
   final String path = m.group(2)!;
   final String profileName = m.group(3)!;
 
-  final Map<String, dynamic> insertTree;
-  try {
-    insertTree = provider(keyName, path, profileName);
-  } catch (exception, stacktrace) {
-    throw Exception(
-      "Failed to get tree modification for $name with value $value, exception $exception stacktrace $stacktrace",
-    );
-  }
+  // Deliberately unguarded. A catch here could only re-throw with `name` and
+  // `value` for context, and neither is information the caller lacks: `name` is
+  // the concatenation of the three arguments the provider was just called with,
+  // and `value` is the directive, which the provider never sees and which plays
+  // no part in the call that failed. So the wrapper that used to stand here
+  // bought nothing and cost two things — the provider's exception type, which
+  // is what a caller would catch on, and its stack trace, which it flattened
+  // into characters inside a message. Letting the failure through delivers both
+  // intact (bug §86).
+  final Map<String, dynamic> insertTree = provider(keyName, path, profileName);
 
   // Why here and not in apply(): processTree collects every modification before
   // applying any, so a failure raised now leaves the tree exactly as the caller
   // passed it, while the same failure raised at apply time would leave earlier
   // directives already written. The provider has already returned, so
   // insertTree cannot change between the two points — the check is equally
-  // valid here and strictly safer. It also sits outside the catch above, so the
-  // context it carries is not swallowed and re-wrapped.
+  // valid here and strictly safer.
   if ("@" == value && !insertTree.containsKey(keyName)) {
     throw Exception(
       'Cannot resolve the "@" directive of key $name: the provider for path '
@@ -821,14 +825,22 @@ _TreeModification? _modifyTree(
 /// Throws [Exception] if:
 /// - a key carries three or more `@` but is not a well-formed directive — the
 ///   message names the key and restates the expected form;
-/// - the [provider] itself throws — the original error and its stack trace are
-///   carried in the message;
 /// - a `"@"` directive's provider result has no entry under the directive's key
 ///   — the message names the key, the resolved path, the profile and the keys
 ///   the provider did return.
 ///
+/// Anything the [provider] throws propagates **unaltered** — same type, same
+/// message, same stack trace — so a caller can `catch` on the provider's own
+/// failure type instead of recovering it from a string. Nothing is wrapped
+/// around it, because the only context a wrapper could add is the directive
+/// key, and that is just the three arguments the provider was called with.
+/// A provider whose own errors need to name the profile it was resolving
+/// should say so itself; this function will not paraphrase it.
+///
 /// Every directive is resolved before any is applied, so a failure leaves
-/// [tree] exactly as it was passed: the operation does not half-complete.
+/// [tree] exactly as it was passed: the operation does not half-complete. That
+/// holds for a provider failure too — a directive resolved earlier in the same
+/// call is discarded rather than written.
 void processTree(
   Map<String, dynamic> tree,
   Map<String, dynamic> Function(String keyName, String path, String profileName)

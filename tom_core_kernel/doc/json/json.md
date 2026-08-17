@@ -377,9 +377,29 @@ A provider result containing the key with a `null` value is a value like any
 other and is assigned; only an **absent** key is a failure. This is the same
 present-vs-absent distinction `getObjectFromTree` and `makeCleanJsonMap` draw.
 
+##### A provider's failure is the caller's failure
+
+Whatever the provider throws propagates **unaltered** — same type, same message,
+same stack trace. A provider that resolves through `getObjectFromTree` throws a
+path exception; the caller catches *that*, on its own type, rather than
+recovering it by substring-matching a wrapper's message. An `Error` stays an
+`Error` too, so a bug in the provider is still distinguishable from a
+resolution failure.
+
+Nothing is wrapped around it, and that is deliberate rather than an omission.
+The only context a wrapper could add is the directive key and its value — but
+the key is exactly the concatenation of the three arguments the provider was
+just called with, and the value is the directive, which the provider never sees
+and which plays no part in the call that failed. So the wrapper had nothing to
+contribute and two things to lose. A provider whose own errors need to name the
+profile being resolved should say so itself; `processTree` will not paraphrase
+it.
+
 Every directive in the tree is resolved before any is applied, so a failure
 leaves the tree exactly as it was passed — the operation does not half-complete,
 and a caller that catches can retry with a corrected provider on the same tree.
+That holds for a provider failure too: a directive resolved earlier in the same
+call is discarded rather than written.
 
 #### `makeCleanJsonMap(map)`
 

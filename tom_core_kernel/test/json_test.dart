@@ -1957,6 +1957,134 @@ void main() {
         expect(tree['wanted'], isNull);
       });
     });
+
+    group('a failing provider (§86)', () {
+      // processTree used to catch everything the provider threw and re-throw a
+      // bare `Exception` whose message interpolated the original object and its
+      // stack trace. That destroyed the type the caller would have caught on,
+      // and reduced the frames to text inside a single-line string. The
+      // provider's failure is now the caller's own failure, unaltered.
+
+      test("a provider's own exception type survives processTree", () {
+        final tree = <String, dynamic>{'db@profiles@prod': '@'};
+
+        expect(
+          () => processTree(tree, (keyName, path, profileName) {
+            throw const _ProviderUnavailable('vault is sealed');
+          }),
+          throwsA(isA<_ProviderUnavailable>()),
+        );
+      });
+
+      test('an Error is not laundered into an Exception', () {
+        // The old catch was on `Object`, so an ArgumentError — which is an
+        // Error, not an Exception — came back out as an Exception. Callers
+        // distinguishing bugs from failures were told every bug was a failure.
+        final tree = <String, dynamic>{'db@profiles@prod': '@'};
+
+        expect(
+          () => processTree(tree, (keyName, path, profileName) {
+            throw ArgumentError.value(profileName, 'profileName', 'unknown');
+          }),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+
+      test('the provider message is delivered whole, not embedded', () {
+        final tree = <String, dynamic>{'db@profiles@prod': '@'};
+
+        expect(
+          () => processTree(tree, (keyName, path, profileName) {
+            throw const _ProviderUnavailable('vault is sealed');
+          }),
+          throwsA(
+            isA<_ProviderUnavailable>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(
+                contains('vault is sealed'),
+                isNot(contains('Failed to get tree modification')),
+                isNot(contains('stacktrace')),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('the stack trace stays a stack trace and names the provider', () {
+        final tree = <String, dynamic>{'db@profiles@prod': '@'};
+        StackTrace? caught;
+
+        try {
+          processTree(tree, (keyName, path, profileName) {
+            throw const _ProviderUnavailable('vault is sealed');
+          });
+        } on _ProviderUnavailable catch (_, stack) {
+          caught = stack;
+        }
+
+        // The frames are structured data the caller can walk, not characters
+        // in someone else's message. The throwing closure is the top frame.
+        expect(caught, isNotNull);
+        expect(caught.toString(), contains('json_test.dart'));
+      });
+
+      test('a resolution failure inside the provider keeps its own type', () {
+        // The documented provider shape resolves through getObjectFromTree,
+        // whose exception names the segment and its position. That message is
+        // the actionable one, so it must be what reaches the caller.
+        final profiles = <String, dynamic>{
+          'profiles': <String, dynamic>{'dev': 1},
+        };
+        final tree = <String, dynamic>{'db@profiles@prod': '@'};
+
+        expect(
+          () => processTree(
+            tree,
+            (keyName, path, profileName) =>
+                getObjectFromTree(profiles, '$path.$profileName')
+                    as Map<String, dynamic>,
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(
+                contains('prod'),
+                contains('position 1'),
+                // Interpolating the original into a wrapper would satisfy the
+                // two above while still burying it, so the discriminating
+                // assertion is that nothing was wrapped around it at all.
+                isNot(contains('Failed to get tree modification')),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('the tree is untouched when a later provider call throws', () {
+        // Collect-before-apply still holds: the first directive resolved
+        // successfully, but nothing is written because the second failed.
+        final tree = <String, dynamic>{
+          'first@profiles@prod': '@',
+          'second@profiles@prod': '@',
+          'untouched': 'kept',
+        };
+
+        expect(
+          () => processTree(tree, (keyName, path, profileName) {
+            if (keyName == 'second') {
+              throw const _ProviderUnavailable('vault is sealed');
+            }
+            return <String, dynamic>{keyName: 'resolved'};
+          }),
+          throwsA(isA<_ProviderUnavailable>()),
+        );
+
+        expect(tree.containsKey('first'), isFalse);
+        expect(tree['untouched'], equals('kept'));
+      });
+    });
   });
 
   group('makeCleanJsonMap', () {
@@ -2573,4 +2701,18 @@ class _DirtySerializable implements TomJsonSerializable {
 
   @override
   Map<String, Object?> toJson() => {'label': 'dirty', 'when': when};
+}
+
+/// Test double standing for a provider's own failure type.
+///
+/// Its only job is to be a type nothing in the json module knows about, so
+/// that catching it after [processTree] proves the provider's exception
+/// reached the caller unaltered rather than repackaged.
+class _ProviderUnavailable implements Exception {
+  const _ProviderUnavailable(this.reason);
+
+  final String reason;
+
+  @override
+  String toString() => "_ProviderUnavailable: $reason";
 }
