@@ -988,6 +988,26 @@ void main() {
         worker2.close();
       });
 
+      test('should name workers prefix + zero-based 3-digit counter',
+          () async {
+        // The counter is read before it is incremented and `setUp` resets it,
+        // so the first worker of a test is `<prefix>000`, not `<prefix>001`.
+        final first = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          TestWorkerContext(namePrefix: 'Seq'),
+        );
+        final second = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          TestWorkerContext(namePrefix: 'Seq'),
+        );
+
+        expect(first.name, equals('Seq000'));
+        expect(second.name, equals('Seq001'));
+
+        first.close();
+        second.close();
+      });
+
       test('should call initializeWorker on context', () async {
         final context = TestWorkerContext();
 

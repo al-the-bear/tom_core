@@ -123,6 +123,14 @@ class MyWorkerContext extends TomWorkerContext {
 }
 ```
 
+All four constructor arguments are required and fixed at construction; the
+context is read at spawn time, so changing one later could not reach a worker
+that is already running. The fourth, `namePrefix`, is the stem of every worker
+name: `spawn` appends a zero-based, three-digit counter, so the `'MyWorker'`
+above names the first worker `MyWorker000` and the second `MyWorker001`. Read
+that name back from `worker.name` — `worker.isolate.debugName` is only populated
+inside the isolate and reads `null` on the creator side.
+
 Both hooks report failure by throwing. A throw out of either one — directly or
 out of the setup it awaits — aborts `TomWorker.spawn` and tears the half-started
 isolate down, so a worker whose setup did not complete never joins a pool and

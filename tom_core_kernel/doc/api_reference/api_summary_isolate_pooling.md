@@ -99,7 +99,7 @@ observes the failure and decides how to react.
 
 - **Extends:** `TomException`
 - **Key:** `isolate.worker_died.in_flight_request`
-- **Parameters:** `isolateName` — the `debugName` of the isolate that died
+- **Parameters:** `isolateName` — the `name` of the worker that died
 
 #### Constructors
 
@@ -166,10 +166,13 @@ TomWorkerContext(
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `tomEnvironment` | `TomEnvironment` | The environment configuration (development, staging, production). |
-| `tomPlatform` | `TomPlatform` | The platform this worker is running on. |
-| `args` | `List<String>` | Command-line arguments passed to the worker. |
-| `namePrefix` | `String` | Prefix for naming worker isolates (e.g. `"W"` produces `"W001"`); defaults to `"W"`. |
+| `tomEnvironment` | `TomEnvironment` | The environment configuration (development, staging, production) (final). |
+| `tomPlatform` | `TomPlatform` | The platform this worker is running on (final). |
+| `args` | `List<String>` | Command-line arguments passed to the worker (final). |
+| `namePrefix` | `String` | Prefix for naming worker isolates; `spawn` appends a zero-based three-digit counter, so `"W"` names the first worker `W000` and the second `W001`. Required, with no default (final). |
+
+All four are fixed at construction: a context is read when a worker is spawned,
+so a later change could not reach a worker that is already running.
 
 #### Methods
 
@@ -199,14 +202,14 @@ bidirectional command/response messaging with the main isolate.
 | `isReady` | `bool` | Whether this worker is ready to accept commands. |
 | `isClosed` | `bool` | Whether this worker has been closed (getter). |
 | `isolate` | `Isolate` | The underlying Dart `Isolate` instance (final). |
-| `name` | `String` | The debug name the isolate was spawned with, e.g. `"W001"` (final). Use this rather than `isolate.debugName`, which is only populated inside the isolate and reads `null` on this side. |
+| `name` | `String` | The debug name the isolate was spawned with, e.g. `"W000"` (final). Use this rather than `isolate.debugName`, which is only populated inside the isolate and reads `null` on this side. |
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `spawn` | `static Future<TomWorker> spawn(void Function(TomWorkerContext) initializer, TomWorkerContext workerContext, {Duration readyTimeout = const Duration(seconds: 30)})` | Primary factory: spawns a worker isolate, sets up ports, runs initialization, and completes when the worker is ready. The startup is supervised, so a worker that cannot become ready fails the future instead of stalling it: an isolate that dies first is reported as soon as its exit is seen (`isolate.died_before_ready.spawn`), and one that stays alive but silent is given up on when `readyTimeout` expires (`isolate.ready_timeout.spawn`). Either way the isolate is killed, since a failed spawn hands back no `TomWorker` to close it with. `readyTimeout` bounds the whole startup — the isolate's first message plus both initialization hooks — and must be positive (`isolate.invalid_ready_timeout.spawn`). |
-| `resetWorkerCount` | `@visibleForTesting static void resetWorkerCount()` | Rewinds the worker-name counter. Test-only — rewinding it in production hands two live workers the same `debugName`. |
+| `resetWorkerCount` | `@visibleForTesting static void resetWorkerCount()` | Rewinds the worker-name counter. Test-only — rewinding it in production hands two live workers the same name. |
 | `startRemoteIsolate` | `static void startRemoteIsolate(TomWorkerContext context)` | Isolate entry point passed to `spawn`; wires up communication channels and runs the context's isolate initialization. Throws `TomWorkerException` if the context's SendPort is null. |
 | `canSendToCreator` | `static bool canSendToCreator()` | Returns `true` only inside a worker isolate, where a backchannel to the creator exists. |
 | `sendToCreator` | `static void sendToCreator(Object o)` | Fire-and-forget send of `o` to the creator isolate. Throws `TomWorkerException` if called from the main isolate. |

@@ -378,16 +378,24 @@ class TomWorkerContext {
   SendPort? _sendPort;
 
   /// The environment configuration (development, staging, production).
-  TomEnvironment tomEnvironment;
+  ///
+  /// The whole configuration is fixed at construction: a context is read when
+  /// a worker is spawned, so a later change could not reach a worker that is
+  /// already running — it would only alter the next spawn.
+  final TomEnvironment tomEnvironment;
 
   /// The platform this worker is running on.
-  TomPlatform tomPlatform;
+  final TomPlatform tomPlatform;
 
   /// Command-line arguments passed to the worker.
-  List<String> args;
+  final List<String> args;
 
-  /// Prefix for naming worker isolates (e.g., "W" produces "W001", "W002").
-  String namePrefix = "W";
+  /// Prefix for naming worker isolates.
+  ///
+  /// [TomWorker.spawn] appends a zero-based, three-digit counter, so `"W"`
+  /// names the first worker `W000`, the second `W001`. Required — there is no
+  /// default.
+  final String namePrefix;
 
   /// Creates a new worker context with the specified configuration.
   ///
@@ -510,7 +518,7 @@ class TomWorker {
   /// The underlying Dart Isolate instance.
   final Isolate isolate;
 
-  /// The debug name this worker's isolate was spawned with, e.g. `W001`.
+  /// The debug name this worker's isolate was spawned with, e.g. `W000`.
   ///
   /// Kept here rather than read back from [isolate]: `Isolate.debugName` is
   /// only populated inside the isolate itself, so on this side it is always

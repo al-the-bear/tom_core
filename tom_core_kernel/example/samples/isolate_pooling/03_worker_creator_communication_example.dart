@@ -299,7 +299,9 @@ class WorkerCreatorCommunicationExample {
       context,
     );
 
-    print('   - Spawned worker: ${worker.isolate.debugName}');
+    // `worker.name`, not `worker.isolate.debugName`: the latter is only
+    // populated inside the isolate and reads `null` here.
+    print('   - Spawned worker: ${worker.name}');
 
     // Send executor to worker (not command)
     // Note: The executor class must be sendable across isolates

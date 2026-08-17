@@ -75,9 +75,15 @@ class DatabaseContext extends TomWorkerContext {
 }
 ```
 
-Identify a worker in messages with `worker.name` (e.g. `"W001"`), not
+Identify a worker in messages with `worker.name`, not
 `worker.isolate.debugName` — the latter is only populated inside the isolate and
 reads `null` on the creator side.
+
+The name is the context's `namePrefix` followed by a zero-based, three-digit
+counter, so a prefix of `"W"` names the first worker `W000` and the second
+`W001`. `namePrefix` is required — there is no default — and, like the rest of
+`TomWorkerContext`, it is fixed at construction: the context is read at spawn
+time, so a later change could not reach a worker that is already running.
 
 ## Bounding the startup
 
