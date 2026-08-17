@@ -252,6 +252,7 @@ class UnhandledMessageExample {
 class WorkerLifecycleExample {
   static bool wasReadyBeforeClose = false;
   static bool isClosedAfterClose = false;
+  static bool dispatchAfterCloseRefused = false;
 
   static Future<void> example7WorkerLifecycle(TomWorker worker) async {
     wasReadyBeforeClose = worker.isReady;
@@ -264,8 +265,20 @@ class WorkerLifecycleExample {
 
     isClosedAfterClose = worker.isClosed;
 
+    // Dispatch after close fails fast instead of hanging: the isolate has
+    // already been told to shut down, so nothing would ever answer.
+    Object? closedError;
+    try {
+      await worker.executeCommand(FactorialCommand(3));
+    } on TomWorkerException catch (e) {
+      closedError = e;
+    }
+    dispatchAfterCloseRefused = closedError != null;
+
     assert(wasReadyBeforeClose, 'Worker should be ready before close');
     assert(isClosedAfterClose, 'Worker should be closed after close');
+    assert(dispatchAfterCloseRefused,
+        'executeCommand() after close() should throw TomWorkerException');
   }
 }
 

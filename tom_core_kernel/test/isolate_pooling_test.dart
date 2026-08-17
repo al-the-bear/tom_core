@@ -752,6 +752,81 @@ void main() {
 
         expect(worker.isClosed, isTrue);
       });
+
+      test('executeCommand after close throws instead of hanging', () async {
+        final context = TestWorkerContext(namePrefix: 'ClosedExec');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        worker.close();
+
+        // The isolate has already been told to shut down, so nothing will ever
+        // answer. Registering a completer and sending anyway would deadlock the
+        // caller; refusing outright is the same fail-fast the pool one layer up
+        // has always offered for the identical mistake.
+        await expectLater(
+          worker
+              .executeCommand(ComputeCommand(1, 2))
+              .timeout(Duration(seconds: 5)),
+          throwsA(isA<TomWorkerException>()),
+        );
+      });
+
+      test('sendExecutorToIsolate after close throws instead of dropping',
+          () async {
+        final context = TestWorkerContext(namePrefix: 'ClosedExecutor');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        worker.close();
+
+        // The send would land on a port whose isolate is shutting down: the
+        // executor is silently lost and the caller believes it registered.
+        expect(
+          () => worker.sendExecutorToIsolate(TestStringExecutor()),
+          throwsA(isA<TomWorkerException>()),
+        );
+      });
+
+      test('the refusal names the worker whose command was rejected', () async {
+        final context = TestWorkerContext(namePrefix: 'ClosedNamed');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        worker.close();
+
+        // A pool closes many workers at once, so "which one" is the first
+        // question the message has to answer.
+        try {
+          await worker.executeCommand(ComputeCommand(1, 2));
+          fail('executeCommand on a closed worker must throw');
+        } on TomWorkerException catch (e) {
+          expect(e.key, equals('isolate.worker_closed.execute_after_close'));
+          expect(e.parameters?['isolateName'], equals(worker.isolate.debugName));
+        }
+      });
+
+      test('a command in flight when close is called still resolves', () async {
+        final context = TestWorkerContext(namePrefix: 'ClosedInFlight');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // The guard must reject only *new* dispatch. Work already accepted was
+        // accepted before the worker closed, and close() deliberately defers
+        // tearing down the response port until such requests have resolved.
+        final inFlight = worker.executeCommand(DelayedCommand(120, 'done'));
+        worker.close();
+
+        expect(await inFlight.timeout(Duration(seconds: 5)), equals('done'));
+      });
     });
 
     group('error propagation', () {

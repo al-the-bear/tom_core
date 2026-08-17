@@ -77,9 +77,9 @@ The main class for managing worker isolates. Handles spawning, communication, an
 | Property/Method | Description |
 |-----------------|-------------|
 | `spawn()` | Factory method to create a new worker |
-| `executeCommand()` | Send a command and await the result |
-| `sendExecutorToIsolate()` | Add an executor to the worker |
-| `close()` | Shutdown the worker |
+| `executeCommand()` | Send a command and await the result; throws `TomWorkerException` once the worker is closed |
+| `sendExecutorToIsolate()` | Add an executor to the worker; throws `TomWorkerException` once the worker is closed |
+| `close()` | Shutdown the worker; in-flight commands still resolve, new ones are refused |
 | `superviseExit()` | Register a death callback; in-flight requests fail instead of hanging |
 | `ping()` | Liveness probe with a timeout; never kills the isolate |
 | `killUnresponsive()` | Force-kill a hung isolate, routing it through the death path |
@@ -379,7 +379,10 @@ try {
 
 - **Don't share mutable state**: Isolates have separate memory
 - **Keep messages serializable**: Objects must be sendable across isolate boundaries
-- **Clean up resources**: Always call `close()` when done with workers or pools
+- **Clean up resources**: Always call `close()` when done with workers or pools.
+  Dispatching afterwards is refused with a `TomWorkerException` at both levels —
+  `TomWorker.executeCommand` and `TomWorkerPool.execute` alike — so a
+  use-after-close surfaces as a catchable error rather than a silent deadlock
 - **Handle worker failures**: Enable supervision (`healthCheckInterval`) on
   long-running pools rather than writing your own health checks — an
   unsupervised pool hangs the caller forever when a worker dies

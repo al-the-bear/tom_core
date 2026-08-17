@@ -901,17 +901,40 @@ class TomWorker {
   /// still answers pings. Compare the result against [TomExecutor.noResult] if
   /// "nothing handled this" is a case the caller must distinguish.
   ///
+  /// Throws [TomWorkerException] if this worker has been closed — the same
+  /// fail-fast [TomWorkerPool.execute] gives for the identical mistake one
+  /// layer up. The closed worker's isolate has already been told to shut down,
+  /// so a dispatch accepted here would never be answered.
+  ///
+  /// A command accepted *before* [close] is unaffected: it was accepted while
+  /// the worker was open and still resolves normally.
+  ///
   /// Example:
   /// ```dart
   /// final result = await worker.executeCommand(ProcessDataCommand(data));
   /// ```
   Future<Object?> executeCommand(Object command) async {
+    if (_closed) {
+      throw _closedException('execute_after_close', 'execute a command on');
+    }
     final completer = Completer<Object?>.sync();
     final id = _idCounter++;
     _activeRequests[id] = completer;
     _commands.send(_TomIsolateCommand(id, command));
     return await completer.future;
   }
+
+  /// Builds the refusal thrown when this worker is used after [close].
+  ///
+  /// [site] names the rejected operation in the key and [attempt] describes it
+  /// in the message; both carry the isolate name, because a pool closes many
+  /// workers at once and "which one" is the first question to answer.
+  TomWorkerException _closedException(String site, String attempt) =>
+      TomWorkerException(
+        'isolate.worker_closed.$site',
+        'Cannot $attempt TomWorker ${isolate.debugName}: it has been closed.',
+        parameters: {'isolateName': isolate.debugName},
+      );
 
   /// Registers a one-shot [onDeath] callback for unexpected isolate exit.
   ///
@@ -1005,18 +1028,34 @@ class TomWorker {
   /// handlers to running workers.
   ///
   /// - [te]: The executor to send
+  ///
+  /// Throws [TomWorkerException] if this worker has been closed: the send would
+  /// land on a port whose isolate is shutting down, losing the executor while
+  /// the caller believes it registered.
   void sendExecutorToIsolate(TomExecutor te) {
+    if (_closed) {
+      throw _closedException(
+        'send_executor_after_close',
+        'send an executor to',
+      );
+    }
     _commands.send(te);
   }
 
   /// Closes this worker and shuts down the isolate.
   ///
   /// After calling this method:
-  /// - No new commands can be sent
+  /// - No new commands can be sent — [executeCommand] and
+  ///   [sendExecutorToIsolate] throw [TomWorkerException] rather than
+  ///   dispatching to an isolate that will never answer
   /// - The worker isolate receives a shutdown signal
   /// - Resources are released
   ///
-  /// Check [isClosed] to verify the worker's state.
+  /// Commands already in flight are **not** cancelled: they were accepted while
+  /// the worker was open, so the response port stays open until the last of
+  /// them resolves.
+  ///
+  /// Idempotent. Check [isClosed] to verify the worker's state.
   void close() {
     if (!_closed) {
       _closed = true;

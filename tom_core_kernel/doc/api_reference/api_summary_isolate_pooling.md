@@ -215,12 +215,12 @@ bidirectional command/response messaging with the main isolate.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `isBusy` | `bool isBusy()` | Returns `true` if this worker has pending requests. |
-| `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result, or `TomExecutor.noResult` when nothing there handled it. Every command is answered, so the future always resolves. |
-| `sendExecutorToIsolate` | `void sendExecutorToIsolate(TomExecutor te)` | Sends an executor to the worker isolate, adding it to the worker's executor list. One-way — there is no acknowledgement. |
+| `executeCommand` | `Future<Object?> executeCommand(Object command)` | Sends `command` to the worker isolate and awaits its result, or `TomExecutor.noResult` when nothing there handled it. Every command is answered, so the future always resolves. Throws `TomWorkerException` (`isolate.worker_closed.execute_after_close`) if the worker is closed — the same fail-fast `TomWorkerPool.execute` gives one layer up, rather than a dispatch nothing will answer. |
+| `sendExecutorToIsolate` | `void sendExecutorToIsolate(TomExecutor te)` | Sends an executor to the worker isolate, adding it to the worker's executor list. One-way — there is no acknowledgement. Throws `TomWorkerException` (`isolate.worker_closed.send_executor_after_close`) if the worker is closed, rather than dropping the executor on a shutting-down port. |
 | `superviseExit` | `void superviseExit(void Function() onDeath)` | Registers a one-shot death callback via `Isolate.addOnExitListener`. On an unexpected exit, every in-flight request is failed with `TomWorkerDiedException` before `onDeath` runs. Idempotent; a no-op once closed. An orderly `close` does not trigger it. |
 | `ping` | `Future<bool> ping(Duration timeout)` | Liveness probe; `true` if the worker answered within `timeout`, `false` otherwise. A timed-out probe abandons its request slot so a late answer is discarded. Never kills the isolate. |
 | `killUnresponsive` | `void killUnresponsive()` | Force-kills the isolate at `Isolate.immediate` priority, routing it through the same death/respawn path as a crash. |
-| `close` | `void close()` | Closes this worker: tears down exit supervision first (so the shutdown is not read as a death), sends the isolate a shutdown signal, and closes the response port once the last in-flight request resolves. Idempotent. |
+| `close` | `void close()` | Closes this worker: tears down exit supervision first (so the shutdown is not read as a death), sends the isolate a shutdown signal, and closes the response port once the last in-flight request resolves. Afterwards `executeCommand` and `sendExecutorToIsolate` throw; commands accepted *before* the close still resolve. Idempotent. |
 
 ### TomWorkerPool
 

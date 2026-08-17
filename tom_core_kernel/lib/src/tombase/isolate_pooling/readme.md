@@ -13,10 +13,10 @@ unit of work; a `TomWorker` runs it on a dedicated isolate, and a
 | ---- | -------------- |
 | `TomCommand` | An encapsulated unit of work with an async `execute()`. |
 | `TomExecutor` | Custom command handler chain (returns a value or passes to the next executor). When the whole chain declines — or none is registered — the dispatch answers `TomExecutor.noResult` rather than staying silent, so a caller is never left awaiting an answer that will not come. |
-| `TomWorker` | A single worker isolate; `spawn(...)` creates one, `executeCommand(cmd)` runs work on it. |
+| `TomWorker` | A single worker isolate; `spawn(...)` creates one, `executeCommand(cmd)` runs work on it, `close()` shuts it down. Dispatching after the close — `executeCommand` or `sendExecutorToIsolate` — throws `TomWorkerException` instead of waiting on an isolate that will never answer. |
 | `TomWorkerPool` | Fixed pool of workers; `withSize(n, context)` builds it, `execute(cmd)` dispatches to a free worker, `close()` tears it down. |
 | `TomWorkerContext` | The state handed to a worker isolate at spawn time. |
-| `TomWorkerException` | Thrown on worker spawn / communication failures, and on dispatch to a closed pool. |
+| `TomWorkerException` | Thrown on worker spawn / communication failures, and on dispatch to a closed worker or pool. |
 | `TomWorkerDiedException` | Fails an in-flight command whose worker isolate died, when liveness supervision is enabled. |
 
 ## Quick start
