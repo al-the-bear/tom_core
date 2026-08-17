@@ -20,6 +20,36 @@ StackTrace _captureDeepStack() {
   return StackTrace.current;
 }
 
+// Deep *asynchronous* call chain. Each level awaits before calling the next,
+// so the captured trace is split by the runtime into one `Chain` segment per
+// `await` boundary. A synchronous chain cannot exercise this: it produces a
+// single segment, which is exactly why the truncation to `traces[0]` went
+// unnoticed. The `await` before each call is load-bearing — without a real
+// suspension the levels collapse into one segment again.
+Future<void> _asyncLevelInnermost() async {
+  await Future<void>.delayed(Duration.zero);
+  throw Exception('async throw site');
+}
+
+Future<void> _asyncLevelMiddle() async {
+  await Future<void>.delayed(Duration.zero);
+  await _asyncLevelInnermost();
+}
+
+Future<void> _asyncLevelOuter() async {
+  await Future<void>.delayed(Duration.zero);
+  await _asyncLevelMiddle();
+}
+
+Future<StackTrace> _captureAsyncChainStack() async {
+  try {
+    await _asyncLevelOuter();
+  } catch (_, stack) {
+    return stack;
+  }
+  return StackTrace.current;
+}
+
 void main() {
   // =========================================================================
   // ZONE UTILITIES
@@ -298,6 +328,57 @@ void main() {
       final limited = tomGetStackTrace(stack, 2);
       expect(limited.split('\n').length, lessThanOrEqualTo(2));
       expect(limited, contains('_deepLevelInnermost'));
+    });
+  });
+
+  // =========================================================================
+  // ASYNC CHAIN SEGMENTS
+  //
+  // An asynchronous trace is a *chain*: the runtime splits it into one segment
+  // per `await` boundary. The caller's identity lives in the older segments,
+  // so a formatter that keeps only the newest one reports where the error was
+  // thrown but never where the work was started.
+  // =========================================================================
+
+  group('async chain segments', () {
+    test('default depth keeps every segment of an async chain', () async {
+      final stack = await _captureAsyncChainStack();
+      final frames = tomGetStackTraceAsList(stack);
+
+      // Every level of the chain must be represented. Before the fix only the
+      // innermost survived: the chain was truncated to its newest segment.
+      expect(frames.join('\n'), contains('_asyncLevelInnermost'));
+      expect(frames.join('\n'), contains('_asyncLevelMiddle'));
+      expect(frames.join('\n'), contains('_asyncLevelOuter'));
+      expect(frames.join('\n'), contains('_captureAsyncChainStack'));
+    });
+
+    test('an async chain yields more than the one newest frame', () async {
+      final stack = await _captureAsyncChainStack();
+      // Four `await` boundaries, so at least four frames. The exact count is
+      // not asserted: it depends on how the runtime folds the test harness's
+      // own frames, which is not this module's contract.
+      expect(tomGetStackTraceAsList(stack).length, greaterThanOrEqualTo(4));
+    });
+
+    test('depth truncates the flattened chain from the throw site', () async {
+      final stack = await _captureAsyncChainStack();
+      final limited = tomGetStackTraceAsList(stack, 2);
+
+      // The depth limit applies across the whole flattened chain, and still
+      // counts from the newest frame — so the throw site leads and the second
+      // frame comes from the *next* segment, which flattening made reachable.
+      expect(limited.length, equals(2));
+      expect(limited[0], contains('_asyncLevelInnermost'));
+      expect(limited[1], contains('_asyncLevelMiddle'));
+    });
+
+    test('a synchronous trace is unaffected by flattening', () {
+      // A sync stack is a single-segment chain, so flattening must leave it
+      // exactly as it was — this is the regression guard for the sync path.
+      final frames = tomGetStackTraceAsList(_captureDeepStack());
+      expect(frames.first, contains('_deepLevelInnermost'));
+      expect(frames.join('\n'), contains('_deepLevelOuter'));
     });
   });
 

@@ -130,6 +130,23 @@ final (traceStr, framesList) = tomGetStackTraceAsTuple();
 tomPrintStackTrace(stackTrace, message: 'Error occurred', depth: 5);
 ```
 
+Frames come back newest first — the throw site leads — and a `depth` limit
+counts from there, so a bounded trace keeps the frames nearest the error.
+
+An **asynchronous** trace is reported whole. The runtime splits such a trace
+into one segment per `await` boundary, and all of them are included:
+
+```dart
+Future<void> outer() async => await middle();   // ← in an older segment
+Future<void> middle() async => await inner();   // ← in an older segment
+Future<void> inner() async => throw StateError('boom');  // ← throw site
+
+// tomGetStackTraceAsList(stack) reports inner, middle *and* outer.
+```
+
+This is what makes an async trace useful: the throw site alone rarely
+identifies who initiated the failing work.
+
 ### Time Zone Formatting
 
 Convert minute offsets to ISO 8601 format:
@@ -236,6 +253,12 @@ Use appropriate depth for context without noise:
 - **5-10 frames**: Typical for most debugging
 - **-1 (all)**: For critical errors needing full context
 - **1-3 frames**: For quick location identification
+
+In asynchronous code a trace spans every `await` boundary, so `-1` can be
+considerably longer than the equivalent synchronous trace. Since the limit
+counts from the throw site, a bounded depth still reaches back through the
+first few awaiting callers — which is usually enough to identify the operation
+that failed.
 
 ### Auto Logging
 

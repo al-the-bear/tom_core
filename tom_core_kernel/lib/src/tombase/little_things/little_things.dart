@@ -175,7 +175,8 @@ void tomPrintStackTrace(Object? s, {String? message, int depth = -1}) {
 /// Core implementation for processing stack trace frames.
 ///
 /// Folds and filters stack frames to remove noise from core libraries,
-/// shelf, and TomLogger internals.
+/// shelf, and TomLogger internals, then flattens every segment of the async
+/// chain into one list.
 ///
 /// ## Parameters
 ///
@@ -187,6 +188,13 @@ void tomPrintStackTrace(Object? s, {String? message, int depth = -1}) {
 /// A list of formatted stack frame strings, newest first.
 List<String> _processStackFrames([Object? s, int depth = -1]) {
   final stackTrace = s as StackTrace? ?? StackTrace.current;
+  // A Chain holds one trace *segment* per `await` boundary, newest first.
+  // Flattening all of them is what makes an asynchronous trace complete: the
+  // throw site is in the newest segment, but the caller that started the work
+  // is in an older one. Keeping only the newest segment reported where an
+  // async failure surfaced and never where it began. Concatenating preserves
+  // the newest-first order the depth limit below relies on, and a synchronous
+  // trace is a single-segment chain, so it is unaffected.
   final frames = Chain.forTrace(stackTrace)
       .foldFrames(
         (frame) =>
@@ -195,8 +203,8 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
             (frame.member?.startsWith("TomLogger.") ?? false),
         terse: true,
       )
-      .traces[0]
-      .frames;
+      .traces
+      .expand((trace) => trace.frames);
 
   final resultList = <String>[];
   var remaining = depth;
@@ -224,10 +232,17 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
 /// Processes the stack trace, filtering out framework noise, and returns
 /// it as a newline-separated string suitable for logging.
 ///
+/// An asynchronous trace is reported **whole**: the runtime splits it into one
+/// segment per `await` boundary, and every segment is included, newest first.
+/// So the frames run from the throw site back through each awaiting caller to
+/// the one that started the work — which is where an async failure's cause
+/// usually is.
+///
 /// ## Parameters
 ///
 /// - [s]: The stack trace object, or `null` to use [StackTrace.current].
 /// - [depth]: Maximum number of frames to include. Use -1 for all frames.
+///   The limit applies across the whole chain, counting from the throw site.
 ///
 /// ## Returns
 ///
@@ -265,6 +280,8 @@ List<String> tomGetStackTraceAsList([Object? s, int depth = -1]) {
 /// Formats a stack trace as both a string and list.
 ///
 /// Convenience function that returns both representations in a single call.
+/// Processes the trace exactly as [tomGetStackTrace] does, async chain
+/// included.
 ///
 /// ## Parameters
 ///
