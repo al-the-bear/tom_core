@@ -20,7 +20,7 @@ streaming file-transfer client that moves large payloads without buffering them.
 | `TomRequestAbortedException` / `TomRequestTimeoutException` | Why a call ended early — cancelled by this application, or unanswered past its deadline. Kept as siblings rather than as a subtype, because only the second is worth retrying. |
 | `TomServerChannel` / `TomServerEndpoint` | Channel and endpoint abstractions. |
 | `TomHttpClientFactory` / `TomDefaultHttpClientFactory` | Pluggable HTTP-client construction. |
-| `TomClientRemoteContext` | Carries client-side remote-call context. |
+| `TomClientRemoteContext` | Which remote a client addresses. Installed once at startup by `setCurrent`; `runWithContext` shadows it on the `Zone` to reach a second server from part of a program. |
 | `TomFileTransferClient` / `TomHttpFileTransferClient` / `TomMemoryFileTransferClient` | Streaming file transfer — upload, download, describe, remove — addressed by application-owned *slot* rather than by storage key. Neither direction buffers a whole file; the in-memory client honours the same contract for tests and offline modes. |
 | `TomFileSource` / `TomFileMetadata` / `TomTransferProgress` / `TomTransferCancellation` | The transfer value types: the bytes to send (re-openable, so a retry sees them again), what the server stored, how far a transfer has got, and the shared cancel signal. |
 

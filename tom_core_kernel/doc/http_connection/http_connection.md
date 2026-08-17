@@ -440,6 +440,25 @@ TomClientRemoteContext.setCurrent(
 );
 ```
 
+### Addressing a Second Server
+
+`setCurrent` refuses a second call — the process-wide context is deliberately
+write-once, so nothing can silently redirect every call in the application
+halfway through its life. To reach a different remote for *part* of a program,
+scope it instead:
+
+```dart
+final report = await TomClientRemoteContext.runWithContext(
+  TomClientRemoteContext(Uri.parse('https://reporting.example.com')),
+  () => reportingApi.fetchSummary(),
+);
+```
+
+The context rides on the `Zone`, so it follows the body across `await`
+boundaries and is gone again once the body completes. This is the supported way
+for a tool to talk to two servers, and for a test to point one case at a stub
+without disturbing the next.
+
 ## Best Practices
 
 ### 1. Initialize Early

@@ -594,14 +594,17 @@ header field names to avoid typos and ensure consistency.
 | -------- | ---- | ----------- |
 | `contentType` | `String` | The `Content-Type` header field name. |
 | `contentDisposition` | `String` | The `Content-Disposition` header field name. |
+| `location` | `String` | The `Location` header field name — the target of a redirect (3xx) response. |
 
 ### Remote Context
 
 #### TomClientRemoteContext
 
 Configures the remote server connection for client applications: the base URI
-for the primary API server and optionally a separate authentication server. Only
-one context can be active at a time.
+for the primary API server and optionally a separate authentication server.
+Exactly one context is current at any moment — a process-wide one installed
+once by `setCurrent`, which `runWithContext` may shadow for the duration of a
+body.
 
 ##### Constructors
 
@@ -613,13 +616,15 @@ TomClientRemoteContext(Uri baseUri, [Uri? authenticationUri])
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `current` | `TomClientRemoteContext?` | The currently active remote context (`null` if none has been set). |
+| `current` | `TomClientRemoteContext?` | The context installed by the nearest enclosing `runWithContext`, falling back to the one set by `setCurrent`, or `null` if neither has run. Read-only — it decides which remote every subsequent call addresses, so it is written only through those two entry points. |
 
 ##### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `setCurrent` | `static void setCurrent(TomClientRemoteContext context)` | Sets the current remote context; may be called only once — a second call throws `TomClientRemoteContextException`. |
+| `setCurrent` | `static void setCurrent(TomClientRemoteContext context)` | Installs the process-wide context; may be called only once — a second call throws `TomClientRemoteContextException`. |
+| `runWithContext` | `static T runWithContext<T>(TomClientRemoteContext context, T Function() body)` | Runs `body` with `context` as `current`, restoring the previous one afterwards. The context rides on the `Zone`, so it follows `body` across `await` boundaries and cannot leak past it. The supported way to address a second remote — a tool talking to two servers, or a test exercising one. |
+| `resetCurrent` | `@visibleForTesting static void resetCurrent()` | Clears the context installed by `setCurrent`, so it may be called again. Test-only — tests need a clean process context per case; application code sets it once at startup and uses `runWithContext` for anything narrower. |
 
 ##### Properties
 

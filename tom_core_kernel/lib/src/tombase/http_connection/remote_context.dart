@@ -5,7 +5,9 @@
 ///
 /// - Primary server base URI configuration
 /// - Separate authentication server URI (optional)
-/// - Singleton pattern for global access
+/// - A process-wide context for global access, installed once at startup
+/// - A zone-scoped override for addressing a second server from part of a
+///   program
 ///
 /// ## Example
 ///
@@ -55,7 +57,9 @@ class TomClientRemoteContextException extends TomException {
 /// Configures the remote server connection for client applications.
 ///
 /// This class holds the base URI for the primary API server and optionally
-/// a separate authentication server. Only one context can be active at a time.
+/// a separate authentication server. Exactly one context is [current] at any
+/// moment: a process-wide one installed once by [setCurrent], which
+/// [runWithContext] may shadow for the duration of a body.
 ///
 /// ## Initialization
 ///
@@ -64,6 +68,18 @@ class TomClientRemoteContextException extends TomException {
 /// ```dart
 /// TomClientRemoteContext.setCurrent(
 ///   TomClientRemoteContext(Uri.parse('https://api.example.com')),
+/// );
+/// ```
+///
+/// ## Addressing a Second Server
+///
+/// [setCurrent] deliberately refuses a second call, so reaching a different
+/// remote for part of a program goes through [runWithContext] instead:
+///
+/// ```dart
+/// final report = await TomClientRemoteContext.runWithContext(
+///   TomClientRemoteContext(Uri.parse('https://reporting.example.com')),
+///   () => reportingApi.fetchSummary(),
 /// );
 /// ```
 ///
