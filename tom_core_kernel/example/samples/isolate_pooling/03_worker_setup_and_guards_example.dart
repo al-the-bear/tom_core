@@ -22,6 +22,14 @@
 /// - The guards: `canSendToCreator()`, `isMainIsolate`, and the
 ///   `TomWorkerException` raised when `sendToCreator` or `executeInCreator`
 ///   is called in the creator
+///
+/// This file walks one path through the API; it does not catalogue it. Pool
+/// liveness supervision is demonstrated in
+/// `04_worker_pool_supervision_example.dart`, and the complete member-by-member
+/// surface — including the per-worker supervision primitives that no example
+/// calls directly — is in `doc/api_reference/api_summary_isolate_pooling.md`.
+/// That summary is the one inventory; keeping a second one here would only let
+/// the two disagree.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

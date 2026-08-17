@@ -72,13 +72,18 @@ throw `TomWorkerException`, keyed
 `isolate.state_error.attempt_to_execute_in_creator_in_creator`;
 `TomWorker.canSendToCreator()` answers the same question without the throw.
 
-The split between the static and the instance API follows that boundary. The
-registry (`addExecutor` / `removeExecutor` / `clearExecutors` / `executors`),
-the isolate's own identity (`isMainIsolate`) and the two back-channel calls are
-static, because the code making them runs inside an isolate and holds no worker
-handle. `executeCommand`, `sendExecutorToIsolate`, `isReady`, `isBusy()`,
-`isClosed` and `close()` are instance members of the `TomWorker` the creator
-holds.
+The split between the static and the instance API follows that boundary. A
+member is static when it concerns *the isolate* rather than one particular
+worker: the process-global executor registry, the isolate's own identity, the
+back-channel to whoever created this isolate, and the factory that makes
+workers in the first place. A member is an instance member when it acts on one
+`TomWorker` the creator holds — dispatching to it, supervising it, closing it.
+
+This readme states the rule and does not repeat the members one by one. The
+complete surface, with signatures, is in
+[`api_summary_isolate_pooling.md`](../../../../doc/api_reference/api_summary_isolate_pooling.md),
+which is maintained alongside `tom_worker.dart`; a second hand-written
+inventory could only drift away from it.
 
 ## Failing initialization
 

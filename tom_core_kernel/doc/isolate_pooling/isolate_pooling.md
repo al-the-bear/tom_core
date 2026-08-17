@@ -74,6 +74,10 @@ worker.close();
 
 The main class for managing worker isolates. Handles spawning, communication, and lifecycle management.
 
+The tables below name the members this guide goes on to use, not the whole
+class. For the complete surface with full signatures see
+[`api_summary_isolate_pooling.md`](../api_reference/api_summary_isolate_pooling.md).
+
 | Property/Method | Description |
 |-----------------|-------------|
 | `spawn()` | Factory method to create a new worker |
