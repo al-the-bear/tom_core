@@ -268,9 +268,12 @@ class TomInMemoryLogReplayStore implements TomLogReplayStore {
 ///
 /// ## Error Handling and Resilience
 ///
-/// A send is considered *failed* both when the transport throws and when the
-/// server answers with an error result ([TomRemoteLogResult.hasError]) — in
-/// either case the record is never silently dropped. On failure the output:
+/// A send is considered *failed* whenever it does not reach a server that
+/// accepted it: the endpoint could not be reached at all, the server answered
+/// with an error, or the send threw. In every case the record is never silently
+/// dropped, and the accompanying warning names which of the three happened —
+/// an unreachable endpoint is not reported as a rejection. On failure the
+/// output:
 ///
 /// 1. retries the send up to [globalSettingMaxSendRetries] additional times,
 ///    waiting [globalSettingRetryBackoff] × attempt between tries (linear
@@ -399,10 +402,12 @@ class TomRemoteLogOutput extends TomLogOutput {
     );
   }
 
-  /// Sends [remoteMessage] once, translating both a thrown transport error and
-  /// a returned server-rejection into a failure.
+  /// Sends [remoteMessage] once, translating every way the send can fail into
+  /// a single failure description.
   ///
-  /// Returns `null` on success, or a human-readable failure description.
+  /// Returns `null` on success, or a human-readable failure description naming
+  /// which kind of failure it was: the server was never reached, the server
+  /// answered with an error, or the endpoint itself threw.
   Future<String?> _sendOnce(TomRemoteLogMessage remoteMessage) async {
     try {
       var (_, error) = await remoteEndpoint!.send(
@@ -410,11 +415,28 @@ class TomRemoteLogOutput extends TomLogOutput {
         TomRemoteLogResult(),
       );
       if (error == null || !error.hasError) return null;
+      if (_isUnreachable(error)) {
+        // No server ever saw this record, so it was not rejected. The cause is
+        // only in `exception` — TomServerCallError.toString() reports the
+        // status and the body, and an unreachable endpoint has neither.
+        return "server unreachable: ${error.exception ?? error}";
+      }
       return "server rejected record: $error";
     } catch (error) {
       return "transport error: $error";
     }
   }
+
+  /// Whether [error] means the request never produced a response, as opposed to
+  /// producing one that failed.
+  ///
+  /// The internal code alone cannot decide this: `noResponseError` and
+  /// `serverError` currently share the value `2`. A delivered response always
+  /// carries a status, so a status of `0` is what separates them. Once the two
+  /// codes differ, the status test becomes redundant and can go.
+  bool _isUnreachable(TomServerCallError error) =>
+      error.internalError == TomServerCallError.noResponseError &&
+      error.statusCode == 0;
 
   /// Sends [remoteMessage] with bounded retry and linear backoff.
   ///

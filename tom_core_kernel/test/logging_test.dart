@@ -1351,6 +1351,34 @@ void main() {
           expect(fallbackOutput.outputCalled, isTrue);
           expect(fallbackOutput.lastMessage, equals('rejected record'));
         });
+
+        test('an unreachable endpoint is not reported as a server rejection',
+            () async {
+          // Since TomServerEndpoint translates "no response arrived" into a
+          // returned error rather than a throw, an outage and a server-side
+          // rejection reach this output through the same branch. Both must
+          // route the record to the fallback — but the warning that accompanies
+          // it has to say which one happened, or the operator reading the log
+          // during an outage is told the server refused a record that no
+          // server ever saw.
+          final endpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.noResponse]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          await emit(TomRemoteLogOutput(), 'record during outage');
+
+          // Not dropped: the resilience contract is unchanged by *how* the
+          // failure is signalled.
+          expect(endpoint.sendCount, equals(1));
+          expect(fallbackOutput.lastMessage, equals('record during outage'));
+
+          final warning = fallbackOutput.messages.firstWhere(
+            (m) => m.startsWith('Could not send log message'),
+            orElse: () => '',
+          );
+          expect(warning, contains('Connection refused'));
+          expect(warning, isNot(contains('rejected')));
+        });
       });
 
       group('retry with backoff', () {
@@ -1803,6 +1831,11 @@ class _MockLogOutput extends TomLogOutput {
   /// deterministically instead of relying on timers.
   Completer<void>? completeOnOutput;
 
+  /// Every accepted message in order. A failed remote send writes two lines —
+  /// a warning naming the cause, then the record itself — and `lastMessage`
+  /// only keeps the second, so assertions about the cause read this instead.
+  final List<String> messages = [];
+
   @override
   void output(
     TomLogLevel loggerLevel,
@@ -1822,6 +1855,7 @@ class _MockLogOutput extends TomLogOutput {
       lastIsolateName = isolateName;
       lastTimeStamp = timeStamp;
       lastOrigin = origin;
+      messages.add(lastMessage!);
     }
     if (completeOnOutput != null && !completeOnOutput!.isCompleted) {
       completeOnOutput!.complete();
@@ -1837,6 +1871,7 @@ class _MockLogOutput extends TomLogOutput {
     lastLoggerLevel = null;
     lastLogLevel = null;
     outputCalled = false;
+    messages.clear();
   }
 }
 
@@ -1874,6 +1909,10 @@ enum _SendOutcome {
 
   /// Return a non-null [TomServerCallError] (a server-side rejection).
   returnError,
+
+  /// Return the error a real [TomServerEndpoint] produces when no response
+  /// arrives at all — a refused connection, an expired deadline, an abort.
+  noResponse,
 }
 
 /// Mock remote endpoint that records the messages it is handed and behaves
@@ -1922,6 +1961,20 @@ class _MockLogEndpoint
         return (
           responseObject ?? TomRemoteLogResult(),
           TomServerCallError(statusCode: 500),
+        );
+      case _SendOutcome.noResponse:
+        // Exactly the shape TomServerEndpoint.send returns for an unreachable
+        // server: no status, no body, the underlying failure in `exception`.
+        // That contract is pinned by the "TomServerEndpoint.send with no
+        // response" group in http_connection_test.dart; this reproduces it so
+        // the log output's routing can be tested without a live socket.
+        return (
+          responseObject ?? TomRemoteLogResult(),
+          TomServerCallError(
+            statusCode: 0,
+            internalError: TomServerCallError.noResponseError,
+            exception: Exception('Connection refused'),
+          ),
         );
       case _SendOutcome.ok:
         accepted.add(load);

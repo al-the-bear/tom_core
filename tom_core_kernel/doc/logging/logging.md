@@ -234,8 +234,12 @@ void setupRemoteLogging() {
 
 By default `TomRemoteLogOutput` makes a single delivery attempt and, on failure,
 writes the record to its fallback output (console) so nothing is lost. A send is
-treated as failed both when the transport *throws* and when the server *returns*
-an error result. For flaky links you can opt into retry-with-backoff and a
+treated as failed whenever it does not reach a server that accepted it: the
+endpoint was *unreachable*, the server *returned* an error result, or the send
+*threw*. The warning written alongside the record names which one it was — an
+unreachable endpoint is reported as `server unreachable` with the underlying
+exception, never as a rejection. For flaky links you can opt into
+retry-with-backoff and a
 bounded replay queue that drains, oldest-first, once the endpoint recovers:
 
 ```dart

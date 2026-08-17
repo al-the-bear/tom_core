@@ -408,7 +408,7 @@ delivery fails.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `output` | `void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | *(override)* Sends the message to `remoteEndpoint` inside a re-entrancy-guarded zone. A send fails on both a thrown transport error and a returned server-rejection; on failure it retries up to `globalSettingMaxSendRetries` times (with `globalSettingRetryBackoff × attempt` backoff), then writes the record to the fallback output and — if enabled — buffers it in the bounded replay queue. Each send first drains any buffered records oldest-first so records recover in order after an outage. |
+| `output` | `void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | *(override)* Sends the message to `remoteEndpoint` inside a re-entrancy-guarded zone. A send fails when the endpoint is unreachable, when the server returns an error, or when the send throws — the warning accompanying the record names which; on failure it retries up to `globalSettingMaxSendRetries` times (with `globalSettingRetryBackoff × attempt` backoff), then writes the record to the fallback output and — if enabled — buffers it in the bounded replay queue. Each send first drains any buffered records oldest-first so records recover in order after an outage. |
 
 ### TomRemoteLogServer
 
