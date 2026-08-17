@@ -66,9 +66,10 @@ cleaned in turn, so a `toJson()` that itself nests a serializable is converted
 too, and one that returns a genuinely non-JSON value still has it filtered out.
 
 The rest of the module does not know the interface exists, and deliberately so.
-`traverseAndProcess`, `traverseAndCreate` and `substituteEnvVars` rewrite strings
-*in place* inside mutable maps and lists, and operate on decoded JSON — which
-never holds a Dart object. Sanitization is the one point where a live object tree
+`traverseAndProcess` and `substituteEnvVars` rewrite strings *in place* inside
+mutable maps and lists, and `traverseAndCreate` edits those maps in place
+through its callback; all three operate on decoded JSON — which never holds a
+Dart object. Sanitization is the one point where a live object tree
 meets JSON, so it is the one place the interface belongs.
 
 ## Quick Start
@@ -189,7 +190,40 @@ traverseAndProcess(
 
 #### `traverseAndCreate(tree, nameTest, creator)`
 
-Traverses a tree and invokes a callback for keys matching a pattern, allowing insertion of new nodes.
+Traverses a tree and invokes a callback for each key matching `nameTest`,
+handing it the key, its string value, and the map that contains it.
+
+```dart
+final config = {'ref@profiles@dev': 'value'};
+
+traverseAndCreate(
+  config,
+  (name) => name.contains('@'),
+  (key, value, location) {
+    location['resolved'] = value.toUpperCase();
+  },
+);
+// config == {'ref@profiles@dev': 'value', 'resolved': 'VALUE'}
+```
+
+##### The creator may edit the map it is given
+
+Inserting into `location`, removing from it, and overwriting it are all
+supported, at every depth — including a map that an outer recursion level is
+still walking. The traversal iterates a *snapshot* of each map's keys rather
+than the map itself, which is what makes this safe; walking the map directly
+would throw `ConcurrentModificationError` on the first insert, leaving the
+callback's one useful parameter unusable.
+
+Two consequences follow from the snapshot:
+
+- **Keys the creator adds are not traversed.** The snapshot for a map is taken
+  before its entries are visited. That is deliberate — a creator that inserts a
+  key its own `nameTest` matches would otherwise call itself forever. Run the
+  traversal again if newly created nodes must themselves be expanded.
+- **An entry the creator removes is skipped** when the walk reaches it. Values
+  are read through the map, not from the snapshot, so a key that has since gone
+  reads back as `null` and matches no branch.
 
 #### `getPathFromTree(baseTree, path, name)`
 

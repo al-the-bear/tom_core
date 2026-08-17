@@ -319,18 +319,31 @@ void traverseAndProcess(
 /// ## Parameters
 /// - [tree]: The nested map structure to traverse
 /// - [nameTest]: Predicate function that tests key names
-/// - [creator]: Callback invoked for matching keys; can modify [location] map
+/// - [creator]: Callback invoked for each matching key, receiving the key, its
+///   string value, and the map that contains it. It may insert into, remove
+///   from, or overwrite that map directly — the walk iterates a snapshot of
+///   each map's keys, so mutating during the callback is safe at every depth,
+///   including a map an outer recursion level is still walking.
+///
+/// ## What a creator's edits are visited by
+/// Keys the creator adds are **not** traversed: the snapshot for a map is taken
+/// before its entries are visited. That is deliberate — a creator that inserts
+/// a key its own [nameTest] matches would otherwise call itself forever. Run
+/// the traversal again if newly created nodes must themselves be expanded.
+///
+/// An entry the creator removes is simply skipped when the walk reaches it.
 ///
 /// ## Example
 /// ```dart
-/// final config = {'ref@profiles@dev': '...'};
+/// final config = {'ref@profiles@dev': 'value'};
 /// traverseAndCreate(
 ///   config,
 ///   (name) => name.contains('@'),
 ///   (key, value, location) {
-///     // Process the reference pattern and insert resolved values
+///     location['resolved'] = value.toUpperCase(); // inserting is supported
 ///   },
 /// );
+/// // config = {'ref@profiles@dev': 'value', 'resolved': 'VALUE'}
 /// ```
 void traverseAndCreate(
   Map<String, dynamic> tree,
@@ -338,7 +351,19 @@ void traverseAndCreate(
   void Function(String key, String value, Map<String, dynamic> location)
   creator,
 ) {
-  tree.forEach((String oKey, dynamic oValue) {
+  // Iterate a snapshot of the keys rather than the map itself, so the creator
+  // can insert into [tree] — which is the whole point of handing it the
+  // location. `forEach` would throw `ConcurrentModificationError` on the first
+  // insert, making the callback's one useful parameter unusable.
+  //
+  // Every recursion level snapshots, not just the outermost, because a creator
+  // reached deep in the tree may hold a reference to an ancestor map that an
+  // outer level is still walking.
+  for (final String oKey in tree.keys.toList(growable: false)) {
+    // Read through the map rather than from the snapshot: an earlier creator
+    // may have removed this entry, which reads back as null and matches no
+    // branch below. That makes removal as safe as insertion, at no cost.
+    final Object? oValue = tree[oKey];
     if (oValue is Map<String, dynamic>) {
       traverseAndCreate(oValue, nameTest, creator);
     } else if (oValue is List) {
@@ -349,9 +374,9 @@ void traverseAndCreate(
         }
       }
     } else if (nameTest(oKey) && oValue is String) {
-      creator(oKey, oValue, tree); // inserts new nodes
+      creator(oKey, oValue, tree);
     }
-  });
+  }
 }
 
 // =============================================================================

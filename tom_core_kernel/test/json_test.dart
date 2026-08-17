@@ -1099,9 +1099,6 @@ void main() {
     });
 
     test('should pass location map to creator for potential modification', () {
-      // Note: The creator receives the location map but should not modify it
-      // during traversal to avoid concurrent modification errors.
-      // Modifications should be collected and applied after traversal.
       final tree = <String, dynamic>{'ref@pattern': 'targetValue'};
       Map<String, dynamic>? capturedLocation;
 
@@ -1134,6 +1131,116 @@ void main() {
       );
 
       expect(foundKeys, equals(['string@key']));
+    });
+
+    group('the creator can insert (§80)', () {
+      test('an insert into the location map succeeds', () {
+        final tree = <String, dynamic>{'ref@pattern': 'targetValue'};
+
+        traverseAndCreate(tree, (name) => name.contains('@'), (
+          key,
+          value,
+          location,
+        ) {
+          location['resolved'] = value.toUpperCase();
+        });
+
+        expect(tree['resolved'], equals('TARGETVALUE'));
+        expect(tree['ref@pattern'], equals('targetValue'));
+      });
+
+      test('a key inserted by the creator is not itself traversed', () {
+        // The walk iterates a snapshot, so an inserted key is not revisited.
+        // Without that, a creator inserting a key its own nameTest matches
+        // would call itself forever.
+        final tree = <String, dynamic>{'seed@key': 'v'};
+        var calls = 0;
+
+        traverseAndCreate(tree, (name) => name.contains('@'), (
+          key,
+          value,
+          location,
+        ) {
+          calls++;
+          location['spawned@$calls'] = 'v';
+        });
+
+        expect(calls, equals(1));
+        expect(tree.containsKey('spawned@1'), isTrue);
+      });
+
+      test('an insert into a nested location succeeds', () {
+        final tree = <String, dynamic>{
+          'outer': <String, dynamic>{'inner@key': 'v'},
+        };
+
+        traverseAndCreate(tree, (name) => name.contains('@'), (
+          key,
+          value,
+          location,
+        ) {
+          location['added'] = 1;
+        });
+
+        expect((tree['outer'] as Map<String, dynamic>)['added'], equals(1));
+      });
+
+      test('an insert into a map inside a list succeeds', () {
+        final tree = <String, dynamic>{
+          'items': <Map<String, dynamic>>[
+            {'item@1': 'a'},
+            {'item@2': 'b'},
+          ],
+        };
+
+        traverseAndCreate(tree, (name) => name.contains('@'), (
+          key,
+          value,
+          location,
+        ) {
+          location['added'] = value;
+        });
+
+        final items = tree['items'] as List<Map<String, dynamic>>;
+        expect(items[0]['added'], equals('a'));
+        expect(items[1]['added'], equals('b'));
+      });
+
+      test('the creator can remove the key it was called for', () {
+        // A snapshot key whose entry has since gone reads back as null, which
+        // matches no branch — so removal is as safe as insertion.
+        final tree = <String, dynamic>{'drop@me': 'v', 'keep@me': 'v'};
+
+        traverseAndCreate(tree, (name) => name.startsWith('drop'), (
+          key,
+          value,
+          location,
+        ) {
+          location.remove(key);
+        });
+
+        expect(tree.containsKey('drop@me'), isFalse);
+        expect(tree.containsKey('keep@me'), isTrue);
+      });
+
+      test('an insert into an ancestor map during a subtree walk succeeds', () {
+        // The creator holds a reference to the root, which the outer recursion
+        // level is itself walking. Every level snapshots, so this is safe too.
+        final tree = <String, dynamic>{
+          'a': 'plain',
+          'outer': <String, dynamic>{'inner@key': 'v'},
+        };
+
+        traverseAndCreate(tree, (name) => name.contains('@'), (
+          key,
+          value,
+          location,
+        ) {
+          tree['fromNested'] = key;
+        });
+
+        expect(tree['fromNested'], equals('inner@key'));
+      });
     });
   });
 
