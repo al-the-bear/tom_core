@@ -10,8 +10,11 @@
 pubspec.lock
 
 # Compiled AOT test binary — built (and normally removed) by the replay test
-# harness (test/replay_test_helper.dart); never a source artifact.
+# harness (test/replay_test_helper.dart); never a source artifact. The staging
+# pattern catches the temporary the harness compiles to before its atomic
+# rename, which survives if the compile is interrupted.
 bin/d4rt_test
+bin/d4rt_test.*_staging
 
 # testkit baselines and raw run output.
 testlog/

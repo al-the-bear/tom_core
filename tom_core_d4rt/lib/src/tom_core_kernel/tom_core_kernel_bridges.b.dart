@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-17T14:06:47.629547
+// Generated: 2026-08-17T16:31:50.622631
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -1775,6 +1775,11 @@ class TomCoreKernelBridge {
         final disposition = D4.getRequiredArg<String?>(positional, 0, 'disposition', 'tomFileNameFromDisposition');
         return $tom_core_kernel_7.tomFileNameFromDisposition(disposition);
       },
+      'deepCopyJsonTree': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'deepCopyJsonTree');
+        final source = D4.getRequiredArg<Map<String, dynamic>>(positional, 0, 'source', 'deepCopyJsonTree');
+        return $tom_core_kernel_14.deepCopyJsonTree(source);
+      },
       'mergeMapsOneSided': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'mergeMapsOneSided');
         final base = D4.getRequiredArg<Map<String, dynamic>>(positional, 0, 'base', 'mergeMapsOneSided');
@@ -1958,6 +1963,7 @@ class TomCoreKernelBridge {
       'tomFileDescriptorHeaders': 'package:tom_core_kernel/src/tombase/http_connection/http_file_transfer.dart',
       'tomEscapeFileNameForDisposition': 'package:tom_core_kernel/src/tombase/http_connection/http_file_transfer.dart',
       'tomFileNameFromDisposition': 'package:tom_core_kernel/src/tombase/http_connection/http_file_transfer.dart',
+      'deepCopyJsonTree': 'package:tom_core_kernel/src/tombase/json/map_merge_and_process.dart',
       'mergeMapsOneSided': 'package:tom_core_kernel/src/tombase/json/map_merge_and_process.dart',
       'traverseAndProcess': 'package:tom_core_kernel/src/tombase/json/map_merge_and_process.dart',
       'traverseAndCreate': 'package:tom_core_kernel/src/tombase/json/map_merge_and_process.dart',
@@ -1999,6 +2005,7 @@ class TomCoreKernelBridge {
       'tomFileDescriptorHeaders': 'Map<String, String> tomFileDescriptorHeaders(TomFileMetadata metadata)',
       'tomEscapeFileNameForDisposition': 'String tomEscapeFileNameForDisposition(String fileName)',
       'tomFileNameFromDisposition': 'String? tomFileNameFromDisposition(String? disposition)',
+      'deepCopyJsonTree': 'Map<String, dynamic> deepCopyJsonTree(Map<String, dynamic> source)',
       'mergeMapsOneSided': 'void mergeMapsOneSided(Map<String, dynamic> base, Map<String, dynamic> override)',
       'traverseAndProcess': 'void traverseAndProcess(Map<String, dynamic> tree, bool Function(String) test, String Function(String) processor)',
       'traverseAndCreate': 'void traverseAndCreate(Map<String, dynamic> tree, bool Function(String) nameTest, void Function(String key, String value, Map<String, dynamic> location) creator)',

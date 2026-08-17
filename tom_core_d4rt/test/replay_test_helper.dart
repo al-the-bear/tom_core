@@ -33,6 +33,7 @@
 library;
 
 import 'dart:io';
+import 'dart:math';
 
 import 'package:path/path.dart' as p;
 
@@ -387,15 +388,23 @@ class ReplayTestHelper {
 
   /// Compile the d4rt binary.
   ///
-  /// Compiles to a process-unique temporary path and renames it into place.
+  /// Compiles to a caller-unique temporary path and renames it into place.
   /// `package:test` runs test files in concurrent isolates, so the two replay
   /// suites can decide to rebuild at the same moment; a shared `-o` target
   /// would have them writing the same file while the other reads it. Rename is
   /// atomic within a directory, so the worst outcome is a duplicated compile —
   /// never a half-written binary, and never a window in which the binary is
   /// absent (which is what deleting it up-front used to create).
+  ///
+  /// The uniqueness token is random, not [pid]: those concurrent isolates share
+  /// one process, so a pid-based path is the *same* path for both of them and
+  /// buys no separation at all. Two `dart compile exe` runs then interleave
+  /// their writes and the renamed result is a binary the OS refuses to run —
+  /// on macOS it dies from `SIGKILL` with `invalid signature` and no output,
+  /// which reads like a broken build rather than a corrupt file.
   Future<bool> _compileBinary() async {
-    final stagingPath = '$binaryPath.${pid}_staging';
+    final token = Random().nextInt(1 << 32).toRadixString(16);
+    final stagingPath = '$binaryPath.${token}_staging';
 
     final result = await Process.run(
       'dart',
