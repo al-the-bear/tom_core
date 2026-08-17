@@ -217,6 +217,31 @@ final port = getObjectFromTree(config, 'services.database.primary.port');
 // Returns: 5432
 ```
 
+##### Present-and-null vs absent
+
+The return type is `Object?`, and a `null` return means the terminal key **is
+there and holds null**. A path that does not resolve throws instead, so the two
+never look alike:
+
+```dart
+final config = {'db': {'port': 5432, 'replica': null}};
+
+getObjectFromTree(config, 'db.replica');  // null — deliberately cleared
+getObjectFromTree(config, 'db.absent');   // throws
+```
+
+Absence is decided by `containsKey`, which is the same position
+`makeCleanJsonMap` takes when it keeps a present `null` rather than dropping it:
+an absent field and a field that is present and null mean different things, and
+only the absent one may fall back to a default.
+
+`null` is a fine terminal value but cannot be *walked through* — `db.replica.x`
+throws, with a message saying it stopped at a null rather than that the key was
+missing.
+
+`getPathFromTree` inherits all of this, and wraps a terminal `null` like any
+other non-map value, giving `{name: null}`.
+
 #### `processTree(tree, provider)`
 
 Processes profile-based references in configuration trees.
@@ -353,16 +378,24 @@ the two documents stay independent afterwards.
 
 ### 2. Error Handling for Paths
 
-Path-based access throws exceptions for invalid paths. Handle appropriately:
+Path-based access throws exceptions for paths that do not resolve. Handle
+appropriately:
 
 ```dart
+final Object? value;
 try {
-  final value = getObjectFromTree(config, 'path.to.value');
+  value = getObjectFromTree(config, 'path.to.value');
 } catch (e) {
-  // Path doesn't exist, use default
-  final value = defaultValue;
+  // The path doesn't exist — nobody configured it, so a default applies.
+  value = defaultValue;
 }
 ```
+
+**A `null` result is not an error and must not reach that fallback.** It means
+the key is present and was deliberately set to null; substituting the default
+would discard the setting. The `catch` above is already correct on this point —
+a present null returns normally rather than throwing — but code that tests
+`value == null` to decide whether to apply a default has the bug.
 
 ### 3. Type Safety
 

@@ -88,6 +88,31 @@ void main() {
       expect(subtree['port'], 8080);
       expect(subtree['host'], 'localhost');
     });
+
+    group('explicitly null properties (§79)', () {
+      test('a null dotted property exists and reads as null', () {
+        final p = TomServerConfigResourceProvider.from({
+          'server': {'replica': null},
+        });
+        expect(p.exists('server.replica'), isTrue);
+        expect(p.get('server.replica'), isNull);
+      });
+
+      test('a null top-level property exists and reads as null', () {
+        final p = TomServerConfigResourceProvider.from({'cleared': null});
+        expect(p.exists('cleared'), isTrue);
+        expect(p.get('cleared'), isNull);
+      });
+
+      test('a null property is not confused with an unknown one', () {
+        // The unknown key keeps the documented key-string fallback; the null
+        // one does not, because it resolved.
+        final p = TomServerConfigResourceProvider.from({'cleared': null});
+        expect(p.exists('unknown'), isFalse);
+        expect(p.get('unknown'), 'unknown');
+        expect(p.get('cleared'), isNull);
+      });
+    });
   });
 
   group('TomConfig resolution', () {
@@ -149,6 +174,22 @@ void main() {
       _install({});
       expect(TomConfig<String?>.withDefault('absent', 'fallback').get(),
           'fallback');
+    });
+
+    test('an explicitly null value reaches a nullable T (§79)', () {
+      _install({
+        'server': {'replica': null},
+      });
+      expect(TomConfig<String?>('server.replica').get(), isNull);
+    });
+
+    test('an explicitly null value does not fall back to the default (§79)',
+        () {
+      // Defaults cover an *absent* key. A key the operator deliberately set to
+      // null is present, so substituting the default would discard exactly the
+      // setting they wrote -- it throws instead, naming the key.
+      _install({'port': null});
+      expect(() => TomIntConfig.withDefault('port', 8080), throwsException);
     });
   });
 

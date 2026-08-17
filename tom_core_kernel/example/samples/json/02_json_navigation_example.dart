@@ -258,17 +258,18 @@ class MapSanitizationExample {
 class MissingPathExample {
   static dynamic missingValue;
   static bool throwsForMissing = false;
+  static bool clearedIsNull = false;
 
   static void example7MissingPathHandling() {
     final config = <String, dynamic>{
       'level1': {
-        'level2': {'value': 'found'},
+        'level2': {'value': 'found', 'cleared': null},
       },
     };
 
     final foundValue = getObjectFromTree(config, 'level1.level2.value');
-    
-    // getObjectFromTree throws an exception for missing paths
+
+    // getObjectFromTree throws an exception for missing paths.
     try {
       missingValue = getObjectFromTree(config, 'level1.level2.notHere');
     } on Exception catch (e) {
@@ -276,8 +277,16 @@ class MissingPathExample {
       missingValue = e.toString();
     }
 
+    // A key that is present and holds null is a *value*, not an absence, so it
+    // is returned rather than thrown for. That is what separates "the operator
+    // deliberately cleared this" from "nobody ever set it" — the two cases
+    // need different handling, and only one of them may fall back to a default.
+    final cleared = getObjectFromTree(config, 'level1.level2.cleared');
+    clearedIsNull = cleared == null;
+
     assert(foundValue == 'found', 'Existing value should be found');
     assert(throwsForMissing, 'Missing path should throw Exception');
+    assert(clearedIsNull, 'A present-but-null path should resolve to null');
   }
 }
 

@@ -369,6 +369,10 @@ void traverseAndCreate(
 /// - [path]: Dot-separated path string (e.g., "level1.level2.level3")
 /// - [name]: Key name to use when wrapping non-map terminal values
 ///
+/// A terminal `null` is a non-map value and is wrapped like any other, giving
+/// `{name: null}`. That keeps it distinguishable from an absent path, which
+/// throws — see [getObjectFromTree] for why the two are not collapsed.
+///
 /// ## Throws
 /// - [Exception] if the path cannot be resolved or contains invalid segments
 ///
@@ -386,16 +390,19 @@ Map<String, dynamic> getPathFromTree(
   // Share the path walk (and its identical resolution/throw behaviour) with
   // [getObjectFromTree]; the only difference is what happens at a terminal
   // *non-map* value, which the two functions handle after the walk.
-  final Object value = getObjectFromTree(baseTree, path);
+  final Object? value = getObjectFromTree(baseTree, path);
   if (value is Map<String, dynamic>) {
     return value;
   }
   // A terminal non-map value only surfaces at the last path segment (an
   // interior non-map throws inside [getObjectFromTree]), so the reporting
-  // context is always that final segment.
+  // context is always that final segment. `null` is one such value and is
+  // wrapped like any other: the caller can then tell it apart from an absent
+  // path, which threw above.
   final List<String> pathParts = path.split(".");
   tomLog.warn(
-    "Path not found: $path at ${pathParts.last} position ${pathParts.length - 1}",
+    "Path $path resolves to a non-map value at ${pathParts.last} position "
+    "${pathParts.length - 1}; wrapping it as {$name: ...}.",
   );
   return <String, dynamic>{name: value};
 }
@@ -410,46 +417,75 @@ Map<String, dynamic> getPathFromTree(
 /// - [path]: Dot-separated path string (e.g., "database.port")
 ///
 /// ## Returns
-/// The object found at the specified path (may be a Map, List, String, int, etc.)
+/// The value found at the specified path — a Map, List, String, int, or
+/// `null`. A `null` return means the terminal key is **present and holds
+/// null**, which is a value; a path that cannot be resolved throws instead.
+/// Absence is decided by `containsKey`, matching [makeCleanJsonMap], which
+/// keeps a present `null` for the same reason: an absent field and a field
+/// that is present and null mean different things.
 ///
 /// ## Throws
-/// - [Exception] if the path cannot be resolved
+/// - [Exception] if a segment names a key that is not there.
+/// - [Exception] if an interior segment resolves to something with no subtree
+///   to descend into — including `null`, which is a fine terminal value but
+///   cannot be walked through. The message distinguishes the two cases.
 ///
 /// ## Example
 /// ```dart
-/// final config = {'db': {'port': 5432}};
-/// final port = getObjectFromTree(config, 'db.port');
-/// // Returns 5432
+/// final config = {'db': {'port': 5432, 'replica': null}};
+/// getObjectFromTree(config, 'db.port');     // 5432
+/// getObjectFromTree(config, 'db.replica');  // null — present, deliberately
+/// getObjectFromTree(config, 'db.absent');   // throws
 /// ```
-Object getObjectFromTree(Map<String, dynamic> baseTree, String path) {
+Object? getObjectFromTree(Map<String, dynamic> baseTree, String path) {
+  final List<String> pathParts = path.split(".");
   Map<String, dynamic> tree = baseTree;
-  Object? value;
-  List<String> pathParts = path.split(".");
-  for (int i = 0; i < pathParts.length; i++) {
-    String nextKey = pathParts[i];
-    value = tree[nextKey];
-    if (value is Map<String, dynamic>) {
-      tree = value;
-      if (i == pathParts.length - 1) {
-        return tree;
-      }
-    } else {
-      if (i < pathParts.length - 1) {
-        throw Exception(
-          "Path $path cannot be resolved. Ends at $nextKey at position $i",
-        );
-      }
-      if (value == null) {
-        throw Exception(
-          "Path $path cannot be resolved. Elements $nextKey at position $i not found.",
-        );
-      }
-      return value;
+
+  // Interior segments must each resolve to a map, because there is a further
+  // segment to descend into. The terminal segment is read after the loop and
+  // is returned whatever it holds — which is where a present `null` differs
+  // from an absent key, and why the two are split apart here.
+  for (int i = 0; i < pathParts.length - 1; i++) {
+    final Object? value = _readSegment(tree, pathParts[i], path, i);
+    if (value is! Map<String, dynamic>) {
+      throw Exception(
+        "Path $path cannot be resolved. Key ${pathParts[i]} at position $i "
+        "holds ${value == null ? "null" : "a non-map value"}, which has no "
+        "subtree to descend into.",
+      );
     }
+    tree = value;
   }
-  throw Exception(
-    "Path $path cannot be resolved. IllegalState detected. This is an anomaly.",
-  );
+
+  // `split` never yields an empty list, so there is always a terminal segment
+  // and no unreachable tail to guard.
+  final int last = pathParts.length - 1;
+  return _readSegment(tree, pathParts[last], path, last);
+}
+
+/// Reads [key] from [tree], throwing when the key is genuinely absent.
+///
+/// Absence is decided by `containsKey`, not by the value being `null`: a key
+/// present with a `null` value is a value, and is returned as one. Collapsing
+/// the two would contradict [makeCleanJsonMap], which deliberately keeps a
+/// present `null` so that an absent field stays distinguishable from a field
+/// that is present and null.
+///
+/// [path] and [position] are carried only to report where in the original
+/// dotted path the failure happened.
+Object? _readSegment(
+  Map<String, dynamic> tree,
+  String key,
+  String path,
+  int position,
+) {
+  if (!tree.containsKey(key)) {
+    throw Exception(
+      "Path $path cannot be resolved. There is no key $key at position "
+      "$position.",
+    );
+  }
+  return tree[key];
 }
 
 // =============================================================================

@@ -35,12 +35,18 @@ import '../observable/tom_observable_objects.dart';
 // =============================================================================
 
 // Both providers resolve a key the same way: attempt a dot-notation tree walk
-// first, then fall back to a flat-key lookup. [getObjectFromTree] returns a
-// non-null value on success and *throws* when the path cannot be resolved, so a
-// thrown walk always falls through to the flat lookup. These two file-private
-// helpers hold that resolution rule in one place; every accessor on both
-// providers is expressed in terms of them, differing only in the missing-value
-// fallback each returns.
+// first, then fall back to a flat-key lookup. [getObjectFromTree] *throws* when
+// the path cannot be resolved, so a thrown walk always falls through to the
+// flat lookup. It returns `null` only when the terminal key is present and
+// holds null — a value, not an absence — and that resolves the walk, so the
+// flat leg is not consulted. These two file-private helpers hold that
+// resolution rule in one place; every accessor on both providers is expressed
+// in terms of them, differing only in the missing-value fallback each returns.
+//
+// The accessors themselves still surface a present null as `null`, which their
+// callers read as "not configured". These providers have no third state to
+// report it with; the distinction is preserved where it is representable, in
+// [getObjectFromTree] itself.
 
 /// Resolves the raw object at [path] in [resources].
 ///

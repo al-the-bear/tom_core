@@ -50,6 +50,12 @@ class TomServerConfigResourceProvider {
   TomServerConfigResourceProvider.from(this.resources);
 
   /// Whether property [s] exists, as a dotted tree path or a top-level key.
+  ///
+  /// A property configured explicitly as `null` **exists**: [getObjectFromTree]
+  /// resolves it rather than throwing, so the tree leg returns `true` for it.
+  /// That is the point of the distinction — a deliberately cleared setting is
+  /// configured, and [TomConfig] must see it as configured so it does not
+  /// silently substitute a default the operator was overriding.
   bool exists(String s) {
     try {
       getObjectFromTree(resources, s);
@@ -57,22 +63,22 @@ class TomServerConfigResourceProvider {
     } catch (ex) {
       // fall through
     }
-    return resources[s] != null;
+    return resources.containsKey(s);
   }
 
   /// Returns property [s] (dotted path or top-level key).
   ///
-  /// As a deliberate fallback, an unknown key resolves to the key string [s]
-  /// itself rather than throwing; callers gate on [exists] when absence must be
-  /// distinguished (as [TomConfig] does).
-  Object get(String s) {
+  /// Returns `null` when the property is present and explicitly `null`; gate on
+  /// [exists] to tell that apart from an unknown key. As a deliberate fallback,
+  /// an unknown key resolves to the key string [s] itself rather than throwing
+  /// (callers that must distinguish absence use [exists], as [TomConfig] does).
+  Object? get(String s) {
     try {
-      dynamic value = getObjectFromTree(resources, s);
-      return value;
+      return getObjectFromTree(resources, s);
     } catch (ex) {
       // fall through
     }
-    return resources[s] != null ? resources[s]! : s;
+    return resources.containsKey(s) ? resources[s] : s;
   }
 }
 

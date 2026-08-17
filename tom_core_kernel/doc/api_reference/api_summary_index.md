@@ -112,8 +112,8 @@ declarations are omitted.
 | `deepCopyJsonTree` | function | Deep copy of a JSON tree, sharing no map or list. |
 | `traverseAndProcess` | function | Traverses a JSON tree processing matching nodes. |
 | `traverseAndCreate` | function | Traverses a JSON tree creating new nodes. |
-| `getPathFromTree` | function | Resolves a dotted path from a tree. |
-| `getObjectFromTree` | function | Resolves an object at a dotted path. |
+| `getPathFromTree` | function | Resolves a dotted path from a tree, wrapping a non-map terminal (`null` included) under a supplied name. |
+| `getObjectFromTree` | function | Resolves an object at a dotted path, returning `null` for a present-and-null key and throwing only for an absent one. |
 | `processTree` | function | Applies `@`-directive processing to a tree. |
 | `makeCleanJsonMap` | function | Normalizes a map into a clean JSON map, converting `TomJsonSerializable` values. |
 | `substituteEnvVars` | function | Substitutes `${VAR}` references in a tree. |

@@ -1206,6 +1206,39 @@ void main() {
       expect(result['x'], equals(1));
       expect(result['y'], equals(2));
     });
+
+    group('present-but-null values (§79)', () {
+      test('a terminal null is wrapped like any other non-map value', () {
+        // null is a non-map terminal, so it takes the documented wrapping rule
+        // rather than a special case of its own.
+        final tree = <String, dynamic>{'cleared': null};
+
+        final result = getPathFromTree(tree, 'cleared', 'result');
+
+        expect(result, equals(<String, dynamic>{'result': null}));
+      });
+
+      test('the wrapper records the key as present', () {
+        // containsKey is what separates this from an absent path, which throws.
+        final tree = <String, dynamic>{
+          'db': <String, dynamic>{'replica': null},
+        };
+
+        final result = getPathFromTree(tree, 'db.replica', 'replica');
+
+        expect(result.containsKey('replica'), isTrue);
+        expect(result['replica'], isNull);
+      });
+
+      test('an absent path still throws', () {
+        final tree = <String, dynamic>{'cleared': null};
+
+        expect(
+          () => getPathFromTree(tree, 'absent', 'result'),
+          throwsA(isA<Exception>()),
+        );
+      });
+    });
   });
 
   group('getObjectFromTree', () {
@@ -1295,6 +1328,89 @@ void main() {
       final result = getObjectFromTree(tree, 'l1.l2.l3.l4.value');
 
       expect(result, equals('deep'));
+    });
+
+    group('present-but-null values (§79)', () {
+      // A deliberate null is a value, not an absence — the position
+      // makeCleanJsonMap already takes. The path reader used to collapse the
+      // distinction the sanitiser exists to protect, in the same file.
+
+      test('a terminal null is returned, not reported as missing', () {
+        final tree = <String, dynamic>{'cleared': null};
+
+        expect(getObjectFromTree(tree, 'cleared'), isNull);
+      });
+
+      test('a nested terminal null is returned', () {
+        final tree = <String, dynamic>{
+          'db': <String, dynamic>{'host': 'h', 'replica': null},
+        };
+
+        expect(getObjectFromTree(tree, 'db.replica'), isNull);
+      });
+
+      test('an absent key still throws', () {
+        final tree = <String, dynamic>{'cleared': null};
+
+        expect(
+          () => getObjectFromTree(tree, 'absent'),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('a null and an absent key are told apart', () {
+        // The whole point: before, both produced the same sentence differing
+        // only in the key name, so a caller could not distinguish them by
+        // anything but re-reading the tree it had just asked about.
+        final tree = <String, dynamic>{'cleared': null};
+
+        expect(getObjectFromTree(tree, 'cleared'), isNull);
+        expect(
+          () => getObjectFromTree(tree, 'absent'),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('a null cannot be walked through', () {
+        // Distinct from a terminal null: there is no subtree to descend into,
+        // so the path genuinely does not resolve.
+        final tree = <String, dynamic>{'db': null};
+
+        expect(
+          () => getObjectFromTree(tree, 'db.host'),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('an interior null reports that it stopped at the null', () {
+        final tree = <String, dynamic>{'db': null};
+
+        expect(
+          () => getObjectFromTree(tree, 'db.host'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('holds null'),
+            ),
+          ),
+        );
+      });
+
+      test('an absent interior key reports that it is absent', () {
+        final tree = <String, dynamic>{'other': 1};
+
+        expect(
+          () => getObjectFromTree(tree, 'db.host'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('no key'),
+            ),
+          ),
+        );
+      });
     });
   });
 
