@@ -24,7 +24,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // =============================================================================
 
 void run() {
-  print('=== 04: Graded (four-state) Access Example ===\n');
+  print('=== 06: Graded (four-state) Access Example ===\n');
 
   // ---------------------------------------------------------------------------
   // Setup: four principals spanning the privilege ladder for a "salary" field.

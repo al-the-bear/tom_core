@@ -81,7 +81,7 @@ class LegacyService {
 /// [LegacyService] target must already be registered before [run] is called —
 /// the runner (`00_run_all_examples.dart`) owns that one-time initialization.
 Future<void> run() async {
-  print('=== 02: Shutdown Execution Example ===\n');
+  print('=== 03: Shutdown Execution Example ===\n');
 
   // ---------------------------------------------------------------------------
   // Example 1: Cleanup phase order (handlers → closables → disposables)

@@ -82,7 +82,7 @@ TomLoggingWorkerContext _emptyLoggingContext() {
 }
 
 Future<void> run() async {
-  print('=== 04: Isolate and Remote Logging Example ===\n');
+  print('=== 06: Log Replay and Isolate Plumbing Example ===\n');
 
   final fixedTime = DateTime(2026, 1, 2, 9, 30, 0);
 

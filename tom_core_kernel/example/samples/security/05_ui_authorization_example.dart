@@ -48,7 +48,7 @@ class _FixedAuthorizable implements TomAuthorizable {
 }
 
 void run() {
-  print('=== 03: UI Authorization Example ===\n');
+  print('=== 05: UI Authorization Example ===\n');
 
   // ===========================================================================
   // Example 1: TomAuthState predicates and the narrow/widen algebra

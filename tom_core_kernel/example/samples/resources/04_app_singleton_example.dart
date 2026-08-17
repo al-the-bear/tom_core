@@ -19,7 +19,7 @@ library;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void run() {
-  print('=== 03: App Singleton Example ===\n');
+  print('=== 04: App Singleton Example ===\n');
 
   // ===========================================================================
   // Example 1: loader drives the default constructor

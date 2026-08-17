@@ -17,7 +17,7 @@ library;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void run() {
-  print('=== 02: Resource Fallback Example ===\n');
+  print('=== 03: Resource Fallback Example ===\n');
 
   final resources = TomTextResourceProvider.from({
     'app': {

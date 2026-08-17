@@ -73,10 +73,10 @@ Future<void> run() async {
   await worker_pool_supervision.run();
   print('✓ Worker pool supervision examples passed\n');
 
-  print('05: Creator Backchannel Example');
+  print('05: Creator Back-Channel Example');
   print('-' * 40);
   await creator_backchannel.run();
-  print('✓ Creator backchannel examples passed\n');
+  print('✓ Creator back-channel examples passed\n');
 
   print('=' * 60);
   print('All isolate pooling examples completed successfully!');

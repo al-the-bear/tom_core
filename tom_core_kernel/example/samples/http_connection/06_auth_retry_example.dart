@@ -55,7 +55,7 @@ class _ScriptedRefresher implements TomAuthRefresher {
 }
 
 Future<void> run() async {
-  print('=== 04: Auth Refresh/Retry Example ===\n');
+  print('=== 06: Auth Refresh/Retry Example ===\n');
 
   // -------------------------------------------------------------------------
   // Example 1: The zero-config default policy
