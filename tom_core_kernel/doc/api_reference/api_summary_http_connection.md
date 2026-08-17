@@ -717,7 +717,7 @@ TomServerCallSpecs(
   Uri url, {
   int? contentLength,
   bool? followRedirects,
-  Map<String, String>? headers = const {},
+  Map<String, String>? headers,
   int? maxRedirects,
   bool? persistentConnection,
   bool includeBearerAuthentication = true,
@@ -734,7 +734,7 @@ TomServerCallSpecs(
 | `method` | `String` | The HTTP method (`GET`, `POST`, `PUT`, `DELETE`, etc.). |
 | `url` | `Uri` | The full URL for the request. |
 | `followRedirects` | `bool?` | Whether to automatically follow HTTP redirects. |
-| `headers` | `Map<String, String>?` | HTTP headers to include in the request. |
+| `headers` | `Map<String, String>` | HTTP headers to include in the request; empty when none were named. Copied on construction, so it is never null and always writable. |
 | `maxRedirects` | `int?` | Maximum number of redirects to follow. |
 | `persistentConnection` | `bool?` | Whether to keep the connection alive for reuse. |
 | `includeBearerAuthentication` | `bool` | Whether to include a Bearer authentication token. |
@@ -783,7 +783,7 @@ TomServerCallError({
   int statusCode = 200,
   String? response,
   int internalError = 0,
-  Map<String, Object> headers = const {},
+  Map<String, Object>? headers,
   bool isRedirect = false,
   String? reasonPhrase,
   Object? exception,
@@ -815,7 +815,7 @@ TomServerCallError({
 | `response` | `String?` | The raw response body as a string. |
 | `statusCodeResponse` | `Object?` | The deserialized body. On a success, the same object `send` returns as its result; on a failure whose status has a `statusCodeResponseTypes` entry, an instance of that type; on a failure with no entry, `null`. |
 | `internalError` | `int` | Internal error code (`0` = no internal error). |
-| `headers` | `Map<String, Object>` | Response headers from the server. |
+| `headers` | `Map<String, Object>` | Response headers from the server, empty when there were none. Copied on construction, so it is always writable and never aliases the response's own header map. |
 | `isRedirect` | `bool` | Whether the response was a redirect. |
 | `reasonPhrase` | `String?` | The reason phrase from the HTTP response (e.g. `"OK"`, `"Not Found"`). |
 | `autoLog` | `bool?` | Whether to automatically log this error. |

@@ -125,8 +125,14 @@ class TomServerCallSpecs {
   /// Whether to automatically follow HTTP redirects.
   final bool? followRedirects;
 
-  /// HTTP headers to include in the request.
-  final Map<String, String>? headers;
+  /// HTTP headers to include in the request, empty when the caller named none.
+  ///
+  /// Non-null and mutable, on the same terms as [TomServerCallError.headers]:
+  /// the constructor copies what it is given, so the map is this spec's own and
+  /// writing to it always works. It was previously nullable with a `const {}`
+  /// default, which meant it was never actually null — every `!= null` test
+  /// against it was true — while every write to it threw.
+  final Map<String, String> headers;
 
   /// Maximum number of redirects to follow.
   final int? maxRedirects;
@@ -162,14 +168,14 @@ class TomServerCallSpecs {
     this.url, {
     int? contentLength,
     this.followRedirects,
-    this.headers = const {},
+    Map<String, String>? headers,
     this.maxRedirects,
     this.persistentConnection,
     this.includeBearerAuthentication = true,
     this.requestEncoding,
     this.fallbackResponseEncoding,
     this.timeout,
-  });
+  }) : headers = {...?headers};
 }
 
 // =============================================================================
@@ -287,8 +293,14 @@ class TomServerCallError {
   /// Internal error code (0 = no internal error).
   int internalError;
 
-  /// Response headers from the server.
-  Map<String, Object> headers = {};
+  /// Response headers from the server, empty when there were none.
+  ///
+  /// Always a mutable map belonging to this error. The constructor copies what
+  /// it is given rather than keeping the caller's map, for two reasons: a
+  /// response that carried no headers supplies a `const {}` that would reject
+  /// every write, and [TomServerEndpoint.send] hands over the live response
+  /// header map, which annotating an error would otherwise rewrite in place.
+  Map<String, Object> headers;
 
   /// Whether the response was a redirect.
   bool isRedirect = false;
@@ -322,14 +334,16 @@ class TomServerCallError {
     this.statusCode = 200,
     this.response,
     this.internalError = 0,
-    this.headers = const {},
+    Map<String, Object>? headers,
     this.isRedirect = false,
     this.reasonPhrase,
     this.exception,
     this.stackTrace,
     this.statusCodeResponse,
-  }) {
-    if (headers["x-tom-error"] == "true" && response != null) {
+  }) : headers = {...?headers} {
+    // `this.` is load-bearing: the constructor parameter shadows the field, and
+    // the parameter is the nullable one the caller passed, not the copy.
+    if (this.headers["x-tom-error"] == "true" && response != null) {
       var body = jsonDecode(response!);
       autoLog = body.get("autoLog");
       clientRethrow = body.get("clientRethrow");
@@ -413,11 +427,7 @@ class TomServerCall {
     if (specs.followRedirects != null) {
       abortableRequest.followRedirects = specs.followRedirects!;
     }
-    if (specs.headers != null) {
-      for (var name in specs.headers!.keys) {
-        abortableRequest.headers[name] = specs.headers![name]!;
-      }
-    }
+    abortableRequest.headers.addAll(specs.headers);
     // The header is omitted rather than written as "Bearer null" when no one has
     // signed in: an absent credential is a clean 401, a malformed one is the
     // same rejection dressed as a parse failure.

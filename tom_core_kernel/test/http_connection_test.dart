@@ -1631,12 +1631,43 @@ void main() {
 
         expect(specs.method, equals('POST'));
         expect(specs.followRedirects, isTrue);
-        expect(specs.headers?['Content-Type'], equals('application/json'));
+        expect(specs.headers['Content-Type'], equals('application/json'));
         expect(specs.maxRedirects, equals(5));
         expect(specs.persistentConnection, isTrue);
         expect(specs.includeBearerAuthentication, isFalse);
         expect(specs.requestEncoding, equals(utf8));
         expect(specs.fallbackResponseEncoding, equals(latin1));
+      });
+    });
+
+    group('headers', () {
+      // Same contract as TomServerCallError.headers, for the same reason: the
+      // declared type says "map", so it has to behave as one however the spec
+      // was built.
+
+      test('a spec created without headers accepts one', () {
+        final specs = TomServerCallSpecs(
+          'GET',
+          Uri.parse('https://api.example.com/users'),
+        );
+
+        expect(() => specs.headers['X-Trace'] = 'abc', returnsNormally);
+        expect(specs.headers['X-Trace'], equals('abc'));
+      });
+
+      test('the spec owns its headers rather than aliasing the caller\'s map',
+          () {
+        final source = <String, String>{'Content-Type': 'application/json'};
+        final specs = TomServerCallSpecs(
+          'POST',
+          Uri.parse('https://api.example.com/users'),
+          headers: source,
+        );
+
+        specs.headers['X-Trace'] = 'abc';
+
+        expect(source.containsKey('X-Trace'), isFalse);
+        expect(specs.headers['Content-Type'], equals('application/json'));
       });
     });
   });
@@ -1767,6 +1798,44 @@ void main() {
         expect(error.headers['Content-Type'], equals('text/plain'));
         expect(error.isRedirect, isFalse);
         expect(error.reasonPhrase, equals('Not Found'));
+      });
+    });
+
+    group('headers', () {
+      // The field is declared `Map<String, Object>`, so a reader takes it for a
+      // map they may write to. These pin that the declaration tells the truth
+      // on every path that can produce an error, not just the one where the
+      // caller happened to supply a map of their own.
+
+      test('a default-constructed error accepts a header', () {
+        final error = TomServerCallError();
+
+        expect(() => error.headers['x-trace'] = 'abc', returnsNormally);
+        expect(error.headers['x-trace'], equals('abc'));
+      });
+
+      test('an error built from a response without headers accepts a header',
+          () {
+        // The path that actually occurs: `send` hands the response's header map
+        // straight to the error, and a response carrying no headers supplies a
+        // const one. Fixing only the parameter default would leave this case —
+        // the common one in practice — still throwing.
+        final error = TomServerCallError(headers: const {});
+
+        expect(() => error.headers['x-trace'] = 'abc', returnsNormally);
+      });
+
+      test('the error owns its headers rather than aliasing the caller\'s map',
+          () {
+        // `send` passes the live response header map. If the error aliased it,
+        // annotating an error would silently rewrite the response it came from.
+        final source = <String, Object>{'content-type': 'application/json'};
+        final error = TomServerCallError(headers: source);
+
+        error.headers['x-trace'] = 'abc';
+
+        expect(source.containsKey('x-trace'), isFalse);
+        expect(error.headers['content-type'], equals('application/json'));
       });
     });
 
