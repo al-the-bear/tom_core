@@ -195,9 +195,9 @@ bidirectional command/response messaging with the main isolate.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `workerCount` | `int` (getter) | Read-only count of workers created in this isolate; used to generate unique worker names. |
-| `isMainIsolate` | `bool` | Whether the current code runs in the main isolate; set to `false` inside a worker isolate. |
+| `isMainIsolate` | `bool` (getter) | Read-only: whether the current code runs in the main isolate; flips to `false` inside a worker isolate. The flag is load-bearing — the back-channel and the server-side caches branch on it — so it cannot be assigned; tests use `simulateWorkerIsolate` / `resetIsMainIsolate`. |
 | `readyMessage` | `String` | Message a worker sends when it is ready to accept commands (`"--- ready ---"`). |
-| `executors` | `List<TomExecutor>` | Executors registered to handle incoming commands, tried in order. |
+| `executors` | `List<TomExecutor>` (getter) | Read-only, live view of the executors registered to handle incoming commands, tried in order. Register through `addExecutor` / `removeExecutor` / `clearExecutors`; the view itself throws `UnsupportedError` on mutation. |
 
 #### Properties
 
@@ -214,6 +214,11 @@ bidirectional command/response messaging with the main isolate.
 | ------ | --------- | ----------- |
 | `spawn` | `static Future<TomWorker> spawn(void Function(TomWorkerContext) initializer, TomWorkerContext workerContext, {Duration readyTimeout = const Duration(seconds: 30)})` | Primary factory: spawns a worker isolate, sets up ports, runs initialization, and completes when the worker is ready. The startup is supervised, so a worker that cannot become ready fails the future instead of stalling it: an isolate that dies first is reported as soon as its exit is seen (`isolate.died_before_ready.spawn`), and one that stays alive but silent is given up on when `readyTimeout` expires (`isolate.ready_timeout.spawn`). Either way the isolate is killed, since a failed spawn hands back no `TomWorker` to close it with. `readyTimeout` bounds the whole startup — the isolate's first message plus both initialization hooks — and must be positive (`isolate.invalid_ready_timeout.spawn`). |
 | `resetWorkerCount` | `@visibleForTesting static void resetWorkerCount()` | Rewinds the worker-name counter. Test-only — rewinding it in production hands two live workers the same name. |
+| `addExecutor` | `static void addExecutor(TomExecutor executor)` | Registers `executor` at the end of the dispatch chain. |
+| `removeExecutor` | `static bool removeExecutor(TomExecutor executor)` | Removes the first registration of `executor`; returns `false` if it was not registered. |
+| `clearExecutors` | `static void clearExecutors()` | Removes every registered executor. |
+| `simulateWorkerIsolate` | `@visibleForTesting static void simulateWorkerIsolate()` | Marks the current isolate as a worker. Test-only seam for code that branches on `isMainIsolate` without spawning a real isolate; production reaches this state through `startRemoteIsolate`. |
+| `resetIsMainIsolate` | `@visibleForTesting static void resetIsMainIsolate()` | Restores the creator-side marking after `simulateWorkerIsolate`. Test-only — the real transition is one-way. |
 | `startRemoteIsolate` | `static void startRemoteIsolate(TomWorkerContext context)` | Isolate entry point passed to `spawn`; wires up communication channels and runs the context's isolate initialization. Throws `TomWorkerException` if the context's SendPort is null. |
 | `canSendToCreator` | `static bool canSendToCreator()` | Returns `true` only inside a worker isolate, where a backchannel to the creator exists. |
 | `sendToCreator` | `static void sendToCreator(Object o)` | Fire-and-forget send of `o` to the creator isolate. Throws `TomWorkerException` if called from the main isolate. |

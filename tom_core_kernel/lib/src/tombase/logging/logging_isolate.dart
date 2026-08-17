@@ -327,7 +327,7 @@ class TomLoggingWorkerContext extends TomWorkerContext {
 
   @override
   Future<void> initializeIsolate() async {
-    TomWorker.executors.add(TomLoggingExecutor());
+    TomWorker.addExecutor(TomLoggingExecutor());
   }
 }
 

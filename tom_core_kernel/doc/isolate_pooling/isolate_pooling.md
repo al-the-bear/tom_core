@@ -94,7 +94,7 @@ The main class for managing worker isolates. Handles spawning, communication, an
 | `sendToCreator()` | Send a message to the creator (fire-and-forget) |
 | `executeInCreator()` | Execute a command in the creator and await result |
 | `canSendToCreator()` | Check if backchannel is available |
-| `isMainIsolate` | Whether running in the main isolate |
+| `isMainIsolate` | Whether running in the main isolate (read-only) |
 
 ### TomWorkerContext
 
@@ -196,8 +196,14 @@ class DataProcessorExecutor extends TomExecutor {
 }
 
 // Register executor
-TomWorker.executors.add(DataProcessorExecutor());
+TomWorker.addExecutor(DataProcessorExecutor());
 ```
+
+Register with `TomWorker.addExecutor`, withdraw with `TomWorker.removeExecutor`
+or `TomWorker.clearExecutors`. `TomWorker.executors` reads the registry back as
+an unmodifiable view — the message handlers dispatch through the one backing
+list, so a caller that could replace or edit it directly would silently detach
+dispatch from every later registration.
 
 Executors are tried in order and the first to return anything other than
 `noResult` wins. If the chain is exhausted — or the worker has no executor

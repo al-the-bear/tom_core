@@ -1817,13 +1817,12 @@ void main() {
     });
 
     test('initializeIsolate registers a TomLoggingExecutor', () async {
-      // initializeIsolate mutates the global TomWorker.executors list, so
+      // initializeIsolate registers into the global executor registry, so
       // snapshot it and restore afterwards to avoid leaking into other tests.
       final before = List<TomExecutor>.from(TomWorker.executors);
       addTearDown(() {
-        TomWorker.executors
-          ..clear()
-          ..addAll(before);
+        TomWorker.clearExecutors();
+        before.forEach(TomWorker.addExecutor);
       });
 
       final context = _testLoggingContext();

@@ -245,11 +245,11 @@ void main() {
     // There is no back channel in the test process, so the forwarding attempt
     // surfaces as a TomWorkerException — proof the forwarding branch was taken.
     setUp(() {
-      TomWorker.isMainIsolate = false;
+      TomWorker.simulateWorkerIsolate();
       TomCacheManager.setCurrent(TomCacheManager()); // useInThisIsolate stays false
     });
     tearDown(() {
-      TomWorker.isMainIsolate = true;
+      TomWorker.resetIsMainIsolate();
       TomCacheManager.setCurrent(TomCacheManager());
     });
 

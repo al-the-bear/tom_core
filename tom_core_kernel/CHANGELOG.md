@@ -138,6 +138,17 @@ anyone who was writing them.
   handed two live workers the same name) with `resetWorkerCount` for tests;
   `TomHttpMethod.methods` is an unmodifiable map; `TomScope.defaultScope` is
   `final`; `TomContentDisposition.attachment` is `const`.
+- **Breaking: `TomWorker.executors` and `TomWorker.isMainIsolate` are no longer
+  writable either (tcinc56).** The two statics TCCA16 left standing beside
+  `workerCount`. `executors` now reads back an unmodifiable — but live — view;
+  register through `addExecutor` / `removeExecutor` / `clearExecutors`. Every
+  message handler dispatches off the one backing list, so a caller who replaced
+  it wholesale silently detached dispatch from every later registration.
+  `isMainIsolate` is a getter, and the one that mattered: it is load-bearing,
+  since `sendToCreator`, `executeInCreator` and the server's authorization and
+  cache layers all branch on it, so a caller who assigned it could make the main
+  isolate act as a worker. The worker-side transition is internal; tests reach
+  the other side through `simulateWorkerIsolate` / `resetIsMainIsolate`.
 - **Breaking: three members were removed.** `TomNullInterface` is now private —
   it only ever existed to give the internal null-component marker a type, and no
   consumer could meaningfully implement it. `TomException.newField` was a

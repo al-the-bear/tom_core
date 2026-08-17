@@ -371,11 +371,12 @@ class FailingInitContext extends TomWorkerContext {
 void main() {
   // Reset static state between tests
   setUp(() {
-    TomWorker.executors.clear();
-    // `workerCount` is read-only (tcca16); the counter is reset through the
-    // declared test seam so the generated worker names stay predictable.
+    TomWorker.clearExecutors();
+    // `workerCount` and `isMainIsolate` are read-only; both are reset through
+    // their declared test seams so the generated worker names stay predictable
+    // and every test starts on the creator side.
     TomWorker.resetWorkerCount();
-    TomWorker.isMainIsolate = true;
+    TomWorker.resetIsMainIsolate();
   });
 
   // ===========================================================================
@@ -917,26 +918,79 @@ void main() {
       test('should allow adding executors', () {
         final executor = TestStringExecutor();
 
-        TomWorker.executors.add(executor);
+        TomWorker.addExecutor(executor);
 
         expect(TomWorker.executors.length, equals(1));
         expect(TomWorker.executors.first, same(executor));
       });
 
       test('should allow adding multiple executors', () {
-        TomWorker.executors.add(TestStringExecutor());
-        TomWorker.executors.add(TestIntExecutor());
+        TomWorker.addExecutor(TestStringExecutor());
+        TomWorker.addExecutor(TestIntExecutor());
 
         expect(TomWorker.executors.length, equals(2));
       });
 
-      test('should allow clearing executors', () {
-        TomWorker.executors.add(TestStringExecutor());
-        TomWorker.executors.add(TestIntExecutor());
+      test('should allow removing a single executor', () {
+        final kept = TestStringExecutor();
+        final dropped = TestIntExecutor();
+        TomWorker.addExecutor(kept);
+        TomWorker.addExecutor(dropped);
 
-        TomWorker.executors.clear();
+        expect(TomWorker.removeExecutor(dropped), isTrue);
+
+        expect(TomWorker.executors, equals([kept]));
+      });
+
+      test('removing an unregistered executor reports false', () {
+        expect(TomWorker.removeExecutor(TestStringExecutor()), isFalse);
+      });
+
+      test('should allow clearing executors', () {
+        TomWorker.addExecutor(TestStringExecutor());
+        TomWorker.addExecutor(TestIntExecutor());
+
+        TomWorker.clearExecutors();
 
         expect(TomWorker.executors, isEmpty);
+      });
+
+      test('the exposed list rejects mutation', () {
+        // The registry is handed out as an unmodifiable view so a caller
+        // cannot bypass the explicit operations — and, more importantly,
+        // cannot replace the list the message handlers dispatch through.
+        expect(
+          () => TomWorker.executors.add(TestStringExecutor()),
+          throwsUnsupportedError,
+        );
+        expect(TomWorker.executors.clear, throwsUnsupportedError);
+      });
+
+      test('the exposed list is a live view, not a snapshot', () {
+        final view = TomWorker.executors;
+        expect(view, isEmpty);
+
+        TomWorker.addExecutor(TestStringExecutor());
+
+        // A copy taken at read time would still read empty here, which would
+        // make a caller that held the list dispatch against stale contents.
+        expect(view.length, equals(1));
+      });
+    });
+
+    group('isMainIsolate', () {
+      test('simulateWorkerIsolate marks the isolate as a worker', () {
+        TomWorker.simulateWorkerIsolate();
+
+        expect(TomWorker.isMainIsolate, isFalse);
+      });
+
+      test('resetIsMainIsolate restores the creator marking', () {
+        TomWorker.simulateWorkerIsolate();
+
+        TomWorker.resetIsMainIsolate();
+
+        expect(TomWorker.isMainIsolate, isTrue);
       });
     });
 
@@ -1530,7 +1584,7 @@ void main() {
       test('sendToCreator delivers a message to a creator-side executor',
           () async {
         final inbox = InboxExecutor();
-        TomWorker.executors.add(inbox);
+        TomWorker.addExecutor(inbox);
 
         final context = TestWorkerContext(namePrefix: 'Ping');
         final worker = await TomWorker.spawn(

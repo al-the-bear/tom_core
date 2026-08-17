@@ -56,6 +56,7 @@ library;
 
 // Dart SDK imports
 import 'dart:async';
+import 'dart:collection';
 import 'dart:isolate';
 
 // Package imports
@@ -171,7 +172,7 @@ class _TomNoResult {
 /// }
 ///
 /// // Register the executor
-/// TomWorker.executors.add(MyExecutor());
+/// TomWorker.addExecutor(MyExecutor());
 /// ```
 ///
 /// ## Important Notes
@@ -553,11 +554,35 @@ class TomWorker {
   /// unexpectedly (not through [close]). Set by [superviseExit].
   void Function()? _onDeath;
 
+  static bool _isMainIsolate = true;
+
   /// Indicates whether the current code is running in the main isolate.
   ///
-  /// This is set to `false` when [startRemoteIsolate] is called in a
-  /// worker isolate.
-  static bool isMainIsolate = true;
+  /// Flips to `false` inside a worker isolate, once [startRemoteIsolate] has
+  /// signalled readiness.
+  ///
+  /// Read-only: the flag is load-bearing. [sendToCreator] and
+  /// [executeInCreator] refuse to run on the creator side, and the
+  /// authorization and cache layers decide whether to answer locally or
+  /// forward to the creator by reading it — so a caller who could assign it
+  /// could make the main isolate act as a worker. Tests that need the other
+  /// side use [simulateWorkerIsolate] and [resetIsMainIsolate].
+  static bool get isMainIsolate => _isMainIsolate;
+
+  /// Marks the current isolate as a worker rather than the creator.
+  ///
+  /// Exists for tests of the code that branches on [isMainIsolate] without
+  /// spawning a real isolate; production code reaches this state by running
+  /// inside [startRemoteIsolate].
+  @visibleForTesting
+  static void simulateWorkerIsolate() => _isMainIsolate = false;
+
+  /// Restores the creator-side marking after [simulateWorkerIsolate].
+  ///
+  /// Exists so a test `setUp` can start every case on the creator side; the
+  /// real transition is one-way, so production code has no reason to undo it.
+  @visibleForTesting
+  static void resetIsMainIsolate() => _isMainIsolate = true;
 
   /// Counter for requests sent to the creator isolate.
   static int _idCreatorCounter = 0;
@@ -806,7 +831,7 @@ class TomWorker {
             result = await result;
           }
         } else {
-          for (executor in executors) {
+          for (executor in _executors) {
             result = executor.execute(message.command);
             if (result is Future) {
               result = await result;
@@ -832,11 +857,11 @@ class TomWorker {
         tomPrintStackTrace(s);
         _commands.send(_TomCreatorResponse(message.id, exception));
       }
-    } else if (executors.isNotEmpty) {
+    } else if (_executors.isNotEmpty) {
       TomExecutor? executor;
       Object? result;
       try {
-        for (executor in executors) {
+        for (executor in _executors) {
           result = executor.execute(message);
           if (result is Future) {
             result = await result;
@@ -879,11 +904,31 @@ class TomWorker {
   /// Message sent when a worker isolate is ready to accept commands.
   static const readyMessage = "--- ready ---";
 
-  /// List of executors registered to handle incoming commands.
+  static final List<TomExecutor> _executors = [];
+
+  /// Executors registered to handle incoming commands, in registration order.
   ///
   /// Executors are called in order until one produces a result.
-  /// Register executors using `TomWorker.executors.add(myExecutor)`.
-  static List<TomExecutor> executors = [];
+  ///
+  /// Read-only view: register through [addExecutor], [removeExecutor] and
+  /// [clearExecutors]. The message handlers dispatch through the one backing
+  /// list, so handing out a writable reference would let a caller replace it
+  /// wholesale and silently detach dispatch from every later registration.
+  /// The view is live — it reflects registrations made after it was read.
+  static List<TomExecutor> get executors => UnmodifiableListView(_executors);
+
+  /// Registers [executor] at the end of the dispatch chain.
+  static void addExecutor(TomExecutor executor) => _executors.add(executor);
+
+  /// Removes the first registration of [executor].
+  ///
+  /// Returns `true` when an entry was removed, `false` when the executor was
+  /// not registered.
+  static bool removeExecutor(TomExecutor executor) =>
+      _executors.remove(executor);
+
+  /// Removes every registered executor.
+  static void clearExecutors() => _executors.clear();
 
   /// Internal send port for communication back to the creator isolate.
   ///
@@ -902,14 +947,14 @@ class TomWorker {
       "Isolate ready to handle messages: ${Isolate.current.debugName}",
     );
     sendPort.send(readyMessage);
-    isMainIsolate = false;
+    _isMainIsolate = false;
     receivePort.listen((message) async {
       if (message == 'shutdown') {
         receivePort.close();
         return;
       }
       if (message is TomExecutor) {
-        executors.add(message);
+        _executors.add(message);
         return;
       }
       if (message is _TomIsolateCommand) {
@@ -928,9 +973,9 @@ class TomWorker {
           }
           // Not self-executing: offer the message to each registered executor
           // in turn until one claims it. Starting from the sentinel makes an
-          // empty [executors] list take the same exit as a chain that declined.
+          // empty executor list take the same exit as a chain that declined.
           Object? result = TomExecutor.noResult;
-          for (final executor in executors) {
+          for (final executor in _executors) {
             final candidate = executor.execute(message.command);
             result = candidate is Future ? await candidate : candidate;
             if (result != TomExecutor.noResult) break;

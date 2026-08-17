@@ -17,7 +17,7 @@ TomPrincipal _principal(String username) =>
 void main() {
   // The cache runs in the main isolate by default; keep it that way for the
   // synchronous, single-isolate behaviour under test.
-  setUp(() => TomWorker.isMainIsolate = true);
+  setUp(() => TomWorker.resetIsMainIsolate());
 
   group('TomAuthorizationCacheEntry', () {
     test('defaults the deletion time to roughly one day out', () {
@@ -98,8 +98,8 @@ void main() {
   // TomWorkerException — proof the off-isolate branch was taken rather than the
   // local map being touched.
   group('TomAuthorizationCache (worker isolate forwarding)', () {
-    setUp(() => TomWorker.isMainIsolate = false);
-    tearDown(() => TomWorker.isMainIsolate = true);
+    setUp(() => TomWorker.simulateWorkerIsolate());
+    tearDown(() => TomWorker.resetIsMainIsolate());
 
     test('getPrincipal forwards the lookup to the creator isolate', () {
       expect(

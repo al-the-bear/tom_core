@@ -108,7 +108,7 @@ class CustomWorkerContext extends TomWorkerContext {
     print('     [Creator] Configuring worker with config: $workerConfig');
 
     // Register executors for handling worker callbacks
-    TomWorker.executors.add(CreatorSideExecutor());
+    TomWorker.addExecutor(CreatorSideExecutor());
   }
 }
 
@@ -265,8 +265,8 @@ class WorkerCreatorCommunicationExample {
 
     // Executors handle messages from worker
     final executor = CreatorSideExecutor();
-    TomWorker.executors.add(executor);
-    print('   - Added CreatorSideExecutor to TomWorker.executors');
+    TomWorker.addExecutor(executor);
+    print('   - Added CreatorSideExecutor via TomWorker.addExecutor');
     print('   - Executor count: ${TomWorker.executors.length}');
 
     print('');
@@ -277,7 +277,7 @@ class WorkerCreatorCommunicationExample {
     print('   4. For executeInCreator, result is sent back to worker');
 
     // Clean up
-    TomWorker.executors.remove(executor);
+    TomWorker.removeExecutor(executor);
     print('   - Removed executor');
   }
 
@@ -391,8 +391,9 @@ class WorkerCreatorCommunicationExample {
    TomWorker has both static and instance members:
    
    STATIC (shared across isolates):
-   ├─ TomWorker.executors - List of executors
-   ├─ TomWorker.isMainIsolate - bool indicating isolate type
+   ├─ TomWorker.executors - Read-only view of the executor registry
+   ├─ TomWorker.addExecutor/removeExecutor/clearExecutors - Registration
+   ├─ TomWorker.isMainIsolate - Read-only bool indicating isolate type
    ├─ TomWorker.canSendToCreator() - Check backchannel
    ├─ TomWorker.sendToCreator(obj) - Fire-and-forget to creator
    ├─ TomWorker.executeInCreator(cmd) - Request-response to creator

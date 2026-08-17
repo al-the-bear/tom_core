@@ -118,7 +118,7 @@ class WorkerThrowingCommand extends TomCommand {
 
 /// Records fire-and-forget notifications received from workers.
 ///
-/// Registered on the creator via `TomWorker.executors.add(...)`, it is invoked
+/// Registered on the creator via `TomWorker.addExecutor(...)`, it is invoked
 /// when a worker sends a plain object (not a [TomCommand]) through the
 /// back-channel.
 class CreatorInboxExecutor extends TomExecutor {
@@ -143,7 +143,7 @@ Future<void> run() async {
 
   // Register a creator-side inbox for fire-and-forget notifications.
   final inbox = CreatorInboxExecutor();
-  TomWorker.executors.add(inbox);
+  TomWorker.addExecutor(inbox);
 
   // -------------------------------------------------------------------------
   // Example 1: The back-channel is only available inside workers
@@ -207,7 +207,7 @@ Future<void> run() async {
   // Cleanup
   // -------------------------------------------------------------------------
   worker.close();
-  TomWorker.executors.clear();
+  TomWorker.clearExecutors();
 
   print('\n');
 
