@@ -366,7 +366,7 @@ TomApiEndpoint({
 | `requestEncoding` | `Encoding?` | Encoding for request bodies (overrides the API-level setting). |
 | `responseEncoding` | `Encoding?` | Encoding for response bodies (overrides the API-level setting). |
 | `statusCodeResponseTypes` | `Map<int, Type>?` | Maps HTTP status codes to response types for error handling. |
-| `urlParameterMapping` | `Map<String, String>` | Binds URL path parameters to typed request-DTO field names. |
+| `urlParameterMapping` | `Map<String, String>` | Binds URL parameters — path captures *and* query-string parameters — to request-DTO field names. Keys are the name as it appears on the URL, values the field it is injected under. **The key decides which kind an entry is:** a key that appears as a `{capture}` in the endpoint's `uri` substitutes into the path; every other key is emitted as a query parameter. The two bind asymmetrically on purpose — a path capture that is *not* listed still binds under its own name, so an empty map suffices for an endpoint whose captures already match its field names, whereas a query parameter binds *only* when named here. There is no identity fallback for query parameters: a query string is whatever a caller chose to append, so an identity fallback would let any caller write any field of the request DTO. |
 | `access` | `TomAccessControl?` | The contract-side access policy the endpoint is served under (`null` = fall back to the server default or a handler annotation). |
 | `api` | `TomApi` | The parent API; throws `TomEndpointException` if the endpoint has not been added to an API. |
 

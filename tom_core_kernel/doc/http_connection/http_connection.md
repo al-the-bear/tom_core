@@ -149,6 +149,57 @@ TomApiEndpoint<OrderResponse, CreateOrderRequest>(
 )
 ```
 
+#### Path and Query Parameters
+
+`urlParameterMapping` binds both halves of a URL to fields of the request DTO.
+Keys are the name as it appears on the URL; values are the DTO field the value
+travels in. **The key decides which half an entry belongs to:** a key that
+appears as a `{capture}` in `uri` fills that path segment, and every other key
+is appended to the query string.
+
+```dart
+TomApiEndpoint<UserResponse, void>(
+  id: 'getById',
+  uri: '/{id}',
+  method: TomHttpMethod.get,
+  urlParameterMapping: {
+    'id': 'userId',                       // {id} in the path
+    'include_deleted': 'includeDeleted',  // ?include_deleted=…
+  },
+)
+```
+
+Build the address with `resolveUri`. Its `parameters` are keyed by **DTO field
+name** — the right-hand side of the mapping — because a client holds a DTO, not
+a URL:
+
+```dart
+userApi['getById'].resolveUri(
+  Uri.parse('https://api.example.com'),
+  parameters: {'userId': 42, 'includeDeleted': true},
+); // https://api.example.com/api/v1/users/42?include_deleted=true
+```
+
+This is also what lets a snake_cased provider spelling stay out of the Dart
+shape: `error_description` is named once, in the mapping, and the DTO field
+beside it is `errorDescription`.
+
+The two kinds bind asymmetrically, deliberately:
+
+- **A path capture that is not listed still binds under its own name.** The
+  `getById` endpoint above needs no mapping at all if its field is called `id`
+  — `parameters: {'id': 7}` resolves to `…/users/7`. A capture is part of the
+  route, and the route is part of the endpoint's own declaration.
+- **A query parameter binds only when named here.** There is no identity
+  fallback: a query string is whatever a caller chose to append, so an identity
+  fallback would let any caller write any field of the request DTO. Naming them
+  makes query binding opt-in per endpoint and per parameter.
+
+A capture with no answering parameter raises `TomEndpointException`
+(`apis.endpoint.missing_url_parameter`) rather than leaving an empty segment —
+a URL with a hole in it addresses a different route. An unset query parameter
+is simply omitted, since an optional query parameter is ordinary.
+
 ### TomHttpMethod
 
 Predefined HTTP methods. `acceptsBody` records whether the verb typically
