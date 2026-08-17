@@ -5210,15 +5210,13 @@ BridgedClass _createTomServerEndpointBridge() {
       'createApiServerEndpoint': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'createApiServerEndpoint');
         final apiEndpoint = D4.getRequiredArg<$tom_core_kernel_4.TomApiEndpoint>(positional, 0, 'apiEndpoint', 'createApiServerEndpoint');
+        final parameters = named.containsKey('parameters') && named['parameters'] != null
+            ? D4.coerceMap<String, Object?>(named['parameters'], 'parameters')
+            : const <String, Object?>{};
         final specs = D4.getOptionalNamedArg<$tom_core_kernel_11.TomServerCallSpecs?>(named, 'specs');
         final channel = D4.getOptionalNamedArg<$tom_core_kernel_11.TomServerChannel?>(named, 'channel');
         final baseUri = D4.getOptionalNamedArg<Uri?>(named, 'baseUri');
-        return $tom_core_kernel_11.TomServerEndpoint.createApiServerEndpoint(apiEndpoint, specs: specs, channel: channel, baseUri: baseUri);
-      },
-      'removeLeadingSlash': (visitor, positional, named, typeArgs) {
-        D4.requireMinArgs(positional, 1, 'removeLeadingSlash');
-        final s = D4.getRequiredArg<String>(positional, 0, 's', 'removeLeadingSlash');
-        return $tom_core_kernel_11.TomServerEndpoint.removeLeadingSlash(s);
+        return $tom_core_kernel_11.TomServerEndpoint.createApiServerEndpoint(apiEndpoint, parameters: parameters, specs: specs, channel: channel, baseUri: baseUri);
       },
     },
     constructorSignatures: {
@@ -5238,8 +5236,7 @@ BridgedClass _createTomServerEndpointBridge() {
       'statusCodeResponseTypes': 'set statusCodeResponseTypes(dynamic value)',
     },
     staticMethodSignatures: {
-      'createApiServerEndpoint': 'TomServerEndpoint<requestType, responseType> createApiServerEndpoint(TomApiEndpoint apiEndpoint, {TomServerCallSpecs? specs, TomServerChannel? channel, Uri? baseUri})',
-      'removeLeadingSlash': 'String removeLeadingSlash(String s)',
+      'createApiServerEndpoint': 'TomServerEndpoint<requestType, responseType> createApiServerEndpoint(TomApiEndpoint apiEndpoint, {Map<String, Object?> parameters = const {}, TomServerCallSpecs? specs, TomServerChannel? channel, Uri? baseUri})',
     },
   );
 }

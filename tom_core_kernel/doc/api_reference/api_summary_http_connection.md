@@ -1003,8 +1003,16 @@ TomServerEndpoint(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `createApiServerEndpoint` | `static TomServerEndpoint<requestType, responseType> createApiServerEndpoint<requestType extends Object, responseType extends Object>(TomApiEndpoint apiEndpoint, {TomServerCallSpecs? specs, TomServerChannel? channel, Uri? baseUri})` | Creates a server endpoint from a `TomApiEndpoint` definition, configuring channel, specs, and error handling; throws `TomEndpointException` on a type-parameter mismatch. `baseUri` defaults to `TomClientRemoteContext.baseUri` — the API server. An authentication endpoint passes `TomClientRemoteContext.authenticationUri` explicitly. |
-| `removeLeadingSlash` | `static String removeLeadingSlash(String s)` | Removes a leading slash from `s` if present. |
+| `createApiServerEndpoint` | `static TomServerEndpoint<requestType, responseType> createApiServerEndpoint<requestType extends Object, responseType extends Object>(TomApiEndpoint apiEndpoint, {Map<String, Object?> parameters = const {}, TomServerCallSpecs? specs, TomServerChannel? channel, Uri? baseUri})` | Creates a server endpoint from a `TomApiEndpoint` definition, configuring channel, specs, and error handling; throws `TomEndpointException` on a type-parameter mismatch. `baseUri` defaults to `TomClientRemoteContext.baseUri` — the API server. An authentication endpoint passes `TomClientRemoteContext.authenticationUri` explicitly. |
+
+The address comes from `TomApiEndpoint.resolveUri`, so the endpoint addresses
+the route its declaration describes: `parameters` — keyed by request-DTO field
+name — fill the path captures and the mapped query parameters, and a capture
+with no value throws rather than travelling as literal `{name}` text. The
+template it resolves, `(api.uri ?? '') + (uri ?? '')`, is the same expression
+the server pipeline mounts the route from, so both ends of a call are derived
+from one declaration. Supplying `specs` bypasses resolution entirely — the
+caller has then named the address outright, and `parameters` is unused.
 
 ##### Properties
 

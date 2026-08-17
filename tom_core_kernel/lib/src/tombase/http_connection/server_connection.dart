@@ -1142,8 +1142,19 @@ class TomServerEndpoint<T extends Object, R extends Object> {
   /// Automatically configures the channel, specs, and error handling
   /// based on the [TomApiEndpoint] configuration.
   ///
+  /// The address comes from [TomApiEndpoint.resolveUri], so this factory
+  /// addresses exactly the route the declaration describes: path captures are
+  /// substituted and mapped query parameters appended under the endpoint's
+  /// own [TomApiEndpoint.urlParameterMapping]. Joining the templates here
+  /// instead would make the declarative half of the contract unreachable
+  /// through the very API that exists to build a call from it.
+  ///
   /// - [apiEndpoint]: The endpoint definition from a [TomApi]
-  /// - [specs]: Optional custom call specs
+  /// - [parameters]: Values for the endpoint's URL parameters, keyed by
+  ///   **request-DTO field name** — see [TomApiEndpoint.resolveUri] for how the
+  ///   two kinds bind. Ignored when [specs] names the address itself.
+  /// - [specs]: Optional custom call specs. Supplying these bypasses
+  ///   resolution: the caller has then named the address outright.
   /// - [channel]: Optional custom server channel
   /// - [baseUri]: Where to address the call, defaulting to
   ///   [TomClientRemoteContext.baseUri] — the API server. An authentication
@@ -1151,11 +1162,16 @@ class TomServerEndpoint<T extends Object, R extends Object> {
   ///   explicitly; that URI addresses the authentication server and nothing
   ///   else, and the two differ only in a split deployment, so a call that
   ///   named the wrong one would look correct on a single host.
+  ///
+  /// Throws [TomEndpointException] when [apiEndpoint] does not match the type
+  /// arguments, or when one of its path captures has no answering entry in
+  /// [parameters].
   static TomServerEndpoint<requestType, responseType> createApiServerEndpoint<
     requestType extends Object,
     responseType extends Object
   >(
     TomApiEndpoint apiEndpoint, {
+    Map<String, Object?> parameters = const {},
     TomServerCallSpecs? specs,
     TomServerChannel? channel,
     Uri? baseUri,
@@ -1174,17 +1190,7 @@ class TomServerEndpoint<T extends Object, R extends Object> {
         specs ??
         TomServerCallSpecs(
           apiEndpoint.method.name,
-          Uri(
-            scheme: callUri.scheme,
-            path:
-                "${callUri.path}${removeLeadingSlash(apiEndpoint.api.uri ?? '')}${apiEndpoint.uri ?? ''}",
-            host: callUri.host,
-            port: callUri.hasPort
-                ? callUri.port
-                : callUri.scheme == "https"
-                ? 443
-                : 80,
-          ),
+          apiEndpoint.resolveUri(callUri, parameters: parameters),
           followRedirects: apiEndpoint.followRedirects,
           headers: apiEndpoint.requestHeaders,
           maxRedirects: apiEndpoint.maxRedirects,
@@ -1205,13 +1211,5 @@ class TomServerEndpoint<T extends Object, R extends Object> {
           apiEndpoint.statusCodeResponseTypes ??
           apiEndpoint.api.statusCodeResponseTypes,
     );
-  }
-
-  /// Removes a leading slash from a string if present.
-  static String removeLeadingSlash(String s) {
-    if (s.startsWith("/")) {
-      return s.substring(1);
-    }
-    return s;
   }
 }

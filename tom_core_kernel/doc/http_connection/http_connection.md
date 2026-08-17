@@ -208,6 +208,27 @@ A capture with no answering parameter raises `TomEndpointException`
 a URL with a hole in it addresses a different route. An unset query parameter
 is simply omitted, since an optional query parameter is ordinary.
 
+`TomServerEndpoint.createApiServerEndpoint` resolves the same way, so a caller
+that goes from a declaration straight to a callable endpoint gets the same
+address without naming a URI:
+
+```dart
+final endpoint = TomServerEndpoint.createApiServerEndpoint<
+  UserRequest,
+  UserResponse
+>(
+  userApi['getById'],
+  parameters: {'userId': 42, 'includeDeleted': true},
+);
+// endpoint.specs.url
+//   https://api.example.com/api/v1/users/42?include_deleted=true
+```
+
+The template both sides resolve, `(api.uri ?? '') + (uri ?? '')`, is the same
+expression the server pipeline mounts the route from — so client and server
+addresses are two readings of one declaration rather than two spellings that
+have to be kept in step.
+
 ### TomHttpMethod
 
 Predefined HTTP methods. `acceptsBody` records whether the verb typically

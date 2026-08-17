@@ -2143,36 +2143,6 @@ void main() {
   // TomServerEndpoint Tests
   // ==========================================================================
   group('TomServerEndpoint', () {
-    group('removeLeadingSlash', () {
-      test('should remove leading slash', () {
-        expect(
-          TomServerEndpoint.removeLeadingSlash('/api/v1'),
-          equals('api/v1'),
-        );
-      });
-
-      test('should return unchanged if no leading slash', () {
-        expect(
-          TomServerEndpoint.removeLeadingSlash('api/v1'),
-          equals('api/v1'),
-        );
-      });
-
-      test('should return empty string for single slash', () {
-        expect(
-          TomServerEndpoint.removeLeadingSlash('/'),
-          equals(''),
-        );
-      });
-
-      test('should return empty string for empty input', () {
-        expect(
-          TomServerEndpoint.removeLeadingSlash(''),
-          equals(''),
-        );
-      });
-    });
-
     group('constructor', () {
       test('should create endpoint with channel and specs', () {
         final channel = TomServerChannel('api.example.com', 443);
@@ -2997,6 +2967,111 @@ void main() {
       );
 
       expect(endpoint.specs.url.host, equals('reporting.example.com'));
+    });
+
+    test('substitutes a path capture and appends a mapped query parameter', () {
+      // The declaration is the only place the address is written down, so a
+      // factory that joined the templates verbatim would put a literal `/{id}`
+      // on the wire and drop the query binding entirely — the endpoint would be
+      // unreachable through the very API that is supposed to build it.
+      final api = TomApi(
+        id: 'catalogApi',
+        uri: '/api/items',
+        endpoints: [
+          TomApiEndpoint<String, String>(
+            id: 'byId',
+            uri: '/{id}',
+            method: TomHttpMethod.get,
+            urlParameterMapping: const {'id': 'itemId', 'lang': 'language'},
+          ),
+        ],
+      );
+
+      final endpoint = TomServerEndpoint.createApiServerEndpoint<String, String>(
+        api['byId'],
+        baseUri: Uri.parse('https://api.example.com'),
+        parameters: {'itemId': 42, 'language': 'de'},
+      );
+
+      expect(
+        endpoint.specs.url.toString(),
+        equals('https://api.example.com/api/items/42?lang=de'),
+      );
+    });
+
+    test('omits a mapped query parameter that has no value', () {
+      // An optional query parameter is ordinary; only a path capture without a
+      // value is a broken address.
+      final api = TomApi(
+        id: 'optionalApi',
+        uri: '/api/items',
+        endpoints: [
+          TomApiEndpoint<String, String>(
+            id: 'byId',
+            uri: '/{id}',
+            method: TomHttpMethod.get,
+            urlParameterMapping: const {'id': 'itemId', 'lang': 'language'},
+          ),
+        ],
+      );
+
+      final endpoint = TomServerEndpoint.createApiServerEndpoint<String, String>(
+        api['byId'],
+        baseUri: Uri.parse('https://api.example.com'),
+        parameters: {'itemId': 42},
+      );
+
+      expect(endpoint.specs.url.toString(),
+          equals('https://api.example.com/api/items/42'));
+    });
+
+    test('refuses to build an endpoint whose path capture has no value', () {
+      // Left unresolved, the capture would travel as the literal text `{id}`
+      // and address a route that does not exist — a failure the caller would
+      // only see as a 404 from the server.
+      final api = TomApi(
+        id: 'unresolvedApi',
+        uri: '/api/items',
+        endpoints: [
+          TomApiEndpoint<String, String>(
+            id: 'byId',
+            uri: '/{id}',
+            method: TomHttpMethod.get,
+          ),
+        ],
+      );
+
+      expect(
+        () => TomServerEndpoint.createApiServerEndpoint<String, String>(
+          api['byId'],
+          baseUri: Uri.parse('https://api.example.com'),
+        ),
+        throwsA(isA<TomEndpointException>()),
+      );
+    });
+
+    test('keeps the base URI path in front of the API path', () {
+      // A base that carries a path is the ordinary shape of a gateway-mounted
+      // deployment. Joining the strings end to end fuses the last segment of
+      // the base onto the first of the API path.
+      final api = TomApi(
+        id: 'gatewayApi',
+        uri: '/api/v1',
+        endpoints: [
+          TomApiEndpoint<String, String>(
+            id: 'thing',
+            uri: '/thing',
+            method: TomHttpMethod.get,
+          ),
+        ],
+      );
+
+      final endpoint = TomServerEndpoint.createApiServerEndpoint<String, String>(
+        api['thing'],
+        baseUri: Uri.parse('https://api.example.com/gateway'),
+      );
+
+      expect(endpoint.specs.url.path, equals('/gateway/api/v1/thing'));
     });
   });
 

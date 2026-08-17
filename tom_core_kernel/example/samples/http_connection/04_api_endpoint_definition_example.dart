@@ -6,6 +6,7 @@
 /// - TomApiEndpoint for endpoint configuration
 /// - TomClientRemoteContext for server configuration
 /// - Bracket notation for accessing APIs and endpoints
+/// - Resolving an endpoint's address from its own declaration
 library;
 
 import 'dart:convert';
@@ -376,6 +377,80 @@ class ApiEndpointDefinitionExample {
       'Should have endpoint 409 mapping',
     );
   }
+
+  // --------------------------------------------------------------------------
+  // Example 11: From a declaration to an addressed endpoint
+  // --------------------------------------------------------------------------
+  static void example11UrlParameterResolution() {
+    print('\n11. URL parameters — from declaration to address:');
+
+    // The declaration is the only place the address is written down. Path
+    // captures and query parameters are named once, here, and both the client
+    // and the server read the route from this same statement.
+    final catalogApi = TomApi(
+      id: 'catalogApi',
+      name: 'Catalog API',
+      uri: '/api/v1/items',
+      endpoints: [
+        TomApiEndpoint<OrderResponse, CreateUserRequest>(
+          id: 'getById',
+          uri: '/{id}',
+          method: TomHttpMethod.get,
+          urlParameterMapping: {
+            'id': 'itemId', //         {id} in the path
+            'lang': 'language', //     ?lang=…
+          },
+        ),
+      ],
+    );
+
+    // resolveUri builds the address on its own; parameters are keyed by
+    // request-DTO field name, because a client holds a DTO, not a URL.
+    final resolved = catalogApi['getById'].resolveUri(
+      Uri.parse('https://api.example.com'),
+      parameters: {'itemId': 42, 'language': 'de'},
+    );
+    print('   - resolveUri:                 $resolved');
+
+    // createApiServerEndpoint resolves the same way, so going straight from a
+    // declaration to a callable endpoint needs no hand-written URI either.
+    final endpoint = TomServerEndpoint.createApiServerEndpoint<OrderResponse,
+        CreateUserRequest>(
+      catalogApi['getById'],
+      baseUri: Uri.parse('https://api.example.com'),
+      parameters: {'itemId': 42, 'language': 'de'},
+    );
+    print('   - createApiServerEndpoint:    ${endpoint.specs.url}');
+
+    // An optional query parameter is simply omitted when it has no value...
+    final withoutLanguage = catalogApi['getById'].resolveUri(
+      Uri.parse('https://api.example.com'),
+      parameters: {'itemId': 42},
+    );
+    print('   - without the query parameter: $withoutLanguage');
+
+    // ...whereas a path capture with no value is a broken address, not an
+    // empty segment, so it is refused rather than sent.
+    var refusedMissingCapture = false;
+    try {
+      catalogApi['getById'].resolveUri(Uri.parse('https://api.example.com'));
+    } on TomEndpointException catch (e) {
+      refusedMissingCapture = true;
+      print('   - missing capture refused:     ${e.key}');
+    }
+
+    // Assertions
+    assert(
+      resolved.toString() == 'https://api.example.com/api/v1/items/42?lang=de',
+      'resolveUri must substitute the capture and append the query parameter',
+    );
+    assert(
+      endpoint.specs.url == resolved,
+      'The endpoint factory must address exactly what resolveUri builds',
+    );
+    assert(!withoutLanguage.hasQuery, 'An unset query parameter is omitted');
+    assert(refusedMissingCapture, 'A capture without a value must be refused');
+  }
 }
 
 // ============================================================================
@@ -397,6 +472,7 @@ void run() {
   ApiEndpointDefinitionExample.example8EndpointNotFound();
   ApiEndpointDefinitionExample.example9DynamicEndpoints();
   ApiEndpointDefinitionExample.example10StatusCodeTypes();
+  ApiEndpointDefinitionExample.example11UrlParameterResolution();
 
   print('\n✓ All API and endpoint definition examples passed!\n');
 }
