@@ -119,7 +119,7 @@ declarations are omitted.
 | `substituteEnvVars` | function | Substitutes `${VAR}` references in a tree; an empty environment value counts as unset. |
 | `prettyJson` | function | Indent-formats a JSON string. |
 | `prettyJsonLine` | function | Single-line pretty JSON. |
-| `indentEncoder` | const | Shared two-space `JsonEncoder`. |
+| `indentEncoder` | final | Shared two-space `JsonEncoder`. |
 
 ### Little Things (`lib/src/tombase/little_things/`)
 

@@ -67,7 +67,7 @@ match a wire shape they do not own, not the design default.
 
 | Constant | Type | Description |
 | -------- | ---- | ----------- |
-| `indentEncoder` | `JsonEncoder` | A reusable `JsonEncoder.withIndent("  ")` (2-space indentation) used by the pretty-printing formatters. |
+| `indentEncoder` | `JsonEncoder` | A reusable `JsonEncoder.withIndent("  ")` (2-space indentation) used by the pretty-printing formatters. Declared `final`, not `const` — `JsonEncoder.withIndent` is a run-time constructor call, so the encoder is built once on first use rather than canonicalised at compile time, and it cannot appear in a const context. |
 
 ### Functions
 

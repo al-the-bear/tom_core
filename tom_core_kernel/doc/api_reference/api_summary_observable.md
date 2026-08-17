@@ -930,7 +930,7 @@ ambient scope.
 
 | Constant | Type | Description |
 | -------- | ---- | ----------- |
-| `tomNull` | `TomObject<String>` | Sentinel `TomObject` representing a null or unknown value, returned when a value's type cannot be determined. |
+| `tomNull` | `TomObject<String>` | Sentinel `TomObject` representing a null or unknown value, returned when a value's type cannot be determined. Declared `final`, not `const` — `TomObject`'s constructor has a body, so it cannot be const; the sentinel is one run-time instance, and testing for it means comparing identity against this variable rather than against a canonicalised literal. |
 
 ### Functions
 
