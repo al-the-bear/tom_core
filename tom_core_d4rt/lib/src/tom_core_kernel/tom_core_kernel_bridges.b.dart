@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-17T12:07:23.855681
+// Generated: 2026-08-17T13:12:58.272731
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -7492,7 +7492,8 @@ BridgedClass _createTomWorkerBridge() {
         final initializerRaw = positional[0];
         final initializer = ($tom_core_kernel_12.TomWorkerContext p0) { D4.callInterpreterCallback(visitor!, initializerRaw, [p0]); };
         final workerContext = D4.getRequiredArg<$tom_core_kernel_12.TomWorkerContext>(positional, 1, 'workerContext', 'spawn');
-        return $tom_core_kernel_12.TomWorker.spawn(initializer, workerContext);
+        final readyTimeout = D4.getNamedArgWithDefault<Duration>(named, 'readyTimeout', const Duration(seconds: 30));
+        return $tom_core_kernel_12.TomWorker.spawn(initializer, workerContext, readyTimeout: readyTimeout);
       },
       'startRemoteIsolate': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'startRemoteIsolate');
@@ -7539,7 +7540,7 @@ BridgedClass _createTomWorkerBridge() {
     },
     staticMethodSignatures: {
       'resetWorkerCount': 'void resetWorkerCount()',
-      'spawn': 'Future<TomWorker> spawn(void Function(TomWorkerContext) initializer, TomWorkerContext workerContext)',
+      'spawn': 'Future<TomWorker> spawn(void Function(TomWorkerContext) initializer, TomWorkerContext workerContext, {Duration readyTimeout = const Duration(seconds: 30)})',
       'startRemoteIsolate': 'void startRemoteIsolate(TomWorkerContext context)',
       'canSendToCreator': 'bool canSendToCreator()',
       'sendToCreator': 'void sendToCreator(Object o)',
@@ -7593,7 +7594,8 @@ BridgedClass _createTomWorkerPoolBridge() {
         final context = D4.getRequiredArg<$tom_core_kernel_12.TomWorkerContext>(positional, 1, 'context', 'withSize');
         final healthCheckInterval = D4.getOptionalNamedArg<Duration?>(named, 'healthCheckInterval');
         final healthCheckTimeout = D4.getNamedArgWithDefault<Duration>(named, 'healthCheckTimeout', const Duration(seconds: 5));
-        return $tom_core_kernel_12.TomWorkerPool.withSize(size, context, healthCheckInterval: healthCheckInterval, healthCheckTimeout: healthCheckTimeout);
+        final readyTimeout = D4.getNamedArgWithDefault<Duration>(named, 'readyTimeout', const Duration(seconds: 30));
+        return $tom_core_kernel_12.TomWorkerPool.withSize(size, context, healthCheckInterval: healthCheckInterval, healthCheckTimeout: healthCheckTimeout, readyTimeout: readyTimeout);
       },
     },
     methodSignatures: {
@@ -7605,7 +7607,7 @@ BridgedClass _createTomWorkerPoolBridge() {
       'workerCount': 'int get workerCount',
     },
     staticMethodSignatures: {
-      'withSize': 'Future<TomWorkerPool> withSize(int size, TomWorkerContext context, {Duration? healthCheckInterval, Duration healthCheckTimeout = const Duration(seconds: 5)})',
+      'withSize': 'Future<TomWorkerPool> withSize(int size, TomWorkerContext context, {Duration? healthCheckInterval, Duration healthCheckTimeout = const Duration(seconds: 5), Duration readyTimeout = const Duration(seconds: 30)})',
     },
   );
 }
