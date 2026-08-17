@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-17T13:12:58.272731
+// Generated: 2026-08-17T13:24:33.554571
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -7364,16 +7364,6 @@ BridgedClass _createTomWorkerContextBridge() {
       'args': (visitor, target) => D4.validateTarget<$tom_core_kernel_12.TomWorkerContext>(target, 'TomWorkerContext').args,
       'namePrefix': (visitor, target) => D4.validateTarget<$tom_core_kernel_12.TomWorkerContext>(target, 'TomWorkerContext').namePrefix,
     },
-    setters: {
-      'tomEnvironment': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_12.TomWorkerContext>(target, 'TomWorkerContext').tomEnvironment = D4.extractBridgedArg<$tom_basics_3.TomEnvironment>(value, 'tomEnvironment'),
-      'tomPlatform': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_12.TomWorkerContext>(target, 'TomWorkerContext').tomPlatform = D4.extractBridgedArg<$tom_basics_3.TomPlatform>(value, 'tomPlatform'),
-      'args': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_12.TomWorkerContext>(target, 'TomWorkerContext').args = D4.coerceList<String>(value, 'args'),
-      'namePrefix': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_12.TomWorkerContext>(target, 'TomWorkerContext').namePrefix = D4.extractBridgedArg<String>(value, 'namePrefix'),
-    },
     methods: {
       'initializeIsolate': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_12.TomWorkerContext>(target, 'TomWorkerContext');
@@ -7398,12 +7388,6 @@ BridgedClass _createTomWorkerContextBridge() {
       'tomPlatform': 'TomPlatform get tomPlatform',
       'args': 'List<String> get args',
       'namePrefix': 'String get namePrefix',
-    },
-    setterSignatures: {
-      'tomEnvironment': 'set tomEnvironment(dynamic value)',
-      'tomPlatform': 'set tomPlatform(dynamic value)',
-      'args': 'set args(dynamic value)',
-      'namePrefix': 'set namePrefix(dynamic value)',
     },
   );
 }
@@ -8007,16 +7991,6 @@ BridgedClass _createTomLoggingWorkerContextBridge() {
       'args': (visitor, target) => D4.validateTarget<$tom_core_kernel_20.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').args,
       'namePrefix': (visitor, target) => D4.validateTarget<$tom_core_kernel_20.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').namePrefix,
     },
-    setters: {
-      'tomEnvironment': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_20.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomEnvironment = D4.extractBridgedArg<$tom_basics_3.TomEnvironment>(value, 'tomEnvironment'),
-      'tomPlatform': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_20.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').tomPlatform = D4.extractBridgedArg<$tom_basics_3.TomPlatform>(value, 'tomPlatform'),
-      'args': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_20.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').args = D4.coerceList<String>(value, 'args'),
-      'namePrefix': (visitor, target, value) => 
-        D4.validateTarget<$tom_core_kernel_20.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext').namePrefix = D4.extractBridgedArg<String>(value, 'namePrefix'),
-    },
     methods: {
       'initializeIsolate': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_20.TomLoggingWorkerContext>(target, 'TomLoggingWorkerContext');
@@ -8041,12 +8015,6 @@ BridgedClass _createTomLoggingWorkerContextBridge() {
       'tomPlatform': 'TomPlatform get tomPlatform',
       'args': 'List<String> get args',
       'namePrefix': 'String get namePrefix',
-    },
-    setterSignatures: {
-      'tomEnvironment': 'set tomEnvironment(TomEnvironment value)',
-      'tomPlatform': 'set tomPlatform(TomPlatform value)',
-      'args': 'set args(List<String> value)',
-      'namePrefix': 'set namePrefix(String value)',
     },
   );
 }
