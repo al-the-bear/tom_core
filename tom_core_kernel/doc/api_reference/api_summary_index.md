@@ -109,6 +109,7 @@ declarations are omitted.
 | ---- | ---- | ----------- |
 | `TomJsonSerializable` | abstract class | `toJson()` contract for reflectable objects. |
 | `mergeMapsOneSided` | function | One-sided recursive map merge. |
+| `deepCopyJsonTree` | function | Deep copy of a JSON tree, sharing no map or list. |
 | `traverseAndProcess` | function | Traverses a JSON tree processing matching nodes. |
 | `traverseAndCreate` | function | Traverses a JSON tree creating new nodes. |
 | `getPathFromTree` | function | Resolves a dotted path from a tree. |

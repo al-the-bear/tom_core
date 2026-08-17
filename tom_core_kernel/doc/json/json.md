@@ -155,6 +155,18 @@ Performs a deep merge of two maps, modifying `base` in-place.
 - **Structural mismatch**: An override map or list landing on a base value of
   another shape — at a key or at an array index — is refused with a logged
   error, and the base value is kept.
+- **Ownership**: `override` is deep-copied before the merge, so the merged tree
+  shares no map or list with it. Editing either document afterwards cannot
+  affect the other, and `override` itself is never modified.
+
+#### `deepCopyJsonTree(source)`
+
+Returns a deep copy of `source` that shares no map or list with it — every
+nested container is rebuilt. Use it to keep a document intact across a merge,
+which mutates its first argument. Nested maps are normalised to
+`Map<String, dynamic>` and lists to `List<dynamic>`, so the copy accepts values
+of any type; scalar leaves are shared, which is correct because JSON scalars
+are immutable.
 
 #### `traverseAndProcess(tree, test, processor)`
 
@@ -280,7 +292,10 @@ final localConfig = loadJsonFile('config/local.json');
 mergeMapsOneSided(baseConfig, envConfig);
 mergeMapsOneSided(baseConfig, localConfig);
 
-// baseConfig now contains fully merged configuration
+// baseConfig now contains fully merged configuration.
+// envConfig and localConfig are untouched and stay independent of it: the
+// merge copies what it takes from them, so the second merge cannot write
+// back into the document the first one merged.
 ```
 
 ### Environment Variable Substitution
@@ -318,12 +333,23 @@ try {
 
 ### 1. Immutability Consideration
 
-`mergeMapsOneSided` modifies the base map in-place. If you need to preserve the original:
+`mergeMapsOneSided` modifies the base map in-place. If you need to preserve the
+original, copy it with `deepCopyJsonTree`:
 
 ```dart
-final merged = Map<String, dynamic>.from(baseConfig);
+final merged = deepCopyJsonTree(baseConfig);
 mergeMapsOneSided(merged, overrides);
+// baseConfig is untouched
 ```
+
+**Do not use `Map<String, dynamic>.from` for this.** It copies only the top
+level, so `merged` still shares every nested subtree with `baseConfig` and the
+merge writes straight through into the original you meant to protect — the
+deeper the config, the more of it is unprotected.
+
+The *second* argument needs no such care: `mergeMapsOneSided` deep-copies the
+override before merging, so the merged tree shares no map or list with it and
+the two documents stay independent afterwards.
 
 ### 2. Error Handling for Paths
 

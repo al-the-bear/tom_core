@@ -11,7 +11,8 @@ pretty-printing. These are plain top-level functions — no types to instantiate
 
 | Function | Responsibility |
 | -------- | -------------- |
-| `mergeMapsOneSided(base, override)` | Deep-merge `override` into `base` in place. |
+| `mergeMapsOneSided(base, override)` | Deep-merge `override` into `base` in place, leaving `override` untouched and unshared. |
+| `deepCopyJsonTree(source)` | Deep-copy a tree so an in-place merge cannot reach the original. |
 | `getObjectFromTree(tree, path)` | Resolve a dotted path (`a.b.c`) to a value. |
 | `getPathFromTree(tree, path)` | Resolve a dotted path to its containing map. |
 | `traverseAndProcess(tree, test, processor)` | Visit every node, processing matches. |

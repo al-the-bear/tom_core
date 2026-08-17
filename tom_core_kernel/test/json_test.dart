@@ -611,6 +611,226 @@ void main() {
         expect(db['port'], equals(5432));
       });
     });
+
+    group('override ownership', () {
+      // The merge must leave `override` and the merged tree completely
+      // independent. Sharing structure between them is action at a distance:
+      // an edit to one document silently rewrites the other, long after the
+      // merge that connected them.
+
+      test('an inserted map subtree is not shared with the override', () {
+        final base = <String, dynamic>{};
+        final override = <String, dynamic>{
+          'db': {'host': 'h'},
+        };
+
+        mergeMapsOneSided(base, override);
+        (override['db'] as Map)['host'] = 'MUTATED';
+
+        expect((base['db'] as Map)['host'], equals('h'));
+        expect(identical(base['db'], override['db']), isFalse);
+      });
+
+      test('an inserted list is not shared with the override', () {
+        final base = <String, dynamic>{};
+        final override = <String, dynamic>{
+          'l': [1, 2],
+        };
+
+        mergeMapsOneSided(base, override);
+        (override['l'] as List).add(3);
+
+        expect(base['l'], equals([1, 2]));
+        expect(identical(base['l'], override['l']), isFalse);
+      });
+
+      test('a null-valued base key is filled without sharing', () {
+        // `base[key] == null` is the same branch as an absent key, so an
+        // explicit null placeholder — the natural way to declare a slot a
+        // later layer fills — must not alias either.
+        final base = <String, dynamic>{'l': null, 'm': null};
+        final override = <String, dynamic>{
+          'l': [1],
+          'm': {'k': 'v'},
+        };
+
+        mergeMapsOneSided(base, override);
+
+        expect(identical(base['l'], override['l']), isFalse);
+        expect(identical(base['m'], override['m']), isFalse);
+      });
+
+      test('ownership holds at every depth of an inserted subtree', () {
+        // A shallow copy would pass the first assertion and fail this one,
+        // which is exactly the trap the documented `Map.from` recipe fell
+        // into.
+        final base = <String, dynamic>{};
+        final override = <String, dynamic>{
+          'a': {
+            'b': {
+              'c': [
+                {'d': 1},
+              ],
+            },
+          },
+        };
+
+        mergeMapsOneSided(base, override);
+
+        final overrideLeaf =
+            ((override['a'] as Map)['b'] as Map)['c'] as List;
+        (overrideLeaf[0] as Map)['d'] = 99;
+
+        final baseLeaf = ((base['a'] as Map)['b'] as Map)['c'] as List;
+        expect((baseLeaf[0] as Map)['d'], equals(1));
+      });
+
+      test('a narrowly typed base subtree accepts an inserted subtree', () {
+        // `{'host': 'h'}` is a Map<String, String>, and Dart generics are
+        // covariant, so it satisfies `is Map<String, dynamic>` and is merged
+        // into — then throws on the first entry of another type. The map
+        // counterpart of the reified-list hazard, and reached by the ordinary
+        // act of adding a subtree to an existing section.
+        final base = <String, dynamic>{
+          'db': {'host': 'h'},
+        };
+        final override = <String, dynamic>{
+          'db': {
+            'pool': {'max': 10},
+          },
+        };
+
+        mergeMapsOneSided(base, override);
+
+        final db = base['db'] as Map;
+        expect(db['host'], equals('h'));
+        expect((db['pool'] as Map)['max'], equals(10));
+      });
+
+      test('a subtree added by a recursive merge is not shared', () {
+        // The key exists on both sides, so the merge recurses; the sharing
+        // then happens one level down, where 'added' is absent from base.
+        final base = <String, dynamic>{
+          'db': {'host': 'h'},
+        };
+        final override = <String, dynamic>{
+          'db': {
+            'added': {'k': 'v'},
+          },
+        };
+
+        mergeMapsOneSided(base, override);
+
+        final baseDb = base['db'] as Map;
+        final overrideDb = override['db'] as Map;
+        expect(identical(baseDb['added'], overrideDb['added']), isFalse);
+      });
+
+      test('a list tail appended from the override is not shared', () {
+        // The tail travels through `sublist`, which copies the list but not
+        // the elements, so a structured element in the tail stayed shared.
+        final base = <String, dynamic>{
+          'l': [
+            {'n': 0},
+          ],
+        };
+        final override = <String, dynamic>{
+          'l': [
+            {'n': 0},
+            {'n': 1},
+          ],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        final baseList = base['l'] as List;
+        final overrideList = override['l'] as List;
+        expect(identical(baseList[1], overrideList[1]), isFalse);
+      });
+
+      test('the merge leaves the override document untouched', () {
+        final override = <String, dynamic>{
+          'db': {'host': 'h', 'port': 5432},
+          'l': [1, 2],
+        };
+        final before = jsonEncode(override);
+
+        mergeMapsOneSided(<String, dynamic>{'db': {}}, override);
+
+        expect(jsonEncode(override), equals(before));
+      });
+
+      test('layering two override documents keeps them independent', () {
+        // The flow the module exists for, and where the sharing did real
+        // damage: `base` used to hold live references into *both* override
+        // documents, so the second merge wrote through into the first.
+        final base = <String, dynamic>{};
+        final envConfig = <String, dynamic>{
+          'db': {'host': 'env-host'},
+        };
+        final localConfig = <String, dynamic>{
+          'db': {'host': 'local-host'},
+        };
+
+        mergeMapsOneSided(base, envConfig);
+        mergeMapsOneSided(base, localConfig);
+
+        expect((base['db'] as Map)['host'], equals('local-host'));
+        // The second merge must not have reached back into the first
+        // document through the reference the first merge stored.
+        expect((envConfig['db'] as Map)['host'], equals('env-host'));
+      });
+    });
+  });
+
+  group('deepCopyJsonTree', () {
+    test('returns an equal tree that shares no map or list', () {
+      final source = <String, dynamic>{
+        'scalar': 1,
+        'map': {'nested': true},
+        'list': [
+          1,
+          {'inner': 'x'},
+        ],
+      };
+
+      final copy = deepCopyJsonTree(source);
+
+      expect(copy, equals(source));
+      expect(identical(copy, source), isFalse);
+      expect(identical(copy['map'], source['map']), isFalse);
+      expect(identical(copy['list'], source['list']), isFalse);
+      expect(
+        identical((copy['list'] as List)[1], (source['list'] as List)[1]),
+        isFalse,
+      );
+    });
+
+    test('normalises narrowly reified maps and lists', () {
+      // A copy exists to be written into, so it must accept values of any
+      // type — a `List<int>` copied as a `List<int>` would throw on the
+      // first override that replaced an element with a string.
+      final source = <String, dynamic>{
+        'm': <String, int>{'a': 1},
+        'l': <int>[1, 2],
+      };
+
+      final copy = deepCopyJsonTree(source);
+
+      expect(copy['m'], isA<Map<String, dynamic>>());
+      expect(copy['l'], isA<List<dynamic>>());
+    });
+
+    test('shares scalar leaves, which are immutable in a JSON tree', () {
+      final source = <String, dynamic>{'s': 'text', 'n': 42, 'nil': null};
+
+      final copy = deepCopyJsonTree(source);
+
+      expect(copy['s'], equals('text'));
+      expect(copy['n'], equals(42));
+      expect(copy.containsKey('nil'), isTrue);
+      expect(copy['nil'], isNull);
+    });
   });
 
   group('traverseAndProcess', () {

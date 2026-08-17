@@ -69,7 +69,7 @@ List<dynamic> _mergeListsOneSided(
     final Object? overrideElement = override[i];
     if (baseElement is Map<String, dynamic> &&
         overrideElement is Map<String, dynamic>) {
-      mergeMapsOneSided(baseElement, overrideElement);
+      _mergeMapsOneSided(baseElement, overrideElement);
     } else if (baseElement is List && overrideElement is List) {
       result[i] =
           _mergeListsOneSided(baseElement, overrideElement, '$name[$i]');
@@ -93,6 +93,54 @@ List<dynamic> _mergeListsOneSided(
 // Map Merging
 // =============================================================================
 
+/// Returns a deep copy of [source] that shares no map or list with it.
+///
+/// Every nested map and list is rebuilt, so writing anywhere in the copy —
+/// including deep inside it — cannot reach [source]. This is what
+/// `Map<String, dynamic>.from` does *not* give you: that copies only the top
+/// level, leaving every nested subtree shared, so an in-place merge into the
+/// "copy" writes straight through into the original.
+///
+/// Use it to keep a document intact across a [mergeMapsOneSided], which
+/// mutates its first argument:
+///
+/// ```dart
+/// final merged = deepCopyJsonTree(baseConfig);
+/// mergeMapsOneSided(merged, overrides);
+/// // baseConfig is untouched
+/// ```
+///
+/// Maps are normalised to `Map<String, dynamic>` and lists to `List<dynamic>`,
+/// because a copy exists to be written into and a narrowly reified container
+/// would throw on the first value of another type. Non-String keys are
+/// converted with `toString()`; a JSON object's keys are strings by
+/// definition.
+///
+/// Scalar leaves are shared rather than copied. That is correct for the JSON
+/// scalars — `String`, `num`, `bool`, `null` are immutable — and is the only
+/// option for any other object a tree happens to carry, which cannot be
+/// cloned generically.
+Map<String, dynamic> deepCopyJsonTree(Map<String, dynamic> source) {
+  final Map<String, dynamic> copy = <String, dynamic>{};
+  source.forEach((String key, dynamic value) {
+    copy[key] = _deepCopyJsonValue(value);
+  });
+  return copy;
+}
+
+/// Deep-copies one value of a JSON tree. See [deepCopyJsonTree].
+dynamic _deepCopyJsonValue(dynamic value) {
+  if (value is Map) {
+    final Map<String, dynamic> copy = <String, dynamic>{};
+    value.forEach((dynamic k, dynamic v) => copy['$k'] = _deepCopyJsonValue(v));
+    return copy;
+  }
+  if (value is List) {
+    return value.map<dynamic>(_deepCopyJsonValue).toList();
+  }
+  return value;
+}
+
 /// Recursively merges [override] map into [base] map (one-sided deep merge).
 ///
 /// This function performs a deep merge where:
@@ -109,7 +157,19 @@ List<dynamic> _mergeListsOneSided(
 /// of another shape, at a key or at a list index — is refused with a logged
 /// error, and the base value is kept.
 ///
-/// **Important**: This modifies [base] in-place.
+/// **Important**: This modifies [base] in-place. To keep the original intact,
+/// copy it with [deepCopyJsonTree] first — `Map<String, dynamic>.from` is
+/// shallow and leaves every nested subtree shared, so the merge would write
+/// through into the map you meant to protect.
+///
+/// [override] is deep-copied before the merge, so it is never modified and the
+/// merged tree shares no map or list with it. The two documents therefore stay
+/// independent: a later edit to either cannot reach the other. This matters in
+/// the layered-config flow the function exists for — without it,
+/// `mergeMapsOneSided(base, env); mergeMapsOneSided(base, local);` would leave
+/// `base` holding live references into both documents, and the second merge
+/// would write back into the first. Scalar leaves are shared rather than
+/// copied, which is safe because JSON scalars are immutable.
 ///
 /// ## Parameters
 /// - [base]: The target map that will be modified with merged values
@@ -135,12 +195,39 @@ void mergeMapsOneSided(
   Map<String, dynamic> base,
   Map<String, dynamic> override,
 ) {
+  // Copy once, here, rather than at each point where a value is stored into
+  // [base]. After this line nothing else holds a reference into the tree being
+  // merged, so every reference the merge stores is owned by [base] — the
+  // invariant holds by construction, and cannot be broken by a later edit that
+  // adds another assignment site.
+  _mergeMapsOneSided(base, deepCopyJsonTree(override));
+}
+
+/// The recursive body of [mergeMapsOneSided].
+///
+/// Separate so the deep copy happens exactly once, at the outermost call:
+/// recursing through [mergeMapsOneSided] would re-copy every subtree at every
+/// level.
+void _mergeMapsOneSided(
+  Map<String, dynamic> base,
+  Map<String, dynamic> override,
+) {
   override.forEach((String oKey, dynamic oValue) {
     Object? baseObject = base[oKey];
     if (oValue is Map<String, dynamic>) {
       if (base.containsKey(oKey)) {
         if (baseObject is Map<String, dynamic>) {
-          mergeMapsOneSided(baseObject, oValue);
+          // Merge into a widened copy and write it back, exactly as the list
+          // branch below does. `baseObject is Map<String, dynamic>` is true
+          // even for a narrowly reified map — Dart generics are covariant, so
+          // the literal `{'host': 'h'}` is a `Map<String, String>` that
+          // satisfies the test and then throws on the first entry of another
+          // type the merge adds to it.
+          final Map<String, dynamic> merged = Map<String, dynamic>.of(
+            baseObject,
+          );
+          _mergeMapsOneSided(merged, oValue);
+          base[oKey] = merged;
         } else {
           tomLog.error(
             "Attempt to merge subtree named $oKey into non-subtree = $baseObject",
