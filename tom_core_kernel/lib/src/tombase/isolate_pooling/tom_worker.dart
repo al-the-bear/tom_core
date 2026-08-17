@@ -17,8 +17,8 @@
 /// ```dart
 /// // Create a worker context
 /// final context = TomWorkerContext(
-///   TomEnvironment.development,
-///   TomPlatform.mobile,
+///   defaultTomEnvironment,
+///   platformLinux,
 ///   [],
 ///   'MyWorker',
 /// );
@@ -35,6 +35,13 @@
 /// // Clean up
 /// worker.close();
 /// ```
+///
+/// The environment and platform are top-level constants from `tom_basics`,
+/// not static members: `defaultTomEnvironment` / `noTomEnvironment`, and
+/// `platformLinux`, `platformMacos`, `platformWindows`, `platformAndroid`,
+/// `platformIos`, `platformWeb`, `platformFuchsia` / `noTomPlatform`. An
+/// application with its own environments constructs them directly, e.g.
+/// `const TomEnvironment("staging")`.
 ///
 /// See also:
 /// - [TomWorker] for individual worker management
@@ -352,8 +359,8 @@ const String _healthPongMessage = '--- pong ---';
 /// ```dart
 /// class MyWorkerContext extends TomWorkerContext {
 ///   MyWorkerContext() : super(
-///     TomEnvironment.development,
-///     TomPlatform.mobile,
+///     defaultTomEnvironment,
+///     platformLinux,
 ///     [],
 ///     'MyWorker',
 ///   );
