@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-17T13:24:33.554571
+// Generated: 2026-08-17T14:06:47.629547
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -7459,14 +7459,20 @@ BridgedClass _createTomWorkerBridge() {
       },
     },
     staticGetters: {
-      'isMainIsolate': (visitor) => $tom_core_kernel_12.TomWorker.isMainIsolate,
       'readyMessage': (visitor) => $tom_core_kernel_12.TomWorker.readyMessage,
-      'executors': (visitor) => $tom_core_kernel_12.TomWorker.executors,
       'workerCount': (visitor) => $tom_core_kernel_12.TomWorker.workerCount,
+      'isMainIsolate': (visitor) => $tom_core_kernel_12.TomWorker.isMainIsolate,
+      'executors': (visitor) => $tom_core_kernel_12.TomWorker.executors,
     },
     staticMethods: {
       'resetWorkerCount': (visitor, positional, named, typeArgs) {
         return $tom_core_kernel_12.TomWorker.resetWorkerCount();
+      },
+      'simulateWorkerIsolate': (visitor, positional, named, typeArgs) {
+        return $tom_core_kernel_12.TomWorker.simulateWorkerIsolate();
+      },
+      'resetIsMainIsolate': (visitor, positional, named, typeArgs) {
+        return $tom_core_kernel_12.TomWorker.resetIsMainIsolate();
       },
       'spawn': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'spawn');
@@ -7478,6 +7484,19 @@ BridgedClass _createTomWorkerBridge() {
         final workerContext = D4.getRequiredArg<$tom_core_kernel_12.TomWorkerContext>(positional, 1, 'workerContext', 'spawn');
         final readyTimeout = D4.getNamedArgWithDefault<Duration>(named, 'readyTimeout', const Duration(seconds: 30));
         return $tom_core_kernel_12.TomWorker.spawn(initializer, workerContext, readyTimeout: readyTimeout);
+      },
+      'addExecutor': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'addExecutor');
+        final executor = D4.getRequiredArg<$tom_core_kernel_12.TomExecutor>(positional, 0, 'executor', 'addExecutor');
+        return $tom_core_kernel_12.TomWorker.addExecutor(executor);
+      },
+      'removeExecutor': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'removeExecutor');
+        final executor = D4.getRequiredArg<$tom_core_kernel_12.TomExecutor>(positional, 0, 'executor', 'removeExecutor');
+        return $tom_core_kernel_12.TomWorker.removeExecutor(executor);
+      },
+      'clearExecutors': (visitor, positional, named, typeArgs) {
+        return $tom_core_kernel_12.TomWorker.clearExecutors();
       },
       'startRemoteIsolate': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'startRemoteIsolate');
@@ -7497,12 +7516,6 @@ BridgedClass _createTomWorkerBridge() {
         final command = D4.getRequiredArg<Object>(positional, 0, 'command', 'executeInCreator');
         return $tom_core_kernel_12.TomWorker.executeInCreator(command);
       },
-    },
-    staticSetters: {
-      'isMainIsolate': (visitor, value) => 
-        $tom_core_kernel_12.TomWorker.isMainIsolate = D4.extractBridgedArg<bool>(value, 'isMainIsolate'),
-      'executors': (visitor, value) => 
-        $tom_core_kernel_12.TomWorker.executors = D4.coerceList<$tom_core_kernel_12.TomExecutor>(value, 'executors'),
     },
     methodSignatures: {
       'isBusy': 'bool isBusy()',
@@ -7524,21 +7537,22 @@ BridgedClass _createTomWorkerBridge() {
     },
     staticMethodSignatures: {
       'resetWorkerCount': 'void resetWorkerCount()',
+      'simulateWorkerIsolate': 'void simulateWorkerIsolate()',
+      'resetIsMainIsolate': 'void resetIsMainIsolate()',
       'spawn': 'Future<TomWorker> spawn(void Function(TomWorkerContext) initializer, TomWorkerContext workerContext, {Duration readyTimeout = const Duration(seconds: 30)})',
+      'addExecutor': 'void addExecutor(TomExecutor executor)',
+      'removeExecutor': 'bool removeExecutor(TomExecutor executor)',
+      'clearExecutors': 'void clearExecutors()',
       'startRemoteIsolate': 'void startRemoteIsolate(TomWorkerContext context)',
       'canSendToCreator': 'bool canSendToCreator()',
       'sendToCreator': 'void sendToCreator(Object o)',
       'executeInCreator': 'Future<Object?> executeInCreator(Object command)',
     },
     staticGetterSignatures: {
-      'isMainIsolate': 'bool get isMainIsolate',
       'readyMessage': 'String get readyMessage',
-      'executors': 'List<TomExecutor> get executors',
       'workerCount': 'int get workerCount',
-    },
-    staticSetterSignatures: {
-      'isMainIsolate': 'set isMainIsolate(dynamic value)',
-      'executors': 'set executors(dynamic value)',
+      'isMainIsolate': 'bool get isMainIsolate',
+      'executors': 'List<TomExecutor> get executors',
     },
   );
 }
