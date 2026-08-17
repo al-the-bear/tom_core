@@ -296,6 +296,26 @@ class _TomIsolateResponse {
   _TomIsolateResponse(this.id, this.response);
 }
 
+/// Internal report that a worker isolate failed to initialize itself.
+///
+/// [TomWorkerContext.initializeIsolate] runs inside the new isolate, so an
+/// exception it throws cannot reach the creator by unwinding — it would end
+/// the isolate's entry point, leaving the ready signal unsent and the awaiting
+/// [TomWorker.spawn] blocked forever. The isolate therefore reports the failure
+/// explicitly on the channel the creator is already listening to.
+///
+/// The error and stack travel as strings because neither is guaranteed to be
+/// sendable across an isolate boundary.
+class _TomIsolateInitFailure {
+  /// The `toString()` of whatever [TomWorkerContext.initializeIsolate] threw.
+  final String error;
+
+  /// The stack trace captured where the failure was thrown, as a string.
+  final String stack;
+
+  _TomIsolateInitFailure(this.error, this.stack);
+}
+
 /// Internal liveness-probe command sent by pool supervision to an idle worker.
 ///
 /// The worker's message loop answers it immediately with [_healthPongMessage],
@@ -325,6 +345,8 @@ const String _healthPongMessage = '--- pong ---';
 /// 2. [initializeIsolate] is called in the new isolate (static context)
 /// 3. [initializeWorker] is called on the TomWorker instance
 ///
+/// Both hooks report failure by throwing; see [initializeIsolate].
+///
 /// ## Example
 ///
 /// ```dart
@@ -337,17 +359,17 @@ const String _healthPongMessage = '--- pong ---';
 ///   );
 ///
 ///   @override
-///   Future<bool> initializeIsolate() async {
-///     // Set up isolate-specific resources
+///   Future<void> initializeIsolate() async {
+///     // Set up isolate-specific resources. Throwing here — directly, or out
+///     // of setupDatabase — aborts the spawn instead of producing a worker
+///     // with half its setup done.
 ///     await setupDatabase();
-///     return true;
 ///   }
 ///
 ///   @override
-///   Future<bool> initializeWorker(TomWorker worker) async {
+///   Future<void> initializeWorker(TomWorker worker) async {
 ///     // Configure the worker instance
 ///     worker.sendExecutorToIsolate(MyExecutor());
-///     return true;
 ///   }
 /// }
 /// ```
@@ -392,10 +414,11 @@ class TomWorkerContext {
   /// setting up global resources, registering services, or configuring
   /// the isolate environment.
   ///
-  /// Returns `true` if initialization was successful.
-  Future<bool> initializeIsolate() async {
-    return true;
-  }
+  /// Signal a failure by throwing. [TomWorker.spawn] reports the throw to the
+  /// caller as a [TomWorkerException] and tears the half-started isolate down,
+  /// so a worker whose setup did not complete never joins a pool and never
+  /// takes work.
+  Future<void> initializeIsolate() async {}
 
   /// Called on the newly created [TomWorker] instance.
   ///
@@ -404,10 +427,10 @@ class TomWorkerContext {
   ///
   /// - [worker]: The newly created worker instance
   ///
-  /// Returns `true` if initialization was successful.
-  Future<bool> initializeWorker(TomWorker worker) async {
-    return true;
-  }
+  /// Signal a failure by throwing; see [initializeIsolate] for what the throw
+  /// does. This is the hook most likely to fail in practice, because acquiring
+  /// resources is exactly what it is for.
+  Future<void> initializeWorker(TomWorker worker) async {}
 }
 
 // =============================================================================
@@ -487,6 +510,13 @@ class TomWorker {
   /// The underlying Dart Isolate instance.
   final Isolate isolate;
 
+  /// The debug name this worker's isolate was spawned with, e.g. `W001`.
+  ///
+  /// Kept here rather than read back from [isolate]: `Isolate.debugName` is
+  /// only populated inside the isolate itself, so on this side it is always
+  /// `null` and every message built from it would identify nothing.
+  final String name;
+
   /// Tracks pending requests awaiting responses from the worker.
   final Map<int, Completer<Object?>> _activeRequests = {};
   int _idCounter = 0;
@@ -514,7 +544,7 @@ class TomWorker {
   bool _closed = false;
 
   /// Private constructor - use [spawn] to create instances.
-  TomWorker._(this._responses, this._commands, this.isolate) {
+  TomWorker._(this._responses, this._commands, this.isolate, this.name) {
     _responses.listen(_handleResponsesFromIsolate);
   }
 
@@ -561,13 +591,14 @@ class TomWorker {
 
     // Spawn the isolate.
     Isolate? isolate;
+    final workerName =
+        "${workerContext.namePrefix}${(_workerCount++).toString().padLeft(3, '0')}";
     try {
       workerContext._addSendPort(initPort.sendPort);
       isolate = await Isolate.spawn<TomWorkerContext>(
         initializer,
         workerContext,
-        debugName:
-            "${workerContext.namePrefix}${(_workerCount++).toString().padLeft(3, '0')}",
+        debugName: workerName,
       );
     } on Object {
       initPort.close();
@@ -577,17 +608,26 @@ class TomWorker {
     final (ReceivePort receivePort, SendPort sendPort) =
         await connection.future;
 
-    TomWorker worker = TomWorker._(receivePort, sendPort, isolate);
+    TomWorker worker = TomWorker._(receivePort, sendPort, isolate, workerName);
     tomLog.trace(
       "starting initialization of creator/worker ${Isolate.current.debugName}",
     );
     var timer = Stopwatch()..start();
-    await workerContext.initializeWorker(worker);
-    tomLog.info(
-      "finished initialization of creator/worker ${Isolate.current.debugName}, took ${timer.elapsedMilliseconds}ms",
-    );
-
-    return worker._instanceCompleter.future;
+    // Everything from here on runs with a live isolate that the caller cannot
+    // yet reach: spawn has not returned, so no TomWorker reference exists to
+    // close(). A failure must therefore tear the isolate down here, or it stays
+    // in its message loop holding its ports open for the life of the process.
+    try {
+      await workerContext.initializeWorker(worker);
+      tomLog.info(
+        "finished initialization of creator/worker ${Isolate.current.debugName}, took ${timer.elapsedMilliseconds}ms",
+      );
+      return await worker._instanceCompleter.future;
+    } on Object {
+      isolate.kill(priority: Isolate.immediate);
+      receivePort.close();
+      rethrow;
+    }
   }
 
   /// Handles incoming messages from the worker isolate.
@@ -601,6 +641,21 @@ class TomWorker {
     if (message is String && message == readyMessage) {
       isReady = true;
       _instanceCompleter.complete(this);
+    } else if (message is _TomIsolateInitFailure) {
+      // The isolate could not set itself up, so it will never send the ready
+      // signal. Fail the spawn with the isolate-side reason rather than let
+      // the caller wait for a message that is not coming.
+      _instanceCompleter.completeError(
+        TomWorkerException(
+          'isolate.initialize_isolate_failed.spawn',
+          'initializeIsolate failed for TomWorker $name: ${message.error}',
+          parameters: {
+            'isolateName': name,
+            'error': message.error,
+            'isolateStack': message.stack,
+          },
+        ),
+      );
     } else if (message is _TomIsolateResponse) {
       // The request may already be gone: a timed-out [ping] abandons its
       // completer and removes the id before the (late) pong arrives, so a
@@ -647,7 +702,7 @@ class TomWorker {
         );
       } catch (exception, s) {
         tomLog.error(
-          "Failed execute message from Isolate $message $executor from ${isolate.debugName} to ${Isolate.current.debugName}",
+          "Failed execute message from Isolate $message $executor from $name to ${Isolate.current.debugName}",
         );
         tomPrintStackTrace(s);
         _commands.send(_TomCreatorResponse(message.id, exception));
@@ -668,12 +723,12 @@ class TomWorker {
         }
       } catch (e) {
         tomLog.error(
-          "Failed to execute message from Isolate $message $executor from ${isolate.debugName} to ${Isolate.current.debugName}: $e",
+          "Failed to execute message from Isolate $message $executor from $name to ${Isolate.current.debugName}: $e",
         );
       }
     } else {
       tomLog.error(
-        "Received invalid message from Isolate ${isolate.debugName} $message and no Executor has been set",
+        "Received invalid message from Isolate $name $message and no Executor has been set",
       );
     }
   }
@@ -794,6 +849,11 @@ class TomWorker {
   ///
   /// Throws [TomWorkerException] if the context's sendPort is null.
   ///
+  /// If [TomWorkerContext.initializeIsolate] throws, the failure is reported to
+  /// the creator and the isolate stops without ever signalling readiness — it
+  /// cannot be reported by unwinding, because nothing in this isolate awaits
+  /// this entry point.
+  ///
   /// Example:
   /// ```dart
   /// final worker = await TomWorker.spawn(
@@ -812,7 +872,17 @@ class TomWorker {
     final receivePort = ReceivePort();
     context._sendPort!.send(receivePort.sendPort);
     //tomLog.trace("starting initialization of isolate ${Isolate.current.debugName}");
-    await context.initializeIsolate();
+    try {
+      await context.initializeIsolate();
+    } on Object catch (e, s) {
+      // This entry point was invoked by the isolate runtime, so a rethrow ends
+      // the isolate as an unhandled error and the creator simply never hears
+      // the ready signal — it would wait forever. Reporting the failure on the
+      // channel the creator already listens to is the only way out.
+      context._sendPort!.send(_TomIsolateInitFailure(e.toString(), s.toString()));
+      receivePort.close();
+      return;
+    }
     tomLog.trace(
       "finished initialization of isolate ${Isolate.current.debugName}",
     );
@@ -932,8 +1002,8 @@ class TomWorker {
   TomWorkerException _closedException(String site, String attempt) =>
       TomWorkerException(
         'isolate.worker_closed.$site',
-        'Cannot $attempt TomWorker ${isolate.debugName}: it has been closed.',
-        parameters: {'isolateName': isolate.debugName},
+        'Cannot $attempt TomWorker $name: it has been closed.',
+        parameters: {'isolateName': name},
       );
 
   /// Registers a one-shot [onDeath] callback for unexpected isolate exit.
@@ -976,9 +1046,9 @@ class TomWorker {
         completer.completeError(
           TomWorkerDiedException(
             'isolate.worker_died.in_flight_request',
-            'Worker isolate ${isolate.debugName} died while a command was '
+            'Worker isolate $name died while a command was '
                 'in flight; the request was failed rather than re-dispatched.',
-            parameters: {'isolateName': isolate.debugName},
+            parameters: {'isolateName': name},
           ),
         );
       }
@@ -1067,7 +1137,7 @@ class TomWorker {
       _commands.send('shutdown');
       if (_activeRequests.isEmpty) _responses.close();
       tomLog.trace(
-        '--- port closed  ${isolate.debugName}  ${Isolate.current.debugName} --- ',
+        '--- port closed  $name  ${Isolate.current.debugName} --- ',
       );
     }
   }

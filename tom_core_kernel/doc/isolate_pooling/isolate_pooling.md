@@ -110,20 +110,25 @@ class MyWorkerContext extends TomWorkerContext {
   );
 
   @override
-  Future<bool> initializeIsolate() async {
+  Future<void> initializeIsolate() async {
     // Called in the new isolate (static context)
     await setupResources();
-    return true;
   }
 
   @override
-  Future<bool> initializeWorker(TomWorker worker) async {
+  Future<void> initializeWorker(TomWorker worker) async {
     // Called on the TomWorker instance
     worker.sendExecutorToIsolate(MyExecutor());
-    return true;
   }
 }
 ```
+
+Both hooks report failure by throwing. A throw out of either one — directly or
+out of the setup it awaits — aborts `TomWorker.spawn` and tears the half-started
+isolate down, so a worker whose setup did not complete never joins a pool and
+never takes work. An isolate-side refusal reaches the caller as a
+`TomWorkerException` with key `isolate.initialize_isolate_failed.spawn`, carrying
+the isolate's error and stack in its parameters.
 
 ### TomExecutor
 
@@ -357,10 +362,11 @@ class DatabaseWorkerContext extends TomWorkerContext {
   );
 
   @override
-  Future<bool> initializeIsolate() async {
-    // Initialize database connection in the isolate
+  Future<void> initializeIsolate() async {
+    // Initialize database connection in the isolate. A connection failure
+    // throws, which aborts the spawn rather than yielding a connectionless
+    // worker.
     await Database.connect(connectionString);
-    return true;
   }
 }
 ```

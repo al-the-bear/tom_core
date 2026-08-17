@@ -71,11 +71,10 @@ import '../isolate_pooling/tom_worker.dart';
 /// ```dart
 /// class CustomLoggingContext extends TomLoggingWorkerContext {
 ///   @override
-///   Future<bool> initializeIsolate() async {
+///   Future<void> initializeIsolate() async {
 ///     await super.initializeIsolate();
 ///     // Redirect all collected logs to a file
 ///     tomLog.logOutput = FileLogOutput();
-///     return true;
 ///   }
 /// }
 /// ```
@@ -311,10 +310,9 @@ class TomCreatorLogOutput extends TomLogOutput {
 ///   RemoteLoggingContext(super.env, super.platform, super.args, super.prefix);
 ///
 ///   @override
-///   Future<bool> initializeIsolate() async {
+///   Future<void> initializeIsolate() async {
 ///     await super.initializeIsolate();
 ///     tomLog.logOutput = TomRemoteLogOutput();
-///     return true;
 ///   }
 /// }
 /// ```
@@ -328,9 +326,8 @@ class TomLoggingWorkerContext extends TomWorkerContext {
   );
 
   @override
-  Future<bool> initializeIsolate() async {
+  Future<void> initializeIsolate() async {
     TomWorker.executors.add(TomLoggingExecutor());
-    return true;
   }
 }
 

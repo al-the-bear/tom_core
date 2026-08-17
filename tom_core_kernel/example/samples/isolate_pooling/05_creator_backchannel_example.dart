@@ -37,15 +37,13 @@ class BackchannelWorkerContext extends TomWorkerContext {
       : super(defaultTomEnvironment, platformLinux, [], 'Backchannel');
 
   @override
-  Future<bool> initializeIsolate() async {
+  Future<void> initializeIsolate() async {
     // Isolate-local setup would go here (open resources, register services).
-    return true;
   }
 
   @override
-  Future<bool> initializeWorker(TomWorker worker) async {
+  Future<void> initializeWorker(TomWorker worker) async {
     workerInitialized = true;
-    return true;
   }
 }
 

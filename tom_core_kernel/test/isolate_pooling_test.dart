@@ -213,15 +213,13 @@ class TestWorkerContext extends TomWorkerContext {
         );
 
   @override
-  Future<bool> initializeIsolate() async {
+  Future<void> initializeIsolate() async {
     isolateInitialized = true;
-    return true;
   }
 
   @override
-  Future<bool> initializeWorker(TomWorker worker) async {
+  Future<void> initializeWorker(TomWorker worker) async {
     workerInitialized = true;
-    return true;
   }
 }
 
@@ -236,9 +234,47 @@ class ExecutorWorkerContext extends TomWorkerContext {
         );
 
   @override
-  Future<bool> initializeWorker(TomWorker worker) async {
+  Future<void> initializeWorker(TomWorker worker) async {
     worker.sendExecutorToIsolate(TestStringExecutor());
-    return true;
+  }
+}
+
+/// Worker context whose initialization hooks can be made to fail on demand.
+///
+/// [exitPort] is registered as the isolate's own exit listener *before* either
+/// hook can throw, so a test can observe whether the isolate was torn down —
+/// the creator never receives a [TomWorker] on a failed spawn and so has no
+/// other handle on it.
+class FailingInitContext extends TomWorkerContext {
+  final SendPort exitPort;
+  final bool failIsolateHook;
+  final bool failWorkerHook;
+
+  FailingInitContext(
+    this.exitPort, {
+    this.failIsolateHook = false,
+    this.failWorkerHook = false,
+    String namePrefix = 'FailInit',
+  }) : super(
+          const TomEnvironment('test', isTest: true),
+          platformLinux,
+          [],
+          namePrefix,
+        );
+
+  @override
+  Future<void> initializeIsolate() async {
+    Isolate.current.addOnExitListener(exitPort, response: 'exited');
+    if (failIsolateHook) {
+      throw StateError('initializeIsolate refused');
+    }
+  }
+
+  @override
+  Future<void> initializeWorker(TomWorker worker) async {
+    if (failWorkerHook) {
+      throw StateError('initializeWorker refused');
+    }
   }
 }
 
@@ -423,8 +459,26 @@ void main() {
       });
     });
 
-    group('initializeIsolate', () {
-      test('should return true by default', () async {
+    group('initialization hooks', () {
+      /// Spawns with [context] and returns the exit responses the isolate's own
+      /// exit listener produced, so a test can tell a torn-down isolate from a
+      /// leaked one.
+      Future<List<Object?>> exitsWhileSpawning(
+        Future<void> Function() attempt,
+        ReceivePort exits,
+      ) async {
+        final seen = <Object?>[];
+        exits.listen(seen.add);
+        await attempt();
+        // The kill is asynchronous; give the exit message a chance to arrive.
+        await Future<void>.delayed(Duration(milliseconds: 300));
+        exits.close();
+        return seen;
+      }
+
+      test('the base hooks do nothing and complete', () async {
+        // The contract is "override to do work, throw to refuse" — the base
+        // implementations exist only so a subclass may override just one.
         final context = TomWorkerContext(
           const TomEnvironment('test'),
           platformLinux,
@@ -432,25 +486,125 @@ void main() {
           'Test',
         );
 
-        final result = await context.initializeIsolate();
-
-        expect(result, isTrue);
+        await expectLater(context.initializeIsolate(), completes);
       });
-    });
 
-    group('initializeWorker', () {
-      test('should return true by default', () async {
-        final context = TomWorkerContext(
-          const TomEnvironment('test'),
-          platformLinux,
-          [],
-          'Test',
+      test('a throwing initializeWorker aborts the spawn', () async {
+        final exits = ReceivePort();
+        addTearDown(() {
+          try {
+            exits.close();
+          } on Object {
+            // Already closed by the helper.
+          }
+        });
+
+        // Throwing is the only way either hook can refuse: they return void.
+        await expectLater(
+          TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            FailingInitContext(exits.sendPort, failWorkerHook: true),
+          ),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('a throwing initializeWorker leaves no live isolate behind',
+          () async {
+        // spawn never returns a TomWorker here, so the caller has no handle to
+        // close(). If spawn did not tear the isolate down itself, it would sit
+        // in its message loop holding its ports for the life of the process.
+        final exits = ReceivePort();
+        final seen = await exitsWhileSpawning(
+          () async {
+            try {
+              await TomWorker.spawn(
+                TomWorker.startRemoteIsolate,
+                FailingInitContext(exits.sendPort, failWorkerHook: true),
+              );
+            } on StateError {
+              // The refusal itself is asserted by the previous test.
+            }
+          },
+          exits,
         );
 
-        // Create a mock worker for testing
-        // Note: We can't easily test this without spawning a real worker
-        // This test validates the method signature exists
-        expect(context.initializeWorker, isNotNull);
+        expect(seen, contains('exited'));
+      });
+
+      test('a throwing initializeIsolate aborts the spawn instead of hanging',
+          () async {
+        final exits = ReceivePort();
+        addTearDown(() {
+          try {
+            exits.close();
+          } on Object {
+            // Already closed by the helper.
+          }
+        });
+
+        // initializeIsolate runs inside the worker isolate, where a throw
+        // cannot unwind to the creator: it ends the isolate's entry point, the
+        // ready signal is never sent, and an unguarded spawn would wait for it
+        // forever. The failure has to travel back as a message instead.
+        await expectLater(
+          TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            FailingInitContext(exits.sendPort, failIsolateHook: true),
+          ).timeout(Duration(seconds: 10)),
+          throwsA(isA<TomWorkerException>()),
+        );
+      });
+
+      test('the isolate-side refusal carries the reason and the worker name',
+          () async {
+        final exits = ReceivePort();
+        addTearDown(() {
+          try {
+            exits.close();
+          } on Object {
+            // Already closed by the helper.
+          }
+        });
+
+        // The exception is rebuilt in the creator, so without the isolate's own
+        // message the caller would be told only that initialization failed —
+        // not by what, nor in which of several workers.
+        try {
+          await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            FailingInitContext(
+              exits.sendPort,
+              failIsolateHook: true,
+              namePrefix: 'NamedFail',
+            ),
+          ).timeout(Duration(seconds: 10));
+          fail('a throwing initializeIsolate must abort the spawn');
+        } on TomWorkerException catch (e) {
+          expect(e.key, equals('isolate.initialize_isolate_failed.spawn'));
+          expect(e.parameters?['error'], contains('initializeIsolate refused'));
+          expect(e.parameters?['isolateName'], startsWith('NamedFail'));
+        }
+      });
+
+      test('a throwing initializeIsolate leaves no live isolate behind',
+          () async {
+        final exits = ReceivePort();
+        final seen = await exitsWhileSpawning(
+          () async {
+            try {
+              await TomWorker.spawn(
+                TomWorker.startRemoteIsolate,
+                FailingInitContext(exits.sendPort, failIsolateHook: true),
+              ).timeout(Duration(seconds: 10));
+            } on TomWorkerException {
+              // The refusal itself is asserted by the previous tests.
+            }
+          },
+          exits,
+        );
+
+        expect(seen, contains('exited'));
       });
     });
   });
@@ -802,13 +956,16 @@ void main() {
         worker.close();
 
         // A pool closes many workers at once, so "which one" is the first
-        // question the message has to answer.
+        // question the message has to answer. Assert against the prefix the
+        // caller chose rather than against `worker.isolate.debugName`, which is
+        // null on this side of the boundary and would make the check vacuous.
         try {
           await worker.executeCommand(ComputeCommand(1, 2));
           fail('executeCommand on a closed worker must throw');
         } on TomWorkerException catch (e) {
           expect(e.key, equals('isolate.worker_closed.execute_after_close'));
-          expect(e.parameters?['isolateName'], equals(worker.isolate.debugName));
+          expect(e.parameters?['isolateName'], equals(worker.name));
+          expect(worker.name, startsWith('ClosedNamed'));
         }
       });
 

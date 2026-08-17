@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-10T15:41:53.253236
+// Generated: 2026-08-17T12:07:23.855681
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -129,6 +129,7 @@ class TomCoreKernelBridge {
       _createTomContextProvidersBridge(),
       _createTomServerConnectionExceptionBridge(),
       _createTomRequestAbortedExceptionBridge(),
+      _createTomRequestTimeoutExceptionBridge(),
       _createTomServerCallSpecsBridge(),
       _createTomServerCallLoadBridge(),
       _createTomServerCallErrorBridge(),
@@ -389,6 +390,7 @@ class TomCoreKernelBridge {
       'TomContextProviders': _createTomContextProvidersBridge,
       'TomServerConnectionException': _createTomServerConnectionExceptionBridge,
       'TomRequestAbortedException': _createTomRequestAbortedExceptionBridge,
+      'TomRequestTimeoutException': _createTomRequestTimeoutExceptionBridge,
       'TomServerCallSpecs': _createTomServerCallSpecsBridge,
       'TomServerCallLoad': _createTomServerCallLoadBridge,
       'TomServerCallError': _createTomServerCallErrorBridge,
@@ -648,6 +650,7 @@ class TomCoreKernelBridge {
       'TomContextProviders': $tom_core_kernel_2.TomContextProviders,
       'TomServerConnectionException': $tom_core_kernel_11.TomServerConnectionException,
       'TomRequestAbortedException': $tom_core_kernel_11.TomRequestAbortedException,
+      'TomRequestTimeoutException': $tom_core_kernel_11.TomRequestTimeoutException,
       'TomServerCallSpecs': $tom_core_kernel_11.TomServerCallSpecs,
       'TomServerCallLoad': $tom_core_kernel_11.TomServerCallLoad,
       'TomServerCallError': $tom_core_kernel_11.TomServerCallError,
@@ -908,6 +911,7 @@ class TomCoreKernelBridge {
       'TomContextProviders': 'package:tom_core_kernel/src/tombase/context/execution_context.dart',
       'TomServerConnectionException': 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart',
       'TomRequestAbortedException': 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart',
+      'TomRequestTimeoutException': 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart',
       'TomServerCallSpecs': 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart',
       'TomServerCallLoad': 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart',
       'TomServerCallError': 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart',
@@ -1150,6 +1154,7 @@ class TomCoreKernelBridge {
       'TomBeanLocatorException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomServerConnectionException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomRequestAbortedException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
+      'TomRequestTimeoutException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomHttpClientFactory': ['TomHttpClientAbstractFactory'],
       'TomDefaultHttpClientFactory': ['TomHttpClientFactory', 'TomHttpClientAbstractFactory'],
       'TomAuthExpiredException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
@@ -4006,11 +4011,23 @@ BridgedClass _createTomBeanBridge() {
         final bean = D4.getRequiredArg<Object>(positional, 1, 'bean', 'TomBean');
         return $tom_core_kernel_1.TomBean.withName(name, bean);
       },
+      'overrideWithName': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomBean');
+        final name = D4.getRequiredArg<String>(positional, 0, 'name', 'TomBean');
+        final bean = D4.getRequiredArg<Object>(positional, 1, 'bean', 'TomBean');
+        return $tom_core_kernel_1.TomBean.overrideWithName(name, bean);
+      },
       'withType': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'TomBean');
         final t_ = D4.getRequiredArg<Type>(positional, 0, 't', 'TomBean');
         final bean = D4.getRequiredArg<Object>(positional, 1, 'bean', 'TomBean');
         return $tom_core_kernel_1.TomBean.withType(t_, bean);
+      },
+      'overrideWithType': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomBean');
+        final t_ = D4.getRequiredArg<Type>(positional, 0, 't', 'TomBean');
+        final bean = D4.getRequiredArg<Object>(positional, 1, 'bean', 'TomBean');
+        return $tom_core_kernel_1.TomBean.overrideWithType(t_, bean);
       },
     },
     methods: {
@@ -4074,7 +4091,9 @@ BridgedClass _createTomBeanBridge() {
       '': 'TomBean()',
       'fromName': 'factory TomBean.fromName(String name)',
       'withName': 'factory TomBean.withName(String name, Object bean)',
+      'overrideWithName': 'factory TomBean.overrideWithName(String name, Object bean)',
       'withType': 'factory TomBean.withType(Type t, Object bean)',
+      'overrideWithType': 'factory TomBean.overrideWithType(Type t, Object bean)',
     },
     methodSignatures: {
       'getType': 'Type getType()',
@@ -4603,6 +4622,114 @@ BridgedClass _createTomRequestAbortedExceptionBridge() {
 }
 
 // =============================================================================
+// TomRequestTimeoutException Bridge
+// =============================================================================
+
+BridgedClass _createTomRequestTimeoutExceptionBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_11.TomRequestTimeoutException,
+    name: 'TomRequestTimeoutException',
+    isAssignable: (v) => v is $tom_core_kernel_11.TomRequestTimeoutException,
+    hierarchyDepth: 4,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomRequestTimeoutException');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomRequestTimeoutException');
+        final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomRequestTimeoutException');
+        final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
+        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
+        final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
+        final requestUuid = D4.getOptionalNamedArg<String?>(named, 'requestUuid');
+        return $tom_core_kernel_11.TomRequestTimeoutException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog, requestUuid: requestUuid);
+      },
+    },
+    getters: {
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').serverCallError,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').logRepresentation,
+    },
+    setters: {
+      'uuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+      'requestUuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+      'timeStamp': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+      'key': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').key = D4.extractBridgedArg<String>(value, 'key'),
+      'defaultUserMessage': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+      'stack': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+      'rootException': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+      'stackTrace': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+      'autoLog': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+      'serverCallError': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_11.TomServerCallError>(value, 'serverCallError'),
+    },
+    methods: {
+      'toString': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException');
+        return t.toString();
+      },
+      'printStackTrace': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_11.TomRequestTimeoutException>(target, 'TomRequestTimeoutException');
+        final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
+        t.printStackTrace(depth);
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomRequestTimeoutException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? requestUuid})',
+    },
+    methodSignatures: {
+      'toString': 'String toString()',
+      'printStackTrace': 'void printStackTrace([int depth = -1])',
+    },
+    getterSignatures: {
+      'uuid': 'String get uuid',
+      'requestUuid': 'String? get requestUuid',
+      'timeStamp': 'DateTime get timeStamp',
+      'key': 'String get key',
+      'defaultUserMessage': 'String get defaultUserMessage',
+      'parameters': 'Map<String, Object?>? get parameters',
+      'stack': 'Object? get stack',
+      'rootException': 'Object? get rootException',
+      'stackTrace': 'String get stackTrace',
+      'autoLog': 'bool get autoLog',
+      'serverCallError': 'TomServerCallError? get serverCallError',
+      'logRepresentation': 'String get logRepresentation',
+    },
+    setterSignatures: {
+      'uuid': 'set uuid(String value)',
+      'requestUuid': 'set requestUuid(String? value)',
+      'timeStamp': 'set timeStamp(DateTime value)',
+      'key': 'set key(String value)',
+      'defaultUserMessage': 'set defaultUserMessage(String value)',
+      'parameters': 'set parameters(Map<String, Object?>? value)',
+      'stack': 'set stack(Object? value)',
+      'rootException': 'set rootException(Object? value)',
+      'stackTrace': 'set stackTrace(String value)',
+      'autoLog': 'set autoLog(bool value)',
+      'serverCallError': 'set serverCallError(TomServerCallError? value)',
+    },
+  );
+}
+
+// =============================================================================
 // TomServerCallSpecs Bridge
 // =============================================================================
 
@@ -4618,15 +4745,14 @@ BridgedClass _createTomServerCallSpecsBridge() {
         final url = D4.getRequiredArg<Uri>(positional, 1, 'url', 'TomServerCallSpecs');
         final contentLength = D4.getOptionalNamedArg<int?>(named, 'contentLength');
         final followRedirects = D4.getOptionalNamedArg<bool?>(named, 'followRedirects');
-        final headers = named.containsKey('headers') && named['headers'] != null
-            ? D4.coerceMapOrNull<String, String>(named['headers'], 'headers')
-            : const <String, String>{};
+        final headers = D4.coerceMapOrNull<String, String>(named['headers'], 'headers');
         final maxRedirects = D4.getOptionalNamedArg<int?>(named, 'maxRedirects');
         final persistentConnection = D4.getOptionalNamedArg<bool?>(named, 'persistentConnection');
         final includeBearerAuthentication = D4.getNamedArgWithDefault<bool>(named, 'includeBearerAuthentication', true);
         final requestEncoding = D4.getOptionalNamedArg<Encoding?>(named, 'requestEncoding');
         final fallbackResponseEncoding = D4.getOptionalNamedArg<Encoding?>(named, 'fallbackResponseEncoding');
-        return $tom_core_kernel_11.TomServerCallSpecs(method, url, contentLength: contentLength, followRedirects: followRedirects, headers: headers, maxRedirects: maxRedirects, persistentConnection: persistentConnection, includeBearerAuthentication: includeBearerAuthentication, requestEncoding: requestEncoding, fallbackResponseEncoding: fallbackResponseEncoding);
+        final timeout = D4.getOptionalNamedArg<Duration?>(named, 'timeout');
+        return $tom_core_kernel_11.TomServerCallSpecs(method, url, contentLength: contentLength, followRedirects: followRedirects, headers: headers, maxRedirects: maxRedirects, persistentConnection: persistentConnection, includeBearerAuthentication: includeBearerAuthentication, requestEncoding: requestEncoding, fallbackResponseEncoding: fallbackResponseEncoding, timeout: timeout);
       },
     },
     getters: {
@@ -4639,20 +4765,22 @@ BridgedClass _createTomServerCallSpecsBridge() {
       'includeBearerAuthentication': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomServerCallSpecs>(target, 'TomServerCallSpecs').includeBearerAuthentication,
       'requestEncoding': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomServerCallSpecs>(target, 'TomServerCallSpecs').requestEncoding,
       'fallbackResponseEncoding': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomServerCallSpecs>(target, 'TomServerCallSpecs').fallbackResponseEncoding,
+      'timeout': (visitor, target) => D4.validateTarget<$tom_core_kernel_11.TomServerCallSpecs>(target, 'TomServerCallSpecs').timeout,
     },
     constructorSignatures: {
-      '': 'TomServerCallSpecs(String method, Uri url, {int? contentLength, bool? followRedirects, Map<String, String>? headers = const {}, int? maxRedirects, bool? persistentConnection, bool includeBearerAuthentication = true, Encoding? requestEncoding, Encoding? fallbackResponseEncoding})',
+      '': 'TomServerCallSpecs(String method, Uri url, {int? contentLength, bool? followRedirects, Map<String, String>? headers, int? maxRedirects, bool? persistentConnection, bool includeBearerAuthentication = true, Encoding? requestEncoding, Encoding? fallbackResponseEncoding, Duration? timeout})',
     },
     getterSignatures: {
       'method': 'String get method',
       'url': 'Uri get url',
       'followRedirects': 'bool? get followRedirects',
-      'headers': 'Map<String, String>? get headers',
+      'headers': 'Map<String, String> get headers',
       'maxRedirects': 'int? get maxRedirects',
       'persistentConnection': 'bool? get persistentConnection',
       'includeBearerAuthentication': 'bool get includeBearerAuthentication',
       'requestEncoding': 'Encoding? get requestEncoding',
       'fallbackResponseEncoding': 'Encoding? get fallbackResponseEncoding',
+      'timeout': 'Duration? get timeout',
     },
   );
 }
@@ -4713,9 +4841,7 @@ BridgedClass _createTomServerCallErrorBridge() {
         final statusCode = D4.getNamedArgWithDefault<int>(named, 'statusCode', 200);
         final response = D4.getOptionalNamedArg<String?>(named, 'response');
         final internalError = D4.getNamedArgWithDefault<int>(named, 'internalError', 0);
-        final headers = named.containsKey('headers') && named['headers'] != null
-            ? D4.coerceMap<String, Object>(named['headers'], 'headers')
-            : const <String, Object>{};
+        final headers = D4.coerceMapOrNull<String, Object>(named['headers'], 'headers');
         final isRedirect = D4.getNamedArgWithDefault<bool>(named, 'isRedirect', false);
         final reasonPhrase = D4.getOptionalNamedArg<String?>(named, 'reasonPhrase');
         final exception = D4.getOptionalNamedArg<Object?>(named, 'exception');
@@ -4780,8 +4906,20 @@ BridgedClass _createTomServerCallErrorBridge() {
       'noResponseError': (visitor) => $tom_core_kernel_11.TomServerCallError.noResponseError,
       'serverError': (visitor) => $tom_core_kernel_11.TomServerCallError.serverError,
     },
+    staticMethods: {
+      'isSuccessStatusCode': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'isSuccessStatusCode');
+        final statusCode = D4.getRequiredArg<int>(positional, 0, 'statusCode', 'isSuccessStatusCode');
+        return $tom_core_kernel_11.TomServerCallError.isSuccessStatusCode(statusCode);
+      },
+      'isNoContentStatusCode': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'isNoContentStatusCode');
+        final statusCode = D4.getRequiredArg<int>(positional, 0, 'statusCode', 'isNoContentStatusCode');
+        return $tom_core_kernel_11.TomServerCallError.isNoContentStatusCode(statusCode);
+      },
+    },
     constructorSignatures: {
-      '': 'TomServerCallError({int statusCode = 200, String? response, int internalError = 0, Map<String, Object> headers = const {}, bool isRedirect = false, String? reasonPhrase, Object? exception, StackTrace? stackTrace, Object? statusCodeResponse})',
+      '': 'TomServerCallError({int statusCode = 200, String? response, int internalError = 0, Map<String, Object>? headers, bool isRedirect = false, String? reasonPhrase, Object? exception, StackTrace? stackTrace, Object? statusCodeResponse})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -4818,6 +4956,10 @@ BridgedClass _createTomServerCallErrorBridge() {
       'exception': 'set exception(dynamic value)',
       'requestUuid': 'set requestUuid(dynamic value)',
       'stackTrace': 'set stackTrace(dynamic value)',
+    },
+    staticMethodSignatures: {
+      'isSuccessStatusCode': 'bool isSuccessStatusCode(int statusCode)',
+      'isNoContentStatusCode': 'bool isNoContentStatusCode(int statusCode)',
     },
     staticGetterSignatures: {
       'jsonDecodingError': 'int get jsonDecodingError',
@@ -5082,6 +5224,9 @@ BridgedClass _createTomHttpClientFactoryBridge() {
         final defaultFactory = D4.getOptionalArg<$tom_core_kernel_11.TomHttpClientFactory?>(positional, 0, 'defaultFactory');
         return $tom_core_kernel_11.TomHttpClientFactory.initialize(defaultFactory);
       },
+      'resetGlobalHttpClientFactory': (visitor, positional, named, typeArgs) {
+        return $tom_core_kernel_11.TomHttpClientFactory.resetGlobalHttpClientFactory();
+      },
     },
     constructorSignatures: {
       '': 'TomHttpClientFactory()',
@@ -5098,6 +5243,7 @@ BridgedClass _createTomHttpClientFactoryBridge() {
     staticMethodSignatures: {
       'setGlobalHttpClientFactory': 'void setGlobalHttpClientFactory(TomHttpClientFactory factory)',
       'initialize': 'void initialize([TomHttpClientFactory? defaultFactory])',
+      'resetGlobalHttpClientFactory': 'void resetGlobalHttpClientFactory()',
     },
   );
 }
@@ -5725,6 +5871,7 @@ BridgedClass _createTomApiEndpointBridge() {
         final persistentConnection = D4.getOptionalNamedArg<bool?>(named, 'persistentConnection');
         final includeBearerAuthentication = D4.getNamedArgWithDefault<bool>(named, 'includeBearerAuthentication', true);
         final maxRedirects = D4.getOptionalNamedArg<int?>(named, 'maxRedirects');
+        final timeout = D4.getOptionalNamedArg<Duration?>(named, 'timeout');
         final requestEncoding = D4.getOptionalNamedArg<Encoding?>(named, 'requestEncoding');
         final responseEncoding = D4.getOptionalNamedArg<Encoding?>(named, 'responseEncoding');
         final statusCodeResponseTypes = D4.coerceMapOrNull<int, Type>(named['statusCodeResponseTypes'], 'statusCodeResponseTypes');
@@ -5732,7 +5879,7 @@ BridgedClass _createTomApiEndpointBridge() {
             ? D4.coerceMap<String, String>(named['urlParameterMapping'], 'urlParameterMapping')
             : const <String, String>{};
         final access = D4.getOptionalNamedArg<$tom_core_kernel_39.TomAccessControl?>(named, 'access');
-        return $tom_core_kernel_4.TomApiEndpoint(id: id, uri: uri, description: description, methods: methods, method: method, consumes: consumes, produces: produces, contentDisposition: contentDisposition, formFields: formFields, responseHeaders: responseHeaders, requestHeaders: requestHeaders, requestTypes: requestTypes, followRedirects: followRedirects, persistentConnection: persistentConnection, includeBearerAuthentication: includeBearerAuthentication, maxRedirects: maxRedirects, requestEncoding: requestEncoding, responseEncoding: responseEncoding, statusCodeResponseTypes: statusCodeResponseTypes, urlParameterMapping: urlParameterMapping, access: access);
+        return $tom_core_kernel_4.TomApiEndpoint(id: id, uri: uri, description: description, methods: methods, method: method, consumes: consumes, produces: produces, contentDisposition: contentDisposition, formFields: formFields, responseHeaders: responseHeaders, requestHeaders: requestHeaders, requestTypes: requestTypes, followRedirects: followRedirects, persistentConnection: persistentConnection, includeBearerAuthentication: includeBearerAuthentication, maxRedirects: maxRedirects, timeout: timeout, requestEncoding: requestEncoding, responseEncoding: responseEncoding, statusCodeResponseTypes: statusCodeResponseTypes, urlParameterMapping: urlParameterMapping, access: access);
       },
     },
     getters: {
@@ -5752,6 +5899,7 @@ BridgedClass _createTomApiEndpointBridge() {
       'followRedirects': (visitor, target) => D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').followRedirects,
       'maxRedirects': (visitor, target) => D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').maxRedirects,
       'persistentConnection': (visitor, target) => D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').persistentConnection,
+      'timeout': (visitor, target) => D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').timeout,
       'includeBearerAuthentication': (visitor, target) => D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').includeBearerAuthentication,
       'requestEncoding': (visitor, target) => D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').requestEncoding,
       'responseEncoding': (visitor, target) => D4.validateTarget<$tom_core_kernel_4.TomApiEndpoint>(target, 'TomApiEndpoint').responseEncoding,
@@ -5778,7 +5926,7 @@ BridgedClass _createTomApiEndpointBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomApiEndpoint({required String id, String? uri, String? description, List<TomHttpMethod>? methods, required TomHttpMethod method, TomMimeType consumes = TomMimeType.json, TomMimeType produces = TomMimeType.json, String? contentDisposition, List<String> formFields = const [], Map<String, String> responseHeaders = const {}, Map<String, String> requestHeaders = const {}, List<Type>? requestTypes, bool followRedirects = false, bool? persistentConnection, bool includeBearerAuthentication = true, int? maxRedirects, Encoding? requestEncoding, Encoding? responseEncoding, Map<int, Type>? statusCodeResponseTypes, Map<String, String> urlParameterMapping = const {}, TomAccessControl? access})',
+      '': 'TomApiEndpoint({required String id, String? uri, String? description, List<TomHttpMethod>? methods, required TomHttpMethod method, TomMimeType consumes = TomMimeType.json, TomMimeType produces = TomMimeType.json, String? contentDisposition, List<String> formFields = const [], Map<String, String> responseHeaders = const {}, Map<String, String> requestHeaders = const {}, List<Type>? requestTypes, bool followRedirects = false, bool? persistentConnection, bool includeBearerAuthentication = true, int? maxRedirects, Duration? timeout, Encoding? requestEncoding, Encoding? responseEncoding, Map<int, Type>? statusCodeResponseTypes, Map<String, String> urlParameterMapping = const {}, TomAccessControl? access})',
     },
     methodSignatures: {
       'resolveUri': 'Uri resolveUri(Uri baseUri, {Map<String, Object?> parameters = const {}})',
@@ -5800,6 +5948,7 @@ BridgedClass _createTomApiEndpointBridge() {
       'followRedirects': 'bool get followRedirects',
       'maxRedirects': 'int? get maxRedirects',
       'persistentConnection': 'bool? get persistentConnection',
+      'timeout': 'Duration? get timeout',
       'includeBearerAuthentication': 'bool get includeBearerAuthentication',
       'requestEncoding': 'Encoding? get requestEncoding',
       'responseEncoding': 'Encoding? get responseEncoding',
@@ -7241,8 +7390,8 @@ BridgedClass _createTomWorkerContextBridge() {
       '': 'TomWorkerContext(TomEnvironment tomEnvironment, TomPlatform tomPlatform, List<String> args, String namePrefix)',
     },
     methodSignatures: {
-      'initializeIsolate': 'Future<bool> initializeIsolate()',
-      'initializeWorker': 'Future<bool> initializeWorker(TomWorker worker)',
+      'initializeIsolate': 'Future<void> initializeIsolate()',
+      'initializeWorker': 'Future<void> initializeWorker(TomWorker worker)',
     },
     getterSignatures: {
       'tomEnvironment': 'TomEnvironment get tomEnvironment',
@@ -7273,6 +7422,7 @@ BridgedClass _createTomWorkerBridge() {
     getters: {
       'isReady': (visitor, target) => D4.validateTarget<$tom_core_kernel_12.TomWorker>(target, 'TomWorker').isReady,
       'isolate': (visitor, target) => D4.validateTarget<$tom_core_kernel_12.TomWorker>(target, 'TomWorker').isolate,
+      'name': (visitor, target) => D4.validateTarget<$tom_core_kernel_12.TomWorker>(target, 'TomWorker').name,
       'isClosed': (visitor, target) => D4.validateTarget<$tom_core_kernel_12.TomWorker>(target, 'TomWorker').isClosed,
     },
     setters: {
@@ -7381,6 +7531,7 @@ BridgedClass _createTomWorkerBridge() {
     getterSignatures: {
       'isReady': 'bool get isReady',
       'isolate': 'Isolate get isolate',
+      'name': 'String get name',
       'isClosed': 'bool get isClosed',
     },
     setterSignatures: {
@@ -7880,8 +8031,8 @@ BridgedClass _createTomLoggingWorkerContextBridge() {
       '': 'TomLoggingWorkerContext(TomEnvironment tomEnvironment, TomPlatform tomPlatform, List<String> args, String namePrefix)',
     },
     methodSignatures: {
-      'initializeIsolate': 'Future<bool> initializeIsolate()',
-      'initializeWorker': 'Future<bool> initializeWorker(TomWorker worker)',
+      'initializeIsolate': 'Future<void> initializeIsolate()',
+      'initializeWorker': 'Future<void> initializeWorker(TomWorker worker)',
     },
     getterSignatures: {
       'tomEnvironment': 'TomEnvironment get tomEnvironment',
@@ -9271,6 +9422,7 @@ BridgedClass _createTomResultBridge() {
           case $tom_core_kernel_29.TomReflector _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_29.TomReflector>.success(value);
           case $tom_core_kernel_29.TomReflectorException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_29.TomReflectorException>.success(value);
           case $tom_core_kernel_11.TomRequestAbortedException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomRequestAbortedException>.success(value);
+          case $tom_core_kernel_11.TomRequestTimeoutException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomRequestTimeoutException>.success(value);
           case $tom_core_kernel_35.TomScheduleException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_35.TomScheduleException>.success(value);
           case $tom_core_kernel_36.TomScheduledJobException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_36.TomScheduledJobException>.success(value);
           case $tom_core_kernel_11.TomServerConnectionException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_11.TomServerConnectionException>.success(value);
@@ -15642,6 +15794,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_29.TomReflector _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_29.TomReflector>(initialValue);
           case $tom_core_kernel_29.TomReflectorException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_29.TomReflectorException>(initialValue);
           case $tom_core_kernel_11.TomRequestAbortedException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomRequestAbortedException>(initialValue);
+          case $tom_core_kernel_11.TomRequestTimeoutException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomRequestTimeoutException>(initialValue);
           case $tom_core_kernel_35.TomScheduleException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_35.TomScheduleException>(initialValue);
           case $tom_core_kernel_36.TomScheduledJobException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_36.TomScheduledJobException>(initialValue);
           case $tom_core_kernel_11.TomServerConnectionException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_11.TomServerConnectionException>(initialValue);

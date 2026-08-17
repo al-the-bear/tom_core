@@ -174,8 +174,8 @@ TomWorkerContext(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initializeIsolate` | `Future<bool> initializeIsolate()` | Called in a static context inside the newly created isolate; override for isolate-level setup. Returns `true` on success (default). |
-| `initializeWorker` | `Future<bool> initializeWorker(TomWorker worker)` | Called on the newly created `TomWorker`; override to configure the worker (e.g. register executors). Returns `true` on success (default). |
+| `initializeIsolate` | `Future<void> initializeIsolate()` | Called in a static context inside the newly created isolate; override for isolate-level setup. Signal failure by throwing: the refusal reaches the caller of `spawn` as a `TomWorkerException` keyed `isolate.initialize_isolate_failed.spawn`, and the half-started isolate is torn down. |
+| `initializeWorker` | `Future<void> initializeWorker(TomWorker worker)` | Called on the newly created `TomWorker`; override to configure the worker (e.g. register executors). Signal failure by throwing: the throw propagates out of `spawn` and the isolate is torn down. |
 
 ### TomWorker
 
@@ -198,6 +198,7 @@ bidirectional command/response messaging with the main isolate.
 | `isReady` | `bool` | Whether this worker is ready to accept commands. |
 | `isClosed` | `bool` | Whether this worker has been closed (getter). |
 | `isolate` | `Isolate` | The underlying Dart `Isolate` instance (final). |
+| `name` | `String` | The debug name the isolate was spawned with, e.g. `"W001"` (final). Use this rather than `isolate.debugName`, which is only populated inside the isolate and reads `null` on this side. |
 
 #### Static Methods
 

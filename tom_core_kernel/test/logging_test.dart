@@ -1658,7 +1658,7 @@ void main() {
   group('TomIsolateLogOutput', () {
     group('constructor', () {
       test('should store the worker pool it is given', () async {
-        final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
+        final pool = await TomWorkerPool.withSize(1, _testLoggingContext());
         addTearDown(pool.close);
 
         final output = TomIsolateLogOutput(pool);
@@ -1683,7 +1683,7 @@ void main() {
       }
 
       test('does not route to the pool when the level is gated out', () async {
-        final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
+        final pool = await TomWorkerPool.withSize(1, _testLoggingContext());
         pool.close();
         final output = TomIsolateLogOutput(pool);
 
@@ -1705,7 +1705,7 @@ void main() {
       });
 
       test('routes to the pool when the level matches', () async {
-        final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
+        final pool = await TomWorkerPool.withSize(1, _testLoggingContext());
         pool.close();
         final output = TomIsolateLogOutput(pool);
 
@@ -1812,12 +1812,11 @@ void main() {
 
   group('TomLoggingWorkerContext', () {
     test('is a TomWorkerContext', () {
-      final context = _emptyLoggingContext();
+      final context = _testLoggingContext();
       expect(context, isA<TomWorkerContext>());
     });
 
-    test('initializeIsolate registers a TomLoggingExecutor and returns true',
-        () async {
+    test('initializeIsolate registers a TomLoggingExecutor', () async {
       // initializeIsolate mutates the global TomWorker.executors list, so
       // snapshot it and restore afterwards to avoid leaking into other tests.
       final before = List<TomExecutor>.from(TomWorker.executors);
@@ -1827,22 +1826,23 @@ void main() {
           ..addAll(before);
       });
 
-      final context = _emptyLoggingContext();
-      final result = await context.initializeIsolate();
+      final context = _testLoggingContext();
+      await context.initializeIsolate();
 
-      expect(result, isTrue);
+      // Registering the executor is the whole of the hook's contract; it
+      // reports a failure by throwing, so completing normally is the success
+      // signal and there is no return value to check.
       expect(TomWorker.executors.length, equals(before.length + 1));
       expect(TomWorker.executors.last, isA<TomLoggingExecutor>());
     });
   });
 }
 
-/// Builds a logging worker context for zero-size pools (no isolates spawned).
+/// Builds a logging worker context for the isolate-logging tests.
 ///
 /// Uses literal environment/platform values rather than [TomRuntime] so the
-/// test does not depend on the global runtime singleton being initialised. The
-/// context is never actually consumed: a zero-size pool spawns no workers.
-TomLoggingWorkerContext _emptyLoggingContext() {
+/// test does not depend on the global runtime singleton being initialised.
+TomLoggingWorkerContext _testLoggingContext() {
   return TomLoggingWorkerContext(
     const TomEnvironment('test', isTest: true),
     platformWeb,

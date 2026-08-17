@@ -210,7 +210,7 @@ TomLoggingWorkerContext(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initializeIsolate` | `Future<bool> initializeIsolate()` | *(override)* Registers a `TomLoggingExecutor` on the worker and returns `true`. |
+| `initializeIsolate` | `Future<void> initializeIsolate()` | *(override)* Registers a `TomLoggingExecutor` on the worker. Completing normally is the success signal; a failing override reports by throwing. |
 
 ### TomIsolateLogging
 

@@ -91,26 +91,24 @@ class CustomWorkerContext extends TomWorkerContext {
   }) : super(environment, platform, [], namePrefix);
 
   @override
-  Future<bool> initializeIsolate() async {
+  Future<void> initializeIsolate() async {
     // This runs in the new isolate, in static context
     // Set up isolate-level resources here
     print('     [Isolate] initializeIsolate called');
     print('     [Isolate] Setting up isolate resources...');
 
-    // Could register beans, set up logging, etc.
-    return true;
+    // Could register beans, set up logging, etc. Throwing from here aborts
+    // the spawn — see example 07 for what the caller sees.
   }
 
   @override
-  Future<bool> initializeWorker(TomWorker worker) async {
+  Future<void> initializeWorker(TomWorker worker) async {
     // This runs on the TomWorker instance after spawn
     print('     [Creator] initializeWorker called');
     print('     [Creator] Configuring worker with config: $workerConfig');
 
     // Register executors for handling worker callbacks
     TomWorker.executors.add(CreatorSideExecutor());
-
-    return true;
   }
 }
 
