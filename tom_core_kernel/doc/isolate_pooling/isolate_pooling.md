@@ -23,6 +23,22 @@ Dart isolates are independent execution contexts with their own memory space. Wh
 - **Worker Pools**: Manage multiple workers with automatic load distribution
 - **Liveness Supervision**: Opt-in detection and recovery from worker deaths
 
+### Platform support
+
+**Native only.** The module is built on `dart:isolate`, which both web
+compilers mark as unsupported, so none of it runs in a browser. There is no
+web-facing subset: `TomWorker`, `TomWorkerPool` and the back-channel all
+require a real isolate.
+
+`TomWorkerContext.tomPlatform` is therefore *not* a target switch, and the
+module never reads it. It is application data copied across the isolate
+boundary, because a spawned isolate starts with fresh memory and none of the
+creator's `TomRuntime` configuration — your `initializeIsolate` override is
+what reads it back. The `TomPlatform` constants come from the runtime module
+and are the framework's vocabulary for the whole workspace, not this module's
+list of supported targets. `platformWeb` is accepted and stored faithfully; it
+simply names a platform on which no worker can be spawned.
+
 ## Quick Start
 
 ### 1. Create a Worker Context
@@ -524,7 +540,11 @@ class DatabaseWorkerContext extends TomWorkerContext {
 
 ### 2. Pool Sizing
 
-- For CPU-bound tasks: `Platform.numberOfProcessors` workers
+- For CPU-bound tasks: one worker per core, e.g. `Platform.numberOfProcessors`.
+  `Platform` is `dart:io` — an import *you* add, not one this module carries.
+  Reaching for it costs you no portability you had, because the module is
+  [native-only](#platform-support) anyway: wherever `dart:isolate` runs,
+  `dart:io` runs too
 - For I/O-bound tasks: More workers may be beneficial
 - Consider memory overhead per isolate
 - Clamp any computed size to at least 1 — an expression like
@@ -589,5 +609,8 @@ surface, or the dartdoc in `lib/src/tombase/isolate_pooling/tom_worker.dart`.
 
 This module depends on:
 
-- **Runtime Module**: `TomEnvironment` and `TomPlatform` for worker context configuration
+- **Runtime Module**: `TomEnvironment` and `TomPlatform`, carried in a
+  `TomWorkerContext` for the application's own isolate-side setup to read — see
+  [Platform support](#platform-support)
+- **`dart:isolate`**: directly, which is what makes the module native-only
 - **Logging Module**: For logging within worker isolates

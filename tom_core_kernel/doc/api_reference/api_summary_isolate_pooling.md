@@ -45,6 +45,11 @@ liveness so a dead worker fails its in-flight command and is replaced.
 `TomWorkerDiedException` signals that a supervised worker's isolate terminated
 unexpectedly.
 
+The whole surface below is **native-only**: it is built on `dart:isolate`,
+which both web compilers mark as unsupported. Nothing here has a web
+implementation, and the `TomPlatform` a context carries is data rather than a
+target switch — see `TomWorkerContext.tomPlatform`.
+
 ## Class Hierarchy
 
 ```
@@ -171,7 +176,7 @@ TomWorkerContext(
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `tomEnvironment` | `TomEnvironment` | The environment configuration (development, staging, production) (final). |
-| `tomPlatform` | `TomPlatform` | The platform this worker is running on (final). |
+| `tomPlatform` | `TomPlatform` | The platform the application is running on (final). Carried data, not a target switch: the module never reads it, and copies it into the isolate so an `initializeIsolate` override can, since a spawned isolate starts with none of the creator's `TomRuntime` configuration. The constants come from the runtime module and cover the whole framework, so `platformWeb` is accepted and stored faithfully even though isolate pooling itself is native-only. |
 | `args` | `List<String>` | Command-line arguments passed to the worker (final). |
 | `namePrefix` | `String` | Prefix for naming worker isolates; `spawn` appends a zero-based three-digit counter, so `"W"` names the first worker `W000` and the second `W001`. Required, with no default (final). |
 

@@ -7,6 +7,13 @@ Worker isolates and pooling for CPU-bound work. A `TomCommand` encapsulates a
 unit of work; a `TomWorker` runs it on a dedicated isolate, and a
 `TomWorkerPool` load-balances commands across a fixed set of workers.
 
+**Native only.** The module is built on `dart:isolate`, which both web
+compilers mark as unsupported, so none of it runs in a browser. The
+`TomPlatform` in a `TomWorkerContext` is not a target switch — the module never
+reads it, and `platformWeb` is a framework-wide constant rather than a claim by
+this module. See
+[Platform support](../../../../doc/isolate_pooling/isolate_pooling.md#platform-support).
+
 ## Key types
 
 | Type | Responsibility |

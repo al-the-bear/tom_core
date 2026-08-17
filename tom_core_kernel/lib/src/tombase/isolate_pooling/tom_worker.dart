@@ -43,6 +43,19 @@
 /// application with its own environments constructs them directly, e.g.
 /// `const TomEnvironment("staging")`.
 ///
+/// ## Platform support
+///
+/// Native only. This library is built on `dart:isolate`, which both web
+/// compilers mark as unsupported, so none of it runs in a browser.
+///
+/// That is why the platform constant above is not a target switch. Nothing
+/// here reads [TomWorkerContext.tomPlatform]; it is application data copied
+/// into the isolate, where a [TomWorkerContext.initializeIsolate] override can
+/// read it back — a spawned isolate starts with fresh memory and none of the
+/// creator's `TomRuntime` configuration. The constants are the framework's
+/// vocabulary for the whole workspace, so `platformWeb` is accepted and stored
+/// faithfully; it just names a platform on which no worker can be spawned.
+///
 /// See also:
 /// - [TomWorker] for individual worker management
 /// - [TomWorkerPool] for managing multiple workers
@@ -401,7 +414,16 @@ class TomWorkerContext {
   /// already running — it would only alter the next spawn.
   final TomEnvironment tomEnvironment;
 
-  /// The platform this worker is running on.
+  /// The platform the application is running on.
+  ///
+  /// Carried data, not a target switch: nothing in this library reads it. It
+  /// is copied into the isolate so that an [initializeIsolate] override can
+  /// read it back, a spawned isolate having none of the creator's
+  /// `TomRuntime` configuration.
+  ///
+  /// The `TomPlatform` constants cover the whole framework, so `platformWeb`
+  /// is accepted and stored faithfully even though isolate pooling is
+  /// native-only — see the library's platform-support note.
   final TomPlatform tomPlatform;
 
   /// Command-line arguments passed to the worker.
