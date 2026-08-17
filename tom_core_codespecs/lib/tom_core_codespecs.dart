@@ -36,8 +36,8 @@
 /// | its type and default | **the annotated member** — `String preferredLanguage = 'de'` (`codespecs_mapping.md` §5.16), exactly as a domain enum's default belongs to the member that has one |
 /// | the user's persisted value | `TomUserPreferences` (`tom_core_server`) over `TomUserPreferenceRepository`, scoped by `@TomDbScope(field: 'principal_id')` |
 /// | the wire | `tomUserPreferencesApi`'s four endpoints and `TomUserPreferenceDto` (`tom_core_kernel`) |
-/// | §5.16's persisted-value → default order | `TomUserPreferences.getOr(key, <the member's initialiser>)` |
-/// | the setting's display name | CE-TX copy in the message-key registry (§1.2 consequence 1, §5.21) — a label has one home |
+/// | `codespecs_mapping.md` §5.16's persisted-value → default order | `TomUserPreferences.getOr(key, <the member's initialiser>)` |
+/// | the setting's display name | CE-TX copy in the message-key registry (`codespecs_mapping.md` §5.21, §1.2 consequence 1) — a label has one home |
 ///
 /// A holder here would therefore hold nothing that is not already held, and a
 /// persistence seam here would be strictly worse than the shipped one — an
@@ -53,7 +53,8 @@
 /// all**: `codespecs_mapping.md` §4.1 realises it as a plain Dart `enum`, and
 /// every attribute a holder would have carried belongs elsewhere — the value
 /// token is the enum constant's own identifier, the value label is CE-TX copy
-/// in the message-key registry (§1.2 consequence 1, §5.21), the description is
+/// in the message-key registry (`codespecs_mapping.md` §5.21, §1.2
+/// consequence 1), the description is
 /// the generated doc comment (`codespecs_derivation_contract.md` §3.1.1), and a
 /// default belongs to the enum-typed member rather than the enum. A holder
 /// would therefore hold nothing, and it would give labels a second home — which

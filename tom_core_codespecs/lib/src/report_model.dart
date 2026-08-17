@@ -294,7 +294,8 @@ class TomReportColumn {
   /// referent, and a report definition runs on the server while a route belongs
   /// to the client project.
   ///
-  /// That makes it unlike the four §5.23 string exemptions, which are exempt
+  /// That makes it unlike the four `codespecs_mapping.md` §5.23 string
+  /// exemptions, which are exempt
   /// *because their referent is not a Dart declaration*. A route **is** one, so
   /// the compile-time edge is lost to locus rather than absent by nature, and
   /// the lost guarantee is replaced by a named generation-time validator check
@@ -527,7 +528,8 @@ class TomReportDefinition {
   /// The CE-DB entity the projection selects from, as a `Type` literal.
   ///
   /// **A `Type`, never a string** (`codespecs_mapping.md` §5.23, §4.4.1). An
-  /// entity is already a Dart type, so §5.23's `Cs*Ref` family gives it no ref
+  /// entity is already a Dart type, so `codespecs_mapping.md` §5.23's `Cs*Ref`
+  /// family gives it no ref
   /// const **by design**: citing the class directly makes a renamed entity a
   /// compile error, which a string could never be. It also needs nothing but
   /// `dart:core`, so it keeps this package's `dependencies: {}` — the same
@@ -562,7 +564,8 @@ class TomReportDefinition {
   /// **A schedule, not a job id.** The specification authors a cron-like
   /// expression (`codespecs_mapping.md` §5.28's *Report schedule* row, from the
   /// report-schedule section's schedule-expression field); the CE-JB job that
-  /// runs the projection is **realised from** it. §5.29 makes that explicit —
+  /// runs the projection is **realised from** it. `codespecs_mapping.md` §5.29
+  /// makes that explicit —
   /// "a scheduled report is declared once, on the CE-RP report definition; the
   /// job that runs it is realised from that schedule, not from a second entry"
   /// — so a field holding a *job* id would invite exactly the second source
