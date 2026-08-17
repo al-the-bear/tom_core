@@ -116,7 +116,7 @@ final production = {
     'host': 'db.production.com',
     'pool': {'max': 100}
   },
-  'features': ['auth', 'logging', 'metrics', 'tracing']
+  'features': ['oauth', 'logging', 'metrics', 'tracing']
 };
 
 // Merge production overrides into base
@@ -129,7 +129,8 @@ mergeMapsOneSided(base, production);
 //     'port': 5432,                  // preserved
 //     'pool': {'min': 5, 'max': 100} // nested merge
 //   },
-//   'features': ['auth', 'logging', 'metrics', 'tracing']  // extended
+//   'features': ['oauth', 'logging', 'metrics', 'tracing']
+//     // index 0 replaced, index 1 unchanged, indices 2-3 appended
 // }
 ```
 
@@ -143,9 +144,17 @@ Performs a deep merge of two maps, modifying `base` in-place.
 
 **Merge Behavior:**
 - **Nested maps**: Merged recursively
-- **Arrays**: Elements merged by index; longer arrays append extra elements
+- **Arrays**: Elements merged by index over the overlapping prefix; a longer
+  override appends its extra elements, and base elements beyond the override's
+  length are kept. Each element pair follows the same rules as a key/value
+  pair: maps merge recursively, lists merge by index in turn, and any other
+  override element replaces the base element. The merged array is a new
+  `List<dynamic>`, not the base array mutated in place.
 - **Primitives**: Override values replace base values
 - **New keys**: Added to base
+- **Structural mismatch**: An override map or list landing on a base value of
+  another shape — at a key or at an array index — is refused with a logged
+  error, and the base value is kept.
 
 #### `traverseAndProcess(tree, test, processor)`
 

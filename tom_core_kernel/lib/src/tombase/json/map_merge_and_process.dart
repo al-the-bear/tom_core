@@ -31,27 +31,63 @@ import 'json_serializable.dart';
 // Private Helpers
 // =============================================================================
 
-/// Internal helper class for merging arrays.
+/// Merges [override] into [base] positionally and returns the merged list.
 ///
-/// When merging two arrays, keeps all elements from [array1] and appends
-/// any additional elements from [array2] that extend beyond [array1]'s length.
-class _MergeArrays<T> {
-  /// Merges two arrays, preserving [array1] elements and appending extras from [array2].
-  ///
-  /// Returns [array1] unchanged if [array2] is not longer.
-  /// Otherwise, returns a new list with [array1] elements plus the
-  /// additional elements from [array2].
-  List<T> merge(List<T> array1, List<T> array2) {
-    if (array2.length <= array1.length) {
-      return array1;
-    }
-    List<T> result = array1.toList();
-    result.addAll(array2.sublist(array1.length));
-    return result;
-  }
-}
+/// Each overlapping element pair is combined by the same rules
+/// [mergeMapsOneSided] applies to a key/value pair, so "merged element-by-
+/// element" means the same thing at every depth:
+///
+/// - two maps merge recursively;
+/// - two lists merge positionally, through this function;
+/// - a map or list override landing on a base element of another shape is a
+///   structural mismatch: it is refused with an error and the base element
+///   stays, exactly as a subtree override onto a scalar key does;
+/// - anything else — every scalar — is replaced by the override element.
+///
+/// Base elements past the override's length are kept; override elements past
+/// the base's length are appended. [name] only labels error messages.
+///
+/// The result is always a fresh `List<dynamic>` rather than [base] mutated in
+/// place. [base] may be reified narrowly — a literal like
+/// `[<String, Object>{'a': 1}]` is a `List<Map<String, Object>>` at runtime,
+/// and writing a scalar override element into it would throw — so a list that
+/// accepts every element type has to be allocated for the result.
+List<dynamic> _mergeListsOneSided(
+  List<dynamic> base,
+  List<dynamic> override,
+  String name,
+) {
+  final List<dynamic> result = List<dynamic>.of(base);
 
-_MergeArrays<dynamic> _stringObjectMapListMerger = _MergeArrays();
+  // Only the overlapping prefix has two elements to combine. Iterating to
+  // base.length unconditionally caused a RangeError when the override array
+  // was shorter (bug §44).
+  final int overlap =
+      base.length < override.length ? base.length : override.length;
+  for (int i = 0; i < overlap; i++) {
+    final Object? baseElement = base[i];
+    final Object? overrideElement = override[i];
+    if (baseElement is Map<String, dynamic> &&
+        overrideElement is Map<String, dynamic>) {
+      mergeMapsOneSided(baseElement, overrideElement);
+    } else if (baseElement is List && overrideElement is List) {
+      result[i] =
+          _mergeListsOneSided(baseElement, overrideElement, '$name[$i]');
+    } else if (overrideElement is Map || overrideElement is List) {
+      tomLog.error(
+        "Attempt to merge a structured value into $name[$i] = $baseElement, "
+        "which has another shape. Keeping the base element.",
+      );
+    } else {
+      result[i] = overrideElement;
+    }
+  }
+
+  if (override.length > base.length) {
+    result.addAll(override.sublist(base.length));
+  }
+  return result;
+}
 
 // =============================================================================
 // Map Merging
@@ -61,9 +97,17 @@ _MergeArrays<dynamic> _stringObjectMapListMerger = _MergeArrays();
 ///
 /// This function performs a deep merge where:
 /// - Nested maps are merged recursively
-/// - Arrays are merged element-by-element (nested maps within arrays are also merged)
+/// - Arrays are merged element-by-element over the overlapping prefix, then
+///   take [override]'s tail; base elements past [override]'s length are kept.
+///   Each element pair follows the same rules as a key/value pair: maps merge
+///   recursively, lists merge positionally, and any other override element
+///   replaces the base element.
 /// - Primitive values from [override] replace values in [base]
 /// - Keys in [override] that don't exist in [base] are added
+///
+/// A structural mismatch — an [override] map or list landing on a base value
+/// of another shape, at a key or at a list index — is refused with a logged
+/// error, and the base value is kept.
 ///
 /// **Important**: This modifies [base] in-place.
 ///
@@ -79,12 +123,13 @@ _MergeArrays<dynamic> _stringObjectMapListMerger = _MergeArrays();
 /// };
 /// final override = {
 ///   'server': {'host': 'api.example.com'},
-///   'features': ['auth', 'logging', 'metrics']
+///   'features': ['oauth', 'logging', 'metrics']
 /// };
 /// mergeMapsOneSided(base, override);
 /// // Result: base['server']['host'] == 'api.example.com'
 /// // Result: base['server']['port'] == 8080 (preserved)
-/// // Result: base['features'] includes 'metrics' (appended)
+/// // Result: base['features'] == ['oauth', 'logging', 'metrics']
+/// //   index 0 replaced, index 1 unchanged, index 2 appended
 /// ```
 void mergeMapsOneSided(
   Map<String, dynamic> base,
@@ -106,29 +151,7 @@ void mergeMapsOneSided(
       }
     } else if (oValue is List) {
       if (baseObject is List) {
-        List<dynamic> overrideMapArray = oValue;
-        List<dynamic> baseMapArray = baseObject;
-        // Only deep-merge the overlapping prefix. Extra base elements are left
-        // untouched; extra override elements are appended by the list merger
-        // below. Iterating to baseMapArray.length unconditionally caused a
-        // RangeError when the override array was shorter (bug §44).
-        final overlap = baseMapArray.length < overrideMapArray.length
-            ? baseMapArray.length
-            : overrideMapArray.length;
-        for (int i = 0; i < overlap; i++) {
-          if (baseMapArray[i] is Map && overrideMapArray[i] is Map) {
-            mergeMapsOneSided(baseMapArray[i], overrideMapArray[i]);
-          } else {
-            tomLog.warn(
-              "Not a map String/Object ${baseMapArray[i]} would be overwritten by ${overrideMapArray[i]}. Ignoring.",
-            );
-          }
-        }
-        baseMapArray = _stringObjectMapListMerger.merge(
-          baseMapArray,
-          overrideMapArray,
-        );
-        base[oKey] = baseMapArray;
+        base[oKey] = _mergeListsOneSided(baseObject, oValue, oKey);
       } else {
         if (baseObject == null) {
           base[oKey] = oValue;

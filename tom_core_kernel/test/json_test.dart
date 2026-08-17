@@ -406,6 +406,123 @@ void main() {
         expect(servers[1]['host'], equals('b')); // untouched (no override)
         expect(servers[2]['host'], equals('c')); // untouched (no override)
       });
+
+      test('a differing scalar element is replaced by the override', () {
+        // The most ordinary layering operation there is: change one entry of a
+        // string list. The overlap used to keep the base element and only log
+        // a warning, so an override that restated a list with different values
+        // had no effect at all.
+        final base = <String, dynamic>{
+          'features': ['auth', 'logging', 'metrics'],
+        };
+        final override = <String, dynamic>{
+          'features': ['oauth', 'tracing'],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        // Overlap takes the override; the base tail beyond the override's
+        // length is still preserved.
+        expect(base['features'], equals(['oauth', 'tracing', 'metrics']));
+      });
+
+      test('a longer override replaces the overlap and appends its tail', () {
+        // Previously this produced ['a', 'b', 'C'] — base wins at 0-1, override
+        // wins at 2 — a blend of two rules that matched neither the documents
+        // nor any coherent merge policy.
+        final base = <String, dynamic>{
+          'f': ['a', 'b'],
+        };
+        final override = <String, dynamic>{
+          'f': ['A', 'B', 'C'],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        expect(base['f'], equals(['A', 'B', 'C']));
+      });
+
+      test('nested lists merge positionally at every depth', () {
+        // "Merged element-by-element" has to hold for a list element that is
+        // itself a list, or the rule stops being true one level down.
+        final base = <String, dynamic>{
+          'matrix': [
+            [1, 2],
+            [3, 4],
+          ],
+        };
+        final override = <String, dynamic>{
+          'matrix': [
+            [10],
+            [30, 40],
+          ],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        expect(
+          base['matrix'],
+          equals([
+            [10, 2],
+            [30, 40],
+          ]),
+        );
+      });
+
+      test('a scalar override element replaces a base map element', () {
+        // Mirrors the top-level rule, where a scalar override replaces
+        // whatever the base held, subtree included.
+        final base = <String, dynamic>{
+          'items': [
+            <String, Object>{'a': 1},
+          ],
+        };
+        final override = <String, dynamic>{
+          'items': ['plain'],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        expect(base['items'], equals(['plain']));
+      });
+
+      test('keeps the base element when a map override lands on a scalar', () {
+        // Also mirrors the top level, which refuses to merge a subtree into a
+        // non-subtree and keeps the base value. Structural mismatches stay
+        // refusals; only same-shaped and scalar pairs changed.
+        final base = <String, dynamic>{
+          'items': ['plain'],
+        };
+        final override = <String, dynamic>{
+          'items': [
+            <String, Object>{'a': 1},
+          ],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        expect(base['items'], equals(['plain']));
+      });
+
+      test('a narrowly typed base list accepts an override of another type',
+          () {
+        // A Dart list literal is reified at its element type, so `<int>[1, 2]`
+        // is a List<int> and cannot hold a String. Writing the override
+        // element into the base list in place would throw a TypeError here;
+        // the merged list must therefore be freshly allocated as
+        // List<dynamic>. Decoded JSON is always List<dynamic>, which is why
+        // this only bites callers who hand-build the base map.
+        final base = <String, dynamic>{
+          'mixed': <int>[1, 2],
+        };
+        final override = <String, dynamic>{
+          'mixed': <String>['one'],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        expect(base['mixed'], equals(['one', 2]));
+      });
     });
 
     group('edge cases', () {
