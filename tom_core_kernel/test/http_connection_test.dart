@@ -723,7 +723,7 @@ void main() {
           equals('video'),
         );
         expect(
-          StaticFileMimetypeMapping.getMimeType('.ogg')?.primaryType,
+          StaticFileMimetypeMapping.getMimeType('.ogv')?.primaryType,
           equals('video'),
         );
       });
@@ -733,6 +733,62 @@ void main() {
           StaticFileMimetypeMapping.getMimeType('.mp3')?.primaryType,
           equals('audio'),
         );
+        // RFC 5334 assigns `.ogg` to audio/ogg and `.ogv` to video/ogg; the
+        // extension is audio's because implementations predating the split
+        // read a `.ogg` file as Vorbis audio.
+        expect(
+          StaticFileMimetypeMapping.getMimeType('.ogg')?.primaryType,
+          equals('audio'),
+        );
+      });
+
+      test('maps every extension to the type its registry assigns', () {
+        // Asserted as one table rather than a handful of samples: the two
+        // defects this replaces (`.avi` -> image/avif, `.mpeg` -> video/mpg)
+        // were single-entry slips that no sample happened to cover, and a
+        // table is the only shape that makes the next one fail here.
+        //
+        // Each expectation is the IANA registration for that extension, with
+        // two documented exceptions marked below where no registration
+        // assigns the extension at all.
+        const expected = <String, String>{
+          '.js': 'text/javascript',
+          '.json': 'application/json',
+          '.wasm': 'application/wasm',
+          '.css': 'text/css',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.svg': 'image/svg+xml',
+          '.ttf': 'font/ttf',
+          '.woff': 'font/woff',
+          '.mp3': 'audio/mpeg',
+          '.pdf': 'application/pdf',
+          '.apng': 'image/apng',
+          '.avif': 'image/avif',
+          // Unregistered: IANA assigns no media type to AVI at all, so the
+          // de-facto type every server and browser uses is the only option.
+          '.avi': 'video/x-msvideo',
+          '.gif': 'image/gif',
+          '.webp': 'image/webp',
+          '.rar': 'application/vnd.rar',
+          '.mp4': 'video/mp4',
+          '.mpeg': 'video/mpeg',
+          '.ogg': 'audio/ogg',
+          '.ogv': 'video/ogg',
+          '.qt': 'video/quicktime',
+          '.zip': 'application/zip',
+        };
+
+        for (final entry in expected.entries) {
+          final mapped = StaticFileMimetypeMapping.getMimeType(entry.key);
+          expect(mapped, isNotNull, reason: 'no mapping for ${entry.key}');
+          expect(
+            '${mapped!.primaryType}/${mapped.subType}',
+            equals(entry.value),
+            reason: 'wrong media type for ${entry.key}',
+          );
+        }
       });
 
       test('should be case insensitive', () {

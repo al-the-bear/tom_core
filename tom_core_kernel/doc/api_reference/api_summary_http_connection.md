@@ -568,11 +568,40 @@ present.
 Maps file extensions to their corresponding MIME types, for serving static files
 with correct `Content-Type` headers.
 
+Every entry is the media type the IANA registry assigns to that extension; `.avi`
+is the sole exception, because IANA registers no type for AVI at all. The table
+is deliberately short — it covers what a Tom application serves, and
+`getMimeType` returns `null` for anything else so the caller decides. For a total
+function, use `TomFileSource.guessMediaType`, which falls back to
+`application/octet-stream`.
+
+##### Recognized Extensions
+
+| Extension | Media type | Extension | Media type |
+| --------- | ---------- | --------- | ---------- |
+| `.js` | `text/javascript` | `.avif` | `image/avif` |
+| `.json` | `application/json` | `.avi` | `video/x-msvideo` (unregistered) |
+| `.wasm` | `application/wasm` | `.gif` | `image/gif` |
+| `.css` | `text/css` | `.webp` | `image/webp` |
+| `.png` | `image/png` | `.rar` | `application/vnd.rar` |
+| `.jpg`, `.jpeg` | `image/jpeg` | `.mp4` | `video/mp4` |
+| `.svg` | `image/svg+xml` | `.mpeg` | `video/mpeg` |
+| `.ttf` | `font/ttf` | `.ogg` | `audio/ogg` |
+| `.woff` | `font/woff` | `.ogv` | `video/ogg` |
+| `.mp3` | `audio/mpeg` | `.qt` | `video/quicktime` |
+| `.pdf` | `application/pdf` | `.zip` | `application/zip` |
+| `.apng` | `image/apng` | | |
+
+`.ogg` is audio and `.ogv` is video per RFC 5334, which split the Ogg container
+by content because implementations predating the split read a `.ogg` file as
+Vorbis audio. The `font/*` types are RFC 8081; the older `application/x-font-*`
+spellings were never registered.
+
 ##### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getMimeType` | `static TomMimeType? getMimeType(String extension)` | Gets the MIME type for a file `extension` (including the dot), or `null` if unrecognized. |
+| `getMimeType` | `static TomMimeType? getMimeType(String extension)` | Gets the MIME type for a file `extension` (including the dot), or `null` if unrecognized. Matching is case-insensitive. |
 
 #### TomMimeTypeException
 

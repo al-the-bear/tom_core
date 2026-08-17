@@ -364,6 +364,16 @@ class TomMimeType {
 ///
 /// Useful for serving static files with correct Content-Type headers.
 ///
+/// Every entry is the media type the IANA registry assigns to that extension.
+/// The one exception is `.avi`, which IANA does not register at all — see the
+/// note on that entry.
+///
+/// The table is deliberately short: it covers the extensions a Tom application
+/// actually serves, and [getMimeType] returns `null` for anything else so the
+/// caller can decide. Callers wanting a total function should use
+/// `TomFileSource.guessMediaType`, which falls back to
+/// `application/octet-stream`.
+///
 /// ## Example
 ///
 /// ```dart
@@ -380,18 +390,27 @@ class StaticFileMimetypeMapping {
     '.jpg': TomMimeType('image', 'jpeg', charset: null),
     '.jpeg': TomMimeType('image', 'jpeg', charset: null),
     '.svg': TomMimeType('image', 'svg+xml'),
-    '.ttf': TomMimeType('application', 'x-font-ttf', charset: null),
-    '.woff': TomMimeType('application', 'x-font-woff', charset: null),
+    // RFC 8081 registered the `font` tree; the older `application/x-font-*`
+    // spellings were never registered.
+    '.ttf': TomMimeType('font', 'ttf', charset: null),
+    '.woff': TomMimeType('font', 'woff', charset: null),
     '.mp3': TomMimeType('audio', 'mpeg', charset: null),
     '.pdf': TomMimeType.pdf,
     '.apng': TomMimeType('image', 'apng', charset: null),
-    '.avi': TomMimeType('image', 'avif', charset: null),
+    '.avif': TomMimeType('image', 'avif', charset: null),
+    // The only unregistered type in this table: IANA assigns no media type to
+    // AVI, so this is the de-facto type servers and browsers agree on.
+    '.avi': TomMimeType('video', 'x-msvideo', charset: null),
     '.gif': TomMimeType('image', 'gif', charset: null),
     '.webp': TomMimeType('image', 'webp', charset: null),
-    '.rar': TomMimeType('application', 'x-rar-compressed', charset: null),
+    '.rar': TomMimeType('application', 'vnd.rar', charset: null),
     '.mp4': TomMimeType('video', 'mp4', charset: null),
-    '.mpeg': TomMimeType('video', 'mpg', charset: null),
-    '.ogg': TomMimeType('video', 'ogg', charset: null),
+    '.mpeg': TomMimeType('video', 'mpeg', charset: null),
+    // RFC 5334 splits the Ogg container by content: `.ogg` is audio, because
+    // implementations predating the split read it as Vorbis, and video moved
+    // to `.ogv`.
+    '.ogg': TomMimeType('audio', 'ogg', charset: null),
+    '.ogv': TomMimeType('video', 'ogg', charset: null),
     '.qt': TomMimeType('video', 'quicktime', charset: null),
     '.zip': TomMimeType.zip,
   };
