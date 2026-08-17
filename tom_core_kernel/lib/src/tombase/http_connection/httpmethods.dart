@@ -33,6 +33,7 @@ library;
 /// - [TomHttpMethod.patch] - Partially update a resource
 /// - [TomHttpMethod.delete] - Delete a resource
 /// - [TomHttpMethod.head] - Same as GET but without response body
+/// - [TomHttpMethod.options] - Describe the communication options for a resource
 /// - [TomHttpMethod.connect] - Establish a tunnel
 /// - [TomHttpMethod.trace] - Debug/testing (no body)
 /// - [TomHttpMethod.all] - Wildcard for all methods
@@ -107,7 +108,7 @@ class TomHttpMethod {
 
   /// HTTP OPTIONS method - describes communication options.
   static const TomHttpMethod options = TomHttpMethod("OPTIONS");
-  
+
   /// Wildcard method matching all HTTP methods.
   ///
   /// Useful for routes that should respond to any method.

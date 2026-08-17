@@ -151,16 +151,30 @@ TomApiEndpoint<OrderResponse, CreateOrderRequest>(
 
 ### TomHttpMethod
 
-Predefined HTTP methods:
+Predefined HTTP methods. `acceptsBody` records whether the verb typically
+carries a request body; it is descriptive metadata the constants publish for
+callers to consult — the module itself does not branch on it — and `trace` is
+the only method for which it is `false`:
 
-| Method | Description |
-|--------|-------------|
-| `TomHttpMethod.get` | Retrieve a resource |
-| `TomHttpMethod.post` | Create a new resource |
-| `TomHttpMethod.put` | Replace a resource |
-| `TomHttpMethod.patch` | Partially update a resource |
-| `TomHttpMethod.delete` | Delete a resource |
-| `TomHttpMethod.head` | Retrieve headers only |
+| Method | Description | `acceptsBody` |
+|--------|-------------|---------------|
+| `TomHttpMethod.get` | Retrieve a resource | `true` |
+| `TomHttpMethod.post` | Create a new resource | `true` |
+| `TomHttpMethod.put` | Replace a resource | `true` |
+| `TomHttpMethod.patch` | Partially update a resource | `true` |
+| `TomHttpMethod.delete` | Delete a resource | `true` |
+| `TomHttpMethod.head` | Retrieve headers only | `true` |
+| `TomHttpMethod.options` | Describe the communication options for a resource | `true` |
+| `TomHttpMethod.connect` | Establish a tunnel to the server | `true` |
+| `TomHttpMethod.trace` | Echo the request back for debugging | `false` |
+| `TomHttpMethod.all` | Wildcard — matches any method, for routes that answer all of them | `true` |
+
+To go from a verb string to the constant, look it up in
+`TomHttpMethod.methods`, an unmodifiable map keyed by the uppercase name:
+
+```dart
+final method = TomHttpMethod.methods['GET'];  // TomHttpMethod.get
+```
 
 ### TomMimeType
 
