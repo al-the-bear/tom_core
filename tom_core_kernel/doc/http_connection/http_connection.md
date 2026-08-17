@@ -490,7 +490,51 @@ Prefer `TomServerEndpoint.createApiServerEndpoint` over manual HTTP calls for ty
 
 ### 6. Configure Timeouts
 
-Use appropriate timeouts for your use case to prevent hanging requests.
+A call waits indefinitely unless you give it a deadline, so declare one on any
+endpoint whose caller cannot afford to block forever:
+
+```dart
+TomApiEndpoint<OrderResponse, CreateOrderRequest>(
+  id: 'createOrder',
+  method: TomHttpMethod.post,
+  timeout: Duration(seconds: 10),
+)
+```
+
+The same field exists on `TomServerCallSpecs` for calls built by hand:
+
+```dart
+final specs = TomServerCallSpecs(
+  'GET',
+  Uri.parse('https://api.example.com/data'),
+  timeout: Duration(seconds: 10),
+);
+```
+
+When the deadline passes, `read` throws `TomRequestTimeoutException` and the
+request is aborted so its connection is released. The budget covers the whole
+exchange — waiting for the response *and* draining its body — because a server
+that answers promptly and then stalls mid-body blocks the caller just as
+effectively as one that never answers at all.
+
+Pick the value per endpoint rather than globally: the deadline that protects a
+lookup would truncate a report that legitimately takes a minute. Leave it unset
+where waiting is genuinely correct — file transfers use their own client and
+are not governed by this setting.
+
+`TomRequestTimeoutException` is deliberately **not** a `TomRequestAbortedException`.
+An abort is your own application's decision; a timeout is the server failing to
+answer, which is the case worth retrying. Catch them separately:
+
+```dart
+try {
+  final body = await call.readAsString(utf8);
+} on TomRequestTimeoutException {
+  // The server was too slow — retrying may well succeed.
+} on TomRequestAbortedException {
+  // We cancelled this ourselves — do not retry.
+}
+```
 
 ### 7. Secure Authentication
 

@@ -306,6 +306,16 @@ class TomApiEndpoint<ReturnType, RequestType> {
   /// Whether to use persistent HTTP connections.
   final bool? persistentConnection;
 
+  /// How long a client call to this endpoint may take before it gives up, or
+  /// `null` to wait indefinitely.
+  ///
+  /// Declared per endpoint rather than per API because the right deadline is a
+  /// property of the work behind the URL, not of the service as a whole: a
+  /// report that legitimately takes a minute sits in the same API as a lookup
+  /// that should answer in under a second, and one shared value would have to
+  /// be the larger of the two — which is the same as having none.
+  final Duration? timeout;
+
   /// Whether to include Bearer token in Authorization header.
   final bool includeBearerAuthentication;
 
@@ -373,6 +383,7 @@ class TomApiEndpoint<ReturnType, RequestType> {
     this.persistentConnection,
     this.includeBearerAuthentication = true,
     this.maxRedirects,
+    this.timeout,
     this.requestEncoding,
     this.responseEncoding,
     this.statusCodeResponseTypes,

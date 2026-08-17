@@ -49,6 +49,7 @@ streaming file-transfer client (`TomFileTransferClient`,
     - [TomServerEndpoint&lt;T, R&gt;](#tomserverendpointt-r)
     - [TomServerConnectionException](#tomserverconnectionexception)
     - [TomRequestAbortedException](#tomrequestabortedexception)
+    - [TomRequestTimeoutException](#tomrequesttimeoutexception)
   - [File Transfer](#file-transfer)
     - [TomFileSource](#tomfilesource)
     - [TomFileMetadata](#tomfilemetadata)
@@ -137,6 +138,7 @@ TomException  (kernel)
     ├── TomClientRemoteContextException
     ├── TomServerConnectionException
     ├── TomRequestAbortedException
+    ├── TomRequestTimeoutException
     └── TomFileTransferException
 ```
 
@@ -330,6 +332,7 @@ TomApiEndpoint({
   bool? persistentConnection,
   bool includeBearerAuthentication = true,
   int? maxRedirects,
+  Duration? timeout,
   Encoding? requestEncoding,
   Encoding? responseEncoding,
   Map<int, Type>? statusCodeResponseTypes,
@@ -358,6 +361,7 @@ TomApiEndpoint({
 | `followRedirects` | `bool` | Whether to automatically follow HTTP redirects. |
 | `maxRedirects` | `int?` | Maximum number of redirects to follow. |
 | `persistentConnection` | `bool?` | Whether to use persistent HTTP connections. |
+| `timeout` | `Duration?` | How long a client call to this endpoint may take before it gives up, or `null` to wait indefinitely. Declared per endpoint because the right deadline follows the work behind the URL, not the service as a whole. |
 | `includeBearerAuthentication` | `bool` | Whether to include a Bearer token in the `Authorization` header. |
 | `requestEncoding` | `Encoding?` | Encoding for request bodies (overrides the API-level setting). |
 | `responseEncoding` | `Encoding?` | Encoding for response bodies (overrides the API-level setting). |
@@ -673,6 +677,7 @@ TomServerCallSpecs(
   bool includeBearerAuthentication = true,
   Encoding? requestEncoding,
   Encoding? fallbackResponseEncoding,
+  Duration? timeout,
 })
 ```
 
@@ -689,6 +694,7 @@ TomServerCallSpecs(
 | `includeBearerAuthentication` | `bool` | Whether to include a Bearer authentication token. |
 | `requestEncoding` | `Encoding?` | Encoding for the request body. |
 | `fallbackResponseEncoding` | `Encoding?` | Fallback encoding for parsing the response body. |
+| `timeout` | `Duration?` | How long `read` may wait before throwing `TomRequestTimeoutException`, or `null` (the default) for no deadline. Covers the whole exchange — awaiting the response *and* draining its body — rather than restarting per stage. |
 
 #### TomServerCallLoad
 
@@ -804,7 +810,7 @@ TomServerCall(Client client, TomServerCallSpecs specs)
 | `applyLoadValues` | `void applyLoadValues(TomServerCallLoad load)` | Applies the payload values to the request. |
 | `reset` | `void reset({String? stringBody, Uint8List? byteBody, Map<String, String>? bodyFields})` | Resets the call for reuse, optionally with new body content. |
 | `send` | `TomServerCall send(TomServerCallLoad load)` | Sends the request with `load`; may be called once. Throws `TomServerConnectionException` if called more than once. |
-| `read` | `Future<Uint8List> read()` | Reads the response body as bytes (once, after `send`). Throws `TomRequestAbortedException` if aborted. |
+| `read` | `Future<Uint8List> read()` | Reads the response body as bytes (once, after `send`). Throws `TomRequestAbortedException` if aborted — whether the abort lands while awaiting the response or mid-body — and `TomRequestTimeoutException` if `specs.timeout` elapses first. |
 | `readAsString` | `Future<String> readAsString(Encoding ec)` | Reads the response body as a string with encoding `ec`. |
 | `getResponseHeaders` | `Future<Map<String, String>> getResponseHeaders()` | Gets the response headers after sending. |
 | `getResponseStatusCode` | `Future<int> getResponseStatusCode()` | Gets the HTTP status code after sending. |
@@ -980,6 +986,36 @@ called during a pending request.
 
 ```dart
 TomRequestAbortedException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool? autoLog,
+  String? requestUuid,
+})
+```
+
+#### TomRequestTimeoutException
+
+Exception thrown when a request outlives its `TomServerCallSpecs.timeout`.
+Raised with the key `server.send.request_timeout`, carrying `url` and
+`timeoutMs` in `parameters`; the request is aborted on the way out so its
+connection is released.
+
+Deliberately **not** a subtype of `TomRequestAbortedException`, though a timeout
+aborts the request: an abort is the application's own decision and repeating it
+is pointless, whereas a timeout is the server failing to answer in time — the
+case worth retrying. Code that wants to treat both alike can catch
+`TomException`; code that wants to retry only timeouts could not tell them apart
+again if this were a subclass.
+
+- **Extends:** `TomException`
+
+##### Constructors
+
+```dart
+TomRequestTimeoutException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,

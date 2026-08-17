@@ -75,6 +75,27 @@ class TomRequestAbortedException extends TomException {
   });
 }
 
+/// Exception thrown when a request outlives its [TomServerCallSpecs.timeout].
+///
+/// Deliberately *not* a subtype of [TomRequestAbortedException], even though a
+/// timeout aborts the request on its way out: the two mean opposite things to
+/// the caller. An abort is this application's own decision and repeating it
+/// would be pointless; a timeout is the server failing to answer in time, which
+/// is the textbook case for a retry. A caller that wants to treat them alike can
+/// catch [TomException]; one that wants to retry only timeouts could not
+/// separate them again if this were a subclass.
+class TomRequestTimeoutException extends TomException {
+  TomRequestTimeoutException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.requestUuid,
+  });
+}
+
 // =============================================================================
 // SERVER CALL CONFIGURATION
 // =============================================================================
@@ -122,6 +143,19 @@ class TomServerCallSpecs {
   /// Fallback encoding for parsing response body.
   final Encoding? fallbackResponseEncoding;
 
+  /// How long [TomServerCall.read] may wait before giving up, or `null` for no
+  /// deadline.
+  ///
+  /// The budget covers the whole exchange — waiting for the response and
+  /// draining its body — rather than restarting per stage, because a server
+  /// that sends headers promptly and then stalls mid-body hangs the caller just
+  /// as effectively as one that never answers.
+  ///
+  /// `null` by default: a deadline that suits a JSON call would truncate a long
+  /// upload, and this type cannot tell which it is being used for. The caller
+  /// knows, so the caller states it.
+  final Duration? timeout;
+
   /// Creates a new server call specification.
   TomServerCallSpecs(
     this.method,
@@ -134,6 +168,7 @@ class TomServerCallSpecs {
     this.includeBearerAuthentication = true,
     this.requestEncoding,
     this.fallbackResponseEncoding,
+    this.timeout,
   });
 }
 
@@ -510,9 +545,38 @@ class TomServerCall {
       );
     }
     _read = true;
-    serverResponse = await response!;
+    final transfer = _awaitTransfer();
+    final deadline = specs.timeout;
+    if (deadline == null) return transfer;
+    return transfer.timeout(
+      deadline,
+      onTimeout: () {
+        // Abort as well as stop waiting. Giving up on our side alone would
+        // leave the request in flight and its connection tied up; a client that
+        // honours the trigger tears it down instead.
+        abort();
+        throw TomRequestTimeoutException(
+          "server.send.request_timeout",
+          "The server did not answer within ${deadline.inMilliseconds}ms.",
+          parameters: {
+            "url": specs.url.toString(),
+            "timeoutMs": deadline.inMilliseconds,
+          },
+        );
+      },
+    );
+  }
+
+  /// Awaits the response and drains its body, translating an abort raised by
+  /// either stage into [TomRequestAbortedException].
+  ///
+  /// Split out of [read] so that a single deadline can be placed around both
+  /// stages at once, and so that an abort arriving *before* the headers do is
+  /// reported the same way as one arriving mid-body.
+  Future<Uint8List> _awaitTransfer() async {
     BytesBuilder builder = BytesBuilder();
     try {
+      serverResponse = await response!;
       await serverResponse!.stream.listen((data) {
         builder.add(data);
         // consume response bytes
@@ -943,6 +1007,7 @@ class TomServerEndpoint<T extends Object, R extends Object> {
           maxRedirects: apiEndpoint.maxRedirects,
           persistentConnection: apiEndpoint.persistentConnection,
           includeBearerAuthentication: apiEndpoint.includeBearerAuthentication,
+          timeout: apiEndpoint.timeout,
           requestEncoding:
               apiEndpoint.requestEncoding ??
               (apiEndpoint.api.requestEncoding ?? Encoding.getByName("utf-8")),

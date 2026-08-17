@@ -16,7 +16,8 @@ streaming file-transfer client that moves large payloads without buffering them.
 | `TomHeader` | A typed HTTP header. |
 | `TomMimeType` / `StaticFileMimetypeMapping` | MIME type values and extension→type mapping. |
 | `TomRemoteApis` / `TomApi` / `TomApiEndpoint` | Declarative API + endpoint descriptors. `TomApiEndpoint.resolveUri` builds a call's address from the declaration, so a client names no URI of its own. |
-| `TomServerCall` / `TomServerCallSpecs` / `TomServerCallLoad` / `TomServerCallError` | A remote call, its spec, payload, and error. |
+| `TomServerCall` / `TomServerCallSpecs` / `TomServerCallLoad` / `TomServerCallError` | A remote call, its spec, payload, and error. `TomServerCallSpecs.timeout` (also declarable per `TomApiEndpoint`) bounds the exchange; without one a call waits indefinitely. |
+| `TomRequestAbortedException` / `TomRequestTimeoutException` | Why a call ended early — cancelled by this application, or unanswered past its deadline. Kept as siblings rather than as a subtype, because only the second is worth retrying. |
 | `TomServerChannel` / `TomServerEndpoint` | Channel and endpoint abstractions. |
 | `TomHttpClientFactory` / `TomDefaultHttpClientFactory` | Pluggable HTTP-client construction. |
 | `TomClientRemoteContext` | Carries client-side remote-call context. |

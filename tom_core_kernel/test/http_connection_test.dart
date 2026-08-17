@@ -2238,6 +2238,119 @@ void main() {
       });
     });
 
+    group('timeout', () {
+      /// Specs carrying a deadline short enough to keep the suite quick.
+      TomServerCallSpecs timedSpecs([
+        Duration timeout = const Duration(milliseconds: 50),
+      ]) =>
+          TomServerCallSpecs(
+            'GET',
+            Uri.parse('https://api.example.com/data'),
+            includeBearerAuthentication: false,
+            timeout: timeout,
+          );
+
+      test('specs carry no timeout unless one is asked for', () {
+        expect(specs().timeout, isNull);
+      });
+
+      test('a response that never arrives throws TomRequestTimeoutException',
+          () async {
+        // The client never completes: this is the hang the deadline exists for.
+        final client = _MockClient((_) => Completer<StreamedResponse>().future);
+        final call = TomServerCall(client, timedSpecs())
+          ..send(TomServerCallLoad());
+
+        await expectLater(
+          call.read(),
+          throwsA(
+            isA<TomRequestTimeoutException>().having(
+              (e) => e.key,
+              'key',
+              equals('server.send.request_timeout'),
+            ),
+          ),
+        );
+      });
+
+      test('a body that never finishes streaming also times out', () async {
+        // Headers arrive, then the body stalls — the deadline must span both
+        // stages, not just the wait for the response.
+        final client = _MockClient(
+          (_) async => StreamedResponse(
+            StreamController<List<int>>().stream,
+            200,
+          ),
+        );
+        final call = TomServerCall(client, timedSpecs())
+          ..send(TomServerCallLoad());
+
+        await expectLater(
+          call.read(),
+          throwsA(isA<TomRequestTimeoutException>()),
+        );
+      });
+
+      test('timing out aborts the request so the connection is released',
+          () async {
+        final client = _MockClient((_) => Completer<StreamedResponse>().future);
+        final call = TomServerCall(client, timedSpecs())
+          ..send(TomServerCallLoad());
+
+        await expectLater(call.read(), throwsA(isA<TomRequestTimeoutException>()));
+        expect(call.abortTrigger.isCompleted, isTrue);
+      });
+
+      test('a response inside the deadline is returned normally', () async {
+        final client = _MockClient((_) async => _streamed('in time'));
+        final call = TomServerCall(client, timedSpecs(const Duration(seconds: 30)))
+          ..send(TomServerCallLoad());
+
+        expect(await call.readAsString(utf8), equals('in time'));
+      });
+
+      test('a caller abort while awaiting the response reports as an abort, '
+          'not as a raw client exception', () async {
+        // The abort lands before any headers arrive. Without the deadline
+        // plumbing this stage sat outside the guard and leaked the client's
+        // own RequestAbortedException.
+        final client = _MockClient(
+          (_) => Future<StreamedResponse>.error(RequestAbortedException()),
+        );
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad());
+
+        await expectLater(
+          call.read(),
+          throwsA(isA<TomRequestAbortedException>()),
+        );
+      });
+
+      test('an endpoint declaration carries its timeout into the call specs',
+          () async {
+        final api = TomApi(
+          id: 'timeoutApi',
+          uri: '/api',
+          endpoints: [
+            TomApiEndpoint<String, String>(
+              id: 'slow',
+              uri: '/slow',
+              method: TomHttpMethod.get,
+              timeout: const Duration(seconds: 7),
+            ),
+          ],
+        );
+
+        final endpoint =
+            TomServerEndpoint.createApiServerEndpoint<String, String>(
+          api['slow'],
+          baseUri: Uri.parse('https://api.example.com'),
+        );
+
+        expect(endpoint.specs.timeout, equals(const Duration(seconds: 7)));
+      });
+    });
+
     group('via TomServerChannel.prepareCall', () {
       test('a channel-prepared call round-trips through the mock client',
           () async {
