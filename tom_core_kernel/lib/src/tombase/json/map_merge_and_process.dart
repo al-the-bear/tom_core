@@ -263,6 +263,13 @@ void _mergeMapsOneSided(
 /// Recursively walks through the [tree] structure, applying [processor] to any
 /// String value where [test] returns `true`. This modifies the tree in-place.
 ///
+/// Every string in the tree is reached, whatever holds it: nested maps recurse,
+/// and lists are walked per element, so a map inside a list, a list inside a
+/// list, and any deeper combination are all descended into. Dispatch is on each
+/// value's runtime shape rather than on a container's declared type, which is
+/// what makes a document straight out of `jsonDecode` — `Map<String, dynamic>`
+/// and `List<dynamic>` throughout — behave the same as one built in Dart code.
+///
 /// ## Parameters
 /// - [tree]: The nested map structure to traverse
 /// - [test]: Predicate function that determines which strings to process
@@ -287,24 +294,42 @@ void traverseAndProcess(
     if (oValue is Map<String, dynamic>) {
       traverseAndProcess(oValue, test, processor);
     } else if (oValue is List) {
-      // Dispatch per element so mixed lists from jsonDecode (List<dynamic>
-      // holding both maps and strings) are handled. The previous typed checks
-      // (List<Map<String,Object>> / List<String>) never matched decoded JSON
-      // lists, silently skipping their contents (bug §45).
-      for (int i = 0; i < oValue.length; i++) {
-        final element = oValue[i];
-        if (element is Map<String, dynamic>) {
-          traverseAndProcess(element, test, processor);
-        } else if (element is String && test(element)) {
-          oValue[i] = processor(element);
-        }
-      }
+      _processList(oValue, test, processor);
     } else if (oValue is String) {
       if (test(oValue)) {
         tree[oKey] = processor(oValue);
       }
     }
   });
+}
+
+/// Applies [traverseAndProcess]'s rules to the elements of [list], in place.
+///
+/// Dispatch is per element rather than on the list's own type, so mixed lists
+/// from `jsonDecode` — `List<dynamic>` holding maps, strings and further lists
+/// side by side — are handled. The typed checks this replaced
+/// (`List<Map<String, Object>>` / `List<String>`) never matched a decoded JSON
+/// list at all, silently skipping its contents (bug §45).
+///
+/// A list element recurses through this same function, so a list nested inside
+/// a list is reached at any depth. Handling only the outermost array left every
+/// ordinary nested shape — a matrix, a list of coordinate pairs, a list of tag
+/// groups — untransformed and unreported (bug §81).
+void _processList(
+  List<dynamic> list,
+  bool Function(String) test,
+  String Function(String) processor,
+) {
+  for (int i = 0; i < list.length; i++) {
+    final element = list[i];
+    if (element is Map<String, dynamic>) {
+      traverseAndProcess(element, test, processor);
+    } else if (element is List) {
+      _processList(element, test, processor);
+    } else if (element is String && test(element)) {
+      list[i] = processor(element);
+    }
+  }
 }
 
 /// Traverses a nested map tree and creates new entries based on key names.

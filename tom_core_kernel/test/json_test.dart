@@ -966,6 +966,83 @@ void main() {
       expect((tree['list'] as List)[0], equals('Y'));
       expect(((tree['list'] as List)[1] as Map)['c'], equals('Y'));
     });
+
+    group('nested lists (§81)', () {
+      // A list inside a list is ordinary JSON — a matrix, a list of coordinate
+      // pairs, a list of tag groups. The §45 per-element dispatch handled a
+      // map and a string element and silently ignored every other kind,
+      // including a List, so only the outermost array was ever reached.
+
+      test('descends into a list nested inside a list', () {
+        final tree = <String, dynamic>{
+          'outer': <dynamic>[
+            <dynamic>[r'${X}'],
+            r'${X}',
+          ],
+        };
+
+        traverseAndProcess(
+          tree,
+          (s) => s.contains(r'${X}'),
+          (s) => s.replaceAll(r'${X}', 'Y'),
+        );
+
+        final outer = tree['outer'] as List;
+        expect((outer[0] as List)[0], equals('Y'));
+        expect(outer[1], equals('Y'));
+      });
+
+      test('descends through several list levels', () {
+        final tree = <String, dynamic>{
+          'matrix': <dynamic>[
+            <dynamic>[
+              <dynamic>[r'${X}'],
+            ],
+          ],
+        };
+
+        traverseAndProcess(
+          tree,
+          (s) => s.contains(r'${X}'),
+          (s) => s.replaceAll(r'${X}', 'Y'),
+        );
+
+        final level1 = (tree['matrix'] as List)[0] as List;
+        expect((level1[0] as List)[0], equals('Y'));
+      });
+
+      test('reaches a map held inside a nested list', () {
+        final tree = <String, dynamic>{
+          'groups': <dynamic>[
+            <dynamic>[
+              <String, dynamic>{'url': r'${X}/api'},
+            ],
+          ],
+        };
+
+        traverseAndProcess(
+          tree,
+          (s) => s.contains(r'${X}'),
+          (s) => s.replaceAll(r'${X}', 'https://h'),
+        );
+
+        final inner = (tree['groups'] as List)[0] as List;
+        expect((inner[0] as Map)['url'], equals('https://h/api'));
+      });
+
+      test(r'resolves ${VAR} inside a nested decoded array', () {
+        // The shape the completion doc's claim is really about: configuration
+        // read from a JSON file, whose arrays are `List<dynamic>` throughout.
+        final tree =
+            jsonDecode(r'{"m":[["${A}"],"${A}"]}') as Map<String, dynamic>;
+
+        substituteEnvVars(tree, <String, String>{'A': 'ok'});
+
+        final m = tree['m'] as List;
+        expect((m[0] as List)[0], equals('ok'));
+        expect(m[1], equals('ok'));
+      });
+    });
   });
 
   group('substituteEnvVars', () {

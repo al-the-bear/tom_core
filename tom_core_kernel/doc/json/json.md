@@ -188,6 +188,24 @@ traverseAndProcess(
 // config['apiUrl'] == 'https://api.example.com/api'
 ```
 
+##### Every string is reached, whatever holds it
+
+Nested maps recurse, lists are walked per element, and a list element that is
+itself a list recurses too — so a map inside a list, a list inside a list, and
+any deeper combination are all descended into:
+
+```dart
+final tree = jsonDecode(r'{"m":[["${A}"],"${A}"]}') as Map<String, dynamic>;
+
+substituteEnvVars(tree, {'A': 'ok'});
+// tree['m'] == [['ok'], 'ok']
+```
+
+Dispatch is on each value's runtime shape rather than on a container's declared
+type. That is what makes a document straight out of `jsonDecode` — where every
+map is `Map<String, dynamic>` and every list is `List<dynamic>` — behave the
+same as one built in Dart code.
+
 #### `traverseAndCreate(tree, nameTest, creator)`
 
 Traverses a tree and invokes a callback for each key matching `nameTest`,
