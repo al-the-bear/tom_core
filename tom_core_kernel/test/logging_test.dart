@@ -1338,18 +1338,32 @@ void main() {
       });
 
       group('returned-error routing', () {
-        test('a server-rejected record is written to the fallback, not dropped',
+        test('a transport error is written to the fallback, not dropped',
             () async {
-          final endpoint =
-              _MockLogEndpoint(script: const [_SendOutcome.returnError]);
+          // The transport channel: the request reached a server that answered
+          // with a non-2xx status, so TomServerCallError is populated and the
+          // payload is untouched.
+          final endpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.returnTransportError]);
           TomRemoteLogOutput.remoteEndpoint = endpoint;
 
-          await emit(TomRemoteLogOutput(), 'rejected record');
+          await emit(TomRemoteLogOutput(), 'transport-failed record');
 
-          // One attempt, then the record is surfaced locally rather than lost.
+          // One attempt — the retry budget is 0 in this group's setUp — and
+          // then the record is surfaced locally rather than lost.
           expect(endpoint.sendCount, equals(1));
           expect(fallbackOutput.outputCalled, isTrue);
-          expect(fallbackOutput.lastMessage, equals('rejected record'));
+          expect(fallbackOutput.lastMessage, equals('transport-failed record'));
+
+          final warning = fallbackOutput.messages.firstWhere(
+            (m) => m.startsWith('Could not send log message'),
+            orElse: () => '',
+          );
+          // The status is what distinguishes this failure from the payload
+          // rejection below; without asserting it, the same test would pass
+          // against a sender that only ever read the other channel — which is
+          // precisely how the transport-only defect survived.
+          expect(warning, contains('Status: 500'));
         });
 
         test('a payload rejection on an HTTP success is not a success',
@@ -1382,6 +1396,10 @@ void main() {
           // it the operator learns that something refused the record but not
           // what to fix, and the reason is the only thing the server said.
           expect(warning, contains(_serverRejectionReason));
+          // The mirror of the transport test's status assertion: this failure
+          // has no transport signal at all, so a status in the warning would
+          // mean the two channels had been conflated again.
+          expect(warning, isNot(contains('Status:')));
         });
 
         test('an unreachable endpoint is not reported as a server rejection',
@@ -1981,11 +1999,13 @@ enum _SendOutcome {
   /// Return a transport-level error: an error-free payload alongside a
   /// non-null [TomServerCallError] carrying an HTTP 500.
   ///
-  /// Despite its name this is *not* a server-side rejection — the application
-  /// result is a plain, successful [TomRemoteLogResult]. See
-  /// [returnServerRejection] for that. Renaming this case (and splitting the
-  /// test that leans on it) belongs to tcinc111.
-  returnError,
+  /// The application result is a plain, successful [TomRemoteLogResult] — only
+  /// the transport failed. Contrast [returnServerRejection], where the
+  /// transport is flawless and the refusal rides in the payload. These are the
+  /// two independent channels an endpoint can report a failure on, so each
+  /// needs its own case: a mock that conflates them lets a sender that reads
+  /// only one of them pass for a sender that reads both.
+  returnTransportError,
 
   /// Return a genuine application-level rejection: HTTP success, no transport
   /// error at all, and the refusal carried in the payload as
@@ -2050,7 +2070,9 @@ class _MockLogEndpoint
     switch (outcome) {
       case _SendOutcome.throwError:
         throw Exception('network down');
-      case _SendOutcome.returnError:
+      case _SendOutcome.returnTransportError:
+        // A successful payload alongside a failed transport: the server never
+        // got to decide anything, so the result stays error-free.
         return (
           responseObject ?? TomRemoteLogResult(),
           TomServerCallError(statusCode: 500),

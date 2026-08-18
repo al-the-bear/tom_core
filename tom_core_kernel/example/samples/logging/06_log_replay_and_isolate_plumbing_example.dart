@@ -47,6 +47,11 @@ class _CapturingOutput extends TomLogOutput {
   String? lastOrigin;
   int outputCount = 0;
 
+  /// Every captured line in order. A failed remote send writes two — the
+  /// warning that says why, then the record itself — so [lastMessage] alone
+  /// cannot show the reason the send failed.
+  final List<String> messages = [];
+
   @override
   void output(
     TomLogLevel loggerLevel,
@@ -63,6 +68,7 @@ class _CapturingOutput extends TomLogOutput {
       lastMessage = convertToString(message);
       lastIsolateName = isolateName;
       lastOrigin = origin;
+      messages.add(lastMessage!);
     }
   }
 }
@@ -391,6 +397,25 @@ Future<void> run() async {
   final drainedAccepted = recovered.accepted.map((m) => m.message).toList();
   final queueAfterDrain = TomRemoteLogOutput.replayQueueLength;
 
+  // 9d: the endpoint is reachable and answers HTTP 200 — but refuses to store
+  // the record, saying so in the response body. Nothing about the transport is
+  // wrong, so this is the one failure a sender that only checks the HTTP status
+  // would report as a complete success. It is treated like any other failure:
+  // retried, surfaced locally with the server's own reason, and buffered.
+  final refusing = _ScriptedLogEndpoint([_SendOutcome.returnServerRejection]);
+  TomRemoteLogOutput.remoteEndpoint = refusing;
+  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
+      TomLogger.INFO, 'refused by collector', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  final refusedSends = refusing.sendCount;
+  final queuedAfterRefusal = TomRemoteLogOutput.replayQueueLength;
+  // lastWhere, not firstWhere: 9b's outage already wrote a warning into this
+  // same sink, and the one being demonstrated here is the most recent.
+  final refusalWarning = resilienceFallback.messages.lastWhere(
+    (m) => m.startsWith('Could not send log message'),
+    orElse: () => '',
+  );
+
   // Restore defaults so the example leaves no global state behind.
   TomRemoteLogOutput.globalSettingFallbackOutput = originalRemoteFallback;
   TomRemoteLogOutput.remoteEndpoint = null;
@@ -401,6 +426,8 @@ Future<void> run() async {
   print('   9a retry: $retriedSends sends, accepted=$retriedAccepted');
   print('   9b outage: queued=$queuedAfterOutage record(s)');
   print('   9c drain:  accepted=$drainedAccepted, queue now $queueAfterDrain');
+  print('   9d refusal: $refusedSends sends, queued=$queuedAfterRefusal, '
+      'warning="$refusalWarning"');
   print('');
 
   // ===========================================================================
@@ -526,6 +553,12 @@ Future<void> run() async {
   assert(drainedAccepted[0] == 'buffered while down');
   assert(drainedAccepted[1] == 'flush trigger');
   assert(queueAfterDrain == 0); // queue fully drained
+  // A payload refusal over HTTP 200 is a failure like any other: the full
+  // retry budget is spent, the record is buffered, and the collector's own
+  // reason reaches the operator rather than a bare "something went wrong".
+  assert(refusedSends == 4); // one attempt + three retries
+  assert(queuedAfterRefusal == 1);
+  assert(refusalWarning.contains(_rejectionReason));
 
   // Example 10: durable store persists the queue across a simulated restart
   assert(bufferedBeforeRestart == 2); // both records buffered to disk
@@ -565,7 +598,18 @@ enum _SendOutcome {
 
   /// Throw a transport exception (simulating an unreachable endpoint).
   throwError,
+
+  /// Answer with HTTP success but refuse the record in the payload, as a
+  /// collector does when it is reachable and healthy but will not store what
+  /// it was sent — out of disk, over quota, a rejected schema.
+  ///
+  /// Nothing about the transport is wrong here, so this is the failure a
+  /// sender misses if it inspects only [TomServerCallError].
+  returnServerRejection,
 }
+
+/// The refusal reason [_SendOutcome.returnServerRejection] answers with.
+const String _rejectionReason = 'quota exceeded';
 
 /// Offline remote endpoint whose per-call behaviour is scripted, used to
 /// demonstrate [TomRemoteLogOutput]'s retry and replay-queue paths without a
@@ -599,6 +643,10 @@ class _ScriptedLogEndpoint
     switch (outcome) {
       case _SendOutcome.throwError:
         throw Exception('endpoint unreachable');
+      case _SendOutcome.returnServerRejection:
+        // No TomServerCallError: the call itself succeeded, and the refusal is
+        // in the body the server sent back.
+        return (TomRemoteLogResult.withError(_rejectionReason), null);
       case _SendOutcome.ok:
         accepted.add(load);
         return (responseObject ?? TomRemoteLogResult(), null);
