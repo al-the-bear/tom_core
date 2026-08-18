@@ -448,15 +448,20 @@ void main() {
       expect(trace, isNotEmpty);
     });
 
-    test('should respect depth limit', () {
-      final limitedTrace = tomGetStackTrace(StackTrace.current, 2);
-      final moreFrames = tomGetStackTrace(StackTrace.current, 5);
-      expect(limitedTrace.split('\n').length, lessThanOrEqualTo(2));
-      // More frames requested should return equal or more lines
-      expect(
-        moreFrames.split('\n').length,
-        greaterThanOrEqualTo(limitedTrace.split('\n').length),
-      );
+    test('depth yields exactly that many frames', () {
+      final stack = _captureDeepStack();
+      // Non-vacuity guard. An exact count only says something about truncation
+      // if the untruncated trace is deeper than the limit — otherwise the
+      // assertion is really about how deep the test harness happens to be.
+      // Assert the premise rather than assume it, so a shallower stack fails
+      // here with a clear cause instead of one line further down.
+      expect(tomGetStackTrace(stack).split('\n').length, greaterThan(5));
+
+      // `equals`, not `lessThanOrEqualTo`: an upper bound is satisfied by a
+      // formatter that returns a single frame, which is exactly the truncation
+      // this suite failed to catch once already.
+      expect(tomGetStackTrace(stack, 2).split('\n'), hasLength(2));
+      expect(tomGetStackTrace(stack, 5).split('\n'), hasLength(5));
     });
 
     test('should contain file location information', () {
@@ -470,9 +475,12 @@ void main() {
       expect(tomGetStackTrace(stack), contains('_deepLevelInnermost'));
       // Truncating to a small depth must retain the frames nearest the error
       // (the throw site), not discard them in favour of the outermost frames.
-      final limited = tomGetStackTrace(stack, 2);
-      expect(limited.split('\n').length, lessThanOrEqualTo(2));
-      expect(limited, contains('_deepLevelInnermost'));
+      final limited = tomGetStackTrace(stack, 2).split('\n');
+      expect(limited, hasLength(2));
+      // Asserted positionally: `contains` over the whole string would also
+      // pass for a trace that kept the throw site and dropped everything else.
+      expect(limited[0], contains('_deepLevelInnermost'));
+      expect(limited[1], contains('_deepLevelMiddle'));
     });
   });
 
@@ -518,6 +526,30 @@ void main() {
       expect(limited[1], contains('_asyncLevelMiddle'));
     });
 
+    // The two tests below repeat that assertion for the string and tuple
+    // forms. They are not redundant with the list-form one: all three share
+    // `_processStackFrames`, but only the list form returns it untouched —
+    // the string form joins on `\n` and the tuple form does both, so a
+    // regression in either wrapper is invisible to the list-form test. An
+    // async stack is the case that matters, because it is the multi-segment
+    // one, and it is where the truncation to the newest segment hid.
+    test('depth truncates an async chain in the string form', () async {
+      final stack = await _captureAsyncChainStack();
+      final limited = tomGetStackTrace(stack, 2).split('\n');
+      expect(limited, hasLength(2));
+      expect(limited[0], contains('_asyncLevelInnermost'));
+      expect(limited[1], contains('_asyncLevelMiddle'));
+    });
+
+    test('depth truncates an async chain in the tuple form', () async {
+      final stack = await _captureAsyncChainStack();
+      final (traceString, traceList) = tomGetStackTraceAsTuple(stack, 2);
+      expect(traceList, hasLength(2));
+      expect(traceString.split('\n'), hasLength(2));
+      expect(traceList[0], contains('_asyncLevelInnermost'));
+      expect(traceList[1], contains('_asyncLevelMiddle'));
+    });
+
     test('a synchronous trace is unaffected by flattening', () {
       // A sync stack is a single-segment chain, so flattening must leave it
       // exactly as it was — this is the regression guard for the sync path.
@@ -539,12 +571,20 @@ void main() {
       expect(traceList, isNotEmpty);
     });
 
-    test('should respect depth limit', () {
-      final limitedList = tomGetStackTraceAsList(StackTrace.current, 2);
-      final moreFrames = tomGetStackTraceAsList(StackTrace.current, 5);
-      expect(limitedList.length, lessThanOrEqualTo(2));
-      // More frames requested should return equal or more frames
-      expect(moreFrames.length, greaterThanOrEqualTo(limitedList.length));
+    test('depth yields exactly that many frames', () {
+      final stack = _captureDeepStack();
+      // Non-vacuity guard — see the identically named test above.
+      expect(tomGetStackTraceAsList(stack).length, greaterThan(5));
+
+      expect(tomGetStackTraceAsList(stack, 2), hasLength(2));
+      expect(tomGetStackTraceAsList(stack, 5), hasLength(5));
+
+      // The count alone still admits any three frames; naming them pins the
+      // order too, which is the property truncation actually has to preserve.
+      final limited = tomGetStackTraceAsList(stack, 3);
+      expect(limited[0], contains('_deepLevelInnermost'));
+      expect(limited[1], contains('_deepLevelMiddle'));
+      expect(limited[2], contains('_deepLevelOuter'));
     });
 
     test('should return individual frame strings', () {
@@ -571,11 +611,17 @@ void main() {
       expect(traceString, equals(joinedList));
     });
 
-    test('should respect depth limit in both representations', () {
-      final (traceString, traceList) =
-          tomGetStackTraceAsTuple(StackTrace.current, 2);
-      expect(traceList.length, lessThanOrEqualTo(2));
-      expect(traceString.split('\n').length, lessThanOrEqualTo(2));
+    test('depth yields exactly that many frames in both representations', () {
+      final stack = _captureDeepStack();
+      // Non-vacuity guard — see `tomGetStackTrace`'s depth test.
+      expect(tomGetStackTraceAsTuple(stack).$2.length, greaterThan(5));
+
+      final (traceString, traceList) = tomGetStackTraceAsTuple(stack, 3);
+      expect(traceList, hasLength(3));
+      expect(traceString.split('\n'), hasLength(3));
+      expect(traceList[0], contains('_deepLevelInnermost'));
+      expect(traceList[1], contains('_deepLevelMiddle'));
+      expect(traceList[2], contains('_deepLevelOuter'));
     });
 
     test('should work when passed null', () {
@@ -1356,6 +1402,23 @@ void main() {
       // — no frame location lines, and no trailing separator either.
       expect(captured.messages, isNotEmpty);
       expect(captured.messages.last, equals('P'));
+    });
+
+    test('a nonzero depth reaches the trace with an exact frame count', () {
+      // The test above proves the argument is passed on, but only at the
+      // degenerate value: depth 0 is satisfied by anything producing no
+      // frames at all. Pinning a nonzero count is what shows the printed
+      // trace is truncated to the size asked for rather than to some other.
+      tomPrintStackTrace(_captureDeepStack(), message: 'P', depth: 3);
+
+      // Message and trace are joined by a space and the trace's own frames by
+      // newlines, so the prefix rides on the first frame's line.
+      final lines = captured.messages.last.split('\n');
+      expect(lines, hasLength(3));
+      expect(lines[0], startsWith('P '));
+      expect(lines[0], contains('_deepLevelInnermost'));
+      expect(lines[1], contains('_deepLevelMiddle'));
+      expect(lines[2], contains('_deepLevelOuter'));
     });
 
     // -----------------------------------------------------------------------

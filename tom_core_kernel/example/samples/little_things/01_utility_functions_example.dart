@@ -104,21 +104,34 @@ class SyncCheckedErrorExample {
 class StackTraceFormattingExample {
   static String? capturedStackTrace;
   static int stackLineCount = 0;
-  static bool containsLevelThree = false;
+  static int unlimitedLineCount = 0;
+  static List<String> capturedLines = const [];
 
   static void example3StackTraceFormatting() {
     try {
       _levelOne();
     } catch (e, stack) {
       capturedStackTrace = tomGetStackTrace(stack, 5);
+      // The same trace with no limit, to show what the limit removed. Asked
+      // for after the limited one so both describe the very same stack.
+      unlimitedLineCount = tomGetStackTrace(stack).split('\n').length;
     }
 
-    stackLineCount = capturedStackTrace?.split('\n').length ?? 0;
-    containsLevelThree = capturedStackTrace?.contains('_levelThree') ?? false;
+    capturedLines = capturedStackTrace?.split('\n') ?? const [];
+    stackLineCount = capturedLines.length;
 
     assert(capturedStackTrace != null, 'Should capture stack trace');
-    assert(stackLineCount <= 5, 'Stack trace should be limited to 5 frames');
-    assert(containsLevelThree, 'Stack trace should contain _levelThree');
+    // The depth is a frame count, not a ceiling — so this is `==`, not `<=`.
+    // An upper bound would also hold for a single frame, which is what a
+    // truncating formatter returns; it would report the bug as success.
+    assert(unlimitedLineCount > 5,
+        'The chain must be deeper than the limit, or the count proves nothing');
+    assert(stackLineCount == 5, 'Depth 5 must yield exactly 5 frames');
+    // Truncation keeps the frames nearest the throw site, in that order.
+    assert(capturedLines[0].contains('_levelThree'),
+        'The throw site must lead the trace');
+    assert(capturedLines[1].contains('_levelTwo'), 'Then its caller');
+    assert(capturedLines[2].contains('_levelOne'), 'Then the caller above it');
   }
 }
 
