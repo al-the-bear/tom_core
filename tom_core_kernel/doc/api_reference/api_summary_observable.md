@@ -123,13 +123,16 @@ notifications during batch updates.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `isMuted` | `bool` | `true` while observer notifications are muted. |
+| `muteCascadeTargets` | `Iterable<TomObservable>` | The observables `mute` cascades to. Empty here; the composites override it to name their members. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `mute` | `void mute()` | Mutes notifications; subsequent `notifyObservers` calls mark the observable dirty instead of notifying. |
-| `unmute` | `void unmute()` | Resumes notifications and notifies once if changes occurred while muted. |
+| `batch` | `T batch<T>(T Function() body)` | Runs `body` with notifications muted, releasing in a `finally` so a throwing body cannot leave the object silent. Returns the body's result. The preferred form. |
+| `batchSelf` | `T batchSelf<T>(T Function() body)` | Like `batch`, but mutes this observable only — `muteCascadeTargets` stay audible. For container mutators consolidating their own notifications. |
+| `mute` | `void mute()` | Mutes notifications and cascades to `muteCascadeTargets`; subsequent `notifyObservers` calls mark the observable dirty instead of notifying. Nests — each call needs one `unmute`. |
+| `unmute` | `void unmute()` | Releases one `mute`, first releasing the targets that mute silenced. Notifies once when the last mute is released and the observable is dirty. Releasing more often than muting is a no-op. |
 | `addObserver` | `void addObserver(TomObserver observer)` | Registers `observer` (as a weak reference); a no-op if already registered. |
 | `removeObserver` | `void removeObserver(TomObserver observer)` | Unregisters `observer`; a no-op if not registered. |
 | `notifyObservers` | `void notifyObservers([dynamic message])` | Notifies all live observers (or marks dirty if muted) and prunes dead weak references. `message` is reserved. |
@@ -639,6 +642,12 @@ disallowed.
 TomClass()
 ```
 
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `muteCascadeTargets` | `Iterable<TomObservable>` | *(override)* The member objects, so `mute` and `batch` cascade to them. |
+
 #### Methods
 
 | Method | Signature | Description |
@@ -649,10 +658,8 @@ TomClass()
 | `startSelfObservation` | `void startSelfObservation()` | Discovers `TomObject` fields via reflection and registers this instance as their observer. |
 | `getMembers` | `Map<String, TomObject> getMembers()` | Returns the registered member map (field name → `TomObject`). |
 | `onNotify` | `void onNotify(TomObservable observable)` | *(override)* Propagates a member change to this class's own observers. |
-| `mute` | `void mute()` | *(override)* Mutes this class and all its members. |
-| `unmute` | `void unmute()` | *(override)* Unmutes members then this class, coalescing to a single notification. |
 | `setValues` | `void setValues(Map<String, dynamic> values)` | Updates member fields from a map, clearing collection members first. |
-| `setOrMergeValues` | `void setOrMergeValues(Map<String, dynamic> values, bool merge)` | Updates member fields; when `merge` is `true`, collection members are appended to rather than cleared. A value of the wrong shape throws `TomObservableException` naming the key and the supplied runtime type (also in `parameters`), and the batch mute is released in a `finally` so the object and its members stay notifying. |
+| `setOrMergeValues` | `void setOrMergeValues(Map<String, dynamic> values, bool merge)` | Updates member fields; when `merge` is `true`, collection members are appended to rather than cleared. A value of the wrong shape throws `TomObservableException` naming the key and the supplied runtime type (also in `parameters`). The work runs inside a `batch`, which releases in a `finally`, so the object and its members stay notifying. |
 | `getValues` | `Map<String, dynamic> getValues()` | Returns all member values as a JSON-safe map (recursing nested classes; prefixing date/timezone values). |
 | `fromJson` | `void fromJson(String json)` | Populates this class from a JSON string via `setValues`. |
 | `toJson` | `Map<String, dynamic> toJson()` | Returns the JSON-compatible map (equivalent to `getValues`). |
@@ -722,6 +729,7 @@ TomList.ofList(List<E> list)
 | `iterator` | `Iterator<E>` | *(override)* Iterator over the elements. |
 | `single` | `E` | *(override)* The single element (throws if not exactly one). |
 | `hashCode` | `int` | *(override)* Hash of the backing list. |
+| `muteCascadeTargets` | `Iterable<TomObservable>` | *(override)* The elements, so `mute` and `batch` cascade to them. |
 
 #### Methods
 
@@ -732,8 +740,6 @@ TomList.ofList(List<E> list)
 | `set` | `List<E> set(List<E> value)` | *(override)* Throws `TomObservableException` unless serializing. |
 | `get` | `List<E> get()` | *(override)* Returns a growable copy of the backing list. |
 | `onNotify` | `void onNotify(TomObservable observable)` | *(override)* Propagates an element change to this list's observers. |
-| `mute` | `void mute()` | *(override)* Mutes this list and all elements. |
-| `unmute` | `void unmute()` | *(override)* Unmutes elements then this list, coalescing to one notification. |
 | `append` | `TomList<E> append(E element)` | Adds an element and returns the list for chaining. |
 | `resetWith` | `void resetWith(Iterable<E> elements)` | Atomically replaces all contents, firing `onBeforeClear`/`onAfterReset`. |
 | `add` | `void add(E value)` | Adds and observes an element. |
@@ -753,8 +759,8 @@ TomList.ofList(List<E> list)
 | `removeLast` | `E removeLast()` | Removes and un-observes the last element. |
 | `removeRange` | `void removeRange(int start, int end)` | Removes and un-observes elements in `[start, end)`. |
 | `removeWhere` | `void removeWhere(bool Function(E element) test)` | Removes and un-observes matching elements. |
-| `replaceRange` | `void replaceRange(int start, int end, Iterable<E> replacements)` | Replaces a range as a single consolidated notification; the internal mute is released in a `finally`, so an out-of-range index does not silence the list. |
-| `retainWhere` | `void retainWhere(bool Function(E element) test)` | Retains only matching elements as a single notification; the internal mute is released in a `finally`, so a throwing `test` does not silence the list. |
+| `replaceRange` | `void replaceRange(int start, int end, Iterable<E> replacements)` | Replaces a range as a single consolidated notification. It runs inside a `batchSelf`, which mutes only the list — the elements stay audible — and releases in a `finally`, so an out-of-range index does not silence the list, and an enclosing `batch` is left intact. |
+| `retainWhere` | `void retainWhere(bool Function(E element) test)` | Retains only matching elements as a single notification. It delegates to `removeWhere`, which already notifies at most once, so no batch is involved. |
 | `setAll` | `void setAll(int index, Iterable<E> iterable)` | Overwrites elements from `index`, re-observing; silent if the sequence is unchanged. |
 | `setRange` | `void setRange(int start, int end, Iterable<E> iterable, [int skipCount = 0])` | Overwrites a range, re-observing; silent if the sequence is unchanged. |
 | `shuffle` | `void shuffle([Random? random])` | Shuffles the elements; silent if the order came out unchanged. |
@@ -835,6 +841,7 @@ TomMap.ofMap(Map<K, V> map)
 | `keys` | `Iterable<K>` | All keys. |
 | `values` | `Iterable<V>` | All values. |
 | `entries` | `Iterable<MapEntry<K, V>>` | All key-value pairs. |
+| `muteCascadeTargets` | `Iterable<TomObservable>` | *(override)* The values, so `mute` and `batch` cascade to them. |
 
 #### Methods
 
@@ -843,8 +850,6 @@ TomMap.ofMap(Map<K, V> map)
 | `set` | `Map<K, V> set(Map<K, V> value)` | *(override)* Throws `TomObservableException` — modify individual entries instead. |
 | `get` | `Map<K, V> get()` | *(override)* Returns a copy of the backing map. |
 | `onNotify` | `void onNotify(TomObservable observable)` | *(override)* Propagates a value change to this map's observers. |
-| `mute` | `void mute()` | *(override)* Mutes this map and all values. |
-| `unmute` | `void unmute()` | *(override)* Unmutes values then this map, coalescing to one notification. |
 | `add` | `void add(K key, V value)` | Adds/replaces a key's value, re-observing. |
 | `addAll` | `void addAll(Map<K, V> other)` | Adds all entries from `other`, re-observing; silent if the mapping is unchanged. |
 | `addEntries` | `void addEntries(Iterable<MapEntry<K, V>> newEntries)` | Adds entries, re-observing; silent if the mapping is unchanged. |
@@ -857,8 +862,8 @@ TomMap.ofMap(Map<K, V> map)
 | `putIfAbsent` | `V putIfAbsent(K key, V Function() ifAbsent)` | Inserts and observes a value if `key` is absent; a present key is returned untouched and is silent. |
 | `remove` | `V? remove(K? key)` | Removes and un-observes the value for `key` and notifies; a `null` or absent key returns `null` and is silent. |
 | `removeWhere` | `void removeWhere(bool Function(K key, V value) test)` | Removes matching entries, re-observing survivors; silent if nothing matched. |
-| `update` | `V update(K key, V Function(V value) update, {V Function()? ifAbsent})` | Updates the value for `key`, re-observing. |
-| `updateAll` | `void updateAll(V Function(K key, V value) update)` | Updates all values, re-observing changed ones. One notification for the whole call, and none if every callback returned the value it was given unchanged. |
+| `update` | `V update(K key, V Function(V value) update, {V Function()? ifAbsent})` | Updates the value for `key`, re-observing. Runs inside a `batchSelf`, so a callback that both mutates the value in place and returns a replacement still notifies once. |
+| `updateAll` | `void updateAll(V Function(K key, V value) update)` | Updates all values, re-observing changed ones. Runs inside a `batchSelf`: one notification for the whole call, and none if every callback returned the value it was given unchanged. |
 
 #### Operators
 

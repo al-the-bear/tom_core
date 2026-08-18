@@ -160,8 +160,14 @@ class Counter extends TomObservable {
 | `addObserver(TomObserver observer)` | Registers an observer to receive notifications |
 | `removeObserver(TomObserver observer)` | Unregisters an observer |
 | `notifyObservers([String? message])` | Notifies all registered observers of a change |
-| `mute()` | Temporarily suppresses notifications |
-| `unmute()` | Resumes notifications and triggers if changes occurred while muted |
+| `batch<T>(T Function() body)` | Runs `body` with notifications suppressed, releasing even if it throws; returns the body's result |
+| `batchSelf<T>(T Function() body)` | Like `batch`, but suppresses this object only — the members stay audible |
+| `mute()` | Suppresses notifications; nests, so each call needs one `unmute()` |
+| `unmute()` | Releases one `mute()`; notifies once when the last one is released and something changed |
+
+| Getter | Type | Description |
+|--------|------|-------------|
+| `muteCascadeTargets` | `Iterable<TomObservable>` | The members `mute()` cascades to. Empty here; the composites override it |
 
 #### Memory Management
 
@@ -591,11 +597,11 @@ print(~person.isActive); // false
 The input is usually decoded JSON, so a mistyped value is an ordinary event,
 not a programming error. Two guarantees apply:
 
-**The object stays usable.** `setValues` batches its work behind a `mute()`,
-and that mute is released in a `finally`. A rejected value therefore cannot
-leave the object — or the members `mute()` cascades to — permanently silent.
-Whatever was applied before the failure is announced at that point: the object
-*has* changed, and hiding it would be worse than reporting a partial update.
+**The object stays usable.** `setValues` runs inside a `batch()`, which
+releases in a `finally`. A rejected value therefore cannot leave the object —
+or the members the batch cascades to — permanently silent. Whatever was applied
+before the failure is announced at that point: the object *has* changed, and
+hiding it would be worse than reporting a partial update.
 
 **The error says which key.** Every failure surfaces as a
 `TomObservableException` naming the offending key and the runtime type actually
@@ -1126,12 +1132,47 @@ print(notifications);  // 1
 
 ### How Muting Works
 
-1. `mute()` sets an internal flag and records the object as "dirty" when changes occur
-2. While muted, `notifyObservers()` does not send notifications
-3. `unmute()` checks if the object became dirty during muting
-4. If dirty, a single notification is sent
+1. `mute()` increments a mute counter, and cascades to the object's members
+2. While the counter is above zero, `notifyObservers()` records the object as
+   "dirty" instead of notifying
+3. `unmute()` releases the members this mute silenced, then decrements
+4. When the counter reaches zero, a dirty object sends a single notification
 
-### Nested Muting
+### Batches Nest
+
+The mute is a **counter, not a flag**. Each `mute()` must be matched by exactly
+one `unmute()`, and notifications resume only when the outermost one is
+released:
+
+```dart
+person.mute();
+person.mute();
+
+person.name | "Bob";
+
+person.unmute();  // inner release: still muted, still silent
+print(person.isMuted);  // true
+
+person.unmute();  // outer release: one notification
+```
+
+This is what makes the framework's own batching methods safe to call from
+inside your batch. `setValues`, `replaceRange` and `TomMap.update` all mute
+while they work; because mutes nest, doing so suppresses their own intermediate
+notifications without releasing yours:
+
+```dart
+order.batch(() {
+  order.setValues({'orderId': 'ORD-001'});  // batches internally
+  order.total | 99.99;
+});  // still exactly one notification
+```
+
+Releasing more often than you muted is a no-op rather than an error — the
+counter floors at zero, so a stray `unmute()` cannot leave the object in a
+state where the next batch fails to suppress.
+
+### Cascading to Members
 
 For `TomClass`, `TomList`, and `TomMap`, muting propagates to children:
 
@@ -1159,28 +1200,56 @@ order.unmute();  // Single notification for all changes
 print(notifications);  // 1
 ```
 
-### Try-Finally Pattern
+### Prefer `batch()` over `mute()` / `unmute()`
 
-Always use try-finally to ensure unmute is called:
+An unreleased mute is not a lost notification — it is an object that never
+notifies again, because nothing outside `unmute()` decrements the counter. Use
+`batch()`, which releases in a `finally`, and the mistake becomes unavailable:
 
 ```dart
 void performBatchUpdate(Person person) {
-  person.mute();
-  try {
+  person.batch(() {
     person.name | "Updated Name";
     person.age | 30;
     // ... more updates
-  } finally {
-    person.unmute();  // Always called, even if exception occurs
-  }
+  });  // released even if an update throws
 }
 ```
 
-An unreleased mute is not a lost notification — it is an object that never
-notifies again, because nothing outside `unmute()` clears the flag. The
-framework's own batching follows this pattern for exactly that reason:
-`TomClass.setOrMergeValues` (and therefore `setValues` / `fromJson`),
-`TomList.replaceRange` and `TomList.retainWhere` all release in a `finally`.
+`batch()` returns whatever its body returns, so it wraps an expression as
+readily as a statement:
+
+```dart
+final count = order.batch(() {
+  order.items.addAll(newItems);
+  return order.items.length;
+});
+```
+
+The framework's own batching uses it: `TomClass.setOrMergeValues` (and
+therefore `setValues` / `fromJson`) runs inside a `batch()`, and
+`TomList.replaceRange` and `TomMap.update` / `updateAll` inside a `batchSelf()`.
+
+### `batchSelf()` — consolidating without silencing the members
+
+`batch()` cascades: it mutes the members too, so nothing inside the object is
+heard from until the batch ends. That is the right default for a caller
+assembling a set of edits, but the wrong one for a mutator that only wants to
+merge *its own* notifications.
+
+`batchSelf()` mutes the container alone. `TomList.replaceRange` uses it so that
+its internal remove-then-insert surfaces as one notification from the list,
+while observers watching an individual element still hear about that element
+when it changes:
+
+```dart
+list.batchSelf(() {
+  // list is muted; its elements are not
+});
+```
+
+Reach for `batch()` unless you are writing a container mutator and have a
+reason to leave the elements audible.
 
 ## Error Handling
 
@@ -1247,22 +1316,23 @@ String value = name.get();
 name.addObserver(TomFunctionObserver((obs) => print("Changed!")));
 ```
 
-### 2. Mute During Batch Updates
+### 2. Batch Multiple Changes
 
-Always mute when making multiple changes:
+Wrap multiple changes in `batch()` so observers see one notification, not one
+per field:
 
 ```dart
 void updatePerson(Person person, Map<String, dynamic> data) {
-  person.mute();
-  try {
+  person.batch(() {
     if (data['name'] != null) person.name | data['name'];
     if (data['age'] != null) person.age | data['age'];
     if (data['email'] != null) person.email | data['email'];
-  } finally {
-    person.unmute();
-  }
+  });
 }
 ```
+
+Use the raw `mute()` / `unmute()` pair only when the batch cannot be expressed
+as a single block — and then release it in a `finally`.
 
 ### 3. Initialize Fields with Default Values
 

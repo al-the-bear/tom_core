@@ -2151,6 +2151,35 @@ void main() {
       expect(observer.notifyCount, equals(1));
     });
 
+    // The callback may do both things at once: mutate the value it was handed
+    // (which reaches the map through its observation of that value) and return
+    // a replacement (which the map announces itself). That is still one call,
+    // so it is still one notification.
+    test('update notifies once when the callback mutates and replaces', () {
+      seed({'a': 1});
+      final original = map['a']!;
+
+      map.update('a', (value) {
+        value.set(99);
+        return TomInt(2);
+      });
+
+      expect(observer.notifyCount, equals(1));
+      expect(original.get(), equals(99));
+      expect(map['a']!.get(), equals(2));
+    });
+
+    test('updateAll notifies once when the callbacks mutate and replace', () {
+      seed({'a': 1, 'b': 2});
+
+      map.updateAll((key, value) {
+        value.set(value.get() * 100);
+        return TomInt(value.get() + 1);
+      });
+
+      expect(observer.notifyCount, equals(1));
+    });
+
     test('updateAll returning the same values notifies nothing', () {
       seed({'a': 1, 'b': 2});
 
@@ -2197,6 +2226,359 @@ void main() {
       map << {'a': TomInt(9)};
 
       expect(observer.notifyCount, equals(1));
+    });
+  });
+
+  // ==========================================================================
+  // Mute nests (see doc/observable/observable.md, "Nested Muting").
+  //
+  // `mute` counts depth rather than setting a flag, so a batching method
+  // called from inside an enclosing batch suppresses its own notifications
+  // without releasing the caller's. The single notification is emitted by the
+  // outermost `unmute`, and only if something actually changed.
+  // ==========================================================================
+  group('mute nesting', () {
+    test('two mutes need two unmutes before notifications resume', () {
+      final observable = TomObservable();
+      final observer = TestObserver<TomObservable>();
+      observable.addObserver(observer);
+
+      observable.mute();
+      observable.mute();
+      expect(observable.isMuted, isTrue);
+
+      observable.notifyObservers();
+      expect(observer.notifyCount, equals(0));
+
+      // Inner release: still muted, still silent.
+      observable.unmute();
+      expect(observable.isMuted, isTrue);
+      expect(observer.notifyCount, equals(0));
+
+      // Outer release: one consolidated notification.
+      observable.unmute();
+      expect(observable.isMuted, isFalse);
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('a nested batch that changes nothing leaves the outer batch clean',
+        () {
+      final observable = TomObservable();
+      final observer = TestObserver<TomObservable>();
+      observable.addObserver(observer);
+
+      observable.mute();
+      observable.mute();
+      observable.unmute();
+      observable.unmute();
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('unmute on an unmuted observable is a no-op, not a negative depth',
+        () {
+      final observable = TomObservable();
+      final observer = TestObserver<TomObservable>();
+      observable.addObserver(observer);
+
+      observable.unmute();
+      expect(observable.isMuted, isFalse);
+      expect(observer.notifyCount, equals(0));
+
+      // The stray unmute must not have left the depth at -1, which would make
+      // the next mute() fail to actually mute.
+      observable.mute();
+      expect(observable.isMuted, isTrue);
+      observable.notifyObservers();
+      expect(observer.notifyCount, equals(0));
+      observable.unmute();
+      expect(observer.notifyCount, equals(1));
+    });
+  });
+
+  // ==========================================================================
+  // The batch mutators (`replaceRange`, `retainWhere`, `setOrMergeValues`,
+  // `TomMap.update` / `updateAll`) suppress their own notifications while they
+  // work. Called inside an enclosing batch they must suppress and no more --
+  // releasing the caller's batch early would emit exactly the notification the
+  // caller was consolidating.
+  // ==========================================================================
+  group('batch mutators inside an enclosing mute', () {
+    TomList<TomInt> seeded(List<int> values) {
+      final list = TomList<TomInt>();
+      for (final v in values) {
+        list.append(TomInt(v));
+      }
+      return list;
+    }
+
+    test('replaceRange inside an outer mute notifies once, at the outer unmute',
+        () {
+      final list = seeded([1, 2, 3]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.mute();
+      list.replaceRange(1, 2, [TomInt(9)]);
+      expect(observer.notifyCount, equals(0),
+          reason: 'the outer mute is still held');
+
+      list.unmute();
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('retainWhere inside an outer mute notifies once, at the outer unmute',
+        () {
+      final list = seeded([1, 2, 3]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.mute();
+      list.retainWhere((e) => e.get() != 2);
+      expect(observer.notifyCount, equals(0),
+          reason: 'the outer mute is still held');
+
+      list.unmute();
+      expect(observer.notifyCount, equals(1));
+      expect(list.length, equals(2));
+    });
+
+    test('replaceRange and retainWhere in one batch notify once in total', () {
+      final list = seeded([1, 2, 3, 4]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.mute();
+      list.replaceRange(0, 1, [TomInt(10)]);
+      list.retainWhere((e) => e.get() != 3);
+      expect(observer.notifyCount, equals(0));
+
+      list.unmute();
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('TomMap.update inside an outer mute notifies once, at the outer unmute',
+        () {
+      final map = TomMap<String, TomInt>();
+      map['a'] = TomInt(1);
+      final observer = TestObserver<TomMap<String, TomInt>>();
+      map.addObserver(observer);
+
+      map.mute();
+      map.update('a', (v) => TomInt(2));
+      expect(observer.notifyCount, equals(0));
+
+      map.unmute();
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('TomMap.updateAll inside an outer mute notifies once', () {
+      final map = TomMap<String, TomInt>();
+      map['a'] = TomInt(1);
+      map['b'] = TomInt(2);
+      final observer = TestObserver<TomMap<String, TomInt>>();
+      map.addObserver(observer);
+
+      map.mute();
+      map.updateAll((k, v) => TomInt(v.get() * 10));
+      expect(observer.notifyCount, equals(0));
+
+      map.unmute();
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('setOrMergeValues inside an outer mute notifies once', () {
+      final person = TestPerson();
+      final observer = TestObserver<TestPerson>();
+      person.addObserver(observer);
+
+      person.mute();
+      person.setValues({'name': 'Ada'});
+      expect(observer.notifyCount, equals(0));
+
+      person.unmute();
+      expect(observer.notifyCount, equals(1));
+      expect(person.name.get(), equals('Ada'));
+    });
+  });
+
+  // ==========================================================================
+  // `mute` cascades to the members a composite held *when it was called*, and
+  // `unmute` releases exactly those. Membership changes made during the batch
+  // must not leak: an element added mid-batch was never muted by this batch and
+  // must not be unmuted by it (which would drive its depth negative), and an
+  // element removed mid-batch was muted by this batch and must still be
+  // released (or it stays silent forever).
+  // ==========================================================================
+  group('mute cascade bookkeeping', () {
+    test('an element added during a batch is left unmuted', () {
+      final list = TomList<TomInt>();
+      final first = TomInt(1);
+      list.append(first);
+
+      list.mute();
+      final added = TomInt(2);
+      list.append(added);
+      list.unmute();
+
+      expect(first.isMuted, isFalse);
+      expect(added.isMuted, isFalse);
+
+      // The real damage of an unbalanced release is a negative depth, which
+      // shows up as the *next* mute failing to take effect.
+      final observer = TestObserver<TomInt>();
+      added.addObserver(observer);
+      added.mute();
+      added.set(3);
+      expect(observer.notifyCount, equals(0),
+          reason: 'depth must not have gone negative during the batch');
+      added.unmute();
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('an element removed during a batch is still released', () {
+      final list = TomList<TomInt>();
+      final removed = TomInt(1);
+      final kept = TomInt(2);
+      list.append(removed);
+      list.append(kept);
+
+      list.mute();
+      list.remove(removed);
+      list.unmute();
+
+      expect(removed.isMuted, isFalse,
+          reason: 'the batch muted it, so the batch must release it');
+      expect(kept.isMuted, isFalse);
+
+      final observer = TestObserver<TomInt>();
+      removed.addObserver(observer);
+      removed.set(9);
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('a map value removed during a batch is still released', () {
+      final map = TomMap<String, TomInt>();
+      final removed = TomInt(1);
+      map['a'] = removed;
+      map['b'] = TomInt(2);
+
+      map.mute();
+      map.remove('a');
+      map.unmute();
+
+      expect(removed.isMuted, isFalse);
+    });
+
+    test('nested composite mutes cascade and release symmetrically', () {
+      final customer = TestCustomer();
+
+      customer.mute();
+      expect(customer.address.isMuted, isTrue);
+      expect(customer.address.city.isMuted, isTrue);
+
+      customer.mute();
+      customer.unmute();
+      expect(customer.isMuted, isTrue,
+          reason: 'the outer mute is still held');
+      expect(customer.address.city.isMuted, isTrue,
+          reason: 'the outer mute still holds the cascade');
+
+      customer.unmute();
+      expect(customer.isMuted, isFalse);
+      expect(customer.address.isMuted, isFalse);
+      expect(customer.address.city.isMuted, isFalse);
+    });
+  });
+
+  // ==========================================================================
+  // `batch` and `batchSelf` are the scoped forms of mute/unmute. They exist so
+  // that callers cannot forget the release -- including on the throwing path.
+  // ==========================================================================
+  group('batch and batchSelf', () {
+    test('batch consolidates the enclosed changes into one notification', () {
+      final list = TomList<TomInt>();
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.batch(() {
+        list.append(TomInt(1));
+        list.append(TomInt(2));
+        list.append(TomInt(3));
+      });
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.length, equals(3));
+    });
+
+    test('batch returns the body result', () {
+      final list = TomList<TomInt>();
+
+      final result = list.batch(() {
+        list.append(TomInt(7));
+        return list.length;
+      });
+
+      expect(result, equals(1));
+    });
+
+    test('batch releases the mute when the body throws', () {
+      final list = TomList<TomInt>();
+      final element = TomInt(1);
+      list.append(element);
+
+      expect(
+        () => list.batch(() {
+          list.append(TomInt(2));
+          throw StateError('body boom');
+        }),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(list.isMuted, isFalse);
+      expect(element.isMuted, isFalse,
+          reason: 'the cascade must be released too');
+    });
+
+    test('batch nests', () {
+      final observable = TomObservable();
+      final observer = TestObserver<TomObservable>();
+      observable.addObserver(observer);
+
+      observable.batch(() {
+        observable.batch(() {
+          observable.notifyObservers();
+        });
+        expect(observer.notifyCount, equals(0),
+            reason: 'the inner batch must not release the outer one');
+      });
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('batchSelf suppresses the container only, not its members', () {
+      final list = TomList<TomInt>();
+      final element = TomInt(1);
+      list.append(element);
+
+      list.batchSelf(() {
+        expect(list.isMuted, isTrue);
+        expect(element.isMuted, isFalse,
+            reason: 'batchSelf does not cascade');
+      });
+
+      expect(list.isMuted, isFalse);
+    });
+
+    test('batchSelf releases the mute when the body throws', () {
+      final list = TomList<TomInt>();
+
+      expect(
+        () => list.batchSelf(() => throw StateError('body boom')),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(list.isMuted, isFalse);
     });
   });
 }

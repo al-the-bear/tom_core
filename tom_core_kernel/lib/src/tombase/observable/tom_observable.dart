@@ -8,8 +8,11 @@ import '../reflection/reflection.dart';
 /// leaks - if an observer is garbage collected, it will be automatically removed
 /// from the observer list.
 ///
-/// The class supports muting notifications temporarily, which is useful during
-/// batch updates where you want to defer notifications until all changes are complete.
+/// Notifications can be muted temporarily so that a run of changes surfaces as
+/// a single notification instead of one per change. Use [batch] for that —
+/// it releases the mute even when the body throws. [mute] and [unmute] are the
+/// unscoped form; they nest, so a batching method may be called from inside a
+/// caller's batch without cutting it short.
 ///
 /// Example usage:
 /// ```dart
@@ -31,37 +34,132 @@ import '../reflection/reflection.dart';
 /// ```
 @tomReflector
 class TomObservable {
-  bool _silent = false;
+  /// How many mutes are currently held. Zero means notifications flow.
+  ///
+  /// A counter rather than a flag so that batches nest: a batching method
+  /// called from inside an enclosing batch must suppress its own
+  /// notifications without releasing the caller's.
+  int _muteDepth = 0;
   bool _dirty = false;
+
+  /// The cascade targets of each still-open mute, innermost last.
+  ///
+  /// Invariant: `_cascades.length == _muteDepth`. Each [mute] snapshots the
+  /// targets it silenced and each [unmute] releases exactly that snapshot, so
+  /// membership changes made *during* a batch cannot unbalance it — an element
+  /// added mid-batch was never muted here and is not released here, and one
+  /// removed mid-batch was muted here and still is released here.
+  final List<List<TomObservable>> _cascades = [];
 
   final List<WeakReference<TomObserver>> _observers = [];
 
-  /// Mutes all observer notifications.
+  /// The observables that [mute] cascades to.
   ///
-  /// While muted, calls to [notifyObservers] will mark the observable as dirty
-  /// but will not actually notify observers. When [unmute] is called, if the
-  /// observable was marked dirty, observers will be notified at that time.
+  /// Empty for a plain observable. The composites ([TomClass], [TomList],
+  /// [TomMap]) override this to name their members, so that muting a container
+  /// silences what it contains.
   ///
-  /// This is useful for batch updates where you want to make multiple changes
-  /// without triggering notifications for each individual change.
+  /// The result is snapshotted at [mute] time; returning a live view is safe.
+  Iterable<TomObservable> get muteCascadeTargets => const [];
+
+  /// Mutes all observer notifications, and those of [muteCascadeTargets].
+  ///
+  /// While muted, calls to [notifyObservers] mark the observable as dirty
+  /// instead of notifying. The matching [unmute] delivers a single
+  /// consolidated notification if anything was marked dirty.
+  ///
+  /// **Mutes nest.** Each call must be matched by exactly one [unmute];
+  /// notifications resume only when the outermost one is released. This is
+  /// what lets a batching mutator be called from inside a caller's batch
+  /// without cutting it short.
+  ///
+  /// Prefer [batch], which cannot leak a mute on the throwing path.
   void mute() {
-    _silent = true;
+    final targets = List<TomObservable>.of(muteCascadeTargets);
+    _muteDepth++;
+    _cascades.add(targets);
+    for (final target in targets) {
+      target.mute();
+    }
   }
 
-  /// Unmutes observer notifications and notifies observers if changes occurred while muted.
+  /// Releases one [mute].
   ///
-  /// If [notifyObservers] was called while the observable was muted, observers
-  /// will be notified immediately upon calling this method.
+  /// The cascade targets this mute silenced are released first, while this
+  /// object is still muted, so any notification they emit collapses into this
+  /// object's single notification rather than escaping as one of its own.
+  ///
+  /// When the last mute is released and [notifyObservers] was called while
+  /// muted, observers are notified once.
+  ///
+  /// Releasing more often than muting is a no-op rather than an error: the
+  /// depth floors at zero, so a stray call cannot poison later batches.
   void unmute() {
-    _silent = false;
+    if (_muteDepth == 0) return;
+
+    for (final target in _cascades.removeLast()) {
+      target.unmute();
+    }
+    _muteDepth--;
+    if (_muteDepth > 0) return;
+
     if (_dirty) {
+      _dirty = false;
       notifyObservers();
     }
-    _dirty = false;
+  }
+
+  /// Mutes this observable *without* cascading to [muteCascadeTargets].
+  ///
+  /// Used by the batching mutators on the composites, which consolidate their
+  /// own notifications but must leave the elements' own observers alone.
+  void _muteSelf() {
+    _muteDepth++;
+    _cascades.add(const <TomObservable>[]);
   }
 
   /// Returns `true` if observer notifications are currently muted.
-  bool get isMuted => _silent;
+  bool get isMuted => _muteDepth > 0;
+
+  /// Runs [body] with notifications muted, releasing the mute afterwards.
+  ///
+  /// The scoped form of [mute] / [unmute], and the one to reach for: the
+  /// release happens in a `finally`, so a throwing [body] cannot leave the
+  /// object silent for the rest of its life. Nests like [mute] does.
+  ///
+  /// ```dart
+  /// list.batch(() {
+  ///   list.add(a);
+  ///   list.add(b);
+  /// }); // one notification
+  /// ```
+  ///
+  /// Returns whatever [body] returns.
+  T batch<T>(T Function() body) {
+    mute();
+    try {
+      return body();
+    } finally {
+      unmute();
+    }
+  }
+
+  /// Runs [body] with *this* observable's notifications muted, without
+  /// cascading to [muteCascadeTargets].
+  ///
+  /// A composite mutator that makes several internal edits uses this to
+  /// surface them as one notification, while leaving observers of the
+  /// individual elements to hear about their own changes as they happen.
+  ///
+  /// Returns whatever [body] returns.
+  T batchSelf<T>(T Function() body) {
+    _muteSelf();
+    try {
+      return body();
+    } finally {
+      unmute();
+    }
+  }
 
   /// Finds the weak reference wrapper for the given observer.
   ///
@@ -110,7 +208,7 @@ class TomObservable {
   /// The optional [message] parameter is currently unused but reserved for
   /// future use to pass additional context about the change.
   void notifyObservers([dynamic message]) {
-    if (_silent) {
+    if (isMuted) {
       _dirty = true;
       return;
     }

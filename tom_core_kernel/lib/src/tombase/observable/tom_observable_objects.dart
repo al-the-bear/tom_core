@@ -775,40 +775,11 @@ class TomClass extends TomObject<Map<String, TomObject>>
     notifyObservers();
   }
 
-  /// Mutes this [TomClass] and all its members.
-  ///
-  /// While muted, changes to any member will not trigger notifications.
-  /// Call [unmute] to resume notifications.
+  /// Muting a [TomClass] mutes its members, so that a batch spanning several
+  /// fields surfaces as one notification from the class rather than one per
+  /// field.
   @override
-  void mute() {
-    super.mute();
-    for (var key in _value.keys) {
-      TomObject? member = _value[key];
-      if (member != null) {
-        member.mute();
-      }
-    }
-  }
-
-  /// Unmutes this [TomClass] and all its members.
-  ///
-  /// If changes occurred while muted, observers will be notified once.
-  /// Members are unmuted first (while parent is still muted) so their
-  /// notifications just mark the parent as dirty, then the parent is
-  /// unmuted for a single consolidated notification.
-  @override
-  void unmute() {
-    // First unmute all members while parent is still muted.
-    // If members notify, the parent's onNotify will just mark it as dirty.
-    for (var key in _value.keys) {
-      TomObject? member = _value[key];
-      if (member != null) {
-        member.unmute();
-      }
-    }
-    // Then unmute parent - will notify once if any member was dirty
-    super.unmute();
-  }
+  Iterable<TomObservable> get muteCascadeTargets => _value.values;
 
   /// Updates multiple member fields from a map of values.
   ///
@@ -837,18 +808,17 @@ class TomClass extends TomObject<Map<String, TomObject>>
   /// ordinary occurrence rather than a programming error, and the method is
   /// written to survive one:
   ///
-  /// - The mute is released in a `finally`, so a rejected value cannot leave
-  ///   the object — or its members, which [mute] cascades to — permanently
-  ///   silent. Whatever was applied before the failure is announced at that
-  ///   point: the object *has* changed, and hiding it would be worse than
-  ///   reporting a partial update.
+  /// - The work runs inside a [batch], which releases in a `finally`, so a
+  ///   rejected value cannot leave the object — or its members, which the
+  ///   batch cascades to — permanently silent. Whatever was applied before the
+  ///   failure is announced at that point: the object *has* changed, and
+  ///   hiding it would be worse than reporting a partial update.
   /// - Whatever the underlying failure was, it surfaces as a
   ///   [TomObservableException] naming the offending key and the runtime type
   ///   actually supplied. Unwrapped, a mistyped member surfaces as a bare
   ///   `TypeError` from deep inside a cast, which identifies neither.
   void setOrMergeValues(Map<String, dynamic> values, bool merge) {
-    mute();
-    try {
+    batch(() {
       for (var key in values.keys) {
         TomObject? member = _value[key] ?? _value["_$key"];
         var value = values[key];
@@ -871,9 +841,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
           );
         }
       }
-    } finally {
-      unmute();
-    }
+    });
   }
 
   /// Applies one deserialized [value] to one [member], dispatching on the
@@ -1296,34 +1264,10 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     notifyObservers();
   }
 
-  /// Mutes this list and all its elements.
-  ///
-  /// While muted, changes to elements are tracked but not propagated.
-  /// Call [unmute] to resume notifications and trigger a single
-  /// consolidated notification if any elements were modified.
+  /// Muting a list mutes its elements, so that a batch touching several
+  /// elements surfaces as one notification from the list.
   @override
-  void mute() {
-    super.mute();
-    for (var element in _value) {
-      element.mute();
-    }
-  }
-
-  /// Unmutes this list and all its elements.
-  ///
-  /// Elements are unmuted first while the list is still muted, so their
-  /// notifications are absorbed. Then the list is unmuted, triggering
-  /// a single notification if any element was modified while muted.
-  @override
-  void unmute() {
-    // First unmute all elements while list is still muted.
-    // This way, if elements notify, they just mark the list as dirty.
-    for (var element in _value) {
-      element.unmute();
-    }
-    // Then unmute list - will notify once if any element was dirty.
-    super.unmute();
-  }
+  Iterable<TomObservable> get muteCascadeTargets => _value;
 
   /// Override parent's << operator for setting the entire list value.
   @override
@@ -1653,31 +1597,26 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   }
 
   void replaceRange(int start, int end, Iterable<E> replacements) {
-    // Suppress only this list's own notifications (super.mute(), not the
-    // element-cascading override) so the composite remove+insert surfaces as
-    // a single consolidated notification instead of up to three.
+    // Suppress only this list's own notifications (batchSelf, not the
+    // element-cascading batch) so the composite remove+insert surfaces as a
+    // single consolidated notification instead of up to three, while observers
+    // of the individual elements still hear about their own changes.
     //
-    // Released in a `finally`: an out-of-range index throws between the two
-    // halves, and an unreleased mute would silence the list for the rest of
-    // its life — a far worse outcome than the failed edit itself.
-    super.mute();
-    try {
+    // batchSelf releases in a `finally`: an out-of-range index throws between
+    // the two halves, and an unreleased mute would silence the list for the
+    // rest of its life — a far worse outcome than the failed edit itself. It
+    // also nests, so calling this from inside a caller's batch suppresses
+    // without cutting that batch short.
+    batchSelf(() {
       removeRange(start, end);
       insertAll(start, replacements);
-    } finally {
-      super.unmute();
-    }
+    });
   }
 
   void retainWhere(bool Function(E element) test) {
-    // `test` is caller code and may throw; see replaceRange for why the
-    // release is unconditional.
-    super.mute();
-    try {
-      removeWhere((element) => !test(element));
-    } finally {
-      super.unmute();
-    }
+    // No batch needed, unlike replaceRange: this delegates to a single
+    // mutator, and removeWhere already notifies at most once.
+    removeWhere((element) => !test(element));
   }
 
   void setAll(int index, Iterable<E> iterable) {
@@ -1846,34 +1785,10 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     notifyObservers();
   }
 
-  /// Mutes this map and all its values.
-  ///
-  /// While muted, changes to values are tracked but not propagated.
-  /// Call [unmute] to resume notifications and trigger a single
-  /// consolidated notification if any values were modified.
+  /// Muting a map mutes its values, so that a batch touching several entries
+  /// surfaces as one notification from the map.
   @override
-  void mute() {
-    super.mute();
-    for (var value in _value.values) {
-      value.mute();
-    }
-  }
-
-  /// Unmutes this map and all its values.
-  ///
-  /// Values are unmuted first while the map is still muted, so their
-  /// notifications are absorbed. Then the map is unmuted, triggering
-  /// a single notification if any value was modified while muted.
-  @override
-  void unmute() {
-    // First unmute all values while map is still muted.
-    // This way, if values notify, they just mark the map as dirty.
-    for (var value in _value.values) {
-      value.unmute();
-    }
-    // Then unmute map - will notify once if any value was dirty.
-    super.unmute();
-  }
+  Iterable<TomObservable> get muteCascadeTargets => _value.values;
 
   /// Gets the value associated with [key], or `null` if not found.
   V? operator [](K key) {
@@ -2013,12 +1928,12 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     final existing = _value[key];
     if (existing != null) {
       // Suppress only this map's own notifications across the callback
-      // (super.mute(), not the value-cascading override): the callback is free
-      // to mutate the value *and* return a replacement, and the caller made one
-      // call, so it gets one notification. Released in a `finally` — a throwing
-      // callback must not leave the map silent for the rest of its life.
-      super.mute();
-      try {
+      // (batchSelf, not the value-cascading batch): the callback is free to
+      // mutate the value *and* return a replacement, and the caller made one
+      // call, so it gets one notification. batchSelf releases in a `finally` —
+      // a throwing callback must not leave the map silent for the rest of its
+      // life — and nests, so an enclosing batch survives this call.
+      return batchSelf(() {
         final newValue = update(existing);
         if (identical(newValue, existing)) return existing;
         existing.removeObserver(this);
@@ -2026,9 +1941,7 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
         _value[key] = newValue;
         notifyObservers();
         return newValue;
-      } finally {
-        super.unmute();
-      }
+      });
     }
     if (ifAbsent == null) {
       throw TomObservableException(
@@ -2047,8 +1960,7 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     final before = _snapshot();
     // See [update] for the mute: the callbacks may mutate values in place as
     // well as replace them, and updateAll is one call.
-    super.mute();
-    try {
+    batchSelf(() {
       _value.updateAll((key, value) {
         final newValue = update(key, value);
         if (!identical(newValue, value)) {
@@ -2058,9 +1970,7 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
         return newValue;
       });
       _notifyIfChangedSince(before);
-    } finally {
-      super.unmute();
-    }
+    });
   }
 
   /// Casts a [TomMap] from one key/value type to another.

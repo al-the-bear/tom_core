@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 114 files
-// Generated: 2026-08-18T20:05:30.671043
+// Generated: 2026-08-18T23:05:09.758392
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -16503,6 +16503,7 @@ BridgedClass _createTomDbTypeBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType').isMuted,
     },
     methods: {
@@ -16541,6 +16542,24 @@ BridgedClass _createTomDbTypeBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return (t as dynamic).batch(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return (t as dynamic).batchSelf(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType');
@@ -16591,12 +16610,15 @@ BridgedClass _createTomDbTypeBridge() {
       'call': 'T call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
   );
@@ -16621,6 +16643,7 @@ BridgedClass _createTomDbIntBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt').isMuted,
     },
     methods: {
@@ -16659,6 +16682,24 @@ BridgedClass _createTomDbIntBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batch<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batchSelf<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt');
@@ -16719,12 +16760,15 @@ BridgedClass _createTomDbIntBridge() {
       'call': 'int? call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
     staticMethodSignatures: {
@@ -16752,6 +16796,7 @@ BridgedClass _createTomDbDoubleBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble').isMuted,
     },
     methods: {
@@ -16790,6 +16835,24 @@ BridgedClass _createTomDbDoubleBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batch<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batchSelf<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble');
@@ -16850,12 +16913,15 @@ BridgedClass _createTomDbDoubleBridge() {
       'call': 'double? call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
     staticMethodSignatures: {
@@ -16883,6 +16949,7 @@ BridgedClass _createTomDbStringBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString').isMuted,
     },
     methods: {
@@ -16921,6 +16988,24 @@ BridgedClass _createTomDbStringBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batch<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batchSelf<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString');
@@ -16981,12 +17066,15 @@ BridgedClass _createTomDbStringBridge() {
       'call': 'String? call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
     staticMethodSignatures: {
@@ -17014,6 +17102,7 @@ BridgedClass _createTomDbDateTimeBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime').isMuted,
     },
     methods: {
@@ -17052,6 +17141,24 @@ BridgedClass _createTomDbDateTimeBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batch<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batchSelf<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime');
@@ -17112,12 +17219,15 @@ BridgedClass _createTomDbDateTimeBridge() {
       'call': 'DateTime? call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
     staticMethodSignatures: {
@@ -17145,6 +17255,7 @@ BridgedClass _createTomDbDateBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate').isMuted,
     },
     methods: {
@@ -17183,6 +17294,24 @@ BridgedClass _createTomDbDateBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batch<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batchSelf<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate');
@@ -17243,12 +17372,15 @@ BridgedClass _createTomDbDateBridge() {
       'call': 'TomZonedDate? call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
     staticMethodSignatures: {
@@ -17276,6 +17408,7 @@ BridgedClass _createTomDbTimeBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime').isMuted,
     },
     methods: {
@@ -17314,6 +17447,24 @@ BridgedClass _createTomDbTimeBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batch<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batchSelf<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime');
@@ -17374,12 +17525,15 @@ BridgedClass _createTomDbTimeBridge() {
       'call': 'TomZonedTime? call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
     staticMethodSignatures: {
@@ -17407,6 +17561,7 @@ BridgedClass _createTomDbBoolBridge() {
     },
     getters: {
       'isNull': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool').isNull,
+      'muteCascadeTargets': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool').muteCascadeTargets,
       'isMuted': (visitor, target) => D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool').isMuted,
     },
     methods: {
@@ -17445,6 +17600,24 @@ BridgedClass _createTomDbBoolBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool');
         t.unmute();
         return null;
+      },
+      'batch': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool');
+        D4.requireMinArgs(positional, 1, 'batch');
+        if (positional.isEmpty) {
+          throw ArgumentError('batch: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batch<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+      },
+      'batchSelf': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool');
+        D4.requireMinArgs(positional, 1, 'batchSelf');
+        if (positional.isEmpty) {
+          throw ArgumentError('batchSelf: Missing required argument "body" at position 0');
+        }
+        final bodyRaw = positional[0];
+        return t.batchSelf<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'addObserver': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool');
@@ -17505,12 +17678,15 @@ BridgedClass _createTomDbBoolBridge() {
       'call': 'bool? call()',
       'mute': 'void mute()',
       'unmute': 'void unmute()',
+      'batch': 'T batch(T Function() body)',
+      'batchSelf': 'T batchSelf(T Function() body)',
       'addObserver': 'void addObserver(TomObserver<TomObservable> observer)',
       'removeObserver': 'void removeObserver(TomObserver<TomObservable> observer)',
       'notifyObservers': 'void notifyObservers([dynamic message])',
     },
     getterSignatures: {
       'isNull': 'bool get isNull',
+      'muteCascadeTargets': 'Iterable<TomObservable> get muteCascadeTargets',
       'isMuted': 'bool get isMuted',
     },
     staticMethodSignatures: {
