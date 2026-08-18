@@ -13,7 +13,7 @@
 /// ```dart
 /// // Create and throw a tracked exception
 /// throw TomException(
-///   'USER_NOT_FOUND',
+///   'user.fetch.not_found',
 ///   'The requested user could not be found',
 ///   parameters: {'userId': userId},
 ///   autoLog: true,
@@ -53,18 +53,18 @@ import 'little_things.dart';
 ///
 /// ```dart
 /// // Basic exception
-/// throw TomException('ERROR_CODE', 'Something went wrong');
+/// throw TomException('order.submit.rejected', 'Something went wrong');
 ///
 /// // Exception with parameters for context
 /// throw TomException(
-///   'VALIDATION_ERROR',
+///   'signup.validate.invalid_email',
 ///   'Invalid email format',
 ///   parameters: {'field': 'email', 'value': userInput},
 /// );
 ///
 /// // Exception with auto-logging enabled
 /// throw TomException(
-///   'CRITICAL_ERROR',
+///   'storage.connect.unreachable',
 ///   'Database connection failed',
 ///   autoLog: true,
 ///   rootException: originalException,
@@ -84,7 +84,9 @@ class TomException extends TomBaseException implements TomLoggable {
 
   /// Creates a new [TomException] with the given error details.
   ///
-  /// The [key] should be a consistent error code for programmatic handling.
+  /// The [key] is the error code callers match on, written dotted-lowercase as
+  /// `<area>.<operation>.<condition>` — the first segment names the module, so
+  /// keys from unrelated code cannot collide.
   /// The [defaultUserMessage] should be human-readable.
   ///
   /// If [autoLog] is true, the exception is logged immediately upon creation.

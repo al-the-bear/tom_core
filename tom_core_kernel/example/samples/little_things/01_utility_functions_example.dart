@@ -36,7 +36,7 @@ class SyncCheckedSuccessExample {
         return <String, dynamic>{'name': 'test', 'value': 42};
       },
       (error, stacktrace) => TomException(
-        'PARSE_ERROR',
+        'config.parse.failed',
         'Failed to parse configuration',
         rootException: error,
       ),
@@ -69,7 +69,7 @@ class SyncCheckedErrorExample {
           throw FormatException('Invalid number format');
         },
         (error, stacktrace) => TomException(
-          'VALIDATION_ERROR',
+          'input.validate.failed',
           'Input validation failed',
           rootException: error,
           parameters: {'input': 'bad_value'},
@@ -82,7 +82,7 @@ class SyncCheckedErrorExample {
       exceptionCaught = true;
     }
 
-    assert(caughtErrorKey == 'VALIDATION_ERROR', 'Error key should match');
+    assert(caughtErrorKey == 'input.validate.failed', 'Error key should match');
     assert(
       caughtErrorMessage == 'Input validation failed',
       'Error message should match',
@@ -188,7 +188,7 @@ class TomExceptionPropertiesExample {
 
   static void example6TomExceptionProperties() {
     final exception = TomException(
-      'USER_NOT_FOUND',
+      'user.fetch.not_found',
       'The requested user could not be found',
       parameters: {'userId': 'user_123', 'searchType': 'byEmail'},
       requestUuid: 'req-456-789',
@@ -202,7 +202,7 @@ class TomExceptionPropertiesExample {
     hasTimestamp = exception.timeStamp.isBefore(DateTime.now().add(Duration(seconds: 1)));
     hasStackTrace = exception.stackTrace.isNotEmpty;
 
-    assert(exceptionKey == 'USER_NOT_FOUND', 'Key should match');
+    assert(exceptionKey == 'user.fetch.not_found', 'Key should match');
     assert(
       exceptionMessage == 'The requested user could not be found',
       'Message should match',
@@ -230,7 +230,7 @@ class CustomUuidExceptionExample {
   static void example7CustomUuidException() {
     const customUuid = 'custom-error-id-12345';
     final customException = TomException(
-      'CUSTOM_ERROR',
+      'sample.custom_uuid.failed',
       'An error with custom UUID',
       uuid: customUuid,
     );
@@ -240,7 +240,10 @@ class CustomUuidExceptionExample {
     uuidMatches = customExceptionUuid == customUuid;
 
     assert(customExceptionUuid == customUuid, 'Custom UUID should match');
-    assert(customExceptionKey == 'CUSTOM_ERROR', 'Key should match');
+    assert(
+      customExceptionKey == 'sample.custom_uuid.failed',
+      'Key should match',
+    );
     assert(uuidMatches, 'UUID should match');
   }
 }
@@ -257,7 +260,7 @@ class RootExceptionExample {
   static void example8RootException() {
     final originalError = ArgumentError('Invalid argument provided');
     final wrappedException = TomException(
-      'WRAPPED_ERROR',
+      'sample.wrap.root_cause_attached',
       'Wrapped exception with root cause',
       rootException: originalError,
     );

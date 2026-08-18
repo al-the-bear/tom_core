@@ -69,7 +69,8 @@ Future<void> run() async {
       await Future<void>.delayed(const Duration(milliseconds: 1));
       return 42;
     },
-    (error, stack) => TomException('UNEXPECTED', 'should not be reached'),
+    (error, stack) =>
+        TomException('sample.unreachable.should_not_happen', 'unreachable'),
   );
   print('   Result: $value');
   assert(value == 42, 'Successful body value must pass through unchanged');
@@ -87,7 +88,7 @@ Future<void> run() async {
         throw StateError('connection dropped');
       },
       (error, stack) => TomException(
-        'NETWORK_ERROR',
+        'network.request.connection_failed',
         'Connection failed during operation',
       ),
     );
@@ -97,7 +98,7 @@ Future<void> run() async {
   print('   Caught: ${caught.runtimeType}');
   assert(caught is TomException, 'Error path must yield the mapped exception');
   assert(
-    (caught as TomException).key == 'NETWORK_ERROR',
+    (caught as TomException).key == 'network.request.connection_failed',
     'Mapped exception must carry the onError-provided key',
   );
   print('');
@@ -123,7 +124,7 @@ Future<void> run() async {
     // -------------------------------------------------------------------------
     recorder.messages.clear();
     final traced = TomException(
-      'ERROR',
+      'sample.trace.boom',
       'boom',
       uuid: 'uuid-123',
       requestUuid: 'req-456',
@@ -141,7 +142,8 @@ Future<void> run() async {
     // 6. autoLog — an exception logs itself on construction.
     // -------------------------------------------------------------------------
     recorder.messages.clear();
-    TomException('CRITICAL', 'database down', autoLog: true);
+    TomException('storage.connect.database_down', 'database down',
+        autoLog: true);
     assert(
       recorder.messages.any((m) => m.contains('EXCEPTION:')),
       'autoLog must emit an EXCEPTION line on construction',
@@ -166,7 +168,7 @@ Future<void> run() async {
     reasonPhrase: 'Not Found',
   );
   final httpException = TomException(
-    'HTTP_ERROR',
+    'network.request.failed',
     'request failed',
     serverCallError: serverError,
   );
@@ -182,7 +184,7 @@ Future<void> run() async {
   // 8. logRepresentation — TomLoggable string used by the logging system.
   // ---------------------------------------------------------------------------
   print('8. TomException.logRepresentation:');
-  final loggable = TomException('LOG_ME', 'human readable');
+  final loggable = TomException('sample.loggable.demo', 'human readable');
   print('   ${loggable.logRepresentation}');
   assert(
     loggable.logRepresentation == loggable.toString(),

@@ -12,8 +12,8 @@ import 'package:test/test.dart';
 void main() {
   group('TomServerException', () {
     test('forwards key and message to TomException', () {
-      final e = TomServerException('ERR_CODE', 'Something went wrong');
-      expect(e.key, 'ERR_CODE');
+      final e = TomServerException('test.error.code', 'Something went wrong');
+      expect(e.key, 'test.error.code');
       expect(e.defaultUserMessage, 'Something went wrong');
     });
 

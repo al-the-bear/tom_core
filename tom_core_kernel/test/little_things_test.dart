@@ -54,7 +54,7 @@ Future<StackTrace> _captureAsyncChainStack() async {
 // asserting on it proves the trace reached the code that created the exception
 // rather than the machinery that later rendered it.
 TomException _constructExceptionAtKnownSite() =>
-    TomException('ERROR', 'constructed without an explicit stack');
+    TomException('test.error.key', 'constructed without an explicit stack');
 
 // Named call sites for the implicit-capture tests: each calls a formatting
 // function *without* a stack, so the trace is captured inside the formatter and
@@ -735,13 +735,13 @@ void main() {
   group('TomException', () {
     group('constructor', () {
       test('should create exception with required parameters', () {
-        final exception = TomException('ERROR_CODE', 'Error message');
-        expect(exception.key, equals('ERROR_CODE'));
+        final exception = TomException('test.error.code', 'Error message');
+        expect(exception.key, equals('test.error.code'));
         expect(exception.defaultUserMessage, equals('Error message'));
       });
 
       test('should generate UUID if not provided', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         expect(exception.uuid, isNotNull);
         expect(exception.uuid, isNotEmpty);
         expect(exception.uuid.length, equals(36)); // UUID format
@@ -749,13 +749,14 @@ void main() {
 
       test('should use provided UUID when specified', () {
         final customUuid = '12345678-1234-1234-1234-123456789012';
-        final exception = TomException('ERROR', 'message', uuid: customUuid);
+        final exception =
+            TomException('test.error.key', 'message', uuid: customUuid);
         expect(exception.uuid, equals(customUuid));
       });
 
       test('should set timestamp on creation', () {
         final before = DateTime.timestamp();
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         final after = DateTime.timestamp();
 
         expect(
@@ -771,7 +772,7 @@ void main() {
       test('should store optional parameters', () {
         final params = {'userId': 123, 'action': 'delete'};
         final exception = TomException(
-          'ERROR',
+          'test.error.key',
           'message',
           parameters: params,
         );
@@ -780,7 +781,7 @@ void main() {
 
       test('should store request UUID', () {
         final exception = TomException(
-          'ERROR',
+          'test.error.key',
           'message',
           requestUuid: 'request-123',
         );
@@ -790,7 +791,7 @@ void main() {
       test('should store root exception', () {
         final rootError = FormatException('original error');
         final exception = TomException(
-          'WRAPPED_ERROR',
+          'test.error.wrapped',
           'Wrapped error',
           rootException: rootError,
         );
@@ -798,12 +799,12 @@ void main() {
       });
 
       test('should capture stack trace', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         expect(exception.stackTrace, isNotEmpty);
       });
 
       test('should populate stack when none is passed', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         expect(
           exception.stack,
           isNotNull,
@@ -814,12 +815,13 @@ void main() {
 
       test('should keep a provided stack unchanged', () {
         final provided = _captureDeepStack();
-        final exception = TomException('ERROR', 'message', stack: provided);
+        final exception =
+            TomException('test.error.key', 'message', stack: provided);
         expect(exception.stack, same(provided));
       });
 
       test('should default autoLog to false', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         expect(exception.autoLog, isFalse);
       });
     });
@@ -827,7 +829,7 @@ void main() {
     group('toString', () {
       test('should include uuid in string representation', () {
         final exception = TomException(
-          'ERROR_CODE',
+          'test.error.code',
           'message',
           uuid: 'test-uuid-1234',
         );
@@ -835,23 +837,24 @@ void main() {
       });
 
       test('should include key in string representation', () {
-        final exception = TomException('MY_ERROR_KEY', 'message');
-        expect(exception.toString(), contains('MY_ERROR_KEY'));
+        final exception = TomException('test.error.my_key', 'message');
+        expect(exception.toString(), contains('test.error.my_key'));
       });
 
       test('should include message in string representation', () {
-        final exception = TomException('ERROR', 'This is the error message');
+        final exception =
+            TomException('test.error.key', 'This is the error message');
         expect(exception.toString(), contains('This is the error message'));
       });
 
       test('should include runtime type in string representation', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         expect(exception.toString(), contains('TomException'));
       });
 
       test('should include parameters in string representation', () {
         final exception = TomException(
-          'ERROR',
+          'test.error.key',
           'message',
           parameters: {'field': 'email'},
         );
@@ -861,7 +864,7 @@ void main() {
 
       test('should include request UUID in string representation', () {
         final exception = TomException(
-          'ERROR',
+          'test.error.key',
           'message',
           requestUuid: 'req-uuid-5678',
         );
@@ -871,7 +874,7 @@ void main() {
 
     group('logRepresentation', () {
       test('should return same as toString', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         expect(exception.logRepresentation, equals(exception.toString()));
       });
     });
@@ -879,14 +882,14 @@ void main() {
     group('implements Exception', () {
       test('should be throwable as Exception', () {
         expect(
-          () => throw TomException('ERROR', 'test'),
+          () => throw TomException('test.error.key', 'test'),
           throwsA(isA<Exception>()),
         );
       });
 
       test('should be catchable as TomException', () {
         expect(
-          () => throw TomException('ERROR', 'test'),
+          () => throw TomException('test.error.key', 'test'),
           throwsA(isA<TomException>()),
         );
       });
@@ -894,8 +897,8 @@ void main() {
 
     group('unique UUIDs', () {
       test('should generate different UUIDs for different instances', () {
-        final exception1 = TomException('ERROR', 'message 1');
-        final exception2 = TomException('ERROR', 'message 2');
+        final exception1 = TomException('test.error.key', 'message 1');
+        final exception2 = TomException('test.error.key', 'message 2');
         expect(exception1.uuid, isNot(equals(exception2.uuid)));
       });
     });
@@ -907,29 +910,31 @@ void main() {
       });
 
       test('should handle empty message', () {
-        final exception = TomException('ERROR', '');
+        final exception = TomException('test.error.key', '');
         expect(exception.defaultUserMessage, equals(''));
       });
 
       test('should handle null parameters', () {
-        final exception = TomException('ERROR', 'message', parameters: null);
+        final exception =
+            TomException('test.error.key', 'message', parameters: null);
         expect(exception.parameters, isNull);
       });
 
       test('should handle empty parameters map', () {
-        final exception = TomException('ERROR', 'message', parameters: {});
+        final exception =
+            TomException('test.error.key', 'message', parameters: {});
         expect(exception.parameters, isEmpty);
       });
 
       test('should handle special characters in message', () {
         final message = 'Error: "value" contains <special> & chars\n\ttab';
-        final exception = TomException('ERROR', message);
+        final exception = TomException('test.error.key', message);
         expect(exception.defaultUserMessage, equals(message));
       });
 
       test('should handle unicode in parameters', () {
         final exception = TomException(
-          'ERROR',
+          'test.error.key',
           'message',
           parameters: {'emoji': '🎉', 'chinese': '中文'},
         );
@@ -956,12 +961,12 @@ void main() {
       });
 
       test('should not log on construction when autoLog is false', () {
-        TomException('ERROR', 'message');
+        TomException('test.error.key', 'message');
         expect(captured.messages, isEmpty);
       });
 
       test('should log on construction when autoLog is true', () {
-        TomException('CRITICAL', 'boom', autoLog: true);
+        TomException('test.error.critical', 'boom', autoLog: true);
         expect(captured.messages, isNotEmpty);
         expect(
           captured.messages.any((m) => m.contains('EXCEPTION:')),
@@ -976,7 +981,7 @@ void main() {
       });
 
       test('should include the exception details in the logged line', () {
-        TomException('CRITICAL', 'database down', autoLog: true);
+        TomException('test.error.critical', 'database down', autoLog: true);
         expect(
           captured.messages.any((m) => m.contains('database down')),
           isTrue,
@@ -989,7 +994,7 @@ void main() {
     // -----------------------------------------------------------------------
     group('serverCallError', () {
       test('should default to null', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         expect(exception.serverCallError, isNull);
       });
 
@@ -999,7 +1004,7 @@ void main() {
           reasonPhrase: 'Not Found',
         );
         final exception = TomException(
-          'HTTP_ERROR',
+          'test.error.http',
           'request failed',
           serverCallError: sce,
         );
@@ -1028,7 +1033,7 @@ void main() {
 
       test('should log a stack trace prefixed with the exception identity', () {
         final exception = TomException(
-          'ERROR',
+          'test.error.key',
           'message',
           uuid: 'uuid-123',
           requestUuid: 'req-456',
@@ -1083,7 +1088,7 @@ void main() {
         // created without one yields `StackTrace.empty`. Reporting such an
         // exception must not itself throw.
         final exception =
-            TomException('ERROR', 'message', stack: StackTrace.empty);
+            TomException('test.error.key', 'message', stack: StackTrace.empty);
 
         expect(exception.printStackTrace, returnsNormally);
         expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
@@ -1095,7 +1100,7 @@ void main() {
         // cannot use still reaches this method even though the constructor no
         // longer accepts one. Surviving it matters more here than anywhere
         // else: this method runs *because* something already went wrong.
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         exception.stack = 'not a stack trace';
 
         expect(exception.printStackTrace, returnsNormally);
@@ -1103,7 +1108,7 @@ void main() {
       });
 
       test('should report no frames when the stack field was cleared', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         exception.stack = null;
 
         expect(exception.printStackTrace, returnsNormally);
@@ -1112,7 +1117,7 @@ void main() {
 
       test('should not substitute the reporting site for an unusable stack',
           () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         exception.stack = 42;
         exception.printStackTrace();
 
@@ -1126,7 +1131,7 @@ void main() {
 
       test('should prefer an explicitly passed stack over the capture', () {
         final exception = TomException(
-          'ERROR',
+          'test.error.key',
           'message',
           stack: _captureDeepStack(),
         );
@@ -1141,7 +1146,7 @@ void main() {
       });
 
       test('should respect the depth argument', () {
-        final exception = TomException('ERROR', 'message');
+        final exception = TomException('test.error.key', 'message');
         exception.printStackTrace(0);
         // With depth 0 the trace portion is empty, so only the prefix message
         // remains — i.e. no stack-frame location lines are appended.

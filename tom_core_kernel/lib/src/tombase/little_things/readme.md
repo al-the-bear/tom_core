@@ -33,11 +33,11 @@ void main() {
   print(convertMinutesToUtcOffset(540)); // +09:00
 
   try {
-    // (errorKey, default user message)
-    throw TomException('error.save.failed', 'Could not save the record');
+    // (error key, default user message)
+    throw TomException('record.save.failed', 'Could not save the record');
   } on TomException catch (e) {
     print('${e.key}: ${e.defaultUserMessage}');
-    // error.save.failed: Could not save the record
+    // record.save.failed: Could not save the record
   }
 }
 ```

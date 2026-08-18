@@ -34,7 +34,7 @@ class TomExceptionExample {
     print('1. Basic TomException creation:');
 
     final exception = TomException(
-      'USER_NOT_FOUND',
+      'user.fetch.not_found',
       'The requested user could not be found',
     );
 
@@ -49,7 +49,7 @@ class TomExceptionExample {
     print('   - timeStamp: ${exception.timeStamp}');
 
     // Assertions
-    assert(capturedKey == 'USER_NOT_FOUND', 'Key should match');
+    assert(capturedKey == 'user.fetch.not_found', 'Key should match');
     assert(uuidGenerated, 'UUID should be generated');
     assert(timestampSet, 'Timestamp should be set');
   }
@@ -62,7 +62,7 @@ class TomExceptionExample {
 
     final customUuid = 'custom-error-id-12345';
     final exception = TomException(
-      'VALIDATION_ERROR',
+      'input.validate.failed',
       'Input validation failed',
       uuid: customUuid,
     );
@@ -82,7 +82,7 @@ class TomExceptionExample {
 
     final requestUuid = 'req-abc-123-xyz';
     final exception = TomException(
-      'DATABASE_ERROR',
+      'storage.connect.failed',
       'Database connection failed',
       requestUuid: requestUuid,
     );
@@ -104,7 +104,7 @@ class TomExceptionExample {
     print('\n4. Exception with parameters for context:');
 
     final exception = TomException(
-      'PERMISSION_DENIED',
+      'access.check.permission_denied',
       'User does not have access to this resource',
       parameters: {
         'userId': 'user-456',
@@ -138,7 +138,7 @@ class TomExceptionExample {
       int.parse('not-a-number');
     } on FormatException catch (original) {
       final exception = TomException(
-        'PARSE_ERROR',
+        'input.parse.not_a_number',
         'Failed to parse numeric input',
         rootException: original,
       );
@@ -161,7 +161,7 @@ class TomExceptionExample {
       _causeError();
     } catch (e, stack) {
       final exception = TomException(
-        'NESTED_ERROR',
+        'sample.nested_call.failed',
         'Error in nested call',
         stack: stack,
       );
@@ -198,7 +198,7 @@ class TomExceptionExample {
     print('\n7. TomLoggable interface:');
 
     final exception = TomException(
-      'API_ERROR',
+      'apis.call.failed',
       'External API call failed',
       parameters: {'endpoint': '/api/users'},
     );
@@ -214,7 +214,10 @@ class TomExceptionExample {
     loggableWorks = logRepresentation == exception.toString();
 
     // The logRepresentation includes uuid, key, message, parameters
-    assert(logRepresentation!.contains('API_ERROR'), 'Should contain key');
+    assert(
+      logRepresentation!.contains('apis.call.failed'),
+      'Should contain key',
+    );
     assert(loggableWorks, 'logRepresentation should equal toString');
   }
 
@@ -235,7 +238,8 @@ class TomExceptionExample {
     print('   );');
     print('');
     print('   Output in logs:');
-    print('   - ERROR: EXCEPTION: <uuid>-null, TomException: CRITICAL_ERROR...');
+    print('   - ERROR: EXCEPTION: <uuid>-null, TomException: '
+        'storage.connect.failed...');
     print('   - ERROR: EXCEPTION_STACKTRACE: <uuid>-null <stack>');
   }
 
@@ -267,7 +271,7 @@ class TomExceptionExample {
 
     try {
       throw TomException(
-        'BUSINESS_RULE_VIOLATION',
+        'user.delete.has_active_subscriptions',
         'Cannot delete user with active subscriptions',
         parameters: {
           'userId': 'user-123',
@@ -283,10 +287,10 @@ class TomExceptionExample {
 
       // Handle based on key
       switch (e.key) {
-        case 'BUSINESS_RULE_VIOLATION':
+        case 'user.delete.has_active_subscriptions':
           print('   - Handling: Show user-friendly message');
           break;
-        case 'USER_NOT_FOUND':
+        case 'user.fetch.not_found':
           print('   - Handling: Redirect to login');
           break;
         default:

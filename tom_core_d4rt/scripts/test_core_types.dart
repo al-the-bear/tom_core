@@ -9,14 +9,15 @@ void main() {
   // Test: TomBaseException / TomException (6 tests)
   // ===========================================================================
 
-  var ex = TomBaseException('ERR_TEST', 'Test error');
+  var ex = TomBaseException('test.error.key', 'Test error');
   verifyNotNull(ex, 'TomBaseException created');
-  verifyEquals(ex.key, 'ERR_TEST', 'Exception key');
+  verifyEquals(ex.key, 'test.error.key', 'Exception key');
   verifyEquals(ex.defaultUserMessage, 'Test error', 'Exception message');
   verifyNotNull(ex.uuid, 'Exception has uuid');
-  verifyContains(ex.toString(), 'ERR_TEST', 'toString contains key');
+  verifyContains(ex.toString(), 'test.error.key', 'toString contains key');
 
-  var exWithParams = TomBaseException('ERR_PARAMS', 'Param test', parameters: {'code': 42});
+  var exWithParams = TomBaseException('test.error.params', 'Param test',
+      parameters: {'code': 42});
   verifyNotNull(exWithParams.parameters, 'Exception parameters');
 
   // ===========================================================================

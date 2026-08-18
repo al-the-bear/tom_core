@@ -284,12 +284,12 @@ void main() {
     });
 
     test('a TomException adds errorKey/uuid/autoLog/requestUuid', () async {
-      final error = TomException('USER_NOT_FOUND', 'no such user');
+      final error = TomException('user.fetch.not_found', 'no such user');
       final result = await map(error);
       expect(result.status, 500);
       expect(result.headers['x-tom-error'], 'true');
       expect(result.body['errorType'], 'TomException');
-      expect(result.body['errorKey'], 'USER_NOT_FOUND');
+      expect(result.body['errorKey'], 'user.fetch.not_found');
       expect(result.body['uuid'], error.uuid);
       expect(result.body['autoLog'], isFalse);
       expect(result.body['requestUuid'], isNull);

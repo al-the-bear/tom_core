@@ -35,7 +35,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ```dart
 // Throw a tracked exception
 throw TomException(
-  'USER_NOT_FOUND',
+  'user.fetch.not_found',
   'The requested user could not be found',
   parameters: {'userId': '12345'},
 );
@@ -70,12 +70,13 @@ try {
   await transfer(order);
 } catch (error, stack) {
   // Wrapping: the caught trace points at the original failure, so pass it on.
-  throw TomException('TRANSFER_FAILED', 'Transfer rejected',
+  throw TomException('payment.transfer.rejected', 'Transfer rejected',
       rootException: error, stack: stack);
 }
 
 // Originating: nothing to pass — the construction site *is* the failure site.
-throw TomException('ORDER_EMPTY', 'The order has no positions');
+throw TomException('order.submit.no_positions',
+    'The order has no positions');
 ```
 
 `stack` is a `StackTrace?`, so passing anything else is a compile error rather
@@ -86,7 +87,7 @@ about the reporting.
 
 ```dart
 TomException(
-  'ERROR_KEY',           // Programmatic error code
+  'area.operation.condition', // Programmatic error key
   'User-friendly message',
   parameters: {...},     // Debug context
   requestUuid: reqId,    // Request correlation
@@ -263,7 +264,7 @@ Future<User> getUser(String id) async {
       final response = await api.fetchUser(id);
       if (response.statusCode == 404) {
         throw TomException(
-          'USER_NOT_FOUND',
+          'user.fetch.not_found',
           'User not found',
           parameters: {'userId': id},
         );
@@ -271,7 +272,7 @@ Future<User> getUser(String id) async {
       return User.fromJson(response.body);
     },
     (error, stack) => TomException(
-      'USER_FETCH_ERROR',
+      'user.fetch.failed',
       'Failed to fetch user',
       rootException: error,
       stack: stack,
@@ -311,19 +312,32 @@ Future<void> handleRequest(HttpRequest request) async {
 
 ### Exception Keys
 
-Use consistent, uppercase, underscore-separated keys:
+A key is dotted lowercase, `lower_snake_case` within each segment, and reads
+`<area>.<operation>.<condition>`:
 
 ```dart
 // Good
-'USER_NOT_FOUND'
-'VALIDATION_ERROR'
-'DATABASE_CONNECTION_FAILED'
+'beanlocator.bean_access.bean_not_found_by_name'
+'isolate.pool_closed.execute_after_close'
+'apis.endpoint.missing_url_parameter'
 
 // Avoid
-'user not found'
-'Error123'
-'userNotFound'
+'USER_NOT_FOUND'      // no dots — nothing to group or namespace by
+'user not found'      // spaces; not usable as a lookup key
+'userNotFound'        // camelCase
+'Error123'            // says nothing about what went wrong
 ```
+
+Three segments is the norm and two or four are fine when the subject genuinely
+has that shape (`messaging.email.recipients.empty`). What matters is that the
+**first segment names the module or subsystem**, because that is the part that
+makes keys from unrelated code impossible to collide and lets a handler match a
+whole area with a prefix test.
+
+The key is not a message. It is the value callers switch on and the natural
+lookup key for a translated message, so it should stay stable even when the
+wording of `defaultUserMessage` changes — and it should be specific enough that
+two different failures never share one.
 
 ### Parameter Usage
 
@@ -331,7 +345,7 @@ Include relevant debugging context in parameters:
 
 ```dart
 throw TomException(
-  'VALIDATION_ERROR',
+  'signup.validate.invalid_email',
   'Invalid email format',
   parameters: {
     'field': 'email',
@@ -361,10 +375,10 @@ Enable for unexpected/critical errors:
 
 ```dart
 // Enable for unexpected errors
-throw TomException('CRITICAL_ERROR', 'msg', autoLog: true);
+throw TomException('storage.connect.unreachable', 'msg', autoLog: true);
 
 // Disable for expected/handled errors
-throw TomException('VALIDATION_ERROR', 'msg', autoLog: false);
+throw TomException('signup.validate.invalid_email', 'msg', autoLog: false);
 ```
 
 ---

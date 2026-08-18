@@ -227,7 +227,7 @@ class AsyncCheckedExecutionExample {
         return 42;
       },
       (error, stacktrace) => TomException(
-        'ASYNC_ERROR',
+        'sample.async_operation.failed',
         'Async operation failed',
         rootException: error,
       ),
@@ -256,7 +256,7 @@ class AsyncCheckedErrorExample {
           throw StateError('Async state error');
         },
         (error, stacktrace) => TomException(
-          'ASYNC_STATE_ERROR',
+          'sample.async_operation.state_error',
           'State error in async operation',
           rootException: error,
         ),
@@ -266,7 +266,10 @@ class AsyncCheckedErrorExample {
       asyncErrorCaught = true;
     }
 
-    assert(asyncErrorKey == 'ASYNC_STATE_ERROR', 'Error key should match');
+    assert(
+      asyncErrorKey == 'sample.async_operation.state_error',
+      'Error key should match',
+    );
     assert(asyncErrorCaught, 'Async error should be caught');
   }
 }
