@@ -684,6 +684,12 @@ and cascades their notifications. Provides the standard `List`/`Iterable`
 surface with observer management. Direct whole-value `set` is disallowed
 (except during serialization).
 
+Every mutator below obeys one contract: **it notifies exactly once when it
+changed the element sequence, and not at all when it left it as it was.**
+Sequences are compared by element identity, so an equal-but-distinct element is
+a change. `resetWith` is the deliberate exception — it notifies unconditionally,
+because its lifecycle listeners have already rebuilt their per-element state.
+
 - **Extends:** `TomObject<List<E>>`
 - **Implements:** `TomObserver`, `Iterable<E>`
 - **Type Parameters:** `<E extends TomObject>`
@@ -709,7 +715,7 @@ TomList.ofList(List<E> list)
 | -------- | ---- | ----------- |
 | `first` | `E` | *(override)* First element; the setter re-observes on change. |
 | `last` | `E` | *(override)* Last element; the setter re-observes on change. |
-| `length` | `int` | *(override)* Element count; the setter shrinks and un-observes trimmed elements. |
+| `length` | `int` | *(override)* Element count. The setter truncates, un-observing the trimmed elements, and notifies; assigning the current length is silent, and assigning a larger one throws `TomObservableException` (a `TomList` holds non-nullable elements, so there is nothing to pad with). |
 | `reversed` | `Iterable<E>` | The elements in reverse order. |
 | `isEmpty` | `bool` | *(override)* `true` if the list has no elements. |
 | `isNotEmpty` | `bool` | *(override)* `true` if the list has at least one element. |
@@ -731,28 +737,28 @@ TomList.ofList(List<E> list)
 | `append` | `TomList<E> append(E element)` | Adds an element and returns the list for chaining. |
 | `resetWith` | `void resetWith(Iterable<E> elements)` | Atomically replaces all contents, firing `onBeforeClear`/`onAfterReset`. |
 | `add` | `void add(E value)` | Adds and observes an element. |
-| `addAll` | `void addAll(Iterable<E> iterable)` | Adds and observes multiple elements. |
+| `addAll` | `void addAll(Iterable<E> iterable)` | Adds and observes multiple elements; an empty `iterable` is silent. |
 | `asMap` | `Map<int, E> asMap()` | Returns an index-to-element map. |
-| `clear` | `void clear()` | Removes and un-observes all elements. |
-| `fillRange` | `void fillRange(int start, int end, [E? fillValue])` | Fills a range with `fillValue`. |
+| `clear` | `void clear()` | Removes and un-observes all elements; silent if the list was already empty. |
+| `fillRange` | `void fillRange(int start, int end, [E? fillValue])` | Fills a range with `fillValue`; silent if the range is empty or already held `fillValue`. |
 | `getRange` | `Iterable<E> getRange(int start, int end)` | Returns the elements in `[start, end)`. |
 | `indexOf` | `int indexOf(E element, [int start = 0])` | Index of `element` from `start`. |
 | `indexWhere` | `int indexWhere(bool Function(E element) test, [int start = 0])` | First index matching `test`. |
 | `insert` | `void insert(int index, E element)` | Inserts and observes an element. |
-| `insertAll` | `void insertAll(int index, Iterable<E> iterable)` | Inserts and observes multiple elements. |
+| `insertAll` | `void insertAll(int index, Iterable<E> iterable)` | Inserts and observes multiple elements; an empty `iterable` is silent, but `index` is still range-checked. |
 | `lastIndexOf` | `int lastIndexOf(E element, [int? start])` | Last index of `element`. |
 | `lastIndexWhere` | `int lastIndexWhere(bool Function(E element) test, [int? start])` | Last index matching `test`. |
-| `remove` | `bool remove(Object? value)` | Removes and un-observes `value`. |
+| `remove` | `bool remove(Object? value)` | Removes and un-observes `value`, returning whether it was there. An absent element is silent. `TomObject` does not override `==`, so this matches by identity. |
 | `removeAt` | `E removeAt(int index)` | Removes and un-observes the element at `index`. |
 | `removeLast` | `E removeLast()` | Removes and un-observes the last element. |
 | `removeRange` | `void removeRange(int start, int end)` | Removes and un-observes elements in `[start, end)`. |
 | `removeWhere` | `void removeWhere(bool Function(E element) test)` | Removes and un-observes matching elements. |
 | `replaceRange` | `void replaceRange(int start, int end, Iterable<E> replacements)` | Replaces a range as a single consolidated notification; the internal mute is released in a `finally`, so an out-of-range index does not silence the list. |
 | `retainWhere` | `void retainWhere(bool Function(E element) test)` | Retains only matching elements as a single notification; the internal mute is released in a `finally`, so a throwing `test` does not silence the list. |
-| `setAll` | `void setAll(int index, Iterable<E> iterable)` | Overwrites elements from `index`, re-observing. |
-| `setRange` | `void setRange(int start, int end, Iterable<E> iterable, [int skipCount = 0])` | Overwrites a range, re-observing. |
-| `shuffle` | `void shuffle([Random? random])` | Shuffles the elements. |
-| `sort` | `void sort([int Function(E a, E b)? compare])` | Sorts the elements. |
+| `setAll` | `void setAll(int index, Iterable<E> iterable)` | Overwrites elements from `index`, re-observing; silent if the sequence is unchanged. |
+| `setRange` | `void setRange(int start, int end, Iterable<E> iterable, [int skipCount = 0])` | Overwrites a range, re-observing; silent if the sequence is unchanged. |
+| `shuffle` | `void shuffle([Random? random])` | Shuffles the elements; silent if the order came out unchanged. |
+| `sort` | `void sort([int Function(E a, E b)? compare])` | Sorts the elements; silent if they were already in order. |
 | `sublist` | `List<E> sublist(int start, [int? end])` | Returns a sublist copy. |
 | `any` | `bool any(bool Function(E e) test)` | *(override)* Whether any element matches. |
 | `cast` | `List<R> cast<R>()` | *(override)* Casts the backing list. |
@@ -795,6 +801,10 @@ Observable map with `TomObject` values that automatically observes all values
 and cascades their notifications. Keys are not observed. Direct whole-value
 `set` is disallowed.
 
+Every mutator below obeys one contract: **it notifies exactly once when it
+changed the key-to-value mapping, and not at all when it left it as it was.**
+Values are compared by identity, so an equal-but-distinct value is a change.
+
 - **Extends:** `TomObject<Map<K, V>>`
 - **Implements:** `TomObserver`
 - **Type Parameters:** `<K, V extends TomObject>`
@@ -836,19 +846,19 @@ TomMap.ofMap(Map<K, V> map)
 | `mute` | `void mute()` | *(override)* Mutes this map and all values. |
 | `unmute` | `void unmute()` | *(override)* Unmutes values then this map, coalescing to one notification. |
 | `add` | `void add(K key, V value)` | Adds/replaces a key's value, re-observing. |
-| `addAll` | `void addAll(Map<K, V> other)` | Adds all entries from `other`, re-observing. |
-| `addEntries` | `void addEntries(Iterable<MapEntry<K, V>> newEntries)` | Adds entries, re-observing. |
+| `addAll` | `void addAll(Map<K, V> other)` | Adds all entries from `other`, re-observing; silent if the mapping is unchanged. |
+| `addEntries` | `void addEntries(Iterable<MapEntry<K, V>> newEntries)` | Adds entries, re-observing; silent if the mapping is unchanged. |
 | `cast` | `Map<RK, RV> cast<RK, RV>()` | Casts the backing map. |
-| `clear` | `void clear()` | Removes and un-observes all entries. |
+| `clear` | `void clear()` | Removes and un-observes all entries; silent if the map was already empty. |
 | `containsKey` | `bool containsKey(K key)` | Whether `key` is present. |
 | `containsValue` | `bool containsValue(V value)` | Whether `value` is present. |
 | `forEach` | `void forEach(void Function(K key, V value) action)` | Applies `action` to each entry. |
 | `map` | `Map<K2, V2> map<K2, V2>(MapEntry<K2, V2> Function(K key, V value) convert)` | Maps entries to a new map. |
-| `putIfAbsent` | `V putIfAbsent(K key, V Function() ifAbsent)` | Inserts and observes a value if `key` is absent. |
-| `remove` | `V? remove(K? key)` | Removes and un-observes the value for `key`. |
-| `removeWhere` | `void removeWhere(bool Function(K key, V value) test)` | Removes matching entries, re-observing survivors. |
+| `putIfAbsent` | `V putIfAbsent(K key, V Function() ifAbsent)` | Inserts and observes a value if `key` is absent; a present key is returned untouched and is silent. |
+| `remove` | `V? remove(K? key)` | Removes and un-observes the value for `key` and notifies; a `null` or absent key returns `null` and is silent. |
+| `removeWhere` | `void removeWhere(bool Function(K key, V value) test)` | Removes matching entries, re-observing survivors; silent if nothing matched. |
 | `update` | `V update(K key, V Function(V value) update, {V Function()? ifAbsent})` | Updates the value for `key`, re-observing. |
-| `updateAll` | `void updateAll(V Function(K key, V value) update)` | Updates all values, re-observing. |
+| `updateAll` | `void updateAll(V Function(K key, V value) update)` | Updates all values, re-observing changed ones. One notification for the whole call, and none if every callback returned the value it was given unchanged. |
 
 #### Operators
 

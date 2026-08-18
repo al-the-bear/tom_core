@@ -1258,11 +1258,15 @@ void main() {
       int notifyCount = 0;
       map >> (obs) => notifyCount++;
 
+      // Two separate effects, measured separately: the removal itself is a
+      // change of the map's contents and notifies once...
       map.remove("key");
-      // Note: remove doesn't call notifyObservers, but we can check item is unobserved
+      expect(notifyCount, equals(1));
 
+      // ...and after it, the map no longer observes the detached value.
+      notifyCount = 0;
       item | 20;
-      expect(notifyCount, equals(0)); // Should not be notified since removed
+      expect(notifyCount, equals(0));
     });
 
     test('nested TomClass deserialization', () {
@@ -1724,6 +1728,474 @@ void main() {
       final observer = TestObserver<TomList<TomInt>>();
       list.addObserver(observer);
       list.append(TomInt(4));
+      expect(observer.notifyCount, equals(1));
+    });
+  });
+
+  // ==========================================================================
+  // The mutator notification contract (see doc/observable/observable.md):
+  // a mutator notifies exactly once when it changed the container's contents,
+  // and not at all when it left them as they were. "Contents" is the sequence
+  // of element references, compared by identity — a change *inside* an element
+  // reaches observers through `onNotify`, not through the mutator.
+  //
+  // `TomObject` does not override `==`, so every "same element" below means
+  // the same object, and every "absent element" is genuinely absent even when
+  // an equal-valued one is present.
+  // ==========================================================================
+  group('TomList notification contract', () {
+    late TomList<TomInt> list;
+    late TestObserver<TomList<TomInt>> observer;
+
+    /// Builds a list of [values] with a fresh observer at a zero count.
+    void seed(List<int> values) {
+      list = TomList<TomInt>();
+      for (final v in values) {
+        list.append(TomInt(v));
+      }
+      observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+    }
+
+    test('remove notifies for a present element', () {
+      seed([1, 2, 3]);
+      final target = list[1];
+
+      expect(list.remove(target), isTrue);
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.length, equals(2));
+    });
+
+    test('remove notifies nothing for an absent element', () {
+      seed([1, 2, 3]);
+
+      expect(list.remove(TomInt(2)), isFalse);
+
+      expect(observer.notifyCount, equals(0));
+      expect(list.length, equals(3));
+    });
+
+    test('remove leaves a present element unobserved', () {
+      seed([1, 2, 3]);
+      final target = list[1];
+      list.remove(target);
+      observer.reset();
+
+      target | 20;
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('a shorter length truncates, deregisters and notifies once', () {
+      seed([1, 2, 3]);
+      final dropped = list[2];
+
+      list.length = 2;
+
+      expect(list.length, equals(2));
+      expect(observer.notifyCount, equals(1));
+
+      observer.reset();
+      dropped | 30;
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('assigning the current length notifies nothing', () {
+      seed([1, 2, 3]);
+
+      list.length = 3;
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('growing the length is rejected by name', () {
+      seed([1, 2]);
+
+      expect(
+        () => list.length = 4,
+        throwsA(
+          isA<TomObservableException>()
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('cannot be grown'),
+              )
+              .having((e) => e.parameters?['newLength'], 'newLength', 4)
+              .having((e) => e.parameters?['length'], 'length', 2),
+        ),
+      );
+
+      expect(list.length, equals(2));
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('addAll notifies nothing for an empty iterable', () {
+      seed([1, 2]);
+
+      list.addAll([]);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('addAll notifies once for a non-empty iterable', () {
+      seed([1, 2]);
+
+      list.addAll([TomInt(3), TomInt(4)]);
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.length, equals(4));
+    });
+
+    test('insertAll notifies nothing for an empty iterable', () {
+      seed([1, 2]);
+
+      list.insertAll(1, []);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('clear notifies nothing on an already empty list', () {
+      seed([]);
+
+      list.clear();
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('clear notifies once on a non-empty list', () {
+      seed([1, 2]);
+
+      list.clear();
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('index assignment of the same element notifies nothing', () {
+      seed([1, 2, 3]);
+      final existing = list[1];
+
+      list[1] = existing;
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('index assignment of the same element keeps it observed', () {
+      seed([1, 2, 3]);
+      final existing = list[1];
+
+      // The naive implementation detaches before attaching; with the same
+      // object on both sides that has to end attached, not detached.
+      list[1] = existing;
+      observer.reset();
+      existing | 20;
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('sorting an already sorted list notifies nothing', () {
+      seed([1, 2, 3]);
+
+      list.sort((a, b) => (~a).compareTo(~b));
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('sorting into a new order notifies once', () {
+      seed([3, 1, 2]);
+
+      list.sort((a, b) => (~a).compareTo(~b));
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.map((e) => ~e).toList(), equals([1, 2, 3]));
+    });
+
+    test('shuffling a single-element list notifies nothing', () {
+      seed([1]);
+
+      list.shuffle();
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('setRange writing the same elements notifies nothing', () {
+      seed([1, 2, 3]);
+      final unchanged = [list[0], list[1]];
+
+      list.setRange(0, 2, unchanged);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('setRange writing different elements notifies once', () {
+      seed([1, 2, 3]);
+
+      list.setRange(0, 2, [TomInt(8), TomInt(9)]);
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('fillRange over an empty range notifies nothing', () {
+      seed([1, 2, 3]);
+
+      list.fillRange(1, 1, TomInt(9));
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('setAll of an empty iterable notifies nothing', () {
+      seed([1, 2, 3]);
+
+      list.setAll(1, []);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('<< with the same elements notifies nothing', () {
+      seed([1, 2, 3]);
+
+      list << [list[0], list[1], list[2]];
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('<< with different elements notifies once', () {
+      seed([1, 2, 3]);
+
+      list << [TomInt(7)];
+
+      expect(observer.notifyCount, equals(1));
+    });
+  });
+
+  group('TomMap notification contract', () {
+    late TomMap<String, TomInt> map;
+    late TestObserver<TomMap<String, TomInt>> observer;
+
+    /// Builds a map of [values] with a fresh observer at a zero count.
+    void seed(Map<String, int> values) {
+      map = TomMap<String, TomInt>();
+      values.forEach((k, v) => map[k] = TomInt(v));
+      observer = TestObserver<TomMap<String, TomInt>>();
+      map.addObserver(observer);
+    }
+
+    test('remove notifies for a present key', () {
+      seed({'a': 1, 'b': 2});
+
+      final removed = map.remove('a');
+
+      expect(removed, isNotNull);
+      expect(observer.notifyCount, equals(1));
+      expect(map.length, equals(1));
+    });
+
+    test('remove notifies nothing for an absent key', () {
+      seed({'a': 1});
+
+      expect(map.remove('missing'), isNull);
+
+      expect(observer.notifyCount, equals(0));
+      expect(map.length, equals(1));
+    });
+
+    test('remove notifies nothing for a null key', () {
+      seed({'a': 1});
+
+      expect(map.remove(null), isNull);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('remove leaves the removed value unobserved', () {
+      seed({'a': 1});
+      final value = map['a']!;
+
+      map.remove('a');
+      observer.reset();
+      value | 10;
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('re-adding the same value under the same key notifies nothing', () {
+      seed({'a': 1});
+      final existing = map['a']!;
+
+      map['a'] = existing;
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('re-adding the same value keeps it observed', () {
+      seed({'a': 1});
+      final existing = map['a']!;
+
+      map['a'] = existing;
+      observer.reset();
+      existing | 10;
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('replacing a key with a different value notifies once', () {
+      seed({'a': 1});
+
+      map['a'] = TomInt(2);
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('addAll of an empty map notifies nothing', () {
+      seed({'a': 1});
+
+      map.addAll({});
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('addAll of new entries notifies once', () {
+      seed({'a': 1});
+
+      map.addAll({'b': TomInt(2), 'c': TomInt(3)});
+
+      expect(observer.notifyCount, equals(1));
+      expect(map.length, equals(3));
+    });
+
+    test('addEntries of nothing notifies nothing', () {
+      seed({'a': 1});
+
+      map.addEntries([]);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('clear notifies nothing on an already empty map', () {
+      seed({});
+
+      map.clear();
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('clear notifies once on a non-empty map', () {
+      seed({'a': 1});
+
+      map.clear();
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('removeWhere that matches nothing notifies nothing', () {
+      seed({'a': 1, 'b': 2});
+
+      map.removeWhere((key, value) => false);
+
+      expect(observer.notifyCount, equals(0));
+      expect(map.length, equals(2));
+    });
+
+    test('removeWhere that matches notifies once', () {
+      seed({'a': 1, 'b': 2});
+
+      map.removeWhere((key, value) => key == 'a');
+
+      expect(observer.notifyCount, equals(1));
+      expect(map.length, equals(1));
+    });
+
+    test('removeWhere leaves the surviving values observed', () {
+      seed({'a': 1, 'b': 2});
+      final survivor = map['b']!;
+
+      map.removeWhere((key, value) => key == 'a');
+      observer.reset();
+      survivor | 20;
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('update returning the same value notifies nothing', () {
+      seed({'a': 1});
+
+      map.update('a', (value) => value);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('update returning the same value keeps it observed', () {
+      seed({'a': 1});
+      final existing = map['a']!;
+
+      map.update('a', (value) => value);
+      observer.reset();
+      existing | 10;
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('update returning a different value notifies once', () {
+      seed({'a': 1});
+
+      map.update('a', (value) => TomInt(2));
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('update via ifAbsent notifies once', () {
+      seed({'a': 1});
+
+      map.update('b', (value) => value, ifAbsent: () => TomInt(2));
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('updateAll returning the same values notifies nothing', () {
+      seed({'a': 1, 'b': 2});
+
+      map.updateAll((key, value) => value);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('updateAll returning a different value notifies once', () {
+      seed({'a': 1, 'b': 2});
+
+      map.updateAll((key, value) => key == 'a' ? TomInt(9) : value);
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('putIfAbsent on a present key notifies nothing', () {
+      seed({'a': 1});
+
+      map.putIfAbsent('a', () => TomInt(9));
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('putIfAbsent on an absent key notifies once', () {
+      seed({'a': 1});
+
+      map.putIfAbsent('b', () => TomInt(9));
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('<< with the same contents notifies nothing', () {
+      seed({'a': 1, 'b': 2});
+
+      map << {'a': map['a']!, 'b': map['b']!};
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('<< with different contents notifies once', () {
+      seed({'a': 1});
+
+      map << {'a': TomInt(9)};
+
       expect(observer.notifyCount, equals(1));
     });
   });

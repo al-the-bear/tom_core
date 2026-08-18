@@ -21,6 +21,7 @@ and complex objects with automatic change notification and propagation.
   - [Timezone-Aware Types](#timezone-aware-types)
   - [Range Types](#range-types)
 - [TomClass (Observable Objects)](#tomclass-observable-objects)
+- [The Collection Notification Contract](#the-collection-notification-contract)
 - [TomList (Observable Lists)](#tomlist-observable-lists)
   - [Atomic Replacement with resetWith](#atomic-replacement-with-resetwith)
   - [Lifecycle Listeners](#lifecycle-listeners)
@@ -644,6 +645,75 @@ print(~person2.name);  // "Diana"
 print(~person2.age);   // 28
 ```
 
+## The Collection Notification Contract
+
+`TomList` and `TomMap` obey one rule, and it is worth stating before the
+individual operations:
+
+> **A mutator notifies exactly once when it changed the collection's contents,
+> and not at all when it left them as they were.**
+
+So `clear()` on an empty list is silent, `addAll([])` is silent, `sort()` on an
+already-sorted list is silent, `map.remove(key)` for an absent key is silent —
+while `map.remove(key)` for a *present* key notifies once:
+
+```dart
+final map = TomMap<String, TomInt>();
+map['a'] = TomInt(1);
+
+int notifications = 0;
+map >> (obs) => notifications++;
+
+map.remove('missing');
+print(notifications);  // 0 — nothing changed
+
+map.remove('a');
+print(notifications);  // 1 — an entry went away
+```
+
+```dart
+final list = TomList<TomInt>();
+list.addAll([TomInt(1), TomInt(2), TomInt(3)]);
+
+int notifications = 0;
+list >> (obs) => notifications++;
+
+list.addAll([]);                            // 0 — nothing to add
+list.sort((a, b) => (~a).compareTo(~b));    // 0 — already in order
+list[0] = list[0];                          // 0 — same element
+list.length = 3;                            // 0 — already that long
+print(notifications);  // 0
+
+list.length = 2;       // truncation drops an element
+print(notifications);  // 1
+```
+
+**"Contents" means references, compared by identity.** Replacing an element
+with an equal-but-distinct one *is* a change, because observers hold references
+to what they were given:
+
+```dart
+list[0] = TomInt(~list[0]);  // notifies: same number, different object
+```
+
+**A change *inside* an element is not a mutator's business.** It reaches
+observers by propagation instead (see *Element Change Propagation* below), which
+is why the contract can talk about references alone.
+
+Why the rule is worth the guards: an observer is typically a UI rebuild or a
+write-back handler, so a notification that reports no change is not merely
+noise — it is real work, and in a write-back loop it can be a cycle.
+
+Two consequences follow for the collection API:
+
+- **`resetWith` is the one deliberate exception**: it notifies even when the
+  new contents equal the old ones, because its lifecycle listeners have already
+  torn down and rebuilt whatever they held per element.
+- **`TomList.length` cannot be used to grow a list.** A `TomList` holds
+  non-nullable elements, so there is nothing to pad with; assigning a larger
+  length throws a `TomObservableException` naming the list's current and
+  requested length. Use `add`, `addAll` or `insert`.
+
 ## TomList (Observable Lists)
 
 `TomList<E>` is an observable list that notifies observers when:
@@ -684,10 +754,13 @@ print(items.last);    // TomInt(30)
 items[0] | 100;       // Set via operator
 items[0] = TomInt(1); // Replace element
 
-// Remove elements
+// Remove elements. `remove` takes the element itself: TomObject does not
+// override `==`, so `remove(TomInt(20))` would match nothing, return false
+// and — per the notification contract — stay silent.
+final twenty = items[1];
 items.removeAt(0);
 items.removeLast();
-items.remove(TomInt(20));
+items.remove(twenty);
 items.clear();
 
 // Iteration
@@ -902,6 +975,10 @@ final map = TomMap<String, TomInt>();
 // Instead, clear and add new entries
 map.clear();
 map.addAll({'a': TomInt(1)});  // ✓ OK
+
+// Or replace in one shot with <<, which is a single notification rather
+// than the two the clear/addAll pair produces.
+map << {'a': TomInt(1)};       // ✓ OK
 ```
 
 ## TomObservableEnum (Resource-Keyed Enums)

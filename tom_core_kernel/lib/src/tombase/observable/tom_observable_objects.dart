@@ -1155,6 +1155,20 @@ abstract class TomListLifecycleListener {
 /// - `list[index] = value` - Set element at index
 /// - `list + other` - Concatenate two TomLists
 ///
+/// ## Notification contract
+///
+/// **A mutator notifies exactly once when it changed the list's contents, and
+/// not at all when it left them as they were.** `clear()` on an empty list,
+/// `addAll([])`, `sort()` on an already-sorted list and `list[0] = list[0]` are
+/// all silent. "Contents" means the sequence of element *references*, compared
+/// by identity — swapping in an equal-but-distinct element is a real change,
+/// because observers hold references. A change *inside* an element is not the
+/// mutator's business: it reaches observers through [onNotify].
+///
+/// The one deliberate exception is [resetWith], which notifies even when the
+/// new contents happen to equal the old ones — its lifecycle listeners have
+/// already torn down and rebuilt whatever they hold per element.
+///
 /// ## Example
 ///
 /// ```dart
@@ -1226,6 +1240,33 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     return didDetach;
   }
 
+  /// The current element sequence, for a later [_notifyIfChangedSince].
+  ///
+  /// Taken by the mutators whose outcome is not knowable in advance — a `sort`
+  /// of an already-sorted list, a `setRange` that writes back what was there.
+  /// Mutators that always change the list (`add`, `insert`, `removeAt`) notify
+  /// directly instead of paying for the copy.
+  List<E> _snapshot() => List<E>.of(_value);
+
+  /// Notifies observers only if the element sequence differs from [before].
+  ///
+  /// Compared by identity, not equality: observers hold element references, so
+  /// swapping in an equal-but-distinct element is a real change. A change
+  /// *inside* an element is not this method's business — it reaches observers
+  /// through [onNotify].
+  void _notifyIfChangedSince(List<E> before) {
+    if (before.length != _value.length) {
+      notifyObservers();
+      return;
+    }
+    for (var i = 0; i < before.length; i++) {
+      if (!identical(before[i], _value[i])) {
+        notifyObservers();
+        return;
+      }
+    }
+  }
+
   /// Throws [TomObservableException] unless called during serialization.
   ///
   /// Use [add], [addAll], or index assignment to modify the list.
@@ -1287,13 +1328,14 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// Override parent's << operator for setting the entire list value.
   @override
   TomList<E> operator <<(List<E> value) {
+    final before = _snapshot();
     // deregister old observers
     _detachFrom(_value);
     // attach new observers
     _attachTo(value);
     // set new value
     _value = List<E>.from(value, growable: true);
-    notifyObservers();
+    _notifyIfChangedSince(before);
     return this;
   }
 
@@ -1315,6 +1357,7 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   }
 
   void operator []=(int index, E value) {
+    if (identical(_value[index], value)) return;
     _value[index].removeObserver(this);
     _value[index] = value;
     value.addObserver(this);
@@ -1357,11 +1400,29 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 
   @override
   int get length => _value.length;
+
+  /// Truncates the list to [newLength], deregistering the dropped elements.
+  ///
+  /// Growing is rejected: a `TomList` holds non-nullable elements, so there is
+  /// nothing to pad with. Left to the underlying list the attempt fails anyway,
+  /// but as a bare `TypeError` about `Null` that names neither the list nor the
+  /// operation. Use [add], [addAll] or [insert] to make a list longer.
   set length(int newLength) {
+    if (newLength == _value.length) return;
+    if (newLength > _value.length) {
+      throw TomObservableException(
+        "TomClass.tomlist_state_error.length_cannot_grow",
+        "A TomList cannot be grown by assigning its length: going from "
+            "${_value.length} to $newLength would need elements that do not "
+            "exist. Use add, addAll or insert instead.",
+        parameters: {"length": _value.length, "newLength": newLength},
+      );
+    }
     for (var index = newLength; index < _value.length; index++) {
       _value[index].removeObserver(this);
     }
     _value.length = newLength;
+    notifyObservers();
   }
 
   Iterable<E> get reversed => _value.reversed;
@@ -1446,6 +1507,15 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// a parent form writes its bind-time snapshot back via `setValues()`.
   void resetWith(Iterable<E> elements) => _resetWithDynamic(elements);
 
+  /// Whether [candidate] may be stored in this list.
+  ///
+  /// [TomClass._setListMember] builds elements reflectively and holds them as
+  /// `TomObject<dynamic>`, so it cannot express the `is E` test itself — `E` is
+  /// only in scope here. Asking the list lets a mistyped element be reported
+  /// before it is installed rather than as a covariant-check `TypeError` after
+  /// the list has already been cleared.
+  bool _acceptsElement(TomObject<dynamic> candidate) => candidate is E;
+
   /// Loosely-typed variant of [resetWith] used by deserialization.
   ///
   /// [TomClass._setListMember] builds new elements reflectively into a
@@ -1456,15 +1526,11 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// whole-container covariant check happens — each element is instead checked
   /// individually via `add`'s covariant parameter, exactly like the
   /// element-by-element path in [_setListMember].
-  /// Whether [candidate] may be stored in this list.
   ///
-  /// [TomClass._setListMember] builds elements reflectively and holds them as
-  /// `TomObject<dynamic>`, so it cannot express the `is E` test itself — `E` is
-  /// only in scope here. Asking the list lets a mistyped element be reported
-  /// before it is installed rather than as a covariant-check `TypeError` after
-  /// the list has already been cleared.
-  bool _acceptsElement(TomObject<dynamic> candidate) => candidate is E;
-
+  /// Unlike the other mutators this one notifies unconditionally, even when the
+  /// new contents happen to be the old ones: the lifecycle listeners have
+  /// already torn down and rebuilt whatever they hold per element, so from an
+  /// observer's point of view the list *has* been replaced.
   void _resetWithDynamic(Iterable<TomObject<dynamic>> elements) {
     // Snapshot the listener list before iterating to guard against
     // concurrent modification inside a listener callback.
@@ -1493,25 +1559,33 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   }
 
   void addAll(Iterable<E> iterable) {
-    _attachTo(iterable);
-    _value.addAll(iterable);
+    // Materialized once: `iterable` may be single-pass, and testing it for
+    // emptiness must not consume the elements the add then needs.
+    final items = List<E>.of(iterable);
+    if (items.isEmpty) return;
+    _attachTo(items);
+    _value.addAll(items);
     notifyObservers();
   }
 
   Map<int, E> asMap() => _value.asMap();
   void clear() {
+    if (_value.isEmpty) return;
     _detachFrom(_value);
     _value.clear();
     notifyObservers();
   }
 
   void fillRange(int start, int end, [E? fillValue]) {
+    final before = _snapshot();
+    // Before the attach, so an out-of-range call still throws — and so that an
+    // empty range does not leave the list observing an element it never held.
     _detachFrom(getRange(start, end));
-    if (fillValue != null) {
+    _value.fillRange(start, end, fillValue);
+    if (fillValue != null && end > start) {
       fillValue.addObserver(this);
     }
-    _value.fillRange(start, end, fillValue);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   Iterable<E> getRange(int start, int end) => _value.getRange(start, end);
@@ -1525,8 +1599,15 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   }
 
   void insertAll(int index, Iterable<E> iterable) {
-    _value.insertAll(index, iterable);
-    _attachTo(iterable);
+    final items = List<E>.of(iterable);
+    if (items.isEmpty) {
+      // Still range-checked: `insertAll(99, [])` is a caller error, not a
+      // no-op, and skipping the check would hide it.
+      RangeError.checkValueInInterval(index, 0, _value.length, 'index');
+      return;
+    }
+    _value.insertAll(index, items);
+    _attachTo(items);
     notifyObservers();
   }
 
@@ -1535,14 +1616,12 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   int lastIndexWhere(bool Function(E element) test, [int? start]) =>
       _value.lastIndexWhere(test, start);
   bool remove(Object? value) {
-    bool result;
-    if ((result = _value.remove(value)) &&
-        value != null &&
-        value is TomObservable) {
+    if (!_value.remove(value)) return false;
+    if (value is TomObservable) {
       value.removeObserver(this);
     }
     notifyObservers();
-    return result;
+    return true;
   }
 
   E removeAt(int index) {
@@ -1602,27 +1681,33 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   }
 
   void setAll(int index, Iterable<E> iterable) {
+    final before = _snapshot();
+    // Detach all, then re-attach whatever survives: the overwritten elements
+    // are no longer in `_value` and so are left detached.
     _detachFrom(_value);
     _value.setAll(index, iterable);
     _attachTo(_value);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   void setRange(int start, int end, Iterable<E> iterable, [int skipCount = 0]) {
+    final before = _snapshot();
     _detachFrom(_value);
     _value.setRange(start, end, iterable, skipCount);
     _attachTo(_value);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   void shuffle([Random? random]) {
+    final before = _snapshot();
     _value.shuffle(random);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   void sort([int Function(E a, E b)? compare]) {
+    final before = _snapshot();
     _value.sort(compare);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   List<E> sublist(int start, [int? end]) => _value.sublist(start, end);
@@ -1649,6 +1734,17 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 /// - `map[key]` - Get value for key
 /// - `map[key] = value` - Set value for key
 /// - `map + other` - Merge two TomMaps
+///
+/// ## Notification contract
+///
+/// **A mutator notifies exactly once when it changed the map's contents, and
+/// not at all when it left them as they were.** `remove` of an absent key,
+/// `addAll({})`, `clear()` on an empty map and re-binding a key to the value it
+/// already holds are all silent; `remove` of a *present* key notifies.
+/// "Contents" means the key-to-value-*reference* mapping, compared by identity
+/// — swapping in an equal-but-distinct value is a real change, because
+/// observers hold references. A change *inside* a value is not the mutator's
+/// business: it reaches observers through [onNotify].
 ///
 /// ## Example
 ///
@@ -1693,6 +1789,36 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
       didDetach = true;
     }
     return didDetach;
+  }
+
+  /// The current key-to-value mapping, for a later [_notifyIfChangedSince].
+  ///
+  /// Taken by the mutators whose outcome is not knowable in advance — an
+  /// `addAll` that overwrites nothing new, a `removeWhere` that matches
+  /// nothing. Mutators that always change the map notify directly instead.
+  Map<K, V> _snapshot() => Map<K, V>.of(_value);
+
+  /// Notifies observers only if the mapping differs from [before].
+  ///
+  /// Compared by identity, not equality: observers hold value references, so
+  /// swapping in an equal-but-distinct value is a real change. A change
+  /// *inside* a value is not this method's business — it reaches observers
+  /// through [onNotify].
+  ///
+  /// Equal sizes plus every old key still bound to the same object implies the
+  /// key sets are equal too: a dropped key would have to be balanced by a new
+  /// one, and the dropped key's lookup then returns `null`.
+  void _notifyIfChangedSince(Map<K, V> before) {
+    if (before.length != _value.length) {
+      notifyObservers();
+      return;
+    }
+    for (final entry in before.entries) {
+      if (!identical(_value[entry.key], entry.value)) {
+        notifyObservers();
+        return;
+      }
+    }
   }
 
   /// Throws [TomObservableException] - direct value setting is not allowed.
@@ -1769,10 +1895,11 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
   /// Replaces the entire map with [newMap], updating observers.
   @override
   TomMap<K, V> operator <<(Map<K, V> newMap) {
+    final before = _snapshot();
     _detachFrom(_value.values);
     _attachTo(newMap.values);
     _value = Map<K, V>.of(newMap);
-    notifyObservers();
+    _notifyIfChangedSince(before);
     return this;
   }
 
@@ -1808,32 +1935,39 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
   /// Adds a key-value pair to the map.
   ///
   /// If the key already exists, the old value is unobserved and replaced.
+  /// Re-binding a key to the value it already holds changes nothing and is
+  /// therefore silent.
   void add(K key, V value) {
-    if (_value[key] != null) {
-      _value[key]!.removeObserver(this);
-    }
+    final existing = _value[key];
+    if (identical(existing, value)) return;
+    existing?.removeObserver(this);
     value.addObserver(this);
     _value[key] = value;
     notifyObservers();
   }
 
   void addAll(Map<K, V> other) {
+    final before = _snapshot();
+    // Detach all, then re-attach whatever survives: values displaced by `other`
+    // are no longer in `_value` and so are left detached.
     _detachFrom(_value.values);
     _value.addAll(other);
     _attachTo(_value.values);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   void addEntries(Iterable<MapEntry<K, V>> newEntries) {
+    final before = _snapshot();
     _detachFrom(_value.values);
     _value.addEntries(newEntries);
     _attachTo(_value.values);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   Map<RK, RV> cast<RK, RV>() => _value.cast<RK, RV>();
 
   void clear() {
+    if (_value.isEmpty) return;
     _detachFrom(_value.values);
     _value.clear();
     notifyObservers();
@@ -1853,49 +1987,80 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     return newValue;
   }
 
+  /// Removes [key] and returns its value, or `null` if the key was absent.
+  ///
+  /// A removal detaches the value and notifies; an absent key changes nothing
+  /// and is silent. `V` is non-nullable, so a `null` from the underlying remove
+  /// means "was not there" and nothing else.
   V? remove(K? key) {
     if (key == null) return null;
-    if (!_value.containsKey(key)) return null;
-    var value = _value[key]!;
+    final value = _value.remove(key);
+    if (value == null) return null;
     value.removeObserver(this);
-    return _value.remove(key);
+    notifyObservers();
+    return value;
   }
 
   void removeWhere(bool Function(K key, V value) test) {
+    final before = _snapshot();
     _detachFrom(_value.values);
     _value.removeWhere(test);
     _attachTo(_value.values);
-    notifyObservers();
+    _notifyIfChangedSince(before);
   }
 
   V update(K key, V Function(V value) update, {V Function()? ifAbsent}) {
-    V newValue;
-    if (_value.containsKey(key)) {
-      var value = _value[key]!;
-      value.removeObserver(this);
-      newValue = update(value);
-      newValue.addObserver(this);
-      _value[key] = newValue;
-      notifyObservers();
-    } else if (ifAbsent != null) {
-      newValue = ifAbsent();
-      newValue.addObserver(this);
-      _value[key] = newValue;
-      notifyObservers();
-    } else {
+    final existing = _value[key];
+    if (existing != null) {
+      // Suppress only this map's own notifications across the callback
+      // (super.mute(), not the value-cascading override): the callback is free
+      // to mutate the value *and* return a replacement, and the caller made one
+      // call, so it gets one notification. Released in a `finally` — a throwing
+      // callback must not leave the map silent for the rest of its life.
+      super.mute();
+      try {
+        final newValue = update(existing);
+        if (identical(newValue, existing)) return existing;
+        existing.removeObserver(this);
+        newValue.addObserver(this);
+        _value[key] = newValue;
+        notifyObservers();
+        return newValue;
+      } finally {
+        super.unmute();
+      }
+    }
+    if (ifAbsent == null) {
       throw TomObservableException(
         "TomClass.tommap_state_error.update_key_not_found_no_ifabsent",
         "Map doesn't contain key $key and no ifAbsent method provided",
       );
     }
+    final newValue = ifAbsent();
+    newValue.addObserver(this);
+    _value[key] = newValue;
+    notifyObservers();
     return newValue;
   }
 
   void updateAll(V Function(K key, V value) update) {
-    _detachFrom(_value.values);
-    _value.updateAll(update);
-    _attachTo(_value.values);
-    notifyObservers();
+    final before = _snapshot();
+    // See [update] for the mute: the callbacks may mutate values in place as
+    // well as replace them, and updateAll is one call.
+    super.mute();
+    try {
+      _value.updateAll((key, value) {
+        final newValue = update(key, value);
+        if (!identical(newValue, value)) {
+          value.removeObserver(this);
+          newValue.addObserver(this);
+        }
+        return newValue;
+      });
+      _notifyIfChangedSince(before);
+    } finally {
+      super.unmute();
+    }
   }
 
   /// Casts a [TomMap] from one key/value type to another.
