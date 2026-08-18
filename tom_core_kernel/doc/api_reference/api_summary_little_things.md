@@ -47,6 +47,16 @@ The four formatting functions accept the trace as an optional argument. Passing
 the formatter's own frames are folded away in that case, so the first frame
 reported is always the caller's.
 
+They also share a `depth`. A non-negative value is a bound — `0` yields no
+frames, `n` yields the `n` nearest the throw site — and **any** negative value
+means all frames. `-1` is the default and the conventional way to write "no
+limit", but it is not a sentinel the frame walk tests for: `-2` and `-99` are
+equally unbounded. This matters when a depth is computed rather than written,
+since arithmetic can land on `-2` as readily as `-1`; the magnitude of a
+negative is never read as a frame count. A depth outside the intended range is
+not rejected, because these functions run while reporting some other failure
+and raising here would lose it.
+
 The parameter is typed `StackTrace?`, and so is `TomException`'s `stack`. Any
 other object is rejected by the compiler rather than at run time — which for
 these functions matters more than usual, since they run on the error path and
@@ -113,7 +123,7 @@ the trace is taken inside it — and the creating code is the frame below.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `printStackTrace` | `void printStackTrace([int depth = -1])` | *(override)* Logs the exception's stack trace at ERROR level via `tomPrintStackTrace`, under the message `"$uuid-$requestUuid exception stacktrace"` — the trailing two words are literal text in the record, so a rule matching the identifier must not anchor to end of line; `depth` limits the number of frames (`-1` includes all). Despite the inherited name it does not `print` — `TomBaseException.printStackTrace` does, this override does not. Reports the construction site whether or not a `stack` was supplied. The inherited `stack` field is declared `Object?` and is publicly mutable, so a value that is not a `StackTrace` can still reach this method; it is reported as no frames at all — never as a substituted trace of the reporting site. |
+| `printStackTrace` | `void printStackTrace([int depth = -1])` | *(override)* Logs the exception's stack trace at ERROR level via `tomPrintStackTrace`, under the message `"$uuid-$requestUuid exception stacktrace"` — the trailing two words are literal text in the record, so a rule matching the identifier must not anchor to end of line; `depth` limits the number of frames (any negative value includes all; `-1` is the default). Despite the inherited name it does not `print` — `TomBaseException.printStackTrace` does, this override does not. Reports the construction site whether or not a `stack` was supplied. The inherited `stack` field is declared `Object?` and is publicly mutable, so a value that is not a `StackTrace` can still reach this method; it is reported as no frames at all — never as a substituted trace of the reporting site. |
 
 ## Global Functions and Constants
 

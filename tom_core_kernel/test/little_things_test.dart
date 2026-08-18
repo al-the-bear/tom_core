@@ -1413,6 +1413,57 @@ void main() {
   });
 
   // =========================================================================
+  // NEGATIVE DEPTHS
+  //
+  // The walk tests `depth >= 0`, so a bound is a non-negative number and every
+  // negative one is the absence of a bound. -1 is convention, not a sentinel —
+  // which is what makes a computed depth safe, since arithmetic lands on -2 as
+  // readily as on -1. All three accessors are pinned because they share the
+  // walk, as in the depth == 0 group above.
+  // =========================================================================
+
+  group('negative stack trace depth', () {
+    // Larger than any trace these tests produce, so it stands for "all
+    // frames". Comparing -5 against -1 alone would pass even if both
+    // truncated identically, which is the regression worth catching.
+    const unbounded = 1000;
+
+    test('tomGetStackTraceAsList treats -5 as all frames', () {
+      final trace = StackTrace.current;
+      final all = tomGetStackTraceAsList(trace, unbounded);
+      expect(all, isNotEmpty, reason: 'else the comparisons below are vacuous');
+      expect(tomGetStackTraceAsList(trace, -5), all);
+      expect(tomGetStackTraceAsList(trace, -1), all);
+    });
+
+    test('tomGetStackTrace treats -5 as all frames', () {
+      final trace = StackTrace.current;
+      final all = tomGetStackTrace(trace, unbounded);
+      expect(all, isNotEmpty, reason: 'else the comparison below is vacuous');
+      expect(tomGetStackTrace(trace, -5), all);
+    });
+
+    test('tomGetStackTraceAsTuple treats -5 as all frames', () {
+      final trace = StackTrace.current;
+      final (allText, allFrames) = tomGetStackTraceAsTuple(trace, unbounded);
+      expect(allFrames, isNotEmpty, reason: 'else the comparison is vacuous');
+      final (text, frames) = tomGetStackTraceAsTuple(trace, -5);
+      expect(text, allText);
+      expect(frames, allFrames);
+    });
+
+    test('a negative depth is not read as a frame count', () {
+      // The hazard the contract removes: -2 is unbounded, not "two frames".
+      // Without this, `depth >= 0` could be misread as making the magnitude
+      // of a negative meaningful.
+      final trace = StackTrace.current;
+      final two = tomGetStackTraceAsList(trace, 2);
+      expect(two, hasLength(2));
+      expect(tomGetStackTraceAsList(trace, -2).length, greaterThan(two.length));
+    });
+  });
+
+  // =========================================================================
   // STACK PARAMETER TYPE
   //
   // The formatting functions take `StackTrace?`, not `Object?`. The wider type

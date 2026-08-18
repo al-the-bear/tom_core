@@ -143,8 +143,9 @@ class TomException extends TomBaseException implements TomLoggable {
 
   /// Logs the stack trace at ERROR level.
   ///
-  /// The [depth] parameter limits how many stack frames are included.
-  /// Use -1 (default) for all frames.
+  /// The [depth] parameter limits how many stack frames are included. Any
+  /// negative value means all frames — -1 is the default and the conventional
+  /// spelling, not a required sentinel.
   ///
   /// The name is inherited, and so is misleading here: `TomBaseException`
   /// genuinely calls [print], this override routes the same report through

@@ -219,7 +219,8 @@ T runCheckedSync<T>(
 ///
 /// - [s]: The stack trace, or `null` to use [StackTrace.current].
 /// - [message]: Optional prefix message for the log entry.
-/// - [depth]: Maximum number of frames to include. Use -1 for all frames.
+/// - [depth]: Maximum number of frames to include. Any negative value means
+///   all frames — -1 is the conventional spelling, not a required sentinel.
 void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1}) {
   // Composing from the parts that have content, rather than concatenating
   // unconditionally, decides all four combinations in one place — and drops
@@ -263,7 +264,8 @@ bool _isFormatterFrame(Frame frame) => _formatterMembers.contains(frame.member);
 /// ## Parameters
 ///
 /// - [s]: The stack trace to process. Defaults to [StackTrace.current].
-/// - [depth]: Maximum frames to return. Use -1 for all frames.
+/// - [depth]: Maximum frames to return. Any negative value means all frames —
+///   -1 is the conventional spelling, not a required sentinel.
 ///
 /// ## Returns
 ///
@@ -327,7 +329,19 @@ List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
     // Enforce the limit before appending so depth == 0 yields no frames
     // (and depth == n yields exactly n). Checking after appending caused an
     // off-by-one where depth == 0 returned every frame.
-    if (depth > -1 && remaining-- == 0) break;
+    //
+    // `depth >= 0` rather than the equivalent `depth > -1`: it says what the
+    // condition means. A non-negative depth is a bound; *every* negative one
+    // is the absence of a bound, so -1 is the conventional spelling of "no
+    // limit" and not a sentinel this walk tests for. A depth computed rather
+    // than written can land on -2, and that is unbounded like the rest.
+    //
+    // Deliberately not rejected. These functions run while reporting some
+    // other failure, and throwing here would lose that failure to complain
+    // about the depth used to describe it — the same trade already settled
+    // for the trace parameter above and for a non-StackTrace `stack` in
+    // TomException.printStackTrace.
+    if (depth >= 0 && remaining-- == 0) break;
     final line =
         "${f.location} l:${f.line} c:${f.column} ${f.member} ${f.library}";
     resultList.add(line);
@@ -350,7 +364,8 @@ List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
 /// ## Parameters
 ///
 /// - [s]: The stack trace, or `null` to use [StackTrace.current].
-/// - [depth]: Maximum number of frames to include. Use -1 for all frames.
+/// - [depth]: Maximum number of frames to include. Any negative value means
+///   all frames — -1 is the conventional spelling, not a required sentinel.
 ///   The limit applies across the whole chain, counting from the throw site.
 ///
 /// ## Returns
@@ -380,7 +395,8 @@ String tomGetStackTrace([StackTrace? s, int depth = -1]) {
 /// ## Parameters
 ///
 /// - [s]: The stack trace, or `null` to use [StackTrace.current].
-/// - [depth]: Maximum number of frames to include. Use -1 for all frames.
+/// - [depth]: Maximum number of frames to include. Any negative value means
+///   all frames — -1 is the conventional spelling, not a required sentinel.
 ///
 /// ## Returns
 ///
@@ -399,7 +415,8 @@ List<String> tomGetStackTraceAsList([StackTrace? s, int depth = -1]) {
 /// ## Parameters
 ///
 /// - [s]: The stack trace, or `null` to use [StackTrace.current].
-/// - [depth]: Maximum number of frames to include. Use -1 for all frames.
+/// - [depth]: Maximum number of frames to include. Any negative value means
+///   all frames — -1 is the conventional spelling, not a required sentinel.
 ///
 /// ## Returns
 ///

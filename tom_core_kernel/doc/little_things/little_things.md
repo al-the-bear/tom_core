@@ -216,6 +216,19 @@ rather than being omitted — the pair is always two fields wide.
 Frames come back newest first — the throw site leads — and a `depth` limit
 counts from there, so a bounded trace keeps the frames nearest the error.
 
+Only a non-negative `depth` is a bound. **Any** negative value means all
+frames: `-1` is the default and the conventional spelling of "no limit", but
+the frame walk tests `depth >= 0` rather than comparing against `-1`, so `-2`
+and `-99` are unbounded too, and the magnitude of a negative is never read as
+a frame count. Write the depth yourself and this never comes up; compute it —
+`available - alreadyLogged`, say — and it does, because arithmetic reaches
+`-2` as readily as `-1`. Both give you the whole trace, which is the safe
+direction to be wrong in: more context than asked for, never less.
+
+An out-of-range depth is not rejected. These functions run while reporting
+some other failure, and throwing here would discard that failure in order to
+complain about the number used to describe it.
+
 All four take a `StackTrace?`. Nothing else is accepted, and the rejection is
 the compiler's — these functions run on the error path, where a run-time type
 failure would surface as a crash inside the crash report.
@@ -386,7 +399,7 @@ throw TomException(
 Use appropriate depth for context without noise:
 
 - **5-10 frames**: Typical for most debugging
-- **-1 (all)**: For critical errors needing full context
+- **-1, or any other negative (all)**: For critical errors needing full context
 - **1-3 frames**: For quick location identification
 
 In asynchronous code a trace spans every `await` boundary, so `-1` can be
