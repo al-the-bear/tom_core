@@ -1352,6 +1352,38 @@ void main() {
           expect(fallbackOutput.lastMessage, equals('rejected record'));
         });
 
+        test('a payload rejection on an HTTP success is not a success',
+            () async {
+          // The rejection that carries no transport signal whatsoever: the
+          // request succeeded, the server answered 200, and the refusal is in
+          // the body. A sender that reads only TomServerCallError sees nothing
+          // wrong and drops the record — silently, which is the single outcome
+          // this entire resilience layer exists to prevent.
+          TomRemoteLogOutput.globalSettingMaxSendRetries = 3;
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+          final endpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.returnServerRejection]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          await emit(TomRemoteLogOutput(), 'payload-rejected record');
+
+          // All three limbs of the contract, because a rejection is a failure
+          // like any other: retry the budget, fall back, buffer for replay.
+          expect(endpoint.sendCount, equals(4));
+          expect(fallbackOutput.lastMessage, equals('payload-rejected record'));
+          expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+
+          final warning = fallbackOutput.messages.firstWhere(
+            (m) => m.startsWith('Could not send log message'),
+            orElse: () => '',
+          );
+          expect(warning, contains('rejected'));
+          // The server's own reason has to survive into the fallback. Without
+          // it the operator learns that something refused the record but not
+          // what to fix, and the reason is the only thing the server said.
+          expect(warning, contains(_serverRejectionReason));
+        });
+
         test('an unreachable endpoint is not reported as a server rejection',
             () async {
           // Since TomServerEndpoint translates "no response arrived" into a
@@ -1946,13 +1978,35 @@ enum _SendOutcome {
   /// Throw a transport exception.
   throwError,
 
-  /// Return a non-null [TomServerCallError] (a server-side rejection).
+  /// Return a transport-level error: an error-free payload alongside a
+  /// non-null [TomServerCallError] carrying an HTTP 500.
+  ///
+  /// Despite its name this is *not* a server-side rejection — the application
+  /// result is a plain, successful [TomRemoteLogResult]. See
+  /// [returnServerRejection] for that. Renaming this case (and splitting the
+  /// test that leans on it) belongs to tcinc111.
   returnError,
+
+  /// Return a genuine application-level rejection: HTTP success, no transport
+  /// error at all, and the refusal carried in the payload as
+  /// [TomRemoteLogResult.withError].
+  ///
+  /// This is the shape a healthy collector uses to say "I received your record
+  /// and will not store it". Nothing about the transport is wrong, so a sender
+  /// that inspects only [TomServerCallError] sees a complete success and drops
+  /// the record.
+  returnServerRejection,
 
   /// Return the error a real [TomServerEndpoint] produces when no response
   /// arrives at all — a refused connection, an expired deadline, an abort.
   noResponse,
 }
+
+/// The refusal reason [_SendOutcome.returnServerRejection] answers with.
+///
+/// Named rather than inlined because the point of the test is that this exact
+/// text reaches the fallback: the assertion and the mock have to agree on it.
+const String _serverRejectionReason = 'disk full';
 
 /// Mock remote endpoint that records the messages it is handed and behaves
 /// according to a script, exercising [TomRemoteLogOutput]'s send, retry and
@@ -2000,6 +2054,12 @@ class _MockLogEndpoint
         return (
           responseObject ?? TomRemoteLogResult(),
           TomServerCallError(statusCode: 500),
+        );
+      case _SendOutcome.returnServerRejection:
+        // No TomServerCallError at all: the call itself went perfectly.
+        return (
+          TomRemoteLogResult.withError(_serverRejectionReason),
+          null,
         );
       case _SendOutcome.noResponse:
         // Exactly the shape TomServerEndpoint.send returns for an unreachable

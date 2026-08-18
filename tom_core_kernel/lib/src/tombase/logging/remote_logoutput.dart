@@ -272,8 +272,18 @@ class TomInMemoryLogReplayStore implements TomLogReplayStore {
 /// accepted it: the endpoint could not be reached at all, the server answered
 /// with an error, or the send threw. In every case the record is never silently
 /// dropped, and the accompanying warning names which of the three happened —
-/// an unreachable endpoint is not reported as a rejection. On failure the
-/// output:
+/// an unreachable endpoint is not reported as a rejection.
+///
+/// "The server answered with an error" covers **both** channels the endpoint
+/// can report one on, because a record is equally lost either way: a
+/// transport-level failure ([TomServerCallError] — a non-2xx status, an
+/// internal error) and an application-level refusal carried in the response
+/// body ([TomRemoteLogResult.hasError]) on an otherwise perfect HTTP 200. The
+/// second is what a healthy collector uses to say "received, not stored", and
+/// the server's own [TomRemoteLogResult.errorMessage] is reproduced in the
+/// warning.
+///
+/// On failure the output:
 ///
 /// 1. retries the send up to [globalSettingMaxSendRetries] additional times,
 ///    waiting [globalSettingRetryBackoff] × attempt between tries (linear
@@ -405,23 +415,47 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// Sends [remoteMessage] once, translating every way the send can fail into
   /// a single failure description.
   ///
-  /// Returns `null` on success, or a human-readable failure description naming
-  /// which kind of failure it was: the server was never reached, the server
-  /// answered with an error, or the endpoint itself threw.
+  /// Returns `null` only when a server accepted the record, or a human-readable
+  /// failure description naming which kind of failure it was: the server was
+  /// never reached, the server answered with an error, or the endpoint threw.
+  ///
+  /// The endpoint reports failure on two independent channels and both are
+  /// read here. [TomServerCallError] is purely transport-level — it knows the
+  /// status code and nothing about the payload — so a collector that answers
+  /// HTTP 200 carrying a [TomRemoteLogResult.hasError] body signals no
+  /// transport error at all. Testing only the transport channel treated such a
+  /// rejection as a complete success and dropped the record without retry,
+  /// fallback or replay.
   Future<String?> _sendOnce(TomRemoteLogMessage remoteMessage) async {
     try {
-      var (_, error) = await remoteEndpoint!.send(
+      var (result, error) = await remoteEndpoint!.send(
         remoteMessage,
         TomRemoteLogResult(),
       );
-      if (error == null || !error.hasError) return null;
-      if (_isUnreachable(error)) {
-        // No server ever saw this record, so it was not rejected. The cause is
-        // only in `exception` — TomServerCallError.toString() reports the
-        // status and the body, and an unreachable endpoint has neither.
-        return "server unreachable: ${error.exception ?? error}";
+      if (error != null && error.hasError) {
+        if (_isUnreachable(error)) {
+          // No server ever saw this record, so it was not rejected. The cause
+          // is only in `exception` — TomServerCallError.toString() reports the
+          // status and the body, and an unreachable endpoint has neither.
+          return "server unreachable: ${error.exception ?? error}";
+        }
+        return "server rejected record: $error";
       }
-      return "server rejected record: $error";
+      // The transport is clean, so whatever the endpoint returned is what the
+      // server decided — and a refusal in the payload is still a refusal: the
+      // record did not land.
+      if (result.hasError) {
+        // The reason is the only thing the server said about the refusal, so
+        // it is what the fallback line has to carry. An error result with no
+        // message is possible (the field defaults to empty when the server
+        // omits it), and reporting that as a blank reason would reproduce the
+        // silence this whole method exists to break.
+        final reason = result.errorMessage.isEmpty
+            ? "no reason given"
+            : result.errorMessage;
+        return "server rejected record: $reason";
+      }
+      return null;
     } catch (error) {
       return "transport error: $error";
     }

@@ -240,8 +240,17 @@ treated as failed whenever it does not reach a server that accepted it: the
 endpoint was *unreachable*, the server *returned* an error result, or the send
 *threw*. The warning written alongside the record names which one it was — an
 unreachable endpoint is reported as `server unreachable` with the underlying
-exception, never as a rejection. For flaky links you can opt into
-retry-with-backoff and a
+exception, never as a rejection.
+
+"Returned an error result" covers both channels the endpoint reports on, since
+the record is equally lost either way: a transport-level `TomServerCallError`
+(a non-2xx status, an internal error) *and* an application-level refusal in the
+response body (`TomRemoteLogResult.hasError`) delivered over a perfectly
+successful HTTP 200 — which is how a healthy collector says "received, not
+stored". The server's own `errorMessage` is reproduced in the warning, so the
+operator reads the reason and not merely the refusal.
+
+For flaky links you can opt into retry-with-backoff and a
 bounded replay queue that drains, oldest-first, once the endpoint recovers:
 
 ```dart
