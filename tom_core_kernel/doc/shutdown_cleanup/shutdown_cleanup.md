@@ -7,6 +7,8 @@ The shutdown cleanup module provides a comprehensive system for managing gracefu
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
+- [Usage Examples](#usage-examples)
+- [Execution Order](#execution-order)
 - [Best Practices](#best-practices)
 - [Limitations](#limitations)
 - [Dependencies](#dependencies)

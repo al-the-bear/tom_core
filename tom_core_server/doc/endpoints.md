@@ -21,8 +21,8 @@ method, and converts the result (or any error) into a `Response`.
 - [WebSocket Endpoints](#websocket-endpoints)
 - [Error Handling](#error-handling)
 - [Building the Router](#building-the-router)
-- [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
+- [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
 ---

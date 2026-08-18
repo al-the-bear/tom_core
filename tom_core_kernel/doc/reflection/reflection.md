@@ -20,6 +20,8 @@ It uses the `reflection` package to achieve this while maintaining type safety.
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
 - [Build Configuration](#build-configuration)
+- [Type Resolution](#type-resolution)
+- [Dependencies](#dependencies)
 
 ## Overview
 

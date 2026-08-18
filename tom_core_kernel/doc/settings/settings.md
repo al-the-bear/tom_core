@@ -7,6 +7,7 @@ The Settings module provides client-server communication for retrieving applicat
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
+- [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
 - [Dependencies](#dependencies)
 

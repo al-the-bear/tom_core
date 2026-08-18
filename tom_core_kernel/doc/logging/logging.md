@@ -7,8 +7,10 @@ A flexible, configurable logging framework for Dart applications with support fo
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
+- [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
 - [Configuration Reference](#configuration-reference)
+- [File Structure](#file-structure)
 - [Dependencies](#dependencies)
 
 ---

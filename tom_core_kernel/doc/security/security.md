@@ -21,6 +21,7 @@ The security module provides a comprehensive authentication and authorization sy
 - [External Identity (OAuth 2.0 / OIDC)](#external-identity-oauth-20--oidc)
 - [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
+- [Dependencies](#dependencies)
 
 ---
 

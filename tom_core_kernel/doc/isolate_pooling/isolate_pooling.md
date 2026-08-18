@@ -7,7 +7,10 @@ The isolate pooling module provides a robust framework for managing Dart isolate
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
+- [Architecture](#architecture)
+- [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
+- [API Reference](#api-reference)
 - [Dependencies](#dependencies)
 
 ---

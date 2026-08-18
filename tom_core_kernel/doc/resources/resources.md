@@ -7,7 +7,9 @@ The Resources module provides singleton-based resource management for applicatio
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
+- [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
+- [Architecture Notes](#architecture-notes)
 - [Dependencies](#dependencies)
 
 ---

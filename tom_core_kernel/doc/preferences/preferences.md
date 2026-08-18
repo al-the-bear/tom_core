@@ -10,6 +10,7 @@ client and a server both bind to.
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
 - [The Two Stores](#the-two-stores)
+- [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
 - [Dependencies](#dependencies)
 

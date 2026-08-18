@@ -18,6 +18,7 @@ The Tom Execution Context System provides zone-based context propagation for pas
 - [Context Composition](#context-composition)
 - [Default Context](#default-context)
 - [Best Practices](#best-practices)
+- [Dependencies](#dependencies)
 
 ## Overview
 

@@ -14,6 +14,7 @@ automatic handling of daylight saving time (DST) transitions.
 - [DST Handling](#dst-handling)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
+- [Dependencies](#dependencies)
 
 ## Overview
 
