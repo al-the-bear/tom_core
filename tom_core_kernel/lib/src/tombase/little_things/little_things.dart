@@ -207,16 +207,30 @@ T runCheckedSync<T>(
 /// outputs point, so under a recording output in a test it never reaches
 /// stdout, and under a filtered one it is dropped entirely.
 ///
+/// Nothing is logged when there would be nothing to say — no message and no
+/// frames. That combination is reachable three ways: `depth: 0`, which is a
+/// meaningful request for no frames; [StackTrace.empty]; and a trace whose
+/// every frame was filtered out as noise. In each case an unconditional call
+/// emitted an ERROR record with an empty body, which is worse than silence: it
+/// asserts that something failed, describes nothing, and does so at the level
+/// operators alert on.
+///
 /// ## Parameters
 ///
 /// - [s]: The stack trace, or `null` to use [StackTrace.current].
 /// - [message]: Optional prefix message for the log entry.
 /// - [depth]: Maximum number of frames to include. Use -1 for all frames.
 void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1}) {
-  var stackTrace = message != null
-      ? "$message ${tomGetStackTrace(s, depth)}"
-      : tomGetStackTrace(s, depth);
-  tomLog.error(stackTrace);
+  // Composing from the parts that have content, rather than concatenating
+  // unconditionally, decides all four combinations in one place — and drops
+  // the separator that a message with no trace used to leave dangling.
+  final trace = tomGetStackTrace(s, depth);
+  final parts = [
+    if (message != null && message.isNotEmpty) message,
+    if (trace.isNotEmpty) trace,
+  ];
+  if (parts.isEmpty) return;
+  tomLog.error(parts.join(' '));
 }
 
 /// The stack-trace formatting functions of this library.

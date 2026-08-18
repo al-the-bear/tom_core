@@ -1250,9 +1250,46 @@ void main() {
     test('should pass the depth limit through to the trace', () {
       tomPrintStackTrace(StackTrace.current, message: 'P', depth: 0);
       // depth 0 yields an empty trace, so the logged entry is just the prefix
-      // (plus the joining space) — no frame location lines.
+      // — no frame location lines, and no trailing separator either.
       expect(captured.messages, isNotEmpty);
-      expect(captured.messages.last.trim(), equals('P'));
+      expect(captured.messages.last, equals('P'));
+    });
+
+    // -----------------------------------------------------------------------
+    // Nothing to say (tests §4f)
+    // -----------------------------------------------------------------------
+
+    // Every test above passes a message, which is why none of them saw this:
+    // the record was built and handed to `tomLog.error` unconditionally, so a
+    // call with nothing to report emitted an ERROR entry with an empty body.
+    // An empty ERROR line is worse than silence — it claims a failure occurred
+    // and then describes none, and it does so at the level operators alert on.
+
+    test('should log nothing for an empty trace with no message', () {
+      tomPrintStackTrace(StackTrace.empty);
+      expect(captured.messages, isEmpty);
+    });
+
+    test('should log nothing when depth 0 leaves no frames and no message', () {
+      // depth 0 is a meaningful request for no frames, not a mistake. Asking
+      // for no frames and supplying no context is a request to report nothing.
+      tomPrintStackTrace(StackTrace.current, depth: 0);
+      expect(captured.messages, isEmpty);
+    });
+
+    test('should log nothing when the message is empty and so is the trace',
+        () {
+      tomPrintStackTrace(StackTrace.current, message: '', depth: 0);
+      expect(captured.messages, isEmpty);
+    });
+
+    test('should still log the trace when only the message is empty', () {
+      // An empty message must suppress only itself, never the trace it would
+      // have prefixed.
+      tomPrintStackTrace(StackTrace.current, message: '');
+      expect(captured.messages, isNotEmpty);
+      expect(captured.messages.last, isNot(startsWith(' ')));
+      expect(captured.messages.last, contains('little_things_test.dart'));
     });
   });
 

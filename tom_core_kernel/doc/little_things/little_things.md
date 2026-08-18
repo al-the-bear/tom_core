@@ -230,6 +230,15 @@ try {
 }
 ```
 
+`tomPrintStackTrace` logs nothing at all when there is nothing to say — no
+message and no frames. Besides `StackTrace.empty`, that state is reached by
+`depth: 0`, which is a genuine request for no frames, and by a trace whose
+every frame was folded away as noise. An ERROR record with an empty body would
+assert that something failed while describing nothing, at the level operators
+alert on, so the call is skipped instead. A message alone still logs: it is the
+caller's context, and losing it because the trace was empty would hide the
+error entirely.
+
 An **asynchronous** trace is reported whole. The runtime splits such a trace
 into one segment per `await` boundary, and all of them are included:
 
