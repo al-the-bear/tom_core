@@ -126,8 +126,8 @@ declarations are omitted.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomException` | class | The kernel base exception (implements `TomLoggable`). |
-| `getFromCurrentZone` | function | Reads a typed value from the current zone. |
-| `getObjectFromCurrentZone` | function | Reads an object of a type from the current zone. |
+| `getFromCurrentZone` | function | Reads the current zone's value for the exact key `T`. |
+| `getObjectFromCurrentZone` | function | The same lookup, key given at run time, no `is` check. |
 | `runChecked` | function | Runs an async body wrapping errors. |
 | `runCheckedSync` | function | Runs a sync body wrapping errors. |
 | `tomPrintStackTrace` | function | Prints a formatted stack trace. |

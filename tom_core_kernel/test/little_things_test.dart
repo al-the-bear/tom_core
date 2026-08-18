@@ -94,13 +94,31 @@ void main() {
       );
     });
 
-    test('should return null when value type does not match', () {
+    test('should return null when no value is stored under the requested key',
+        () {
       runZoned(
         () {
+          // Nothing is stored under `int`, so this returns null at the key
+          // lookup — the `is T` guard never runs. Distinguished from the test
+          // below, which exercises the guard instead.
           final result = getFromCurrentZone<int>();
           expect(result, isNull);
         },
         zoneValues: {String: 'test-value'},
+      );
+    });
+
+    test('should return null when the value under the key is not a T', () {
+      runZoned(
+        () {
+          // The key *is* present, so this reaches the `is T` guard — the
+          // second and weaker of the two filters. `getObjectFromCurrentZone`
+          // has no guard and hands the same value back, which is what makes
+          // the two filters distinguishable.
+          expect(getFromCurrentZone<String>(), isNull);
+          expect(getObjectFromCurrentZone(String), equals(42));
+        },
+        zoneValues: {String: 42},
       );
     });
 
@@ -173,6 +191,110 @@ void main() {
           expect(result, isA<_TestConfig>());
         },
         zoneValues: {_TestConfig: _TestConfig('dev', 3000)},
+      );
+    });
+
+    test('should key on the exact Type, like getFromCurrentZone', () {
+      runZoned(
+        () {
+          // Dropping the `is T` guard does not relax the key lookup: the
+          // untyped accessor is exactly as exact-key as the typed one.
+          expect(getObjectFromCurrentZone(_ZoneDerived), isNotNull);
+          expect(getObjectFromCurrentZone(_ZoneBase), isNull);
+        },
+        zoneValues: {_ZoneDerived: _ZoneDerived()},
+      );
+    });
+  });
+
+  // =========================================================================
+  // ZONE KEY IDENTITY
+  //
+  // `Zone.current[T]` is a map lookup on the `Type` object `T`, so the key is
+  // matched by identity and not by assignability. That is the *first* filter
+  // and the stricter one; the `is T` guard that follows can only ever narrow
+  // what the key already found. A reader who knows only about the guard
+  // concludes that any stored value satisfying `is T` will be found, which is
+  // false in every case below.
+  //
+  // These tests pin the contract down because it is invisible at the call
+  // site: a mismatched key is not a type error and not an exception, only a
+  // silent null.
+  // =========================================================================
+
+  group('zone key identity', () {
+    test('a value stored under a subtype key is invisible to its supertype',
+        () {
+      runZoned(
+        () {
+          expect(getFromCurrentZone<_ZoneDerived>(), isNotNull);
+          // A `_ZoneDerived` *is* a `_ZoneBase`, so the `is T` guard would
+          // admit it. The key lookup never gets that far.
+          expect(getFromCurrentZone<_ZoneBase>(), isNull);
+        },
+        zoneValues: {_ZoneDerived: _ZoneDerived()},
+      );
+    });
+
+    test('a value stored under a supertype key is invisible to its subtype',
+        () {
+      runZoned(
+        () {
+          // The stored object is a `_ZoneDerived`, but it was filed under
+          // `_ZoneBase`. Asking for the runtime type of the value one holds is
+          // the natural mistake, and it fails.
+          expect(getFromCurrentZone<_ZoneBase>()?.name, equals('derived'));
+          expect(getFromCurrentZone<_ZoneDerived>(), isNull);
+        },
+        zoneValues: {_ZoneBase: _ZoneDerived()},
+      );
+    });
+
+    test('an implementation key is invisible to the interface it implements',
+        () {
+      runZoned(
+        () {
+          expect(getFromCurrentZone<_ZoneService>(), isNull);
+        },
+        zoneValues: {_ZoneServiceImpl: _ZoneServiceImpl()},
+      );
+    });
+
+    test('Object is not a wildcard key', () {
+      runZoned(
+        () {
+          // Every stored value is an `Object`, so a subtype-scanning lookup
+          // would return the first one. This is the sharpest demonstration
+          // that no scanning happens.
+          expect(getFromCurrentZone<Object>(), isNull);
+        },
+        zoneValues: {String: 'stored'},
+      );
+    });
+
+    test('a nullable type argument is a different key from its base type', () {
+      runZoned(
+        () {
+          expect(getFromCurrentZone<String>(), equals('stored'));
+          // `String?` and `String` are different `Type` objects. Writing the
+          // nullable form because the *result* is nullable is an easy slip,
+          // and it never finds anything.
+          expect(getFromCurrentZone<String?>(), isNull);
+        },
+        zoneValues: {String: 'stored'},
+      );
+    });
+
+    test('type arguments are part of the key', () {
+      runZoned(
+        () {
+          expect(getFromCurrentZone<List<int>>(), equals([1, 2]));
+          // Neither the raw type nor a supertype instantiation matches, even
+          // though `List<int>` is assignable to both.
+          expect(getFromCurrentZone<List>(), isNull);
+          expect(getFromCurrentZone<List<num>>(), isNull);
+        },
+        zoneValues: {List<int>: <int>[1, 2]},
       );
     });
   });
@@ -1236,6 +1358,24 @@ class _TestConfig {
 
   _TestConfig(this.environment, this.port);
 }
+
+/// Base of a two-level hierarchy used to show that a zone lookup keys on the
+/// exact `Type` and not on assignability. A supertype and its subtype are
+/// distinct keys in both directions.
+class _ZoneBase {
+  String get name => 'base';
+}
+
+class _ZoneDerived extends _ZoneBase {
+  @override
+  String get name => 'derived';
+}
+
+/// An interface and its implementation, used for the same purpose: `implements`
+/// creates no relationship between the two `Type` objects used as zone keys.
+abstract class _ZoneService {}
+
+class _ZoneServiceImpl implements _ZoneService {}
 
 /// Custom exception for error transformation tests.
 class _CustomException implements Exception {

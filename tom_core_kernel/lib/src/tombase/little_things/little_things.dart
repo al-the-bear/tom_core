@@ -38,8 +38,43 @@ import 'package:tom_basics/tom_basics.dart';
 /// Zone values are used for passing context through async operations without
 /// explicitly threading parameters through function calls.
 ///
-/// Returns `null` if no value of type [T] exists in the current zone or if
-/// the stored value is not of type [T].
+/// ## The key is the exact `Type`, not an assignable one
+///
+/// The lookup is `Zone.current[T]` — a map lookup whose key is the `Type`
+/// object [T] itself, matched by `==`. [Zone] exposes no way to enumerate its
+/// keys, so **no subtype scan is possible** and none is performed.
+/// Assignability plays no part in *finding* the value:
+///
+/// ```dart
+/// runZoned(
+///   () {
+///     getFromCurrentZone<Derived>();  // the instance
+///     getFromCurrentZone<Base>();     // null — a different key
+///     getFromCurrentZone<Object>();   // null — `Object` is not a wildcard
+///   },
+///   zoneValues: {Derived: Derived()},
+/// );
+/// ```
+///
+/// It fails in the other direction too: a `Derived` instance filed under the
+/// `Base` key is found by `getFromCurrentZone<Base>()` and *not* by
+/// `getFromCurrentZone<Derived>()`. `implements` creates no relationship
+/// either, and type arguments are part of the key — `List<int>`, `List` and
+/// `List<num>` are three distinct keys, as are `T` and `T?`.
+///
+/// **So the producer and every consumer must name the same type.** Choose the
+/// key once — conventionally the declared type of the field the value is read
+/// into — and use it on both sides. A mismatch is not a compile error and
+/// raises nothing; it is a silent `null`, which is also what "nothing stored
+/// here" looks like.
+///
+/// ## Two independent reasons for `null`
+///
+/// Returns `null` when nothing is stored under the key [T], **and** when what
+/// is stored under that key is not a [T]. The key lookup is the first and
+/// stricter filter; the `is T` guard that follows can only narrow what the key
+/// already found. [getObjectFromCurrentZone] tells the two apart — it applies
+/// the same key lookup without the guard.
 ///
 /// ## Example
 ///
@@ -56,8 +91,9 @@ import 'package:tom_basics/tom_basics.dart';
 ///
 /// ## Type Parameter
 ///
-/// - [T]: The type of value to retrieve. Must match the key used when
-///   storing the value in the zone.
+/// - [T]: The type of value to retrieve. Must be the *same* type that was used
+///   as the key when the value was stored — not merely a type the stored value
+///   happens to satisfy.
 T? getFromCurrentZone<T>() {
   Object? zoneItem = Zone.current[T];
   if (zoneItem != null && zoneItem is T) {
@@ -69,15 +105,23 @@ T? getFromCurrentZone<T>() {
 /// Retrieves an untyped value from the current Dart [Zone] by its [Type].
 ///
 /// Unlike [getFromCurrentZone], this returns the raw [Object?] without
-/// type checking. Useful when the type is only known at runtime.
+/// type checking. Useful when the type is only known at runtime, and when the
+/// caller needs to distinguish "nothing stored under this key" from "something
+/// stored, but not of the expected type" — [getFromCurrentZone] answers `null`
+/// to both.
+///
+/// Dropping the guard does not relax the key lookup: [t] is matched exactly,
+/// with the same consequences described on [getFromCurrentZone]. A value stored
+/// under a subtype of [t] is not found here either.
 ///
 /// ## Parameters
 ///
-/// - [t]: The [Type] to use as the zone value key.
+/// - [t]: The [Type] to use as the zone value key. Must be the same type the
+///   producer used, not merely a supertype of the stored value.
 ///
 /// ## Returns
 ///
-/// The zone value associated with type [t], or `null` if not found.
+/// The zone value stored under [t], or `null` if that key is absent.
 Object? getObjectFromCurrentZone(Type t) {
   return Zone.current[t];
 }

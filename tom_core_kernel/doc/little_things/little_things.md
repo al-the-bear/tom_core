@@ -114,6 +114,33 @@ final context = getFromCurrentZone<RequestContext>();
 final config = getFromCurrentZone<AppConfig>();
 ```
 
+The type argument is the **key**, matched exactly — not a type the stored value
+merely satisfies. `Zone.current[T]` is a map lookup on the `Type` object, and
+`Zone` offers no way to enumerate its keys, so no subtype scan is possible:
+
+```dart
+runZoned(
+  () {
+    getFromCurrentZone<Derived>();  // the instance
+    getFromCurrentZone<Base>();     // null — a different key
+    getFromCurrentZone<Object>();   // null — Object is not a wildcard
+  },
+  zoneValues: {Derived: Derived()},
+);
+```
+
+It misses in the other direction too — a `Derived` filed under `Base` is found
+by `getFromCurrentZone<Base>()` and not by `getFromCurrentZone<Derived>()` — and
+type arguments count, so `List<int>`, `List` and `List<num>` are three separate
+keys, as are `T` and `T?`.
+
+**So choose the key once and use it on both sides**, conventionally the declared
+type of the field the value is read into. A mismatch is not a compile error and
+throws nothing; it is a silent `null` that looks exactly like "nothing stored
+here". `getObjectFromCurrentZone(T)` separates the two, since it performs the
+same key lookup without the `is T` guard that `getFromCurrentZone` applies
+afterwards.
+
 ### Checked Execution
 
 Transform errors with context-aware wrappers:

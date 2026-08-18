@@ -31,6 +31,17 @@ that folds out framework noise (`tomPrintStackTrace`, `tomGetStackTrace`,
 `tomGetStackTraceAsList`, `tomGetStackTraceAsTuple`). `convertMinutesToUtcOffset`
 formats a minute offset as an ISO 8601 UTC-offset string.
 
+The two zone accessors key on the **exact** `Type`. `Zone.current[T]` is a map
+lookup matched by `==`, and `Zone` exposes no way to enumerate its keys, so no
+subtype scan is possible: a value stored under `Derived` is invisible to
+`getFromCurrentZone<Base>()`, one stored under `Base` is invisible to
+`getFromCurrentZone<Derived>()`, `Object` is not a wildcard, and `List<int>`,
+`List`, `List<num>`, `T` and `T?` are all distinct keys. Producers and consumers
+must therefore name the same type; a mismatch is a silent `null`, not an error.
+`getFromCurrentZone` returns `null` for two independent reasons — an absent key,
+or a key holding a value that is not a `T` — and `getObjectFromCurrentZone`
+tells them apart by omitting the `is` check.
+
 The four formatting functions accept the trace as an optional argument. Passing
 `null`, or nothing at all, captures `StackTrace.current` inside the formatter;
 the formatter's own frames are folded away in that case, so the first frame
@@ -114,8 +125,8 @@ None — this module exposes no top-level constants.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `getFromCurrentZone` | `T? getFromCurrentZone<T>()` | Retrieves a typed value of type `T` from the current Dart `Zone`, or `null` if absent or not of type `T`. |
-| `getObjectFromCurrentZone` | `Object? getObjectFromCurrentZone(Type t)` | Retrieves the raw (untyped) zone value keyed by the runtime `Type` `t`, or `null` if not found. |
+| `getFromCurrentZone` | `T? getFromCurrentZone<T>()` | Retrieves the value stored in the current Dart `Zone` under the key `T`, or `null` when that key is absent **or** holds a value that is not a `T`. The key is the exact `Type`, not an assignable one. |
+| `getObjectFromCurrentZone` | `Object? getObjectFromCurrentZone(Type t)` | The same exact-key lookup with the type given at run time and no `is` check, so it distinguishes an absent key from a key holding an unexpected value. |
 | `runChecked` | `Future<T> runChecked<T>(Future<T> Function() body, Object Function(Object error, StackTrace stacktrace) onError)` | Runs an async `body`, transforming any thrown error via `onError` before rethrowing. |
 | `runCheckedSync` | `T runCheckedSync<T>(T Function() body, Object Function(Object error, StackTrace stacktrace) onError)` | Synchronous variant of `runChecked`. |
 | `tomPrintStackTrace` | `void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1})` | Formats and logs a stack trace to the error log with an optional `message` prefix; `depth` limits frames. |

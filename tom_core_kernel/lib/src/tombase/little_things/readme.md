@@ -12,7 +12,8 @@ and assorted formatting utilities.
 | Symbol | Responsibility |
 | ------ | -------------- |
 | `TomException` | Base, loggable exception type for the framework. |
-| `getObjectFromCurrentZone(Type)` | Fetch a value stored in the current zone by type. |
+| `getFromCurrentZone<T>()` | Fetch the zone value filed under the exact key `T`. |
+| `getObjectFromCurrentZone(Type)` | The same lookup, key given at run time, no `is` check. |
 | `tomGetStackTrace([s, depth])` | Render a (trimmed) stack trace as a string. |
 | `tomGetStackTraceAsList([s, depth])` | Same, as a list of frames. |
 | `tomPrintStackTrace(s, {message, depth})` | Print a trimmed stack trace. |
