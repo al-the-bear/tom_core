@@ -1,6 +1,6 @@
 /// Demonstrates the kernel-owned isolate and remote logging surface.
 ///
-/// The first three logging examples (`01`–`03`) cover the `tom_basics`
+/// The first four logging examples (`01`–`04`) cover the `tom_basics`
 /// `TomLogger` / `TomLogLevel` foundation. This example covers the types the
 /// `tom_core_kernel` logging module *adds* on top of that foundation — the
 /// machinery that funnels log output from worker isolates and remote clients

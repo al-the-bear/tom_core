@@ -2,9 +2,9 @@
 /// records **off the current isolate** — either to a centralized remote server
 /// or to a dedicated background logging isolate.
 ///
-/// Unlike the basic-logging examples (01–04), which exercise `TomLogger`
-/// behaviour that lives in `tom_basics`, this example wires the types that are
-/// actually defined in `tom_core_kernel`'s `logging` submodule:
+/// Unlike the foundation examples (01–04), every type of which is defined in
+/// `tom_basics`, this example wires the types that are actually defined in
+/// `tom_core_kernel`'s `logging` submodule:
 ///
 /// - [TomRemoteLogOutput] → [TomRemoteLogServer] — ship log records to a remote
 ///   collector over an HTTP endpoint, with a local fallback when none is
@@ -45,6 +45,14 @@ import '../../run_all_samples.reflection.dart';
 
 /// Captures log records instead of writing them, so the example can assert on
 /// what a configured output actually received.
+///
+/// The `logLevel.matches(loggerLevel)` gate is not optional decoration: a
+/// [TomLogOutput] is responsible for its own level filtering. Nothing upstream
+/// applies it — [TomRemoteLogServer.receive] hands the sink the levels the
+/// record arrived with and lets the sink decide — so a sink that skips the
+/// check writes records the configured level excludes. This is the same shape
+/// [TomConsoleLogOutput] uses and that `doc/logging/logging.md` shows in its
+/// custom-output template.
 class _CapturingLogOutput extends TomLogOutput {
   String? lastMessage;
   String? lastIsolateName;
@@ -59,6 +67,7 @@ class _CapturingLogOutput extends TomLogOutput {
     DateTime timeStamp, [
     String? origin,
   ]) {
+    if (!logLevel.matches(loggerLevel)) return;
     lastMessage = convertToString(message);
     lastIsolateName = isolateName;
   }
@@ -115,7 +124,28 @@ void run() {
     null,
   );
 
-  print('   fallback message: ${fallbackOutput.lastMessage}\n');
+  final messageBeforeGatedRecord = fallbackOutput.lastMessage;
+  print('   fallback message: $messageBeforeGatedRecord\n');
+
+  // --- The sink's own level gate: a record the level excludes is dropped. ----
+  //
+  // DEBUG is not part of PRODUCTION, and nothing between the caller and the
+  // sink filters on that — the fallback forwards whatever levels it was given.
+  // So this record arrives at the sink and the sink is what declines it, which
+  // is why every `TomLogOutput` has to carry the check.
+  TomRemoteLogOutput().output(
+    TomLogLevel.production,
+    TomLogLevel.debug,
+    'DEBUG  ',
+    'below the configured level',
+    'main',
+    DateTime(2026, 1, 2, 9, 32),
+    null,
+  );
+  final messageAfterGatedRecord = fallbackOutput.lastMessage;
+
+  print('   after a DEBUG record at PRODUCTION level: $messageAfterGatedRecord'
+      ' (unchanged)\n');
 
   // --- Client wiring: point the output at a real collector. ------------------
   //
@@ -179,7 +209,11 @@ void run() {
   assert(serverOutput.lastMessage == 'Order 4711 processed');
   // receive() prefixes the isolate name with the sender id.
   assert(serverOutput.lastIsolateName == 'client-001_worker-1');
-  assert(fallbackOutput.lastMessage == 'no endpoint configured');
+  // Two separate facts: a record the level admits is captured, and a record it
+  // excludes leaves the capture untouched. Asserting only the final value would
+  // conflate them — it passes if both hold and cannot say which one failed.
+  assert(messageBeforeGatedRecord == 'no endpoint configured');
+  assert(messageAfterGatedRecord == messageBeforeGatedRecord);
   assert(wiredUrl.path == '/api/logs');
   assert(wiredPort == 443);
   assert(wiredOutput is TomRemoteLogOutput);
