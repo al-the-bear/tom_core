@@ -5,17 +5,22 @@
 
 The kernel's grab-bag of small cross-cutting helpers: the base exception type
 every Tom exception derives from, stack-trace formatting, zone-object lookup,
-and assorted formatting utilities.
+error-transforming execution wrappers, and assorted formatting utilities.
 
 ## Key types & functions
+
+This is the module's whole exported surface — one class and nine functions.
 
 | Symbol | Responsibility |
 | ------ | -------------- |
 | `TomException` | Base, loggable exception type for the framework. |
 | `getFromCurrentZone<T>()` | Fetch the zone value filed under the exact key `T`. |
 | `getObjectFromCurrentZone(Type)` | The same lookup, key given at run time, no `is` check. |
+| `runChecked(body, onError)` | Await `body`; if it throws, throw what `onError` maps the error to instead. |
+| `runCheckedSync(body, onError)` | The synchronous form of `runChecked`. |
 | `tomGetStackTrace([s, depth])` | Render a (trimmed) stack trace as a string. |
 | `tomGetStackTraceAsList([s, depth])` | Same, as a list of frames. |
+| `tomGetStackTraceAsTuple([s, depth])` | Both forms at once, as a `(String, List<String>)` record. |
 | `tomPrintStackTrace(s, {message, depth})` | Print a trimmed stack trace. |
 | `convertMinutesToUtcOffset(minutes)` | Format a minute offset as `±HH:MM`. |
 
