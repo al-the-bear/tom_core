@@ -8,6 +8,13 @@ class CapturingLogOutput extends TomLogOutput {
   final List<String> messages = [];
   final List<String> levels = [];
 
+  /// The caller of each captured record, in order.
+  ///
+  /// Kept separately from the formatted line because it is the one field that
+  /// is *absent* rather than wrong when caller determination is off, and the
+  /// empty string is invisible once folded into a formatted string.
+  final List<String> origins = [];
+
   @override
   void output(
     TomLogLevel loggerLevel,
@@ -24,12 +31,14 @@ class CapturingLogOutput extends TomLogOutput {
           '${origin != null ? ' [$origin]' : ''}';
       messages.add(formatted);
       levels.add(level.trim());
+      origins.add(origin ?? '');
     }
   }
 
   void clear() {
     messages.clear();
     levels.clear();
+    origins.clear();
   }
 }
 
@@ -216,17 +225,40 @@ class LevelFilteringExample {
 // =============================================================================
 
 class CallerDeterminationExample {
-  static bool callerEnabled = false;
-  static bool settingRead = false;
+  static String originWhenEnabled = '';
+  static String originWhenDisabled = '';
 
   static void example5CallerDetermination() {
-    callerEnabled = TomLogger.globalSettingDetermineCaller;
-    settingRead = true;
+    final originalLogOutput = tomLog.logOutput;
+    final originalLogLevel = tomLog.logLevel;
+    final originalDetermineCaller = TomLogger.globalSettingDetermineCaller;
 
-    // The setting should be readable
-    assert(settingRead, 'Setting should be readable');
-    // Default is typically true
-    assert(callerEnabled || !callerEnabled, 'Caller setting should be boolean');
+    final capturingOutput = CapturingLogOutput();
+    tomLog.logOutput = capturingOutput;
+    tomLog.setLogLevel(TomLogLevel.production);
+
+    // On: every log call walks its own stack and stamps the record with the
+    // member it was called from.
+    TomLogger.globalSettingDetermineCaller = true;
+    tomLog.info('called with caller determination on');
+    originWhenEnabled = capturingOutput.origins.last;
+
+    // Off: the walk is skipped, so the record carries no origin at all. That
+    // walk is the expensive part of a log call, which is the whole reason the
+    // setting exists — and why per-name log levels stop working with it off,
+    // since they are keyed by the caller it no longer determines.
+    TomLogger.globalSettingDetermineCaller = false;
+    tomLog.info('called with caller determination off');
+    originWhenDisabled = capturingOutput.origins.last;
+
+    TomLogger.globalSettingDetermineCaller = originalDetermineCaller;
+    tomLog.logOutput = originalLogOutput;
+    tomLog.setLogLevel(originalLogLevel);
+
+    assert(originWhenEnabled.contains('CallerDeterminationExample'),
+        'Origin should name the calling member when determination is on');
+    assert(originWhenDisabled.isEmpty,
+        'Origin should be absent when determination is off');
   }
 }
 
