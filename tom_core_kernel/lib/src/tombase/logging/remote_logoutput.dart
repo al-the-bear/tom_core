@@ -271,6 +271,13 @@ class TomInMemoryLogReplayStore implements TomLogReplayStore {
 /// If the remote endpoint is unavailable or not configured, messages
 /// are written to [globalSettingFallbackOutput] (console by default).
 ///
+/// The fallback is the last sink in the chain, so if it throws — a full disk
+/// for a file sink, a closed port, a misconfigured custom output — the record
+/// is lost. It is never lost *silently*: the failure is announced once per
+/// installed fallback on [TomPlatformUtils.outError], which sits below the
+/// logging stack and so cannot be broken by the same misconfiguration. The
+/// throw itself never reaches the caller.
+///
 /// ## Error Handling and Resilience
 ///
 /// A send is considered *failed* whenever it does not reach a server that
@@ -321,7 +328,23 @@ class TomInMemoryLogReplayStore implements TomLogReplayStore {
 /// failure. Opt into resilience by setting the `globalSetting*` knobs.
 class TomRemoteLogOutput extends TomLogOutput {
   /// Fallback output used when remote logging fails or is not configured.
-  static TomLogOutput globalSettingFallbackOutput = TomConsoleLogOutput();
+  ///
+  /// Assigning a new output re-arms the one-shot report described in
+  /// [_reportFallbackFailure]: the previous output's brokenness says nothing
+  /// about its replacement.
+  static TomLogOutput get globalSettingFallbackOutput =>
+      _globalSettingFallbackOutput;
+
+  static set globalSettingFallbackOutput(TomLogOutput output) {
+    _globalSettingFallbackOutput = output;
+    _fallbackFailureReported = false;
+  }
+
+  static TomLogOutput _globalSettingFallbackOutput = TomConsoleLogOutput();
+
+  /// Whether the "the fallback itself failed" report has already been written
+  /// for the currently installed [globalSettingFallbackOutput].
+  static bool _fallbackFailureReported = false;
 
   /// The configured remote endpoint for log transmission.
   ///
@@ -393,15 +416,23 @@ class TomRemoteLogOutput extends TomLogOutput {
   ]) async {
     var tlc = getFromCurrentZone<TomLoggingContext>();
     if (remoteEndpoint == null || (tlc != null && tlc.inRemoteLogging)) {
-      globalSettingFallbackOutput.output(
-        loggerLevel,
-        logLevel,
-        level,
-        message,
-        isolateName,
-        timeStamp,
-        origin,
-      );
+      try {
+        globalSettingFallbackOutput.output(
+          loggerLevel,
+          logLevel,
+          level,
+          message,
+          isolateName,
+          timeStamp,
+          origin,
+        );
+      } catch (error, stackTrace) {
+        // This branch runs before the first await, so an escaping throw does
+        // not merely lose the record: it propagates straight back into the
+        // caller's `tomLog.info(...)` line and takes down whatever was being
+        // logged about. A logging sink must never do that.
+        _reportFallbackFailure(message, error, stackTrace);
+      }
       return;
     }
     // Claim a slot in the delivery lane *before the first await*, so slots are
@@ -596,18 +627,78 @@ class TomRemoteLogOutput extends TomLogOutput {
           origin,
         );
       } catch (error) {
+        // The fallback is alive but refused this one record — an over-long
+        // line, an unencodable character, a message whose `toString` throws.
+        // That is a per-record fault, so it is announced through the fallback
+        // itself and repeats for every record that hits it. If the fallback is
+        // in fact dead, this write throws too and lands in the catch below.
         globalSettingFallbackOutput.output(
           TomLogLevel.warn,
           TomLogLevel.warn,
           "WARN  ",
-          "Exception occured when trying to log problematic message locally: $error",
+          "Exception occurred when trying to log problematic message locally: $error",
           TomPlatformUtils.current.getIsolateName(),
           DateTime.now(),
           origin,
         );
       }
+    } catch (error, stackTrace) {
+      _reportFallbackFailure(message, error, stackTrace);
+    }
+  }
+
+  /// Announces on the platform's error channel that
+  /// [globalSettingFallbackOutput] itself failed, and that [record] is
+  /// therefore lost.
+  ///
+  /// The record cannot be saved — the fallback is the last sink in the chain,
+  /// which is the whole reason its failure used to be discarded. But "must not
+  /// throw" and "must not tell anyone" are different requirements, and only the
+  /// first one is a property of a well-behaved logging sink. Silence here made
+  /// every other guarantee in this class unverifiable in production: a process
+  /// with a misconfigured fallback reported perfect health while losing every
+  /// record.
+  ///
+  /// The report goes to [TomPlatformUtils.outError] rather than to any
+  /// [TomLogOutput], because the logging stack is the thing that just failed;
+  /// routing the news through it would be the same mistake one level up.
+  ///
+  /// It is written **once per installed fallback**. A fallback that is broken
+  /// is normally broken for every record, so a per-record report would turn one
+  /// misconfiguration into exactly the flood the fallback exists to prevent.
+  /// Installing a different output re-arms it (see
+  /// [globalSettingFallbackOutput]).
+  static void _reportFallbackFailure(
+    Object record,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    if (_fallbackFailureReported) return;
+    _fallbackFailureReported = true;
+    // Rendered separately: a message whose `toString` throws is one of the
+    // reasons a sink refuses a record, so interpolating it inline would let the
+    // report be lost by the very fault it is reporting.
+    String rendered;
+    try {
+      rendered = "$record";
+    } catch (renderError) {
+      rendered = "<a ${record.runtimeType} that could not be rendered: "
+          "$renderError>";
+    }
+    try {
+      TomPlatformUtils.current.outError(
+        "TomRemoteLogOutput: the fallback log output "
+        "(${globalSettingFallbackOutput.runtimeType}) failed, so the record "
+        "below could not be written anywhere and is lost. Further failures of "
+        "this fallback are not reported.\n"
+        "  Error:  $error\n"
+        "  Record: $rendered\n"
+        "$stackTrace",
+      );
     } catch (_) {
-      // The fallback output itself failed; nothing more we can safely do.
+      // Below the platform's own error channel there is nothing left to try,
+      // and this method exists precisely so that a broken sink cannot become
+      // a thrown exception.
     }
   }
 }

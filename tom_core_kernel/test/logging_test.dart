@@ -2099,6 +2099,140 @@ void main() {
           });
         });
       });
+
+      group('broken fallback', () {
+        // The fallback is the last sink in the chain, so when it throws there
+        // is nowhere left to log — and for a long time that meant the record
+        // and the failure both vanished with the process reporting perfect
+        // health. Losing the record is unavoidable; losing the *fact* is what
+        // made every other guarantee in this group unverifiable in production.
+        late _CapturingPlatformUtils platform;
+        late TomPlatformUtils previousPlatform;
+
+        setUp(() {
+          previousPlatform = TomPlatformUtils.current;
+          platform = _CapturingPlatformUtils();
+          TomPlatformUtils.setCurrentPlatform(platform);
+          TomRemoteLogOutput.globalSettingFallbackOutput = _ThrowingLogOutput();
+        });
+
+        tearDown(() {
+          TomPlatformUtils.setCurrentPlatform(previousPlatform);
+        });
+
+        test('an unconfigured endpoint with a throwing fallback is reported',
+            () async {
+          // No endpoint at all: output() hands the record straight to the
+          // fallback and returns. Because output() is `void ... async`, a
+          // throw here does not merely disappear — it completes the returned
+          // future with an error nobody awaits, which is an unhandled async
+          // error rather than a controlled loss.
+          TomRemoteLogOutput.remoteEndpoint = null;
+
+          await emit(TomRemoteLogOutput(), 'record with no endpoint');
+
+          expect(platform.errors, hasLength(1));
+          expect(platform.errors.single, contains('record with no endpoint'));
+          expect(
+              platform.errors.single, contains('fallback output is broken'));
+        });
+
+        test('a failed send with a throwing fallback is reported', () async {
+          // The full path: the send fails, the record is routed to the
+          // fallback, and the fallback throws too.
+          final endpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          await emit(TomRemoteLogOutput(), 'record with a broken fallback');
+
+          expect(platform.errors, hasLength(1));
+          // The report carries the record, so the operator sees *what* was
+          // lost and not only that something was.
+          expect(platform.errors.single,
+              contains('record with a broken fallback'));
+          // ...and the fallback's own error, which is the thing to fix.
+          expect(
+              platform.errors.single, contains('fallback output is broken'));
+        });
+
+        test('the report is emitted once per broken fallback', () async {
+          // A fallback that is broken is normally broken for every record, so
+          // reporting per record would turn one misconfiguration into exactly
+          // the flood the fallback exists to prevent.
+          TomRemoteLogOutput.remoteEndpoint = null;
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'first');
+          await emit(out, 'second');
+          await emit(out, 'third');
+
+          expect(platform.errors, hasLength(1));
+          expect(platform.errors.single, contains('first'));
+        });
+
+        test('installing another fallback re-arms the report', () async {
+          // The one-shot is a property of the installed output, not of the
+          // process: after the fallback is replaced its predecessor's
+          // brokenness says nothing about the new one, so a second broken
+          // output must be reported in its own right. Tying the reset to the
+          // assignment also keeps the guard out of the public API.
+          TomRemoteLogOutput.remoteEndpoint = null;
+          final out = TomRemoteLogOutput();
+          await emit(out, 'before replacement');
+
+          TomRemoteLogOutput.globalSettingFallbackOutput = _ThrowingLogOutput();
+          await emit(out, 'after replacement');
+
+          expect(platform.errors, hasLength(2));
+          expect(platform.errors.last, contains('after replacement'));
+        });
+
+        test('a throwing fallback never propagates out of output', () async {
+          // The original contract is unchanged: a logging sink must not take
+          // down the application. "Reported" must not become "thrown" — and
+          // because output() is `void ... async`, that covers both a
+          // synchronous throw and an unhandled async error, which the test
+          // runner would surface as a failure of this test either way.
+          TomRemoteLogOutput.remoteEndpoint = null;
+          final out = TomRemoteLogOutput();
+
+          expect(
+            () => out.output(TomLogLevel.production, TomLogLevel.info,
+                'INFO   ', 'must not throw', 'main', fixedTime, null),
+            returnsNormally,
+          );
+          await Future<void>.delayed(Duration.zero);
+        });
+
+        test('a fallback that rejects only one record uses its own recovery',
+            () async {
+          // Not every broken fallback is broken for everything: a sink can
+          // choke on one payload and still accept a short note about it. That
+          // is what the inner recovery write is for, and it must not be
+          // mistaken for a dead fallback — a per-record fault reported once
+          // per process would be silenced for every later record.
+          final selective =
+              _SelectivelyThrowingLogOutput(rejecting: 'indigestible record');
+          TomRemoteLogOutput.globalSettingFallbackOutput = selective;
+          final endpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          await emit(TomRemoteLogOutput(), 'indigestible record');
+
+          // The fallback is alive, so nothing escalates to the platform.
+          expect(platform.errors, isEmpty);
+          expect(
+            selective.accepted,
+            contains(startsWith('Could not send log message')),
+          );
+          expect(
+            selective.accepted,
+            contains(startsWith('Exception occurred when trying to log')),
+          );
+        });
+      });
     });
   });
 
@@ -2355,6 +2489,57 @@ class _ThrowingLogOutput extends TomLogOutput {
     String? origin,
   ]) {
     throw StateError('fallback output is broken');
+  }
+}
+
+/// A fallback that refuses exactly one message and accepts everything else.
+///
+/// Models the sink that chokes on a single payload — an over-long line, an
+/// unencodable character — rather than the sink that is dead. The two failures
+/// look identical at the call site and need opposite reporting: the dead sink
+/// is announced once on the platform channel, the indigestible record is
+/// announced through the sink itself, every time.
+class _SelectivelyThrowingLogOutput extends TomLogOutput {
+  _SelectivelyThrowingLogOutput({required this.rejecting});
+
+  /// The exact rendered message this output refuses.
+  final String rejecting;
+
+  /// Every message the output did accept, in order.
+  final List<String> accepted = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    final rendered = convertToString(message);
+    if (rendered == rejecting) {
+      throw StateError('cannot write this record');
+    }
+    accepted.add(rendered);
+  }
+}
+
+/// Captures what the code under test writes to the platform's error channel.
+///
+/// [TomPlatformUtils.outError] is the one output path that sits *below* the
+/// logging stack, so it is where a failure of the logging stack itself has to
+/// surface. Extending [TomFallbackPlatformUtils] rather than [TomPlatformUtils]
+/// keeps this to the two members that matter — everything else the code under
+/// test touches (`getIsolateName`) already has a working default.
+class _CapturingPlatformUtils extends TomFallbackPlatformUtils {
+  /// Every line written to the error channel, in order.
+  final List<String> errors = [];
+
+  @override
+  void outError(String s) {
+    errors.add(s);
   }
 }
 

@@ -330,6 +330,29 @@ successful HTTP 200 — which is how a healthy collector says "received, not
 stored". The server's own `errorMessage` is reproduced in the warning, so the
 operator reads the reason and not merely the refusal.
 
+##### When the fallback itself fails
+
+The fallback is the last sink in the chain, so a fallback that throws — a full
+disk for a file sink, a closed port, a misconfigured custom output — means the
+record is lost. Nothing can be done about that. What *can* be done is to say so:
+the failure is announced on `TomPlatformUtils.outError`, which sits below the
+logging stack and so cannot be broken by the same misconfiguration. The report
+carries the lost record and the fallback's own error.
+
+Two properties matter for reading these reports:
+
+- **The throw never reaches the caller.** A logging sink must not take down the
+  application, and that holds for the sink of last resort too.
+- **The report is written once per installed fallback.** A broken fallback is
+  normally broken for every record, so reporting per record would produce
+  exactly the flood the fallback exists to prevent. Assigning a new
+  `globalSettingFallbackOutput` re-arms the report — the old output's
+  brokenness says nothing about its replacement.
+
+A fallback that refuses only *one* record — an over-long line, a message whose
+`toString` throws — is a different fault and is handled differently: since the
+sink is alive, the refusal is reported *through it*, once per affected record.
+
 For flaky links you can opt into retry-with-backoff and a
 bounded replay queue that drains, oldest-first, once the endpoint recovers:
 
@@ -646,7 +669,7 @@ Resilience](#delivery-resilience) for what each knob buys.
 | Setting                                             | Default                     | Description                                                                 |
 |-----------------------------------------------------|-----------------------------|-----------------------------------------------------------------------------|
 | `TomRemoteLogOutput.remoteEndpoint`                 | `null`                      | Where records are sent. While `null`, every record goes to the fallback instead |
-| `TomRemoteLogOutput.globalSettingFallbackOutput`    | `TomConsoleLogOutput()`     | Sink for records that could not be delivered, and for the warnings explaining why |
+| `TomRemoteLogOutput.globalSettingFallbackOutput`    | `TomConsoleLogOutput()`     | Sink for records that could not be delivered, and for the warnings explaining why. If it throws, the loss is announced once on `TomPlatformUtils.outError`; assigning a new sink re-arms that report |
 | `TomRemoteLogOutput.globalSettingMaxSendRetries`    | `0`                         | *Additional* attempts after the first fails, so `n` means up to `n + 1` sends |
 | `TomRemoteLogOutput.globalSettingRetryBackoff`      | `Duration.zero`             | Base delay; the wait before retry *k* is `backoff × k`                       |
 | `TomRemoteLogOutput.globalSettingReplayQueueMaxSize` | `0`                         | Records buffered after retries are exhausted. `0` disables the queue; on overflow the oldest is dropped |
