@@ -161,6 +161,21 @@ final here = tomGetStackTrace();
 tomPrintStackTrace(null, message: 'checkpoint', depth: 3);
 ```
 
+A trace with no frames formats as an empty string rather than raising, so an
+error handler can format whatever it caught without inspecting it first. This
+is not a rare case: Dart supplies `StackTrace.empty` for any error created
+without a trace, which includes `Future.error(e)` and
+`Completer.completeError(e)`.
+
+```dart
+try {
+  await Future<void>.error(Exception('created without a trace'));
+} catch (error, stack) {
+  // `stack` is StackTrace.empty here — this logs the message and no frames.
+  tomPrintStackTrace(stack, message: 'failed: $error');
+}
+```
+
 An **asynchronous** trace is reported whole. The runtime splits such a trace
 into one segment per `await` boundary, and all of them are included:
 

@@ -206,7 +206,8 @@ bool _isFormatterFrame(Frame frame) => _formatterMembers.contains(frame.member);
 ///
 /// ## Returns
 ///
-/// A list of formatted stack frame strings, newest first.
+/// A list of formatted stack frame strings, newest first. Empty when the trace
+/// carries no frames — see [StackTrace.empty] below.
 List<String> _processStackFrames([Object? s, int depth = -1]) {
   final stackTrace = s as StackTrace? ?? StackTrace.current;
   // A Chain holds one trace *segment* per `await` boundary, newest first.
@@ -216,6 +217,14 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
   // async failure surfaced and never where it began. Concatenating preserves
   // the newest-first order the depth limit below relies on, and a synchronous
   // trace is a single-segment chain, so it is unaffected.
+  //
+  // Flattening is also what makes an *empty* trace safe, so do not reintroduce
+  // indexing here. `Chain.forTrace(StackTrace.empty).traces` is itself empty,
+  // so the `.traces[0]` this replaced threw a RangeError — the reporting
+  // machinery crashing while reporting a crash. Dart supplies that exact
+  // object for any error created without a trace (`Future.error`,
+  // `Completer.completeError`), so it reaches this function through ordinary
+  // use, not only through contrived input. `expand` yields nothing for it.
   final frames = Chain.forTrace(stackTrace)
       .foldFrames(
         (frame) =>
@@ -279,7 +288,10 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
 ///
 /// ## Returns
 ///
-/// A formatted stack trace string with one frame per line.
+/// A formatted stack trace string with one frame per line. An empty string
+/// when the trace has no frames — [StackTrace.empty] is what Dart supplies for
+/// an error created without one, so this is an ordinary outcome rather than an
+/// error.
 ///
 /// ## Example
 ///
@@ -305,7 +317,8 @@ String tomGetStackTrace([Object? s, int depth = -1]) {
 ///
 /// ## Returns
 ///
-/// A list of formatted stack frame strings.
+/// A list of formatted stack frame strings, empty when the trace has no
+/// frames.
 List<String> tomGetStackTraceAsList([Object? s, int depth = -1]) {
   return _processStackFrames(s, depth);
 }

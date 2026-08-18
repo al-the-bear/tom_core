@@ -956,6 +956,17 @@ void main() {
         );
       });
 
+      test('should tolerate an exception built on an empty stack', () {
+        // Wrapping code forwards whatever trace it caught, and an async error
+        // created without one yields `StackTrace.empty`. Reporting such an
+        // exception must not itself throw.
+        final exception =
+            TomException('ERROR', 'message', stack: StackTrace.empty);
+
+        expect(exception.printStackTrace, returnsNormally);
+        expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
+      });
+
       test('should prefer an explicitly passed stack over the capture', () {
         final exception = TomException(
           'ERROR',
@@ -1032,6 +1043,15 @@ void main() {
       expect(logged, isNot(contains('_processStackFrames')));
     });
 
+    test('should log the message alone for an empty trace', () {
+      tomPrintStackTrace(StackTrace.empty, message: 'EMPTY_TRACE');
+
+      // Logging must still happen: the message is the caller's context, and
+      // losing it because the trace was empty would hide the error entirely.
+      expect(captured.messages, isNotEmpty);
+      expect(captured.messages.last.trim(), equals('EMPTY_TRACE'));
+    });
+
     test('should pass the depth limit through to the trace', () {
       tomPrintStackTrace(StackTrace.current, message: 'P', depth: 0);
       // depth 0 yields an empty trace, so the logged entry is just the prefix
@@ -1044,6 +1064,56 @@ void main() {
   // =========================================================================
   // depth == 0 boundary (tests §4e)
   // =========================================================================
+
+  // =========================================================================
+  // EMPTY TRACES
+  //
+  // `StackTrace.empty` is not a contrived value. Dart hands that exact object
+  // to a catch clause whenever the error was created without a trace — a
+  // `Future.error` or a `Completer.completeError` given only an error object.
+  // Since this module exists to run on the error path, it has to render such a
+  // trace as "nothing" rather than fail while reporting a failure.
+  // =========================================================================
+
+  group('empty stack traces', () {
+    test('tomGetStackTrace returns an empty string', () {
+      expect(tomGetStackTrace(StackTrace.empty), isEmpty);
+    });
+
+    test('tomGetStackTraceAsList returns an empty list', () {
+      expect(tomGetStackTraceAsList(StackTrace.empty), isEmpty);
+    });
+
+    test('tomGetStackTraceAsTuple returns both representations empty', () {
+      final (traceString, traceList) =
+          tomGetStackTraceAsTuple(StackTrace.empty);
+      expect(traceString, isEmpty);
+      expect(traceList, isEmpty);
+    });
+
+    test('a depth limit on an empty trace yields an empty result', () {
+      // Asking for frames that do not exist is not an error: the limit caps
+      // the result, it does not promise to fill it.
+      expect(tomGetStackTraceAsList(StackTrace.empty, 5), isEmpty);
+    });
+
+    test('an async error carrying no trace is formatted, not thrown on',
+        () async {
+      // The situation the empty case exists for, reproduced end to end rather
+      // than asserted against the constant — this is what makes the test a
+      // guard on real behaviour instead of on a chosen input.
+      late StackTrace caught;
+      try {
+        await Future<void>.error(Exception('created without a trace'));
+      } catch (_, stack) {
+        caught = stack;
+      }
+
+      expect(caught, same(StackTrace.empty));
+      expect(() => tomGetStackTraceAsList(caught), returnsNormally);
+      expect(tomGetStackTraceAsList(caught), isEmpty);
+    });
+  });
 
   group('stack trace depth == 0', () {
     test('tomGetStackTraceAsList returns empty for depth 0', () {
