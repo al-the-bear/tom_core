@@ -172,11 +172,32 @@ void tomPrintStackTrace(Object? s, {String? message, int depth = -1}) {
   tomLog.error(stackTrace);
 }
 
+/// The stack-trace formatting functions of this library.
+///
+/// These appear on a trace only when it was captured *inside* the formatter —
+/// that is, whenever the caller passed no stack and [StackTrace.current] was
+/// used as the fallback. They record the act of formatting, never the failure,
+/// so they are noise in every trace they appear in.
+///
+/// Matching is on the member name rather than the library, because the library
+/// URI of this file differs between `package:` and `file:` resolution and a
+/// consumer's trace may carry either form.
+const _formatterMembers = {
+  'tomPrintStackTrace',
+  'tomGetStackTrace',
+  'tomGetStackTraceAsList',
+  'tomGetStackTraceAsTuple',
+  '_processStackFrames',
+};
+
+/// Whether [frame] belongs to this library's own stack-trace formatting.
+bool _isFormatterFrame(Frame frame) => _formatterMembers.contains(frame.member);
+
 /// Core implementation for processing stack trace frames.
 ///
 /// Folds and filters stack frames to remove noise from core libraries,
-/// shelf, and TomLogger internals, then flattens every segment of the async
-/// chain into one list.
+/// shelf, TomLogger internals and this library's own formatting functions,
+/// then flattens every segment of the async chain into one list.
 ///
 /// ## Parameters
 ///
@@ -200,11 +221,23 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
         (frame) =>
             frame.isCore ||
             frame.package == 'shelf' ||
+            _isFormatterFrame(frame) ||
             (frame.member?.startsWith("TomLogger.") ?? false),
         terse: true,
       )
       .traces
-      .expand((trace) => trace.frames);
+      .expand((trace) => trace.frames)
+      // Folding *collapses* a contiguous run of matching frames into one; it
+      // does not remove it. So the fold above leaves a single formatter frame
+      // still leading an implicitly captured trace, which is precisely the
+      // frame the caller must not see. Dropping the leading run is what makes
+      // the caller's own frame first — and what makes a small `depth` land on
+      // the caller rather than being spent on this library.
+      //
+      // Only the *leading* run is dropped. A formatter member appearing deeper
+      // in the trace is a genuine call by the code being traced, and folding
+      // has already reduced such a run to one frame.
+      .skipWhile(_isFormatterFrame);
 
   final resultList = <String>[];
   var remaining = depth;

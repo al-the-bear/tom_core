@@ -56,6 +56,23 @@ Future<StackTrace> _captureAsyncChainStack() async {
 TomException _constructExceptionAtKnownSite() =>
     TomException('ERROR', 'constructed without an explicit stack');
 
+// Named call sites for the implicit-capture tests: each calls a formatting
+// function *without* a stack, so the trace is captured inside the formatter and
+// this library's own frames are the newest ones on it. The wrapper names differ
+// in case from the members they call (`_callerOfTomGetStackTrace` vs
+// `tomGetStackTrace`), so asserting that a formatter member is absent cannot
+// accidentally match the caller's own frame.
+String _callerOfTomGetStackTrace() => tomGetStackTrace();
+
+List<String> _callerOfTomGetStackTraceAsList([int depth = -1]) =>
+    tomGetStackTraceAsList(null, depth);
+
+(String, List<String>) _callerOfTomGetStackTraceAsTuple() =>
+    tomGetStackTraceAsTuple();
+
+void _callerOfTomPrintStackTrace() =>
+    tomPrintStackTrace(null, message: 'IMPLICIT');
+
 void main() {
   // =========================================================================
   // ZONE UTILITIES
@@ -443,6 +460,67 @@ void main() {
       final (traceString, traceList) = tomGetStackTraceAsTuple(null);
       expect(traceString, isNotEmpty);
       expect(traceList, isNotEmpty);
+    });
+  });
+
+  // =========================================================================
+  // IMPLICIT CAPTURE
+  //
+  // When no stack is passed the trace is captured inside the formatter, so this
+  // library's own formatting functions are the newest frames on it. They record
+  // the act of formatting, never the failure, and must not reach the caller.
+  // =========================================================================
+
+  group('implicit capture folds the formatter away', () {
+    // On the stack only because the capture happened inside this library.
+    const formatterMembers = [
+      'tomPrintStackTrace',
+      'tomGetStackTraceAsList',
+      'tomGetStackTraceAsTuple',
+      'tomGetStackTrace',
+      '_processStackFrames',
+    ];
+
+    test('tomGetStackTrace leads with the caller when given no argument', () {
+      final first = _callerOfTomGetStackTrace().split('\n').first;
+      expect(first, contains('_callerOfTomGetStackTrace'));
+    });
+
+    test('tomGetStackTraceAsList leads with the caller', () {
+      expect(
+        _callerOfTomGetStackTraceAsList().first,
+        contains('_callerOfTomGetStackTraceAsList'),
+      );
+    });
+
+    test('tomGetStackTraceAsTuple leads with the caller', () {
+      final (traceString, traceList) = _callerOfTomGetStackTraceAsTuple();
+      expect(traceList.first, contains('_callerOfTomGetStackTraceAsTuple'));
+      expect(
+        traceString.split('\n').first,
+        contains('_callerOfTomGetStackTraceAsTuple'),
+      );
+    });
+
+    test('no formatting function appears anywhere in the trace', () {
+      final joined = _callerOfTomGetStackTraceAsList().join('\n');
+      for (final member in formatterMembers) {
+        expect(
+          joined,
+          isNot(contains(member)),
+          reason: '$member is on the stack only because the trace was '
+              'captured inside this library',
+        );
+      }
+    });
+
+    test('depth counts from the caller, not from the formatter', () {
+      // The practical consequence of folding: a small depth on an implicitly
+      // captured trace must be spent on the caller. Before the fix `depth: 1`
+      // returned a formatter frame, so the whole budget went to this library.
+      final frames = _callerOfTomGetStackTraceAsList(1);
+      expect(frames, hasLength(1));
+      expect(frames.single, contains('_callerOfTomGetStackTraceAsList'));
     });
   });
 
@@ -941,6 +1019,17 @@ void main() {
         captured.messages.any((m) => m.startsWith('CONTEXT_PREFIX')),
         isTrue,
       );
+    });
+
+    test('should log the caller when given no stack', () {
+      _callerOfTomPrintStackTrace();
+
+      // The most common call shape — `tomPrintStackTrace(null, ...)` — used to
+      // log nothing but this library's own three formatting frames, which name
+      // the printer rather than the code that wanted the trace printed.
+      final logged = captured.messages.last;
+      expect(logged, contains('_callerOfTomPrintStackTrace'));
+      expect(logged, isNot(contains('_processStackFrames')));
     });
 
     test('should pass the depth limit through to the trace', () {

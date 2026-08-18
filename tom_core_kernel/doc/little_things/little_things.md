@@ -150,6 +150,17 @@ tomPrintStackTrace(stackTrace, message: 'Error occurred', depth: 5);
 Frames come back newest first — the throw site leads — and a `depth` limit
 counts from there, so a bounded trace keeps the frames nearest the error.
 
+The trace argument is optional. Omit it (or pass `null`) and the current stack
+is captured for you, which makes these functions usable as a "where am I?"
+probe — the formatter's own frames are folded away, so the first frame you see
+is your own:
+
+```dart
+// Both report the calling code, not this module.
+final here = tomGetStackTrace();
+tomPrintStackTrace(null, message: 'checkpoint', depth: 3);
+```
+
 An **asynchronous** trace is reported whole. The runtime splits such a trace
 into one segment per `await` boundary, and all of them are included:
 

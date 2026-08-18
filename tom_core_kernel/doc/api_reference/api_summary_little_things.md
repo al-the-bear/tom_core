@@ -31,6 +31,11 @@ that folds out framework noise (`tomPrintStackTrace`, `tomGetStackTrace`,
 `tomGetStackTraceAsList`, `tomGetStackTraceAsTuple`). `convertMinutesToUtcOffset`
 formats a minute offset as an ISO 8601 UTC-offset string.
 
+The four formatting functions accept the trace as an optional argument. Passing
+`null`, or nothing at all, captures `StackTrace.current` inside the formatter;
+the formatter's own frames are folded away in that case, so the first frame
+reported is always the caller's.
+
 ## Class Hierarchy
 
 ```
@@ -103,7 +108,7 @@ None — this module exposes no top-level constants.
 | `runChecked` | `Future<T> runChecked<T>(Future<T> Function() body, Object Function(Object error, StackTrace stacktrace) onError)` | Runs an async `body`, transforming any thrown error via `onError` before rethrowing. |
 | `runCheckedSync` | `T runCheckedSync<T>(T Function() body, Object Function(Object error, StackTrace stacktrace) onError)` | Synchronous variant of `runChecked`. |
 | `tomPrintStackTrace` | `void tomPrintStackTrace(Object? s, {String? message, int depth = -1})` | Formats and logs a stack trace to the error log with an optional `message` prefix; `depth` limits frames. |
-| `tomGetStackTrace` | `String tomGetStackTrace([Object? s, int depth = -1])` | Returns a formatted stack trace as a newline-separated string, folding out core/`shelf`/`TomLogger` frames. An asynchronous trace is reported whole: every segment of the `await` chain is included, newest first, so the frames run from the throw site back to the caller that started the work. `depth` bounds the flattened chain, counting from the throw site. |
+| `tomGetStackTrace` | `String tomGetStackTrace([Object? s, int depth = -1])` | Returns a formatted stack trace as a newline-separated string, folding out core/`shelf`/`TomLogger` frames and this module's own formatting functions. An asynchronous trace is reported whole: every segment of the `await` chain is included, newest first, so the frames run from the throw site back to the caller that started the work. `depth` bounds the flattened chain, counting from the throw site. |
 | `tomGetStackTraceAsList` | `List<String> tomGetStackTraceAsList([Object? s, int depth = -1])` | Same as `tomGetStackTrace` but returns individual frames as a list. |
 | `tomGetStackTraceAsTuple` | `(String, List<String>) tomGetStackTraceAsTuple([Object? s, int depth = -1])` | Returns the formatted stack trace as both a string and a list of frame strings. |
 | `convertMinutesToUtcOffset` | `String convertMinutesToUtcOffset(int totalMinutes)` | Converts a UTC offset in minutes to an ISO 8601 string (`"Z"`, `"+HH:MM"`, or `"-HH:MM"`). |
