@@ -450,13 +450,30 @@ prefixing the isolate name with the sender ID.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `receive` | `TomRemoteLogResult receive(TomRemoteLogMessage m)` | Reconstructs the log entry from `m`, sanitizes control characters and bounds field length (CWE-117 hardening), outputs it via `localOutput`, and returns a success or error `TomRemoteLogResult`. |
+| `receive` | `TomRemoteLogResult receive(TomRemoteLogMessage m)` | Reconstructs the log entry from `m`, sanitizes control characters and bounds field length (CWE-117 hardening), outputs it via `localOutput`, and returns a success or error `TomRemoteLogResult`. On failure the caught error is folded into `errorMessage` and the refusal is also logged locally at error level. |
 
 `receive` takes an already-decoded message and returns an object, so moving
 either across the wire is the HTTP handler's job — see `TomRemoteLogMessage`
 above for the `tomReflectionInfo` route both directions use, and step 4 of
 `example/samples/logging/05_isolate_and_remote_logging_example.dart` for the
 round-trip running end to end.
+
+Two independent things can make `receive` refuse a record: the message can be
+undecodable (a malformed `timeStamp`), or `localOutput` can be broken. The
+returned `errorMessage` names which, because the caller is a remote process
+with nothing else to inspect — `TomRemoteLogOutput` reproduces it verbatim in
+the warning it writes beside the fallback record, so the reason survives all
+the way to the client's own log. The refusal is logged locally too, otherwise
+it is visible only to that client and the collector's operator just sees a
+record never arrive.
+
+That local diagnostic is emitted at `TomLogLevel.error` against
+`TomLogLevel.errors`, deliberately *not* against the `loggerLevel` carried in
+the message: that field is client-supplied and defaults to `0` (log nothing),
+so honouring it would let a malformed message suppress the record of its own
+rejection. Reporting is itself failure-tolerant — when the broken sink is the
+cause, writing the diagnostic throws again, and that second failure is
+swallowed rather than allowed to escape into the collector's HTTP handler.
 
 ## Global Functions and Constants
 

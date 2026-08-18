@@ -265,6 +265,27 @@ section previously showed a `baseUrl`/`path` endpoint constructor and
 `fromJson`/`toJson` methods that do not exist, because a document, unlike an
 example, cannot fail to build.
 
+##### When the collector refuses a record
+
+Two independent things can make `receive` refuse: the message can be undecodable
+(a malformed `timeStamp`), or `localOutput` can be broken. The returned
+`errorMessage` names which — the caller is a remote process with nothing else to
+inspect, and the client reproduces that text verbatim in the warning it writes
+beside the fallback record, so the reason reaches the client's own log.
+
+The refusal is logged on the collector as well, at error level; without that it
+would be visible only to the client that caused it, and the operator would just
+see a record never arrive. That diagnostic is deliberately *not* gated by the
+`loggerLevel` carried in the message — a client-supplied field that defaults to
+"log nothing", which would otherwise let a malformed message suppress the record
+of its own rejection.
+
+Both the returned reason and the logged one are sanitized, for the same reason
+the message fields are: the error text is derived from client input.
+`FormatException` embeds the offending string verbatim after a newline, so
+reporting it raw would reopen the CWE-117 log-forging hole using the rejection
+path as the carrier.
+
 #### Delivery Resilience
 
 By default `TomRemoteLogOutput` makes a single delivery attempt and, on failure,

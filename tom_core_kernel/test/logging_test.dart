@@ -957,8 +957,13 @@ void main() {
         expect(mockOutput.lastIsolateName, equals('client-001_worker-1'));
       });
 
-      test('should return error result on failure', () {
-        TomRemoteLogServer.localOutput = _FailingLogOutput();
+      // Two independent things can refuse a record: the message can be
+      // undecodable, or the sink can be broken. These used to be induced
+      // together in one test, which could only ever observe the first —
+      // `DateTime.parse` throws before the output is called — and could not
+      // tell which it had observed anyway, because the cause was discarded.
+      // Each cause now gets its own test, and each asserts its own cause.
+      test('reports a malformed timestamp as the cause', () {
         final server = TomRemoteLogServer();
         final message = TomRemoteLogMessage();
         message.timeStamp = 'invalid-timestamp';
@@ -966,7 +971,96 @@ void main() {
         final result = server.receive(message);
 
         expect(result.hasError, isTrue);
-        expect(result.errorMessage, equals('Failed to log message on server side'));
+        // The caller is a remote process with nothing else to inspect, so the
+        // reason has to name both the failure and the value that caused it.
+        expect(result.errorMessage, contains('FormatException'));
+        expect(result.errorMessage, contains('invalid-timestamp'));
+      });
+
+      test('reports a failing local output as the cause', () {
+        TomRemoteLogServer.localOutput = _FailingLogOutput();
+        final server = TomRemoteLogServer();
+        final message = TomRemoteLogMessage.of(
+          TomLogLevel.production.levelPattern,
+          TomLogLevel.info.levelPattern,
+          'INFO   ',
+          'test message',
+          'worker-1',
+          '2026-01-02T12:00:00.000',
+          null,
+        );
+
+        final result = server.receive(message);
+
+        expect(result.hasError, isTrue);
+        expect(result.errorMessage, contains('Intentional failure'));
+        // Distinguishes this cause from the one above: the timestamp parsed.
+        expect(result.errorMessage, isNot(contains('FormatException')));
+      });
+
+      test('refusing a record does not throw when the sink is the failure', () {
+        // The refusal is reported through `localOutput`, which here is the
+        // very thing that failed. Reporting must not throw a second time:
+        // this runs inside a collector's HTTP handler, driven by a message a
+        // remote client controls.
+        TomRemoteLogServer.localOutput = _FailingLogOutput();
+        final server = TomRemoteLogServer();
+
+        expect(() => server.receive(TomRemoteLogMessage()), returnsNormally);
+      });
+
+      test('logs the refusal locally at error level', () {
+        final server = TomRemoteLogServer();
+        final message = TomRemoteLogMessage();
+        message.sender = 'client-001';
+        message.isolateName = 'worker-1';
+        message.timeStamp = 'invalid-timestamp';
+
+        final result = server.receive(message);
+
+        expect(result.hasError, isTrue);
+        // A refusal is invisible to the operator unless the server says so in
+        // its own log stream — the client only learns of it in the response.
+        expect(mockOutput.lastLogLevel?.levelPattern,
+            equals(TomLogLevel.error.levelPattern));
+        expect(mockOutput.lastMessage, contains('invalid-timestamp'));
+        expect(mockOutput.lastIsolateName, equals('client-001_worker-1'));
+      });
+
+      test('the refusal is not gated by the sender-supplied logger level', () {
+        // `loggerLevel` is attacker-controlled and defaults to 0 ("log
+        // nothing"). Honouring it for the server's own refusal diagnostic
+        // would let a malformed message suppress the record of its rejection.
+        final server = TomRemoteLogServer();
+        final message = TomRemoteLogMessage();
+        message.loggerLevel = TomLogLevel.none.levelPattern;
+        message.timeStamp = 'invalid-timestamp';
+
+        server.receive(message);
+
+        expect(mockOutput.lastMessage, contains('invalid-timestamp'));
+      });
+
+      // Security §3 (CWE-117), continued from the test below: the cause folded
+      // into the result is itself derived from client-controlled input.
+      // `FormatException.toString()` embeds a newline *and* the offending
+      // string verbatim, so echoing the raw error into the server's log stream
+      // would reopen the log-forging hole that sanitizing the fields closed.
+      test('sanitizes the reported cause (CWE-117)', () {
+        final server = TomRemoteLogServer();
+        final message = TomRemoteLogMessage();
+        message.timeStamp = 'bad\r\n2099-01-01 FORGED  injected line';
+
+        final result = server.receive(message);
+
+        expect(result.hasError, isTrue);
+        expect(result.errorMessage, isNot(contains('\n')));
+        expect(result.errorMessage, isNot(contains('\r')));
+        expect(mockOutput.lastMessage, isNotNull);
+        expect(mockOutput.lastMessage, isNot(contains('\n')));
+        expect(mockOutput.lastMessage, isNot(contains('\r')));
+        // The visible text survives; only the control characters are removed.
+        expect(result.errorMessage, contains('FORGED'));
       });
 
       // Security §3 (CWE-117): a remote client controls every field of the
