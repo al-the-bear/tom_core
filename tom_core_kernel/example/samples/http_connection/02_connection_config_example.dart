@@ -1,4 +1,3 @@
-// ignore_for_file: unnecessary_null_checks, unnecessary_null_aware_operator_on_extension_on_nullable
 /// Connection Configuration Example
 ///
 /// This example demonstrates HTTP connection configuration including

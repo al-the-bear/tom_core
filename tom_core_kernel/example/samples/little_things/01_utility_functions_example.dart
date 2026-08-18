@@ -1,7 +1,8 @@
-// ignore_for_file: unused_local_variable
 /// Demonstrates utility functions from the little_things module including
 /// checked execution, stack trace processing, and exception handling.
 library;
+
+import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -30,11 +31,12 @@ class SyncCheckedSuccessExample {
   static void example1SyncCheckedSuccess() {
     final parseInput = '{"name": "test", "value": 42}';
 
-    final parsedResult = runCheckedSync(
-      () {
-        // Simulating JSON parsing by returning a map
-        return <String, dynamic>{'name': 'test', 'value': 42};
-      },
+    // Really decode the input rather than returning a fixed map. The point of
+    // runCheckedSync is that it maps a failure of `body` into a TomException,
+    // so `body` has to be something that can genuinely fail — jsonDecode
+    // throws FormatException on malformed input. Example 2 takes that branch.
+    final parsedResult = runCheckedSync<Map<String, dynamic>>(
+      () => jsonDecode(parseInput) as Map<String, dynamic>,
       (error, stacktrace) => TomException(
         'config.parse.failed',
         'Failed to parse configuration',
