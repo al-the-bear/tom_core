@@ -345,7 +345,7 @@ TomOZonedTime(TomZonedTime initialValue)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noZonedTime` | `TomZonedTime` | Sentinel "no time" (Unix epoch). |
+| `noZonedTime` | `TomZonedTime` | Sentinel "no time" (Unix epoch in UTC). |
 | `noTime` | `TomOZonedTime` | Sentinel wrapper for "no time" (Unix epoch in UTC). |
 
 #### Methods
@@ -372,7 +372,7 @@ TomOZonedDate(TomZonedDate initialValue)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noZonedDate` | `TomZonedDate` | Sentinel "no date" (Unix epoch). |
+| `noZonedDate` | `TomZonedDate` | Sentinel "no date" (Unix epoch in UTC). |
 | `noTime` | `TomOZonedDate` | Sentinel wrapper for "no date" (Unix epoch in UTC). |
 
 #### Methods
@@ -399,7 +399,7 @@ TomOZonedDateTime(TomZonedDateTime initialValue)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noZonedDateTime` | `TomZonedDateTime` | Sentinel "no datetime" (Unix epoch). |
+| `noZonedDateTime` | `TomZonedDateTime` | Sentinel "no datetime" (Unix epoch in UTC). |
 | `noTime` | `TomOZonedDateTime` | Sentinel wrapper for "no datetime" (Unix epoch in UTC). |
 
 #### Methods
@@ -506,7 +506,7 @@ TomNOZonedTime(TomZonedTime? initialValue)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noZonedTime` | `TomZonedTime` | Sentinel "no time" (Unix epoch). |
+| `noZonedTime` | `TomZonedTime` | Sentinel "no time" (Unix epoch in UTC). |
 | `noTime` | `TomNOZonedTime` | Sentinel wrapper for "no time" (Unix epoch in UTC). |
 
 #### Methods
@@ -533,7 +533,7 @@ TomNOZonedDate(TomZonedDate? initialValue)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noZonedDate` | `TomZonedDate` | Sentinel "no date" (Unix epoch). |
+| `noZonedDate` | `TomZonedDate` | Sentinel "no date" (Unix epoch in UTC). |
 | `noTime` | `TomNOZonedDate` | Sentinel wrapper for "no date" (Unix epoch in UTC). |
 
 #### Methods
@@ -560,7 +560,7 @@ TomNOZonedDateTime(TomZonedDateTime? initialValue)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noZonedDateTime` | `TomZonedDateTime` | Sentinel "no datetime" (Unix epoch). |
+| `noZonedDateTime` | `TomZonedDateTime` | Sentinel "no datetime" (Unix epoch in UTC). |
 | `noTime` | `TomNOZonedDateTime` | Sentinel wrapper for "no datetime" (Unix epoch in UTC). |
 
 #### Methods
@@ -659,8 +659,8 @@ TomClass()
 | `getMembers` | `Map<String, TomObject> getMembers()` | Returns a **read-only, live** view of the registered member map (field name → `TomObject`). Mutating it throws `UnsupportedError`; members registered later appear in it. |
 | `onNotify` | `void onNotify(TomObservable observable)` | *(override)* Propagates a member change to this class's own observers. |
 | `setValues` | `void setValues(Map<String, dynamic> values)` | Updates member fields from a map, clearing collection members first. |
-| `setOrMergeValues` | `void setOrMergeValues(Map<String, dynamic> values, bool merge)` | Updates member fields; when `merge` is `true`, collection members are appended to rather than cleared. A value of the wrong shape throws `TomObservableException` naming the key and the supplied runtime type (also in `parameters`). An integral number bound for a double-holding field, list element or map value is widened, since JSON has one number type; the reverse is refused rather than truncated. The work runs inside a `batch`, which releases in a `finally`, so the object and its members stay notifying. |
-| `getValues` | `Map<String, dynamic> getValues()` | Returns all member values as a JSON-safe map (recursing nested classes; prefixing date/timezone values). |
+| `setOrMergeValues` | `void setOrMergeValues(Map<String, dynamic> values, bool merge)` | Updates member fields; when `merge` is `true`, collection members are appended to rather than cleared. A value of the wrong shape throws `TomObservableException` naming the key and the supplied runtime type (also in `parameters`). An integral number bound for a double-holding field, list element or map value is widened, since JSON has one number type; the reverse is refused rather than truncated. Timezone-aware members are dispatched to `setByString` **before** the plain-`DateTime` handling, because `TomTimezoned` extends `DateTime` and would otherwise be parsed with its own `@D@`/`@T@`/`@X@` prefix still attached. The work runs inside a `batch`, which releases in a `finally`, so the object and its members stay notifying. |
+| `getValues` | `Map<String, dynamic> getValues()` | Returns all member values as a JSON-safe map (recursing nested classes; prefixing date/timezone values). The output round-trips back through `setValues`, zoned members included. |
 | `fromJson` | `void fromJson(String json)` | Populates this class from a JSON string via `setValues`. |
 | `toJson` | `Map<String, dynamic> toJson()` | Returns the JSON-compatible map (equivalent to `getValues`). |
 | `toString` | `String toString()` | *(override)* Reflection-based string of all values. |

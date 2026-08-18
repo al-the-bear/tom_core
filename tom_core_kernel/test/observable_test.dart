@@ -113,6 +113,35 @@ class TestThrowingMember extends TomClass {
   final ok = TomString("fine");
 }
 
+/// Test class carrying one member of every timezone-aware observable type,
+/// nullable and non-nullable, for round-tripping through [TomClass.getValues]
+/// and [TomClass.setValues].
+@tomReflector
+class TestZonedMembers extends TomClass {
+  final date = TomOZonedDate(
+    TomZonedDate(year: 2024, month: 6, day: 15, timezone: TomTimezone.utc),
+  );
+  final time = TomOZonedTime(
+    TomZonedTime(hour: 14, minute: 30, second: 45, timezone: TomTimezone.utc),
+  );
+  final dateTime = TomOZonedDateTime(
+    TomZonedDateTime(
+      year: 2024,
+      month: 12,
+      day: 25,
+      hour: 18,
+      timezone: TomTimezone.utc,
+    ),
+  );
+  final optionalDate = TomNOZonedDate(null);
+  final optionalTime = TomNOZonedTime(null);
+  final optionalDateTime = TomNOZonedDateTime(null);
+
+  /// A plain (zone-less) member alongside the zoned ones, so that one round
+  /// trip exercises both dispatch branches.
+  final stamp = TomDateTime(DateTime.utc(2020));
+}
+
 /// Custom observer implementation for testing
 class TestObserver<T extends TomObservable> implements TomObserver<T> {
   int notifyCount = 0;
@@ -1135,7 +1164,9 @@ void main() {
     });
 
     test('setByString deserializes zoned date', () {
-      final observable = TomOZonedDate(TomZonedDate.fromDateTime(DateTime(1970)));
+      final observable = TomOZonedDate(
+        TomZonedDate.fromDateTime(DateTime.utc(1970)),
+      );
       final serialized = "@D@2024-05-20T00:00:00.000Z_Z_UTC";
 
       observable.setByString(serialized);
@@ -1143,6 +1174,76 @@ void main() {
       expect((~observable).year, equals(2024));
       expect((~observable).month, equals(5));
       expect((~observable).day, equals(20));
+    });
+  });
+
+  group('TomClass reads back its own zoned members', () {
+    // TomTimezoned extends DateTime, so every zoned observable also satisfies
+    // TomObject<DateTime?>. Dispatch in TomClass._setMember must therefore
+    // reach the timezoned branch before the plain-DateTime one, or the zoned
+    // value arrives at DateTime.parse with its `@D@`/`@T@`/`@X@` prefix
+    // attached. Exercising setByString directly does not catch that — only a
+    // round trip through the TomClass does.
+    test('a full round trip preserves every zoned member', () {
+      final written = TestZonedMembers();
+      written.optionalDate |
+          TomZonedDate(year: 2030, month: 1, day: 2, timezone: TomTimezone.utc);
+      written.optionalTime |
+          TomZonedTime(hour: 7, minute: 5, timezone: TomTimezone.utc);
+      written.optionalDateTime | TomZonedDateTime(
+        year: 2031,
+        month: 3,
+        day: 4,
+        hour: 9,
+        timezone: TomTimezone.utc,
+      );
+
+      final read = TestZonedMembers();
+      read.setValues(written.getValues());
+
+      expect(read.date.get().toUtc(), equals(written.date.get().toUtc()));
+      expect(read.time.get().toUtc(), equals(written.time.get().toUtc()));
+      expect(
+        read.dateTime.get().toUtc(),
+        equals(written.dateTime.get().toUtc()),
+      );
+      expect(
+        read.optionalDate.get()!.toUtc(),
+        equals(written.optionalDate.get()!.toUtc()),
+      );
+      expect(
+        read.optionalTime.get()!.toUtc(),
+        equals(written.optionalTime.get()!.toUtc()),
+      );
+      expect(
+        read.optionalDateTime.get()!.toUtc(),
+        equals(written.optionalDateTime.get()!.toUtc()),
+      );
+    });
+
+    test('a null nullable zoned member round-trips as null', () {
+      final written = TestZonedMembers();
+
+      final read = TestZonedMembers();
+      read.optionalDate |
+          TomZonedDate(year: 2030, month: 1, day: 2, timezone: TomTimezone.utc);
+      read.setValues(written.getValues());
+
+      expect(read.optionalDate.isNull, isTrue);
+      expect(read.optionalTime.isNull, isTrue);
+      expect(read.optionalDateTime.isNull, isTrue);
+    });
+
+    test('a plain TomDateTime member still round-trips', () {
+      // The reordering must not steal the plain-DateTime case: TomDateTime is
+      // not a TomOTimezoned, so it keeps taking the `@!@` branch.
+      final written = TestZonedMembers();
+      written.stamp | DateTime.utc(2024, 6, 15, 10, 30);
+
+      final read = TestZonedMembers();
+      read.setValues(written.getValues());
+
+      expect(read.stamp.get(), equals(DateTime.utc(2024, 6, 15, 10, 30)));
     });
   });
 
@@ -2966,6 +3067,140 @@ void main() {
 
         expect(count.getOrNull(), equals(7));
       });
+    });
+  });
+
+  group('"no value" sentinels denote one fixed instant', () {
+    // These assertions are deliberately absolute rather than relative: a
+    // sentinel that is only "the epoch as this machine sees it" is not a
+    // sentinel at all, because two machines then disagree about which values
+    // mean "no value". Comparing against DateTime.utc(1970) makes the test
+    // itself TZ-independent, which is the property under test.
+    final epoch = DateTime.utc(1970);
+
+    void expectEpoch(String name, DateTime value) {
+      expect(
+        value.toUtc(),
+        equals(epoch),
+        reason: '$name must denote the Unix epoch regardless of the '
+            "machine's timezone (TZ here is "
+            '${DateTime.now().timeZoneName}, offset '
+            '${DateTime.now().timeZoneOffset})',
+      );
+    }
+
+    test('the plain zoned sentinels are at the epoch', () {
+      expectEpoch('TomOZonedTime.noZonedTime', TomOZonedTime.noZonedTime);
+      expectEpoch('TomOZonedDate.noZonedDate', TomOZonedDate.noZonedDate);
+      expectEpoch(
+        'TomOZonedDateTime.noZonedDateTime',
+        TomOZonedDateTime.noZonedDateTime,
+      );
+      expectEpoch('TomNOZonedTime.noZonedTime', TomNOZonedTime.noZonedTime);
+      expectEpoch('TomNOZonedDate.noZonedDate', TomNOZonedDate.noZonedDate);
+      expectEpoch(
+        'TomNOZonedDateTime.noZonedDateTime',
+        TomNOZonedDateTime.noZonedDateTime,
+      );
+    });
+
+    test('the observable sentinels are at the epoch', () {
+      expectEpoch('TomDateTime.noDateTime', TomDateTime.noDateTime.get());
+      expectEpoch('TomOTimezoned.noDateTime', TomOTimezoned.noDateTime.get()!);
+      expectEpoch('TomOZonedTime.noTime', TomOZonedTime.noTime.get());
+      expectEpoch('TomOZonedDate.noTime', TomOZonedDate.noTime.get());
+      expectEpoch('TomOZonedDateTime.noTime', TomOZonedDateTime.noTime.get());
+      expectEpoch('TomNDateTime.noDateTime', TomNDateTime.noDateTime.get());
+      expectEpoch(
+        'TomNOTimezoned.noDateTime',
+        TomNOTimezoned.noDateTime.get()!,
+      );
+      expectEpoch('TomNOZonedTime.noTime', TomNOZonedTime.noTime.get()!);
+      expectEpoch('TomNOZonedDate.noTime', TomNOZonedDate.noTime.get()!);
+      expectEpoch(
+        'TomNOZonedDateTime.noTime',
+        TomNOZonedDateTime.noTime.get()!,
+      );
+    });
+
+    test('the two families of sentinels are interchangeable', () {
+      // The plain and observable sentinels are paired: user code reaches for
+      // whichever fits its type, and a comparison must not care which one the
+      // value was seeded from.
+      expect(
+        TomOZonedTime.noZonedTime.toUtc(),
+        equals(TomOZonedTime.noTime.get().toUtc()),
+      );
+      expect(
+        TomOZonedDate.noZonedDate.toUtc(),
+        equals(TomOZonedDate.noTime.get().toUtc()),
+      );
+      expect(
+        TomOZonedDateTime.noZonedDateTime.toUtc(),
+        equals(TomOZonedDateTime.noTime.get().toUtc()),
+      );
+      expect(
+        TomNOZonedTime.noZonedTime.toUtc(),
+        equals(TomNOZonedTime.noTime.get()!.toUtc()),
+      );
+      expect(
+        TomNOZonedDate.noZonedDate.toUtc(),
+        equals(TomNOZonedDate.noTime.get()!.toUtc()),
+      );
+      expect(
+        TomNOZonedDateTime.noZonedDateTime.toUtc(),
+        equals(TomNOZonedDateTime.noTime.get()!.toUtc()),
+      );
+    });
+
+    test('the range classes default to the epoch on both ends', () {
+      // The three range classes seed both ends from the plain zoned family,
+      // so they inherit whatever those sentinels denote.
+      final dates = TomDateRange();
+      expectEpoch('TomDateRange().startDate', dates.startDate.get()!);
+      expectEpoch('TomDateRange().endDate', dates.endDate.get()!);
+
+      final times = TomTimeRange();
+      expectEpoch('TomTimeRange().startTime', times.startTime.get()!);
+      expectEpoch('TomTimeRange().endTime', times.endTime.get()!);
+
+      final dateTimes = TomDateTimeRange();
+      expectEpoch(
+        'TomDateTimeRange().startDateTime',
+        dateTimes.startDateTime.get()!,
+      );
+      expectEpoch(
+        'TomDateTimeRange().endDateTime',
+        dateTimes.endDateTime.get()!,
+      );
+    });
+
+    test('a sentinel serializes to the epoch on the wire', () {
+      // A sentinel that changes meaning when it is written by one machine and
+      // read by another is worse than no sentinel: the reader silently sees a
+      // real date rather than "no value". The wire form is UTC-stamped, so it
+      // is enough to pin the instant it carries.
+      final written = TomDateRange();
+
+      final wire = written.getValues()['startDate'] as String;
+
+      expect(wire, startsWith(TomZonedDate.serializationPrefix));
+      expectEpoch(
+        'serialized TomDateRange().startDate',
+        DateTime.parse(
+          wire.substring(TomZonedDate.serializationPrefix.length).split('_')[0],
+        ),
+      );
+    });
+
+    test('a sentinel survives a round trip through a TomClass', () {
+      final written = TomDateRange();
+      final read = TomDateRange();
+
+      read.setValues(written.getValues());
+
+      expectEpoch('round-tripped startDate', read.startDate.get()!);
+      expectEpoch('round-tripped endDate', read.endDate.get()!);
     });
   });
 }

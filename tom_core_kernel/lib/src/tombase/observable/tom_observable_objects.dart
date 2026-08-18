@@ -348,9 +348,15 @@ class TomOTimezoned<TZ extends TomTimezoned?> extends TomObject<TZ> {
 /// ```
 @tomReflector
 class TomOZonedTime extends TomOTimezoned<TomZonedTime> {
-  /// A sentinel value representing "no time" (Unix epoch).
+  /// A sentinel value representing "no time" (the Unix epoch, in UTC).
+  ///
+  /// Built from `DateTime.utc(1970)` rather than `DateTime(1970)` so that the
+  /// sentinel denotes the same instant on every machine. A local-time epoch
+  /// would shift with the reader's zone, which would make a sentinel
+  /// comparison depend on where it runs and would change the meaning of a
+  /// persisted "no value" when it crosses zones.
   static final TomZonedTime noZonedTime = TomZonedTime.fromDateTime(
-    DateTime(1970),
+    DateTime.utc(1970),
   );
 
   @override
@@ -388,9 +394,14 @@ class TomOZonedTime extends TomOTimezoned<TomZonedTime> {
 /// ```
 @tomReflector
 class TomOZonedDate extends TomOTimezoned<TomZonedDate> {
-  /// A sentinel value representing "no date" (Unix epoch).
+  /// A sentinel value representing "no date" (the Unix epoch, in UTC).
+  ///
+  /// Built from `DateTime.utc(1970)` rather than `DateTime(1970)`. A
+  /// local-time epoch is not merely offset by a few hours here — because the
+  /// value is truncated to a date, a negative UTC offset moves the sentinel to
+  /// the *previous day*.
   static final TomZonedDate noZonedDate = TomZonedDate.fromDateTime(
-    DateTime(1970),
+    DateTime.utc(1970),
   );
 
   @override
@@ -428,9 +439,12 @@ class TomOZonedDate extends TomOTimezoned<TomZonedDate> {
 /// ```
 @tomReflector
 class TomOZonedDateTime extends TomOTimezoned<TomZonedDateTime> {
-  /// A sentinel value representing "no datetime" (Unix epoch).
+  /// A sentinel value representing "no datetime" (the Unix epoch, in UTC).
+  ///
+  /// Built from `DateTime.utc(1970)` rather than `DateTime(1970)` so that the
+  /// sentinel denotes the same instant on every machine.
   static final TomZonedDateTime noZonedDateTime = TomZonedDateTime.fromDateTime(
-    DateTime(1970),
+    DateTime.utc(1970),
   );
 
   @override
@@ -534,9 +548,15 @@ class TomNOTimezoned<TZ extends TomTimezoned?> extends TomOTimezoned<TZ> {
 /// empty value after the prefix, deserializes to `null`.
 @tomReflector
 class TomNOZonedTime extends TomNOTimezoned<TomZonedTime?> {
-  /// A sentinel value representing "no time" (Unix epoch).
+  /// A sentinel value representing "no time" (the Unix epoch, in UTC).
+  ///
+  /// Built from `DateTime.utc(1970)` rather than `DateTime(1970)` so that the
+  /// sentinel denotes the same instant on every machine. A local-time epoch
+  /// would shift with the reader's zone, which would make a sentinel
+  /// comparison depend on where it runs and would change the meaning of a
+  /// persisted "no value" when it crosses zones.
   static final TomZonedTime noZonedTime = TomZonedTime.fromDateTime(
-    DateTime(1970),
+    DateTime.utc(1970),
   );
 
   @override
@@ -570,9 +590,14 @@ class TomNOZonedTime extends TomNOTimezoned<TomZonedTime?> {
 /// empty value after the prefix, deserializes to `null`.
 @tomReflector
 class TomNOZonedDate extends TomNOTimezoned<TomZonedDate?> {
-  /// A sentinel value representing "no date" (Unix epoch).
+  /// A sentinel value representing "no date" (the Unix epoch, in UTC).
+  ///
+  /// Built from `DateTime.utc(1970)` rather than `DateTime(1970)`. A
+  /// local-time epoch is not merely offset by a few hours here — because the
+  /// value is truncated to a date, a negative UTC offset moves the sentinel to
+  /// the *previous day*.
   static final TomZonedDate noZonedDate = TomZonedDate.fromDateTime(
-    DateTime(1970),
+    DateTime.utc(1970),
   );
 
   @override
@@ -606,9 +631,12 @@ class TomNOZonedDate extends TomNOTimezoned<TomZonedDate?> {
 /// empty value after the prefix, deserializes to `null`.
 @tomReflector
 class TomNOZonedDateTime extends TomNOTimezoned<TomZonedDateTime?> {
-  /// A sentinel value representing "no datetime" (Unix epoch).
+  /// A sentinel value representing "no datetime" (the Unix epoch, in UTC).
+  ///
+  /// Built from `DateTime.utc(1970)` rather than `DateTime(1970)` so that the
+  /// sentinel denotes the same instant on every machine.
   static final TomZonedDateTime noZonedDateTime = TomZonedDateTime.fromDateTime(
-    DateTime(1970),
+    DateTime.utc(1970),
   );
 
   @override
@@ -904,6 +932,12 @@ class TomClass extends TomObject<Map<String, TomObject>>
       _setListMember(member, value, key, !merge);
     } else if (member is TomMap) {
       _setMapMember(member, value, key, !merge);
+    } else if (member is TomOTimezoned && value is String) {
+      // Must be tested *before* the plain-DateTime branch below: TomTimezoned
+      // extends DateTime, so every zoned member also satisfies
+      // `TomObject<DateTime?>` and would otherwise be handed to DateTime.parse
+      // with its own `@D@`/`@T@`/`@X@` prefix still attached.
+      member.setByString(value);
     } else if ((member is TomDateTime ||
             member is TomObject<DateTime> ||
             member is TomObject<DateTime?>) &&
@@ -915,8 +949,6 @@ class TomClass extends TomObject<Map<String, TomObject>>
           ? value.substring(3)
           : value;
       member.set(DateTime.parse(raw));
-    } else if (member is TomOTimezoned && value is String) {
-      member.setByString(value);
     } else if (member is TomObject<double?> && value is int) {
       // A double-holding member reached by an integral number: JSON has one
       // number type, so widen rather than reject. `TomObject<double?>` covers

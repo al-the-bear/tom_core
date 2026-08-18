@@ -199,7 +199,28 @@ Nullable types deserialize to `null` when the serialized string has only the pre
 | `TomTimeRange` | `startTime`, `endTime` (`TomNOZonedTime`) | Observable start/end time pair |
 | `TomDateTimeRange` | `startDateTime`, `endDateTime` (`TomNOZonedDateTime`) | Observable start/end datetime pair |
 
-All range types extend `TomClass` and their members are automatically registered for observation via reflection.
+All range types extend `TomClass` and their members are automatically registered for observation via reflection. Both ends of a fresh range hold the "no value" sentinel of the matching type.
+
+---
+
+## "No Value" Sentinels
+
+Placeholders for code that needs a "not set" marker but cannot use `null`. Each type offers a **plain** sentinel (the bare value) and an **observable** one (already wrapped).
+
+| Type | Plain | Observable |
+|------|-------|------------|
+| `TomDateTime` / `TomNDateTime` | — | `noDateTime` |
+| `TomOTimezoned` / `TomNOTimezoned` | — | `noDateTime` |
+| `TomOZonedTime` / `TomNOZonedTime` | `noZonedTime` | `noTime` |
+| `TomOZonedDate` / `TomNOZonedDate` | `noZonedDate` | `noTime` |
+| `TomOZonedDateTime` / `TomNOZonedDateTime` | `noZonedDateTime` | `noTime` |
+
+**All sentinels denote the same instant — the Unix epoch in UTC.**
+
+- Built from `DateTime.utc(1970)`, never `DateTime(1970)`: a local-time epoch would shift with the reader's zone, so a comparison would depend on where it runs and a persisted "no value" would become a real date when it crossed zones
+- The plain and observable families are interchangeable: `TomOZonedDate.noZonedDate == TomOZonedDate.noTime.get()`
+- Compare with `value.toUtc() == DateTime.utc(1970)`
+- The two spellings are indistinguishable under `TZ=UTC`, so use `tool/run_tz_matrix.sh` to exercise the suite across zones
 
 ---
 
@@ -224,6 +245,8 @@ A powerful base class for creating observable domain objects with automatic memb
 - `setValues(Map<String, dynamic>)` — bulk update multiple fields
 - `setOrMergeValues(Map<String, dynamic>)` — update or merge with existing values
 - `getValues()` — returns all registered members as a `Map<String, dynamic>`
+- Timezone-aware members are dispatched to `setByString` before the plain-`DateTime` handling — `TomTimezoned` extends `DateTime`, so a zoned member also satisfies `TomObject<DateTime?>` and would otherwise reach `DateTime.parse` with its `@D@`/`@T@`/`@X@` prefix attached
+- `getValues()` output round-trips back through `setValues()`, zoned members included
 
 ### JSON Serialization
 - `toJson()` — serializes object to JSON-compatible Map (calls `getValues()`)

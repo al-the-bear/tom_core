@@ -20,6 +20,7 @@ and complex objects with automatic change notification and propagation.
   - [Basic DateTime](#basic-datetime)
   - [Timezone-Aware Types](#timezone-aware-types)
   - [Range Types](#range-types)
+  - [The "no value" sentinels](#the-no-value-sentinels)
 - [TomClass (Observable Objects)](#tomclass-observable-objects)
 - [The Collection Notification Contract](#the-collection-notification-contract)
 - [TomList (Observable Lists)](#tomlist-observable-lists)
@@ -494,6 +495,57 @@ event.duration.endDateTime | TomZonedDateTime(
 event >> (obs) => print("Event modified!");
 ```
 
+A freshly constructed range is not empty — both ends are seeded with the "no
+value" sentinel of the matching type, described next.
+
+### The "no value" sentinels
+
+Each date/time type carries a sentinel meaning "no value", for code that needs
+a placeholder but cannot use `null` (a non-nullable field, or a range end that
+must always hold an object). They come in pairs: a **plain** one holding the
+bare value, and an **observable** one already wrapped.
+
+| Type | Plain sentinel | Observable sentinel |
+|------|----------------|---------------------|
+| `TomDateTime` | — | `TomDateTime.noDateTime` |
+| `TomOTimezoned` | — | `TomOTimezoned.noDateTime` |
+| `TomOZonedTime` | `TomOZonedTime.noZonedTime` | `TomOZonedTime.noTime` |
+| `TomOZonedDate` | `TomOZonedDate.noZonedDate` | `TomOZonedDate.noTime` |
+| `TomOZonedDateTime` | `TomOZonedDateTime.noZonedDateTime` | `TomOZonedDateTime.noTime` |
+
+The nullable types (`TomNDateTime`, `TomNOZonedTime`, `TomNOZonedDate`,
+`TomNOZonedDateTime`, `TomNOTimezoned`) expose the same pairs under the same
+names.
+
+**Every sentinel denotes one instant: the Unix epoch in UTC.** That is the
+whole point of a sentinel — two machines in different timezones must agree on
+which values mean "no value", so the sentinels are built from
+`DateTime.utc(1970)` and never from `DateTime(1970)`:
+
+```dart
+// The comparison below holds on every machine, in every timezone.
+if (booking.cancelledAt.get().toUtc() == DateTime.utc(1970)) {
+  print("not cancelled");
+}
+
+// The two families are interchangeable, so it does not matter which one a
+// value was seeded from.
+TomOZonedDate.noZonedDate == TomOZonedDate.noTime.get();  // true
+```
+
+A local-time epoch would break this in three ways at once: the sentinel would
+shift with the reader's zone, a value written by one machine and read by
+another would silently become a real date, and — because `TomZonedDate`
+truncates to a date — a negative UTC offset would move the sentinel to the
+*previous day*. Note also that the direction of the skew follows the sign of
+the offset, so a local-epoch sentinel is not even reliably *before* the real
+epoch.
+
+Because `DateTime(1970)` and `DateTime.utc(1970)` are the same value when the
+process runs in UTC, this class of defect is invisible to a UTC-only test run.
+`tool/run_tz_matrix.sh` runs the suite across five zones spanning both signs of
+offset and the +14 extreme.
+
 ## TomClass (Observable Objects)
 
 `TomClass` is a powerful base class for creating observable domain objects with 
@@ -727,6 +779,16 @@ final person2 = Person();
 person2.fromJson('{"name": "Diana", "age": 28}');
 print(~person2.name);  // "Diana"
 print(~person2.age);   // 28
+```
+
+`getValues()` prefixes each date/time member with its own marker — `@!@` for a
+plain `DateTime`, `@D@`/`@T@`/`@X@` for the zoned types — and `setValues()`
+reads all of them back, so a class round-trips through its own output whatever
+mix of date members it holds:
+
+```dart
+final restored = Event();
+restored.setValues(original.getValues());   // zoned members included
 ```
 
 ## The Collection Notification Contract
