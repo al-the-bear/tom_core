@@ -314,7 +314,7 @@ abstract class TomObject<T> extends TomObservable {
   T get();                    // Get current value
   T call();                   // Get current value (call operator)
   T set(T value);             // Set value and notify
-  T? getOrNull();             // Get value or null
+  T? getOrNull();             // Get value or null (delegates to get())
   bool get isNull;            // Check if value is null
   
   // Operators
@@ -566,12 +566,54 @@ void main() {
 
 | Method | Description |
 |--------|-------------|
-| `getMembers()` | Returns a map of all registered `TomObject` members |
+| `getMembers()` | Returns a read-only, live view of all registered `TomObject` members |
 | `setValues(Map<String, dynamic>)` | Bulk update multiple fields at once |
 | `setOrMergeValues(Map<String, dynamic>)` | Update or merge with existing values |
 | `getValues()` | Returns all members as a `Map<String, dynamic>` |
 | `toJson()` | Serializes to JSON-compatible map (same as `getValues()`) |
 | `fromJson(String json)` | Deserializes from JSON string |
+
+### Accessors never hand out a writable collection
+
+No accessor on a composite returns a handle you can write through. Writing
+through one would bypass the notification the mutator sends, and on a
+`TomClass` it would deregister a member without detaching the observer wiring
+that registration installed — leaving a half-attached object that nothing
+outside the class can repair. So:
+
+| Accessor | Returns | Writing to it |
+|----------|---------|---------------|
+| `TomClass.getMembers()` | a **live, read-only view** of the member map | throws `UnsupportedError` |
+| `TomClass.getOrNull()` | — | throws `TomObservableException`, exactly as `get()` does |
+| `TomList.get()` / `getOrNull()` | a **copy** of the elements | allowed, but changes nothing |
+| `TomMap.get()` / `getOrNull()` | a **copy** of the entries | allowed, but changes nothing |
+| `TomList.cast<R>()` | a **live, read-only** re-typed view | throws `UnsupportedError` |
+| `TomMap.cast<RK, RV>()` | a **live, read-only** re-typed view | throws `UnsupportedError` |
+
+`getOrNull()` is the nullable-typed sibling of `get()` and nothing more — it
+delegates rather than reading the backing field, so every rule above holds for
+both.
+
+The views are *live*, not snapshots: elements and members added later show up
+in a view taken earlier. This matters for `getMembers()`, because a member
+whose field is still `null` at construction is registered only when a later
+`startSelfObservation()` runs, and a snapshot taken before that would silently
+be missing it.
+
+Read-only applies to the *collection*, not to what is in it. The members and
+elements are the live cells, so reading one and assigning through it works
+as usual:
+
+```dart
+// Refused — the collection itself is read-only.
+customer.getMembers()['name'] = TomString("x");   // throws UnsupportedError
+
+// Fine — the cell is live, and the assignment notifies.
+(customer.getMembers()['name'] as TomString) | "Acme Corp";
+```
+
+To change the contents of a `TomList` or `TomMap`, use its mutators (`add`,
+`remove`, `[]=`, …); those notify observers.
 
 ### Bulk Updates with setValues
 

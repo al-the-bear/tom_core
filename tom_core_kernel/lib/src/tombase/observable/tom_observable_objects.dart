@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
@@ -100,8 +101,15 @@ class TomObject<T> extends TomObservable {
 
   /// Returns the value, or `null` if the value itself is null.
   /// Useful for nullable TomObject types.
+  ///
+  /// This is the nullable-typed sibling of [get] and nothing more: it delegates
+  /// rather than reading the field, so every override of [get] holds here too.
+  /// The composites all override [get] precisely because handing out the
+  /// backing collection is wrong — [TomList] and [TomMap] return copies, and
+  /// [TomClass] refuses outright, having no scalar value to return — and
+  /// reading `_value` here would walk past all three.
   T? getOrNull() {
-    return _value;
+    return get();
   }
 
   /// Returns `true` if the current value is `null`.
@@ -787,11 +795,27 @@ class TomClass extends TomObject<Map<String, TomObject>>
     }
   }
 
-  /// Returns a map of all registered [TomObject] members.
+  /// A read-only view of [_value], handed out by [getMembers].
   ///
-  /// Keys are the field names, values are the [TomObject] instances.
+  /// A view rather than a copy, so it stays correct as registration proceeds —
+  /// [_registerWithMembers] walks the superclass chain after the subclass, so a
+  /// caller holding a snapshot taken early would be missing members. Built once
+  /// because [getMembers] is called per row by the datasource layer.
+  late final Map<String, TomObject> _memberView = UnmodifiableMapView(_value);
+
+  /// Returns a **read-only** view of all registered [TomObject] members.
+  ///
+  /// Keys are the field names, values are the [TomObject] instances. The view
+  /// is live: members registered later appear in it.
+  ///
+  /// Mutating the returned map throws [UnsupportedError]. Registration is not a
+  /// caller's decision — it is derived from the declared fields, and a removal
+  /// from the map would deregister the member without detaching the observer
+  /// wiring [_registerWithMembers] installed, leaving a half-attached object
+  /// that nothing outside the class can repair. The members themselves are the
+  /// live cells, so reading one and assigning through it works as usual.
   Map<String, TomObject> getMembers() {
-    return _value;
+    return _memberView;
   }
 
   /// Called when any observed member changes.
@@ -1418,8 +1442,14 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 
   @override
   bool any(bool Function(E e) test) => _value.any(test);
+  /// A **read-only** re-typed view of this list.
+  ///
+  /// `List.cast` alone returns a writable view: `list.cast<TomObject>().add(x)`
+  /// reaches the backing list, and the observers never hear about it. Wrapping
+  /// keeps `cast`'s liveness — later elements show up — while refusing the
+  /// writes that only the mutators may perform.
   @override
-  List<R> cast<R>() => _value.cast<R>();
+  List<R> cast<R>() => UnmodifiableListView(_value.cast<R>());
   @override
   bool contains(Object? o) => _value.contains(o);
   @override
@@ -1929,7 +1959,12 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     _notifyIfChangedSince(before);
   }
 
-  Map<RK, RV> cast<RK, RV>() => _value.cast<RK, RV>();
+  /// A **read-only** re-typed view of this map.
+  ///
+  /// `Map.cast` alone returns a writable view, so `map.cast<Object, TomObject>()
+  /// .remove(k)` would drop an entry without detaching the value's observer and
+  /// without notifying. See [TomList.cast].
+  Map<RK, RV> cast<RK, RV>() => UnmodifiableMapView(_value.cast<RK, RV>());
 
   void clear() {
     if (_value.isEmpty) return;

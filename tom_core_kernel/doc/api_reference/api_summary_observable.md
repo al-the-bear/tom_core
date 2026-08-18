@@ -226,7 +226,7 @@ TomObject(T initialValue)
 | `getType` | `Type getType()` | Returns the runtime type argument `T`. |
 | `get` | `T get()` | Returns the current value. |
 | `set` | `T set(T value)` | Sets the value and notifies observers if it changed; returns the new value. |
-| `getOrNull` | `T? getOrNull()` | Returns the value, or `null` if it is null (for nullable types). |
+| `getOrNull` | `T? getOrNull()` | Returns the value, or `null` if it is null (for nullable types). Delegates to `get()`, so every override applies: on `TomList`/`TomMap` it returns a copy, and on `TomClass` it throws. |
 | `call` | `T call()` | Call-operator form of `get()`. |
 | `toString` | `String toString()` | *(override)* Returns `"~<value>"`. |
 
@@ -656,7 +656,7 @@ TomClass()
 | `set` | `Map<String, TomObject> set(Map<String, TomObject> value)` | *(override)* Throws `TomObservableException` — set individual fields instead. |
 | `get` | `Map<String, TomObject> get()` | *(override)* Throws `TomObservableException` — use `getValues` or access fields. |
 | `startSelfObservation` | `void startSelfObservation()` | Discovers `TomObject` fields via reflection and registers this instance as their observer. |
-| `getMembers` | `Map<String, TomObject> getMembers()` | Returns the registered member map (field name → `TomObject`). |
+| `getMembers` | `Map<String, TomObject> getMembers()` | Returns a **read-only, live** view of the registered member map (field name → `TomObject`). Mutating it throws `UnsupportedError`; members registered later appear in it. |
 | `onNotify` | `void onNotify(TomObservable observable)` | *(override)* Propagates a member change to this class's own observers. |
 | `setValues` | `void setValues(Map<String, dynamic> values)` | Updates member fields from a map, clearing collection members first. |
 | `setOrMergeValues` | `void setOrMergeValues(Map<String, dynamic> values, bool merge)` | Updates member fields; when `merge` is `true`, collection members are appended to rather than cleared. A value of the wrong shape throws `TomObservableException` naming the key and the supplied runtime type (also in `parameters`). An integral number bound for a double-holding field, list element or map value is widened, since JSON has one number type; the reverse is refused rather than truncated. The work runs inside a `batch`, which releases in a `finally`, so the object and its members stay notifying. |
@@ -767,7 +767,7 @@ TomList.ofList(List<E> list)
 | `sort` | `void sort([int Function(E a, E b)? compare])` | Sorts the elements; silent if they were already in order. |
 | `sublist` | `List<E> sublist(int start, [int? end])` | Returns a sublist copy. |
 | `any` | `bool any(bool Function(E e) test)` | *(override)* Whether any element matches. |
-| `cast` | `List<R> cast<R>()` | *(override)* Casts the backing list. |
+| `cast` | `List<R> cast<R>()` | *(override)* A **read-only, live** re-typed view of the backing list. Mutating it throws `UnsupportedError`. |
 | `contains` | `bool contains(Object? o)` | *(override)* Whether `o` is present. |
 | `elementAt` | `E elementAt(int index)` | *(override)* Element at `index`. |
 | `every` | `bool every(bool Function(E e) test)` | *(override)* Whether all elements match. |
@@ -853,7 +853,7 @@ TomMap.ofMap(Map<K, V> map)
 | `add` | `void add(K key, V value)` | Adds/replaces a key's value, re-observing. |
 | `addAll` | `void addAll(Map<K, V> other)` | Adds all entries from `other`, re-observing; silent if the mapping is unchanged. |
 | `addEntries` | `void addEntries(Iterable<MapEntry<K, V>> newEntries)` | Adds entries, re-observing; silent if the mapping is unchanged. |
-| `cast` | `Map<RK, RV> cast<RK, RV>()` | Casts the backing map. |
+| `cast` | `Map<RK, RV> cast<RK, RV>()` | A **read-only, live** re-typed view of the backing map. Mutating it throws `UnsupportedError`. |
 | `clear` | `void clear()` | Removes and un-observes all entries; silent if the map was already empty. |
 | `containsKey` | `bool containsKey(K key)` | Whether `key` is present. |
 | `containsValue` | `bool containsValue(V value)` | Whether `value` is present. |

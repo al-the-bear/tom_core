@@ -25,6 +25,15 @@ class TestPerson extends TomClass {
   final isActive = TomBool(true);
 }
 
+/// Test class whose second member is registered only after it is assigned and
+/// `startSelfObservation()` is re-run — the lazy-member pattern, which is what
+/// makes `getMembers()`'s view observably different from a cached copy.
+@tomReflector
+class TestLateMember extends TomClass {
+  final name = TomString("");
+  TomInt? bonus;
+}
+
 /// Test class with nested TomClass
 @tomReflector
 class TestAddress extends TomClass {
@@ -2763,6 +2772,199 @@ void main() {
 
         expect(restored.price.get(), isA<double>());
         expect(restored.price.get(), equals(20.0));
+      });
+    });
+  });
+
+  // No accessor may hand out a live, writable handle on a composite's backing
+  // collection. Writing through such a handle bypasses the notification the
+  // mutator would have sent, and on a TomClass it deregisters a member without
+  // detaching its observer wiring — leaving a half-attached object that cannot
+  // be repaired from outside.
+  group('backing collections are not writable from outside', () {
+    group('TomClass members', () {
+      test('getMembers refuses a removal and keeps the member', () {
+        final person = TestPerson();
+
+        expect(
+          () => person.getMembers().remove('name'),
+          throwsUnsupportedError,
+        );
+        expect(person.getMembers().containsKey('name'), isTrue);
+      });
+
+      test('getMembers refuses an insertion', () {
+        final person = TestPerson();
+
+        expect(
+          () => person.getMembers()['injected'] = TomString('x'),
+          throwsUnsupportedError,
+        );
+        expect(person.getMembers().containsKey('injected'), isFalse);
+      });
+
+      test('getMembers refuses a clear', () {
+        final person = TestPerson();
+
+        expect(() => person.getMembers().clear(), throwsUnsupportedError);
+        expect(person.getMembers(), isNotEmpty);
+      });
+
+      test('getMembers still reads every registered member', () {
+        final person = TestPerson();
+
+        final members = person.getMembers();
+
+        expect(members.keys, containsAll(['name', 'age', 'email', 'isActive']));
+        expect(identical(members['name'], person.name), isTrue);
+      });
+
+      test('getMembers is a live view, not a snapshot', () {
+        // A nullable member is skipped while it is null and picked up by a
+        // later `startSelfObservation()` — the lazy-member pattern, reachable
+        // because that method is public. A cached *copy* would have been taken
+        // at the first getMembers() call and would never show the new member,
+        // silently and with no error, which is the failure mode this whole
+        // group exists to remove.
+        final subject = TestLateMember();
+        final members = subject.getMembers();
+        expect(members.containsKey('bonus'), isFalse);
+
+        subject.bonus = TomInt(5);
+        subject.startSelfObservation();
+
+        expect(members.containsKey('bonus'), isTrue);
+        expect(identical(members['bonus'], subject.bonus), isTrue);
+      });
+
+      test('a late-registered member notifies through the parent', () {
+        // Liveness of the view is worth nothing if registration itself did not
+        // take: the point of appearing in the map is being observed.
+        final subject = TestLateMember();
+        subject.bonus = TomInt(5);
+        subject.startSelfObservation();
+
+        var notifications = 0;
+        final observer = TomFunctionObserver((_) => notifications++);
+        subject.addObserver(observer);
+
+        subject.bonus! | 6;
+
+        expect(notifications, equals(1));
+      });
+
+      test('getOrNull does not hand out the member map', () {
+        // getOrNull is the nullable-typed sibling of get(), and get() refuses
+        // outright — a TomClass has no scalar value. Reading _value directly
+        // let getOrNull walk past that guard and return the live registry.
+        final person = TestPerson();
+
+        expect(() => person.getOrNull(), throwsA(isA<TomObservableException>()));
+      });
+    });
+
+    group('TomList elements', () {
+      TomList<TomInt> seeded(List<int> values) {
+        final list = TomList<TomInt>();
+        for (final v in values) {
+          list.append(TomInt(v));
+        }
+        return list;
+      }
+
+      test('getOrNull returns a copy, so adding to it does not reach the list',
+          () {
+        final list = seeded([1, 2, 3]);
+
+        list.getOrNull()!.add(TomInt(4));
+
+        expect(list.length, equals(3));
+      });
+
+      test('getOrNull notifies nobody, because it changed nothing', () {
+        final list = seeded([1, 2]);
+        var notifications = 0;
+        final observer = TomFunctionObserver((_) => notifications++);
+        list.addObserver(observer);
+
+        list.getOrNull()!.clear();
+
+        expect(list.length, equals(2));
+        expect(notifications, equals(0));
+      });
+
+      test('cast refuses a write and leaves the list intact', () {
+        final list = seeded([1, 2, 3]);
+
+        final view = list.cast<TomObject>();
+
+        expect(() => view.removeAt(0), throwsUnsupportedError);
+        expect(() => view.add(TomInt(4)), throwsUnsupportedError);
+        expect(list.map((e) => e.get()).toList(), equals([1, 2, 3]));
+      });
+
+      test('cast still reads through to the elements', () {
+        final list = seeded([1, 2, 3]);
+
+        final view = list.cast<TomObject>();
+
+        expect(view.length, equals(3));
+        expect(identical(view[0], list[0]), isTrue);
+      });
+    });
+
+    group('TomMap values', () {
+      TomMap<String, TomInt> seeded(Map<String, int> values) {
+        final map = TomMap<String, TomInt>();
+        values.forEach((k, v) => map[k] = TomInt(v));
+        return map;
+      }
+
+      test('getOrNull returns a copy, so removing from it spares the map', () {
+        final map = seeded({'a': 1, 'b': 2});
+
+        map.getOrNull()!.remove('a');
+
+        expect(map.containsKey('a'), isTrue);
+        expect(map.length, equals(2));
+      });
+
+      test('cast refuses a write and leaves the map intact', () {
+        final map = seeded({'a': 1});
+
+        final view = map.cast<Object, TomObject>();
+
+        expect(() => view.remove('a'), throwsUnsupportedError);
+        expect(() => view['b'] = TomInt(2), throwsUnsupportedError);
+        expect(map.containsKey('a'), isTrue);
+        expect(map.length, equals(1));
+      });
+
+      test('cast still reads through to the values', () {
+        final map = seeded({'a': 1});
+
+        final view = map.cast<Object, TomObject>();
+
+        expect(view.length, equals(1));
+        expect(identical(view['a'], map['a']), isTrue);
+      });
+    });
+
+    group('scalar cells are unaffected', () {
+      test('getOrNull still returns the value of a nullable cell', () {
+        final nickname = TomNString(null);
+
+        expect(nickname.getOrNull(), isNull);
+
+        nickname | 'Ada';
+
+        expect(nickname.getOrNull(), equals('Ada'));
+      });
+
+      test('getOrNull still returns the value of a non-nullable cell', () {
+        final count = TomInt(7);
+
+        expect(count.getOrNull(), equals(7));
       });
     });
   });

@@ -111,7 +111,7 @@ The generic observable wrapper that all other types extend.
 - `T get()` — returns the current value
 - `T call()` — returns the current value (call operator)
 - `T set(T value)` — sets the value and notifies observers
-- `T? getOrNull()` — returns value or null if unset
+- `T? getOrNull()` — returns value or null if unset; delegates to `get()`, so every override applies
 - `bool get isNull` — checks if value is null
 
 ---
@@ -212,7 +212,8 @@ A powerful base class for creating observable domain objects with automatic memb
 ### Automatic Member Registration
 - Uses reflection to discover all `TomObject` fields
 - Members are automatically registered and observed in the constructor
-- `getMembers()` — returns a map of all registered `TomObject` members
+- `getMembers()` — returns a **read-only, live** view of all registered `TomObject` members; mutating it throws `UnsupportedError`, and members registered later appear in a view taken earlier
+- `getOrNull()` — throws, exactly as `get()` does: a `TomClass` has no scalar value to hand out
 
 ### Self-Observation
 - `startSelfObservation()` — registers this class as observer on all members (called automatically)
@@ -263,6 +264,10 @@ An observable list implementation that automatically observes all contained elem
 - `resetWith(Iterable<E>)` — atomically replaces all contents with a single notification
 - `addLifecycleListener(TomListLifecycleListener)` / `removeLifecycleListener(...)` — register hooks around `resetWith`
 
+**Read-only Accessors:**
+- `get()` / `getOrNull()` — return a **copy** of the elements; writing to it changes nothing
+- `cast<R>()` — a **live, read-only** re-typed view; writing to it throws `UnsupportedError`
+
 **Static Methods:**
 - `TomList.castFrom<S, E>()` — casts list element types
 
@@ -309,6 +314,10 @@ An observable map implementation that automatically observes all contained value
 - `containsKey()`, `containsValue()`
 - `keys`, `values`, `entries`, `length`, `isEmpty`, `isNotEmpty`
 - `forEach()`, `map()`, `cast()`
+
+**Read-only Accessors:**
+- `get()` / `getOrNull()` — return a **copy** of the entries; writing to it changes nothing
+- `cast<RK, RV>()` — a **live, read-only** re-typed view; writing to it throws `UnsupportedError`
 
 **Static Methods:**
 - `TomMap.castFrom<K, V, K2, V2>()` — casts map key/value types
