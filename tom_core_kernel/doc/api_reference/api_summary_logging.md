@@ -180,7 +180,7 @@ TomCreatorLogOutput()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `fallbackOutput` | `TomConsoleLogOutput` | Console output used when the creator connection is unavailable. |
+| `fallbackOutput` | `TomLogOutput` | Sink used when the creator connection is unavailable. Any output may be installed; defaults to a `TomConsoleLogOutput`. |
 
 #### Methods
 

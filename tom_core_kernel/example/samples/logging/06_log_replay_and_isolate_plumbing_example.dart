@@ -184,7 +184,9 @@ Future<void> run() async {
   print('4. TomCreatorLogOutput (worker→creator; falls back off-isolate):');
 
   final originalCreatorFallback = TomCreatorLogOutput.fallbackOutput;
-  final creatorFallback = _CapturingConsoleOutput();
+  // Any TomLogOutput can stand in here — the slot is the interface, not the
+  // console class — so this reuses the same capture the other examples use.
+  final creatorFallback = _CapturingOutput();
   TomCreatorLogOutput.fallbackOutput = creatorFallback;
 
   final creatorOutput = TomCreatorLogOutput();
@@ -644,27 +646,6 @@ Future<void> run() async {
   assert(partialSalvaged[0] == 'kept A');
   assert(partialSalvaged[1] == 'kept B');
   assert(partialReport.contains('2 unreadable entries'));
-}
-
-/// Console-typed capturing sink for slots statically typed
-/// [TomConsoleLogOutput] (e.g. [TomCreatorLogOutput.fallbackOutput]).
-class _CapturingConsoleOutput extends TomConsoleLogOutput {
-  String? lastMessage;
-
-  @override
-  void output(
-    TomLogLevel loggerLevel,
-    TomLogLevel logLevel,
-    String level,
-    Object message,
-    String isolateName,
-    DateTime timeStamp, [
-    String? origin,
-  ]) {
-    if (logLevel.matches(loggerLevel)) {
-      lastMessage = convertToString(message);
-    }
-  }
 }
 
 /// How a single scripted [_ScriptedLogEndpoint] send should behave.

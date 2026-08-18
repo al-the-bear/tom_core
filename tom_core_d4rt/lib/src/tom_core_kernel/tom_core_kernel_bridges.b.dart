@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-18T08:49:37.727109
+// Generated: 2026-08-18T20:05:27.746550
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -171,6 +171,7 @@ class TomCoreKernelBridge {
       _createTomWorkerPoolBridge(),
       _createTomJsonSerializableBridge(),
       _createTomExceptionBridge(),
+      _createTomFormattingExceptionBridge(),
       _createTomLoggingExecutorBridge(),
       _createTomInterIsolateLogMessageBridge(),
       _createTomIsolateLogOutputBridge(),
@@ -432,6 +433,7 @@ class TomCoreKernelBridge {
       'TomWorkerPool': _createTomWorkerPoolBridge,
       'TomJsonSerializable': _createTomJsonSerializableBridge,
       'TomException': _createTomExceptionBridge,
+      'TomFormattingException': _createTomFormattingExceptionBridge,
       'TomLoggingExecutor': _createTomLoggingExecutorBridge,
       'TomInterIsolateLogMessage': _createTomInterIsolateLogMessageBridge,
       'TomIsolateLogOutput': _createTomIsolateLogOutputBridge,
@@ -692,6 +694,7 @@ class TomCoreKernelBridge {
       'TomWorkerPool': $tom_core_kernel_12.TomWorkerPool,
       'TomJsonSerializable': $tom_core_kernel_13.TomJsonSerializable,
       'TomException': $tom_core_kernel_16.TomException,
+      'TomFormattingException': $tom_core_kernel_17.TomFormattingException,
       'TomLoggingExecutor': $tom_core_kernel_20.TomLoggingExecutor,
       'TomInterIsolateLogMessage': $tom_core_kernel_20.TomInterIsolateLogMessage,
       'TomIsolateLogOutput': $tom_core_kernel_20.TomIsolateLogOutput,
@@ -953,6 +956,7 @@ class TomCoreKernelBridge {
       'TomWorkerPool': 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart',
       'TomJsonSerializable': 'package:tom_core_kernel/src/tombase/json/json_serializable.dart',
       'TomException': 'package:tom_core_kernel/src/tombase/little_things/exception_base.dart',
+      'TomFormattingException': 'package:tom_core_kernel/src/tombase/little_things/formatting.dart',
       'TomLoggingExecutor': 'package:tom_core_kernel/src/tombase/logging/logging_isolate.dart',
       'TomInterIsolateLogMessage': 'package:tom_core_kernel/src/tombase/logging/logging_isolate.dart',
       'TomIsolateLogOutput': 'package:tom_core_kernel/src/tombase/logging/logging_isolate.dart',
@@ -1167,6 +1171,7 @@ class TomCoreKernelBridge {
       'TomWorkerException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomWorkerDiedException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomException': ['TomBaseException', 'Exception', 'TomLoggable'],
+      'TomFormattingException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomLoggingExecutor': ['TomExecutor'],
       'TomIsolateLogOutput': ['TomLogOutput'],
       'TomCreatorLogOutput': ['TomLogOutput'],
@@ -7752,6 +7757,113 @@ BridgedClass _createTomExceptionBridge() {
 }
 
 // =============================================================================
+// TomFormattingException Bridge
+// =============================================================================
+
+BridgedClass _createTomFormattingExceptionBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_17.TomFormattingException,
+    name: 'TomFormattingException',
+    isAssignable: (v) => v is $tom_core_kernel_17.TomFormattingException,
+    hierarchyDepth: 4,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomFormattingException');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomFormattingException');
+        final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomFormattingException');
+        final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
+        final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
+        final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
+        return $tom_core_kernel_17.TomFormattingException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
+      },
+    },
+    getters: {
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').serverCallError,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').logRepresentation,
+    },
+    setters: {
+      'uuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+      'requestUuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+      'timeStamp': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+      'key': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').key = D4.extractBridgedArg<String>(value, 'key'),
+      'defaultUserMessage': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+      'stack': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+      'rootException': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+      'stackTrace': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+      'autoLog': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+      'serverCallError': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_11.TomServerCallError>(value, 'serverCallError'),
+    },
+    methods: {
+      'toString': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException');
+        return t.toString();
+      },
+      'printStackTrace': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_17.TomFormattingException>(target, 'TomFormattingException');
+        final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
+        t.printStackTrace(depth);
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomFormattingException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})',
+    },
+    methodSignatures: {
+      'toString': 'String toString()',
+      'printStackTrace': 'void printStackTrace([int depth = -1])',
+    },
+    getterSignatures: {
+      'uuid': 'String get uuid',
+      'requestUuid': 'String? get requestUuid',
+      'timeStamp': 'DateTime get timeStamp',
+      'key': 'String get key',
+      'defaultUserMessage': 'String get defaultUserMessage',
+      'parameters': 'Map<String, Object?>? get parameters',
+      'stack': 'Object? get stack',
+      'rootException': 'Object? get rootException',
+      'stackTrace': 'String get stackTrace',
+      'autoLog': 'bool get autoLog',
+      'serverCallError': 'TomServerCallError? get serverCallError',
+      'logRepresentation': 'String get logRepresentation',
+    },
+    setterSignatures: {
+      'uuid': 'set uuid(String value)',
+      'requestUuid': 'set requestUuid(String? value)',
+      'timeStamp': 'set timeStamp(DateTime value)',
+      'key': 'set key(String value)',
+      'defaultUserMessage': 'set defaultUserMessage(String value)',
+      'parameters': 'set parameters(Map<String, Object?>? value)',
+      'stack': 'set stack(Object? value)',
+      'rootException': 'set rootException(Object? value)',
+      'stackTrace': 'set stackTrace(String value)',
+      'autoLog': 'set autoLog(bool value)',
+      'serverCallError': 'set serverCallError(TomServerCallError? value)',
+    },
+  );
+}
+
+// =============================================================================
 // TomLoggingExecutor Bridge
 // =============================================================================
 
@@ -7965,7 +8077,7 @@ BridgedClass _createTomCreatorLogOutputBridge() {
     },
     staticSetters: {
       'fallbackOutput': (visitor, value) => 
-        $tom_core_kernel_20.TomCreatorLogOutput.fallbackOutput = D4.extractBridgedArg<$tom_basics_2.TomConsoleLogOutput>(value, 'fallbackOutput'),
+        $tom_core_kernel_20.TomCreatorLogOutput.fallbackOutput = D4.extractBridgedArg<$tom_basics_2.TomLogOutput>(value, 'fallbackOutput'),
     },
     constructorSignatures: {
       '': 'TomCreatorLogOutput()',
@@ -7975,7 +8087,7 @@ BridgedClass _createTomCreatorLogOutputBridge() {
       'convertToString': 'String convertToString(Object message)',
     },
     staticGetterSignatures: {
-      'fallbackOutput': 'TomConsoleLogOutput get fallbackOutput',
+      'fallbackOutput': 'TomLogOutput get fallbackOutput',
     },
     staticSetterSignatures: {
       'fallbackOutput': 'set fallbackOutput(dynamic value)',
@@ -9404,6 +9516,7 @@ BridgedClass _createTomResultBridge() {
           case $tom_core_kernel_25.TomDateTimeRange _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_25.TomDateTimeRange>.success(value);
           case $tom_core_kernel_4.TomEndpointException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_4.TomEndpointException>.success(value);
           case $tom_core_kernel_5.TomFileTransferException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_5.TomFileTransferException>.success(value);
+          case $tom_core_kernel_17.TomFormattingException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_17.TomFormattingException>.success(value);
           case $tom_core_kernel_25.TomList _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_25.TomList>.success(value);
           case $tom_core_kernel_9.TomMimeTypeException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_9.TomMimeTypeException>.success(value);
           case $tom_core_kernel_25.TomNOZonedDate _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_25.TomNOZonedDate>.success(value);
@@ -15776,6 +15889,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_25.TomDateTimeRange _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_25.TomDateTimeRange>(initialValue);
           case $tom_core_kernel_4.TomEndpointException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_4.TomEndpointException>(initialValue);
           case $tom_core_kernel_5.TomFileTransferException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_5.TomFileTransferException>(initialValue);
+          case $tom_core_kernel_17.TomFormattingException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_17.TomFormattingException>(initialValue);
           case $tom_core_kernel_25.TomList _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_25.TomList>(initialValue);
           case $tom_core_kernel_9.TomMimeTypeException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_9.TomMimeTypeException>(initialValue);
           case $tom_core_kernel_25.TomNOZonedDate _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_25.TomNOZonedDate>(initialValue);

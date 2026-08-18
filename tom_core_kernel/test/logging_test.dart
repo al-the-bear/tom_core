@@ -2069,15 +2069,29 @@ void main() {
     });
 
     group('output', () {
-      late _MockConsoleLogOutput fallback;
+      // The double is a plain [TomLogOutput], not a [TomConsoleLogOutput].
+      // That is the point of the group: the slot is declared `TomLogOutput`,
+      // so any sink can be installed here — a file, a collector, a capture.
+      // Typing the field to the concrete console class made the console the
+      // only substitutable fallback and forced tests and examples to subclass
+      // it purely to satisfy the declaration.
+      late _MockLogOutput fallback;
 
       setUp(() {
-        fallback = _MockConsoleLogOutput();
+        fallback = _MockLogOutput();
         TomCreatorLogOutput.fallbackOutput = fallback;
       });
 
       tearDown(() {
         TomCreatorLogOutput.fallbackOutput = TomConsoleLogOutput();
+      });
+
+      test('accepts a fallback that is not a console output', () {
+        expect(TomCreatorLogOutput.fallbackOutput, same(fallback));
+        expect(
+          TomCreatorLogOutput.fallbackOutput,
+          isNot(isA<TomConsoleLogOutput>()),
+        );
       });
 
       test('falls back to local output when not in a worker isolate', () {
@@ -2097,6 +2111,14 @@ void main() {
 
         expect(fallback.outputCalled, isTrue);
         expect(fallback.lastMessage, equals('creator message'));
+        // The whole record is handed on, not just the text: the fallback is a
+        // peer of the creator channel, so it has to see what that channel
+        // would have carried.
+        expect(fallback.lastLoggerLevel, equals(TomLogLevel.production));
+        expect(fallback.lastLogLevel, equals(TomLogLevel.info));
+        expect(fallback.lastLevel, equals('INFO   '));
+        expect(fallback.lastIsolateName, equals('main'));
+        expect(fallback.lastTimeStamp, equals(DateTime(2026, 1, 2)));
       });
 
       test('does not output when the level is gated out', () {
@@ -2269,30 +2291,6 @@ class _MockLogOutput extends TomLogOutput {
     lastLogLevel = null;
     outputCalled = false;
     messages.clear();
-  }
-}
-
-/// Console-typed mock used where the slot is statically typed
-/// [TomConsoleLogOutput] (e.g. [TomCreatorLogOutput.fallbackOutput]). Records
-/// the last call without writing to the real console.
-class _MockConsoleLogOutput extends TomConsoleLogOutput {
-  String? lastMessage;
-  bool outputCalled = false;
-
-  @override
-  void output(
-    TomLogLevel loggerLevel,
-    TomLogLevel logLevel,
-    String level,
-    Object message,
-    String isolateName,
-    DateTime timeStamp, [
-    String? origin,
-  ]) {
-    outputCalled = true;
-    if (logLevel.matches(loggerLevel)) {
-      lastMessage = convertToString(message);
-    }
   }
 }
 

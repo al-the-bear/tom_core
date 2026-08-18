@@ -240,8 +240,10 @@ class TomIsolateLogOutput extends TomLogOutput {
 /// Use this in worker isolates to route all log messages back to the
 /// main isolate for centralized processing.
 ///
-/// If the connection to the creator isolate is not available, falls back
-/// to console output via [fallbackOutput].
+/// If the connection to the creator isolate is not available, falls back to
+/// [fallbackOutput] — any [TomLogOutput], defaulting to the console. A worker
+/// that cannot reach its creator is precisely the case where the records
+/// matter most, so where they land is configurable rather than fixed.
 ///
 /// ## Setup
 ///
@@ -254,7 +256,16 @@ class TomCreatorLogOutput extends TomLogOutput {
   TomCreatorLogOutput();
 
   /// Fallback output used when the creator connection is unavailable.
-  static TomConsoleLogOutput fallbackOutput = TomConsoleLogOutput();
+  ///
+  /// Declared as the [TomLogOutput] interface, not the concrete console class:
+  /// this slot is a substitution point, and nothing in [output] needs more
+  /// than the sink contract. Typing it concretely would mean a worker whose
+  /// creator channel is missing could only ever fall back to the console —
+  /// exactly when its records are least likely to be watched. The default is
+  /// still a [TomConsoleLogOutput], so unconfigured behaviour is unchanged;
+  /// this mirrors `TomRemoteLogOutput.globalSettingFallbackOutput`, which was
+  /// already declared this way.
+  static TomLogOutput fallbackOutput = TomConsoleLogOutput();
 
   @override
   void output(
