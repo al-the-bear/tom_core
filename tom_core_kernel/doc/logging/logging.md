@@ -260,10 +260,36 @@ Everything above that touches a Tom type is copied from steps 3 and 4 of
 `example/samples/logging/05_isolate_and_remote_logging_example.dart`, where it
 is compiled, analyzed and asserted. Only the routing (`router.post`,
 `Response.ok`) is illustrative, since that belongs to whichever HTTP framework
-the collector is built on. Change the Tom half there and copy it out: this
-section previously showed a `baseUrl`/`path` endpoint constructor and
-`fromJson`/`toJson` methods that do not exist, because a document, unlike an
-example, cannot fail to build.
+the collector is built on. Change the Tom half there and copy it out: a
+document, unlike an example, cannot fail to build.
+
+##### What the collector does to an untrusted record
+
+Every field of a received message is controlled by whoever sent it, and
+`receive` reconstructs those fields into the collector's *own* log stream. Two
+things are done to each field before it reaches `localOutput`.
+
+**Control characters are removed** — the C0 range (`0x00`–`0x1F`, which is
+CR, LF, TAB and ESC) and the C1 range (`0x7F`–`0x9F`). Left in, a CR/LF lets a
+client forge extra log lines and an ESC lets it inject terminal escape
+sequences into a console reading the log: CWE-117, improper output
+neutralization for logs.
+
+**Length is capped** at 8192 UTF-16 code units per field, so one oversized
+field cannot exhaust the sink. A field that is cut ends in `…[truncated]`,
+inside the cap rather than past it — a silently shortened record reads as a
+complete one, and the reader could not otherwise tell a client that sent 8 KB
+from one that sent 8 MB. Only length truncation is marked; dropping a control
+character does not shorten what the field says.
+
+The cap is per field. A record's bound follows from it — four sanitized fields,
+so at most four times the cap per `receive` call — and that is the intended
+protection: a second, whole-record budget would have to decide which field to
+sacrifice when a record is collectively too large, and no rule makes that choice
+better than the per-field one does. How *many* records a client may send is not
+bounded here at all; that belongs to the transport, and a collector endpoint
+should sit behind the same authentication and rate limiting as any other write
+endpoint.
 
 ##### When the collector refuses a record
 

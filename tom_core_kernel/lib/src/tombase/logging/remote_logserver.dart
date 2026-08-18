@@ -35,9 +35,9 @@
 ///
 /// The serialisation half of that snippet is a copy of step 4 of
 /// `example/samples/logging/05_isolate_and_remote_logging_example.dart`, where
-/// the round-trip runs and is asserted. Change it there and copy it out: this
-/// documentation previously showed `TomRemoteLogMessage.fromJson` and
-/// `result.toJson()`, neither of which exists.
+/// the round-trip runs and is asserted. Change it there and copy it out: prose
+/// cannot fail to build, and neither message type carries a `fromJson` or
+/// `toJson` for a snippet to reach for by habit.
 ///
 /// See also:
 /// - [TomRemoteLogOutput] for the client-side implementation
@@ -87,6 +87,21 @@ import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.da
 /// ```
 /// 2024-01-15T10:30:00.000Z client-001_main INFO   Application started
 /// ```
+///
+/// ## Bounds on an untrusted record
+///
+/// Every field of a received message is attacker-controlled, so each one is
+/// capped as it is sanitized — 8192 UTF-16 code units, with the cut announced
+/// by a `…[truncated]` suffix inside that limit rather than past it.
+///
+/// The cap is per field, and deliberately so: a record's bound follows from it
+/// — four sanitized fields, so at most four times the cap reaches [localOutput]
+/// from one [receive] call — and a second, whole-record budget would have to
+/// choose which field to sacrifice when the record as a whole is too large, a
+/// choice no rule here can make better than the per-field one. What is *not*
+/// bounded here is how many records a client may send; that is a property of
+/// the transport, and a collector endpoint belongs behind the same
+/// authentication and rate limiting as any other write endpoint.
 ///
 /// ## Refusals
 ///
@@ -177,8 +192,19 @@ class TomRemoteLogServer {
     }
   }
 
-  /// Maximum length of any single sanitized remote-log field.
+  /// Maximum length of any single sanitized remote-log field, in UTF-16 code
+  /// units.
+  ///
+  /// Code units rather than runes because that is the unit the cap is meant to
+  /// bound — what the field costs the sink — and the unit `String.length`
+  /// reports, so the value a caller measures is the value checked here.
   static const int _maxFieldLength = 8192;
+
+  /// Appended in place of the cut text when a field exceeds [_maxFieldLength].
+  ///
+  /// Counted against the cap rather than added to it, so the returned field is
+  /// never longer than [_maxFieldLength].
+  static const String _truncationMarker = '…[truncated]';
 
   /// Removes control characters from an untrusted remote-log field and bounds
   /// its length.
@@ -191,15 +217,37 @@ class TomRemoteLogServer {
   /// the C0 controls (`0x00`–`0x1F`, including CR/LF/TAB/ESC) and the C1
   /// controls (`0x7F`–`0x9F`), and caps the field at [_maxFieldLength] so a
   /// single oversized field cannot exhaust the sink.
+  ///
+  /// A capped field ends in [_truncationMarker]: a silently shortened record
+  /// reads as a complete one that happens to end where it does, and the reader
+  /// has no way to tell a client that sent 8 KB from one that sent 8 MB. Only
+  /// length truncation is marked — dropping a control character neutralizes
+  /// the field without shortening what it says.
+  ///
+  /// Iteration is by rune so a surrogate pair is never split, but each rune's
+  /// width is added to the running total *before* it is written, so the cap
+  /// cannot be overshot by the second half of an astral character. Runes are
+  /// buffered in two parts: [head] holds what still fits once the marker is
+  /// reserved, [tail] the rest, which is kept only if the input ends before
+  /// anything has to be cut.
   static String _sanitize(String value) {
-    final buffer = StringBuffer();
+    final head = StringBuffer();
+    final tail = StringBuffer();
+    final headLimit = _maxFieldLength - _truncationMarker.length;
+    var length = 0;
     for (final rune in value.runes) {
       if (rune < 0x20 || (rune >= 0x7F && rune <= 0x9F)) {
         continue; // drop the control character
       }
-      buffer.writeCharCode(rune);
-      if (buffer.length >= _maxFieldLength) break;
+      final width = rune > 0xFFFF ? 2 : 1;
+      if (length + width > _maxFieldLength) {
+        // Stop reading here: the rest of a hostile field must not be walked,
+        // let alone materialized.
+        return '$head$_truncationMarker';
+      }
+      (length + width <= headLimit ? head : tail).writeCharCode(rune);
+      length += width;
     }
-    return buffer.toString();
+    return '$head$tail';
   }
 }

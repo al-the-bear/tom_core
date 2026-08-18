@@ -450,7 +450,12 @@ prefixing the isolate name with the sender ID.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `receive` | `TomRemoteLogResult receive(TomRemoteLogMessage m)` | Reconstructs the log entry from `m`, sanitizes control characters and bounds field length (CWE-117 hardening), outputs it via `localOutput`, and returns a success or error `TomRemoteLogResult`. On failure the caught error is folded into `errorMessage` and the refusal is also logged locally at error level. |
+| `receive` | `TomRemoteLogResult receive(TomRemoteLogMessage m)` | Reconstructs the log entry from `m`, strips control characters and caps each field at 8192 UTF-16 code units — a cut field ends in `…[truncated]` inside that cap (CWE-117 hardening) — outputs it via `localOutput`, and returns a success or error `TomRemoteLogResult`. On failure the caught error is folded into `errorMessage` and the refusal is also logged locally at error level. |
+
+The cap is per field, so the bound on one `receive` call is four times it, over
+the four sanitized fields; the number of calls is the transport's concern, not
+this class's. See `doc/logging/logging.md` § "What the collector does to an
+untrusted record".
 
 `receive` takes an already-decoded message and returns an object, so moving
 either across the wire is the HTTP handler's job — see `TomRemoteLogMessage`

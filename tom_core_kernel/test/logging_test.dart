@@ -1105,6 +1105,130 @@ void main() {
         expect(mockOutput.lastOrigin, equals('TestClass.method'));
       });
     });
+
+    // Security §3 (CWE-117), length half: sanitizing bounds each untrusted
+    // field as well as stripping it. The cap is stated in UTF-16 code units —
+    // the unit `String.length` counts and the unit that decides what the field
+    // costs the sink — and truncation says so in the record, because a field
+    // that is silently shortened reads as a complete field that happens to end
+    // where it does.
+    group('field length cap', () {
+      /// Mirrors the private `TomRemoteLogServer._maxFieldLength`.
+      const maxFieldLength = 8192;
+
+      /// Mirrors the private `TomRemoteLogServer._truncationMarker`.
+      const marker = '…[truncated]';
+
+      TomRemoteLogMessage messageWith(String text) =>
+          TomRemoteLogMessage.of(
+            TomLogLevel.production.levelPattern,
+            TomLogLevel.info.levelPattern,
+            'INFO   ',
+            text,
+            'worker-1',
+            '2026-01-02T12:00:00.000',
+            'TestClass.method',
+          );
+
+      test('marks an ASCII field truncated at the cap', () {
+        final server = TomRemoteLogServer();
+
+        server.receive(messageWith('a' * 10000));
+
+        final logged = mockOutput.lastMessage!;
+        // The marker is inside the cap, not appended past it: the whole point
+        // of the bound is that nothing downstream sees more than this.
+        expect(logged.length, equals(maxFieldLength));
+        expect(logged, endsWith(marker));
+        expect(logged.substring(0, logged.length - marker.length),
+            equals('a' * (maxFieldLength - marker.length)));
+      });
+
+      test('passes a field of exactly the cap through unmarked', () {
+        final server = TomRemoteLogServer();
+        final atLimit = 'a' * maxFieldLength;
+
+        server.receive(messageWith(atLimit));
+
+        // Nothing was cut, so there is nothing to announce.
+        expect(mockOutput.lastMessage, equals(atLimit));
+        expect(mockOutput.lastMessage, isNot(contains(marker)));
+      });
+
+      test('marks a field one code unit over the cap', () {
+        final server = TomRemoteLogServer();
+
+        server.receive(messageWith('a' * (maxFieldLength + 1)));
+
+        expect(mockOutput.lastMessage!.length, equals(maxFieldLength));
+        expect(mockOutput.lastMessage, endsWith(marker));
+      });
+
+      test('truncates astral characters at the same cap, whole', () {
+        // Each emoji is one rune but two UTF-16 code units. Counting runes
+        // while measuring code units halves the effective cap for astral text
+        // and can overshoot it by one unit mid-surrogate-pair, leaving an
+        // unpaired surrogate in the sink.
+        final server = TomRemoteLogServer();
+        const emoji = '🎉';
+
+        server.receive(messageWith(emoji * 5000));
+
+        final logged = mockOutput.lastMessage!;
+        expect(logged.length, equals(maxFieldLength));
+        expect(logged, endsWith(marker));
+        final kept = logged.substring(0, logged.length - marker.length);
+        // No surrogate pair was split: the kept text is whole emoji, and its
+        // code-unit length is twice its rune count.
+        expect(kept, equals(emoji * ((maxFieldLength - marker.length) ~/ 2)));
+        expect(kept.length, equals(kept.runes.length * 2));
+      });
+
+      test('applies the cap to every untrusted field independently', () {
+        // The cap is per field, so a record's bound is derived, not separate:
+        // four sanitized fields cannot exceed four times the cap. That bound
+        // is the intended protection — see the class dartdoc.
+        final server = TomRemoteLogServer();
+        final long = 'x' * 20000;
+        final message = TomRemoteLogMessage.of(
+          TomLogLevel.production.levelPattern,
+          TomLogLevel.info.levelPattern,
+          long,
+          long,
+          long,
+          '2026-01-02T12:00:00.000',
+          long,
+        );
+        message.sender = long;
+
+        server.receive(message);
+
+        final fields = <String>[
+          mockOutput.lastMessage!,
+          mockOutput.lastLevel!,
+          mockOutput.lastIsolateName!,
+          mockOutput.lastOrigin!,
+        ];
+        for (final field in fields) {
+          expect(field.length, equals(maxFieldLength));
+          expect(field, endsWith(marker));
+        }
+        expect(fields.fold<int>(0, (sum, f) => sum + f.length),
+            lessThanOrEqualTo(fields.length * maxFieldLength));
+      });
+
+      test('does not mark a field shortened only by control stripping', () {
+        // Dropping control characters is neutralization, not truncation: the
+        // record is complete, and claiming otherwise would be a false alarm on
+        // every CR/LF-bearing field.
+        final server = TomRemoteLogServer();
+
+        server.receive(messageWith('line one\r\nline two'));
+
+        expect(mockOutput.lastMessage, equals('line oneline two'));
+        expect(mockOutput.lastMessage, isNot(contains(marker)));
+      });
+    });
   });
 
   // =========================================================================
