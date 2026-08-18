@@ -357,8 +357,10 @@ TomInMemoryLogReplayStore()
 File-backed `TomLogReplayStore` for durable replay buffering. Records are held
 in memory and mirrored to a JSON file on every mutation (flushed to disk before
 returning); constructing the store reloads any records previously written, so
-the buffer survives a process restart during an endpoint outage. Requires
-`dart:io` and is therefore not available on the web.
+the buffer survives a process restart during an endpoint outage. Each write
+goes to a sibling temp file that is renamed into place, so a process killed
+mid-write leaves either the previous queue or the new one, never a half-written
+array. Requires `dart:io` and is therefore not available on the web.
 
 - **Implements:** `TomLogReplayStore`
 
@@ -369,8 +371,23 @@ TomFileLogReplayStore(String path)
 ```
 
 Creates a store backed by `path`, loading any previously persisted records.
-Parent directories are created on the first write. A missing, empty or
-non-list file yields an empty queue.
+Parent directories are created on the first write. A missing or empty file
+yields an empty queue and is not treated as damage.
+
+Never throws because of the file's content — the store is normally constructed
+during startup, so throwing would let a past crash prevent the next start. A
+file that cannot be read (invalid JSON, a truncated array, a non-list top
+level, unreadable bytes) is handled by salvaging whatever records are readable,
+moving the previous content aside to `<path>.corrupt` so it survives for
+diagnosis instead of being overwritten, and reporting the loss through
+`TomRemoteLogOutput.globalSettingFallbackOutput` as a single-line warning
+naming the path, the cause and the number of dropped entries.
+
+A well-formed array with unusable entries keeps its usable records, so partial
+damage does not present as an empty queue. Anything the decoder cannot parse at
+all yields an empty queue — JSON parses all-or-nothing, so a half-written array
+has no readable prefix. That is the case a crash produces, and it is prevented
+by the atomic write rather than repaired by the load.
 
 #### Properties
 

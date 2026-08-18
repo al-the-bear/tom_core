@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -1731,6 +1732,154 @@ void main() {
           expect(recovered.accepted.map((m) => m.message),
               equals(['a', 'b', 'c']));
         });
+
+        group('corrupt file recovery', () {
+          late _MockLogOutput fallbackOutput;
+          late String path;
+
+          // The store reports through the remote output's fallback, which is
+          // the module's channel for "the logging path itself failed".
+          setUp(() {
+            fallbackOutput = _MockLogOutput();
+            TomRemoteLogOutput.globalSettingFallbackOutput = fallbackOutput;
+            path = '${tempDir.path}/queue.json';
+          });
+
+          tearDown(() {
+            TomRemoteLogOutput.globalSettingFallbackOutput =
+                TomConsoleLogOutput();
+          });
+
+          /// The file the store moves unreadable content aside to.
+          File quarantine() => File('$path.corrupt');
+
+          test('starts empty when the file is not JSON at all', () {
+            File(path).writeAsStringSync('this is not json');
+
+            // Constructing must not throw: the store is wired up during
+            // startup, so a throw here turns a past crash into a boot failure.
+            final store = TomFileLogReplayStore(path);
+
+            expect(store.length, equals(0));
+            // The loss is reported rather than silent, naming the file and
+            // why it could not be read.
+            expect(fallbackOutput.messages.join('\n'), contains(path));
+            expect(fallbackOutput.messages.join('\n'),
+                contains('could not be read'));
+            // The bad content is preserved for diagnosis instead of being
+            // overwritten by the next persist.
+            expect(quarantine().existsSync(), isTrue);
+            expect(quarantine().readAsStringSync(), equals('this is not json'));
+          });
+
+          test('starts empty when a crash truncated the array', () {
+            // Exactly what a process killed mid-write leaves behind.
+            File(path).writeAsStringSync('[{"message":"a"},');
+
+            final store = TomFileLogReplayStore(path);
+
+            expect(store.length, equals(0));
+            expect(fallbackOutput.messages.join('\n'),
+                contains('could not be read'));
+            expect(quarantine().readAsStringSync(),
+                equals('[{"message":"a"},'));
+          });
+
+          test('starts empty when the top level is not a list', () {
+            File(path).writeAsStringSync('{"not":"a list"}');
+
+            final store = TomFileLogReplayStore(path);
+
+            expect(store.length, equals(0));
+            expect(fallbackOutput.messages.join('\n'),
+                contains('could not be read'));
+            expect(quarantine().existsSync(), isTrue);
+          });
+
+          test('keeps the readable records and reports the skipped ones', () {
+            // Partial corruption: two usable records among three junk entries.
+            final good = _encodeForTest(record('a'));
+            final alsoGood = _encodeForTest(record('b'));
+            File(path).writeAsStringSync(
+                jsonEncode([1, good, 'nonsense', alsoGood, null]));
+
+            final store = TomFileLogReplayStore(path);
+
+            // The recoverable records are recovered — partial corruption must
+            // not present as "the queue was empty".
+            expect(store.snapshot().map((m) => m.message), equals(['a', 'b']));
+            // The three dropped entries are counted, not silently discarded.
+            final reported = fallbackOutput.messages.join('\n');
+            expect(reported, contains('3'));
+            expect(reported, contains(path));
+            expect(quarantine().existsSync(), isTrue);
+          });
+
+          test('re-persists what it recovered so the next restart sees it',
+              () {
+            final good = _encodeForTest(record('kept'));
+            File(path).writeAsStringSync(jsonEncode([good, 'junk']));
+
+            // First store salvages one record out of the damaged file.
+            expect(TomFileLogReplayStore(path).length, equals(1));
+
+            // A restart must see the salvaged record: recovery is only real if
+            // it survives, and the damaged original is gone by then.
+            final afterRestart = TomFileLogReplayStore(path);
+            expect(afterRestart.snapshot().map((m) => m.message),
+                equals(['kept']));
+          });
+
+          test('reports nothing and quarantines nothing for a healthy file',
+              () {
+            final store = TomFileLogReplayStore(path);
+            store.append(record('a'));
+
+            fallbackOutput.messages.clear();
+            final reopened = TomFileLogReplayStore(path);
+
+            expect(reopened.snapshot().map((m) => m.message), equals(['a']));
+            expect(fallbackOutput.messages, isEmpty);
+            expect(quarantine().existsSync(), isFalse);
+          });
+
+          test('an empty file is not treated as corruption', () {
+            // A zero-byte file is what `touch` or a create-then-crash leaves;
+            // it carries no records but nothing was lost either.
+            File(path).writeAsStringSync('   ');
+
+            final store = TomFileLogReplayStore(path);
+
+            expect(store.length, equals(0));
+            expect(fallbackOutput.messages, isEmpty);
+            expect(quarantine().existsSync(), isFalse);
+          });
+
+          test('a failing fallback never escapes the constructor', () {
+            // The reporting channel is itself part of the logging path, so it
+            // can be broken too. Reporting a loss must not become the crash.
+            TomRemoteLogOutput.globalSettingFallbackOutput =
+                _ThrowingLogOutput();
+            File(path).writeAsStringSync('this is not json');
+
+            expect(TomFileLogReplayStore(path).length, equals(0));
+          });
+
+          test('persist leaves no temp file behind', () {
+            final store = TomFileLogReplayStore(path);
+            store.append(record('a'));
+            store.append(record('b'));
+            store.removeOldest();
+
+            // The write goes through a temp file that is renamed into place;
+            // a leftover would mean the rename did not happen.
+            final names = tempDir
+                .listSync()
+                .map((e) => e.path.split(Platform.pathSeparator).last)
+                .toList();
+            expect(names, equals(['queue.json']));
+          });
+        });
       });
     });
   });
@@ -1937,6 +2086,37 @@ TomLoggingWorkerContext _testLoggingContext() {
 // =============================================================================
 // TEST HELPERS
 // =============================================================================
+
+/// Mirrors the on-disk record shape of [TomFileLogReplayStore] so a test can
+/// hand-craft a replay file (including a damaged one) without going through
+/// the store, whose encoder is private.
+Map<String, Object?> _encodeForTest(TomRemoteLogMessage message) => {
+      'sender': message.sender,
+      'timeStamp': message.timeStamp,
+      'loggerLevel': message.loggerLevel,
+      'logLevel': message.logLevel,
+      'level': message.level,
+      'message': message.message,
+      'isolateName': message.isolateName,
+      'origin': message.origin,
+    };
+
+/// A fallback output that fails on every call, standing in for a reporting
+/// channel that is itself broken.
+class _ThrowingLogOutput extends TomLogOutput {
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    throw StateError('fallback output is broken');
+  }
+}
 
 /// Mock log output for testing
 class _MockLogOutput extends TomLogOutput {

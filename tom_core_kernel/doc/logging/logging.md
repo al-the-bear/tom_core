@@ -290,6 +290,38 @@ requires `dart:io`, so it is not available on the web. Implement
 `TomLogReplayStore` yourself to back the queue with anything else that preserves
 arrival order.
 
+Each mutation is written to a sibling temp file and renamed into place, so a
+process killed mid-write leaves either the previous queue or the new one, never
+a half-written array.
+
+Constructing the store never throws because of the file's content. That matters
+because the store is normally wired up during startup: a constructor that threw
+on a damaged file would let a past crash prevent the next start, so the durable
+buffer would take down the process it exists to protect. A file that cannot be
+read is instead handled by
+
+- salvaging whatever records are readable;
+- moving the previous content aside to `<path>.corrupt`, so it is preserved for
+  diagnosis instead of being overwritten by the next write; and
+- reporting the loss through `globalSettingFallbackOutput` — a single-line
+  warning naming the path, what went wrong, and how many entries were dropped.
+
+How much can be salvaged depends on where the damage is, and the two cases are
+worth telling apart:
+
+| On-disk state | Result |
+| ------------- | ------ |
+| A well-formed array with unusable entries among the records | The usable records are kept and only the bad entries are dropped, so partial damage does not present as an empty queue |
+| Anything JSON cannot parse — a truncated array, unreadable bytes, a non-list top level | An empty queue. JSON parses all-or-nothing, so a half-written array has no readable prefix to recover |
+
+The second row is the shape a crash actually produces, which is why writes are
+atomic: preventing the truncation is the only thing that saves those records,
+because recovery cannot.
+
+An empty or missing file is not damage: it loads as an empty queue and is not
+reported. The `<path>.corrupt` file holds only the most recent damaged content;
+a later corruption replaces it.
+
 ### Multi-Isolate Logging
 
 ```dart

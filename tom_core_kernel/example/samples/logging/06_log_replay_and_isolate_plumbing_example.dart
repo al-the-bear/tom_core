@@ -32,6 +32,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -493,6 +494,46 @@ Future<void> run() async {
       durableRecovered.accepted.map((m) => m.message).toList();
   final durableQueueAfter = TomRemoteLogOutput.replayQueueLength;
 
+  // A record in the store's on-disk shape, for hand-building damaged files.
+  String onDisk(String message) => jsonEncode({
+        'sender': '',
+        'timeStamp': fixedTime.toIso8601String(),
+        'loggerLevel': TomLogLevel.production.levelPattern,
+        'logLevel': TomLogLevel.info.levelPattern,
+        'level': TomLogger.INFO,
+        'message': message,
+        'isolateName': 'main',
+        'origin': null,
+      });
+
+  // 10d: a crash mid-write used to leave a half-written array that the next
+  // start could not open at all — the durable buffer taking down the process
+  // it exists to protect. The store now opens it, reports the loss, and moves
+  // the unreadable bytes aside for diagnosis rather than overwriting them.
+  // Nothing is salvaged here, and that is not a shortcoming of the recovery:
+  // JSON parses all-or-nothing, so a truncated array has no readable prefix.
+  File(storePath).writeAsStringSync('[${onDisk('lost to truncation')}, "half');
+  durableFallback.messages.clear();
+  final afterCrash = TomFileLogReplayStore(storePath);
+  final crashSalvaged = afterCrash.snapshot().map((m) => m.message).toList();
+  final crashReported =
+      durableFallback.messages.any((m) => m.contains('could not be read'));
+  final quarantined = File('$storePath.corrupt').existsSync();
+
+  // 10e: damage the parser *can* see past — a well-formed array with junk
+  // among the records. Here salvage is real: the readable records are kept
+  // and only the junk is dropped, so partial damage no longer presents as an
+  // empty queue. The count of what was dropped is reported.
+  File(storePath).writeAsStringSync(
+      '[1, ${onDisk('kept A')}, "junk", ${onDisk('kept B')}]');
+  durableFallback.messages.clear();
+  final afterPartial = TomFileLogReplayStore(storePath);
+  final partialSalvaged =
+      afterPartial.snapshot().map((m) => m.message).toList();
+  final partialReport = durableFallback.messages.firstWhere(
+      (m) => m.contains('unreadable'),
+      orElse: () => '');
+
   // Restore defaults (back to the zero-config in-memory store) and clean up.
   TomRemoteLogOutput.globalSettingFallbackOutput = originalRemoteFallback;
   TomRemoteLogOutput.remoteEndpoint = null;
@@ -505,6 +546,9 @@ Future<void> run() async {
   print('   10b after restart:  reloaded=$reloadedAfterRestart from disk');
   print('   10c drain:          accepted=$durableDrained, '
       'queue now $durableQueueAfter');
+  print('   10d truncated file: salvaged=$crashSalvaged, '
+      'reported=$crashReported, quarantined=$quarantined');
+  print('   10e partial damage: salvaged=$partialSalvaged');
   print('');
 
   // ===========================================================================
@@ -589,6 +633,17 @@ Future<void> run() async {
   assert(durableDrained[1] == 'queued before restart B');
   assert(durableDrained[2] == 'after restart C');
   assert(durableQueueAfter == 0); // queue fully drained after recovery
+  // A truncated file opens instead of throwing. Nothing survives it — JSON
+  // has no readable prefix — but the loss is reported and the bytes kept.
+  assert(crashSalvaged.isEmpty);
+  assert(crashReported);
+  assert(quarantined);
+  // Damage the parser can see past is salvaged: the two records survive and
+  // only the two junk entries are dropped, with the count reported.
+  assert(partialSalvaged.length == 2);
+  assert(partialSalvaged[0] == 'kept A');
+  assert(partialSalvaged[1] == 'kept B');
+  assert(partialReport.contains('2 unreadable entries'));
 }
 
 /// Console-typed capturing sink for slots statically typed
