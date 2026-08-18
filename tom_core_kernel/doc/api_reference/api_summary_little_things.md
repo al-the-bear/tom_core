@@ -10,6 +10,7 @@ and a UTC-offset formatting helper.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomException](#tomexception)
+  - [TomFormattingException](#tomformattingexception)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -30,6 +31,18 @@ execution wrappers (`runChecked`, `runCheckedSync`), and stack-trace formatting
 that folds out framework noise (`tomPrintStackTrace`, `tomGetStackTrace`,
 `tomGetStackTraceAsList`, `tomGetStackTraceAsTuple`). `convertMinutesToUtcOffset`
 formats a minute offset as an ISO 8601 UTC-offset string.
+
+That last function is the one place in the module that *does* throw. Its hour
+field is two digits wide and the padding never truncates, so an unbounded
+offset would render as `+100:00` — silently accepted here, rejected by every
+ISO 8601 parser downstream. It therefore rejects anything outside ±840 minutes
+(±14:00) with a `TomFormattingException`. The bound is the reachable range of
+the packaged IANA data rather than a guess: scanning every location's
+transition table yields −720 (Pacific/Kanton) through +840 (Asia/Anadyr) and
+nothing beyond, so it never refuses a value the timezone API can produce, and
+it is inclusive because Asia/Anadyr sits exactly on it. Raising is right here
+and wrong for the trace formatters below, because this runs on the ordinary
+path rather than while reporting some other failure.
 
 The two zone accessors key on the **exact** `Type`. `Zone.current[T]` is a map
 lookup matched by `==`, and `Zone` exposes no way to enumerate its keys, so no
@@ -73,6 +86,7 @@ it first.
 ```
 TomBaseException  (tom_basics)
     └── TomException  (implements TomLoggable)
+            └── TomFormattingException
 ```
 
 ## Classes
@@ -125,6 +139,28 @@ the trace is taken inside it — and the creating code is the frame below.
 | ------ | --------- | ----------- |
 | `printStackTrace` | `void printStackTrace([int depth = -1])` | *(override)* Logs the exception's stack trace at ERROR level via `tomPrintStackTrace`, under the message `"$uuid-$requestUuid exception stacktrace"` — the trailing two words are literal text in the record, so a rule matching the identifier must not anchor to end of line; `depth` limits the number of frames (any negative value includes all; `-1` is the default). Despite the inherited name it does not `print` — `TomBaseException.printStackTrace` does, this override does not. Reports the construction site whether or not a `stack` was supplied. The inherited `stack` field is declared `Object?` and is publicly mutable, so a value that is not a `StackTrace` can still reach this method; it is reported as no frames at all — never as a substituted trace of the reporting site. |
 
+### TomFormattingException
+
+Thrown when a formatting function is given a value it cannot render. Currently
+raised only by `convertMinutesToUtcOffset`, under the key
+`formatting.utc_offset.out_of_range`, with the offending value in the message
+and in `parameters['totalMinutes']`.
+
+- **Extends:** `TomException`
+
+#### Constructors
+
+```dart
+TomFormattingException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog,
+})
+```
+
 ## Global Functions and Constants
 
 ### Constants
@@ -143,4 +179,4 @@ None — this module exposes no top-level constants.
 | `tomGetStackTrace` | `String tomGetStackTrace([StackTrace? s, int depth = -1])` | Returns a formatted stack trace as a newline-separated string, folding out core/`shelf`/`TomLogger` frames and this module's own formatting functions. An asynchronous trace is reported whole: every segment of the `await` chain is included, newest first, so the frames run from the throw site back to the caller that started the work. `depth` bounds the flattened chain, counting from the throw site. |
 | `tomGetStackTraceAsList` | `List<String> tomGetStackTraceAsList([StackTrace? s, int depth = -1])` | Same as `tomGetStackTrace` but returns individual frames as a list. Empty for a trace with no frames, such as `StackTrace.empty`. |
 | `tomGetStackTraceAsTuple` | `(String, List<String>) tomGetStackTraceAsTuple([StackTrace? s, int depth = -1])` | Returns the formatted stack trace as both a string and a list of frame strings. |
-| `convertMinutesToUtcOffset` | `String convertMinutesToUtcOffset(int totalMinutes)` | Converts a UTC offset in minutes to an ISO 8601 string (`"Z"`, `"+HH:MM"`, or `"-HH:MM"`). |
+| `convertMinutesToUtcOffset` | `String convertMinutesToUtcOffset(int totalMinutes)` | Converts a UTC offset in minutes to an ISO 8601 string (`"Z"`, `"+HH:MM"`, or `"-HH:MM"`). Throws `TomFormattingException` (`formatting.utc_offset.out_of_range`) outside ±840 minutes (±14:00, inclusive) — the hour field is two digits wide, so a wider offset has no valid rendering. |

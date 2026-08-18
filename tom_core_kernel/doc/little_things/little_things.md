@@ -21,7 +21,7 @@ The `little_things` module provides a collection of small but essential utilitie
 |------|---------|
 | `exception_base.dart` | Base exception class with UUID tracking and logging |
 | `little_things.dart` | Zone utilities and stack trace processing |
-| `formatting.dart` | Data formatting helpers |
+| `formatting.dart` | Data formatting helpers — UTC-offset rendering, bounded to the ±14:00 range real zones use |
 
 ## Quick Start
 
@@ -290,7 +290,34 @@ Convert minute offsets to ISO 8601 format:
 convertMinutesToUtcOffset(0);     // "Z"
 convertMinutesToUtcOffset(330);   // "+05:30" (IST)
 convertMinutesToUtcOffset(-300);  // "-05:00" (EST)
+convertMinutesToUtcOffset(840);   // "+14:00" (Line Islands — the maximum)
+convertMinutesToUtcOffset(6000);  // throws TomFormattingException
 ```
+
+Offsets are bounded to ±840 minutes (±14:00), inclusive. The hour field is two
+digits wide and the padding never truncates, so without the bound an offset of
+6000 minutes came back as `+100:00` — a string this function accepted happily
+and every ISO 8601 parser downstream rejected. Out of range it now throws
+`TomFormattingException` under the key `formatting.utc_offset.out_of_range`,
+carrying the offending value in the message and in
+`parameters['totalMinutes']`.
+
+The bound was measured, not assumed. Scanning every location's transition table
+in the packaged IANA data gives reachable offsets from −720 (Pacific/Kanton) to
++840 (Asia/Anadyr) and nothing outside, so it never refuses a value the timezone
+API can produce — and it is *inclusive* precisely because Asia/Anadyr sits
+exactly on it. (The raw `zones` tables do hold wider historical LMT records —
+Asia/Manila at −956, America/Metlakatla at +913 — but no transition selects
+them.) In practice this means offsets that came from a `TomTimezone` are always
+valid: `getUtcOffsetStringOn`, `toStringOn` and `toString` cannot throw, and
+only the static `TomTimezone.convertMinutesToUtcOffset`, which takes an
+arbitrary `int`, can.
+
+This is the one function in the module that throws, and the exception is
+deliberate rather than an inconsistency: the trace formatters stay silent
+because they run *while reporting some other failure*, which they would lose by
+raising. Formatting a timezone offset is ordinary work, and a value that no
+timezone could have produced is a caller bug better surfaced than papered over.
 
 ## Usage Examples
 
@@ -433,8 +460,9 @@ This module depends on:
 | `package:tom_basics` | `little_things.dart`, `exception_base.dart` | `TomBaseException` (the superclass of `TomException`), `TomLoggable` (which it implements), and `tomLog` for `autoLog` and `tomPrintStackTrace` |
 | **HTTP Connection Module** | `exception_base.dart` | `TomServerCallError`, the type of `TomException`'s optional `serverCallError` field |
 
-`formatting.dart` imports nothing at all — `convertMinutesToUtcOffset` is plain
-Dart arithmetic.
+`formatting.dart` imports only `exception_base.dart`, for the
+`TomFormattingException` it raises on an out-of-range offset; the formatting
+itself is plain Dart arithmetic.
 
 `tomLog` is a live global with a working default, so nothing has to be wired up
 before calling into this module; the package dependency is real nonetheless.

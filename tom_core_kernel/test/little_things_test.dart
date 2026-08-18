@@ -726,6 +726,69 @@ void main() {
         expect(convertMinutesToUtcOffset(-660), equals('-11:00'));
       });
     });
+
+    // The hour field is two digits wide and the padding never truncates, so
+    // an unbounded offset rendered as `+100:00` — accepted silently by the
+    // formatter, rejected by every ISO 8601 parser downstream. ±840 is the
+    // reachable range of the packaged IANA data (measured across every
+    // location's transition table), so the bound rejects only values that
+    // never came from a timezone in the first place.
+    group('range', () {
+      test('accepts +840, the largest real offset', () {
+        // Asia/Anadyr sits exactly here, so the bound must be inclusive.
+        expect(convertMinutesToUtcOffset(840), equals('+14:00'));
+      });
+
+      test('accepts -840', () {
+        expect(convertMinutesToUtcOffset(-840), equals('-14:00'));
+      });
+
+      test('rejects 841, one minute past the bound', () {
+        expect(
+          () => convertMinutesToUtcOffset(841),
+          throwsA(isA<TomFormattingException>().having(
+            (e) => e.key,
+            'key',
+            'formatting.utc_offset.out_of_range',
+          )),
+        );
+      });
+
+      test('rejects -841', () {
+        expect(
+          () => convertMinutesToUtcOffset(-841),
+          throwsA(isA<TomFormattingException>()),
+        );
+      });
+
+      test('rejects 6000 rather than returning "+100:00"', () {
+        // The reported defect, pinned by value: this used to produce a
+        // three-digit hour field.
+        expect(
+          () => convertMinutesToUtcOffset(6000),
+          throwsA(isA<TomFormattingException>()),
+        );
+      });
+
+      test('reports the offending value', () {
+        try {
+          convertMinutesToUtcOffset(6000);
+          fail('expected TomFormattingException');
+        } on TomFormattingException catch (e) {
+          expect(e.defaultUserMessage, contains('6000'));
+          expect(e.parameters?['totalMinutes'], equals(6000));
+        }
+      });
+
+      test('rejects the most negative int', () {
+        // Guards the `.abs()` trap: in Dart this value is its own `abs()`, so
+        // an `abs() > max` check would let precisely this one through.
+        expect(
+          () => convertMinutesToUtcOffset(-9223372036854775808),
+          throwsA(isA<TomFormattingException>()),
+        );
+      });
+    });
   });
 
   // =========================================================================

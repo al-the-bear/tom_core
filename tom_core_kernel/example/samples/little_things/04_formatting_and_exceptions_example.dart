@@ -58,6 +58,26 @@ Future<void> run() async {
   assert(ist == '+05:30', 'India Standard Time offset must be "+05:30"');
   assert(cet == '+01:00', 'Central European Time offset must be "+01:00"');
   assert(pst == '-08:00', 'Pacific Standard Time offset must be "-08:00"');
+
+  // The hour field is two digits wide, so an offset no real zone reaches has
+  // no valid rendering at all — 6000 minutes would have to be written
+  // "+100:00", which no ISO 8601 parser accepts. Rather than emit that, the
+  // function refuses anything outside ±840 minutes (±14:00), the widest offset
+  // the IANA database actually produces.
+  final lineIslands = convertMinutesToUtcOffset(840);
+  print('   840  -> "$lineIslands"  (Line Islands — the maximum)');
+  assert(lineIslands == '+14:00', 'The bound itself must still be valid');
+
+  try {
+    convertMinutesToUtcOffset(6000);
+    throw StateError('6000 minutes should have been rejected');
+  } on TomFormattingException catch (e) {
+    print('   6000 -> rejected: ${e.key}');
+    assert(e.key == 'formatting.utc_offset.out_of_range',
+        'Out-of-range offsets must report the documented key');
+    assert(e.parameters?['totalMinutes'] == 6000,
+        'The offending value must travel with the exception');
+  }
   print('');
 
   // ---------------------------------------------------------------------------

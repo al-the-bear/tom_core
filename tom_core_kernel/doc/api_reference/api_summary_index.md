@@ -126,6 +126,7 @@ declarations are omitted.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomException` | class | The kernel base exception (implements `TomLoggable`). |
+| `TomFormattingException` | class | Raised when a formatting function is given a value it cannot render. |
 | `getFromCurrentZone` | function | Reads the current zone's value for the exact key `T`. |
 | `getObjectFromCurrentZone` | function | The same lookup, key given at run time, no `is` check. |
 | `runChecked` | function | Runs an async body wrapping errors. |
@@ -134,7 +135,7 @@ declarations are omitted.
 | `tomGetStackTrace` | function | Returns a formatted stack trace string. |
 | `tomGetStackTraceAsList` | function | Returns a stack trace as a list of frames. |
 | `tomGetStackTraceAsTuple` | function | Returns a stack trace as structured tuples. |
-| `convertMinutesToUtcOffset` | function | Formats a minute offset as a UTC offset string. |
+| `convertMinutesToUtcOffset` | function | Formats a minute offset as a UTC offset string; throws outside ±14:00. |
 
 ### Logging (`lib/src/tombase/logging/`)
 

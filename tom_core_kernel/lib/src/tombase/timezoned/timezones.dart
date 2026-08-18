@@ -396,6 +396,12 @@ class TomTimezone {
   /// print(TomTimezone.convertMinutesToUtcOffset(330));  // '+05:30'
   /// ```
   ///
+  /// Throws `TomFormattingException` when [totalMinutes] lies outside ±840
+  /// (±14:00), which no real zone does — see the top-level function. An offset
+  /// obtained from this class is always inside that range, so
+  /// [getUtcOffsetStringOn], [toStringOn] and [toString] cannot throw; only
+  /// this static entry point, which takes an arbitrary `int`, can.
+  ///
   /// Delegates to the top-level [formatting.convertMinutesToUtcOffset] so the
   /// two entry points cannot drift apart; this one exists because offsets are
   /// most often formatted from a timezone.

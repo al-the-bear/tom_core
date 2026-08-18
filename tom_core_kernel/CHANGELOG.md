@@ -118,6 +118,22 @@ anyone who was writing them.
 
 ### Changed
 
+- **Breaking: `convertMinutesToUtcOffset` rejects offsets outside ±14:00.** The
+  hour field is two digits wide and the padding never truncates, so an
+  unbounded offset rendered as `+100:00` — a string the function accepted
+  happily and every ISO 8601 parser downstream rejected. Values outside ±840
+  minutes now throw the new `TomFormattingException`
+  (`formatting.utc_offset.out_of_range`), carrying the offending value in the
+  message and in `parameters['totalMinutes']`. The bound is the reachable range
+  of the packaged IANA data, measured across every location's transition table
+  (−720 Pacific/Kanton through +840 Asia/Anadyr, nothing outside), so it never
+  refuses a value the timezone API can produce; it is inclusive because
+  Asia/Anadyr sits exactly on it. Offsets obtained from a `TomTimezone` are
+  always in range, so `getUtcOffsetStringOn`, `toStringOn` and `toString`
+  cannot throw — only the static `TomTimezone.convertMinutesToUtcOffset`, which
+  takes an arbitrary `int`, can. This is the one function in `little_things`
+  that raises: the trace formatters stay silent because they run while
+  reporting some other failure, which formatting an offset does not.
 - **Breaking: `TomAccessControl` subclasses must move their rule.**
   `checkAccessibility` and `resolveAuthState` are now `@nonVirtual` — they
   compute the user/deployment meet described above, and a cap any subclass could
