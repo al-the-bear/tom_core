@@ -248,6 +248,13 @@ TomRemoteLogMessage.of(
 The default constructor is used for deserialization; `.of` populates all fields
 and copies `globalSettingSenderId` into `sender`.
 
+The type is `@tomReflector`-annotated and has no `fromJson`/`toJson` of its own:
+both directions go through `tomReflectionInfo.convertToJsonString` and
+`tomReflectionInfo.convertFromJsonString(TomRemoteLogMessage(), body)`, which is
+why an empty instance is what deserialization starts from. `TomServerEndpoint`
+takes that same route internally, so a collector decoding this way agrees with
+the sender by construction.
+
 #### Static Properties
 
 | Property | Type | Description |
@@ -444,6 +451,12 @@ prefixing the isolate name with the sender ID.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `receive` | `TomRemoteLogResult receive(TomRemoteLogMessage m)` | Reconstructs the log entry from `m`, sanitizes control characters and bounds field length (CWE-117 hardening), outputs it via `localOutput`, and returns a success or error `TomRemoteLogResult`. |
+
+`receive` takes an already-decoded message and returns an object, so moving
+either across the wire is the HTTP handler's job — see `TomRemoteLogMessage`
+above for the `tomReflectionInfo` route both directions use, and step 4 of
+`example/samples/logging/05_isolate_and_remote_logging_example.dart` for the
+round-trip running end to end.
 
 ## Global Functions and Constants
 

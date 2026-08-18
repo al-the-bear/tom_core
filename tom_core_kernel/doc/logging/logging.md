@@ -219,18 +219,51 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 void setupRemoteLogging() {
   // Configure sender identification
   TomRemoteLogMessage.globalSettingSenderId = 'frontend-01';
-  
-  // Set up remote endpoint
-  TomRemoteLogOutput.remoteEndpoint = TomServerEndpoint<
-      TomRemoteLogMessage, TomRemoteLogResult>(
-    baseUrl: 'https://logs.example.com',
-    path: '/api/logs',
-  );
-  
+
+  // Set up the remote endpoint. `TomServerEndpoint` takes a channel (host and
+  // port) and call specs (method and full URL). Building it opens no
+  // connection — the channel creates its HTTP client on the first call.
+  TomRemoteLogOutput.remoteEndpoint =
+      TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>(
+        TomServerChannel('logs.example.com', 443),
+        TomServerCallSpecs(
+          'POST',
+          Uri.parse('https://logs.example.com/api/logs'),
+        ),
+      );
+
   // Activate remote logging
   tomLog.logOutput = TomRemoteLogOutput();
 }
 ```
+
+On the collecting side, `TomRemoteLogMessage` and `TomRemoteLogResult` carry no
+`fromJson`/`toJson` of their own. Both are `@tomReflector` types, so a collector
+serialises through `tomReflectionInfo` — the same route `TomServerEndpoint.send`
+takes on the client, which is what makes the two agree by construction:
+
+```dart
+final logServer = TomRemoteLogServer();
+TomRemoteLogServer.localOutput = TomConsoleLogOutput();
+
+router.post('/remotelog', (request) async {
+  final message = tomReflectionInfo.convertFromJsonString(
+    TomRemoteLogMessage(),
+    await request.readAsString(),
+  );
+  final result = logServer.receive(message);
+  return Response.ok(tomReflectionInfo.convertToJsonString(result));
+});
+```
+
+Everything above that touches a Tom type is copied from steps 3 and 4 of
+`example/samples/logging/05_isolate_and_remote_logging_example.dart`, where it
+is compiled, analyzed and asserted. Only the routing (`router.post`,
+`Response.ok`) is illustrative, since that belongs to whichever HTTP framework
+the collector is built on. Change the Tom half there and copy it out: this
+section previously showed a `baseUrl`/`path` endpoint constructor and
+`fromJson`/`toJson` methods that do not exist, because a document, unlike an
+example, cannot fail to build.
 
 #### Delivery Resilience
 

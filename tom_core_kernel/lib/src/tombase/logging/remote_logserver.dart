@@ -18,13 +18,26 @@
 /// // Configure where received logs should be written
 /// TomRemoteLogServer.localOutput = TomConsoleLogOutput();
 ///
-/// // The endpoint expects TomRemoteLogMessage and returns TomRemoteLogResult
+/// // The endpoint expects TomRemoteLogMessage and returns TomRemoteLogResult.
+/// // Neither type carries fromJson/toJson of its own — both are @tomReflector
+/// // types, so serialisation goes through tomReflectionInfo. That is the same
+/// // route TomServerEndpoint.send takes on the client, which is what makes a
+/// // collector written this way agree with the sender by construction.
 /// router.post('/remotelog', (request) async {
-///   final message = TomRemoteLogMessage.fromJson(await request.json);
+///   final message = tomReflectionInfo.convertFromJsonString(
+///     TomRemoteLogMessage(),
+///     await request.readAsString(),
+///   );
 ///   final result = logServer.receive(message);
-///   return Response.ok(result.toJson());
+///   return Response.ok(tomReflectionInfo.convertToJsonString(result));
 /// });
 /// ```
+///
+/// The serialisation half of that snippet is a copy of step 4 of
+/// `example/samples/logging/05_isolate_and_remote_logging_example.dart`, where
+/// the round-trip runs and is asserted. Change it there and copy it out: this
+/// documentation previously showed `TomRemoteLogMessage.fromJson` and
+/// `result.toJson()`, neither of which exists.
 ///
 /// See also:
 /// - [TomRemoteLogOutput] for the client-side implementation

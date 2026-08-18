@@ -12,20 +12,10 @@
 ///
 /// ## Setup
 ///
-/// ```dart
-/// // Configure the remote endpoint
-/// TomRemoteLogOutput.remoteEndpoint = TomServerEndpoint<
-///     TomRemoteLogMessage, TomRemoteLogResult>(
-///   baseUrl: 'https://logs.example.com',
-///   path: '/api/logs',
-/// );
-///
-/// // Switch to remote logging
-/// tomLog.logOutput = TomRemoteLogOutput();
-///
-/// // Optional: Set a sender ID for this client
-/// TomRemoteLogMessage.globalSettingSenderId = 'client-001';
-/// ```
+/// See [TomRemoteLogOutput] for the wiring snippet. It is deliberately not
+/// repeated here: this library and its primary class are read together, and
+/// when the two carried the same snippet both went stale at once — each
+/// showing a `TomServerEndpoint` constructor the class does not have.
 ///
 /// See also:
 /// - [TomRemoteLogServer] for the server-side implementation
@@ -250,16 +240,31 @@ class TomInMemoryLogReplayStore implements TomLogReplayStore {
 /// ## Configuration
 ///
 /// ```dart
-/// // Set up the remote endpoint
-/// TomRemoteLogOutput.remoteEndpoint = TomServerEndpoint<
-///     TomRemoteLogMessage, TomRemoteLogResult>(
-///   baseUrl: 'https://logs.example.com',
-///   path: '/api/logs',
-/// );
+/// // Optional: identify this client in the collector's log stream.
+/// TomRemoteLogMessage.globalSettingSenderId = 'client-001';
+///
+/// // Set up the remote endpoint. TomServerEndpoint takes a channel (host and
+/// // port) and call specs (method and full URL) — there is no baseUrl/path
+/// // constructor. Building it opens no connection: the channel creates its
+/// // HTTP client lazily, on the first call.
+/// TomRemoteLogOutput.remoteEndpoint =
+///     TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>(
+///       TomServerChannel('logs.example.com', 443),
+///       TomServerCallSpecs(
+///         'POST',
+///         Uri.parse('https://logs.example.com/api/logs'),
+///       ),
+///     );
 ///
 /// // Activate remote logging
 /// tomLog.logOutput = TomRemoteLogOutput();
 /// ```
+///
+/// That snippet is a copy of step 3 of
+/// `example/samples/logging/05_isolate_and_remote_logging_example.dart`, where
+/// it is compiled, analyzed and asserted. Change it there and copy it out: it
+/// previously showed a `baseUrl`/`path` constructor that does not exist, and
+/// documentation has no build to fail.
 ///
 /// ## Fallback Behavior
 ///

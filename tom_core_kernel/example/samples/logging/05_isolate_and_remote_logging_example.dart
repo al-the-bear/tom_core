@@ -17,9 +17,22 @@
 /// participates in the aggregate sample runner. The isolate demonstration spawns
 /// a real background isolate and is therefore exposed through the standalone
 /// [main] only (see the file-level note on the runner below).
+///
+/// ## This file is the source of the documented setup snippets
+///
+/// Steps 3 and 4 below are the client-wiring and wire-format snippets that
+/// `TomRemoteLogOutput`'s and `TomRemoteLogServer`'s dartdoc, and
+/// `doc/logging/logging.md`, quote. They live here — compiled, analyzed and
+/// asserted — rather than only in prose, because prose does not fail to build:
+/// all three documented snippets once showed a `TomServerEndpoint` constructor
+/// and `fromJson`/`toJson` methods that do not exist, so the module's own
+/// on-ramp did not compile. Change the snippet here and copy it out, never the
+/// other way round.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../../run_all_samples.reflection.dart';
 
 // =============================================================================
 // REMOTE LOGGING ROUND-TRIP (deterministic; runs in the aggregate runner)
@@ -99,12 +112,77 @@ void run() {
 
   print('   fallback message: ${fallbackOutput.lastMessage}\n');
 
+  // --- Client wiring: point the output at a real collector. ------------------
+  //
+  // This is the documented setup snippet. `TomServerEndpoint` takes a
+  // *channel* (host and port) and *call specs* (method and full URL) — it has
+  // no `baseUrl`/`path` constructor. Building it opens no connection: the
+  // channel creates its HTTP client lazily on the first call, which is why the
+  // wiring can be demonstrated here without a server to talk to.
+  print('3. Remote logging — wiring the output to a collector:');
+
+  final originalEndpoint = TomRemoteLogOutput.remoteEndpoint;
+  final originalLogOutput = tomLog.logOutput;
+
+  final channel = TomServerChannel('logs.example.com', 443);
+  TomRemoteLogOutput.remoteEndpoint =
+      TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>(
+        channel,
+        TomServerCallSpecs(
+          'POST',
+          Uri.parse('https://logs.example.com/api/logs'),
+        ),
+      );
+  tomLog.logOutput = TomRemoteLogOutput();
+
+  // Read the wiring back before restoring, so the assertions below can run
+  // against a restored logger. Asserting first would leave `tomLog` pointing
+  // at an endpoint nobody is listening on if one ever failed.
+  final wiredUrl = TomRemoteLogOutput.remoteEndpoint!.specs.url;
+  final wiredPort = TomRemoteLogOutput.remoteEndpoint!.channel.port;
+  final wiredOutput = tomLog.logOutput;
+
+  print('   endpoint : ${wiredUrl.host}:$wiredPort${wiredUrl.path}');
+  print('   logOutput: ${wiredOutput.runtimeType}\n');
+
+  channel.close();
+  tomLog.logOutput = originalLogOutput;
+  TomRemoteLogOutput.remoteEndpoint = originalEndpoint;
+
+  // --- Wire format: what the collector has to read and answer with. ----------
+  //
+  // `TomRemoteLogMessage` and `TomRemoteLogResult` carry no `fromJson`/
+  // `toJson` of their own. They are `@tomReflector` types, so serialisation
+  // goes through `tomReflectionInfo` — the same route `TomServerEndpoint.send`
+  // takes internally, which is what makes a server written this way agree with
+  // the client by construction.
+  print('4. Remote logging — the wire format a collector implements:');
+
+  final wire = tomReflectionInfo.convertToJsonString(clientMessage);
+  final received = tomReflectionInfo.convertFromJsonString(
+    TomRemoteLogMessage(),
+    wire,
+  );
+  final wireResult = server.receive(received);
+  final responseBody = tomReflectionInfo.convertToJsonString(wireResult);
+
+  print('   request  : ${wire.substring(0, 60)}…');
+  print('   response : $responseBody\n');
+
   // --- Assertions ------------------------------------------------------------
   assert(!result.hasError);
   assert(serverOutput.lastMessage == 'Order 4711 processed');
   // receive() prefixes the isolate name with the sender id.
   assert(serverOutput.lastIsolateName == 'client-001_worker-1');
   assert(fallbackOutput.lastMessage == 'no endpoint configured');
+  assert(wiredUrl.path == '/api/logs');
+  assert(wiredPort == 443);
+  assert(wiredOutput is TomRemoteLogOutput);
+  // The decoded message is the one that was sent, and the collector handled it.
+  assert(received.message == 'Order 4711 processed');
+  assert(received.sender == 'client-001');
+  assert(!wireResult.hasError);
+  assert(responseBody.contains('"hasError":false'));
 
   // --- Restore shared statics ------------------------------------------------
   TomRemoteLogServer.localOutput = originalLocal;
@@ -124,7 +202,7 @@ void run() {
 /// [TomIsolateLogging.startLoggingToCreator] to install a [TomCreatorLogOutput]
 /// that ships their records back to the creator for centralized handling.
 Future<void> runIsolateLoggingDemo(List<String> args) async {
-  print('3. Isolate logging — routing records through a background isolate:');
+  print('5. Isolate logging — routing records through a background isolate:');
 
   final originalOutput = tomLog.logOutput;
 
@@ -164,8 +242,14 @@ Future<void> runIsolateLoggingDemo(List<String> args) async {
 /// Runs the deterministic remote round-trip, then demonstrates isolate logging.
 /// The isolate demo supplies its own worker context, so no `TomRuntime`
 /// platform initialization is required here.
+///
+/// Reflection *is* initialized: step 4 serialises through `tomReflectionInfo`,
+/// and without the generated registrations it would have no mirror for
+/// [TomRemoteLogMessage]. The aggregate runner does this for its own path, so
+/// this call is what makes the file runnable on its own.
 Future<void> main(List<String> args) async {
   print('=== 05: Isolate and Remote Logging Example ===\n');
+  initializeReflection();
   run();
   await runIsolateLoggingDemo(args);
   print('All isolate/remote logging demonstrations completed.');
