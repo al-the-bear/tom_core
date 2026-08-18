@@ -944,7 +944,14 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // autoLog branch (tests §4c)
+    // autoLog branch
+    //
+    // Constructing with `autoLog: true` emits two records, and they have to
+    // agree about which exception they describe: the correlation id on the
+    // stack-trace line must match the one the exception reports. It did not,
+    // for as long as the branch existed — the constructor's `uuid` and
+    // `requestUuid` parameters shadow the fields, so the line read
+    // `null-null` whenever the caller supplied neither.
     // -----------------------------------------------------------------------
     group('autoLog', () {
       late _CapturingLogOutput captured;
@@ -1023,7 +1030,7 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // serverCallError (tests §4d)
+    // serverCallError
     // -----------------------------------------------------------------------
     group('serverCallError', () {
       test('should default to null', () {
@@ -1048,7 +1055,7 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // printStackTrace (tests §4b)
+    // printStackTrace
     // -----------------------------------------------------------------------
     group('printStackTrace', () {
       late _CapturingLogOutput captured;
@@ -1193,7 +1200,7 @@ void main() {
   });
 
   // =========================================================================
-  // tomPrintStackTrace (tests §4a)
+  // tomPrintStackTrace
   // =========================================================================
 
   group('tomPrintStackTrace', () {
@@ -1256,7 +1263,7 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // Nothing to say (tests §4f)
+    // Nothing to say
     // -----------------------------------------------------------------------
 
     // Every test above passes a message, which is why none of them saw this:
@@ -1292,10 +1299,6 @@ void main() {
       expect(captured.messages.last, contains('little_things_test.dart'));
     });
   });
-
-  // =========================================================================
-  // depth == 0 boundary (tests §4e)
-  // =========================================================================
 
   // =========================================================================
   // EMPTY TRACES
@@ -1346,6 +1349,16 @@ void main() {
       expect(tomGetStackTraceAsList(caught), isEmpty);
     });
   });
+
+  // =========================================================================
+  // DEPTH == 0 BOUNDARY
+  //
+  // Zero is the boundary the frame walk got wrong: it appended a frame before
+  // testing the counter, so a request for no frames returned every one of
+  // them — the maximum instead of the minimum. All three accessors are pinned
+  // here because they share that walk, and a regression in it would surface
+  // in whichever one the caller happened to use.
+  // =========================================================================
 
   group('stack trace depth == 0', () {
     test('tomGetStackTraceAsList returns empty for depth 0', () {
