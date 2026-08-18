@@ -63,21 +63,21 @@ import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.da
 ///
 /// ## Configuration
 ///
-/// Set [localOutput] to control where received logs are written:
+/// Set [localOutput] to control where received logs are written. It is a
+/// [TomLogOutput], so any sink can receive the collected records:
 ///
 /// ```dart
-/// // Write to console (default)
+/// // Write to the console.
 /// TomRemoteLogServer.localOutput = TomConsoleLogOutput();
 ///
-/// // Write to file
-/// TomRemoteLogServer.localOutput = FileLogOutput('/var/log/app.log');
-///
-/// // Chain to multiple outputs
-/// TomRemoteLogServer.localOutput = MultiLogOutput([
-///   TomConsoleLogOutput(),
-///   FileLogOutput('/var/log/app.log'),
-/// ]);
+/// // Or relay onwards to a collector further up the chain.
+/// TomRemoteLogServer.localOutput = TomRemoteLogOutput();
 /// ```
+///
+/// The kernel ships no file sink and no composite sink. To write received
+/// records to a file, or to fan out to more than one destination, implement
+/// [TomLogOutput] and assign an instance here; `doc/logging/logging.md` has a
+/// worked file-writing implementation.
 ///
 /// ## Message Processing
 ///

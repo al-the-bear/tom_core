@@ -397,6 +397,53 @@ void initWorker() {
 }
 ```
 
+#### Where the logging isolate writes
+
+`startIsolatedLogging` replaces the *main* isolate's output with a
+`TomIsolateLogOutput` that forwards every record to the pool. The record is
+finally written by `TomLoggingExecutor` in the spawned isolate, through *that*
+isolate's `tomLog.logOutput`. Dart statics are per-isolate, so assigning
+`tomLog.logOutput` in `main` cannot change where the logging isolate writes — it
+only changes what the main isolate does before forwarding.
+
+The place that can is `initializeIsolate`, which runs inside the spawned
+isolate. Subclass `TomLoggingWorkerContext` and pass the subclass to
+`startIsolatedLogging`:
+
+```dart
+class CustomLoggingContext extends TomLoggingWorkerContext {
+  CustomLoggingContext(
+    super.tomEnvironment,
+    super.tomPlatform,
+    super.args,
+    super.namePrefix,
+  );
+
+  @override
+  Future<void> initializeIsolate() async {
+    // Registers TomLoggingExecutor. Skip the super call and the isolate has
+    // no handler for the records the pool sends it, and drops every one.
+    await super.initializeIsolate();
+    tomLog.logOutput = TomRemoteLogOutput();
+  }
+}
+
+await TomIsolateLogging.startIsolatedLogging(
+  args,
+  workerContext: CustomLoggingContext(
+    TomRuntime.getCurrentEnvironment(),
+    TomRuntime.getCurrentPlatform()!,
+    args,
+    'L',
+  ),
+);
+```
+
+The four positional arguments are required: `TomWorkerContext` has no
+zero-argument constructor for a subclass to inherit. The class is compiled and
+run as `CustomLoggingContext` in
+`example/samples/logging/05_isolate_and_remote_logging_example.dart`.
+
 #### When the creator channel is absent
 
 `TomCreatorLogOutput` sends to the creator isolate only when there is one to

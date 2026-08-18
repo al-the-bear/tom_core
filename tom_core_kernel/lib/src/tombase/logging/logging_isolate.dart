@@ -66,18 +66,47 @@ import '../isolate_pooling/tom_worker.dart';
 ///
 /// ## Customizing Logging Isolate Output
 ///
-/// During isolate initialization, you can replace the log output:
+/// The output this executor writes through is the logging isolate's own
+/// [tomLog] output, not the main isolate's — statics are per-isolate, so
+/// assigning `tomLog.logOutput` in the main isolate cannot reach it. Replace it
+/// from [TomLoggingWorkerContext.initializeIsolate], which runs inside the
+/// spawned isolate:
 ///
 /// ```dart
 /// class CustomLoggingContext extends TomLoggingWorkerContext {
+///   CustomLoggingContext(
+///     super.tomEnvironment,
+///     super.tomPlatform,
+///     super.args,
+///     super.namePrefix,
+///   );
+///
 ///   @override
 ///   Future<void> initializeIsolate() async {
+///     // Registers this executor. Skip the super call and the isolate has no
+///     // handler for the records the pool sends it, and drops every one.
 ///     await super.initializeIsolate();
-///     // Redirect all collected logs to a file
-///     tomLog.logOutput = FileLogOutput();
+///     tomLog.logOutput = TomRemoteLogOutput();
 ///   }
 /// }
+///
+/// await TomIsolateLogging.startIsolatedLogging(
+///   args,
+///   workerContext: CustomLoggingContext(
+///     TomRuntime.getCurrentEnvironment(),
+///     TomRuntime.getCurrentPlatform()!,
+///     args,
+///     'L',
+///   ),
+/// );
 /// ```
+///
+/// The class is `CustomLoggingContext` in
+/// `example/samples/logging/05_isolate_and_remote_logging_example.dart`, where
+/// it is compiled and run. Change it there and copy it out: the superclass
+/// takes four positional arguments and has no zero-argument constructor to
+/// inherit, so a subclass that declares no constructor does not compile, and
+/// prose cannot fail to build.
 class TomLoggingExecutor extends TomExecutor {
   @override
   Object execute(Object command) {

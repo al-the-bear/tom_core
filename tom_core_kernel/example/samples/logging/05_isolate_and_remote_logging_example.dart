@@ -28,6 +28,11 @@
 /// and `fromJson`/`toJson` methods that do not exist, so the module's own
 /// on-ramp did not compile. Change the snippet here and copy it out, never the
 /// other way round.
+///
+/// [CustomLoggingContext] is here for the same reason: it is the subclass
+/// `TomLoggingExecutor`'s dartdoc shows for redirecting the logging isolate's
+/// output, and only a compiler can confirm it forwards the constructor
+/// arguments its superclass requires.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -194,6 +199,40 @@ void run() {
 // ISOLATE LOGGING (spawns a real isolate; standalone main only)
 // =============================================================================
 
+/// Worker context that replaces the logging isolate's own log output.
+///
+/// [initializeIsolate] runs *inside* the spawned isolate, which is the only
+/// place the output can be set for the isolate that does the writing: statics
+/// are per-isolate, so assigning `tomLog.logOutput` in the main isolate would
+/// change the main isolate's output and leave the logging isolate's untouched.
+///
+/// This is the class [TomLoggingExecutor]'s dartdoc quotes. It lives here so
+/// the compiler checks it — in particular that it forwards the four positional
+/// arguments of [TomLoggingWorkerContext], which has no zero-argument
+/// constructor for a subclass to inherit.
+class CustomLoggingContext extends TomLoggingWorkerContext {
+  /// Creates the context, forwarding the superclass's four arguments.
+  CustomLoggingContext(
+    super.tomEnvironment,
+    super.tomPlatform,
+    super.args,
+    super.namePrefix,
+  );
+
+  @override
+  Future<void> initializeIsolate() async {
+    // Registers TomLoggingExecutor. Skip the super call and the isolate has no
+    // handler for the records the pool sends it, and drops every one.
+    await super.initializeIsolate();
+    // No remoteEndpoint is configured here, so this output forwards to
+    // TomRemoteLogOutput.globalSettingFallbackOutput — the console. That keeps
+    // the demo server-free while still exercising the real redirect.
+    tomLog.logOutput = TomRemoteLogOutput();
+    print('   [logging isolate] its own logOutput is now '
+        '${tomLog.logOutput.runtimeType}');
+  }
+}
+
 /// Demonstrates offloading log processing to a dedicated background isolate.
 ///
 /// [TomIsolateLogging.startIsolatedLogging] installs a [TomIsolateLogOutput]
@@ -201,6 +240,9 @@ void run() {
 /// the main isolate. Worker isolates, in turn, call
 /// [TomIsolateLogging.startLoggingToCreator] to install a [TomCreatorLogOutput]
 /// that ships their records back to the creator for centralized handling.
+///
+/// The pool is given a [CustomLoggingContext], so this also demonstrates
+/// replacing the logging isolate's own output during its initialization.
 Future<void> runIsolateLoggingDemo(List<String> args) async {
   print('5. Isolate logging — routing records through a background isolate:');
 
@@ -208,11 +250,13 @@ Future<void> runIsolateLoggingDemo(List<String> args) async {
 
   // Main isolate: send all logging to a one-worker logging pool. Supplying an
   // explicit worker context (built from barrel-exported consts) means the demo
-  // needs no `TomRuntime` platform initialization to spawn the isolate.
+  // needs no `TomRuntime` platform initialization to spawn the isolate. An
+  // application would normally pass TomRuntime.getCurrentEnvironment() and
+  // TomRuntime.getCurrentPlatform()!, which is what the default context uses.
   await TomIsolateLogging.startIsolatedLogging(
     args,
     poolSize: 1,
-    workerContext: TomLoggingWorkerContext(
+    workerContext: CustomLoggingContext(
       defaultTomEnvironment,
       platformLinux,
       args,
