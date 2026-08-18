@@ -199,10 +199,13 @@ T runCheckedSync<T>(
 // STACK TRACE UTILITIES
 // =============================================================================
 
-/// Prints a formatted stack trace to the error log.
+/// Logs a formatted stack trace at ERROR level.
 ///
-/// Formats and logs the stack trace with optional message prefix.
-/// Uses [tomGetStackTrace] internally for formatting.
+/// Formats the trace with [tomGetStackTrace], prefixes it with [message] when
+/// one is given, and passes the result to `tomLog.error`. Despite the name it
+/// does **not** call [print]: the text goes wherever the configured log
+/// outputs point, so under a recording output in a test it never reaches
+/// stdout, and under a filtered one it is dropped entirely.
 ///
 /// ## Parameters
 ///

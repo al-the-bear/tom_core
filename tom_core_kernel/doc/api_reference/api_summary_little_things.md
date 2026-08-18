@@ -113,7 +113,7 @@ the trace is taken inside it — and the creating code is the frame below.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `printStackTrace` | `void printStackTrace([int depth = -1])` | *(override)* Prints the exception's stack trace to the log; `depth` limits the number of frames (`-1` prints all). Reports the construction site whether or not a `stack` was supplied. The inherited `stack` field is declared `Object?` and is publicly mutable, so a value that is not a `StackTrace` can still reach this method; it is reported as no frames at all — never as a substituted trace of the reporting site. |
+| `printStackTrace` | `void printStackTrace([int depth = -1])` | *(override)* Logs the exception's stack trace at ERROR level via `tomPrintStackTrace`; `depth` limits the number of frames (`-1` includes all). Despite the inherited name it does not `print` — `TomBaseException.printStackTrace` does, this override does not. Reports the construction site whether or not a `stack` was supplied. The inherited `stack` field is declared `Object?` and is publicly mutable, so a value that is not a `StackTrace` can still reach this method; it is reported as no frames at all — never as a substituted trace of the reporting site. |
 
 ## Global Functions and Constants
 
@@ -129,7 +129,7 @@ None — this module exposes no top-level constants.
 | `getObjectFromCurrentZone` | `Object? getObjectFromCurrentZone(Type t)` | The same exact-key lookup with the type given at run time and no `is` check, so it distinguishes an absent key from a key holding an unexpected value. |
 | `runChecked` | `Future<T> runChecked<T>(Future<T> Function() body, Object Function(Object error, StackTrace stacktrace) onError)` | Runs an async `body`, transforming any thrown error via `onError` before rethrowing. |
 | `runCheckedSync` | `T runCheckedSync<T>(T Function() body, Object Function(Object error, StackTrace stacktrace) onError)` | Synchronous variant of `runChecked`. |
-| `tomPrintStackTrace` | `void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1})` | Formats and logs a stack trace to the error log with an optional `message` prefix; `depth` limits frames. |
+| `tomPrintStackTrace` | `void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1})` | Formats a stack trace and logs it at ERROR level via `tomLog.error`, with an optional `message` prefix; `depth` limits frames. Despite the name it does not `print`, so the output goes to the configured log outputs rather than stdout. |
 | `tomGetStackTrace` | `String tomGetStackTrace([StackTrace? s, int depth = -1])` | Returns a formatted stack trace as a newline-separated string, folding out core/`shelf`/`TomLogger` frames and this module's own formatting functions. An asynchronous trace is reported whole: every segment of the `await` chain is included, newest first, so the frames run from the throw site back to the caller that started the work. `depth` bounds the flattened chain, counting from the throw site. |
 | `tomGetStackTraceAsList` | `List<String> tomGetStackTraceAsList([StackTrace? s, int depth = -1])` | Same as `tomGetStackTrace` but returns individual frames as a list. Empty for a trace with no frames, such as `StackTrace.empty`. |
 | `tomGetStackTraceAsTuple` | `(String, List<String>) tomGetStackTraceAsTuple([StackTrace? s, int depth = -1])` | Returns the formatted stack trace as both a string and a list of frame strings. |

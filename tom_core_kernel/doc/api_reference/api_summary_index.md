@@ -130,7 +130,7 @@ declarations are omitted.
 | `getObjectFromCurrentZone` | function | The same lookup, key given at run time, no `is` check. |
 | `runChecked` | function | Runs an async body wrapping errors. |
 | `runCheckedSync` | function | Runs a sync body wrapping errors. |
-| `tomPrintStackTrace` | function | Prints a formatted stack trace. |
+| `tomPrintStackTrace` | function | Logs a formatted stack trace at ERROR level. |
 | `tomGetStackTrace` | function | Returns a formatted stack trace string. |
 | `tomGetStackTraceAsList` | function | Returns a stack trace as a list of frames. |
 | `tomGetStackTraceAsTuple` | function | Returns a stack trace as structured tuples. |

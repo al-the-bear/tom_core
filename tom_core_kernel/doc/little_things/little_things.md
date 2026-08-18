@@ -45,7 +45,7 @@ try {
   await fetchUser(id);
 } on TomException catch (e) {
   log.error('Error ${e.uuid}: ${e.key}');
-  e.printStackTrace(5); // Print top 5 frames
+  e.printStackTrace(5); // Logs the top 5 frames at ERROR level
 }
 ```
 
@@ -176,9 +176,24 @@ final frames = tomGetStackTraceAsList(stackTrace);
 // Get both at once
 final (traceStr, framesList) = tomGetStackTraceAsTuple();
 
-// Print directly to log
+// Log at ERROR level
 tomPrintStackTrace(stackTrace, message: 'Error occurred', depth: 5);
 ```
+
+`tomPrintStackTrace` does not `print`, and neither does
+`TomException.printStackTrace`, which delegates to it. Both call
+`tomLog.error`, so the trace goes wherever the configured log outputs point,
+at ERROR level:
+
+- under a recording output — the usual arrangement in a test — it never
+  reaches stdout, so a test that expects console output sees none;
+- under an output filtered above ERROR it is dropped altogether;
+- in production it lands in the error log, which is to say it is *not* the
+  harmless debugging aid the name suggests.
+
+The name is inherited from `TomBaseException.printStackTrace` in
+`tom_basics`, which genuinely does call `print`. `TomException` overrides it
+to log instead, so the two behave differently under the same name.
 
 Frames come back newest first — the throw site leads — and a `depth` limit
 counts from there, so a bounded trace keeps the frames nearest the error.

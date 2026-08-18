@@ -21,7 +21,7 @@ This is the module's whole exported surface — one class and nine functions.
 | `tomGetStackTrace([s, depth])` | Render a (trimmed) stack trace as a string. |
 | `tomGetStackTraceAsList([s, depth])` | Same, as a list of frames. |
 | `tomGetStackTraceAsTuple([s, depth])` | Both forms at once, as a `(String, List<String>)` record. |
-| `tomPrintStackTrace(s, {message, depth})` | Print a trimmed stack trace. |
+| `tomPrintStackTrace(s, {message, depth})` | Log a trimmed stack trace at ERROR level. Despite the name, it does not `print`. |
 | `convertMinutesToUtcOffset(minutes)` | Format a minute offset as `±HH:MM`. |
 
 ## Quick start

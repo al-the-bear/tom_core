@@ -132,10 +132,16 @@ class TomException extends TomBaseException implements TomLoggable {
   @override
   String get logRepresentation => toString();
 
-  /// Prints the stack trace to the log.
+  /// Logs the stack trace at ERROR level.
   ///
-  /// The [depth] parameter limits how many stack frames to print.
-  /// Use -1 (default) to print all frames.
+  /// The [depth] parameter limits how many stack frames are included.
+  /// Use -1 (default) for all frames.
+  ///
+  /// The name is inherited, and so is misleading here: `TomBaseException`
+  /// genuinely calls [print], this override routes the same report through
+  /// `tomLog.error` instead. So the destination is whatever the configured
+  /// log outputs are, not stdout — worth knowing when a caught exception
+  /// appears to report nothing.
   ///
   /// A `stack` that is not a [StackTrace] is reported as no trace at all — the
   /// identifying message alone. See below for why nothing is substituted.
@@ -148,7 +154,7 @@ class TomException extends TomBaseException implements TomLoggable {
     // and would raise it here, on the reporting path.
     //
     // An unusable value becomes `StackTrace.empty`, not `null`. `null` would
-    // fall through to `StackTrace.current` inside the formatter and print the
+    // fall through to `StackTrace.current` inside the formatter and report the
     // call path of the *report* — frames that name none of the code that
     // failed. A wrong trace is worse than no trace, because it looks right.
     final raw = stack;
