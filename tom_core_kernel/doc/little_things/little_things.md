@@ -356,7 +356,53 @@ throw TomException('VALIDATION_ERROR', 'msg', autoLog: false);
 
 ## Dependencies
 
-This module has no internal Tom dependencies. It is a foundational module used by:
+This module depends on:
 
-- **Logging Module**: For log levels and output configuration
-- **HTTP Connection Module**: For `TomServerCallError` integration
+| Dependency | Imported by | For |
+| ---------- | ----------- | --- |
+| `dart:async` | `little_things.dart` | `Zone`, behind both zone accessors |
+| `package:stack_trace` | `little_things.dart` | `Chain.forTrace(...).foldFrames(...)` — flattening an async trace and folding out framework noise |
+| `package:tom_basics` | `little_things.dart`, `exception_base.dart` | `TomBaseException` (the superclass of `TomException`), `TomLoggable` (which it implements), and `tomLog` for `autoLog` and `tomPrintStackTrace` |
+| **HTTP Connection Module** | `exception_base.dart` | `TomServerCallError`, the type of `TomException`'s optional `serverCallError` field |
+
+`formatting.dart` imports nothing at all — `convertMinutesToUtcOffset` is plain
+Dart arithmetic.
+
+`tomLog` is a live global with a working default, so nothing has to be wired up
+before calling into this module; the package dependency is real nonetheless.
+
+### The HTTP Connection edge is a cycle
+
+The module is foundational in the sense that twelve of the package's modules
+import it — but it is not free of internal dependencies, and the one it has
+runs *both* ways:
+
+```
+exception_base.dart ──> http_connection/server_connection.dart
+    for TomServerCallError
+
+http_connection/endpoints_apis.dart ──> little_things/exception_base.dart
+    for TomEndpointException extends TomException
+```
+
+Dart permits this — the two files form one library cycle, resolved through the
+package barrel that `server_connection.dart` imports — so it compiles and is
+not a defect to be fixed casually. It is worth knowing about before moving
+either type: `TomServerCallError` cannot be pushed *down* into this module
+without dragging the HTTP types with it, and `TomException` cannot be pushed
+*up* into `http_connection` because seventeen classes across eight other
+modules extend it.
+
+### Consumers are not listed here
+
+Twelve of the package's modules import this one — `beanlocator`, `context`,
+`http_connection`, `isolate_pooling`, `logging`, `observable`, `preferences`,
+`reflection`, `scheduling`, `scope_ids`, `security` and `timezoned`. Each
+records that edge in its **own** `## Dependencies` section, and this section
+deliberately does not repeat them.
+
+The reason is that a consumer list kept here has no mechanism holding it to the
+code: adding a module that uses `TomException` does not touch this file, so the
+list silently decays while every line of it still reads as fact. The edge
+recorded next to the import that creates it stays honest because the two change
+together. Read the graph from the consumer side.

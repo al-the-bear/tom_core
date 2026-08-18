@@ -662,3 +662,4 @@ This module depends on:
 
 - **External**: `reflection` package for runtime reflection capabilities
 - **Observable Module**: Integration with `TomClass` observable objects
+- **Little Things Module**: `TomException`, the base of `TomReflectorException`

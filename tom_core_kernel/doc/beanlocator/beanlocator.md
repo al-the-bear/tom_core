@@ -717,3 +717,4 @@ This module depends on:
 
 - [**Runtime System**](../../../../basics/tom_basics/doc/runtime/runtime.md) (`tom_basics`): `TomEnvironment` and `TomPlatform` for environment and platform-specific bean selection
 - [**Reflection Module**](../reflection/reflection.md): For bean discovery and instantiation via reflection
+- [**Little Things Module**](../little_things/little_things.md): `TomException`, the base of `TomBeanLocatorException`

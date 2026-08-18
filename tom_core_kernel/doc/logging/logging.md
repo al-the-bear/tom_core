@@ -434,5 +434,7 @@ that route records off the emitting isolate.
 
 This module depends on:
 
-- **Little Things Module**: `TomException` for error handling and zone utilities
+- **Little Things Module**: `getFromCurrentZone`, used by `remote_logoutput.dart`
+  to pick up the ambient `TomLoggingContext`. Only `little_things.dart` is
+  imported, not `exception_base.dart` — this module raises no `TomException`
 - **HTTP Connection Module**: For remote logging endpoints

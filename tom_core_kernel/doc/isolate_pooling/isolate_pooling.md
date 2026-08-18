@@ -697,3 +697,6 @@ This module depends on:
   [Platform support](#platform-support)
 - **`dart:isolate`**: directly, which is what makes the module native-only
 - **Logging Module**: For logging within worker isolates
+- **Little Things Module**: `TomException`, the base of `TomWorkerException` and
+  `TomWorkerDiedException`, and `tomPrintStackTrace` for reporting a failure
+  raised inside a worker isolate
