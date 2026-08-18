@@ -599,21 +599,66 @@ if (isProduction) {
 
 ## Configuration Reference
 
-### Global Settings
+Every setting below is a static field, so it is per-isolate and global within
+that isolate. These tables are the complete set for the logger and for the
+sinks this module supplies — twenty-one settings, matching the declarations in
+`tom_basics/lib/src/logging/logging.dart` and
+`lib/src/tombase/logging/*.dart`. Completeness is worth stating because it is
+re-checkable: extract the settable statics from those files and confirm each
+appears here.
 
-| Setting                                | Default       | Description                    |
-|----------------------------------------|---------------|--------------------------------|
-| `TomLogger.globalSettingDetermineCaller` | `true`      | Enable stack trace analysis    |
-| `TomLogger.globalSettingInfoEnabled`   | `true`        | Global toggle for info logs    |
-| `TomLogger.globalSettingDebugEnabled`  | `true`        | Global toggle for debug logs   |
-| `TomLogOutput.globalSettingRemoteLogEndpoint` | `/remotelog` | Remote endpoint path      |
+### Logger Settings
+
+Declared by `TomLogger` in `tom_basics`.
+
+| Setting                                  | Default | Description                 |
+|------------------------------------------|---------|-----------------------------|
+| `TomLogger.globalSettingDetermineCaller` | `true`  | Enable stack trace analysis |
+| `TomLogger.globalSettingTraceEnabled`    | `true`  | Global toggle, trace level  |
+| `TomLogger.globalSettingDebugEnabled`    | `true`  | Global toggle, debug level  |
+| `TomLogger.globalSettingTrafficEnabled`  | `true`  | Global toggle, traffic level |
+| `TomLogger.globalSettingInfoEnabled`     | `true`  | Global toggle, info level   |
+| `TomLogger.globalSettingStatusEnabled`   | `true`  | Global toggle, status level |
+| `TomLogger.globalSettingWarnEnabled`     | `true`  | Global toggle, warn level   |
+| `TomLogger.globalSettingErrorEnabled`    | `true`  | Global toggle, error level  |
+| `TomLogger.globalSettingSevereEnabled`   | `true`  | Global toggle, severe level |
+| `TomLogger.globalSettingFatalEnabled`    | `true`  | Global toggle, fatal level  |
+
+The nine level toggles are compile-out switches, one per level, independent of
+the per-logger `logLevel`. See [Disable Stack Analysis in
+Production](#5-disable-stack-analysis-in-production) for the one that costs
+something to leave on.
 
 ### Console Output Settings
 
-| Setting                                      | Default           | Description              |
-|----------------------------------------------|-------------------|--------------------------|
-| `TomConsoleLogOutput.globalSettingStderrLogLevel` | errors + status | Levels to stderr        |
-| `TomConsoleLogOutput.globalSettingStdoutLogLevel` | all - errors    | Levels to stdout        |
+| Setting                                           | Default                    | Description      |
+|---------------------------------------------------|----------------------------|------------------|
+| `TomConsoleLogOutput.globalSettingStderrLogLevel` | `errors + status`          | Levels to stderr |
+| `TomConsoleLogOutput.globalSettingStdoutLogLevel` | `all - (errors + status)`  | Levels to stdout |
+
+### Remote Logging Settings
+
+Declared by `TomRemoteLogOutput` unless noted. The defaults are deliberately
+inert — one attempt, no backoff, no queue — so remote logging behaves
+predictably without a live server; resilience is opted into. See [Delivery
+Resilience](#delivery-resilience) for what each knob buys.
+
+| Setting                                             | Default                     | Description                                                                 |
+|-----------------------------------------------------|-----------------------------|-----------------------------------------------------------------------------|
+| `TomRemoteLogOutput.remoteEndpoint`                 | `null`                      | Where records are sent. While `null`, every record goes to the fallback instead |
+| `TomRemoteLogOutput.globalSettingFallbackOutput`    | `TomConsoleLogOutput()`     | Sink for records that could not be delivered, and for the warnings explaining why |
+| `TomRemoteLogOutput.globalSettingMaxSendRetries`    | `0`                         | *Additional* attempts after the first fails, so `n` means up to `n + 1` sends |
+| `TomRemoteLogOutput.globalSettingRetryBackoff`      | `Duration.zero`             | Base delay; the wait before retry *k* is `backoff × k`                       |
+| `TomRemoteLogOutput.globalSettingReplayQueueMaxSize` | `0`                         | Records buffered after retries are exhausted. `0` disables the queue; on overflow the oldest is dropped |
+| `TomRemoteLogOutput.globalSettingReplayStore`       | `TomInMemoryLogReplayStore()` | Storage behind that queue. Swap in `TomFileLogReplayStore` to survive a restart mid-outage |
+| `TomRemoteLogMessage.globalSettingSenderId`         | `"RDEF"`                    | Identifies this client in every record it sends                              |
+
+### Collector and Isolate Settings
+
+| Setting                             | Default                            | Description                                                                 |
+|-------------------------------------|------------------------------------|-----------------------------------------------------------------------------|
+| `TomRemoteLogServer.localOutput`    | `tomLog.logOutput`, read once on first access | Where a collector writes the records it receives                 |
+| `TomCreatorLogOutput.fallbackOutput` | `TomConsoleLogOutput()`            | Where a worker writes when its creator channel is absent ([When the creator channel is absent](#when-the-creator-channel-is-absent)) |
 
 ## File Structure
 
