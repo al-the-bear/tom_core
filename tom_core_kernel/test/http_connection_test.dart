@@ -1910,6 +1910,67 @@ void main() {
       });
     });
 
+    group('x-tom-error body decoding', () {
+      // A Tom server marks its own error format with `x-tom-error: true`, and
+      // the constructor is supposed to lift the server's identifiers out of the
+      // JSON body. It never did: the decode called a `get` method that no map
+      // has, so every such response threw NoSuchMethodError out of the
+      // constructor instead of producing an error object. Because `jsonDecode`
+      // returns `dynamic` the analyzer could not see it, and no test reached
+      // the branch.
+
+      test('lifts the server error fields out of a tom error body', () {
+        final error = TomServerCallError(
+          statusCode: 403,
+          headers: {'x-tom-error': 'true'},
+          response: '{"errorKey":"access.check.denied","uuid":"srv-1",'
+              '"requestUuid":"req-1","autoLog":true,"clientRethrow":true}',
+        );
+
+        expect(error.errorKey, equals('access.check.denied'));
+        expect(error.uuid, equals('srv-1'));
+        expect(error.requestUuid, equals('req-1'));
+        expect(error.autoLog, isTrue);
+        expect(error.clientRethrow, isTrue);
+      });
+
+      test('leaves the fields null when the header is absent', () {
+        final error = TomServerCallError(
+          statusCode: 403,
+          response: '{"errorKey":"access.check.denied","uuid":"srv-1"}',
+        );
+
+        expect(error.errorKey, isNull);
+        expect(error.uuid, isNull);
+      });
+
+      test('tolerates a tom error body missing some fields', () {
+        final error = TomServerCallError(
+          statusCode: 500,
+          headers: {'x-tom-error': 'true'},
+          response: '{"errorKey":"internal.handle.failed"}',
+        );
+
+        expect(error.errorKey, equals('internal.handle.failed'));
+        expect(error.uuid, isNull);
+        expect(error.clientRethrow, isNull);
+      });
+
+      test('does not throw when the tom error body is not an object', () {
+        // A truncated or proxy-rewritten body still carries the header. The
+        // constructor must yield an error object describing the HTTP failure
+        // rather than raising a second, unrelated failure over it.
+        expect(
+          () => TomServerCallError(
+            statusCode: 502,
+            headers: {'x-tom-error': 'true'},
+            response: '<html>gateway</html>',
+          ),
+          returnsNormally,
+        );
+      });
+    });
+
     group('hasError', () {
       test('should return false for 200 status with no internal error', () {
         final error = TomServerCallError(statusCode: 200, internalError: 0);

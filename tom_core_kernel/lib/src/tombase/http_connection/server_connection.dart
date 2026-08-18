@@ -379,12 +379,30 @@ class TomServerCallError {
     // `this.` is load-bearing: the constructor parameter shadows the field, and
     // the parameter is the nullable one the caller passed, not the copy.
     if (this.headers["x-tom-error"] == "true" && response != null) {
-      var body = jsonDecode(response!);
-      autoLog = body.get("autoLog");
-      clientRethrow = body.get("clientRethrow");
-      errorKey = body.get("errorKey");
-      uuid = body.get("uuid");
-      requestUuid = body.get("requestUuid");
+      // Read the body defensively on both counts. It arrives as `dynamic` from
+      // `jsonDecode`, so nothing here is checked at compile time — an earlier
+      // version called a `get` method no map has and threw NoSuchMethodError
+      // out of the constructor on every Tom error response, silently, because
+      // `dynamic` hid it from the analyzer.
+      //
+      // And the header is only a claim. A truncated response or an
+      // intermediary's error page still carries it, so a body that will not
+      // decode, or decodes to something other than an object, must leave these
+      // fields null rather than raise a second failure on top of the HTTP one
+      // this object exists to report.
+      Object? body;
+      try {
+        body = jsonDecode(response!);
+      } on FormatException {
+        body = null;
+      }
+      if (body is Map) {
+        autoLog = body["autoLog"] as bool?;
+        clientRethrow = body["clientRethrow"] as bool?;
+        errorKey = body["errorKey"] as String?;
+        uuid = body["uuid"] as String?;
+        requestUuid = body["requestUuid"] as String?;
+      }
     }
   }
 

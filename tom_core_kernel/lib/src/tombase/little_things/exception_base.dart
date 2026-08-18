@@ -127,7 +127,14 @@ class TomException extends TomBaseException implements TomLoggable {
         ) {
     if (autoLog) {
       tomLog.error("EXCEPTION: $this");
-      tomLog.error("EXCEPTION_STACKTRACE: $uuid-$requestUuid $stackTrace");
+      // `this.` is load-bearing: the constructor's `uuid` and `requestUuid`
+      // parameters shadow the fields, and both are null in the common case
+      // where the caller supplies neither. Unqualified, the correlation id on
+      // this line read `null-null` while the EXCEPTION line above and
+      // [printStackTrace] both reported the generated uuid — two log lines
+      // describing one exception, disagreeing about which one it was.
+      tomLog.error(
+          "EXCEPTION_STACKTRACE: ${this.uuid}-${this.requestUuid} $stackTrace");
     }
   }
 

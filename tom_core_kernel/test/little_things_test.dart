@@ -987,6 +987,39 @@ void main() {
           isTrue,
         );
       });
+
+      test('should correlate the stacktrace line with the generated uuid', () {
+        // The two lines describe one exception, so they must name the same
+        // one. They did not: the constructor's `uuid` parameter shadowed the
+        // generated field, so an exception created without an explicit uuid —
+        // the common case — logged its trace under `null-null` while the
+        // EXCEPTION line above carried the real id. Nothing could then join a
+        // trace to the failure it came from.
+        final exception =
+            TomException('test.error.critical', 'boom', autoLog: true);
+
+        final trace = captured.messages
+            .firstWhere((m) => m.contains('EXCEPTION_STACKTRACE:'));
+        expect(trace, contains(exception.uuid));
+        expect(
+          trace,
+          isNot(contains('EXCEPTION_STACKTRACE: null-')),
+          reason: 'the correlation id must be the exception\'s own uuid',
+        );
+      });
+
+      test('should carry the request uuid into the stacktrace line', () {
+        final exception = TomException(
+          'test.error.critical',
+          'boom',
+          requestUuid: 'req-77',
+          autoLog: true,
+        );
+
+        final trace = captured.messages
+            .firstWhere((m) => m.contains('EXCEPTION_STACKTRACE:'));
+        expect(trace, contains('${exception.uuid}-req-77'));
+      });
     });
 
     // -----------------------------------------------------------------------

@@ -8,9 +8,40 @@
 /// - Parameters for context
 /// - TomLoggable interface
 /// - TomServerCallError integration
+///
+/// Run with (asserts MUST be enabled so the invariants below are checked):
+/// ```bash
+/// dart run --enable-asserts example/samples/little_things/03_tom_exception_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+/// Log output that records every emitted message so this example can observe
+/// (and assert on) the logging side-effects of the exception helpers.
+///
+/// The logging examples below install one of these in place of the configured
+/// output, exercise the feature, and restore the previous output in a
+/// `finally` — otherwise a failed assertion would leave the recorder in place
+/// and silence every later example in the run.
+class _RecordingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel.matches(loggerLevel)) {
+      messages.add(convertToString(message));
+    }
+  }
+}
 
 // ============================================================================
 // Example Class
@@ -26,6 +57,9 @@ class TomExceptionExample {
   static bool parametersWork = false;
   static bool loggableWorks = false;
   static String? logRepresentation;
+  static bool stackTracePrinted = false;
+  static bool autoLogEmitted = false;
+  static bool serverCallErrorDecoded = false;
 
   // --------------------------------------------------------------------------
   // Example 1: Basic TomException creation
@@ -111,7 +145,10 @@ class TomExceptionExample {
         'resourceId': 'document-789',
         'requiredRole': 'admin',
         'actualRole': 'viewer',
-        'timestamp': DateTime.now().toIso8601String(),
+        // A fixed instant, not DateTime.now(): every run of this example must
+        // produce the same output, or its printed result cannot be compared
+        // against anything.
+        'timestamp': DateTime.utc(2026, 3, 14, 9, 26, 53).toIso8601String(),
       },
     );
 
@@ -164,6 +201,8 @@ class TomExceptionExample {
         'sample.nested_call.failed',
         'Error in nested call',
         stack: stack,
+        uuid: 'trace-uuid-1',
+        requestUuid: 'trace-req-1',
       );
 
       print('   - Stack trace captured: ${exception.stackTrace.isNotEmpty}');
@@ -175,11 +214,31 @@ class TomExceptionExample {
         print('     $line');
       }
 
-      // printStackTrace method
-      print('   - exception.printStackTrace(2) would print limited frames');
+      // printStackTrace routes through tomLog rather than stdout, so the only
+      // way to see what it produced is to record the log output.
+      final recorder = _RecordingLogOutput();
+      final previousOutput = tomLog.logOutput;
+      tomLog.logOutput = recorder;
+      try {
+        exception.printStackTrace(2);
+      } finally {
+        tomLog.logOutput = previousOutput;
+      }
+
+      stackTracePrinted = recorder.messages.any(
+        (m) => m.contains('trace-uuid-1-trace-req-1 exception stacktrace'),
+      );
+
+      print('   - printStackTrace(2) logged ${recorder.messages.length} '
+          'line(s), prefixed with the exception identity:');
+      print('     ${recorder.messages.first.split('\n').first}');
 
       // Assertions
       assert(exception.stackTrace.isNotEmpty, 'Stack trace should be captured');
+      assert(
+        stackTracePrinted,
+        'printStackTrace must log a line prefixed with uuid-requestUuid',
+      );
     }
   }
 
@@ -227,20 +286,50 @@ class TomExceptionExample {
   static void example8AutoLogging() {
     print('\n8. Auto-logging on creation:');
 
-    print('   - When autoLog: true, exception logs itself on creation');
-    print('   - Logs both the exception and stack trace');
-    print('');
-    print('   Example:');
-    print('   throw TomException(');
-    print('     "CRITICAL_ERROR",');
-    print('     "System failure",');
-    print('     autoLog: true,  // Logs immediately');
-    print('   );');
-    print('');
-    print('   Output in logs:');
-    print('   - ERROR: EXCEPTION: <uuid>-null, TomException: '
-        'storage.connect.failed...');
-    print('   - ERROR: EXCEPTION_STACKTRACE: <uuid>-null <stack>');
+    final recorder = _RecordingLogOutput();
+    final previousOutput = tomLog.logOutput;
+    tomLog.logOutput = recorder;
+
+    late TomException logged;
+    try {
+      // The default: constructing an exception is silent. Shown first so the
+      // autoLog lines below are visibly caused by the flag and not by
+      // construction itself.
+      TomException('storage.connect.failed', 'Database connection failed');
+      final quietCount = recorder.messages.length;
+
+      logged = TomException(
+        'storage.connect.failed',
+        'Database connection failed',
+        requestUuid: 'req-8100',
+        autoLog: true,
+      );
+
+      autoLogEmitted = quietCount == 0 && recorder.messages.length == 2;
+    } finally {
+      tomLog.logOutput = previousOutput;
+    }
+
+    print('   - Without autoLog, construction logged nothing.');
+    print('   - With autoLog: true, it logged '
+        '${recorder.messages.length} line(s):');
+    for (final message in recorder.messages) {
+      // Only the first line of each: the stack-trace line runs to many frames.
+      print('     ${message.split('\n').first}');
+    }
+    print('   - Both lines carry ${logged.uuid}-${logged.requestUuid}, so a '
+        'trace can be joined back to the failure it came from.');
+
+    // Assertions
+    assert(autoLogEmitted, 'autoLog must log exactly two lines, and only then');
+    assert(
+      recorder.messages.every((m) => m.contains(logged.uuid)),
+      'Every autoLog line must carry the exception uuid',
+    );
+    assert(
+      recorder.messages.any((m) => m.contains('EXCEPTION_STACKTRACE:')),
+      'autoLog must emit the stack trace alongside the exception',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -249,18 +338,54 @@ class TomExceptionExample {
   static void example9ServerCallError() {
     print('\n9. TomServerCallError integration:');
 
-    // When exception comes from HTTP call, serverCallError has details
-    print('   - serverCallError field stores HTTP error details');
-    print('   - Available from TomServerConnectionException');
-    print('');
-    print('   final exception = TomException(');
-    print('     "HTTP_ERROR",');
-    print('     "Server returned error",');
-    print('     serverCallError: TomServerCallError(...),');
-    print('   );');
-    print('');
-    print('   - Access via: exception.serverCallError');
-    print('   - Contains: status code, response body, headers, etc.');
+    // A Tom server signals its own error format with the x-tom-error header.
+    // When that header is present, TomServerCallError decodes the JSON body
+    // and lifts the server's own error key and uuids into its fields — which
+    // is what lets a client-side exception carry the *server's* identifiers.
+    final callError = TomServerCallError(
+      statusCode: 403,
+      reasonPhrase: 'Forbidden',
+      headers: {'x-tom-error': 'true', 'content-type': 'application/json'},
+      response: '{"errorKey":"access.check.permission_denied",'
+          '"uuid":"srv-err-9001","requestUuid":"srv-req-9002",'
+          '"autoLog":false,"clientRethrow":true}',
+    );
+
+    final exception = TomException(
+      'network.request.rejected',
+      'Server returned an error',
+      serverCallError: callError,
+    );
+
+    final attached = exception.serverCallError!;
+    serverCallErrorDecoded = attached.errorKey ==
+            'access.check.permission_denied' &&
+        attached.uuid == 'srv-err-9001';
+
+    print('   - statusCode: ${attached.statusCode} '
+        '(${attached.reasonPhrase})');
+    print('   - headers: ${attached.headers.keys.join(', ')}');
+    print('   - decoded errorKey: ${attached.errorKey}');
+    print('   - decoded server uuid: ${attached.uuid}');
+    print('   - decoded server requestUuid: ${attached.requestUuid}');
+    print('   - clientRethrow: ${attached.clientRethrow}');
+    print('   - the client-side exception keeps its own key '
+        '(${exception.key}) and uuid, so both identities survive.');
+
+    // Assertions
+    assert(attached.statusCode == 403, 'HTTP status must be preserved');
+    assert(
+      serverCallErrorDecoded,
+      'An x-tom-error response body must be decoded into the error fields',
+    );
+    assert(
+      attached.clientRethrow == true,
+      'clientRethrow must be read from the server error body',
+    );
+    assert(
+      exception.uuid != attached.uuid,
+      'The client exception has its own uuid, distinct from the server one',
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -325,6 +450,12 @@ void run() {
   assert(TomExceptionExample.timestampSet, 'Timestamp should be set');
   assert(TomExceptionExample.parametersWork, 'Parameters should work');
   assert(TomExceptionExample.loggableWorks, 'Loggable should work');
+  assert(TomExceptionExample.stackTracePrinted, 'printStackTrace should log');
+  assert(TomExceptionExample.autoLogEmitted, 'autoLog should log');
+  assert(
+    TomExceptionExample.serverCallErrorDecoded,
+    'serverCallError should decode a Tom error body',
+  );
 
   print('\n✓ All TomException examples passed!\n');
 }
