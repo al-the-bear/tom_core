@@ -78,6 +78,12 @@ try {
 throw TomException('ORDER_EMPTY', 'The order has no positions');
 ```
 
+`stack` is a `StackTrace?`, so passing anything else is a compile error rather
+than a failure at construction time. That distinction matters here more than in
+most APIs: an exception is built *while* something is already going wrong, and a
+constructor that throws replaces the failure you were trying to report with one
+about the reporting.
+
 ```dart
 TomException(
   'ERROR_KEY',           // Programmatic error code
@@ -149,6 +155,10 @@ tomPrintStackTrace(stackTrace, message: 'Error occurred', depth: 5);
 
 Frames come back newest first — the throw site leads — and a `depth` limit
 counts from there, so a bounded trace keeps the frames nearest the error.
+
+All four take a `StackTrace?`. Nothing else is accepted, and the rejection is
+the compiler's — these functions run on the error path, where a run-time type
+failure would surface as a crash inside the crash report.
 
 The trace argument is optional. Omit it (or pass `null`) and the current stack
 is captured for you, which makes these functions usable as a "where am I?"

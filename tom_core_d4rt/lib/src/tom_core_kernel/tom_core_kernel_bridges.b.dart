@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-17T16:48:43.416490
+// Generated: 2026-08-18T08:49:37.727109
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -1898,23 +1898,23 @@ class TomCoreKernelBridge {
       },
       'tomPrintStackTrace': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'tomPrintStackTrace');
-        final s = D4.getRequiredArg<Object?>(positional, 0, 's', 'tomPrintStackTrace');
+        final s = D4.getRequiredArg<StackTrace?>(positional, 0, 's', 'tomPrintStackTrace');
         final message = D4.getOptionalNamedArg<String?>(named, 'message');
         final depth = D4.getNamedArgWithDefault<int>(named, 'depth', -1);
         return $tom_core_kernel_18.tomPrintStackTrace(s, message: message, depth: depth);
       },
       'tomGetStackTrace': (visitor, positional, named, typeArgs) {
-        final s = positional.isNotEmpty ? positional[0] as Object? : null;
+        final s = positional.isNotEmpty ? positional[0] as StackTrace? : null;
         final depth = D4.getOptionalArgWithDefault<int>(positional, 1, 'depth', -1);
         return $tom_core_kernel_18.tomGetStackTrace(s, depth);
       },
       'tomGetStackTraceAsList': (visitor, positional, named, typeArgs) {
-        final s = positional.isNotEmpty ? positional[0] as Object? : null;
+        final s = positional.isNotEmpty ? positional[0] as StackTrace? : null;
         final depth = D4.getOptionalArgWithDefault<int>(positional, 1, 'depth', -1);
         return $tom_core_kernel_18.tomGetStackTraceAsList(s, depth);
       },
       'tomGetStackTraceAsTuple': (visitor, positional, named, typeArgs) {
-        final s = positional.isNotEmpty ? positional[0] as Object? : null;
+        final s = positional.isNotEmpty ? positional[0] as StackTrace? : null;
         final depth = D4.getOptionalArgWithDefault<int>(positional, 1, 'depth', -1);
         final $result = $tom_core_kernel_18.tomGetStackTraceAsTuple(s, depth);
         return InterpretedRecord([$result.$1, $result.$2], {});
@@ -2020,10 +2020,10 @@ class TomCoreKernelBridge {
       'getObjectFromCurrentZone': 'Object? getObjectFromCurrentZone(Type t)',
       'runChecked': 'Future<T> runChecked(Future<T> Function() body, Object Function(Object error, StackTrace stacktrace) onError)',
       'runCheckedSync': 'T runCheckedSync(T Function() body, Object Function(Object error, StackTrace stacktrace) onError)',
-      'tomPrintStackTrace': 'void tomPrintStackTrace(Object? s, {String? message, int depth = -1})',
-      'tomGetStackTrace': 'String tomGetStackTrace([Object? s, int depth = -1])',
-      'tomGetStackTraceAsList': 'List<String> tomGetStackTraceAsList([Object? s, int depth = -1])',
-      'tomGetStackTraceAsTuple': '(String, List<String>) tomGetStackTraceAsTuple([Object? s, int depth = -1])',
+      'tomPrintStackTrace': 'void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1})',
+      'tomGetStackTrace': 'String tomGetStackTrace([StackTrace? s, int depth = -1])',
+      'tomGetStackTraceAsList': 'List<String> tomGetStackTraceAsList([StackTrace? s, int depth = -1])',
+      'tomGetStackTraceAsTuple': '(String, List<String>) tomGetStackTraceAsTuple([StackTrace? s, int depth = -1])',
       'convertMinutesToUtcOffset': 'String convertMinutesToUtcOffset(int totalMinutes)',
       'registerTomUserPreferencesApi': 'void registerTomUserPreferencesApi()',
       'tomProtect': 'T tomProtect(T data, T fallback, String resourceKey)',
@@ -3846,7 +3846,7 @@ BridgedClass _createTomBeanLocatorExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomBeanLocatorException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomBeanLocatorException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         return $tom_core_kernel_1.TomBeanLocatorException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
@@ -3901,7 +3901,7 @@ BridgedClass _createTomBeanLocatorExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomBeanLocatorException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false})',
+      '': 'TomBeanLocatorException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -4426,7 +4426,7 @@ BridgedClass _createTomServerConnectionExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomServerConnectionException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomServerConnectionException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final requestUuid = D4.getOptionalNamedArg<String?>(named, 'requestUuid');
@@ -4484,7 +4484,7 @@ BridgedClass _createTomServerConnectionExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomServerConnectionException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? requestUuid, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomServerConnectionException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? requestUuid, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -4536,7 +4536,7 @@ BridgedClass _createTomRequestAbortedExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomRequestAbortedException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomRequestAbortedException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final requestUuid = D4.getOptionalNamedArg<String?>(named, 'requestUuid');
@@ -4592,7 +4592,7 @@ BridgedClass _createTomRequestAbortedExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomRequestAbortedException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? requestUuid})',
+      '': 'TomRequestAbortedException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? requestUuid})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -4644,7 +4644,7 @@ BridgedClass _createTomRequestTimeoutExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomRequestTimeoutException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomRequestTimeoutException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final requestUuid = D4.getOptionalNamedArg<String?>(named, 'requestUuid');
@@ -4700,7 +4700,7 @@ BridgedClass _createTomRequestTimeoutExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomRequestTimeoutException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? requestUuid})',
+      '': 'TomRequestTimeoutException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? requestUuid})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -5589,7 +5589,7 @@ BridgedClass _createTomEndpointExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomEndpointException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomEndpointException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
@@ -5646,7 +5646,7 @@ BridgedClass _createTomEndpointExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomEndpointException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomEndpointException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -5987,7 +5987,7 @@ BridgedClass _createTomFileTransferExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomFileTransferException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomFileTransferException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final requestUuid = D4.getOptionalNamedArg<String?>(named, 'requestUuid');
@@ -6044,7 +6044,7 @@ BridgedClass _createTomFileTransferExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomFileTransferException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? requestUuid, String? uuid})',
+      '': 'TomFileTransferException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? requestUuid, String? uuid})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -6547,7 +6547,7 @@ BridgedClass _createTomClientRemoteContextExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomClientRemoteContextException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomClientRemoteContextException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
@@ -6604,7 +6604,7 @@ BridgedClass _createTomClientRemoteContextExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomClientRemoteContextException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomClientRemoteContextException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -6803,7 +6803,7 @@ BridgedClass _createTomMimeTypeExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomMimeTypeException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomMimeTypeException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         return $tom_core_kernel_9.TomMimeTypeException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
@@ -6858,7 +6858,7 @@ BridgedClass _createTomMimeTypeExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomMimeTypeException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false})',
+      '': 'TomMimeTypeException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -7085,7 +7085,7 @@ BridgedClass _createTomWorkerExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomWorkerException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomWorkerException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
@@ -7142,7 +7142,7 @@ BridgedClass _createTomWorkerExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomWorkerException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomWorkerException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -7194,7 +7194,7 @@ BridgedClass _createTomWorkerDiedExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomWorkerDiedException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomWorkerDiedException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
@@ -7251,7 +7251,7 @@ BridgedClass _createTomWorkerDiedExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomWorkerDiedException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomWorkerDiedException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -7660,7 +7660,7 @@ BridgedClass _createTomExceptionBridge() {
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
         final serverCallError = D4.getOptionalNamedArg<$tom_core_kernel_11.TomServerCallError?>(named, 'serverCallError');
         return $tom_core_kernel_16.TomException(key, defaultUserMessage, requestUuid: requestUuid, parameters: parameters, rootException: rootException, autoLog: autoLog, stack: stack, uuid: uuid, serverCallError: serverCallError);
@@ -7715,7 +7715,7 @@ BridgedClass _createTomExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomException(String key, String defaultUserMessage, {String? requestUuid, Map<String, Object?>? parameters, Object? rootException, bool autoLog = false, Object? stack, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomException(String key, String defaultUserMessage, {String? requestUuid, Map<String, Object?>? parameters, Object? rootException, bool autoLog = false, StackTrace? stack, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -8619,7 +8619,7 @@ BridgedClass _createTomUserPreferenceCodecExceptionBridge() {
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomUserPreferenceCodecException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         return $tom_core_kernel_26.TomUserPreferenceCodecException(key, defaultUserMessage, parameters: parameters, rootException: rootException, stack: stack);
       },
     },
@@ -8672,7 +8672,7 @@ BridgedClass _createTomUserPreferenceCodecExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomUserPreferenceCodecException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? rootException, Object? stack})',
+      '': 'TomUserPreferenceCodecException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? rootException, StackTrace? stack})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -10976,7 +10976,7 @@ BridgedClass _createTomScheduleExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomScheduleException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomScheduleException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
@@ -11033,7 +11033,7 @@ BridgedClass _createTomScheduleExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomScheduleException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomScheduleException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -11421,7 +11421,7 @@ BridgedClass _createTomScheduledJobExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomScheduledJobException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomScheduledJobException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         return $tom_core_kernel_36.TomScheduledJobException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
@@ -11476,7 +11476,7 @@ BridgedClass _createTomScheduledJobExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomScheduledJobException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false})',
+      '': 'TomScheduledJobException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -15327,7 +15327,7 @@ BridgedClass _createTomReflectorExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomReflectorException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomReflectorException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         return $tom_core_kernel_29.TomReflectorException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
@@ -15382,7 +15382,7 @@ BridgedClass _createTomReflectorExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomReflectorException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false})',
+      '': 'TomReflectorException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -15647,7 +15647,7 @@ BridgedClass _createTomObservableExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomObservableException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomObservableException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
@@ -15704,7 +15704,7 @@ BridgedClass _createTomObservableExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomObservableException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
+      '': 'TomObservableException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})',
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -21366,7 +21366,7 @@ BridgedClass _createTomTimezoneExceptionBridge() {
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomTimezoneException');
         final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomTimezoneException');
         final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
-        final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final autoLog = D4.getNamedArgWithDefault<bool>(named, 'autoLog', false);
         return $tom_core_kernel_51.TomTimezoneException(key, defaultUserMessage, parameters: parameters, stack: stack, rootException: rootException, autoLog: autoLog);
@@ -21421,7 +21421,7 @@ BridgedClass _createTomTimezoneExceptionBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomTimezoneException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? stack, Object? rootException, bool autoLog = false})',
+      '': 'TomTimezoneException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})',
     },
     methodSignatures: {
       'toString': 'String toString()',

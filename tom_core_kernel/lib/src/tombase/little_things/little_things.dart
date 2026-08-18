@@ -162,10 +162,10 @@ T runCheckedSync<T>(
 ///
 /// ## Parameters
 ///
-/// - [s]: The stack trace object, or `null` to use [StackTrace.current].
+/// - [s]: The stack trace, or `null` to use [StackTrace.current].
 /// - [message]: Optional prefix message for the log entry.
 /// - [depth]: Maximum number of frames to include. Use -1 for all frames.
-void tomPrintStackTrace(Object? s, {String? message, int depth = -1}) {
+void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1}) {
   var stackTrace = message != null
       ? "$message ${tomGetStackTrace(s, depth)}"
       : tomGetStackTrace(s, depth);
@@ -208,8 +208,14 @@ bool _isFormatterFrame(Frame frame) => _formatterMembers.contains(frame.member);
 ///
 /// A list of formatted stack frame strings, newest first. Empty when the trace
 /// carries no frames — see [StackTrace.empty] below.
-List<String> _processStackFrames([Object? s, int depth = -1]) {
-  final stackTrace = s as StackTrace? ?? StackTrace.current;
+List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
+  // The parameter is `StackTrace?`, not `Object?`. The wider type used to be
+  // narrowed here by `s as StackTrace?`, which accepted anything at the call
+  // site and then threw a `TypeError` at this line — while formatting a trace,
+  // i.e. while reporting some *other* failure, and in `TomException`'s case
+  // before the exception being reported even existed. The narrow parameter
+  // rejects the same values, but at compile time, where the mistake is free.
+  final stackTrace = s ?? StackTrace.current;
   // A Chain holds one trace *segment* per `await` boundary, newest first.
   // Flattening all of them is what makes an asynchronous trace complete: the
   // throw site is in the newest segment, but the caller that started the work
@@ -282,7 +288,7 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
 ///
 /// ## Parameters
 ///
-/// - [s]: The stack trace object, or `null` to use [StackTrace.current].
+/// - [s]: The stack trace, or `null` to use [StackTrace.current].
 /// - [depth]: Maximum number of frames to include. Use -1 for all frames.
 ///   The limit applies across the whole chain, counting from the throw site.
 ///
@@ -302,7 +308,7 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
 ///   log.error('Error: $e\n${tomGetStackTrace(stack, 10)}');
 /// }
 /// ```
-String tomGetStackTrace([Object? s, int depth = -1]) {
+String tomGetStackTrace([StackTrace? s, int depth = -1]) {
   return _processStackFrames(s, depth).join('\n');
 }
 
@@ -312,14 +318,14 @@ String tomGetStackTrace([Object? s, int depth = -1]) {
 ///
 /// ## Parameters
 ///
-/// - [s]: The stack trace object, or `null` to use [StackTrace.current].
+/// - [s]: The stack trace, or `null` to use [StackTrace.current].
 /// - [depth]: Maximum number of frames to include. Use -1 for all frames.
 ///
 /// ## Returns
 ///
 /// A list of formatted stack frame strings, empty when the trace has no
 /// frames.
-List<String> tomGetStackTraceAsList([Object? s, int depth = -1]) {
+List<String> tomGetStackTraceAsList([StackTrace? s, int depth = -1]) {
   return _processStackFrames(s, depth);
 }
 
@@ -331,7 +337,7 @@ List<String> tomGetStackTraceAsList([Object? s, int depth = -1]) {
 ///
 /// ## Parameters
 ///
-/// - [s]: The stack trace object, or `null` to use [StackTrace.current].
+/// - [s]: The stack trace, or `null` to use [StackTrace.current].
 /// - [depth]: Maximum number of frames to include. Use -1 for all frames.
 ///
 /// ## Returns
@@ -345,7 +351,7 @@ List<String> tomGetStackTraceAsList([Object? s, int depth = -1]) {
 /// print('Full trace: $stackString');
 /// print('First frame: ${stackList.first}');
 /// ```
-(String, List<String>) tomGetStackTraceAsTuple([Object? s, int depth = -1]) {
+(String, List<String>) tomGetStackTraceAsTuple([StackTrace? s, int depth = -1]) {
   List<String> stackLines = _processStackFrames(s, depth);
   String stackString = stackLines.join('\n');
   return (stackString, stackLines);

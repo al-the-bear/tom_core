@@ -156,7 +156,7 @@ class TomDeliveryException extends TomMessagingException {
     int? statusCode,
     Map<String, dynamic>? parameters,
     Object? rootException,
-    Object? stack,
+    StackTrace? stack,
   }) => TomPermanentDeliveryException(
     key,
     message,
@@ -173,7 +173,7 @@ class TomDeliveryException extends TomMessagingException {
     int? statusCode,
     Map<String, dynamic>? parameters,
     Object? rootException,
-    Object? stack,
+    StackTrace? stack,
   }) => TomDeliveryException(
     key,
     message,

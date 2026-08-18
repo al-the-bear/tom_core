@@ -98,7 +98,7 @@ class TomException extends TomBaseException implements TomLoggable {
     Map<String, Object?>? parameters,
     Object? rootException,
     this.autoLog = false,
-    Object? stack,
+    StackTrace? stack,
     String? uuid,
     this.serverCallError,
   }) : super(
@@ -136,10 +136,24 @@ class TomException extends TomBaseException implements TomLoggable {
   ///
   /// The [depth] parameter limits how many stack frames to print.
   /// Use -1 (default) to print all frames.
+  ///
+  /// A `stack` that is not a [StackTrace] is reported as no trace at all — the
+  /// identifying message alone. See below for why nothing is substituted.
   @override
   void printStackTrace([int depth = -1]) {
+    // The inherited `stack` field is typed `Object?` and is publicly mutable,
+    // so a value this method cannot format still reaches it even though the
+    // constructor no longer accepts one. Narrow rather than cast: a cast would
+    // raise the very `TypeError` the narrowed constructor exists to prevent,
+    // and would raise it here, on the reporting path.
+    //
+    // An unusable value becomes `StackTrace.empty`, not `null`. `null` would
+    // fall through to `StackTrace.current` inside the formatter and print the
+    // call path of the *report* — frames that name none of the code that
+    // failed. A wrong trace is worse than no trace, because it looks right.
+    final raw = stack;
     tomPrintStackTrace(
-      stack,
+      raw is StackTrace ? raw : StackTrace.empty,
       depth: depth,
       message: "$uuid-$requestUuid exception stacktrace",
     );

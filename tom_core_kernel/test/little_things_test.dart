@@ -967,6 +967,41 @@ void main() {
         expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
       });
 
+      test('should report no frames when the stack field holds a '
+          'non-StackTrace value', () {
+        // `stack` is inherited, public and mutable, so a value the formatter
+        // cannot use still reaches this method even though the constructor no
+        // longer accepts one. Surviving it matters more here than anywhere
+        // else: this method runs *because* something already went wrong.
+        final exception = TomException('ERROR', 'message');
+        exception.stack = 'not a stack trace';
+
+        expect(exception.printStackTrace, returnsNormally);
+        expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
+      });
+
+      test('should report no frames when the stack field was cleared', () {
+        final exception = TomException('ERROR', 'message');
+        exception.stack = null;
+
+        expect(exception.printStackTrace, returnsNormally);
+        expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
+      });
+
+      test('should not substitute the reporting site for an unusable stack',
+          () {
+        final exception = TomException('ERROR', 'message');
+        exception.stack = 42;
+        exception.printStackTrace();
+
+        // Capturing `StackTrace.current` as a fallback would print the call
+        // path of the *report*, which names none of the code that failed —
+        // a plausible-looking trace pointing at the wrong place. An unusable
+        // stack means no trace is known, so none is shown.
+        expect(captured.messages.last, isNot(contains('printStackTrace')));
+        expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
+      });
+
       test('should prefer an explicitly passed stack over the capture', () {
         final exception = TomException(
           'ERROR',
@@ -1131,6 +1166,61 @@ void main() {
           tomGetStackTraceAsTuple(StackTrace.current, 0);
       expect(traceString, isEmpty);
       expect(traceList, isEmpty);
+    });
+  });
+
+  // =========================================================================
+  // STACK PARAMETER TYPE
+  //
+  // The formatting functions take `StackTrace?`, not `Object?`. The wider type
+  // admitted values the formatter could not use and turned them into a
+  // `TypeError` at the cast — raised while reporting some *other* failure, and
+  // in `TomException`'s case before the exception object existed at all. The
+  // narrow type moves that error to compile time, where it costs nothing.
+  // =========================================================================
+
+  group('stack parameter type', () {
+    // Assertions on the function type rather than on calls: what changed is
+    // what the signature *refuses*, and a refused call cannot appear in a test
+    // that has to compile. The negative half carries the weight — a function
+    // taking `Object?` also satisfies `StackTrace?` by contravariance, so only
+    // `isNot` distinguishes the two.
+    test('tomGetStackTrace declares StackTrace?, not Object?', () {
+      expect(tomGetStackTrace, isA<String Function([StackTrace?, int])>());
+      expect(tomGetStackTrace, isNot(isA<String Function([Object?, int])>()));
+    });
+
+    test('tomGetStackTraceAsList declares StackTrace?, not Object?', () {
+      expect(
+        tomGetStackTraceAsList,
+        isA<List<String> Function([StackTrace?, int])>(),
+      );
+      expect(
+        tomGetStackTraceAsList,
+        isNot(isA<List<String> Function([Object?, int])>()),
+      );
+    });
+
+    test('tomGetStackTraceAsTuple declares StackTrace?, not Object?', () {
+      expect(
+        tomGetStackTraceAsTuple,
+        isA<(String, List<String>) Function([StackTrace?, int])>(),
+      );
+      expect(
+        tomGetStackTraceAsTuple,
+        isNot(isA<(String, List<String>) Function([Object?, int])>()),
+      );
+    });
+
+    test('tomPrintStackTrace declares StackTrace?, not Object?', () {
+      expect(
+        tomPrintStackTrace,
+        isA<void Function(StackTrace?, {String? message, int depth})>(),
+      );
+      expect(
+        tomPrintStackTrace,
+        isNot(isA<void Function(Object?, {String? message, int depth})>()),
+      );
     });
   });
 }
