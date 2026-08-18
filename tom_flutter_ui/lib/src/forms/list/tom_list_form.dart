@@ -70,7 +70,12 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     // automatically wake up anything observing this list (Save buttons,
     // dirty chips, item-table builders), without each sub-form needing a
     // hand-rolled bubble listener.
-    _forms >> (_) => notifyObservers();
+    //
+    // The returned observer MUST be retained: `TomObservable` holds its
+    // observers by `WeakReference`, so discarding it leaves the forwarder
+    // alive only until the next GC — after which row-level field edits stop
+    // reaching this list's observers, with no error to notice.
+    _formsForwarder = _forms >> (_) => notifyObservers();
   }
 
   /// Stable resource / event id for the list. Used as the `source` field
@@ -92,6 +97,12 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// removeAt / clear all use the standard [TomList] mutators so the
   /// add / remove observer wiring stays in sync.
   final TomList<TForm> _forms = TomList<TForm>();
+
+  /// Keeps the constructor's `_forms` subscription alive. Observers are held
+  /// weakly, so this reference *is* the subscription's lifetime: the field is
+  /// load-bearing by existing, which is why it is never read.
+  // ignore: unused_field
+  late final TomObserver _formsForwarder;
 
   /// The bound list (back-reference for save push-back).
   TomList<TItem>? _binding;
