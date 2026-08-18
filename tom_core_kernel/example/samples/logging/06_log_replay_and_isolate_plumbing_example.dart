@@ -20,10 +20,11 @@
 ///   [TomFileLogReplayStore] — the pluggable replay-queue backend (in-memory by
 ///   default, or file-backed to survive a restart during an outage).
 ///
-/// Every sink here is exercised connection-free: worker pools are created at
-/// size zero (which spawn no isolates) and the remote path is driven with its
-/// endpoint left unset so it takes the local fallback. This keeps the example
-/// deterministic and fast while still touching the real public API.
+/// Every sink here is exercised connection-free: the single worker pool is
+/// closed before anything is dispatched to it, and the remote path runs either
+/// with no endpoint set (so it takes the local fallback) or against a scripted
+/// stand-in that answers in memory. This keeps the example deterministic and
+/// fast while still touching the real public API.
 ///
 /// Run with:
 /// ```bash
@@ -74,11 +75,11 @@ class _CapturingOutput extends TomLogOutput {
   }
 }
 
-/// Builds a logging worker context for zero-size pools (spawns no isolates).
+/// Builds the logging worker context used to spawn the pool and to demonstrate
+/// the isolate-side setup hook.
 ///
 /// Uses literal environment / platform values so the example does not depend on
-/// the global [TomRuntime] singleton being initialised; a zero-size pool never
-/// actually consumes the context.
+/// the global [TomRuntime] singleton being initialised.
 TomLoggingWorkerContext _emptyLoggingContext() {
   return TomLoggingWorkerContext(
     const TomEnvironment('example', isTest: true),
@@ -229,11 +230,26 @@ Future<void> run() async {
   print('5. Setup entry points:');
 
   final context = _emptyLoggingContext();
-  // A logging worker context IS a worker context (it extends TomWorkerContext),
-  // so a runtime instance check confirms the inheritance the pool relies on.
-  final contextIsWorkerContext = (context as Object) is TomWorkerContext;
-  print('   TomLoggingWorkerContext is a TomWorkerContext? '
-      '$contextIsWorkerContext');
+
+  // Everything TomLoggingWorkerContext adds over a plain TomWorkerContext is in
+  // its initializeIsolate(): it registers the executor that replays records
+  // arriving in the spawned worker. The pool runs that hook inside the isolate,
+  // where nothing here can watch it, so this calls it directly and reads the
+  // dispatch chain back. (That the context is accepted by a pool at all — the
+  // inheritance — is already exercised above, where example 3 builds one from
+  // it.)
+  final executorsBefore = List<TomExecutor>.of(TomWorker.executors);
+  await context.initializeIsolate();
+  final registeredExecutor = TomWorker.executors.length == executorsBefore.length
+      ? null
+      : TomWorker.executors.last;
+  // Restore: the chain just written is the main isolate's, not a worker's.
+  TomWorker.clearExecutors();
+  executorsBefore.forEach(TomWorker.addExecutor);
+
+  final registersLoggingExecutor = registeredExecutor is TomLoggingExecutor;
+  print('   initializeIsolate registers a TomLoggingExecutor? '
+      '$registersLoggingExecutor (${registeredExecutor.runtimeType})');
 
   // startLoggingToCreator swaps the global output to a creator-routing sink.
   final beforeSwap = tomLog.logOutput;
@@ -580,7 +596,7 @@ Future<void> run() async {
   assert(creatorGatedMessage == null);
 
   // Example 5: setup entry points
-  assert(contextIsWorkerContext);
+  assert(registersLoggingExecutor);
   assert(swappedToCreator);
 
   // Example 6: remote payloads
