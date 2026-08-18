@@ -404,16 +404,19 @@ send to; `TomWorker.canSendToCreator()` is false in the main isolate and in any
 worker started without a back-channel. Everything else goes to
 `TomCreatorLogOutput.fallbackOutput`.
 
-That slot is a `TomLogOutput`, so any sink can be installed there — a file, a
-collector, a capture in a test — and the whole record is handed on, not just
-the message text. It defaults to a `TomConsoleLogOutput`, so an application
-that never touches it behaves as before. The type matters because a worker
-that has lost its creator is the case where its records are least likely to be
-watched on a console, which is exactly when redirecting them somewhere durable
-is worth doing.
+That slot is a `TomLogOutput`, so any sink can be installed there — a remote
+collector, a capture in a test, an application's own sink — and the whole
+record is handed on, not just the message text. It defaults to a
+`TomConsoleLogOutput`, so an application that never touches it behaves as
+before. The type matters because a worker that has lost its creator is the case
+where its records are least likely to be watched on a console, which is exactly
+when sending them somewhere else is worth doing:
 
 ```dart
-TomCreatorLogOutput.fallbackOutput = FileLogOutput('/var/log/worker.log');
+// Ship the records a lost creator would have collected to the log server
+// instead. TomRemoteLogOutput buffers and replays across an outage, so this
+// survives the collector being down as well.
+TomCreatorLogOutput.fallbackOutput = TomRemoteLogOutput();
 ```
 
 The level gate is applied before the fallback is consulted, so a record filtered
