@@ -652,7 +652,7 @@ TomClass()
 | `mute` | `void mute()` | *(override)* Mutes this class and all its members. |
 | `unmute` | `void unmute()` | *(override)* Unmutes members then this class, coalescing to a single notification. |
 | `setValues` | `void setValues(Map<String, dynamic> values)` | Updates member fields from a map, clearing collection members first. |
-| `setOrMergeValues` | `void setOrMergeValues(Map<String, dynamic> values, bool merge)` | Updates member fields; when `merge` is `true`, collection members are appended to rather than cleared. |
+| `setOrMergeValues` | `void setOrMergeValues(Map<String, dynamic> values, bool merge)` | Updates member fields; when `merge` is `true`, collection members are appended to rather than cleared. A value of the wrong shape throws `TomObservableException` naming the key and the supplied runtime type (also in `parameters`), and the batch mute is released in a `finally` so the object and its members stay notifying. |
 | `getValues` | `Map<String, dynamic> getValues()` | Returns all member values as a JSON-safe map (recursing nested classes; prefixing date/timezone values). |
 | `fromJson` | `void fromJson(String json)` | Populates this class from a JSON string via `setValues`. |
 | `toJson` | `Map<String, dynamic> toJson()` | Returns the JSON-compatible map (equivalent to `getValues`). |
@@ -747,8 +747,8 @@ TomList.ofList(List<E> list)
 | `removeLast` | `E removeLast()` | Removes and un-observes the last element. |
 | `removeRange` | `void removeRange(int start, int end)` | Removes and un-observes elements in `[start, end)`. |
 | `removeWhere` | `void removeWhere(bool Function(E element) test)` | Removes and un-observes matching elements. |
-| `replaceRange` | `void replaceRange(int start, int end, Iterable<E> replacements)` | Replaces a range as a single consolidated notification. |
-| `retainWhere` | `void retainWhere(bool Function(E element) test)` | Retains only matching elements. |
+| `replaceRange` | `void replaceRange(int start, int end, Iterable<E> replacements)` | Replaces a range as a single consolidated notification; the internal mute is released in a `finally`, so an out-of-range index does not silence the list. |
+| `retainWhere` | `void retainWhere(bool Function(E element) test)` | Retains only matching elements as a single notification; the internal mute is released in a `finally`, so a throwing `test` does not silence the list. |
 | `setAll` | `void setAll(int index, Iterable<E> iterable)` | Overwrites elements from `index`, re-observing. |
 | `setRange` | `void setRange(int start, int end, Iterable<E> iterable, [int skipCount = 0])` | Overwrites a range, re-observing. |
 | `shuffle` | `void shuffle([Random? random])` | Shuffles the elements. |

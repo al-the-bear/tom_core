@@ -1583,6 +1583,150 @@ void main() {
       );
     });
   });
+
+  // A malformed value in the incoming map — the ordinary case when
+  // deserializing untrusted JSON — must leave the object usable and must say
+  // which key it choked on.
+  group('TomClass.setOrMergeValues failure handling', () {
+    test('a failed member set leaves the object and its members unmuted', () {
+      final person = TestPerson();
+
+      expect(
+        () => person.setValues({'age': 'not a number'}),
+        throwsA(isA<TomObservableException>()),
+      );
+
+      expect(person.isMuted, isFalse);
+      expect(person.age.isMuted, isFalse);
+      expect(person.name.isMuted, isFalse);
+    });
+
+    test('a later change still notifies after a failed setValues', () {
+      final person = TestPerson();
+      final observer = TestObserver<TomClass>();
+      person.addObserver(observer);
+
+      expect(
+        () => person.setValues({'age': 'not a number'}),
+        throwsA(isA<TomObservableException>()),
+      );
+      observer.reset();
+
+      person.name.set('Bob');
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('the failure names the key and the actual runtime type', () {
+      final person = TestPerson();
+
+      expect(
+        () => person.setValues({'age': 'not a number'}),
+        throwsA(
+          isA<TomObservableException>()
+              .having((e) => e.defaultUserMessage, 'message', contains("'age'"))
+              .having((e) => e.parameters?['key'], 'parameters.key', 'age')
+              // Asserted on the parameter rather than the message: the wrapped
+              // TypeError's own text happens to mention `String` too, so a
+              // message-only check would survive dropping the type entirely.
+              .having((e) => e.parameters?['valueType'], 'parameters.valueType',
+                  'String'),
+        ),
+      );
+    });
+
+    test('a mistyped list element names the key, the index and both types', () {
+      final item = TestTaggedItem();
+
+      expect(
+        () => item.setValues({
+          'tags': ['ok', 42]
+        }),
+        throwsA(
+          isA<TomObservableException>()
+              .having((e) => e.defaultUserMessage, 'message', contains("'tags'"))
+              .having(
+                  (e) => e.defaultUserMessage, 'message', contains('element 1'))
+              .having((e) => e.defaultUserMessage, 'message', contains('TomInt'))
+              .having((e) => e.defaultUserMessage, 'message',
+                  contains('TomString'))
+              .having((e) => e.parameters?['index'], 'parameters.index', 1),
+        ),
+      );
+    });
+
+    test('a mistyped list element leaves the existing elements intact', () {
+      final item = TestTaggedItem();
+      item.setValues({
+        'tags': ['a', 'b']
+      });
+
+      expect(
+        () => item.setValues({
+          'tags': ['c', 42]
+        }),
+        throwsA(isA<TomObservableException>()),
+      );
+
+      // The elements are built and checked before the list is touched, so a
+      // rejected payload cannot leave the member emptied.
+      expect(item.tags.map((e) => e.get()), equals(['a', 'b']));
+    });
+
+    test('a failure inside a nested TomClass leaves the outer one unmuted', () {
+      final customer = TestCustomer();
+
+      expect(
+        () => customer.setValues({
+          'address': {'zipCode': 12345}
+        }),
+        throwsA(isA<TomObservableException>()),
+      );
+
+      expect(customer.isMuted, isFalse);
+      expect(customer.address.isMuted, isFalse);
+      expect(customer.address.zipCode.isMuted, isFalse);
+    });
+  });
+
+  // The batch mutators suppress their own notifications around a composite
+  // edit; a throw in the middle must not leave that suppression in place.
+  group('TomList batch mutator failure handling', () {
+    TomList<TomInt> seeded(List<int> values) {
+      final list = TomList<TomInt>();
+      for (final v in values) {
+        list.append(TomInt(v));
+      }
+      return list;
+    }
+
+    test('replaceRange leaves the list unmuted when the range is bad', () {
+      final list = seeded([1, 2, 3]);
+
+      expect(() => list.replaceRange(1, 99, [TomInt(9)]), throwsA(anything));
+
+      expect(list.isMuted, isFalse);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+      list.append(TomInt(4));
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('retainWhere leaves the list unmuted when the predicate throws', () {
+      final list = seeded([1, 2, 3]);
+
+      expect(
+        () => list.retainWhere((e) => throw StateError('predicate boom')),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(list.isMuted, isFalse);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+      list.append(TomInt(4));
+      expect(observer.notifyCount, equals(1));
+    });
+  });
 }
 
 // ============================================================================

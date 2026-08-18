@@ -585,6 +585,47 @@ print(~person.email);    // "bob@example.com"
 print(~person.isActive); // false
 ```
 
+#### When a value has the wrong shape
+
+The input is usually decoded JSON, so a mistyped value is an ordinary event,
+not a programming error. Two guarantees apply:
+
+**The object stays usable.** `setValues` batches its work behind a `mute()`,
+and that mute is released in a `finally`. A rejected value therefore cannot
+leave the object — or the members `mute()` cascades to — permanently silent.
+Whatever was applied before the failure is announced at that point: the object
+*has* changed, and hiding it would be worse than reporting a partial update.
+
+**The error says which key.** Every failure surfaces as a
+`TomObservableException` naming the offending key and the runtime type actually
+supplied, with both repeated in `parameters` for programmatic handling:
+
+```dart
+try {
+  person.setValues({'age': 'not a number'});
+} on TomObservableException catch (e) {
+  print(e.defaultUserMessage);
+  // Failed to set TomClass member 'age' from a String: type 'String' is not …
+  print(e.parameters);        // {key: age, valueType: String}
+}
+```
+
+For a `TomList` member the report is per element, and it is raised *before* the
+list is touched — so a payload with one bad entry does not empty the member it
+failed to replace:
+
+```dart
+item.setValues({'tags': ['a', 'b']});
+try {
+  item.setValues({'tags': ['c', 42]});    // 42 is not a TomString
+} on TomObservableException catch (e) {
+  print(e.defaultUserMessage);
+  // TomList member 'tags' element 1 cannot be deserialized from an int:
+  // that yields a TomInt, but the list holds TomString
+}
+print(item.tags.map((e) => ~e));  // (a, b) — unchanged
+```
+
 ### JSON Serialization
 
 ```dart
@@ -1057,6 +1098,12 @@ void performBatchUpdate(Person person) {
   }
 }
 ```
+
+An unreleased mute is not a lost notification — it is an object that never
+notifies again, because nothing outside `unmute()` clears the flag. The
+framework's own batching follows this pattern for exactly that reason:
+`TomClass.setOrMergeValues` (and therefore `setValues` / `fromJson`),
+`TomList.replaceRange` and `TomList.retainWhere` all release in a `finally`.
 
 ## Error Handling
 

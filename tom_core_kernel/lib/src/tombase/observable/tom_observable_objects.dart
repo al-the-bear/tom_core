@@ -830,41 +830,77 @@ class TomClass extends TomObject<Map<String, TomObject>>
   ///
   /// When [merge] is `false`, collections are cleared before new values
   /// are added (same behavior as [setValues]).
+  ///
+  /// ## Failure
+  ///
+  /// The input is usually decoded JSON, so a value of the wrong shape is an
+  /// ordinary occurrence rather than a programming error, and the method is
+  /// written to survive one:
+  ///
+  /// - The mute is released in a `finally`, so a rejected value cannot leave
+  ///   the object — or its members, which [mute] cascades to — permanently
+  ///   silent. Whatever was applied before the failure is announced at that
+  ///   point: the object *has* changed, and hiding it would be worse than
+  ///   reporting a partial update.
+  /// - Whatever the underlying failure was, it surfaces as a
+  ///   [TomObservableException] naming the offending key and the runtime type
+  ///   actually supplied. Unwrapped, a mistyped member surfaces as a bare
+  ///   `TypeError` from deep inside a cast, which identifies neither.
   void setOrMergeValues(Map<String, dynamic> values, bool merge) {
     mute();
-    for (var key in values.keys) {
-      TomObject? member = _value[key] ?? _value["_$key"];
-      var value = values[key];
-      if (member != null) {
-        if (member is TomClass) {
-          member.setOrMergeValues(value, merge);
-        } else {
-          if (member is TomList) {
-            _setListMember(member, value, key, !merge);
-          } else if (member is TomMap) {
-            _setMapMember(member, value, key, !merge);
-          } else {
-            if ((member is TomDateTime ||
-                    member is TomObject<DateTime> ||
-                    member is TomObject<DateTime?>) &&
-                value is String) {
-              // The wire format is `<prefix><iso8601>` (see getValues()).
-              // Accept both the prefixed and bare forms — the prefix is
-              // a 3-char marker so substring(3) trims it cleanly.
-              final raw = value.startsWith(TomDateTime.serializationPrefix)
-                  ? value.substring(3)
-                  : value;
-              member.set(DateTime.parse(raw));
-            } else if (member is TomOTimezoned && value is String) {
-              member.setByString(value);
-            } else {
-              member.set(value);
-            }
-          }
+    try {
+      for (var key in values.keys) {
+        TomObject? member = _value[key] ?? _value["_$key"];
+        var value = values[key];
+        if (member == null) continue;
+        try {
+          _setMember(member, value, key, merge);
+        } on TomObservableException {
+          // Already named its own key — a nested TomClass, or one of the
+          // collection helpers below. Wrapping again would bury that key
+          // under this one.
+          rethrow;
+        } catch (exception, stacktrace) {
+          throw TomObservableException(
+            "TomClass.set_values_error.member_assignment_failed",
+            "Failed to set TomClass member '$key' from a "
+                "${value.runtimeType}: $exception",
+            parameters: {"key": key, "valueType": "${value.runtimeType}"},
+            rootException: exception,
+            stack: stacktrace,
+          );
         }
       }
+    } finally {
+      unmute();
     }
-    unmute();
+  }
+
+  /// Applies one deserialized [value] to one [member], dispatching on the
+  /// member's observable type.
+  void _setMember(TomObject member, dynamic value, String key, bool merge) {
+    if (member is TomClass) {
+      member.setOrMergeValues(value, merge);
+    } else if (member is TomList) {
+      _setListMember(member, value, key, !merge);
+    } else if (member is TomMap) {
+      _setMapMember(member, value, key, !merge);
+    } else if ((member is TomDateTime ||
+            member is TomObject<DateTime> ||
+            member is TomObject<DateTime?>) &&
+        value is String) {
+      // The wire format is `<prefix><iso8601>` (see getValues()).
+      // Accept both the prefixed and bare forms — the prefix is
+      // a 3-char marker so substring(3) trims it cleanly.
+      final raw = value.startsWith(TomDateTime.serializationPrefix)
+          ? value.substring(3)
+          : value;
+      member.set(DateTime.parse(raw));
+    } else if (member is TomOTimezoned && value is String) {
+      member.setByString(value);
+    } else {
+      member.set(value);
+    }
   }
 
   void _setMapMember(
@@ -949,6 +985,30 @@ class TomClass extends TomObject<Map<String, TomObject>>
         newElements.add(obj);
       } else {
         newElements.add(TomObject._createFrom(element));
+      }
+    }
+    // Check every element against the member's declared element type before
+    // installing any of them. Left to the install step, the mismatch surfaces
+    // as a bare `TypeError` from the covariant `add`/`as E` check — which names
+    // neither the member nor the position — and, worse, surfaces *after*
+    // `_resetWithDynamic` has already cleared the list, so a rejected payload
+    // would destroy the data it failed to replace.
+    for (var i = 0; i < newElements.length; i++) {
+      final candidate = newElements[i];
+      if (!member._acceptsElement(candidate)) {
+        throw TomObservableException(
+          "TomClass.set_list_member_error.invalid_element_type",
+          "TomList member '$key' element $i cannot be deserialized from a "
+              "${value[i].runtimeType}: that yields a "
+              "${candidate.runtimeType}, but the list holds "
+              "${memberMirror.simpleName}",
+          parameters: {
+            "key": key,
+            "index": i,
+            "valueType": "${value[i].runtimeType}",
+            "elementType": "${candidate.runtimeType}",
+          },
+        );
       }
     }
     if (clear) {
@@ -1396,6 +1456,15 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// whole-container covariant check happens — each element is instead checked
   /// individually via `add`'s covariant parameter, exactly like the
   /// element-by-element path in [_setListMember].
+  /// Whether [candidate] may be stored in this list.
+  ///
+  /// [TomClass._setListMember] builds elements reflectively and holds them as
+  /// `TomObject<dynamic>`, so it cannot express the `is E` test itself — `E` is
+  /// only in scope here. Asking the list lets a mistyped element be reported
+  /// before it is installed rather than as a covariant-check `TypeError` after
+  /// the list has already been cleared.
+  bool _acceptsElement(TomObject<dynamic> candidate) => candidate is E;
+
   void _resetWithDynamic(Iterable<TomObject<dynamic>> elements) {
     // Snapshot the listener list before iterating to guard against
     // concurrent modification inside a listener callback.
@@ -1508,16 +1577,28 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     // Suppress only this list's own notifications (super.mute(), not the
     // element-cascading override) so the composite remove+insert surfaces as
     // a single consolidated notification instead of up to three.
+    //
+    // Released in a `finally`: an out-of-range index throws between the two
+    // halves, and an unreleased mute would silence the list for the rest of
+    // its life — a far worse outcome than the failed edit itself.
     super.mute();
-    removeRange(start, end);
-    insertAll(start, replacements);
-    super.unmute();
+    try {
+      removeRange(start, end);
+      insertAll(start, replacements);
+    } finally {
+      super.unmute();
+    }
   }
 
   void retainWhere(bool Function(E element) test) {
+    // `test` is caller code and may throw; see replaceRange for why the
+    // release is unconditional.
     super.mute();
-    removeWhere((element) => !test(element));
-    super.unmute();
+    try {
+      removeWhere((element) => !test(element));
+    } finally {
+      super.unmute();
+    }
   }
 
   void setAll(int index, Iterable<E> iterable) {
