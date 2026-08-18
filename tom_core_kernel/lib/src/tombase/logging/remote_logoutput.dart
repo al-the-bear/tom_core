@@ -299,6 +299,18 @@ class TomInMemoryLogReplayStore implements TomLogReplayStore {
 /// endpoint is still down). This lets records that piled up during an outage
 /// flush in order once the endpoint recovers.
 ///
+/// Delivery is serialised: records are handed to the endpoint one at a time,
+/// in the order [output] was called, however many callers or instances there
+/// are. [output] returns before its record has been sent (see its signature),
+/// so overlapping calls are the normal case rather than the exception — and
+/// without serialisation each of them would run its own drain over the shared
+/// replay queue, re-sending records another drain had read but not yet
+/// removed. The guarantee covers one isolate, which is exactly the scope of
+/// the queue it protects: both are statics, and Dart statics are per-isolate.
+///
+/// Serialisation is between *records*, not the whole logging call: [output]
+/// still returns immediately, and the caller is never blocked.
+///
 /// The defaults (no retries, no backoff, no replay queue) keep behaviour
 /// predictable and testable without a live server: one attempt, fall back on
 /// failure. Opt into resilience by setting the `globalSetting*` knobs.
@@ -356,6 +368,14 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// endpoint are not replayed to the new one.
   static void clearReplayQueue() => globalSettingReplayStore.clear();
 
+  /// Tail of the delivery lane: completes when the most recently claimed
+  /// record has finished draining, sending and (if it failed) being buffered.
+  ///
+  /// Shared with [globalSettingReplayStore], whose scope it matches: both are
+  /// per-isolate statics, so the lane serialises every record an isolate
+  /// produces against the same isolate's queue.
+  static Future<void> _deliveryLane = Future<void>.value();
+
   @override
   void output(
     TomLogLevel loggerLevel,
@@ -379,37 +399,55 @@ class TomRemoteLogOutput extends TomLogOutput {
       );
       return;
     }
-    await runZoned(
-      zoneValues: {TomLoggingContext: TomLoggingContext(inRemoteLogging: true)},
-      () async {
-        final remoteMessage = TomRemoteLogMessage.of(
-          loggerLevel.levelPattern,
-          logLevel.levelPattern,
-          level,
-          convertToString(message),
-          isolateName,
-          timeStamp.toIso8601String(),
-          origin,
-        );
-        // Flush anything that piled up while the endpoint was unreachable
-        // before sending the current record, preserving arrival order.
-        await _drainReplayQueue();
-        final failure = await _sendWithRetry(remoteMessage);
-        if (failure != null) {
-          _logToFallback(
-            loggerLevel,
-            logLevel,
+    // Claim a slot in the delivery lane *before the first await*, so slots are
+    // ordered by call order rather than by whichever caller happens to resume
+    // first. Without this, two records emitted back to back race each other to
+    // the endpoint, and each runs its own drain over the shared replay store —
+    // re-sending records the other has already taken but not yet removed.
+    final predecessor = _deliveryLane;
+    final slot = Completer<void>();
+    _deliveryLane = slot.future;
+    try {
+      await predecessor;
+      await runZoned(
+        zoneValues: {
+          TomLoggingContext: TomLoggingContext(inRemoteLogging: true),
+        },
+        () async {
+          final remoteMessage = TomRemoteLogMessage.of(
+            loggerLevel.levelPattern,
+            logLevel.levelPattern,
             level,
-            message,
+            convertToString(message),
             isolateName,
-            timeStamp,
+            timeStamp.toIso8601String(),
             origin,
-            failure,
           );
-          _enqueueForReplay(remoteMessage);
-        }
-      },
-    );
+          // Flush anything that piled up while the endpoint was unreachable
+          // before sending the current record, preserving arrival order.
+          await _drainReplayQueue();
+          final failure = await _sendWithRetry(remoteMessage);
+          if (failure != null) {
+            _logToFallback(
+              loggerLevel,
+              logLevel,
+              level,
+              message,
+              isolateName,
+              timeStamp,
+              origin,
+              failure,
+            );
+            _enqueueForReplay(remoteMessage);
+          }
+        },
+      );
+    } finally {
+      // Always completed, never completed with an error: the lane is a
+      // chain, so a failed slot would fail every record queued behind it.
+      // Delivery failures are already handled inside the zone above.
+      slot.complete();
+    }
   }
 
   /// Sends [remoteMessage] once, translating every way the send can fail into
@@ -493,6 +531,12 @@ class TomRemoteLogOutput extends TomLogOutput {
 
   /// Re-sends buffered records oldest-first, stopping at the first one that
   /// still fails (the endpoint is presumed down again).
+  ///
+  /// A record is removed only once the server has accepted it, so a crash
+  /// mid-drain replays it rather than losing it. That leaves the record
+  /// readable by anyone else draining at the same time, which is why callers
+  /// must hold a delivery-lane slot (see [output]): the lane, not this loop,
+  /// is what stops a second drain from re-sending what this one has in flight.
   Future<void> _drainReplayQueue() async {
     final store = globalSettingReplayStore;
     for (var next = store.oldest; next != null; next = store.oldest) {

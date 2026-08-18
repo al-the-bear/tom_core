@@ -1525,6 +1525,40 @@ void main() {
               equals(['first', 'second']));
         });
 
+        test('delivers overlapping records once each, in emission order',
+            () async {
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+          // Two records pile up while the endpoint is unreachable.
+          TomRemoteLogOutput.remoteEndpoint =
+              _MockLogEndpoint(script: const [_SendOutcome.throwError]);
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'q1');
+          await emit(out, 'q2');
+          expect(TomRemoteLogOutput.replayQueueLength, equals(2));
+
+          // The endpoint recovers, and two further records are emitted back
+          // to back. output() is `void ... async`, so the caller cannot await
+          // it: the second call starts while the first is still suspended in
+          // its drain. That overlap is the case under test, which is why the
+          // `emit` helper (it settles between records) is bypassed here.
+          final recovered =
+              _MockLogEndpoint(script: const [_SendOutcome.ok]);
+          TomRemoteLogOutput.remoteEndpoint = recovered;
+          out.output(TomLogLevel.production, TomLogLevel.info, 'INFO   ', 'c1',
+              'main', fixedTime, null);
+          out.output(TomLogLevel.production, TomLogLevel.info, 'INFO   ', 'c2',
+              'main', fixedTime, null);
+          await Future<void>.delayed(Duration.zero);
+
+          // Each record reaches the collector exactly once — a record still in
+          // the queue when a concurrent drain starts must not be sent twice —
+          // and the backlog stays ahead of the live records that displaced it.
+          expect(recovered.accepted.map((m) => m.message),
+              equals(['q1', 'q2', 'c1', 'c2']));
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+        });
+
         test('drops the oldest record on overflow', () async {
           TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 2;
           // Every send throws so nothing drains and the queue keeps filling.

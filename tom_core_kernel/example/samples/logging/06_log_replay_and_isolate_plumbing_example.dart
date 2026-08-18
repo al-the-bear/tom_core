@@ -416,6 +416,20 @@ Future<void> run() async {
     orElse: () => '',
   );
 
+  // 9e: two records logged back to back. output() returns before its record is
+  // sent, so the second call starts while the first is still draining the
+  // buffer left by 9d — overlapping calls are the normal case, not an exotic
+  // one. Deliveries are serialised in call order, so the backlog still arrives
+  // ahead of the live records and no record is sent twice.
+  final ordered = _ScriptedLogEndpoint([_SendOutcome.ok]);
+  TomRemoteLogOutput.remoteEndpoint = ordered;
+  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
+      TomLogger.INFO, 'back to back 1', 'main', fixedTime, null);
+  resilientOutput.output(TomLogLevel.production, TomLogLevel.info,
+      TomLogger.INFO, 'back to back 2', 'main', fixedTime, null);
+  await Future<void>.delayed(Duration.zero);
+  final orderedAccepted = ordered.accepted.map((m) => m.message).toList();
+
   // Restore defaults so the example leaves no global state behind.
   TomRemoteLogOutput.globalSettingFallbackOutput = originalRemoteFallback;
   TomRemoteLogOutput.remoteEndpoint = null;
@@ -428,6 +442,7 @@ Future<void> run() async {
   print('   9c drain:  accepted=$drainedAccepted, queue now $queueAfterDrain');
   print('   9d refusal: $refusedSends sends, queued=$queuedAfterRefusal, '
       'warning="$refusalWarning"');
+  print('   9e order:  accepted=$orderedAccepted');
   print('');
 
   // ===========================================================================
@@ -559,6 +574,12 @@ Future<void> run() async {
   assert(refusedSends == 4); // one attempt + three retries
   assert(queuedAfterRefusal == 1);
   assert(refusalWarning.contains(_rejectionReason));
+  // Two overlapping calls: 9d's buffered record drains first, then the two live
+  // records in the order they were logged, each exactly once.
+  assert(orderedAccepted.length == 3);
+  assert(orderedAccepted[0] == 'refused by collector');
+  assert(orderedAccepted[1] == 'back to back 1');
+  assert(orderedAccepted[2] == 'back to back 2');
 
   // Example 10: durable store persists the queue across a simulated restart
   assert(bufferedBeforeRestart == 2); // both records buffered to disk

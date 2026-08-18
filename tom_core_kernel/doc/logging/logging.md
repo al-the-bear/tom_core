@@ -268,6 +268,13 @@ TomRemoteLogOutput.clearReplayQueue();
 The defaults (no retries, no backoff, no replay queue) keep behaviour
 predictable and testable without a live server.
 
+Records reach the endpoint one at a time, in the order `output` was called.
+This matters because `output` returns before its record has been sent, so
+back-to-back log lines overlap by default; without serialisation each of them
+would run its own drain over the same replay queue and re-send records another
+drain had read but not yet removed. The guarantee covers one isolate — the same
+scope as the queue it protects, since both are statics.
+
 The queue's *storage* is pluggable through `TomLogReplayStore`. The default
 (`TomInMemoryLogReplayStore`) keeps records in memory, so they are lost if the
 process exits mid-outage. Point the store at a file to make the buffer durable —
