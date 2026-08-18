@@ -135,9 +135,15 @@ class TomObject<T> extends TomObservable {
   /// - [String] → [TomString] (or timezone types if prefixed)
   /// - [DateTime] → [TomDateTime]
   /// - [int] → [TomInt]
+  /// - [double] → [TomDouble]
   /// - [bool] → [TomBool]
   /// - [Map] → [TomMap] (recursively wraps values)
   /// - [List] → [TomList] (recursively wraps elements)
+  ///
+  /// The choice is made from the runtime type of [v] alone; nothing here knows
+  /// the destination. An integral number therefore always becomes a [TomInt],
+  /// even when the member it is bound for holds doubles — callers that know the
+  /// destination type widen the value first with [_widenForDoubleTarget].
   ///
   /// Returns [tomNull] if the type cannot be determined.
   static TomObject _createFrom(dynamic v) {
@@ -161,6 +167,9 @@ class TomObject<T> extends TomObservable {
     if (v is int) {
       return TomInt(v);
     }
+    if (v is double) {
+      return TomDouble(v);
+    }
     if (v is bool) {
       return TomBool(v);
     }
@@ -180,6 +189,24 @@ class TomObject<T> extends TomObservable {
     }
     return tomNull;
   }
+
+  /// Widens an integral number to `double` when the destination type [T] holds
+  /// doubles, and returns [v] untouched otherwise.
+  ///
+  /// JSON has a single number type, so a producer is free to write `20` for a
+  /// value the schema calls a double — JavaScript's `JSON.stringify(20.0)` does
+  /// exactly that. Widening at a double-holding destination is lossless, so it
+  /// happens silently. The reverse is not lossless: narrowing a fractional
+  /// number to an `int` destination is left to fail rather than truncated.
+  ///
+  /// The destination test is `<T>[] is List<TomObject<double?>>` rather than an
+  /// equality against [TomDouble]. Covariance makes it true for [TomDouble],
+  /// [TomNDouble] and any subclass of either, and false for [TomInt] — and
+  /// false for an untyped element type, because `dynamic` is a top type rather
+  /// than a subtype of `double?`, so a raw [TomList] keeps its integers as
+  /// integers.
+  static dynamic _widenForDoubleTarget<T extends TomObject>(dynamic v) =>
+      v is int && <T>[] is List<TomObject<double?>> ? v.toDouble() : v;
 
   @override
   String toString() {
@@ -866,6 +893,12 @@ class TomClass extends TomObject<Map<String, TomObject>>
       member.set(DateTime.parse(raw));
     } else if (member is TomOTimezoned && value is String) {
       member.setByString(value);
+    } else if (member is TomObject<double?> && value is int) {
+      // A double-holding member reached by an integral number: JSON has one
+      // number type, so widen rather than reject. `TomObject<double?>` covers
+      // both TomDouble and TomNDouble by covariance — see
+      // TomObject._widenForDoubleTarget for why the check is shaped this way.
+      member.set(value.toDouble());
     } else {
       member.set(value);
     }
@@ -903,7 +936,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
           }
           member[key] = obj;
         } else {
-          member[key] = TomObject._createFrom(element);
+          member[key] = TomObject._createFrom(member._widenValue(element));
         }
       }
     } else {
@@ -952,7 +985,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
         }
         newElements.add(obj);
       } else {
-        newElements.add(TomObject._createFrom(element));
+        newElements.add(TomObject._createFrom(member._widenElement(element)));
       }
     }
     // Check every element against the member's declared element type before
@@ -1460,6 +1493,15 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// the list has already been cleared.
   bool _acceptsElement(TomObject<dynamic> candidate) => candidate is E;
 
+  /// Widens a deserialized [raw] number to `double` when this list holds
+  /// doubles, leaving every other value untouched.
+  ///
+  /// Like [_acceptsElement], this exists because `E` is only in scope here:
+  /// [TomClass._setListMember] knows the raw JSON value but not the element
+  /// type. See [TomObject._widenForDoubleTarget] for the rule itself.
+  dynamic _widenElement(dynamic raw) =>
+      TomObject._widenForDoubleTarget<E>(raw);
+
   /// Loosely-typed variant of [resetWith] used by deserialization.
   ///
   /// [TomClass._setListMember] builds new elements reflectively into a
@@ -1828,6 +1870,14 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
 
   /// The number of key-value pairs in the map.
   int get length => _value.length;
+
+  /// Widens a deserialized [raw] number to `double` when this map holds
+  /// doubles, leaving every other value untouched.
+  ///
+  /// Exists because `V` is only in scope here: [TomClass._setMapMember] knows
+  /// the raw JSON value but not the value type. See
+  /// [TomObject._widenForDoubleTarget] for the rule itself.
+  dynamic _widenValue(dynamic raw) => TomObject._widenForDoubleTarget<V>(raw);
 
   @override
   int get hashCode => _value.hashCode;

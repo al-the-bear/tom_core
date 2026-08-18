@@ -60,6 +60,21 @@ class TestTaggedItem extends TomClass {
   final subtasks = TomList<TestTask>();
 }
 
+/// Test class exercising fractional and integral numbers across every shape a
+/// deserialized member can take: a scalar `TomDouble`, its nullable sibling, a
+/// `TomList<TomDouble>` and a `TomMap<String, TomDouble>`, with `TomInt`
+/// alongside so that widening a number to `double` cannot be shown to swallow
+/// genuine integers.
+@tomReflector
+class TestPricedItem extends TomClass {
+  final price = TomDouble(0);
+  final discount = TomNDouble(null);
+  final quantity = TomInt(0);
+  final rates = TomList<TomDouble>();
+  final surcharges = TomMap<String, TomDouble>();
+  final counts = TomList<TomInt>();
+}
+
 /// Test class for TomMap with TomClass values
 @tomReflector
 class TestUserProfile extends TomClass {
@@ -2579,6 +2594,176 @@ void main() {
       );
 
       expect(list.isMuted, isFalse);
+    });
+  });
+
+  // ==========================================================================
+  // Deserializing numbers
+  // ==========================================================================
+
+  group('deserializing numbers', () {
+    late TestPricedItem item;
+
+    setUp(() => item = TestPricedItem());
+
+    group('the untyped path (TomObject._createFrom, via a TomMap member)', () {
+      test('a fractional number becomes a TomDouble, not tomNull', () {
+        item.setValues({
+          'surcharges': {'handling': 4.25},
+        });
+
+        final wrapped = item.surcharges['handling'];
+        expect(wrapped, isA<TomDouble>(),
+            reason: 'a JSON double has a first-class leaf; it must not fall '
+                'through to tomNull');
+        expect(wrapped!.get(), equals(4.25));
+      });
+
+      test('an integral number in a double-valued map widens to TomDouble', () {
+        item.setValues({
+          'surcharges': {'handling': 4},
+        });
+
+        // `4 == 4.0` in Dart, so the value alone proves nothing here — the
+        // point of the assertion is the runtime type.
+        expect(item.surcharges['handling'], isA<TomDouble>());
+        expect(item.surcharges['handling']!.get(), isA<double>());
+        expect(item.surcharges['handling']!.get(), equals(4.0));
+      });
+
+      // An untyped container member (`TomList<TomObject>` /
+      // `TomMap<String, TomObject>`) would pin the other half of the rule —
+      // that an element type which merely *accepts* a double is not a reason
+      // to produce one. It cannot be tested here: such a member cannot be
+      // deserialized at all, because reflection resolves no ClassMirror for
+      // `TomObject<dynamic>`. That is tcincb40, which owns those two tests.
+
+      test('a fractional number nested in a list survives', () {
+        item.setValues({
+          'rates': [1.5, 2.25],
+        });
+
+        expect(item.rates.map((e) => e.get()).toList(), equals([1.5, 2.25]));
+      });
+
+      test('integral numbers in a TomList<TomDouble> widen', () {
+        item.setValues({
+          'rates': [1, 2],
+        });
+
+        expect(item.rates, everyElement(isA<TomDouble>()));
+        expect(item.rates.map((e) => e.get()), everyElement(isA<double>()));
+        expect(item.rates.map((e) => e.get()).toList(), equals([1.0, 2.0]));
+      });
+
+      test('integral numbers in a TomList<TomInt> stay integers', () {
+        // The widening is keyed on the destination, so an int-holding list
+        // must be left alone — otherwise every integer in the system would
+        // quietly become a double.
+        item.setValues({
+          'counts': [1, 2],
+        });
+
+        expect(item.counts, everyElement(isA<TomInt>()));
+        expect(item.counts.map((e) => e.get()), everyElement(isA<int>()));
+      });
+
+      // A `TomList<TomNDouble>` is also a double-holding destination and the
+      // widening does fire for it, but the element cannot be installed: no
+      // nullable leaf type can, because `_createFrom` only ever builds the
+      // non-nullable ones (a `TomList<TomNString>` rejects a plain string the
+      // same way). That is tcincb41, which owns that test.
+    });
+
+    group('the typed path (a scalar member)', () {
+      test('a fractional number reaches a TomDouble field', () {
+        item.setValues({'price': 19.99});
+
+        expect(item.price.get(), equals(19.99));
+      });
+
+      test('an integral number reaches a TomDouble field as a double', () {
+        // JSON has one number type. A producer that writes 20 rather than
+        // 20.0 — JavaScript's JSON.stringify does exactly this — must not
+        // fail to load into a double field.
+        item.setValues({'price': 20});
+
+        expect(item.price.get(), isA<double>());
+        expect(item.price.get(), equals(20.0));
+      });
+
+      test('an integral number reaches a TomNDouble field as a double', () {
+        item.setValues({'discount': 5});
+
+        expect(item.discount.get(), isA<double>());
+        expect(item.discount.get(), equals(5.0));
+      });
+
+      test('null still clears a nullable double field', () {
+        item.discount | 2.5;
+
+        item.setValues({'discount': null});
+
+        expect(item.discount.get(), isNull);
+      });
+
+      test('a fractional number is refused by an int field', () {
+        // The widening is one-directional. Narrowing 2.5 to an int would
+        // discard data silently, which is the defect this group exists to
+        // prevent, not a convenience to add.
+        expect(
+          () => item.setValues({'quantity': 2.5}),
+          throwsA(isA<TomObservableException>()),
+        );
+      });
+
+      test('an integer still reaches an int field as an int', () {
+        item.setValues({'quantity': 7});
+
+        expect(item.quantity.get(), equals(7));
+        expect(item.quantity.get(), isA<int>());
+      });
+    });
+
+    group('round trips', () {
+      test('a fractional price survives getValues/setValues', () {
+        item.price | 19.99;
+        item.quantity | 3;
+
+        final restored = TestPricedItem()..setValues(item.getValues());
+
+        expect(restored.price.get(), equals(19.99));
+        expect(restored.quantity.get(), equals(3));
+      });
+
+      test('a price survives a real JSON encode/decode round trip', () {
+        // The map member is left empty on purpose: `_serializeMember` has no
+        // TomMap branch, so a populated map member fails at `jsonEncode`
+        // before any of this reaches the number handling. That is tcopen44,
+        // a separate defect that afflicts every value type equally — the
+        // map's number handling is covered above through `setValues`.
+        item.price | 19.99;
+        item.discount | 1.5;
+        item.rates.addAll([TomDouble(0.5), TomDouble(1.25)]);
+
+        final restored = TestPricedItem()..fromJson(jsonEncode(item.toJson()));
+
+        expect(restored.price.get(), equals(19.99));
+        expect(restored.discount.get(), equals(1.5));
+        expect(restored.rates.map((e) => e.get()).toList(),
+            equals([0.5, 1.25]));
+      });
+
+      test('an integral double survives the JSON round trip as a double', () {
+        // The encoder writes 20.0, but a hand-edited or foreign payload may
+        // carry 20; both must land as a double.
+        item.price | 20.0;
+
+        final restored = TestPricedItem()..fromJson(jsonEncode(item.toJson()));
+
+        expect(restored.price.get(), isA<double>());
+        expect(restored.price.get(), equals(20.0));
+      });
     });
   });
 }

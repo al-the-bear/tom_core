@@ -633,6 +633,42 @@ try {
 print(item.tags.map((e) => ~e));  // (a, b) — unchanged
 ```
 
+### Numbers: Integers Widen Into Double Destinations
+
+JSON has a single number type, so a producer is free to write `20` where the
+schema says `double` — JavaScript's `JSON.stringify(20.0)` does exactly that.
+An integral value arriving at a double-holding destination is therefore widened
+rather than rejected, whether the destination is a field, a list element or a
+map value:
+
+```dart
+final item = PricedItem();          // price: TomDouble, rates: TomList<TomDouble>
+
+item.setValues({'price': 20, 'rates': [1, 2]});
+
+print(item.price.get());            // 20.0  — a double, not an int
+print(item.rates.map((e) => ~e));   // (1.0, 2.0)
+```
+
+The widening is keyed on the *destination*, not on the value, so integers that
+are meant to stay integers do:
+
+```dart
+item.setValues({'quantity': 7, 'counts': [1, 2]});   // TomInt, TomList<TomInt>
+
+print(item.quantity.get() is int);  // true
+```
+
+It is also one-directional. Widening `int` to `double` is lossless; narrowing
+is not, so a fractional value offered to an integer destination is refused with
+the usual `TomObservableException` rather than silently truncated:
+
+```dart
+item.setValues({'quantity': 2.5});
+// TomObservableException: Failed to set TomClass member 'quantity' from a
+// double: type 'double' is not a subtype of type 'int' of 'value'
+```
+
 ### JSON Serialization
 
 ```dart
