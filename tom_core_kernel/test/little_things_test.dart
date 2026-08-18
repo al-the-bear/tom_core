@@ -1088,6 +1088,39 @@ void main() {
         );
       });
 
+      test('should open the record with the identity message and no more', () {
+        // The documented record layout. `tomPrintStackTrace` joins the message
+        // to the trace with a space, not a newline, so the first frame shares
+        // a line with the identifier — a log rule keying on the uuid pair
+        // cannot anchor to end of line, and the words between them are
+        // literal text rather than a description of the record.
+        final exception = TomException(
+          'test.error.key',
+          'message',
+          uuid: 'uuid-123',
+          requestUuid: 'req-456',
+        );
+        exception.printStackTrace(1);
+
+        final logged = captured.messages.last;
+        expect(logged, startsWith('uuid-123-req-456 exception stacktrace '));
+        expect(logged.split('\n').first, isNot(endsWith('stacktrace')));
+      });
+
+      test('should render a missing requestUuid as null, not omit it', () {
+        // The pair is always two fields wide. Dropping the separator when
+        // there is no request would make the common case parse differently
+        // from the correlated one.
+        final exception = TomException(
+          'test.error.key',
+          'message',
+          uuid: 'uuid-123',
+        );
+        exception.printStackTrace(1);
+
+        expect(captured.messages.last, startsWith('uuid-123-null '));
+      });
+
       test('should log the construction site when no stack was passed', () {
         final exception = _constructExceptionAtKnownSite();
         exception.printStackTrace();

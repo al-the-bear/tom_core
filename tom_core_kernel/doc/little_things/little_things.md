@@ -197,6 +197,22 @@ The name is inherited from `TomBaseException.printStackTrace` in
 `tom_basics`, which genuinely does call `print`. `TomException` overrides it
 to log instead, so the two behave differently under the same name.
 
+`TomException.printStackTrace` supplies its own message —
+`"$uuid-$requestUuid exception stacktrace"` — and `tomPrintStackTrace` joins
+that to the trace with a space, not a newline. So the first frame shares a
+line with the identifier:
+
+```text
+3f2a…-req-456 exception stacktrace #0  Foo.bar (file:///…/foo.dart:12:5)
+#1  main (file:///…/main.dart:4:3)
+```
+
+Three things follow for anything parsing these records. The words after the
+identifier pair are literal text, not a description, so they are always
+present. A rule keying on the pair cannot anchor to end of line. And
+`requestUuid` renders as the string `null` when the exception carries none,
+rather than being omitted — the pair is always two fields wide.
+
 Frames come back newest first — the throw site leads — and a `depth` limit
 counts from there, so a bounded trace keeps the frames nearest the error.
 
