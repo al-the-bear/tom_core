@@ -34,7 +34,7 @@ import 'dart:io';
 import 'package:tom_basics/tom_basics.dart';
 import 'package:tom_reflection/mirrors.dart';
 
-import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart';
+import '../reflection/reflection.dart';
 
 // =============================================================================
 // Type Definitions

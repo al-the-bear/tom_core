@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:tom_core_kernel/src/tombase/little_things/little_things.dart';
+
+import '../little_things/little_things.dart';
 
 /// Shared scope-installation policy for [TomScope.runInScope] and
 /// [TomScopeMixin.runInScope].

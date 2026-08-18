@@ -49,8 +49,9 @@ library;
 // =============================================================================
 
 import 'package:tom_basics/tom_basics.dart';
-import 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart';
-import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart';
+
+import '../reflection/reflection.dart';
+import 'remote_logoutput.dart';
 
 // =============================================================================
 // Remote Log Server
