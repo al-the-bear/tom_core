@@ -348,7 +348,12 @@ anonymous preference, because a preference is per principal.
 | `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` |
 | `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` |
 | `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
-| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `Object?` |
+| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` |
+
+The two kinds of nothing in that table are different. `listPreferences` takes no
+request at all, and the `—` says so; `deletePreference` has a request and no
+*result* — it answers `200` with an empty body, which is what `void` states.
+`TomUserPreferencesApiService` spells the same thing `Future<void>`.
 
 Read and delete map the `{key}` path segment onto the request DTO's `key`
 field. The write does not: its request carries a `key` field of its own, so the

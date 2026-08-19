@@ -1888,7 +1888,7 @@ void main() {
       ]);
     });
 
-    test('a read and a write both answer with the stored preference', () {
+    test('each endpoint states the result type it answers with', () {
       final api = tomUserPreferencesApi;
 
       expect(
@@ -1904,6 +1904,15 @@ void main() {
       expect(
         api[tomUserPreferencesWriteEndpointId].responseType,
         TomUserPreferenceDto,
+      );
+      // A delete answers `200` with an empty body, and `void` is the only
+      // spelling that says so. Nothing in the framework reads `responseType`,
+      // so no behaviour would change if this said `Object?` instead — which is
+      // why it is asserted here: the declaration is the sole statement of the
+      // wire's shape, and the documentation mirrors are copied from it.
+      expect(
+        api[tomUserPreferencesDeleteEndpointId].responseType,
+        _typeOf<void>(),
       );
     });
 
@@ -2002,3 +2011,10 @@ void main() {
     });
   });
 }
+
+/// The `Type` object for [T].
+///
+/// `void` cannot be written as an expression, so `expect(x, void)` does not
+/// parse and the only way to name the type of an endpoint that answers with
+/// nothing is to reify it through a type parameter.
+Type _typeOf<T>() => T;

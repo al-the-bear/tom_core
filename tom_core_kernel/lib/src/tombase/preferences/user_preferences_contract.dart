@@ -182,7 +182,14 @@ final TomApi tomUserPreferencesApi = TomApi(
       method: TomHttpMethod.put,
       access: const TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<Object?, TomUserPreferenceKeyRequest>(
+    // `void` and not `Object?`: the delete answers `200` with an empty body,
+    // so there is no value for a caller to read and no type to give it. The
+    // two spellings behave identically — nothing in the framework reads
+    // [TomApiEndpoint.responseType] — which is exactly why the declaration has
+    // to be the honest one. It is the only statement of the wire's shape that
+    // a reader, a generated client or a documentation mirror can consult, and
+    // `Object?` would tell all three to expect a JSON value that never comes.
+    TomApiEndpoint<void, TomUserPreferenceKeyRequest>(
       id: tomUserPreferencesDeleteEndpointId,
       uri: '/{key}',
       method: TomHttpMethod.delete,

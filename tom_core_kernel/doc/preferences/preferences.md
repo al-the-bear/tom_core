@@ -560,7 +560,14 @@ The API declaration, mounted at `/preferences`.
 | `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` |
 | `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` |
 | `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
-| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | — |
+| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` |
+
+The two kinds of nothing in that table are different. `listPreferences` takes
+no request at all — its `requestTypes` is empty, and the `—` says so.
+`deletePreference` does have a request; what it has none of is a *result*: the
+handler returns nothing, the pipeline answers `200` with an empty body, and
+`void` is the declaration that says exactly that. `TomUserPreferencesApiService`
+spells the same thing `Future<void>`.
 
 #### Where the key is stated
 
