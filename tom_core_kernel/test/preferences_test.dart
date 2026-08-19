@@ -115,6 +115,47 @@ class SubPreference extends BasePreference {
   String label = 'sub';
 }
 
+/// A reflected class with no no-argument constructor, so rebuilding it from a
+/// stored row is impossible. Writing one still works, which is what makes the
+/// read the first place the problem can appear.
+@tomReflector
+class ConstructedPreference {
+  int size;
+
+  ConstructedPreference(this.size);
+}
+
+/// An enum preference value — a theme, the canonical one.
+///
+/// Annotated, because an enum is a non-scalar and so follows the same rule as
+/// every other non-scalar: the registry is what makes its name durable, and on
+/// the way back it is also what supplies the constants to match against.
+@tomReflector
+enum ThemePreference { light, dark, highContrast }
+
+/// A second reflected enum, so a value of one is not readable as the other.
+@tomReflector
+enum DensityPreference { comfortable, compact }
+
+/// An **unannotated** enum, which the registry therefore cannot name.
+enum UnreflectedThemePreference { light, dark }
+
+/// A reflected enum that overrides `toString`.
+///
+/// Worth pinning because the kernel's other enum-naming code
+/// (`TomObservableEnum.enumTypeSegment`) reads the declared name back out of
+/// `Enum.toString()` and is defeated by an override. The codec is not: it takes
+/// the type name from the registry and the constant from [Enum.name], neither
+/// of which an override touches.
+@tomReflector
+enum RenamedPreference {
+  first,
+  second;
+
+  @override
+  String toString() => 'custom($name)';
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -712,6 +753,186 @@ void main() {
 
       expect(stored.valueType, 'BoxPreference');
       expect(TomUserPreferenceCodec.decode<BoxPreference>(stored).count, 7);
+    });
+  });
+
+  // tcinc166: the library dartdoc names "an enum written as its index" as one
+  // of the two conventions the codec exists to settle, and the codec settled
+  // only the other one. What an annotated enum actually did was worse than
+  // being unsupported: `encode` wrote `{}` — the chosen constant simply gone —
+  // `validateEncoded` passed that row, and the read then threw a raw
+  // `ReflectionNoSuchMethodError`, which is not the exception type the module
+  // tells callers to catch.
+  group('TomUserPreferenceCodec — an enum is stored by name', () {
+    test('an enum round-trips', () {
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.theme',
+        ThemePreference.dark,
+      );
+
+      expect(stored.valueType, 'ThemePreference');
+      expect(
+        TomUserPreferenceCodec.decode<ThemePreference>(stored),
+        ThemePreference.dark,
+      );
+    });
+
+    test('the stored text carries the constant name, never its index', () {
+      // The whole point of the convention. An index is positional, so
+      // inserting a constant silently changes what every already-stored
+      // preference means; the name does not move. `highContrast` is at index 2
+      // today, and the assertion is that 2 appears nowhere.
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.theme',
+        ThemePreference.highContrast,
+      );
+
+      expect(jsonDecode(stored.value), {'name': 'highContrast'});
+      expect(stored.value, isNot(contains('2')));
+    });
+
+    test('a stored enum passes the boundary check', () {
+      // `validateEncoded` works from the two strings alone, without reflecting
+      // the type — deliberately, so a server can store a preference type only
+      // the client knows. That is why an enum is stored as a JSON object like
+      // every other non-scalar: it needs no new branch here, and the rule "a
+      // non-scalar value is a JSON object" stays universally true.
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.theme',
+        ThemePreference.dark,
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          stored.valueType,
+          stored.value,
+          key: stored.key,
+        ),
+        returnsNormally,
+      );
+    });
+
+    test('every constant of an enum survives the round trip', () {
+      for (final value in ThemePreference.values) {
+        expect(
+          TomUserPreferenceCodec.decode<ThemePreference>(
+            TomUserPreferenceCodec.encode('ui.theme', value),
+          ),
+          value,
+          reason: 'ThemePreference.${value.name}',
+        );
+      }
+    });
+
+    test('an overridden toString does not affect the stored form', () {
+      // `TomObservableEnum.enumTypeSegment` reads the declared type name back
+      // out of `Enum.toString()` and rejects an enum that overrides it. The
+      // codec takes the type name from the registry and the constant from
+      // `Enum.name`, so an override is simply irrelevant here — worth pinning,
+      // because the two mechanisms sit in the same package and only one of
+      // them cares.
+      expect(RenamedPreference.second.toString(), 'custom(second)');
+
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.renamed',
+        RenamedPreference.second,
+      );
+
+      expect(stored.valueType, 'RenamedPreference');
+      expect(jsonDecode(stored.value), {'name': 'second'});
+      expect(
+        TomUserPreferenceCodec.decode<RenamedPreference>(stored),
+        RenamedPreference.second,
+      );
+    });
+
+    test('one enum is not readable as another', () {
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.theme',
+        ThemePreference.dark,
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.decode<DensityPreference>(stored),
+        throwsCodecKey('preferences.decode.type_mismatch'),
+      );
+    });
+
+    test('an unannotated enum is refused, with advice that can be followed',
+        () {
+      // The rule is the one every non-scalar already follows, so there is no
+      // separate thing to learn: annotate it. Before tcinc164 this failed one
+      // call later, from `encodeValue`, with a message telling the caller to
+      // annotate a class — advice an enum could not act on. It now fails while
+      // naming the value, which is the call that cannot answer.
+      expect(
+        () => TomUserPreferenceCodec.typeNameOf(
+          UnreflectedThemePreference.dark,
+          'ui.theme',
+        ),
+        throwsCodecKey('preferences.type.not_reflected'),
+      );
+      expect(
+        () => TomUserPreferenceCodec.encode(
+          'ui.theme',
+          UnreflectedThemePreference.dark,
+        ),
+        throwsCodecKey('preferences.type.not_reflected'),
+      );
+    });
+
+    test('a constant that no longer exists is refused, not defaulted', () {
+      // The failure a released application actually meets: the row was written
+      // by a version whose enum had a constant this one has dropped. Answering
+      // `values.first` would hand back a setting the user never chose, so it
+      // is refused instead — and the message names the constant and the ones
+      // that do exist, because that is what identifies which release wrote it.
+      final stored = TomUserPreferenceDto(
+        key: 'ui.theme',
+        valueType: 'ThemePreference',
+        value: jsonEncode({'name': 'solarized'}),
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.decode<ThemePreference>(stored),
+        throwsCodecKey('preferences.decode.unknown_enum_constant'),
+      );
+    });
+
+    test('an enum row that carries no constant name is refused', () {
+      // Exactly the row the old encoder wrote: `{}`. It was stored happily and
+      // only failed at the read, with an exception the module does not tell
+      // callers to catch. It is still refused — it names no constant — but now
+      // as a codec exception, and no writer produces it any more.
+      final stored = TomUserPreferenceDto(
+        key: 'ui.theme',
+        valueType: 'ThemePreference',
+        value: '{}',
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.decode<ThemePreference>(stored),
+        throwsCodecKey('preferences.decode.unknown_enum_constant'),
+      );
+    });
+
+    test('a read that reflection cannot complete still fails as a codec error',
+        () {
+      // Found by the enum work rather than sought: the old enum read escaped
+      // as a raw `ReflectionNoSuchMethodError`, because the reflected branch
+      // did not wrap its instantiation. Removing the enum cause would have
+      // left the same leak open for a class, which this pins shut — the module
+      // promises a single exception type and this is the last path that broke
+      // it.
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.constructed',
+        ConstructedPreference(3),
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.decode<ConstructedPreference>(stored),
+        throwsCodecKey('preferences.decode.failed'),
+      );
     });
   });
 }

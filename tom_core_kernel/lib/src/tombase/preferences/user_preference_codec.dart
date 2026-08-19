@@ -47,6 +47,29 @@ class TomUserPreferenceCodecException extends TomException {
 
 /// Encodes and decodes preference values against [TomUserPreferenceDto].
 ///
+/// ## What a preference value may be
+///
+/// Three shapes, and nothing else:
+///
+/// | Shape | Stored as | Named by |
+/// | ----- | --------- | -------- |
+/// | `String`, `int`, `double`, `bool` | plain JSON | itself |
+/// | `DateTime` | an ISO 8601 instant in UTC | `DateTime` |
+/// | a `@tomReflector` **enum** | `{"name": "<constant>"}` | the registry |
+/// | a `@tomReflector` **class** | a JSON object of members | the registry |
+///
+/// A value of any other shape is refused when it is named, by [typeNameOf],
+/// because the registry has nothing to name it with. In particular a plain
+/// `List` or `Map` is *not* a preference value, however ordinary that looks:
+/// wrap it in a reflected class, whose members can then evolve under a name
+/// that survives.
+///
+/// The two non-scalar shapes share one rule — the value's class must carry
+/// `@tomReflector` — so there is no separate thing to know about enums. What
+/// the annotation buys is the same in both cases: a name that is a literal the
+/// generator emitted rather than one the compiler is free to rewrite, and, for
+/// an enum, the constants to match a stored name against on the way back.
+///
 /// Scalars are written as plain JSON; a reflected object goes through the same
 /// reflection path the endpoint pipeline uses for every other DTO
 /// ([TomReflectionInfo.convertToJsonString] /
@@ -87,6 +110,17 @@ class TomUserPreferenceCodec {
     boolType,
     dateTimeType,
   ];
+
+  /// The JSON member an enum value is stored in: its constant *name*.
+  ///
+  /// The name and not the index, which is the convention this module's own
+  /// dartdoc names as worth settling centrally. An index is positional, so
+  /// inserting a constant into the enum silently changes the meaning of every
+  /// preference already stored — the user's saved choice becomes its
+  /// neighbour's, on the next release, with nothing to notice it by. The name
+  /// moves only when the constant is renamed, and a renamed constant is
+  /// refused loudly rather than misread (see [decode]).
+  static const String enumNameField = 'name';
 
   /// The [TomUserPreferenceDto.valueType] that [value] is stored under.
   ///
@@ -147,11 +181,18 @@ class TomUserPreferenceCodec {
   /// divisor turned out to be zero, not a programming error worth a different
   /// exception type.
   ///
+  /// An enum is written as `{"name": "<constant>"}` — see [enumNameField] for
+  /// why the name and not the index, and the class dartdoc for why an object
+  /// and not a bare string.
+  ///
   /// This writes the *text*; it does not ask what the value is stored under.
   /// So an unreflected object reaches `preferences.encode.failed` here, while
   /// the same object given to [encode] is refused one step earlier, by
   /// [typeNameOf], as `preferences.type.not_reflected` — a value with no
-  /// durable name has nothing to be written under, whatever its text.
+  /// durable name has nothing to be written under, whatever its text. An
+  /// unreflected *enum* takes that same split: its text is writable here,
+  /// since a constant name needs no registry, and it is [encode] that refuses
+  /// it for having no name to be stored under.
   static String encodeValue(Object value, [String key = '']) {
     if (value is String || value is int || value is double || value is bool) {
       try {
@@ -177,6 +218,14 @@ class TomUserPreferenceCodec {
     }
     if (value is DateTime) {
       return jsonEncode(value.toUtc().toIso8601String());
+    }
+    if (value is Enum) {
+      // As an object rather than a bare string, so that "a non-scalar value is
+      // a JSON object" stays true without exception. That is what lets
+      // [validateEncoded] keep checking the shape from the declared type name
+      // alone, which is the one thing it must be able to do without reflecting
+      // a class the server may not have.
+      return jsonEncode({enumNameField: value.name});
     }
     try {
       return tomReflectionInfo.convertToJsonString(value);
@@ -205,6 +254,11 @@ class TomUserPreferenceCodec {
   /// reflected class it names is deliberately not checked: a preference type
   /// may be one only the client knows, and a server that insisted on reflecting
   /// it would refuse to store values it is not meant to interpret.
+  ///
+  /// That is also why an enum is stored as an object: this check sees a type
+  /// *name* and cannot tell an enum from a class without reflecting it, so
+  /// giving enums a shape of their own would mean either weakening the rule
+  /// for every class or asking the server the question it must not ask.
   ///
   /// [key] only names the preference in an error.
   static void validateEncoded(
@@ -285,6 +339,14 @@ class TomUserPreferenceCodec {
   /// payload omits keeps its declared default. The `valueType` comparison is
   /// what makes that safe: a caller asking for the wrong class is refused
   /// before a single member is assigned.
+  ///
+  /// **An enum [T] is matched against the constants it declares now**, and a
+  /// stored name that is not among them raises
+  /// `preferences.decode.unknown_enum_constant` rather than defaulting. The
+  /// tolerance the class path allows is deliberately absent here: an omitted
+  /// member falls back to the value the class itself declares, whereas an
+  /// unmatched constant has no such answer — only the user's actual choice
+  /// would do, and that is precisely what has been lost.
   ///
   /// What no read can catch is a stored *row* whose `valueType` and text
   /// disagree, because a JSON object is shaped like every reflected class at
@@ -492,11 +554,32 @@ class TomUserPreferenceCodec {
       );
     }
     if (T == double && raw is int) return raw.toDouble() as T;
+    if (reflectedClass != null && reflectedClass.isEnum) {
+      return _decodeEnum<T>(raw, key, reflectedClass);
+    }
     if (reflectedClass != null && raw is Map<String, Object?>) {
-      final instance = tomReflectionInfo.createInstanceFromJson<T>(
-        reflectedClass,
-        raw,
-      );
+      final T? instance;
+      try {
+        instance = tomReflectionInfo.createInstanceFromJson<T>(
+          reflectedClass,
+          raw,
+        );
+      } catch (error, stack) {
+        // `createInstanceFromJson` documents a null return but only its
+        // `fromJson` attempt is guarded — a class with no usable default
+        // constructor throws out of it. Uncaught, that reaches the caller as a
+        // reflection error, which is not the exception type this module tells
+        // anyone to catch; the cause is kept rather than discarded.
+        throw TomUserPreferenceCodecException(
+          'preferences.decode.failed',
+          "Preference '$key' could not be instantiated as $T. A reflected "
+              'preference type needs a no-argument constructor, or a '
+              '`fromJson` one.',
+          parameters: {'key': key, 'requested': T.toString()},
+          rootException: error,
+          stack: stack,
+        );
+      }
       if (instance == null) {
         throw TomUserPreferenceCodecException(
           'preferences.decode.failed',
@@ -510,6 +593,39 @@ class TomUserPreferenceCodec {
       'preferences.decode.failed',
       "Preference '$key' could not be decoded as $T.",
       parameters: {'key': key, 'requested': T.toString()},
+    );
+  }
+
+  /// Resolves the enum constant [raw] names, against the constants [enumClass]
+  /// declares *now*.
+  ///
+  /// Refused rather than defaulted when nothing matches. This is not a
+  /// hypothetical: the row may have been written by a release whose enum had a
+  /// constant this one has dropped or renamed, which is the ordinary cost of
+  /// letting an enum evolve. Falling back to the first constant would hand the
+  /// caller a setting the user never chose, and it would look exactly like one
+  /// they did — so the read fails and says which name it could not place.
+  static T _decodeEnum<T extends Object>(
+    Object? raw,
+    String key,
+    ClassMirror enumClass,
+  ) {
+    final name = raw is Map<String, Object?> ? raw[enumNameField] : null;
+    // The registry emits `values` for every enum it captures, and the same
+    // capability that resolved the class supplies it.
+    final constants = enumClass.invokeGetter('values') as List<Enum>;
+    for (final constant in constants) {
+      if (constant.name == name) return constant as T;
+    }
+    throw TomUserPreferenceCodecException(
+      'preferences.decode.unknown_enum_constant',
+      "Preference '$key' holds the $T constant '$name', which $T no longer "
+          'declares. It has: ${constants.map((c) => c.name).join(', ')}.',
+      parameters: {
+        'key': key,
+        'requested': T.toString(),
+        'value': name?.toString() ?? '',
+      },
     );
   }
 }

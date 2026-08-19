@@ -77,9 +77,10 @@ final request = TomUserPreferenceWriteRequest(
 ```
 
 Both calls take the key so that a failure can name the preference it was
-about. `typeNameOf` can fail: for anything that is not a scalar it asks the
-reflection registry for the name, and a class the registry does not know has
-no name it could be stored under.
+about. `typeNameOf` can fail: for anything that is not a scalar — a reflected
+class or an enum — it asks the reflection registry for the name, and a type the
+registry does not know has no name it could be stored under. See
+[What a preference value may be](#what-a-preference-value-may-be).
 
 ### 3. Decode a Value
 
@@ -147,6 +148,7 @@ Encodes and decodes preference values.
 | Member | Purpose |
 |--------|---------|
 | `stringType` / `intType` / `doubleType` / `boolType` / `dateTimeType` | The scalar type names |
+| `enumNameField` | The JSON member an enum's constant name is stored in |
 | `typeNameOf(value, [key])` | The name a value is stored under |
 | `typeNameForType(type, [key])` | The name a value of that type is stored under |
 | `encode(key, value, {updatedAt})` | Builds the whole DTO |
@@ -185,10 +187,77 @@ midnight.
 `parseInstant` is that test, exposed: a client building its own write request can
 check its text and get the same verdict the boundary will give.
 
-A non-scalar value must be a `@tomReflector` class. It is serialized through the
-same reflection path the endpoint pipeline uses for every other DTO, so a
-preference object is written exactly as it would be if it were an endpoint
-result.
+#### What a preference value may be
+
+Three shapes, and nothing else:
+
+| Shape | Stored as | Named by |
+|-------|-----------|----------|
+| `String`, `int`, `double`, `bool` | plain JSON | itself |
+| `DateTime` | an ISO 8601 instant in UTC | `DateTime` |
+| a `@tomReflector` **enum** | `{"name": "<constant>"}` | the registry |
+| a `@tomReflector` **class** | a JSON object of its members | the registry |
+
+A value of any other shape is refused when it is *named*, by `typeNameOf`,
+because the registry has nothing to name it with. In particular a plain `List`
+or `Map` is **not** a preference value, however ordinary that looks — wrap it in
+a reflected class, whose members can then evolve under a name that survives.
+
+The two non-scalar shapes share one rule — the value's class must carry
+`@tomReflector` — so an enum is not a special case to remember. What the
+annotation buys is the same either way: a name that is a literal the generator
+emitted rather than one the compiler is free to rewrite, and, for an enum, the
+constants to match a stored name against on the way back.
+
+A reflected class is serialized through the same reflection path the endpoint
+pipeline uses for every other DTO, so a preference object is written exactly as
+it would be if it were an endpoint result.
+
+#### An enum is stored by name, never by index
+
+```dart
+@tomReflector
+enum ThemePreference { light, dark, highContrast }
+
+final stored = TomUserPreferenceCodec.encode('ui.theme', ThemePreference.dark);
+stored.valueType;   // 'ThemePreference'
+stored.value;       // '{"name":"dark"}'
+
+TomUserPreferenceCodec.decode<ThemePreference>(stored);  // ThemePreference.dark
+```
+
+The name and not the index, which is the convention the module exists to settle.
+An index is positional, so inserting a constant silently changes what every
+preference already stored means — a user who chose `dark` gets `highContrast`
+after a release that added one constant above it, and nothing anywhere reports
+it. The name moves only when the constant is renamed.
+
+A renamed or removed constant is therefore the case that remains, and it is
+refused rather than guessed:
+
+| Situation | Error key |
+|-----------|-----------|
+| The stored name is not a constant the enum declares now | `preferences.decode.unknown_enum_constant` |
+
+Defaulting to the first constant would hand back a setting the user never chose,
+and it would be indistinguishable from one they did. The message names the
+constant it could not place and the ones that exist, which is what identifies
+the release that wrote the row.
+
+The stored form is an object rather than a bare string so that "a non-scalar
+value is a JSON object" stays true without exception. `validateEncoded` checks
+the boundary from the declared type name and the text alone, deliberately
+without reflecting the class (see
+[Validating Before Storing](#validating-before-storing)), and a type name does
+not say whether it belongs to an enum or a class. Giving
+enums a shape of their own would mean either weakening that check for every
+class or asking the server a question it must not ask.
+
+An enum that overrides `toString` is unaffected: the type name comes from the
+registry and the constant from `Enum.name`, neither of which an override
+touches. (`TomObservableEnum.enumTypeSegment`, elsewhere in the kernel, *does*
+read the declared name back out of `toString` and rejects such an enum — the two
+mechanisms differ, and only that one cares.)
 
 #### Which name a value is stored under
 
@@ -308,13 +377,15 @@ is the only exception the rest of this module tells callers to catch:
 | A value JSON cannot represent — in practice a non-finite `double` | `encodeValue` | `preferences.encode.not_json` |
 | A non-scalar value the reflection path cannot serialize | `encodeValue` | `preferences.encode.failed` |
 
-The first two rows both mean "an unreflected object", reached from two
-directions: `encode` asks for the name first and stops there, while
-`encodeValue` called on its own never asks and fails at the serializer. Nothing
-gets past both.
+`preferences.type.not_reflected` and `preferences.encode.failed` both mean "an
+unreflected object", reached from two directions: `encode` asks for the name
+first and stops there, while `encodeValue` called on its own never asks and
+fails at the serializer. Nothing gets past both. An unreflected *enum* takes the
+same split — its text is writable, since a constant name needs no registry, so
+it is `encode` that refuses it for having no name to be stored under.
 
-`double.nan` and `double.infinity` are the whole of the first row: every other
-scalar encodes. They are not exotic values for a preference — a computed UI
+`double.nan` and `double.infinity` are the whole of `preferences.encode.not_json`:
+every other scalar encodes. They are not exotic values for a preference — a computed UI
 scale produces a NaN the moment the number it divided by is zero — and JSON has
 no notation for either, so there is nothing to store and no substitute worth
 storing. Refusing at the write is the only place the caller still holds the
@@ -447,7 +518,11 @@ text to be, and stating it is what lets the codec disagree. See
 ### 3. Annotate Reflected Preference Values
 
 A non-scalar preference type must be `@tomReflector`, and the generator must
-have captured it. A class it has not captured fails at the *write*, with
+have captured it. **This includes enums** — an enum is a non-scalar like any
+other, and the annotation is what supplies both its durable name and, on the way
+back, the constants a stored name is matched against.
+
+A type the generator has not captured fails at the *write*, with
 `preferences.type.not_reflected`, because the registry is where the stored name
 comes from and there is none to write. That is the useful place for it to fail:
 the alternative is a row that stores cleanly and then fails every read of that

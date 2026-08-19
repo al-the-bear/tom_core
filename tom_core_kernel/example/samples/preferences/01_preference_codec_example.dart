@@ -38,6 +38,17 @@ class DisplayPreference {
   bool compact = false;
 }
 
+/// An enum preference — a choice from a closed set, which is the other shape a
+/// non-scalar preference takes.
+///
+/// Annotated for the same reason [DisplayPreference] is, and it is the same
+/// rule rather than a second one: the registry is what gives the type a name
+/// that survives minification, and on the way back it is also what supplies the
+/// constants to match the stored name against. An unannotated enum is refused
+/// at the write, where the message can still say what to do about it.
+@tomReflector
+enum SortOrderPreference { ascending, descending }
+
 // =============================================================================
 // EXAMPLE 1: Scalars carry their type alongside their JSON
 // =============================================================================
@@ -227,6 +238,57 @@ class ReflectedRoundTripExample {
 }
 
 // =============================================================================
+// EXAMPLE 4b: An enum is stored by its name, never by its index
+// =============================================================================
+
+class EnumRoundTripExample {
+  static SortOrderPreference? restored;
+  static String valueType = '';
+  static String storedText = '';
+  static bool unknownConstantRejected = false;
+  static String errorKey = '';
+
+  static void example4bEnumRoundTrip() {
+    final stored = TomUserPreferenceCodec.encode(
+      'ui.sortOrder',
+      SortOrderPreference.descending,
+    );
+
+    restored = TomUserPreferenceCodec.decode<SortOrderPreference>(stored);
+    valueType = stored.valueType;
+    storedText = stored.value;
+
+    try {
+      // What happens when the enum outlives the row. A release that renames or
+      // drops a constant leaves stored names it no longer declares, and the
+      // codec refuses them: falling back to the first constant would hand the
+      // caller a setting the user never chose, indistinguishable from one they
+      // did. The index would have been worse still — silent, and wrong for
+      // *every* stored row the moment a constant is inserted.
+      TomUserPreferenceCodec.decode<SortOrderPreference>(
+        TomUserPreferenceDto(
+          key: 'ui.sortOrder',
+          valueType: 'SortOrderPreference',
+          value: '{"name":"alphabetical"}',
+        ),
+      );
+    } on TomUserPreferenceCodecException catch (error) {
+      unknownConstantRejected = true;
+      errorKey = error.key;
+    }
+
+    assert(valueType == 'SortOrderPreference', 'The enum name is the type');
+    assert(restored == SortOrderPreference.descending, 'The constant survives');
+    assert(storedText == '{"name":"descending"}', 'Stored by name, not index');
+    assert(unknownConstantRejected, 'A constant the enum dropped is refused');
+    assert(
+      errorKey == 'preferences.decode.unknown_enum_constant',
+      'The exception names what it could not place',
+    );
+  }
+}
+
+// =============================================================================
 // EXAMPLE 5: A mismatched read fails rather than coercing
 // =============================================================================
 
@@ -343,6 +405,7 @@ void run() {
   DateTimeRoundTripExample.example3DateTimeRoundTrip();
   ZonelessTimestampExample.example3bZonelessTimestamp();
   ReflectedRoundTripExample.example4ReflectedRoundTrip();
+  EnumRoundTripExample.example4bEnumRoundTrip();
   TypeMismatchExample.example5TypeMismatch();
   ValidateEncodedExample.example6ValidateEncoded();
   NonFiniteNumberExample.example7NonFiniteNumber();
