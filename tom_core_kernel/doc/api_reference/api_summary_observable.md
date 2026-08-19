@@ -42,6 +42,7 @@ JSON-serializable data models.
   - [TomList](#tomlist)
   - [TomMap](#tommap)
   - [TomObservableEnum](#tomobservableenum)
+  - [TomEnumResourceSegment](#tomenumresourcesegment)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -112,6 +113,8 @@ TomObserver<T>
     └── TomFunctionObserver<T>  (implements TomObserver<T>)
 
 TomListLifecycleListener
+
+TomEnumResourceSegment  (implemented by enums, not by observables)
 
 TomException  (little_things)
     └── TomObservableException
@@ -939,8 +942,15 @@ the zone that installed the scope. Resolution walks the scope chain from most
 specific to least specific and ends at `global`, so a label declared once under
 `global` works everywhere while one scope can override just the labels it needs.
 
+The `<enumName>` segment comes from `Enum.toString()`, not `runtimeType`: only
+the former keeps the declared name under a minifying or obfuscating compile. An
+enum that overrides `toString()` must declare its segment by implementing
+[TomEnumResourceSegment](#tomenumresourcesegment); one that does neither is
+rejected with a `TomObservableException`.
+
 A value with no key degrades to the raw enum name (never blank) and logs a
-warning naming the keys tried — once per key per bundle revision.
+warning naming the keys tried — once per key per bundle revision, and no more
+than 512 distinct keys per revision.
 
 - **Extends:** `TomObject<E>`
 
@@ -964,7 +974,7 @@ ambient scope.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `enumTypeSegment` | `static String enumTypeSegment(Enum value)` | The enum-type segment of a key: the runtime type, lower case. |
+| `enumTypeSegment` | `static String enumTypeSegment(Enum value)` | The enum-type segment of a key: the declared enum name, lower case, read from `Enum.toString()` — or the enum's own `TomEnumResourceSegment.resourceSegment`. Throws when neither is available. |
 | `valueSegment` | `static String valueSegment(Enum value)` | The value segment of a key: the constant name, lower case. |
 | `resourceKeysFor` | `static List<String> resourceKeysFor(Enum value, {TomScope? scope})` | The candidate keys, most specific scope first, ending at the `global` key. |
 | `resolveTextOrNull` | `static String? resolveTextOrNull(Enum value, {TomScope? scope})` | Bundle text for `value`, or `null` when no candidate resolves. |
@@ -988,6 +998,33 @@ ambient scope.
 | `displayTextOf` | `String displayTextOf(E value)` | Bundle text for `value`, resolved in this cell's scope. |
 | `displayKeyOf` | `String displayKeyOf(E value)` | Resource key for `value`, resolved in this cell's scope. |
 | `detachFromResources` | `void detachFromResources()` | Stops reacting to bundle changes; value changes still notify. |
+
+### TomEnumResourceSegment
+
+Interface implemented by an **enum**, not by an observable, to declare the
+middle segment of its resource keys explicitly. Needed only when the enum
+overrides `toString()`, which is what `TomObservableEnum.enumTypeSegment`
+otherwise reads the declared name out of.
+
+```dart
+enum ShippingState implements TomEnumResourceSegment {
+  pending, shipped;
+
+  @override
+  String get resourceSegment => 'shipping';   // → global.shipping.shipped
+
+  @override
+  String toString() => 'ShippingState<$name>';
+}
+```
+
+- **Kind:** `abstract interface class`
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `resourceSegment` | `String` | The enum's key segment, e.g. `todostatus` in `global.todostatus.inreview`. Lower-cased before use; must be a compile-time-stable literal, since deriving it from `runtimeType` would reintroduce the instability the interface exists to avoid. |
 
 ## Global Functions and Constants
 

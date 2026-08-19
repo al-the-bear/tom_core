@@ -163,6 +163,11 @@ value to replace.
 |-------|-------|-------------|
 | `TomObservableEnum<E extends Enum>` | `E` | Enum cell whose display text is resolved from the text bundle under `<scope>.<enumName>.<value>` |
 
+The `<enumName>` segment is read from `Enum.toString()` (stable under a
+minifying compile, unlike `runtimeType`). An enum that overrides `toString()`
+must implement `TomEnumResourceSegment` and declare its segment, or resolution
+throws.
+
 | Member | Description |
 |--------|-------------|
 | `values` | The enum's value list, in declaration order (unmodifiable) |

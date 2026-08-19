@@ -18,6 +18,7 @@ read, `>>` to observe — that the forms and UI layers build on.
 | `TomOZonedTime` / `TomOZonedDate` / `TomOZonedDateTime` | Timezone-aware observable cells (see [`timezoned`](../timezoned/readme.md)). |
 | `TomClass` / `TomList<E>` / `TomMap<K,V>` | Composite observables (object graph, observable list, observable map). |
 | `TomObservableEnum<E>` | Enum cell whose display text is resolved from the text bundle (see [`resources`](../resources/readme.md)) — no Dart-side label table. |
+| `TomEnumResourceSegment` | Implemented by an enum that overrides `toString()`, to declare its resource-key segment explicitly. |
 | `TomObserver<T>` / `TomFunctionObserver<T>` | Observer contract and a function-backed implementation. |
 
 ## Quick start

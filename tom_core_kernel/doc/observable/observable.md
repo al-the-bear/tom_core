@@ -30,6 +30,7 @@ and complex objects with automatic change notification and propagation.
 - [TomMap (Observable Maps)](#tommap-observable-maps)
 - [TomObservableEnum (Resource-Keyed Enums)](#tomobservableenum-resource-keyed-enums)
   - [Resource Keys and Scope](#resource-keys-and-scope)
+  - [Where the Enum Segment Comes From](#where-the-enum-segment-comes-from)
   - [Locale Changes](#locale-changes)
   - [Missing Keys](#missing-keys)
 - [Muting Notifications](#muting-notifications)
@@ -1442,6 +1443,41 @@ read: display resolution frequently happens inside a Flutter builder callback,
 which runs outside the zone that installed the scope. Pass `scope:` explicitly
 only when the cell must be built outside the scope whose labels it should use.
 
+### Where the Enum Segment Comes From
+
+The middle segment — `todostatus` above — is read out of `Enum.toString()`,
+whose default form is exactly `<EnumType>.<name>`, **not** out of
+`runtimeType`. The two are the same string in a debug build, but only
+`toString()` survives a minifying or obfuscating compile: the declared name is
+baked into the enum as a string literal, while `runtimeType` is a class name
+the compiler is free to rewrite. Under `dart compile js -O4 --minify`,
+`runtimeType` reads `minified:y` while `toString()` still reads
+`TodoStatus.inReview` — so a segment taken from `runtimeType` would address a
+key that exists in no bundle, losing every label in release while working
+perfectly in development.
+
+An **enhanced enum that overrides `toString()`** defeats that inference. Rather
+than fall back to the unstable name, resolution rejects it with a
+`TomObservableException`; the enum declares its segment instead by implementing
+`TomEnumResourceSegment`:
+
+```dart
+enum ShippingState implements TomEnumResourceSegment {
+  pending, shipped;
+
+  @override
+  String get resourceSegment => 'shipping';   // → global.shipping.shipped
+
+  @override
+  String toString() => 'ShippingState<$name>';
+}
+```
+
+The declared value is lower-cased before use and must be a literal — deriving
+it from `runtimeType` would reintroduce the problem it exists to avoid. The
+failure is deterministic in every build, including debug, so an enum that needs
+this is caught while it is being written rather than after it ships.
+
 ### Locale Changes
 
 A cell notifies its observers when *either* the value **or** the installed
@@ -1485,7 +1521,11 @@ WARN No enum label resource for global.todostatus.done
 
 The warning is emitted once per key per bundle revision, so a missing label in
 a thousand-row list does not flood the log, while a locale switch reports it
-again. Degradation is per value: the labels that *are* present still resolve.
+again. Because a key carries the scope path and scope ids are arbitrary
+strings, the number of distinct keys is bounded by the application's scopes
+rather than by its enums; past 512 of them the warnings stop, with one message
+saying so, and resume at the next bundle change. Degradation is per value: the
+labels that *are* present still resolve.
 
 Use `TomObservableEnum.resolveTextOrNull` when the caller wants to supply its
 own fallback rather than the raw name.
@@ -1685,6 +1725,7 @@ try {
 | `TomClass.tomlist_state_error.set_not_allowed` | Cannot replace the backing list via `set` — use `<<` or `resetWith` |
 | `TomClass.tommap_state_error.set_not_allowed` | Cannot replace the backing map via `set` — use `<<` |
 | `TomClass.set_list_member_error.not_a_list` | Expected list for TomList member |
+| `TomObservableEnum.enum_segment_error.unstable_type_name` | The enum overrides `toString()` and does not implement `TomEnumResourceSegment`, so no stable key segment can be derived |
 
 ## Class Hierarchy
 

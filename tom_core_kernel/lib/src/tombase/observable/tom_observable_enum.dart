@@ -10,6 +10,38 @@ import '../resources/tom_resource_provider.dart';
 import '../scope_ids/scope_ids.dart';
 import 'tom_observable_objects.dart';
 
+/// Declares an enum's resource segment explicitly, for enums whose segment
+/// cannot be inferred.
+///
+/// [TomObservableEnum.enumTypeSegment] normally reads the enum's declared name
+/// out of [Enum.toString], which is stable under a minifying or obfuscating
+/// compile. An enum that **overrides `toString`** defeats that inference, and
+/// rather than guess, the resolver rejects it. Implement this interface to
+/// supply the segment yourself:
+///
+/// ```dart
+/// enum Colour implements TomEnumResourceSegment {
+///   red, green;
+///
+///   @override
+///   String get resourceSegment => 'colour';
+///
+///   @override
+///   String toString() => 'Colour($name)';
+/// }
+/// ```
+///
+/// The value is lower-cased before use, so `'Colour'` and `'colour'` address
+/// the same bundle key.
+abstract interface class TomEnumResourceSegment {
+  /// The middle segment of this enum's resource keys, e.g. `todostatus` in
+  /// `global.todostatus.inreview`.
+  ///
+  /// Must be a compile-time-stable literal — deriving it from `runtimeType`
+  /// would reintroduce the very problem this interface exists to avoid.
+  String get resourceSegment;
+}
+
 /// An observable [Enum] cell whose *display text* is derived from the
 /// application text bundle instead of a Dart-side label table.
 ///
@@ -53,7 +85,8 @@ import 'tom_observable_objects.dart';
 /// — recognisable, never blank) and logs a warning naming the keys that were
 /// tried. The warning is emitted once per key per bundle revision, so a
 /// missing label in a list of a thousand rows does not flood the log, but a
-/// locale switch reports it again.
+/// locale switch reports it again. After a few hundred distinct missing keys
+/// the warnings stop altogether — one message says so.
 ///
 /// ## Example
 ///
@@ -111,9 +144,54 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
   /// Keys already reported missing for revision [_warnedRevision].
   static final Set<String> _warnedKeys = {};
 
+  /// Upper bound on [_warnedKeys], so the dedupe set cannot grow without limit.
+  ///
+  /// The set is static and lives for the process, and the number of *distinct*
+  /// keys is not bounded by the number of enums: a key carries the scope path,
+  /// and scope ids are arbitrary strings, so an application that opens a scope
+  /// per entity produces a new key per entity. Past this many distinct missing
+  /// keys the point has been made — one more warning says so and the rest are
+  /// dropped until the bundle changes.
+  static const int _maxWarnedKeys = 512;
+
+  /// Whether the [_maxWarnedKeys] cutoff has already been reported for the
+  /// current bundle revision.
+  static bool _warnLimitReported = false;
+
   /// The enum-name segment of a resource key: the enum type, lower case.
-  static String enumTypeSegment(Enum value) =>
-      value.runtimeType.toString().toLowerCase();
+  ///
+  /// Read out of [Enum.toString], **not** `runtimeType`. Both yield
+  /// `TodoStatus` for a `TodoStatus` value in a debug build, but only
+  /// `toString` survives a minifying or obfuscating compile: the declared name
+  /// is baked into the enum as a string literal, whereas `runtimeType` is a
+  /// class name the compiler is free to rewrite. Measured under
+  /// `dart compile js -O4 --minify`, `runtimeType` reads `minified:y` while
+  /// `toString` still reads `TodoStatus.inReview`. Since this segment addresses
+  /// the text bundle, taking it from `runtimeType` would lose every label in a
+  /// release build while working perfectly in development.
+  ///
+  /// An enum that overrides `toString` defeats the inference and must declare
+  /// its segment by implementing [TomEnumResourceSegment]; one that does
+  /// neither is rejected rather than resolved against an unstable name.
+  static String enumTypeSegment(Enum value) {
+    if (value case final TomEnumResourceSegment declared) {
+      return declared.resourceSegment.toLowerCase();
+    }
+    // The default Enum.toString() is exactly '<EnumType>.<name>'. Matching the
+    // '.<name>' suffix both extracts the type and confirms the default shape.
+    final text = value.toString();
+    final suffix = '.${value.name}';
+    if (text.length > suffix.length && text.endsWith(suffix)) {
+      return text.substring(0, text.length - suffix.length).toLowerCase();
+    }
+    throw TomObservableException(
+      'TomObservableEnum.enum_segment_error.unstable_type_name',
+      "Cannot derive a stable resource segment for enum value '${value.name}': "
+          "its toString() returns '$text', not '<EnumType>.${value.name}'. "
+          'Implement TomEnumResourceSegment on the enum to declare the segment '
+          'explicitly.',
+    );
+  }
 
   /// The value segment of a resource key: the enum constant name, lower case.
   static String valueSegment(Enum value) => value.name.toLowerCase();
@@ -174,13 +252,29 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
   }
 
   /// Logs a missing-label warning for [keys], at most once per bundle revision.
+  ///
+  /// Stops after [_maxWarnedKeys] distinct keys — see that constant for why the
+  /// set needs a ceiling at all. Installing a new bundle resets both the set
+  /// and the cutoff, so a locale switch reports its missing labels afresh.
   static void _warnMissing(List<String> keys) {
     final revision = ~TomTextResourceProvider.appResourcesRevision;
     if (revision != _warnedRevision) {
       _warnedRevision = revision;
       _warnedKeys.clear();
+      _warnLimitReported = false;
     }
-    if (!_warnedKeys.add(keys.first)) return;
+    // Membership is checked before insertion: adding first would keep growing
+    // the set past the cap by one entry for every new key.
+    if (_warnedKeys.contains(keys.first)) return;
+    if (_warnedKeys.length >= _maxWarnedKeys) {
+      if (_warnLimitReported) return;
+      _warnLimitReported = true;
+      tomLog.warn('More than $_maxWarnedKeys distinct enum label resources are '
+          'missing — suppressing further warnings until the text resources '
+          'change.');
+      return;
+    }
+    _warnedKeys.add(keys.first);
     tomLog.warn('No enum label resource for ${keys.first} '
         '(tried: ${keys.join(', ')}) — rendering the raw enum name.');
   }
