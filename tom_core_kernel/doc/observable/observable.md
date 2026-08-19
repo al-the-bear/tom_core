@@ -176,13 +176,13 @@ class Counter extends TomObservable {
 
 | Method | Description |
 |--------|-------------|
-| `addObserver(TomObserver observer)` | Registers an observer to receive notifications |
-| `removeObserver(TomObserver observer)` | Unregisters an observer |
-| `notifyObservers([String? message])` | Notifies all registered observers of a change |
-| `batch<T>(T Function() body)` | Runs `body` with notifications suppressed, releasing even if it throws; returns the body's result |
-| `batchSelf<T>(T Function() body)` | Like `batch`, but suppresses this object only — the members stay audible |
-| `mute()` | Suppresses notifications; nests, so each call needs one `unmute()` |
-| `unmute()` | Releases one `mute()`; notifies once when the last one is released and something changed |
+| `void addObserver(TomObserver observer)` | Registers an observer (as a `WeakReference`); a no-op if it is already registered |
+| `void removeObserver(TomObserver observer)` | Unregisters an observer; a no-op if it is not registered |
+| `void notifyObservers([dynamic message])` | Notifies every live observer, or marks the object dirty if muted. Also prunes references whose observer has been collected. `message` is accepted but unused — reserved for future context |
+| `T batch<T>(T Function() body)` | Runs `body` with notifications suppressed, releasing even if it throws; returns the body's result |
+| `T batchSelf<T>(T Function() body)` | Like `batch`, but suppresses this object only — the members stay audible |
+| `void mute()` | Suppresses notifications; nests, so each call needs one `unmute()` |
+| `void unmute()` | Releases one `mute()`; notifies once when the last one is released and something changed. Releasing more often than muting is a no-op, not an error |
 
 | Getter | Type | Description |
 |--------|------|-------------|
@@ -201,12 +201,16 @@ happens to run, and a program that was working keeps running with one of its
 observers no longer connected.
 
 The rule follows from `addObserver`, which stores a `WeakReference` rather than
-the observer itself:
+the observer itself. Written out with the private helper inlined, it is:
 
 ```dart
+final List<WeakReference<TomObserver>> observers = [];
+
 void addObserver(TomObserver observer) {
-  if (_getObserverReference(observer) == null) {
-    _observers.add(WeakReference(observer));   // weak, not strong
+  final alreadyRegistered =
+      observers.any((ref) => identical(ref.target, observer));
+  if (!alreadyRegistered) {
+    observers.add(WeakReference(observer)); // weak, not strong
   }
 }
 ```
@@ -247,6 +251,8 @@ Discarding the handle is the mistake, and it is easy to make because the
 expression reads perfectly well without it:
 
 ```dart
+final counter = Counter();
+
 // ✗ Broken: nothing references the returned observer, so it is collected
 //   and the callback silently stops firing.
 counter >> (obs) => print('Changed!');
@@ -260,7 +266,7 @@ it does:
 // ✗ Also broken under `dart compile exe`: `handle` is never read after this
 //   line, so it does not keep the observer reachable.
 final handle = counter >> (obs) => print('Changed!');
-await somethingSlow();
+await Future<void>.delayed(const Duration(seconds: 1));   // a GC may run here
 counter.increment();   // may print nothing
 ```
 
@@ -394,12 +400,20 @@ class PriceWatcher {
 
 The observable system uses custom operators for a clean, expressive API:
 
-| Operator | Usage | Description |
-|----------|-------|-------------|
-| `~` | `~observable` | Get the current value (prefix unary operator) |
-| `()` | `observable()` | Get the current value (call operator) |
-| `\|` | `observable \| value` | Set the value and notify observers |
-| `>>` | `observable >> callback` | Add a callback function as an observer |
+| Operator | Usage | Returns | Description |
+|----------|-------|---------|-------------|
+| `~` | `~observable` | `T` | Get the current value (prefix unary operator) |
+| `()` | `observable()` | `T` | Get the current value (call operator) |
+| `\|` | `observable \| value` | `T` | Set the value and notify observers; yields the value that was set |
+| `<<` | `observable << value` | `TomObject<T>` | Set the value and notify observers; yields the observable, so calls chain |
+| `>>` | `observable >> callback` | `TomFunctionObserver<TomObservable>` | Wrap the callback in an observer, register it, and return it. **Keep the returned observer** — it is held weakly (see [Memory Management](#memory-management--you-must-retain-the-observer)) |
+
+`|` and `<<` differ only in what they hand back. Use `|` when the value is what
+you want next (`final next = counter | 5;`), `<<` when you want to keep working
+on the observable (`counter << 5 << 6;`).
+
+`>>` is declared on `TomObservable`, so it is available on every observable —
+not only on the `TomObject<T>` value cells.
 
 ### Operator Examples
 
@@ -431,35 +445,60 @@ counter.removeObserver(counterObserver);
 
 ### TomObject&lt;T&gt; (Base Class)
 
-All observable types extend `TomObject<T>`, which provides:
+All observable value types extend `TomObject<T>`. It is a concrete class — you
+can instantiate `TomObject<T>` directly for a type the library does not wrap —
+and it provides:
 
 ```dart
-abstract class TomObject<T> extends TomObservable {
-  T _value;
-  
-  // Core methods
-  T get();                    // Get current value
-  T call();                   // Get current value (call operator)
-  T set(T value);             // Set value and notify
-  T? getOrNull();             // Get value or null (delegates to get())
-  bool get isNull;            // Check if value is null
-  
-  // Operators
-  T operator ~();             // Get value (prefix)
-  T operator |(T value);      // Set value
-  TomFunctionObserver<...> operator >>(Function callback);  // Subscribe
-}
+final greeting = TomObject<String>("hello");   // directly instantiable
+print(~greeting);                              // hello
 ```
+
+| Member | Description |
+|--------|-------------|
+| `TomObject(T initialValue)` | The only constructor — the initial value is required |
+| `Type getType()` | The runtime type argument `T` |
+| `T get()` | The current value |
+| `T call()` | The current value (call operator) |
+| `T set(T value)` | Sets the value and returns it; notifies **only if the value changed** |
+| `T? getOrNull()` | The current value, nullably typed. Delegates to `get()`, so every override of `get()` applies here too |
+| `bool get isNull` | Whether the current value is `null` |
+| `T operator ~()` | `~o` — the current value |
+| `T operator \|(T value)` | `o \| v` — sets, yields the value |
+| `TomObject<T> operator <<(T value)` | `o << v` — sets, yields `this`, so calls chain |
+
+`set` — and therefore `|` and `<<` — compares against the current value and
+stays silent when they are equal, so writing the same value twice notifies once.
+
+Subscription is not declared here: `operator >>` and the
+`addObserver`/`removeObserver`/`notifyObservers` trio come from
+[`TomObservable`](#tomobservable).
+
+The composites narrow this contract rather than extending it.
+[`TomClass`](#tomclass-observable-objects) and [`TomMap`](#tommap-observable-maps)
+throw from `set` — there is no single value to replace — and
+[`TomList`](#tomlist-observable-lists) throws too unless it is deserializing;
+`get` on `TomList` and `TomMap` returns a **copy**, so mutating the result
+changes nothing. Use the collection's own API (`add`, `[]=`, `setValues`, …)
+instead.
 
 ### Non-Nullable Types
 
-| Class | Wraps | Default Value |
-|-------|-------|---------------|
-| `TomString` | `String` | `""` |
-| `TomInt` | `int` | `0` |
-| `TomDouble` | `double` | `0.0` |
-| `TomBool` | `bool` | `false` |
-| `TomDateTime` | `DateTime` | Current time |
+Every one of these takes its initial value as a required positional argument —
+there is no zero-argument constructor and therefore no implicit default. Pick
+the starting value explicitly.
+
+| Class | Wraps | Constructor |
+|-------|-------|-------------|
+| `TomString` | `String` | `TomString("")` |
+| `TomInt` | `int` | `TomInt(0)` |
+| `TomDouble` | `double` | `TomDouble(0.0)` |
+| `TomBool` | `bool` | `TomBool(false)` |
+| `TomDateTime` | `DateTime` | `TomDateTime(DateTime.now())` |
+
+For "not set yet" on a non-nullable type, use the sentinel rather than inventing
+one: `TomDateTime.noDateTime` is the Unix epoch in UTC. See
+[The "no value" sentinels](#the-no-value-sentinels).
 
 ```dart
 // Creating observable primitives
@@ -486,13 +525,16 @@ createdAt | DateTime(2025, 1, 1);
 
 ### Nullable Types
 
-| Class | Wraps | Default Value |
-|-------|-------|---------------|
-| `TomNString` | `String?` | `null` |
-| `TomNInt` | `int?` | `null` |
-| `TomNDouble` | `double?` | `null` |
-| `TomNBool` | `bool?` | `null` |
-| `TomNDateTime` | `DateTime?` | `null` |
+The nullable variants also require the initial value — `null` is a legal
+argument, not an omitted one, so write it out.
+
+| Class | Wraps | Constructor |
+|-------|-------|-------------|
+| `TomNString` | `String?` | `TomNString(null)` |
+| `TomNInt` | `int?` | `TomNInt(null)` |
+| `TomNDouble` | `double?` | `TomNDouble(null)` |
+| `TomNBool` | `bool?` | `TomNBool(null)` |
+| `TomNDateTime` | `DateTime?` | `TomNDateTime(null)` |
 
 ```dart
 // Nullable types can hold null values
@@ -505,7 +547,7 @@ if (middleName.isNull) {
 }
 
 // Safe access
-String? name = middleName.getOrNull();
+String? middle = middleName.getOrNull();
 int? scoreValue = score.getOrNull();
 
 // Set to a value or back to null
@@ -540,6 +582,12 @@ For applications requiring timezone support, use the `TomZoned*` types:
 | `TomOZonedTime` | `TomZonedTime` | `@T@` |
 | `TomOZonedDateTime` | `TomZonedDateTime` | `@X@` |
 
+Together with `@!@` for a plain `TomDateTime` these are the **complete** set of
+prefixes. Deserialization inspects an incoming string for each of the four and
+rebuilds the matching observable; an unprefixed string stays a `TomString`. So
+the prefix is what distinguishes a date from text that merely looks like one —
+which is why `getValues()` writes it and `setValues()` requires it.
+
 ```dart
 // Create timezone-aware observable
 final meetingTime = TomOZonedDateTime(TomZonedDateTime(
@@ -556,8 +604,8 @@ final observer = meetingTime >> (obs) => print("Meeting time changed!");
 
 // Get the value
 TomZonedDateTime time = ~meetingTime;
-print(time.timezone.name);  // "America/New_York"
-print(time.hour);           // 14
+print(time.timezone.timezone);  // "America/New_York" — the IANA name
+print(time.hour);               // 14
 
 meetingTime.removeObserver(observer);
 ```
@@ -653,6 +701,14 @@ which values mean "no value", so the sentinels are built from
 `DateTime.utc(1970)` and never from `DateTime(1970)`:
 
 ```dart
+@tomReflector
+class Booking extends TomClass {
+  // Seeded with the sentinel, so the field is never null and never a real date.
+  TomDateTime cancelledAt = TomDateTime(TomDateTime.noDateTime.get());
+}
+
+final booking = Booking();
+
 // The comparison below holds on every machine, in every timezone.
 if (booking.cancelledAt.get().toUtc() == DateTime.utc(1970)) {
   print("not cancelled");
@@ -850,6 +906,17 @@ list is touched — so a payload with one bad entry does not empty the member it
 failed to replace:
 
 ```dart
+@tomReflector
+class PricedItem extends TomClass {
+  TomList<TomString> tags = TomList();
+  TomDouble price = TomDouble(0.0);
+  TomList<TomDouble> rates = TomList();
+  TomInt quantity = TomInt(0);
+  TomList<TomInt> counts = TomList();
+}
+
+final item = PricedItem();
+
 item.setValues({'tags': ['a', 'b']});
 try {
   item.setValues({'tags': ['c', 42]});    // 42 is not a TomString
@@ -870,8 +937,7 @@ rather than rejected, whether the destination is a field, a list element or a
 map value:
 
 ```dart
-final item = PricedItem();          // price: TomDouble, rates: TomList<TomDouble>
-
+// PricedItem, from above: price is a TomDouble, rates a TomList<TomDouble>.
 item.setValues({'price': 20, 'rates': [1, 2]});
 
 print(item.price.get());            // 20.0  — a double, not an int
@@ -884,7 +950,8 @@ are meant to stay integers do:
 ```dart
 item.setValues({'quantity': 7, 'counts': [1, 2]});   // TomInt, TomList<TomInt>
 
-print(item.quantity.get() is int);  // true
+print(item.quantity.get());          // 7     — still an int
+print(item.counts.map((e) => ~e));   // (1, 2)
 ```
 
 It is also one-directional. Widening `int` to `double` is lossless; narrowing
@@ -921,6 +988,8 @@ reads all of them back, so a class round-trips through its own output whatever
 mix of date members it holds:
 
 ```dart
+final original = Event()..name.set("Conference");
+
 final restored = Event();
 restored.setValues(original.getValues());   // zoned members included
 ```
@@ -1084,7 +1153,7 @@ int listNotifications = 0;
 final observer = tasks >> (obs) => listNotifications++;
 
 // Add a task
-tasks.add(Task()..title | "Buy groceries");
+tasks.add(Task()..title.set("Buy groceries"));
 print(listNotifications);  // 1
 
 // Modify the task's title - list is notified!
@@ -1107,13 +1176,13 @@ the new elements, then notifies:
 
 ```dart
 final rows = TomList<Task>();
-rows.addAll([Task()..title | 'a', Task()..title | 'b']);
+rows.addAll([Task()..title.set('a'), Task()..title.set('b')]);
 
 int notifications = 0;
 final observer = rows >> (obs) => notifications++;
 
 // Swap all contents in one shot — a single notification, not one per element.
-rows.resetWith([Task()..title | 'x', Task()..title | 'y']);
+rows.resetWith([Task()..title.set('x'), Task()..title.set('y')]);
 print(notifications);  // 1
 
 rows.removeObserver(observer);
@@ -1148,9 +1217,12 @@ class RowFormSync extends TomListLifecycleListener {
 }
 
 final rows = TomList<Task>();
-rows.addLifecycleListener(RowFormSync());
+
+// Keep the listener: removing it later needs the same instance.
+final rowFormSync = RowFormSync();
+rows.addLifecycleListener(rowFormSync);
 // ... later
-rows.removeLifecycleListener(listener);
+rows.removeLifecycleListener(rowFormSync);
 ```
 
 Both `resetWith` and `notifyObservers` snapshot their listener/observer lists
@@ -1242,7 +1314,7 @@ int mapNotifications = 0;
 final observer = users >> (obs) => mapNotifications++;
 
 // Add a user
-users['alice'] = User()..name | "Alice";
+users['alice'] = User()..name.set("Alice");
 print(mapNotifications);  // 1
 
 // Modify the user's score - map is notified!
@@ -1347,6 +1419,11 @@ final status = TomObservableEnum(TodoStatus.inReview, values: TodoStatus.values)
 // Retain the observer — observers are held weakly.
 final observer = status >> (_) => print(status.displayText);
 
+final germanBundle = TomTextResourceProvider.from({
+  'global': {
+    'todostatus': {'open': 'Offen', 'inreview': 'In Prüfung', 'done': 'Erledigt'},
+  },
+});
 TomTextResourceProvider.setAppResourceProvider(germanBundle);  // 'In Prüfung'
 
 status.removeObserver(observer);
@@ -1381,12 +1458,10 @@ own fallback rather than the raw name.
 ### In Forms
 
 `tom_flutter_ui` exposes this as `TomEnumSelectableSource` and the
-`enumPickerFor` family helper, which builds a dropdown whose options are
-labelled from the bundle and which re-labels itself on a locale change:
-
-```dart
-family.enumPickerFor('status', TodoStatus.open, values: TodoStatus.values);
-```
+`enumPickerFor` family helper — `family.enumPickerFor('status',
+TodoStatus.open, values: TodoStatus.values)` — which builds a dropdown whose
+options are labelled from the bundle and which re-labels itself on a locale
+change. That call belongs to `tom_flutter_ui`, not to this package.
 
 ## Muting Notifications
 
@@ -1450,9 +1525,9 @@ while they work; because mutes nest, doing so suppresses their own intermediate
 notifications without releasing yours:
 
 ```dart
-order.batch(() {
-  order.setValues({'orderId': 'ORD-001'});  // batches internally
-  order.total | 99.99;
+person.batch(() {
+  person.setValues({'name': 'Bob'});  // batches internally
+  person.age | 30;
 });  // still exactly one notification
 ```
 
@@ -1465,6 +1540,11 @@ state where the next batch fails to suppress.
 For `TomClass`, `TomList`, and `TomMap`, muting propagates to children:
 
 ```dart
+@tomReflector
+class OrderItem extends TomClass {
+  TomString name = TomString("");
+}
+
 @tomReflector
 class Order extends TomClass {
   TomString orderId = TomString("");
@@ -1480,8 +1560,8 @@ order.mute();
 
 // All these changes are batched
 order.orderId | "ORD-001";
-order.items.add(OrderItem()..name | "Widget");
-order.items.add(OrderItem()..name | "Gadget");
+order.items.add(OrderItem()..name.set("Widget"));
+order.items.add(OrderItem()..name.set("Gadget"));
 order.total | 99.99;
 
 order.unmute();  // Single notification for all changes
@@ -1510,9 +1590,11 @@ void performBatchUpdate(Person person) {
 readily as a statement:
 
 ```dart
+final newItems = [OrderItem()..name.set("Bolt"), OrderItem()..name.set("Nut")];
+
 final count = order.batch(() {
   order.items.addAll(newItems);
-  return order.items.length;
+  return order.items.length;   // batch() returns whatever the body returns
 });
 ```
 
@@ -1533,8 +1615,13 @@ while observers watching an individual element still hear about that element
 when it changes:
 
 ```dart
-list.batchSelf(() {
-  // list is muted; its elements are not
+final rowList = TomList<TomString>();
+rowList.addAll([TomString('a'), TomString('b')]);
+
+rowList.batchSelf(() {
+  // rowList is muted; its elements are not, so an observer watching
+  // rowList[0] still hears this change immediately.
+  rowList[0] | 'A';
 });
 ```
 
@@ -1595,16 +1682,25 @@ TomObservable (base class)
 Prefer operators over method calls for readability:
 
 ```dart
-// ✓ Clean and idiomatic
-name | "John";
-String value = ~name;
-_observer = name >> (obs) => print("Changed!");   // field: keeps it alive
+class NameField {
+  final TomString name = TomString("");
+  late TomFunctionObserver<TomObservable> _observer;
 
-// ✗ More verbose (but equivalent)
-name.set("John");
-String value = name.get();
-_observer = TomFunctionObserver((obs) => print("Changed!"));
-name.addObserver(_observer);
+  void useOperators() {
+    // ✓ Clean and idiomatic
+    name | "John";
+    String value = ~name;
+    _observer = name >> (obs) => print("Changed! $value");  // field: kept alive
+  }
+
+  void useMethods() {
+    // ✗ More verbose (but equivalent)
+    name.set("John");
+    String value = name.get();
+    _observer = TomFunctionObserver((obs) => print("Changed! $value"));
+    name.addObserver(_observer);
+  }
+}
 ```
 
 Note that both spellings capture the observer. `>>` is shorter than
@@ -1654,9 +1750,14 @@ Always specify type parameters for type safety:
 TomList<TomString> names = TomList<TomString>();
 TomMap<String, TomInt> scores = TomMap<String, TomInt>();
 
-// ✗ Avoid dynamic types
-TomList<dynamic> items = TomList<dynamic>();
+// ✗ Legal, but gives up every element type check
+TomList<TomObject> anything = TomList<TomObject>();
 ```
+
+`TomList<dynamic>` is not an option at all: the element type is declared as
+`E extends TomObject`, so the compiler rejects it. The widest thing you can
+actually write is `TomObject` — and that only defers the type error to a cast
+at the point of use.
 
 ### 5. Always Keep the Observer Reference
 
