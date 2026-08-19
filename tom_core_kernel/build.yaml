@@ -22,6 +22,7 @@ targets:
           - test/http_connection_test.dart
           - test/little_things_test.dart
           - test/observable_test.dart
+          - test/preferences_test.dart
           - test/reflection_test.dart
           - test/resources_test.dart
           - test/scheduled_job_test.dart

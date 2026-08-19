@@ -295,6 +295,26 @@ class TomUserPreferenceCodec {
   /// A `DateTime` is returned in UTC and only if the stored text names its
   /// zone — see [parseInstant] for why a zoneless one is refused rather than
   /// localised.
+  ///
+  /// **A reflected [T] is rebuilt member by member, on the payload's terms.**
+  /// A JSON member the class does not declare is ignored, and a member the
+  /// class declares but the payload omits keeps its declared default. So a
+  /// payload that belongs to a *different* reflected class decodes to a
+  /// fully-defaulted instance rather than to an error.
+  ///
+  /// That is not an oversight, and it is not fixable here. A JSON object is
+  /// shaped like every reflected class at once: nothing in the payload says
+  /// which class wrote it, so this method has no evidence to test. A scalar is
+  /// different — the decoded value carries its own type, which is why reading
+  /// a stored `int` as a `String` throws here and reading one object's payload
+  /// as another class does not.
+  ///
+  /// What identifies a stored object is its [TomUserPreferenceDto.valueType],
+  /// and [decode] compares it against [T] before calling this. **Prefer
+  /// [decode] for anything that came out of a store.** Reach for this method
+  /// only when the type is already established by other means — an endpoint
+  /// result whose shape the caller declared, say — because using it on a
+  /// stored preference opts out of the one check that can catch the mistake.
   static T decodeValue<T extends Object>(String json, [String key = '']) {
     final Object? raw;
     try {

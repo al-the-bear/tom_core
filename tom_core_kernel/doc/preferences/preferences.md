@@ -44,6 +44,12 @@ reflected class at once — so the type name travels with the value. That is wha
 lets a reflected object be reconstructed, and what makes a mismatched read fail
 loudly instead of quietly parsing a `Duration` as an `int`.
 
+Read the last sentence literally: it is **the type name** that makes a
+mismatched read fail, so the failure is only available where the type name is.
+`decode(dto)` has it and checks it. `decodeValue(json)` is handed text alone,
+and for an object there is nothing left to check — see
+[A reflected value is rebuilt member by member](#a-reflected-value-is-rebuilt-member-by-member).
+
 ## Quick Start
 
 ### 1. Import the Module
@@ -171,6 +177,41 @@ same reflection path the endpoint pipeline uses for every other DTO, so a
 preference object is written exactly as it would be if it were an endpoint
 result.
 
+#### A reflected value is rebuilt member by member
+
+Decoding a reflected preference is not a type test followed by a cast — it
+constructs a blank instance and assigns the members it recognises. A JSON
+member the class does not declare is ignored; a member the class declares but
+the payload omits keeps its declared default. So a payload belonging to a
+*different* reflected class decodes to a fully-defaulted instance, and an empty
+object decodes to nothing but defaults. Neither is an error.
+
+That is not an oversight, and `decodeValue` could not do better. A JSON object
+is shaped like every reflected class at once: nothing in the payload says which
+class wrote it, so given text alone there is no evidence to test. A scalar is
+the opposite case — the decoded value carries its own runtime type, which is
+why reading a stored `int` as a `String` does throw.
+
+What identifies a stored object is its `valueType`, so the check lives where the
+`valueType` does: `decode<T>(dto)` compares it against `T` and refuses a
+mismatch before any member is assigned.
+
+| Read through | Is given | A payload of the wrong class |
+|--------------|----------|------------------------------|
+| `decode<T>(dto)` | type name and text | `preferences.decode.type_mismatch` |
+| `decodeValue<T>(json)` | text alone | a defaulted `T` |
+
+**Read anything that came out of a store through `decode`.** `decodeValue` is
+for a value whose type is already established by other means — text the caller
+has just encoded, or an endpoint result whose shape it declared. Using it on a
+stored preference opts out of the one check that can catch the mistake, and
+knowing that the stored `valueType` matches the class being asked for becomes
+the caller's responsibility alone.
+
+Best-effort applies to a payload's members, not to whether the type is
+reflected at all: a class the generator never captured is still refused, with
+`preferences.decode.not_reflected`.
+
 #### Every write failure is a codec exception
 
 `encodeValue` reports both of its failures as a
@@ -296,12 +337,17 @@ The codec is what makes both halves agree on a `DateTime`'s zone and a
 mismatch's outcome. A caller that decodes the text itself has quietly opted out
 of both.
 
-### 2. Let a Mismatch Throw
+### 2. Let a Mismatch Throw — and Read Through `decode`
 
 `decode<T>` refuses a stored type it was not asked for rather than coercing. Do
 not wrap it in a `try` that returns a default: an unwritten preference is an
 ordinary state that a default answers, while a preference stored as the wrong
 type is a bug, and defaulting hides it.
+
+Reaching past it to `decodeValue` on a stored value throws that guarantee away,
+and for a reflected value it throws it away *silently* — the wrong class comes
+back defaulted rather than refused. See
+[A reflected value is rebuilt member by member](#a-reflected-value-is-rebuilt-member-by-member).
 
 ### 3. Annotate Reflected Preference Values
 

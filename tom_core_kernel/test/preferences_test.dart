@@ -4,6 +4,8 @@ import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'preferences_test.reflection.dart';
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -55,11 +57,32 @@ class UnreflectedPreference {
   int size = 3;
 }
 
+/// A reflected preference value, with a default for every member.
+@tomReflector
+class DisplayPreference {
+  String theme = 'light';
+  int fontSize = 14;
+  bool compact = false;
+}
+
+/// A second reflected preference value that shares **no** member name with
+/// [DisplayPreference], so a payload of one carries nothing the other
+/// recognises.
+@tomReflector
+class NotificationPreference {
+  bool enabled = true;
+  int quietHour = 22;
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
 
 void main() {
+  // The object-decode group below reconstructs @tomReflector classes, which
+  // needs their mirrors registered.
+  setUpAll(initializeReflection);
+
   // tcinc160: a zoneless ISO timestamp passed `validateEncoded` and then
   // decoded to a different instant on every device — the exact failure the
   // module's dartdoc promises cannot happen.
@@ -284,6 +307,124 @@ void main() {
       test('a String', () {
         expect(TomUserPreferenceCodec.encodeValue('hi'), '"hi"');
       });
+    });
+  });
+
+  // tcinc162: a reflected value is rebuilt member by member, so a payload
+  // belonging to a different class produces a defaulted instance rather than
+  // an error. That is intended (the type name is what identifies a stored
+  // object, and `decode` checks it) but it was documented nowhere, and these
+  // tests are what stops it drifting.
+  group('TomUserPreferenceCodec — a reflected value is rebuilt by member', () {
+    group('decodeValue takes the payload as it finds it', () {
+      test('a payload sharing no member name yields the defaults', () {
+        final decoded = TomUserPreferenceCodec.decodeValue<DisplayPreference>(
+          '{"enabled":false,"quietHour":6}',
+          'ui.display',
+        );
+
+        expect(decoded.theme, 'light');
+        expect(decoded.fontSize, 14);
+        expect(decoded.compact, isFalse);
+      });
+
+      test('an empty object yields the defaults', () {
+        final decoded = TomUserPreferenceCodec.decodeValue<DisplayPreference>(
+          '{}',
+          'ui.display',
+        );
+
+        expect(decoded.theme, 'light');
+        expect(decoded.fontSize, 14);
+      });
+
+      test('unrecognised members are ignored, recognised ones applied', () {
+        final decoded = TomUserPreferenceCodec.decodeValue<DisplayPreference>(
+          '{"theme":"dark","quietHour":6}',
+          'ui.display',
+        );
+
+        expect(decoded.theme, 'dark');
+        // Absent from the payload, so still the declared default.
+        expect(decoded.fontSize, 14);
+      });
+
+      test('a reflected value round-trips through its own text', () {
+        final original = DisplayPreference()
+          ..theme = 'dark'
+          ..fontSize = 18
+          ..compact = true;
+
+        final encoded = TomUserPreferenceCodec.encodeValue(
+          original,
+          'ui.display',
+        );
+        final restored =
+            TomUserPreferenceCodec.decodeValue<DisplayPreference>(encoded);
+
+        expect(restored.theme, 'dark');
+        expect(restored.fontSize, 18);
+        expect(restored.compact, isTrue);
+      });
+    });
+
+    group('the stored type name is what identifies an object', () {
+      test('decode refuses a DTO stored as a different class', () {
+        final stored = TomUserPreferenceCodec.encode(
+          'ui.display',
+          NotificationPreference(),
+        );
+
+        expect(stored.valueType, 'NotificationPreference');
+        expect(
+          () => TomUserPreferenceCodec.decode<DisplayPreference>(stored),
+          throwsCodecKey('preferences.decode.type_mismatch'),
+        );
+      });
+
+      test('decode accepts the class the DTO names', () {
+        final stored = TomUserPreferenceCodec.encode(
+          'ui.display',
+          DisplayPreference()..theme = 'dark',
+        );
+
+        expect(
+          TomUserPreferenceCodec.decode<DisplayPreference>(stored).theme,
+          'dark',
+        );
+      });
+
+      test('validateEncoded checks only that the value is a JSON object', () {
+        // The boundary cannot ask more: a server may be storing a preference
+        // type only the client knows, and reflecting it to check would mean
+        // refusing values it is not meant to interpret.
+        expect(
+          () => TomUserPreferenceCodec.validateEncoded(
+            'DisplayPreference',
+            '{"totally":"unrelated"}',
+            key: 'ui.display',
+          ),
+          returnsNormally,
+        );
+        expect(
+          () => TomUserPreferenceCodec.validateEncoded(
+            'DisplayPreference',
+            '"not an object"',
+            key: 'ui.display',
+          ),
+          throwsCodecKey('preferences.encoded.type_mismatch'),
+        );
+      });
+    });
+
+    test('an unreflected class is refused rather than defaulted', () {
+      expect(
+        () => TomUserPreferenceCodec.decodeValue<UnreflectedPreference>(
+          '{"size":9}',
+          'ui.size',
+        ),
+        throwsCodecKey('preferences.decode.not_reflected'),
+      );
     });
   });
 }
