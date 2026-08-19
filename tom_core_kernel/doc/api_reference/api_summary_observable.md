@@ -72,6 +72,13 @@ change, so enums need no Dart-side label table.
 
 ## Class Hierarchy
 
+> **This section is the authoritative statement of the observable type
+> hierarchy.** `doc/observable/observable.md` and
+> `doc/observable/observable_short_reference.md` link here rather than
+> restating it, so that there is one copy to keep in step with the source.
+> Everything below mirrors the declarations in `tom_observable.dart`,
+> `tom_observable_objects.dart` and `tom_observable_enum.dart`.
+
 ```
 TomObservable
     └── TomObject<T>
@@ -109,6 +116,28 @@ TomListLifecycleListener
 TomException  (little_things)
     └── TomObservableException
 ```
+
+Three properties of this shape are worth stating outright, because each one
+decides something a caller can otherwise only find out by compiling:
+
+- **`TomObserver` is a separate interface, not part of the `TomObservable`
+  branch.** An observable is a thing that notifies; an observer is a thing that
+  is notified. `TomClass`, `TomList` and `TomMap` are both — they extend
+  `TomObject` *and* implement `TomObserver` — and that dual role is exactly
+  what makes a change to a nested member reach an observer on the root: the
+  container is registered as an observer of its own children.
+- **`TomList<E>` is an `Iterable<E>`, not a `List<E>`, and `TomMap<K, V>`
+  implements no `Map` interface at all.** Both provide the familiar surface —
+  `[]`, `add`/`remove`, `keys`/`values`, and for the list the full `Iterable`
+  API — but neither is assignable to the `dart:core` collection type:
+  `List<TomString> l = myTomList;` and `Map<String, TomInt> m = myTomMap;` are
+  both compile errors. Convert at the boundary with `TomList.toList()` or
+  `TomMap.get()`, each of which returns a copy, or keep the parameter typed as
+  `Iterable<E>` where that is enough. (Note the asymmetry on the map:
+  `TomMap.get()` returns a copy, whereas `TomMap.set()` throws.)
+- **The range types are `TomClass`es, not scalars.** `TomDateRange`,
+  `TomTimeRange` and `TomDateTimeRange` are composites with observable members,
+  so they cascade like any other `TomClass`.
 
 ## Classes
 

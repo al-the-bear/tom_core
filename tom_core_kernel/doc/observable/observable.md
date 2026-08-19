@@ -1683,28 +1683,35 @@ try {
 
 ## Class Hierarchy
 
-```
-TomObserver<T> (interface)
-├── TomFunctionObserver<T>  — Wraps callback functions as observers
-├── TomClass                — Observes its own members
-├── TomList<E>              — Observes its elements
-└── TomMap<K, V>            — Observes its values
+The full tree — every leaf type and its exact `extends` / `implements` clauses
+— lives in
+**[the API reference](../api_reference/api_summary_observable.md#class-hierarchy)**,
+which is the authoritative statement. It is not repeated here: a second copy is
+a second thing to keep in step with the source.
 
-TomObservable (base class)
-└── TomObject<T>
-    ├── TomString, TomInt, TomDouble, TomBool, TomDateTime
-    ├── TomNString, TomNInt, TomNDouble, TomNBool, TomNDateTime
-    ├── TomObservableEnum<E>     — display text resolved from the text bundle
-    ├── TomOTimezoned<TZ>
-    │   ├── TomOZonedTime, TomOZonedDate, TomOZonedDateTime
-    │   └── TomNOTimezoned<TZ>
-    │       └── TomNOZonedTime, TomNOZonedDate, TomNOZonedDateTime
-    ├── TomClass (also implements TomObserver)
-    │   ├── TomDateRange, TomTimeRange, TomDateTimeRange
-    │   └── (user-defined domain objects)
-    ├── TomList<E> (also implements TomObserver, List<E>)
-    └── TomMap<K, V> (also implements TomObserver, Map<K, V>)
-```
+What a reader of this guide needs are the three rules the tree encodes:
+
+1. **Everything that notifies extends `TomObservable`**, and every *value*
+   — scalar, nullable, timezone-aware, enum, range, or container — is a
+   `TomObject<T>` beneath it. So [Muting Notifications](#muting-notifications)
+   applies to all of them, and so does the operator vocabulary in
+   [Operators](#operators) — subject to the per-receiver differences documented
+   there, since the composites override `<<` and `TomClass` refuses the
+   whole-value operators outright.
+
+2. **`TomObserver` is a separate interface.** Being observable and being an
+   observer are different capabilities. `TomClass`, `TomList` and `TomMap` have
+   both: they are `TomObject`s that also implement `TomObserver`, and they
+   register themselves as observers of their own members, elements and values.
+   That dual role *is* the cascade — a change to a nested member notifies the
+   container, which notifies its own observers in turn, all the way to the
+   root. Nothing else in the system propagates changes upward.
+
+3. **The containers are not `dart:core` collections.** `TomList<E>` implements
+   `Iterable<E>`; `TomMap<K, V>` implements no `Map` interface at all. Both
+   offer the familiar surface, but neither is assignable to `List<E>` or
+   `Map<K, V>` — convert at the boundary with `toList()` / `get()`, each of
+   which hands back a copy.
 
 ## Best Practices
 

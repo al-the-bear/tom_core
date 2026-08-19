@@ -278,7 +278,9 @@ A powerful base class for creating observable domain objects with automatic memb
 An observable list implementation that automatically observes all contained elements.
 
 **Key Features:**
-- Implements the full `List<E>` interface
+- Implements `Iterable<E>` and offers the familiar `List` surface (`[]`, `add`,
+  `remove`, `sort`, …), but is **not** a `List<E>` — `List<TomString> l = myTomList;`
+  does not compile. Use `toList()` (a copy) at the boundary
 - Uses `@tomReflector` annotation for reflection
 - Automatically observes all contained elements
 - Notifies observers on any list modification
@@ -300,16 +302,15 @@ An observable list implementation that automatically observes all contained elem
 - `operator []`, `operator []=`
 - `operator +` — concatenates two TomLists
 - `operator <<` — **replaces all elements** with the given list and returns the list
+- Iterable methods: `map()`, `where()`, `fold()`, `expand()`, etc.
 
 **Whole-value operations:**
 - `set()` throws `TomObservableException` — replacing the backing list directly would strand the element observers
 - `operator <<` is the supported wholesale swap: it detaches the outgoing elements, attaches the incoming ones, and emits **one** notification for the exchange (`rows << [a, b]`)
 - Silent when the new sequence is element-for-element *identical* to the old; the comparison is by identity, not equality, because observers hold element references
-- `resetWith()` performs the same swap with the `TomListLifecycleListener` callbacks
-- Iterable methods: `map()`, `where()`, `fold()`, `expand()`, etc.
 
 **Structural Replacement:**
-- `resetWith(Iterable<E>)` — atomically replaces all contents with a single notification
+- `resetWith(Iterable<E>)` — the same swap as `<<`, but it fires the `TomListLifecycleListener` callbacks and therefore notifies *unconditionally*
 - `addLifecycleListener(TomListLifecycleListener)` / `removeLifecycleListener(...)` — register hooks around `resetWith`
 
 **Read-only Accessors:**
@@ -335,7 +336,9 @@ Listener for structural reset events on a `TomList` (fired around `resetWith`).
 An observable map implementation that automatically observes all contained values.
 
 **Key Features:**
-- Provides full Map interface
+- Offers the familiar `Map` surface (`[]`, `keys`, `values`, `entries`, …) but
+  implements **no** `Map` interface — `Map<String, TomInt> m = myTomMap;` does
+  not compile. Use `get()` (a copy) at the boundary
 - Uses `@tomReflector` annotation for reflection
 - Automatically observes all values (not keys)
 - Notifies observers on any map modification
@@ -376,7 +379,9 @@ An observable map implementation that automatically observes all contained value
 
 ## Design Patterns Used
 
-1. **Observer Pattern**: All types extend `TomObservable` and implement `TomObserver`
+1. **Observer Pattern**: every notifying type extends `TomObservable`; the three
+   composites (`TomClass`, `TomList`, `TomMap`) additionally implement
+   `TomObserver`, which is a separate interface
 2. **Decorator Pattern**: Wraps primitive types with observable behavior
 3. **Composite Pattern**: `TomClass`, `TomList`, `TomMap` observe their children
 4. **Reflection Pattern**: `TomClass` uses reflection to auto-discover and register members
@@ -385,28 +390,19 @@ An observable map implementation that automatically observes all contained value
 
 ## Class Hierarchy
 
-```
-TomObserver<T> (interface)
-├── TomFunctionObserver<T>  — Wraps callback functions as observers
-├── TomClass                — Observes its own members
-├── TomList<E>              — Observes its elements
-└── TomMap<K, V>            — Observes its values
+The full tree is in
+**[the API reference](../api_reference/api_summary_observable.md#class-hierarchy)**,
+which is the authoritative statement; it is deliberately not duplicated here.
+In short:
 
-TomObservable (base class)
-└── TomObject<T>
-    ├── TomString, TomInt, TomDouble, TomBool, TomDateTime
-    ├── TomNString, TomNInt, TomNDouble, TomNBool, TomNDateTime
-    ├── TomObservableEnum<E>     — display text resolved from the text bundle
-    ├── TomOTimezoned<TZ>
-    │   ├── TomOZonedTime, TomOZonedDate, TomOZonedDateTime
-    │   └── TomNOTimezoned<TZ>
-    │       └── TomNOZonedTime, TomNOZonedDate, TomNOZonedDateTime
-    ├── TomClass (also implements TomObserver)
-    │   ├── TomDateRange, TomTimeRange, TomDateTimeRange
-    │   └── (user-defined domain objects)
-    ├── TomList<E> (also implements TomObserver)
-    └── TomMap<K, V> (also implements TomObserver)
-```
+- `TomObservable` → `TomObject<T>` → every value type, the timezone family, the
+  enum wrapper, and the three composites.
+- `TomObserver<T>` is a **separate** interface. `TomFunctionObserver<T>`
+  implements it, and so do `TomClass`, `TomList` and `TomMap` — being both an
+  observable and an observer is what lets a container cascade its children's
+  notifications upward.
+- `TomList<E>` is an `Iterable<E>`, **not** a `List<E>`; `TomMap<K, V>`
+  implements no `Map` interface. See the caveats under each type above.
 
 ---
 

@@ -1251,6 +1251,11 @@ abstract class TomListLifecycleListener {
 /// - All standard [List] operations with observer management
 /// - Custom operators for convenient element manipulation
 ///
+/// It implements [Iterable], **not** [List]: the standard operations are
+/// provided, but a `TomList<E>` is not assignable to a `List<E>`. Use [toList]
+/// (which returns a copy) at a boundary that insists on the `dart:core` type,
+/// or type the parameter as `Iterable<E>`.
+///
 /// ## Methods
 ///
 /// - `list.append(element)` - Add an element (returns the list for chaining)
@@ -1838,6 +1843,11 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 /// - Custom operators for convenient manipulation
 ///
 /// Note: Keys are not observed, only values.
+///
+/// It implements no [Map] interface: the standard operations are provided, but
+/// a `TomMap<K, V>` is not assignable to a `Map<K, V>`. Use [get] (which
+/// returns a copy) at a boundary that insists on the `dart:core` type. Note the
+/// asymmetry — [get] works, whereas [set] throws.
 ///
 /// ## Operators
 ///
