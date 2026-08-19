@@ -10,6 +10,7 @@ and complex objects with automatic change notification and propagation.
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
   - [TomObservable](#tomobservable)
+    - [**Memory Management — you must retain the observer**](#memory-management--you-must-retain-the-observer)
   - [TomObserver](#tomobserver)
   - [TomFunctionObserver](#tomfunctionobserver)
 - [Operators](#operators)
@@ -53,7 +54,9 @@ The observable system consists of two main components:
 - **Reactive Data Binding**: UI components can automatically update when data changes
 - **Change Propagation**: Nested objects propagate changes to parent containers
 - **Batch Updates**: Mute notifications during bulk changes for better performance
-- **Memory Safe**: Uses `WeakReference` to prevent memory leaks from observers
+- **Memory Safe**: Observers are held by `WeakReference`, so an observable never
+  keeps a dead observer alive — which also means *you* must retain any observer
+  you register (see [Memory Management](#memory-management--you-must-retain-the-observer))
 - **JSON Integration**: Seamless serialization/deserialization with the reflection system
 
 ## Quick Start
@@ -66,15 +69,24 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // Create an observable string
 final name = TomString("John");
 
-// Subscribe to changes using >> operator
-name >> (obs) => print("Name changed to: ${~name}");
+// Subscribe to changes using >> operator. Keep the returned observer: it is
+// held weakly, and dropping it silently ends the subscription.
+final observer = name >> (obs) => print("Name changed to: ${~name}");
 
 // Set value using | operator - triggers notification
 name | "Jane";  // Prints: "Name changed to: Jane"
 
 // Get value using ~ operator
 print(~name);  // Prints: "Jane"
+
+// Done observing
+name.removeObserver(observer);
 ```
+
+> **Every example below captures the observer it registers.** That is not
+> stylistic: `TomObservable` holds observers by `WeakReference`, so an observer
+> nothing else references is collected and stops firing without any error. See
+> [Memory Management](#memory-management--you-must-retain-the-observer).
 
 ### 2. Observable Class
 
@@ -90,15 +102,17 @@ void main() {
   final person = Person();
   
   // Subscribe to any changes in the Person
-  person >> (obs) => print("Person changed!");
-  
+  final observer = person >> (obs) => print("Person changed!");
+
   // Set values - triggers notification
   person.name | "Alice";  // Prints: "Person changed!"
   person.age | 25;        // Prints: "Person changed!"
-  
+
   // Get values
   print("Name: ${~person.name}");  // Prints: "Name: Alice"
   print("Age: ${~person.age}");    // Prints: "Age: 25"
+
+  person.removeObserver(observer);
 }
 ```
 
@@ -107,7 +121,7 @@ void main() {
 ```dart
 // Observable list
 final names = TomList<TomString>();
-names >> (obs) => print("List changed!");
+final namesObserver = names >> (obs) => print("List changed!");
 
 names.add(TomString("Alice"));  // Prints: "List changed!"
 names.add(TomString("Bob"));    // Prints: "List changed!"
@@ -115,12 +129,16 @@ names.add(TomString("Bob"));    // Prints: "List changed!"
 // Changes to elements also notify the list
 names[0] | "Alicia";  // Prints: "List changed!"
 
+names.removeObserver(namesObserver);
+
 // Observable map
 final scores = TomMap<String, TomInt>();
-scores >> (obs) => print("Scores changed!");
+final scoresObserver = scores >> (obs) => print("Scores changed!");
 
 scores["alice"] = TomInt(100);  // Prints: "Scores changed!"
 scores["alice"]! | 95;          // Prints: "Scores changed!"
+
+scores.removeObserver(scoresObserver);
 ```
 
 ## Core Components
@@ -170,23 +188,117 @@ class Counter extends TomObservable {
 |--------|------|-------------|
 | `muteCascadeTargets` | `Iterable<TomObservable>` | The members `mute()` cascades to. Empty here; the composites override it |
 
-#### Memory Management
+#### Memory Management — you must retain the observer
 
-`TomObservable` uses `WeakReference` for storing observers. This means:
-- Observers that are garbage-collected are automatically cleaned up
-- No need to manually remove observers in most cases
-- Prevents memory leaks in long-running applications
+**`TomObservable` holds its observers weakly. The observable does not keep your
+observer alive; you do.** An observer that nothing else references is garbage
+collected, and from that moment it stops being notified.
+
+This is the single most important thing to know about the module, because the
+failure mode is silence: no exception, no log line, no dead-observer warning.
+The notifications simply stop, at a point determined by when the collector
+happens to run, and a program that was working keeps running with one of its
+observers no longer connected.
+
+The rule follows from `addObserver`, which stores a `WeakReference` rather than
+the observer itself:
 
 ```dart
-void setupObserver() {
-  final counter = Counter();
-  
-  // This observer will be cleaned up when it goes out of scope
-  final observer = CounterObserver();
-  counter.addObserver(observer);
+void addObserver(TomObserver observer) {
+  if (_getObserverReference(observer) == null) {
+    _observers.add(WeakReference(observer));   // weak, not strong
+  }
 }
-// When observer is garbage collected, counter automatically removes it
 ```
+
+`notifyObservers` skips references whose target has been collected and prunes
+them from the list. That is the "automatic cleanup" this design buys — it
+prevents the observable from keeping dead observers alive. It is not a promise
+that your observer will still be there.
+
+##### The pattern
+
+Keep the handle in something that lives at least as long as the observation —
+normally a field — and end the observation explicitly with
+[`removeObserver`](#methods):
+
+```dart
+class PriceTicker {
+  final TomInt _price;
+  late final TomFunctionObserver<TomObservable> _observer;
+
+  PriceTicker(this._price) {
+    // Retained in a field: the observation lives as long as this object.
+    _observer = _price >> (obs) => _redraw();
+  }
+
+  void dispose() {
+    // Deterministic end, rather than waiting for the collector.
+    _price.removeObserver(_observer);
+  }
+
+  void _redraw() {/* ... */}
+}
+```
+
+##### What does *not* count as retaining
+
+Discarding the handle is the mistake, and it is easy to make because the
+expression reads perfectly well without it:
+
+```dart
+// ✗ Broken: nothing references the returned observer, so it is collected
+//   and the callback silently stops firing.
+counter >> (obs) => print('Changed!');
+```
+
+Less obviously, **assigning to a local you never read again is not enough
+either.** The compiler is entitled to treat such a local as dead, and under AOT
+it does:
+
+```dart
+// ✗ Also broken under `dart compile exe`: `handle` is never read after this
+//   line, so it does not keep the observer reachable.
+final handle = counter >> (obs) => print('Changed!');
+await somethingSlow();
+counter.increment();   // may print nothing
+```
+
+The two compilers disagree here, which makes this particularly unpleasant to
+diagnose: the same code observed correctly under `dart run` and stopped
+observing once compiled with `dart compile exe`. Do not rely on a local unless
+something later in the same scope actually uses it — `removeObserver(handle)` at
+the end of the scope both ends the observation and keeps the handle reachable
+until then.
+
+##### When an observer legitimately needs no handle
+
+If the observer is an object your program already holds for other reasons —
+a widget, a service, a collection — it is retained by whatever holds it, and
+there is no separate handle to keep:
+
+```dart
+class CounterPanel {
+  final CounterDisplay _display = CounterDisplay();   // field: retained
+  final Counter _counter;
+
+  CounterPanel(this._counter) {
+    _counter.addObserver(_display);   // the observer *is* the field
+  }
+}
+```
+
+The composites rely on exactly this. `TomList` and `TomMap` implement
+`TomObserver` and register *themselves* on each element (`e.addObserver(this)`),
+so the observer is the collection, which your application already holds. They
+also call `removeObserver` when an element leaves, so the observation ends with
+the membership rather than at the collector's convenience.
+
+The caveat above still applies to the shortcut form: a
+`final display = CounterDisplay();` local that nothing reads again is no more
+retained than a discarded `>>` handle. What makes an observer safe is that
+something *live* refers to it — a field, a collection, a later read — not the
+fact that it has a name.
 
 ### TomObserver
 
@@ -208,9 +320,13 @@ void main() {
   final display = CounterDisplay();
   
   counter.addObserver(display);
-  
+
   counter.increment();  // Prints: "Counter is now: 1"
   counter.increment();  // Prints: "Counter is now: 2"
+
+  // `display` is the observer, so `display` is what has to stay reachable —
+  // ending the observation here also keeps it reachable up to this point.
+  counter.removeObserver(display);
 }
 ```
 
@@ -243,27 +359,35 @@ A wrapper that allows using a callback function as a `TomObserver`. This is what
 enables the `>>` operator syntax.
 
 ```dart
-// These are equivalent:
-counter >> (obs) => print('Changed!');
-
-// Manually creating a TomFunctionObserver:
-final observer = TomFunctionObserver<Counter>((obs) => print('Changed!'));
-counter.addObserver(observer);
-```
-
-#### Keeping References
-
-The `>>` operator returns the `TomFunctionObserver` so you can keep a reference
-and later remove it:
-
-```dart
-final counter = Counter();
-
-// Keep the reference
+// `>>` wraps the callback and registers it, returning the wrapper:
 final observer = counter >> (obs) => print('Changed!');
 
-// Later, remove the observer
-counter.removeObserver(observer);
+// The same thing spelled out:
+final sameObserver = TomFunctionObserver<Counter>((obs) => print('Changed!'));
+counter.addObserver(sameObserver);
+```
+
+#### Keeping References — required, not optional
+
+The `>>` operator returns the `TomFunctionObserver` it created, and **that
+wrapper is the only strong reference to your callback.** Capturing it is not a
+convenience for removing the observer later; it is what keeps the observation
+alive at all. Discard it and the callback stops firing as soon as the wrapper is
+collected — see
+[Memory Management](#memory-management--you-must-retain-the-observer) for the
+full contract and for why a local you never read again does not count.
+
+```dart
+class PriceWatcher {
+  final Counter _counter;
+  late final TomFunctionObserver<TomObservable> _observer;
+
+  PriceWatcher(this._counter) {
+    _observer = _counter >> (obs) => print('Changed!');
+  }
+
+  void dispose() => _counter.removeObserver(_observer);
+}
 ```
 
 ## Operators
@@ -292,13 +416,15 @@ name | "World";                 // Sets value and notifies observers
 name.set("World");              // Equivalent using method
 
 // Subscribe to changes
-name >> (obs) => print("Changed to: ${~name}");
+final nameObserver = name >> (obs) => print("Changed to: ${~name}");
+name.removeObserver(nameObserver);
 
 // Combined example
 final counter = TomInt(0);
-counter >> (obs) => print("Counter: ${~counter}");
+final counterObserver = counter >> (obs) => print("Counter: ${~counter}");
 counter | (~counter + 1);  // Increment: Prints "Counter: 1"
 counter | (~counter + 1);  // Increment: Prints "Counter: 2"
+counter.removeObserver(counterObserver);
 ```
 
 ## Observable Primitives
@@ -426,12 +552,14 @@ final meetingTime = TomOZonedDateTime(TomZonedDateTime(
 ));
 
 // Subscribe to changes
-meetingTime >> (obs) => print("Meeting time changed!");
+final observer = meetingTime >> (obs) => print("Meeting time changed!");
 
 // Get the value
 TomZonedDateTime time = ~meetingTime;
 print(time.timezone.name);  // "America/New_York"
 print(time.hour);           // 14
+
+meetingTime.removeObserver(observer);
 ```
 
 #### Nullable Timezone Types
@@ -492,7 +620,9 @@ event.duration.endDateTime | TomZonedDateTime(
 );
 
 // Subscribe to event changes (includes range changes)
-event >> (obs) => print("Event modified!");
+final observer = event >> (obs) => print("Event modified!");
+// ... later, when the subscription is no longer wanted:
+event.removeObserver(observer);
 ```
 
 A freshly constructed range is not empty — both ends are seeded with the "no
@@ -567,7 +697,7 @@ void main() {
   
   // Observe any change to the person
   int notifyCount = 0;
-  person >> (obs) => notifyCount++;
+  final observer = person >> (obs) => notifyCount++;
   
   // Set individual fields
   person.name | "Alice";
@@ -579,6 +709,8 @@ void main() {
   // Get all values as a map
   Map<String, dynamic> values = person.getValues();
   print(values);  // {name: Alice, age: 30, email: alice@example.com, isActive: true}
+
+  person.removeObserver(observer);
 }
 ```
 
@@ -607,10 +739,12 @@ void main() {
   final customer = Customer();
   
   // Observe customer - gets notified for nested changes too!
-  customer >> (obs) => print("Customer changed!");
-  
+  final observer = customer >> (obs) => print("Customer changed!");
+
   customer.name | "Acme Corp";        // Prints: "Customer changed!"
   customer.address.city | "New York"; // Prints: "Customer changed!"
+
+  customer.removeObserver(observer);
 }
 ```
 
@@ -808,13 +942,15 @@ final map = TomMap<String, TomInt>();
 map['a'] = TomInt(1);
 
 int notifications = 0;
-map >> (obs) => notifications++;
+final observer = map >> (obs) => notifications++;
 
 map.remove('missing');
 print(notifications);  // 0 — nothing changed
 
 map.remove('a');
 print(notifications);  // 1 — an entry went away
+
+map.removeObserver(observer);
 ```
 
 ```dart
@@ -822,7 +958,7 @@ final list = TomList<TomInt>();
 list.addAll([TomInt(1), TomInt(2), TomInt(3)]);
 
 int notifications = 0;
-list >> (obs) => notifications++;
+final observer = list >> (obs) => notifications++;
 
 list.addAll([]);                            // 0 — nothing to add
 list.sort((a, b) => (~a).compareTo(~b));    // 0 — already in order
@@ -832,6 +968,8 @@ print(notifications);  // 0
 
 list.length = 2;       // truncation drops an element
 print(notifications);  // 1
+
+list.removeObserver(observer);
 ```
 
 **"Contents" means references, compared by identity.** Replacing an element
@@ -943,7 +1081,7 @@ class Task extends TomClass {
 
 final tasks = TomList<Task>();
 int listNotifications = 0;
-tasks >> (obs) => listNotifications++;
+final observer = tasks >> (obs) => listNotifications++;
 
 // Add a task
 tasks.add(Task()..title | "Buy groceries");
@@ -956,6 +1094,8 @@ print(listNotifications);  // 2
 // Mark as completed - list is notified again!
 tasks[0].completed | true;
 print(listNotifications);  // 3
+
+tasks.removeObserver(observer);
 ```
 
 ### Atomic Replacement with resetWith
@@ -970,11 +1110,13 @@ final rows = TomList<Task>();
 rows.addAll([Task()..title | 'a', Task()..title | 'b']);
 
 int notifications = 0;
-rows >> (obs) => notifications++;
+final observer = rows >> (obs) => notifications++;
 
 // Swap all contents in one shot — a single notification, not one per element.
 rows.resetWith([Task()..title | 'x', Task()..title | 'y']);
 print(notifications);  // 1
+
+rows.removeObserver(observer);
 ```
 
 This is the path `TomClass` uses internally when a parent form writes a bind-time
@@ -1097,7 +1239,7 @@ class User extends TomClass {
 
 final users = TomMap<String, User>();
 int mapNotifications = 0;
-users >> (obs) => mapNotifications++;
+final observer = users >> (obs) => mapNotifications++;
 
 // Add a user
 users['alice'] = User()..name | "Alice";
@@ -1106,6 +1248,8 @@ print(mapNotifications);  // 1
 // Modify the user's score - map is notified!
 users['alice']!.score | 100;
 print(mapNotifications);  // 2
+
+users.removeObserver(observer);
 ```
 
 ### Restriction: Cannot Replace Entire Map
@@ -1204,6 +1348,8 @@ final status = TomObservableEnum(TodoStatus.inReview, values: TodoStatus.values)
 final observer = status >> (_) => print(status.displayText);
 
 TomTextResourceProvider.setAppResourceProvider(germanBundle);  // 'In Prüfung'
+
+status.removeObserver(observer);
 ```
 
 The trigger is `TomTextResourceProvider.appResourcesRevision`, a `TomInt`
@@ -1252,7 +1398,7 @@ all changes are complete. This is called "muting".
 ```dart
 final person = Person();
 int notifications = 0;
-person >> (obs) => notifications++;
+final observer = person >> (obs) => notifications++;
 
 // Without muting: 3 notifications
 person.name | "Alice";
@@ -1268,6 +1414,8 @@ person.age | 25;
 person.email | "bob@example.com";
 person.unmute();  // Triggers single notification
 print(notifications);  // 1
+
+person.removeObserver(observer);
 ```
 
 ### How Muting Works
@@ -1326,7 +1474,7 @@ class Order extends TomClass {
 
 final order = Order();
 int notifications = 0;
-order >> (obs) => notifications++;
+final observer = order >> (obs) => notifications++;
 
 order.mute();
 
@@ -1338,6 +1486,8 @@ order.total | 99.99;
 
 order.unmute();  // Single notification for all changes
 print(notifications);  // 1
+
+order.removeObserver(observer);
 ```
 
 ### Prefer `batch()` over `mute()` / `unmute()`
@@ -1448,13 +1598,20 @@ Prefer operators over method calls for readability:
 // ✓ Clean and idiomatic
 name | "John";
 String value = ~name;
-name >> (obs) => print("Changed!");
+_observer = name >> (obs) => print("Changed!");   // field: keeps it alive
 
 // ✗ More verbose (but equivalent)
 name.set("John");
 String value = name.get();
-name.addObserver(TomFunctionObserver((obs) => print("Changed!")));
+_observer = TomFunctionObserver((obs) => print("Changed!"));
+name.addObserver(_observer);
 ```
+
+Note that both spellings capture the observer. `>>` is shorter than
+`addObserver(TomFunctionObserver(...))`, but it is not a licence to drop the
+result: whichever form you use, the observer must be retained or the
+notifications stop — see
+[Memory Management](#memory-management--you-must-retain-the-observer).
 
 ### 2. Batch Multiple Changes
 
@@ -1501,28 +1658,38 @@ TomMap<String, TomInt> scores = TomMap<String, TomInt>();
 TomList<dynamic> items = TomList<dynamic>();
 ```
 
-### 5. Keep Observer References if Needed Later
+### 5. Always Keep the Observer Reference
 
-If you need to remove an observer later, keep the reference:
+Observers are held weakly, so the reference you keep is what makes the
+observation last. Put it in a field of an object that lives at least as long as
+the observation, and end the observation explicitly:
 
 ```dart
 class MyWidget {
   late TomFunctionObserver<TomObservable> _observer;
   final Person _person;
-  
+
   MyWidget(this._person) {
+    // Field, not a discarded expression: this is what keeps the callback alive.
     _observer = _person >> (obs) => _onPersonChanged();
   }
-  
+
   void dispose() {
     _person.removeObserver(_observer);
   }
-  
+
   void _onPersonChanged() {
     // Handle change
   }
 }
 ```
+
+The exception is an observer that is already an object you hold — a `TomClass`,
+a `TomList`, or any class of your own implementing `TomObserver`. Those need no
+extra handle. See
+[Memory Management](#memory-management--you-must-retain-the-observer) for the
+full contract, including why a local variable you never read again does not
+count as retaining.
 
 ### 6. Annotate Classes with @tomReflector
 

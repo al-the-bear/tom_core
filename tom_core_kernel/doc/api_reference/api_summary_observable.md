@@ -115,8 +115,9 @@ TomException  (little_things)
 ### TomObservable
 
 Base class implementing the Observer pattern. Holds observers by `WeakReference`
-(garbage-collected observers are auto-removed) and supports muting to defer
-notifications during batch updates.
+— so the caller must retain every observer it registers, or it is collected and
+silently stops being notified (collected references are pruned automatically).
+Supports muting to defer notifications during batch updates.
 
 #### Properties
 

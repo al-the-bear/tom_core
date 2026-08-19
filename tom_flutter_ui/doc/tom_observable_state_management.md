@@ -60,7 +60,7 @@ This document describes the observable state management patterns currently imple
 
 The Tom observable system implements a classic Observer pattern with these design choices:
 
-1. **WeakReference-based listener storage** — observers are held via `WeakReference`, preventing memory leaks without requiring manual unsubscription in most cases
+1. **WeakReference-based listener storage** — observers are held via `WeakReference`, so a dead observer never keeps the observable's list growing; the corollary is that *you* must retain every observer you register (see [Memory management](#tomobservable--base-class))
 2. **Operator-based API** — uses `~`, `|`, and `>>` operators for get, set, and subscribe
 3. **Muting support** — batch changes can be wrapped in `mute()`/`unmute()` to emit a single notification
 4. **Hierarchical propagation** — `TomClass`, `TomList`, and `TomMap` automatically observe their members and propagate child changes upward
@@ -92,7 +92,20 @@ class Counter extends TomObservable {
 | `unmute()` | Resume notifications; fires if dirty |
 | `isMuted` → `bool` | Whether currently muted |
 
-**Memory management:** Observers are stored as `WeakReference<TomObserver>`. When an observer is garbage-collected, the reference is automatically cleaned up. This removes the need for explicit unsubscription in most cases.
+**Memory management — you must retain the observer.** Observers are stored as
+`WeakReference<TomObserver>`, so the observable does **not** keep your observer
+alive. An observer that nothing else references is garbage-collected, and from
+that moment it silently stops being notified — no exception, no log line. The
+automatic pruning of collected references keeps the observable's list tidy; it
+is not a promise that your observer is still in it.
+
+Keep the observer (or the wrapper `>>` returns) in a field that lives as long
+as the observation, and end it with `removeObserver`. Observers that are
+objects you already hold — a widget state, a `TomList` registering itself on
+its elements — need no extra handle. See
+[`tom_core_kernel/doc/observable/observable.md`](../../tom_core_kernel/doc/observable/observable.md#memory-management--you-must-retain-the-observer)
+for the full contract, including why a local variable you never read again is
+not sufficient retention under AOT.
 
 ### TomObserver — Listener Interface
 

@@ -14,9 +14,13 @@ This document describes the **Observer/Observable architecture** of the Tom fram
 The foundation of the observer pattern. Any class that needs to notify others of changes should extend `TomObservable`.
 
 **Key Features:**
-- Maintains a list of observers using `WeakReference` to prevent memory leaks
+- Maintains a list of observers using `WeakReference`, so the observable never
+  keeps a dead observer alive — and correspondingly **never keeps yours alive
+  either: you must retain every observer you register**, or it is collected and
+  silently stops firing (see
+  [Memory Management](observable.md#memory-management--you-must-retain-the-observer))
 - Supports muting/unmuting notifications for batch updates
-- Automatically cleans up garbage-collected observers
+- Automatically prunes references whose observer has already been collected
 
 **Properties:**
 - `isMuted` — Returns `true` if notifications are currently muted
@@ -82,7 +86,10 @@ A wrapper that allows using a callback function as a `TomObserver`. This enables
 **Example:**
 ```dart
 final counter = Counter();
-counter >> (obs) => print('Changed!'); // Uses TomFunctionObserver internally
+// Retain the returned observer — it is held weakly, and dropping it silently
+// ends the subscription.
+final observer = counter >> (obs) => print('Changed!');
+counter.removeObserver(observer); // deterministic end of the observation
 ```
 
 ---
@@ -388,8 +395,10 @@ TomObservable (base class)
 ```dart
 // Primitive wrapper with observation
 final name = TomString("John");
-name >> (observable) => print("Name changed!"); // Subscribe to changes
+// Subscribe — and keep the observer, which is all that holds it alive.
+final nameObserver = name >> (observable) => print("Name changed!");
 name | "Jane"; // Set value and trigger observer
+name.removeObserver(nameObserver);
 
 // Check for null values
 final nullable = TomNString(null);
@@ -408,7 +417,8 @@ class Person extends TomClass {
 // Observable list
 final people = TomList<Person>();
 people.add(Person());
-people >> (observable) => print("List changed!"); // Subscribe to changes
+final peopleObserver = people >> (observable) => print("List changed!");
+people.removeObserver(peopleObserver);
 
 // Observable map
 final lookup = TomMap<String, Person>();

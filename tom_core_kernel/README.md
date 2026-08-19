@@ -133,13 +133,17 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
   final count = TomInt(0);
-  count >> (obs) => print('changed to ${~count}');
+  final observer = count >> (obs) => print('changed to ${~count}');
   count | 5; // prints: changed to 5
+  count.removeObserver(observer);
 }
 ```
 
 `|` sets the value, `~` reads it, and `>>` registers an observer that fires on
-every change.
+every change. Observers are held by weak reference, so keep the one `>>`
+returns — an observer nothing references is collected and silently stops
+firing. See
+[`doc/observable/observable.md`](doc/observable/observable.md#memory-management--you-must-retain-the-observer).
 
 ## Example projects
 

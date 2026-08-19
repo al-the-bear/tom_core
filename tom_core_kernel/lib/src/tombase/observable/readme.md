@@ -29,14 +29,21 @@ void main() {
   final count = TomInt(0);
 
   // The callback receives the observable; read its value with `~`.
-  count >> (obs) => print('count is now ${~(obs as TomInt)}');
+  // Observers are held weakly — keep the one `>>` returns, or it is collected
+  // and the callback silently stops firing.
+  final observer = count >> (obs) => print('count is now ${~(obs as TomInt)}');
 
   count | 1; // prints: count is now 1
   count | 2; // prints: count is now 2
 
   print(~count); // 2
+
+  count.removeObserver(observer);
 }
 ```
+
+See [Memory Management](../../../../doc/observable/observable.md#memory-management--you-must-retain-the-observer)
+for the full retention contract.
 
 ---
 
