@@ -10,6 +10,8 @@
 /// - a locale switch notifies observers, so bound widgets re-render without
 ///   the caller rebuilding them
 /// - a value with no key degrades to its raw enum name and logs a warning
+/// - the value is confined to the `values` the cell was given, so its option
+///   list always contains what it holds
 ///
 /// This is what lets an application ship *no* `extension TodoStatusText on
 /// TodoStatus { String get text => … }` label tables: the strings the user
@@ -127,6 +129,31 @@ void run() {
   print('displayText: ${partial.displayText}  (raw enum name)');
   print('displayKey:  ${partial.displayKey}  (the key to add)');
   print('all labels:  ${partial.displayTexts}  (present labels still resolve)');
+  print('');
+
+  // ---------------------------------------------------------------------
+  // 5. The value is confined to the options the cell offers
+  // ---------------------------------------------------------------------
+  print('--- 5. Permitted values ---');
+  _installBundle(_englishBundle());
+  // A subset is a legitimate option list: this cell offers two of the three.
+  final restricted = TomObservableEnum(
+    TodoStatus.open,
+    values: const [TodoStatus.open, TodoStatus.inReview],
+  );
+  print('options:     ${restricted.displayTexts}');
+
+  restricted | TodoStatus.inReview;
+  print('after set:   ${restricted.displayText}');
+
+  try {
+    restricted | TodoStatus.done;
+  } on TomObservableException catch (e) {
+    // Without this, the cell would label itself from a list not containing its
+    // own value, and a picker bound to it would have nothing to select.
+    print('rejected:    ${e.key}');
+  }
+  print('unchanged:   ${restricted.displayText}');
 
   print('\n=== Example Complete ===\n');
 }

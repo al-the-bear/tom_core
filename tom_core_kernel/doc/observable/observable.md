@@ -29,6 +29,7 @@ and complex objects with automatic change notification and propagation.
   - [Lifecycle Listeners](#lifecycle-listeners)
 - [TomMap (Observable Maps)](#tommap-observable-maps)
 - [TomObservableEnum (Resource-Keyed Enums)](#tomobservableenum-resource-keyed-enums)
+  - [Permitted Values](#permitted-values)
   - [Resource Keys and Scope](#resource-keys-and-scope)
   - [Where the Enum Segment Comes From](#where-the-enum-segment-comes-from)
   - [Locale Changes](#locale-changes)
@@ -1400,9 +1401,32 @@ status | TodoStatus.done;
 print(status.displayText);   // 'Done'
 ```
 
-The `values` argument is the enum's value list. It is what a picker enumerates
-to build its options; Dart cannot recover `E.values` from a type parameter, so
-it has to be passed.
+### Permitted Values
+
+The `values` argument is the set of values the cell may hold. It is what a
+picker enumerates to build its options, and it is **required** — Dart cannot
+recover `E.values` from a type parameter, and a default would be a guess.
+
+A subset is legitimate and means what it says: a cell offering a restricted
+choice. What is *not* legitimate is a cell holding a value its own option list
+does not contain — it would label itself from a list that excludes it, so
+`displayTexts` would describe something other than `displayText`, and a bound
+picker would have no option to select. Both the constructor and `set` therefore
+reject an out-of-range value:
+
+```dart
+final status = TomObservableEnum(
+  TodoStatus.open,
+  values: const [TodoStatus.open, TodoStatus.inReview],   // no 'done'
+);
+
+status | TodoStatus.inReview;   // fine
+status | TodoStatus.done;       // throws TomObservableException
+```
+
+`set` is the single mutation path — `|` and `<<` both delegate to it — so the
+guarantee holds however the cell is written, and a rejected write changes
+nothing and notifies nobody.
 
 ### Resource Keys and Scope
 
@@ -1726,6 +1750,7 @@ try {
 | `TomClass.tommap_state_error.set_not_allowed` | Cannot replace the backing map via `set` — use `<<` |
 | `TomClass.set_list_member_error.not_a_list` | Expected list for TomList member |
 | `TomObservableEnum.enum_segment_error.unstable_type_name` | The enum overrides `toString()` and does not implement `TomEnumResourceSegment`, so no stable key segment can be derived |
+| `TomObservableEnum.enum_value_error.not_in_values` | The value constructed or set is not one of the cell's permitted `values` |
 
 ## Class Hierarchy
 

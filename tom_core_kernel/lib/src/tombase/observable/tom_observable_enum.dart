@@ -52,6 +52,10 @@ abstract interface class TomEnumResourceSegment {
 /// second trigger is what makes a locale switch re-render a bound field
 /// without the caller rebuilding anything.
 ///
+/// The cell's value is confined to the [values] it was given: both the
+/// constructor and [set] reject anything else, so the option list a picker
+/// renders always contains the value the cell holds.
+///
 /// ## Resource keys
 ///
 /// The key for a value is `<scope>.<enumName>.<value>`, all lower case:
@@ -103,15 +107,22 @@ abstract interface class TomEnumResourceSegment {
 class TomObservableEnum<E extends Enum> extends TomObject<E> {
   /// Creates an observable enum cell holding [initialValue].
   ///
-  /// [values] is the enum's value list (`MyEnum.values`); it is what a picker
-  /// enumerates to build its options and defaults to just [initialValue] when
-  /// omitted. [scope] overrides the ambient [TomScope] used for key
-  /// resolution — pass it only when the cell is constructed outside the scope
-  /// whose labels it should use.
-  TomObservableEnum(E initialValue, {List<E>? values, TomScope? scope})
-      : values = List<E>.unmodifiable(values ?? <E>[initialValue]),
+  /// [values] is the set of values this cell may hold — normally the enum's
+  /// own list (`MyEnum.values`), or a subset when the cell offers a restricted
+  /// choice. It is what a picker enumerates to build its options, and it is
+  /// **required**: Dart cannot recover `E.values` from a type parameter, and
+  /// any default this constructor could invent would be wrong. [initialValue]
+  /// must be one of them.
+  ///
+  /// [scope] overrides the ambient [TomScope] used for key resolution — pass
+  /// it only when the cell is constructed outside the scope whose labels it
+  /// should use.
+  TomObservableEnum(E initialValue,
+      {required List<E> values, TomScope? scope})
+      : values = List<E>.unmodifiable(values),
         scope = scope ?? TomScope.current,
         super(initialValue) {
+    _checkInRange(initialValue, this.values, 'construct');
     _resourcesObserver = TomTextResourceProvider.appResourcesRevision >>
         (_) => notifyObservers();
   }
@@ -277,6 +288,40 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
     _warnedKeys.add(keys.first);
     tomLog.warn('No enum label resource for ${keys.first} '
         '(tried: ${keys.join(', ')}) — rendering the raw enum name.');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Value range
+  // ---------------------------------------------------------------------------
+
+  /// Sets the value, which must be one of [values].
+  ///
+  /// A cell whose value is not in its own option list is incoherent: it labels
+  /// itself from a list that does not contain it, so [displayTexts] describes
+  /// something other than what [displayText] shows, and a picker bound to it
+  /// has no option to select. Rejecting the write keeps the two in step.
+  ///
+  /// This is the single mutation path — `|` and `<<` both delegate here — so
+  /// the guarantee holds for every way of writing the cell.
+  @override
+  E set(E value) {
+    _checkInRange(value, values, 'set');
+    return super.set(value);
+  }
+
+  /// Throws unless [value] is one of [permitted].
+  ///
+  /// [operation] names what was attempted, so the message says which call
+  /// failed rather than only which value was rejected.
+  static void _checkInRange<E extends Enum>(
+      E value, List<E> permitted, String operation) {
+    if (permitted.contains(value)) return;
+    throw TomObservableException(
+      'TomObservableEnum.enum_value_error.not_in_values',
+      "Cannot $operation a TomObservableEnum with '${value.name}': it is not "
+          'one of the permitted values '
+          '[${permitted.map((v) => v.name).join(', ')}].',
+    );
   }
 
   // ---------------------------------------------------------------------------

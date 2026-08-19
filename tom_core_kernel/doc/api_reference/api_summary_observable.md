@@ -935,6 +935,10 @@ the application text bundle instead of a Dart-side label table. Notifies its
 observers when either the value or the installed bundle changes, so a locale
 switch re-renders bound widgets without the caller rebuilding them.
 
+The value is confined to the `values` the cell was constructed with: both the
+constructor and `set` reject anything else, so a picker's option list always
+contains the value the cell holds.
+
 Keys are `<scope>.<enumName>.<value>`, all lower case. The scope segment is
 implicit — taken from the ambient `TomScope` **at construction time**, because
 display resolution typically runs inside a Flutter builder callback, outside
@@ -957,12 +961,14 @@ than 512 distinct keys per revision.
 #### Constructors
 
 ```dart
-TomObservableEnum(E initialValue, {List<E>? values, TomScope? scope})
+TomObservableEnum(E initialValue, {required List<E> values, TomScope? scope})
 ```
 
-`values` is the enum's value list (`MyEnum.values`), used by pickers to
-enumerate options; it defaults to just `initialValue`. `scope` overrides the
-ambient scope.
+`values` is the set of values the cell may hold — normally `MyEnum.values`, or
+a subset for a restricted choice — and is what pickers enumerate. It is
+required: Dart cannot recover `E.values` from a type parameter, and any default
+would be a guess. `initialValue` must be one of them, and so must every later
+write; see `set`. `scope` overrides the ambient scope.
 
 #### Static Properties
 
@@ -985,7 +991,7 @@ ambient scope.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `values` | `List<E>` | The enum's value list, in declaration order. Unmodifiable. |
+| `values` | `List<E>` | The values this cell may hold, in declaration order. Unmodifiable. |
 | `scope` | `TomScope` | The scope captured at construction, used for key resolution. |
 | `displayText` | `String` | Bundle text for the current value. |
 | `displayKey` | `String` | Resource key for the current value. |
@@ -995,6 +1001,7 @@ ambient scope.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `set` | `E set(E value)` | Sets the value, which must be one of `values`; throws `TomObservableException` otherwise. The single mutation path — `\|` and `<<` both delegate here. |
 | `displayTextOf` | `String displayTextOf(E value)` | Bundle text for `value`, resolved in this cell's scope. |
 | `displayKeyOf` | `String displayKeyOf(E value)` | Resource key for `value`, resolved in this cell's scope. |
 | `detachFromResources` | `void detachFromResources()` | Stops reacting to bundle changes; value changes still notify. |

@@ -170,7 +170,7 @@ throws.
 
 | Member | Description |
 |--------|-------------|
-| `values` | The enum's value list, in declaration order (unmodifiable) |
+| `values` | The values the cell may hold, in declaration order (required, unmodifiable); constructing or setting anything else throws |
 | `scope` | The `TomScope` captured at construction, used for key resolution |
 | `displayText` / `displayTextOf(v)` | Bundle text for the current value / for `v` |
 | `displayKey` / `displayKeyOf(v)` | The key that resolved, else the `global` key |

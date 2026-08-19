@@ -203,6 +203,91 @@ void main() {
   });
 
   // ===========================================================================
+  // Permitted values
+  // ===========================================================================
+  group('TomObservableEnum permitted values', () {
+    // `values` is required, so the old self-referential default — a one-element
+    // list holding whatever the cell was constructed with — is now impossible
+    // to ask for. Omitting it does not compile, which is why there is no test
+    // for the omitted case: the compiler is the test.
+
+    test('rejects a set to a value outside the permitted list', () {
+      final status = TomObservableEnum(TodoStatus.open,
+          values: const [TodoStatus.open, TodoStatus.done]);
+      expect(
+        () => status | TodoStatus.inReview,
+        throwsA(isA<TomObservableException>().having(
+          (e) => e.key,
+          'key',
+          equals('TomObservableEnum.enum_value_error.not_in_values'),
+        )),
+      );
+      // The rejected write left the cell alone.
+      expect(~status, equals(TodoStatus.open));
+      expect(status.displayText, equals('Open'));
+    });
+
+    test('the rejection covers every write path, not just the operator', () {
+      final status =
+          TomObservableEnum(TodoStatus.open, values: const [TodoStatus.open]);
+      expect(() => status.set(TodoStatus.done),
+          throwsA(isA<TomObservableException>()));
+      expect(() => status << TodoStatus.done,
+          throwsA(isA<TomObservableException>()));
+    });
+
+    test('a rejected write notifies nobody', () {
+      final status = TomObservableEnum(TodoStatus.open,
+          values: const [TodoStatus.open, TodoStatus.done]);
+      var notifications = 0;
+      final observer = status >> (_) => notifications++;
+
+      expect(() => status | TodoStatus.inReview, throwsA(anything));
+      expect(notifications, isZero);
+
+      status | TodoStatus.done;
+      expect(notifications, equals(1));
+
+      status.removeObserver(observer);
+    });
+
+    test('rejects an initial value outside the permitted list', () {
+      // The shape the old `values` default produced silently: a cell whose own
+      // option list does not contain its own value.
+      expect(
+        () => TomObservableEnum(TodoStatus.inReview,
+            values: const [TodoStatus.open]),
+        throwsA(isA<TomObservableException>().having(
+          (e) => e.toString(),
+          'message',
+          allOf(contains('inReview'), contains('open')),
+        )),
+      );
+    });
+
+    test('a subset is a legitimate option list, and it is enforced', () {
+      final status = TomObservableEnum(TodoStatus.open,
+          values: const [TodoStatus.open, TodoStatus.inReview]);
+      expect(status.displayTexts, equals(['Open', 'In review']));
+      status | TodoStatus.inReview;
+      expect(status.displayText, equals('In review'));
+      expect(() => status | TodoStatus.done, throwsA(anything));
+    });
+
+    test('the option list stays in step with the value', () {
+      // The invariant the two gaps broke between them: whatever the cell holds
+      // is one of the options it offers.
+      final status =
+          TomObservableEnum(TodoStatus.open, values: TodoStatus.values);
+      for (final value in TodoStatus.values) {
+        status | value;
+        expect(status.values, contains(~status));
+        expect(status.displayTexts, contains(status.displayText));
+      }
+    });
+  });
+
+  // ===========================================================================
   // Resolution
   // ===========================================================================
   group('TomObservableEnum resolution', () {

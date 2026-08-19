@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 64 files
-// Generated: 2026-08-18T23:05:06.774836
+// Generated: 2026-08-19T12:06:33.906657
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -313,6 +313,7 @@ class TomCoreKernelBridge {
       _createTomListLifecycleListenerBridge(),
       _createTomListBridge(),
       _createTomMapBridge(),
+      _createTomEnumResourceSegmentBridge(),
       _createTomObservableEnumBridge(),
       _createTomTimezonedBridge(),
       _createTomZonedDateBridge(),
@@ -575,6 +576,7 @@ class TomCoreKernelBridge {
       'TomListLifecycleListener': _createTomListLifecycleListenerBridge,
       'TomList': _createTomListBridge,
       'TomMap': _createTomMapBridge,
+      'TomEnumResourceSegment': _createTomEnumResourceSegmentBridge,
       'TomObservableEnum': _createTomObservableEnumBridge,
       'TomTimezoned': _createTomTimezonedBridge,
       'TomZonedDate': _createTomZonedDateBridge,
@@ -836,6 +838,7 @@ class TomCoreKernelBridge {
       'TomListLifecycleListener': $tom_core_kernel_25.TomListLifecycleListener,
       'TomList': $tom_core_kernel_25.TomList,
       'TomMap': $tom_core_kernel_25.TomMap,
+      'TomEnumResourceSegment': $tom_core_kernel_24.TomEnumResourceSegment,
       'TomObservableEnum': $tom_core_kernel_24.TomObservableEnum,
       'TomTimezoned': $tom_core_kernel_50.TomTimezoned,
       'TomZonedDate': $tom_core_kernel_50.TomZonedDate,
@@ -1098,6 +1101,7 @@ class TomCoreKernelBridge {
       'TomListLifecycleListener': 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart',
       'TomList': 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart',
       'TomMap': 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart',
+      'TomEnumResourceSegment': 'package:tom_core_kernel/src/tombase/observable/tom_observable_enum.dart',
       'TomObservableEnum': 'package:tom_core_kernel/src/tombase/observable/tom_observable_enum.dart',
       'TomTimezoned': 'package:tom_core_kernel/src/tombase/timezoned/date_timestamp.dart',
       'TomZonedDate': 'package:tom_core_kernel/src/tombase/timezoned/date_timestamp.dart',
@@ -9665,6 +9669,7 @@ BridgedClass _createTomResultBridge() {
           case $tom_core_kernel_2.TomContextProviders _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_2.TomContextProviders>.success(value);
           case $tom_core_kernel_49.TomDisposable _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_49.TomDisposable>.success(value);
           case $tom_core_kernel_47.TomEntitlement _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_47.TomEntitlement>.success(value);
+          case $tom_core_kernel_24.TomEnumResourceSegment _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_24.TomEnumResourceSegment>.success(value);
           case $tom_basics_3.TomEnvironment _: return $tom_core_kernel_31.TomResult<$tom_basics_3.TomEnvironment>.success(value);
           case $tom_core_kernel_2.TomExecutionContext _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_2.TomExecutionContext>.success(value);
           case $tom_core_kernel_12.TomExecutor _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_12.TomExecutor>.success(value);
@@ -16060,6 +16065,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_2.TomContextProviders _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_2.TomContextProviders>(initialValue);
           case $tom_core_kernel_49.TomDisposable _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_49.TomDisposable>(initialValue);
           case $tom_core_kernel_47.TomEntitlement _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_47.TomEntitlement>(initialValue);
+          case $tom_core_kernel_24.TomEnumResourceSegment _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_24.TomEnumResourceSegment>(initialValue);
           case $tom_basics_3.TomEnvironment _: return $tom_core_kernel_25.TomObject<$tom_basics_3.TomEnvironment>(initialValue);
           case $tom_core_kernel_2.TomExecutionContext _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_2.TomExecutionContext>(initialValue);
           case $tom_core_kernel_12.TomExecutor _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_12.TomExecutor>(initialValue);
@@ -20973,6 +20979,27 @@ BridgedClass _createTomMapBridge() {
 }
 
 // =============================================================================
+// TomEnumResourceSegment Bridge
+// =============================================================================
+
+BridgedClass _createTomEnumResourceSegmentBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_24.TomEnumResourceSegment,
+    name: 'TomEnumResourceSegment',
+    isAssignable: (v) => v is $tom_core_kernel_24.TomEnumResourceSegment,
+    isAbstract: true,
+    constructors: {
+    },
+    getters: {
+      'resourceSegment': (visitor, target) => D4.validateTarget<$tom_core_kernel_24.TomEnumResourceSegment>(target, 'TomEnumResourceSegment').resourceSegment,
+    },
+    getterSignatures: {
+      'resourceSegment': 'String get resourceSegment',
+    },
+  );
+}
+
+// =============================================================================
 // TomObservableEnum Bridge
 // =============================================================================
 
@@ -20986,7 +21013,10 @@ BridgedClass _createTomObservableEnumBridge() {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomObservableEnum');
         final initialValue = D4.getRequiredArg<Enum>(positional, 0, 'initialValue', 'TomObservableEnum');
-        final values = D4.coerceListOrNull<Enum>(named['values'], 'values');
+        if (!named.containsKey('values') || named['values'] == null) {
+          throw ArgumentError('TomObservableEnum: Missing required named argument "values"');
+        }
+        final values = D4.coerceList<Enum>(named['values'], 'values');
         final scope = D4.getOptionalNamedArg<$tom_core_kernel_38.TomScope?>(named, 'scope');
         return $tom_core_kernel_24.TomObservableEnum(initialValue, values: values, scope: scope);
       },
@@ -21153,7 +21183,7 @@ BridgedClass _createTomObservableEnumBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomObservableEnum(E initialValue, {List<E>? values, TomScope? scope})',
+      '': 'TomObservableEnum(E initialValue, {required List<E> values, TomScope? scope})',
     },
     methodSignatures: {
       'mute': 'void mute()',
