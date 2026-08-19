@@ -125,7 +125,7 @@ The main class for reflection operations. Key methods:
 | Method | Description |
 |--------|-------------|
 | `createInstance<T>()` | Create a new instance using default constructor |
-| `createInstanceFromJson<T>(mirror, data)` | Create instance and populate from JSON |
+| `createInstanceFromJson<T>(mirror, data)` | Create instance and populate from JSON; returns a `T` or throws |
 | `setValues<T>(object, values)` | Set field values on an existing object |
 | `getValues(object)` | Get all field values as a map |
 | `convertToJsonString(object)` | Serialize object to JSON string |
@@ -194,6 +194,16 @@ final person = tomReflectionInfo.createInstanceFromJsonString<Person>(
   '{"name": "John", "age": 30}',
 );
 ```
+
+Both factories return a non-nullable `T`. There is no failure value: a class
+the reflector cannot construct (`reflector.instance_creation.failed`), a
+`fromJson` that raises (`reflection.hook.failed`) or returns the wrong type
+(`reflection.hook.invalid_return`), and a payload the target rejects all throw
+`TomReflectorException`. The string overload parses before it reflects, so
+malformed JSON raises a `FormatException` from `jsonDecode` — the one failure
+that is not a `TomReflectorException`. Do not write `!`, `?? throw`, or an
+`if (result == null)` branch around a call: the branch cannot be entered and so
+hides nothing.
 
 ## Deserialization (JSON to Object)
 

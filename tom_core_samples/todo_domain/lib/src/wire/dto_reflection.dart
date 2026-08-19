@@ -12,17 +12,11 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// Deserializes [json] into a reflection-first DTO of type [T].
 ///
-/// Throws [StateError] when reflection cannot build the instance (e.g. the
-/// reflection seed was not installed for [T]).
+/// Throws [TomReflectorException] when reflection cannot build the instance —
+/// most often because the reflection seed was not installed for [T].
 T dtoFromJson<T extends Object>(Map<String, Object?> json) {
   final mirror = tomReflector.reflectType(T) as ClassMirror;
-  final instance = tomReflectionInfo.createInstanceFromJson<T>(mirror, json);
-  if (instance == null) {
-    throw StateError(
-        'Reflection could not build $T from $json — is the reflection seed '
-        'installed (initializeReflection)?');
-  }
-  return instance;
+  return tomReflectionInfo.createInstanceFromJson<T>(mirror, json);
 }
 
 /// Serializes a reflection-first DTO to its JSON-ready map.

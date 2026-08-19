@@ -548,20 +548,15 @@ class TomEndpointHandler {
             injectPathParameters(jsonBodyData, req, metadata.endpoint);
             if (jsonBodyData.isNotEmpty) {
               try {
-                Object? parameterObject = tomReflectionInfo
+                // Builds the parameter or throws — there is no null result to
+                // test for.
+                final parameterObject = tomReflectionInfo
                     .createInstanceFromJson(parameterMirror, jsonBodyData);
-                if (parameterObject != null) {
-                  positionalArguments.add(parameterObject);
-                  tomLog.trace(
-                    "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from jsonbody $body to $parameterObject ${req.params}",
-                  );
-                  continue;
-                } else {
-                  throw TomEndpointHandlerException(
-                    "endpoint_pipeline.handle_method_call.parameter_instantiation_returned_null",
-                    "Request body contains content for ${parameterMirror.simpleName} but instantiation from JSON $jsonBodyData failed (null-result).",
-                  );
-                }
+                positionalArguments.add(parameterObject);
+                tomLog.trace(
+                  "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from jsonbody $body to $parameterObject ${req.params}",
+                );
+                continue;
               } on TomEndpointHandlerException {
                 rethrow;
               } catch (ex) {
@@ -587,25 +582,19 @@ class TomEndpointHandler {
           try {
             if (req.context[parameterMirror.simpleName]
                 is Map<String, Object?>) {
-              Object? parameterObject = tomReflectionInfo
+              // Builds the parameter or throws — there is no null result to
+              // test for.
+              final parameterObject = tomReflectionInfo
                   .createInstanceFromJson(
                     parameterMirror,
                     req.context[parameterMirror.simpleName]
                         as Map<String, Object?>,
                   );
-              if (parameterObject != null) {
-                positionalArguments.add(parameterObject);
-                tomLog.trace(
-                  "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} value using map from context to $parameterObject ${req.context[parameterMirror.simpleName]}",
-                );
-                continue;
-              } else {
-                throw TomEndpointHandlerException(
-                  "endpoint_pipeline.handle_method_call.parameter_instantiation_returned_null_from_context",
-                  "Request context contains an object for ${parameterMirror.simpleName} but instantiation from JSON ${req.context[parameterMirror.simpleName]} failed (null-result).",
-                  autoLog: true,
-                );
-              }
+              positionalArguments.add(parameterObject);
+              tomLog.trace(
+                "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} value using map from context to $parameterObject ${req.context[parameterMirror.simpleName]}",
+              );
+              continue;
             } else {
               throw TomEndpointHandlerException(
                 "endpoint_pipeline.handle_method_call.parameter_instantiation_invalid_type_in_context",

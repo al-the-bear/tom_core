@@ -1022,17 +1022,13 @@ class TomUserPreferenceCodec {
       return _decodeEnum<T>(raw, key, reflectedClass);
     }
     if (raw is Map<String, Object?>) {
-      final T? instance;
       try {
-        instance = tomReflectionInfo.createInstanceFromJson<T>(
-          reflectedClass,
-          raw,
-        );
+        return tomReflectionInfo.createInstanceFromJson<T>(reflectedClass, raw);
       } catch (error, stack) {
-        // `createInstanceFromJson` documents a null return but only its
-        // `fromJson` attempt is guarded — a class with no usable default
-        // constructor throws out of it. Uncaught, that reaches the caller as a
-        // reflection error, which is not the exception type this module tells
+        // Every failure of `createInstanceFromJson` is an exception — a class
+        // with no usable default constructor, a `fromJson` that raises, a
+        // payload the target rejects. Uncaught, those reach the caller as
+        // reflection errors, which is not the exception type this module tells
         // anyone to catch; the cause is kept rather than discarded.
         throw TomUserPreferenceCodecException(
           'preferences.decode.failed',
@@ -1044,14 +1040,6 @@ class TomUserPreferenceCodec {
           stack: stack,
         );
       }
-      if (instance == null) {
-        throw TomUserPreferenceCodecException(
-          'preferences.decode.failed',
-          "Preference '$key' could not be instantiated as $T.",
-          parameters: {'key': key, 'requested': T.toString()},
-        );
-      }
-      return instance;
     }
     throw _notDecodable(key, T.toString());
   }

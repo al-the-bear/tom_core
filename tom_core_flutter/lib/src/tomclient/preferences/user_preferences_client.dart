@@ -406,10 +406,9 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     return [
       for (final element in decoded)
         tomReflectionInfo.createInstanceFromJson<TomUserPreferenceDto>(
-              mirror,
-              element,
-            ) ??
-            (throw _invalidResponse(response)),
+          mirror,
+          element,
+        ),
     ];
   }
 

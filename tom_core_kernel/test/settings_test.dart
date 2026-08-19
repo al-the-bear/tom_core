@@ -829,8 +829,7 @@ void main() {
         final restored = tomReflectionInfo
             .createInstanceFromJsonString<TomGetSettingsResult>(mirror, json);
 
-        expect(restored, isNotNull);
-        expect(restored!.texts, equals({'welcome': 'Hello, World!'}));
+        expect(restored.texts, equals({'welcome': 'Hello, World!'}));
         expect(restored.config, equals({'theme': 'dark', 'maxItems': 50}));
         expect(restored.groups, equals(['staff']));
         expect(restored.roles, equals(['admin', 'editor']));
@@ -856,8 +855,7 @@ void main() {
         final restored = tomReflectionInfo
             .createInstanceFromJsonString<TomGetSettingsMessage>(mirror, json);
 
-        expect(restored, isNotNull);
-        expect(restored!.authorizationToken, equals('Bearer xyz123'));
+        expect(restored.authorizationToken, equals('Bearer xyz123'));
       });
     });
 

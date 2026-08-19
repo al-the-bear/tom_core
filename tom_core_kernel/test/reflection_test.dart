@@ -1767,8 +1767,7 @@ void main() {
       final restored =
           tomReflectionInfo.createInstanceFromJsonString<Team>(mirror, json);
 
-      expect(restored, isNotNull);
-      expect(restored!.teamName, 'Alpha');
+      expect(restored.teamName, 'Alpha');
       expect(restored.members.length, 2);
       expect(restored.members[0].name, 'Alice');
       expect(restored.members[0].role, 'Lead');
@@ -1787,15 +1786,120 @@ void main() {
       final json = tomReflectionInfo.getValues(person);
       final mirror =
           tomReflector.reflectType(PersonWithAddress) as ClassMirror;
-      final restored =
-          tomReflectionInfo.createInstanceFromJson<PersonWithAddress>(mirror, json);
+      final restored = tomReflectionInfo
+          .createInstanceFromJson<PersonWithAddress>(mirror, json);
 
-      expect(restored, isNotNull);
-      expect(restored!.name, 'Carol');
+      expect(restored.name, 'Carol');
       expect(restored.address, isNotNull);
       expect(restored.address!.street, '1 Main St');
       expect(restored.address!.city, 'Springfield');
       expect(restored.address!.zipCode, '12345');
+    });
+  });
+
+  group('the JSON factories return an instance or throw, never null', () {
+    // Both factories were typed `T?` and documented as "returns the new
+    // instance, or null if creation fails". Neither had a `return null`
+    // anywhere, and neither could acquire one: every exit either returns an
+    // object or throws. The nullable type was therefore a promise of a case
+    // that does not exist, and it propagated — every call site had to write
+    // `!`, `?? throw`, or an `if (x == null)` branch that could never be
+    // entered and so hid nothing.
+    //
+    // The static half of this contract is enforced by these tests *compiling*:
+    // each one binds the result to a non-nullable local without `!`. Under the
+    // old `T?` signature that is an error, not a failure — which is the right
+    // kind of red for a change that is about the type.
+
+    setUp(initializeReflection);
+
+    test('createInstanceFromJson is statically non-nullable', () {
+      final Address restored = tomReflectionInfo.createInstanceFromJson<Address>(
+        tomReflector.reflectType(Address) as ClassMirror,
+        {'street': '1 Main St', 'city': 'Springfield', 'zipCode': '12345'},
+      );
+
+      expect(restored.street, '1 Main St');
+    });
+
+    test('createInstanceFromJsonString is statically non-nullable', () {
+      final Address restored = tomReflectionInfo
+          .createInstanceFromJsonString<Address>(
+            tomReflector.reflectType(Address) as ClassMirror,
+            '{"street": "1 Main St", "city": "Springfield", "zipCode": "1"}',
+          );
+
+      expect(restored.city, 'Springfield');
+    });
+
+    test('a payload the target rejects throws rather than returning null', () {
+      expect(
+        () => tomReflectionInfo.createInstanceFromJson<Address>(
+          tomReflector.reflectType(Address) as ClassMirror,
+          {'street': 42},
+        ),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unexpected_type',
+          ),
+        ),
+      );
+    });
+
+    test('the string overload reports the same rejection', () {
+      expect(
+        () => tomReflectionInfo.createInstanceFromJsonString<Address>(
+          tomReflector.reflectType(Address) as ClassMirror,
+          '{"street": 42}',
+        ),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unexpected_type',
+          ),
+        ),
+      );
+    });
+
+    test('a target that cannot be constructed throws, wrapped', () {
+      // The `T?` return was the only thing that made "creation failed" look
+      // like a value a caller could test for; it is an exception, and it was
+      // always an exception. It has to be *our* exception, though: the
+      // default-constructor fallback was unguarded, so a mirror the reflector
+      // cannot instantiate — a quantified built-in such as `String`, which has
+      // mirror data but no invocable constructor — escaped as the reflection
+      // package's own NoSuchCapabilityError, which is not the type this module
+      // documents or that `on TomReflectorException` catches.
+      expect(
+        () => tomReflectionInfo.createInstanceFromJson<SimplePerson>(
+          tomReflector.reflectType(String) as ClassMirror,
+          {'anything': 1},
+        ),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.instance_creation.failed',
+          ),
+        ),
+      );
+    });
+
+    test('malformed JSON escapes the string overload as a FormatException', () {
+      // `jsonDecode` runs before any reflection does, so this is not a
+      // reflection failure and is deliberately not wrapped as one. It is
+      // recorded here because it is the one failure of these two methods that
+      // is *not* a TomReflectorException.
+      expect(
+        () => tomReflectionInfo.createInstanceFromJsonString<Address>(
+          tomReflector.reflectType(Address) as ClassMirror,
+          'not json',
+        ),
+        throwsFormatException,
+      );
     });
   });
 
@@ -1831,8 +1935,7 @@ void main() {
           {'name': 'Ann', 'age': 30},
         );
 
-        expect(restored, isNotNull);
-        expect(restored!.name, 'Ann');
+        expect(restored.name, 'Ann');
         expect(restored.age, 30);
       });
 
@@ -1843,8 +1946,7 @@ void main() {
               {'name': 'Ann', 'age': 30},
             );
 
-        expect(restored, isNotNull);
-        expect(restored!.name, 'Ann');
+        expect(restored.name, 'Ann');
         expect(restored.age, 30);
       });
 

@@ -792,8 +792,12 @@ class TomReflectionInfo {
   /// Uses the provided [ClassMirror] to instantiate the object, then
   /// populates it from the parsed JSON.
   ///
-  /// Returns the new instance, or null if creation fails.
-  T? createInstanceFromJsonString<T extends Object>(
+  /// Returns the new instance. There is no failure value: every way this can
+  /// go wrong throws. [s] is parsed before any reflection happens, so
+  /// malformed JSON raises a [FormatException] from `jsonDecode`; everything
+  /// after that is [createInstanceFromJson] and raises
+  /// [TomReflectorException].
+  T createInstanceFromJsonString<T extends Object>(
     ClassMirror objectMirror,
     String s,
   ) {
@@ -815,15 +819,36 @@ class TomReflectionInfo {
   /// );
   /// ```
   ///
-  /// Returns the new instance, or null if creation fails.
-  T? createInstanceFromJson<T extends Object>(
+  /// Returns the new instance. There is no failure value: a class that cannot
+  /// be built, a `fromJson` that raises, and a payload the target rejects all
+  /// throw [TomReflectorException]. A caller testing the result for null is
+  /// writing a branch that cannot be entered.
+  T createInstanceFromJson<T extends Object>(
     ClassMirror objectMirror,
     Map<String, Object?> jsonData,
   ) {
     if (!_declaresConstructor(objectMirror, "fromJson")) {
       // No such constructor — build the object the ordinary way. This is the
       // only reason to fall back; see [_hookFailed].
-      return setValues<T>(objectMirror.newInstance("", []) as T, jsonData);
+      final T blank;
+      try {
+        blank = objectMirror.newInstance("", []) as T;
+      } catch (error, stack) {
+        // A mirror with no invocable default constructor raises the reflection
+        // package's own NoSuchCapabilityError. Letting it out would make this
+        // method's one documented failure mode a lie and hand the caller an
+        // exception type this module never tells anyone to catch; the same
+        // wrapping [createInstance] already applies, under the same key.
+        throw TomReflectorException(
+          "reflector.instance_creation.failed",
+          "Failed to create instance of type ${objectMirror.simpleName} "
+              "from JSON: $error",
+          autoLog: true,
+          rootException: error,
+          stack: stack,
+        );
+      }
+      return setValues<T>(blank, jsonData);
     }
 
     final Object? built;
