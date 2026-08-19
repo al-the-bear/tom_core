@@ -65,13 +65,21 @@ const timezone = 'Europe/Berlin';
 
 final request = TomUserPreferenceWriteRequest(
   key: TomUserPreferenceKeys.timezone,
-  valueType: TomUserPreferenceCodec.typeNameOf(timezone),
+  valueType: TomUserPreferenceCodec.typeNameOf(
+    timezone,
+    TomUserPreferenceKeys.timezone,
+  ),
   value: TomUserPreferenceCodec.encodeValue(
     timezone,
     TomUserPreferenceKeys.timezone,
   ),
 );
 ```
+
+Both calls take the key so that a failure can name the preference it was
+about. `typeNameOf` can fail: for anything that is not a scalar it asks the
+reflection registry for the name, and a class the registry does not know has
+no name it could be stored under.
 
 ### 3. Decode a Value
 
@@ -111,7 +119,7 @@ One stored preference as it travels the wire.
 | Property | Type | Description |
 |----------|------|-------------|
 | `key` | `String` | The preference key |
-| `valueType` | `String` | The name of the type `value` was written as |
+| `valueType` | `String` | The name the value's type is stored under — see [Which name a value is stored under](#which-name-a-value-is-stored-under) |
 | `value` | `String` | The value's JSON text |
 | `updatedAt` | `DateTime?` | When the server last wrote it, in UTC |
 
@@ -139,7 +147,8 @@ Encodes and decodes preference values.
 | Member | Purpose |
 |--------|---------|
 | `stringType` / `intType` / `doubleType` / `boolType` / `dateTimeType` | The scalar type names |
-| `typeNameOf(value)` | The type name a value is stored under |
+| `typeNameOf(value, [key])` | The name a value is stored under |
+| `typeNameForType(type, [key])` | The name a value of that type is stored under |
 | `encode(key, value, {updatedAt})` | Builds the whole DTO |
 | `encodeValue(value, [key])` | The JSON text alone |
 | `validateEncoded(valueType, valueJson, {key})` | Checks an already-encoded pair |
@@ -181,6 +190,45 @@ same reflection path the endpoint pipeline uses for every other DTO, so a
 preference object is written exactly as it would be if it were an endpoint
 result.
 
+#### Which name a value is stored under
+
+A scalar is stored under its own name — `String`, `int`, `double`, `bool`,
+`DateTime`. Anything else is stored under **the name the reflection registry
+holds for its class**: `typeNameOf` resolves the value through the registry and
+writes the `simpleName` it finds there.
+
+That is deliberately *not* `value.runtimeType.toString()`, which is what the
+name would otherwise be. This string is written into a database column, sent
+across the wire, and read back — possibly by a different release of a different
+application on a different platform, which is the whole premise of the module.
+The compiler's rendering of a type is not durable enough for that job, in three
+concrete ways:
+
+| Hazard | What `runtimeType.toString()` gives | What the registry gives |
+|--------|-------------------------------------|-------------------------|
+| Web minification | The obfuscated name, so a client compiled with `dart compile js -O4` and a server running from source disagree about the same class | A string literal the generator emitted, which minification cannot rewrite |
+| Generics | `BoxPreference<int>` from a value and `BoxPreference<dynamic>` from the bare class literal — the write and the read can never meet | `BoxPreference` from both; one class is one preference type, whatever it was instantiated at |
+| Private SDK classes | `_Map<String, int>` for a plain map — a name no caller can write, so the row is unreadable the moment it is written | Nothing: the registry does not know it, so the write is refused |
+
+The same registry is what the read path resolves `T` through, so the two halves
+are symmetric by construction: a value can be written under a name exactly when
+it can be read back under it.
+
+The cost is that `typeNameOf` and `typeNameForType` can now throw
+`preferences.type.not_reflected` where they previously always answered. That is
+the point rather than a regression — a value with no name the reader can ask
+for was already unreadable, and failing at the write is failing on the device
+that can still do something about it. Callers building a write request by hand
+should pass the key, so the exception names the preference.
+
+`typeNameForType(type)` answers the same question from a `Type` rather than a
+value. It agrees with `typeNameOf` on the class — both read the registry — but
+it can only see the type it is handed: a value whose runtime class is a
+*subclass* of the declared type is named by the subclass on the way out and by
+the declared type on the way in, and `decode<T>` will report that as a
+`preferences.decode.type_mismatch`. Store a preference under the class it is
+declared as.
+
 #### A reflected value is rebuilt member by member
 
 Decoding a reflected preference is not a type test followed by a cast — it
@@ -213,18 +261,24 @@ either read wrong.
 
 Best-effort applies to a payload's members, not to whether the type is
 reflected at all: a class the generator never captured is still refused, with
-`preferences.decode.not_reflected`.
+`preferences.type.not_reflected` — and refused before the payload is looked at,
+because the read starts by asking the registry what name `T` is stored under.
 
 #### Every write failure is a codec exception
 
-`encodeValue` reports both of its failures as a
-`TomUserPreferenceCodecException`, which is the only exception the rest of this
-module tells callers to catch:
+Every failure of the write path is a `TomUserPreferenceCodecException`, which
+is the only exception the rest of this module tells callers to catch:
 
-| Cause | Error key |
-|-------|-----------|
-| A value JSON cannot represent — in practice a non-finite `double` | `preferences.encode.not_json` |
-| A non-scalar value the reflection path cannot serialize | `preferences.encode.failed` |
+| Cause | Raised by | Error key |
+|-------|-----------|-----------|
+| A value whose class has no name it could be stored under | `typeNameOf`, and so `encode` | `preferences.type.not_reflected` |
+| A value JSON cannot represent — in practice a non-finite `double` | `encodeValue` | `preferences.encode.not_json` |
+| A non-scalar value the reflection path cannot serialize | `encodeValue` | `preferences.encode.failed` |
+
+The first two rows both mean "an unreflected object", reached from two
+directions: `encode` asks for the name first and stops there, while
+`encodeValue` called on its own never asks and fails at the serializer. Nothing
+gets past both.
 
 `double.nan` and `double.infinity` are the whole of the first row: every other
 scalar encodes. They are not exotic values for a preference — a computed UI
@@ -294,10 +348,15 @@ class DisplayPreference {
 
 final request = TomUserPreferenceWriteRequest(
   key: 'ui.display',
-  valueType: TomUserPreferenceCodec.typeNameOf(preference),
+  valueType: TomUserPreferenceCodec.typeNameOf(preference, 'ui.display'),
   value: TomUserPreferenceCodec.encodeValue(preference, 'ui.display'),
 );
 ```
+
+The `@tomReflector` annotation is what makes this work at all: `typeNameOf`
+takes the stored name from the registry the annotation puts the class in, so
+dropping the annotation does not silently store the value under the compiler's
+name — it refuses the write with `preferences.type.not_reflected`.
 
 Reading it back gives a genuinely reconstructed instance:
 
@@ -355,8 +414,11 @@ text to be, and stating it is what lets the codec disagree. See
 ### 3. Annotate Reflected Preference Values
 
 A non-scalar preference type must be `@tomReflector`, and the generator must
-have captured it. A class it has not captured fails at the *decode* — on
-whichever device reads it next — not at the write.
+have captured it. A class it has not captured fails at the *write*, with
+`preferences.type.not_reflected`, because the registry is where the stored name
+comes from and there is none to write. That is the useful place for it to fail:
+the alternative is a row that stores cleanly and then fails every read of that
+key, on whichever device reads it next.
 
 ### 4. Namespace Application Keys
 

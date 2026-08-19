@@ -90,16 +90,26 @@ class TomUserPreferenceCodec {
 
   /// The [TomUserPreferenceDto.valueType] that [value] is stored under.
   ///
-  /// A scalar's own type name, or a reflected object's runtime type name. The
-  /// `num` cases are tested before the reflected fallback, so an `int` never
-  /// reaches reflection.
-  static String typeNameOf(Object value) {
+  /// A scalar's own type name, or — for anything else — the name the reflection
+  /// registry holds for the value's class. The scalar cases are tested first,
+  /// so an `int` never reaches reflection.
+  ///
+  /// Throws `preferences.type.not_reflected` when the registry does not know
+  /// the class. That is the point rather than a limitation: the name written
+  /// here is read back by another release on another platform, and a name the
+  /// registry cannot produce is one no reader can ask for. See
+  /// [typeNameForType] for why the registry is the identity.
+  ///
+  /// [key] only names the preference in that exception, and is optional because
+  /// a caller may ask for a value's stored name before it has decided where to
+  /// put it.
+  static String typeNameOf(Object value, [String key = '']) {
     if (value is String) return stringType;
     if (value is int) return intType;
     if (value is double) return doubleType;
     if (value is bool) return boolType;
     if (value is DateTime) return dateTimeType;
-    return value.runtimeType.toString();
+    return _reflectedClassOf(value, key).simpleName;
   }
 
   /// Encodes [value] into the DTO stored under [key].
@@ -114,7 +124,7 @@ class TomUserPreferenceCodec {
   }) {
     return TomUserPreferenceDto(
       key: key,
-      valueType: typeNameOf(value),
+      valueType: typeNameOf(value, key),
       value: encodeValue(value, key),
       updatedAt: updatedAt,
     );
@@ -132,6 +142,12 @@ class TomUserPreferenceCodec {
   /// `double.nan` is an ordinary outcome for a computed preference whose
   /// divisor turned out to be zero, not a programming error worth a different
   /// exception type.
+  ///
+  /// This writes the *text*; it does not ask what the value is stored under.
+  /// So an unreflected object reaches `preferences.encode.failed` here, while
+  /// the same object given to [encode] is refused one step earlier, by
+  /// [typeNameOf], as `preferences.type.not_reflected` — a value with no
+  /// durable name has nothing to be written under, whatever its text.
   static String encodeValue(Object value, [String key = '']) {
     if (value is String || value is int || value is double || value is bool) {
       try {
@@ -272,28 +288,111 @@ class TomUserPreferenceCodec {
   /// decodes to a fully-defaulted instance. [validateEncoded] does not close
   /// that gap either, and says why it does not try.
   static T decode<T extends Object>(TomUserPreferenceDto dto) {
-    final expected = typeNameForType(T);
-    if (dto.valueType != expected) {
+    final identity = _identityOf(T, dto.key);
+    if (dto.valueType != identity.name) {
       throw TomUserPreferenceCodecException(
         'preferences.decode.type_mismatch',
         "Preference '${dto.key}' was stored as ${dto.valueType} but was read "
-            'as $expected.',
+            'as ${identity.name}.',
         parameters: {
           'key': dto.key,
           'stored': dto.valueType,
-          'requested': expected,
+          'requested': identity.name,
         },
       );
     }
-    return _decodeValue<T>(dto.value, dto.key);
+    return _decodeValue<T>(dto.value, dto.key, identity.reflectedClass);
   }
 
   /// The [TomUserPreferenceDto.valueType] a value of type [type] is stored
   /// under.
   ///
-  /// Derived from the type's own name, so it agrees with [typeNameOf] for every
-  /// type either of them can see.
-  static String typeNameForType(Type type) => type.toString();
+  /// A scalar is named by itself; anything else is named by the reflection
+  /// registry, and throws `preferences.type.not_reflected` if the registry does
+  /// not know it. [key] only names the preference in that exception.
+  ///
+  /// **Why the registry and not the type.** `Type.toString()` is the
+  /// compiler's rendering, and this name is written into a database column,
+  /// sent across the wire and read back by another release on another
+  /// platform. That rendering is not durable enough for the job: it is not
+  /// preserved by web minification, it carries the generic instantiation (so
+  /// one class reached from two call sites can produce two names), and for an
+  /// SDK type it can be a private name — `<String, int>{}` renders as `_Map`,
+  /// which no caller can write and therefore no caller can read back. The
+  /// registry name is a literal the generator emits, so it survives all three.
+  ///
+  /// It is the same registry [decode] resolves its type argument through,
+  /// which is what makes the two halves symmetric: a value can be written
+  /// under a name exactly when it can be read back under it.
+  static String typeNameForType(Type type, [String key = '']) =>
+      _identityOf(type, key).name;
+
+  /// The stored identity of [type]: the name it is written under and, for a
+  /// non-scalar, the registry entry that name came from.
+  ///
+  /// Returning the mirror alongside the name is what lets [decode] resolve the
+  /// class once and hand it to [_decodeValue], rather than each half asking the
+  /// registry the same question and having to agree about the answer.
+  static ({String name, ClassMirror? reflectedClass}) _identityOf(
+    Type type,
+    String key,
+  ) {
+    if (type == String) return (name: stringType, reflectedClass: null);
+    if (type == int) return (name: intType, reflectedClass: null);
+    if (type == double) return (name: doubleType, reflectedClass: null);
+    if (type == bool) return (name: boolType, reflectedClass: null);
+    if (type == DateTime) return (name: dateTimeType, reflectedClass: null);
+    final mirror = _reflectedClass(type, key);
+    return (name: mirror.simpleName, reflectedClass: mirror);
+  }
+
+  /// The registry entry for [type], or `preferences.type.not_reflected`.
+  static ClassMirror _reflectedClass(Type type, String key) {
+    final TypeMirror mirror;
+    try {
+      mirror = tomReflector.reflectType(type);
+    } catch (error, stack) {
+      throw _noStoredIdentity(type, key, error, stack);
+    }
+    if (mirror is! ClassMirror) throw _noStoredIdentity(type, key, null, null);
+    return mirror;
+  }
+
+  /// The registry entry for [value]'s class, or
+  /// `preferences.type.not_reflected`.
+  ///
+  /// Resolved from the *instance* rather than from `value.runtimeType`, because
+  /// the registry is keyed by declaration and a generic value's runtime type is
+  /// an instantiation: `reflectType(BoxPreference<int>)` finds nothing, while
+  /// the instance lookup finds `BoxPreference` and names it that. The
+  /// instantiation is deliberately not part of the stored name — a class
+  /// written from two call sites at two instantiations is one preference type,
+  /// and must come back under one name.
+  static ClassMirror _reflectedClassOf(Object value, String key) {
+    try {
+      return tomReflector.reflect(value).type;
+    } catch (error, stack) {
+      throw _noStoredIdentity(value.runtimeType, key, error, stack);
+    }
+  }
+
+  static TomUserPreferenceCodecException _noStoredIdentity(
+    Type type,
+    String key,
+    Object? error,
+    StackTrace? stack,
+  ) {
+    final subject = key.isEmpty ? 'A preference value' : "Preference '$key'";
+    return TomUserPreferenceCodecException(
+      'preferences.type.not_reflected',
+      '$subject is a $type, which the reflection registry does not know, so '
+          'there is no name it can be stored under and read back by. '
+          'Reflected preference values must be annotated with @tomReflector.',
+      parameters: {'key': key, 'valueType': type.toString()},
+      rootException: error,
+      stack: stack,
+    );
+  }
 
   /// Parses [text] as a UTC instant, or returns `null` if it does not name one.
   ///
@@ -320,12 +419,22 @@ class TomUserPreferenceCodec {
   /// Narrows the JSON text [json] to a [T]; [key] only names the preference in
   /// an error.
   ///
+  /// [reflectedClass] is the registry entry [decode] already resolved [T] to,
+  /// or `null` when [T] is a scalar. It is passed rather than looked up again
+  /// because [decode] cannot have compared the stored name without resolving
+  /// it, and a second lookup could only either repeat that work or disagree
+  /// with it.
+  ///
   /// Private, and deliberately so. Given the text alone there is nothing to
   /// contradict the caller's [T]: a stored `DateTime` read as a `String`
   /// succeeds here, because `"2026-03-04T05:06:07Z"` *is* a string. Only the
   /// stored [TomUserPreferenceDto.valueType] says otherwise, so [decode]
   /// compares it first and is the sole caller.
-  static T _decodeValue<T extends Object>(String json, String key) {
+  static T _decodeValue<T extends Object>(
+    String json,
+    String key,
+    ClassMirror? reflectedClass,
+  ) {
     final Object? raw;
     try {
       raw = jsonDecode(json);
@@ -358,30 +467,9 @@ class TomUserPreferenceCodec {
       );
     }
     if (T == double && raw is int) return raw.toDouble() as T;
-    if (raw is Map<String, Object?>) {
-      final TypeMirror typeMirror;
-      try {
-        typeMirror = tomReflector.reflectType(T);
-      } catch (error, stack) {
-        throw TomUserPreferenceCodecException(
-          'preferences.decode.not_reflected',
-          "Preference '$key' holds an object but $T is not reflected. "
-              'Reflected preference values must be annotated with '
-              '@tomReflector.',
-          parameters: {'key': key, 'requested': T.toString()},
-          rootException: error,
-          stack: stack,
-        );
-      }
-      if (typeMirror is! ClassMirror) {
-        throw TomUserPreferenceCodecException(
-          'preferences.decode.not_reflected',
-          "Preference '$key' holds an object but $T is not a reflected class.",
-          parameters: {'key': key, 'requested': T.toString()},
-        );
-      }
+    if (reflectedClass != null && raw is Map<String, Object?>) {
       final instance = tomReflectionInfo.createInstanceFromJson<T>(
-        typeMirror,
+        reflectedClass,
         raw,
       );
       if (instance == null) {

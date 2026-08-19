@@ -135,7 +135,7 @@ class TomUserPreferences {
   Future<TomUserPreferenceDto> set<T extends Object>(String key, T value) async {
     return _write(
       key,
-      TomUserPreferenceCodec.typeNameOf(value),
+      TomUserPreferenceCodec.typeNameOf(value, key),
       TomUserPreferenceCodec.encodeValue(value, key),
     );
   }

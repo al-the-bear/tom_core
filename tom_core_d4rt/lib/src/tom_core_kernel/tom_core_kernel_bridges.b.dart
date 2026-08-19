@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 65 files
-// Generated: 2026-08-19T16:54:53.482815
+// Generated: 2026-08-19T17:23:09.014279
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -8847,7 +8847,8 @@ BridgedClass _createTomUserPreferenceCodecBridge() {
       'typeNameOf': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'typeNameOf');
         final value = D4.getRequiredArg<Object>(positional, 0, 'value', 'typeNameOf');
-        return $tom_core_kernel_26.TomUserPreferenceCodec.typeNameOf(value);
+        final key = D4.getOptionalArgWithDefault<String>(positional, 1, 'key', '');
+        return $tom_core_kernel_26.TomUserPreferenceCodec.typeNameOf(value, key);
       },
       'encode': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'encode');
@@ -8877,7 +8878,8 @@ BridgedClass _createTomUserPreferenceCodecBridge() {
       'typeNameForType': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'typeNameForType');
         final type = D4.getRequiredArg<Type>(positional, 0, 'type', 'typeNameForType');
-        return $tom_core_kernel_26.TomUserPreferenceCodec.typeNameForType(type);
+        final key = D4.getOptionalArgWithDefault<String>(positional, 1, 'key', '');
+        return $tom_core_kernel_26.TomUserPreferenceCodec.typeNameForType(type, key);
       },
       'parseInstant': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parseInstant');
@@ -8886,12 +8888,12 @@ BridgedClass _createTomUserPreferenceCodecBridge() {
       },
     },
     staticMethodSignatures: {
-      'typeNameOf': 'String typeNameOf(Object value)',
+      'typeNameOf': 'String typeNameOf(Object value, [String key = \'\'])',
       'encode': 'TomUserPreferenceDto encode(String key, Object value, {DateTime? updatedAt})',
       'encodeValue': 'String encodeValue(Object value, [String key = \'\'])',
       'validateEncoded': 'void validateEncoded(String valueType, String valueJson, {String key = \'\'})',
       'decode': 'T decode(TomUserPreferenceDto dto)',
-      'typeNameForType': 'String typeNameForType(Type type)',
+      'typeNameForType': 'String typeNameForType(Type type, [String key = \'\'])',
       'parseInstant': 'DateTime? parseInstant(String text)',
     },
     staticGetterSignatures: {

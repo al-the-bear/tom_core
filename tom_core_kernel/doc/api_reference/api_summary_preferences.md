@@ -200,12 +200,12 @@ path the endpoint pipeline uses for every other DTO.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `typeNameOf(Object value)` | `String` | The `valueType` the value is stored under — a scalar's own type name, or a reflected object's runtime type name. |
-| `typeNameForType(Type type)` | `String` | The `valueType` a value of that type is stored under; agrees with `typeNameOf` for every type either can see. |
-| `encode(String key, Object value, {DateTime? updatedAt})` | `TomUserPreferenceDto` | Builds the whole DTO. `updatedAt` is the server's write timestamp; a client leaves it `null`. |
+| `typeNameOf(Object value, [String key = ''])` | `String` | The `valueType` the value is stored under — a scalar's own type name, or, for anything else, the `simpleName` the reflection registry holds for its class. Not `runtimeType.toString()`: that name is written to a database column and read back by another release on another platform, and the compiler's rendering is rewritten by web minification, carries the generic instantiation (`BoxPreference<int>` vs `BoxPreference<dynamic>`), and for an SDK type can be private (`_Map<String, int>`) — a name no reader could ask for. The registry name is a generator-emitted literal, and is the same registry `decode` resolves `T` through, so a value can be written under a name exactly when it can be read back under it. Throws `preferences.type.not_reflected` for a class the registry does not know; `key` only names the preference in that exception. |
+| `typeNameForType(Type type, [String key = ''])` | `String` | The `valueType` a value of that type is stored under — the same registry lookup as `typeNameOf`, from a `Type` rather than a value, so the two agree on the class. They can still disagree on which class: a value whose runtime class is a subclass of the declared type is named by the subclass here and by the declared type there, which `decode<T>` reports as `preferences.decode.type_mismatch`. Throws `preferences.type.not_reflected` for a class the registry does not know. |
+| `encode(String key, Object value, {DateTime? updatedAt})` | `TomUserPreferenceDto` | Builds the whole DTO. `updatedAt` is the server's write timestamp; a client leaves it `null`. Names the value before encoding it, so an unreflected object is refused here as `preferences.type.not_reflected` rather than reaching the serializer. |
 | `encodeValue(Object value, [String key = ''])` | `String` | The value's JSON text alone. `key` names the preference in the exception and is optional, for a caller encoding before it has decided where to put the value. Throws `TomUserPreferenceCodecException`: `preferences.encode.not_json` for a value JSON cannot represent — in practice a non-finite `double` — and `preferences.encode.failed` when a non-scalar value is not reflectable. |
 | `validateEncoded(String valueType, String valueJson, {String key = ''})` | `void` | Checks that the text is JSON and is shaped like the declared type. Throws `preferences.encoded.invalid_json`, `preferences.encoded.type_mismatch`, or `preferences.encoded.not_an_instant` for a `DateTime` whose text names no zone. A non-scalar type is only required to be a JSON object — which reflected class it names is deliberately not checked. |
-| `decode<T extends Object>(TomUserPreferenceDto dto)` | `T` | The stored value as a `T`, and **the only read** — there is no sibling taking the value's text alone, because it would have nothing to compare `T` against. Throws `preferences.decode.type_mismatch` when the stored `valueType` is not the one `T` is stored under; the comparison happens before any narrowing, so an `int` is not silently widened to a requested `double` and a stored `DateTime` is not read as the `String` its text is. Otherwise widens `int`→`double` where `T` asks for it, reads a `DateTime` as the UTC instant its text names, and reconstructs a reflected object through `createInstanceFromJson` member by member — unrecognised JSON members ignored, absent ones left at their declared defaults, so a row whose `valueType` and text disagree yields a defaulted instance. Throws `preferences.decode.invalid_json`, `preferences.decode.type_mismatch`, `preferences.decode.not_an_instant`, `preferences.decode.not_reflected` or `preferences.decode.failed`. |
+| `decode<T extends Object>(TomUserPreferenceDto dto)` | `T` | The stored value as a `T`, and **the only read** — there is no sibling taking the value's text alone, because it would have nothing to compare `T` against. Throws `preferences.decode.type_mismatch` when the stored `valueType` is not the one `T` is stored under; the comparison happens before any narrowing, so an `int` is not silently widened to a requested `double` and a stored `DateTime` is not read as the `String` its text is. Otherwise widens `int`→`double` where `T` asks for it, reads a `DateTime` as the UTC instant its text names, and reconstructs a reflected object through `createInstanceFromJson` member by member — unrecognised JSON members ignored, absent ones left at their declared defaults, so a row whose `valueType` and text disagree yields a defaulted instance. Resolves `T` through the registry once, before reading anything, and hands the resulting `ClassMirror` to the reconstruction — so a `T` the registry does not know is refused as `preferences.type.not_reflected` before the payload is looked at, and a row declared as a scalar but holding an object is reported as `preferences.decode.failed` rather than blamed on reflection. Throws `preferences.type.not_reflected`, `preferences.decode.invalid_json`, `preferences.decode.type_mismatch`, `preferences.decode.not_an_instant` or `preferences.decode.failed`. |
 | `parseInstant(String text)` | `DateTime?` | The UTC instant `text` names, or `null` when it names none. Stricter than `DateTime.parse`, which reads a zoneless timestamp as the reading process's local time — so one stored string would mean a different instant on every device. Public so a client can check its own text before sending it. |
 
 ### TomUserPreferenceCodecException
@@ -227,12 +227,16 @@ TomUserPreferenceCodecException(
 ```
 
 Parameters mirror `TomException`. The `key` is one of
+`preferences.type.not_reflected`,
 `preferences.encode.not_json`, `preferences.encode.failed`,
 `preferences.encoded.invalid_json`,
 `preferences.encoded.type_mismatch`, `preferences.encoded.not_an_instant`,
 `preferences.decode.type_mismatch`, `preferences.decode.invalid_json`,
-`preferences.decode.not_an_instant`, `preferences.decode.not_reflected` or
+`preferences.decode.not_an_instant` or
 `preferences.decode.failed`.
+
+`preferences.type.not_reflected` is not on either side of the wire: it is
+raised while *naming* a value, so it belongs to both the write and the read.
 
 ## Global Functions and Constants
 

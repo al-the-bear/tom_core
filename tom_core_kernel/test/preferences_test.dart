@@ -89,6 +89,16 @@ class NotificationPreference {
   int quietHour = 22;
 }
 
+/// A reflected *generic* preference value.
+///
+/// The instantiation is what `runtimeType.toString()` used to leak into the
+/// stored name: `BoxPreference<int>` from a value, `BoxPreference<dynamic>`
+/// from the bare class literal, so the write and the read could never meet.
+@tomReflector
+class BoxPreference<T> {
+  int count = 0;
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -428,9 +438,13 @@ void main() {
     });
 
     test('an unreflected class is refused rather than defaulted', () {
+      // Refused for want of a stored identity now (tcinc164) rather than at
+      // the instantiation: a class the registry does not know has no name a
+      // row could have been written under, so the read is answered before the
+      // payload is even looked at.
       expect(
         () => decodeStored<UnreflectedPreference>('{"size":9}', 'ui.size'),
-        throwsCodecKey('preferences.decode.not_reflected'),
+        throwsCodecKey('preferences.type.not_reflected'),
       );
     });
   });
@@ -485,6 +499,123 @@ void main() {
           TomUserPreferenceCodec.stringType,
         );
       }
+    });
+  });
+
+  // tcinc164: a non-scalar was stored under `value.runtimeType.toString()` — a
+  // string the compiler owns rather than the program. It leaked private SDK
+  // names, carried the generic instantiation, and is explicitly not preserved
+  // by web minification, so a preference could be written under a name no
+  // reader could ever ask for. The identity now comes from the reflection
+  // registry.
+  //
+  // The obfuscation hazard itself cannot be observed from the VM. What these
+  // tests pin instead is the thing that implies it: the name is the
+  // generator's literal, not the compiler's rendering — and the three cases
+  // where the two visibly disagree.
+  group('TomUserPreferenceCodec — a non-scalar is named by the registry', () {
+    test('the stored name is the registry\'s own name for the class', () {
+      final mirror = tomReflector.reflectType(DisplayPreference) as ClassMirror;
+
+      expect(
+        TomUserPreferenceCodec.typeNameOf(DisplayPreference()),
+        mirror.simpleName,
+      );
+      expect(
+        TomUserPreferenceCodec.typeNameForType(DisplayPreference),
+        mirror.simpleName,
+      );
+    });
+
+    test('a private SDK class can no longer be stored under its name', () {
+      // `typeNameOf(<String,int>{})` answered `_Map<String, int>`. `_Map` is
+      // not a type any caller can write, so such a row was unreadable by
+      // construction the moment it was written — a silent write and a
+      // permanent read failure. Refusing the write is the whole point.
+      expect(
+        () => TomUserPreferenceCodec.typeNameOf(<String, int>{'a': 1}),
+        throwsCodecKey('preferences.type.not_reflected'),
+      );
+    });
+
+    test('a generic value and its bare class literal reach the same name', () {
+      // `runtimeType.toString()` gave `BoxPreference<int>` on the way out and
+      // `BoxPreference<dynamic>` on the way back, so a generic preference
+      // written by one half could never be read by the other. The registry
+      // knows the class, not the instantiation.
+      expect(TomUserPreferenceCodec.typeNameOf(BoxPreference<int>()),
+          'BoxPreference');
+      expect(
+        TomUserPreferenceCodec.typeNameOf(BoxPreference<int>()),
+        TomUserPreferenceCodec.typeNameForType(BoxPreference),
+      );
+    });
+
+    test('a type the registry does not know has no stored identity', () {
+      expect(
+        () => TomUserPreferenceCodec.typeNameOf(UnreflectedPreference()),
+        throwsCodecKey('preferences.type.not_reflected'),
+      );
+      expect(
+        () => TomUserPreferenceCodec.typeNameForType(UnreflectedPreference),
+        throwsCodecKey('preferences.type.not_reflected'),
+      );
+    });
+
+    test('encode refuses such a value rather than inventing a name', () {
+      // The failure now arrives at the write, not at the first read — which
+      // would otherwise be on another device, in another release.
+      expect(
+        () => TomUserPreferenceCodec.encode('ui.size', UnreflectedPreference()),
+        throwsCodecKey('preferences.type.not_reflected'),
+      );
+    });
+
+    test('the refusal names the type it could not name', () {
+      try {
+        TomUserPreferenceCodec.typeNameOf(UnreflectedPreference());
+        fail('A type with no stored identity must not be given one');
+      } on TomUserPreferenceCodecException catch (error) {
+        expect(error.parameters?['valueType'], 'UnreflectedPreference');
+      }
+    });
+
+    test('a scalar is named without the registry being asked', () {
+      // None of these are reflected, so answering at all is the assertion:
+      // the scalar branches are tested before anything reaches reflection.
+      expect(TomUserPreferenceCodec.typeNameForType(String),
+          TomUserPreferenceCodec.stringType);
+      expect(TomUserPreferenceCodec.typeNameForType(int),
+          TomUserPreferenceCodec.intType);
+      expect(TomUserPreferenceCodec.typeNameForType(double),
+          TomUserPreferenceCodec.doubleType);
+      expect(TomUserPreferenceCodec.typeNameForType(bool),
+          TomUserPreferenceCodec.boolType);
+      expect(TomUserPreferenceCodec.typeNameForType(DateTime),
+          TomUserPreferenceCodec.dateTimeType);
+    });
+
+    test('a reflected value still round-trips under its registry name', () {
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.display',
+        DisplayPreference()..fontSize = 18,
+      );
+
+      expect(stored.valueType, 'DisplayPreference');
+      expect(TomUserPreferenceCodec.decode<DisplayPreference>(stored).fontSize,
+          18);
+    });
+
+    test('a row labelled as a scalar but holding an object says so', () {
+      // Resolving the class once, in `decode`, and handing the mirror to the
+      // read means the read no longer asks reflection anything — so a stored
+      // row whose declared scalar type does not match its object payload is
+      // now reported as what it is, rather than as `String is not reflected`,
+      // which blamed the wrong thing.
+      expect(
+        () => decodeStored<String>('{"size":9}', 'ui.size'),
+        throwsCodecKey('preferences.decode.failed'),
+      );
     });
   });
 }

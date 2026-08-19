@@ -88,10 +88,18 @@ class BuildWriteRequestExample {
     // A client encodes once, with the same codec the server decodes with, and
     // hands the pair over as text. Two encoders that disagreed by one
     // convention would store successfully and read wrongly.
+    //
+    // `typeNameOf` is given the key too: for anything that is not a scalar it
+    // asks the reflection registry for the name, and refuses a class the
+    // registry does not know rather than inventing one — so it can throw, and
+    // the exception should say which preference it was about.
     const value = 'Europe/Berlin';
     final request = TomUserPreferenceWriteRequest(
       key: TomUserPreferenceKeys.timezone,
-      valueType: TomUserPreferenceCodec.typeNameOf(value),
+      valueType: TomUserPreferenceCodec.typeNameOf(
+        value,
+        TomUserPreferenceKeys.timezone,
+      ),
       value: TomUserPreferenceCodec.encodeValue(
         value,
         TomUserPreferenceKeys.timezone,

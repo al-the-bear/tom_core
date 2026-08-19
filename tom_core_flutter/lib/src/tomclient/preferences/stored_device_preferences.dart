@@ -71,7 +71,7 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
     // read-modify-write cycle that ends in a rewrite of unchanged content.
     final written = TomUserPreferenceDto(
       key: key,
-      valueType: TomUserPreferenceCodec.typeNameOf(value),
+      valueType: TomUserPreferenceCodec.typeNameOf(value, key),
       value: TomUserPreferenceCodec.encodeValue(value, key),
       // The device's own clock. Unlike the server store, nothing here can
       // supply a more authoritative timestamp — but it is still normalised to
