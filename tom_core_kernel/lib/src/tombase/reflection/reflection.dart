@@ -542,6 +542,60 @@ class TomReflectionInfo {
     }
   }
 
+  /// Resolves the class mirror of [im], insisting it carries `@tomReflector`.
+  ///
+  /// Reflecting successfully is not the same as being one of ours. The
+  /// capability set includes deep type-annotation quantification, so every
+  /// type that appears as a *field type* of an annotated class — `String`,
+  /// `int`, `double`, `bool`, `DateTime`, `List`, `Map`, `Object` — gets
+  /// generated data too. Those types reflect happily and then contribute no
+  /// settable declarations, which is how `getValues('hello')` came to return
+  /// `{}` and `convertToJsonString('hello')` the string `"{}"`: a
+  /// valid-looking payload with every field dropped, reported as success.
+  /// `setValues` was the mirror image, returning the object untouched.
+  ///
+  /// The test is the `@tomReflector` metadata rather than membership of
+  /// [Reflection.annotatedClasses], for two independent reasons. That list
+  /// holds the quantified types as well, so it cannot separate them; and it
+  /// holds *declaration* mirrors, so the instantiated mirror of an annotated
+  /// generic — `GenericHolder<int>` — is not in it, and a membership test
+  /// would reject a class the developer did annotate. Metadata survives
+  /// instantiation and marks exactly the annotated set.
+  ///
+  /// Resolving the mirror is itself inside the guard: for a generic
+  /// instantiation the reflector does not own, `im.type` throws a bare
+  /// `_TypeError` from inside the reflectable package, naming neither the type
+  /// nor the operation.
+  ClassMirror _annotatedType(InstanceMirror im, Object o, String operation) {
+    ClassMirror classMirror;
+    try {
+      classMirror = im.type;
+    } catch (e, s) {
+      throw _notAnnotatedException(o, operation, e, s);
+    }
+    if (!classMirror.metadata.any((m) => m is TomReflector)) {
+      throw _notAnnotatedException(o, operation, null, null);
+    }
+    return classMirror;
+  }
+
+  /// The exception raised when a target type is reflectable but not annotated.
+  static TomReflectorException _notAnnotatedException(
+    Object o,
+    String operation,
+    Object? rootException,
+    StackTrace? stack,
+  ) => TomReflectorException(
+    "reflector.type.not_annotated",
+    "TomReflectionInfo.$operation: ${o.runtimeType} is not annotated with "
+        "@tomReflector, so it has no fields this converter may read or "
+        "write; annotate the class and regenerate, or pass an instance of "
+        "one that is${rootException == null ? '' : ': $rootException'}",
+    autoLog: true,
+    rootException: rootException,
+    stack: stack,
+  );
+
   // ---------------------------------------------------------------------------
   // Debug / Reporting Methods
   // ---------------------------------------------------------------------------
@@ -562,8 +616,12 @@ class TomReflectionInfo {
   /// ```
   void reportReflectObject(Object o) {
     // Via the instance, so a generic value reports rather than throwing — see
-    // [getValues].
-    reportReflect(_reflect(o, 'reportReflectObject').type);
+    // [getValues]. Held to the same annotation check as the two converting
+    // entry points: left out, it would be the one door still open, and it
+    // printed a page of `Object`'s members for input it could tell nothing
+    // about.
+    const operation = 'reportReflectObject';
+    reportReflect(_annotatedType(_reflect(o, operation), o, operation));
   }
 
   /// Prints detailed reflection information about a [ClassMirror] for debugging.
@@ -769,8 +827,9 @@ class TomReflectionInfo {
     }
 
     // From the instance mirror, not a second `reflectType(o.runtimeType)` —
-    // see [getValues] for why that lookup cannot see a generic instantiation.
-    final cm = im.type;
+    // see [getValues] for why that lookup cannot see a generic instantiation,
+    // and [_annotatedType] for why reflecting successfully is not enough.
+    final cm = _annotatedType(im, o, 'setValues');
     _logReflectionDetails(o, cm);
 
     for (var entry in values.entries) {
@@ -1467,8 +1526,9 @@ class TomReflectionInfo {
     // only `Box` is — and a generic class would be unserializable despite
     // being reflected. `im.type` is the mirror the instance itself resolved
     // to, so it is right for both, and there is no second lookup to disagree
-    // with the first.
-    final classMirror = im.type;
+    // with the first. Checked for the annotation on the way through: without
+    // that, a quantified type walks zero declarations and returns `{}`.
+    final classMirror = _annotatedType(im, o, 'getValues');
     final result = <String, dynamic>{};
 
     for (var d in classMirror.declarations.entries) {

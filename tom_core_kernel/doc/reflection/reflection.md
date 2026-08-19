@@ -510,6 +510,8 @@ try {
 
 | Error Key | Description |
 |-----------|-------------|
+| `reflector.reflect.not_reflectable` | The class has no generated reflection data at all — it was never annotated and never reached by quantification |
+| `reflector.type.not_annotated` | The class reflects, but carries no `@tomReflector` — a built-in such as `String`, `int`, `DateTime` or `List` that only has data because it appears as a field type |
 | `reflector.instance_creation.failed` | Failed to create instance |
 | `reflector.type_resolution.not_a_generic_type` | The collection's runtime type carries no type arguments |
 | `reflector.type_resolution.not_a_map_type` | Expected `Map<K, V>` but found fewer than two type arguments |
@@ -526,6 +528,48 @@ try {
 | `reflection.set.list_element_materialization_failed` | An element could not be materialized into a `List<T>` field |
 | `reflection.set.collection_element_type_mismatch` | An element of a typed primitive collection is not of the field's element type |
 | `reflection.set.map_key_type_mismatch` | A `Map<String, T>` field was given a key that is not a `String` |
+
+### The Target Must Be Annotated
+
+`getValues`, `convertToJsonString`, `setValues`, `convertFromJsonString` and
+`reportReflectObject` all refuse a target whose class does not carry
+`@tomReflector`:
+
+```dart
+tomReflectionInfo.getValues('hello');
+// throws TomReflectorException(reflector.type.not_annotated):
+// "TomReflectionInfo.getValues: String is not annotated with @tomReflector,
+//  so it has no fields this converter may read or write; annotate the class
+//  and regenerate, or pass an instance of one that is"
+```
+
+This is worth stating because *reflecting successfully is not the same as
+being annotated*. The capability set includes deep type-annotation
+quantification, so every type that appears as a field type of an annotated
+class — `String`, `int`, `double`, `bool`, `DateTime`, `List`, `Map`, `Object`
+— has generated data too. Those types reflect happily and then present no
+settable fields, so without the check `getValues` walked zero declarations and
+returned an empty map, and `convertToJsonString` returned the string `"{}"`: a
+valid-looking payload with every field dropped, reported as a success.
+`setValues` was the mirror image, returning the object untouched.
+
+Two keys distinguish the two ways a target can be unusable:
+
+- `reflector.reflect.not_reflectable` — no generated data exists. Annotate the
+  class and re-run the builder.
+- `reflector.type.not_annotated` — data exists, but the class is not one of
+  yours. Usually this means a primitive or collection was passed where an
+  annotated object was meant.
+
+Both are `TomReflectorException`, so one `on TomReflectorException` covers
+"this object cannot be serialized" regardless of which door it came through.
+
+Note that membership of `tomReflector.annotatedClasses` is *not* the test being
+applied, and must not be used as one: that list contains the quantified
+built-ins as well, and it holds declaration mirrors, so the mirror of an
+annotated **generic** instantiation such as `GenericHolder<int>` is absent from
+it. The check reads the `@tomReflector` metadata on the resolved class mirror,
+which survives instantiation and marks exactly the annotated set.
 
 ### Atomic Collection Updates
 

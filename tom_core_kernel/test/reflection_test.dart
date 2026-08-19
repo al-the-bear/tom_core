@@ -1855,6 +1855,171 @@ void main() {
     });
   });
 
+  group('a reflectable type that is not annotated is refused', () {
+    // The complement of the group above. `NotReflectedHolder` has no generated
+    // data at all, so `reflect` itself fails and the boundary catches it.
+    // `String`, `int`, `DateTime`, `List` and `Map` are different: they appear
+    // as *field types* of annotated classes, so the deep type-annotation
+    // quantify capability generates data for them too. They reflect
+    // successfully, and then contribute no non-static, non-final, non-private
+    // declarations — so the field walk completed and returned `{}`, reporting
+    // success while dropping everything. `convertToJsonString` turned that
+    // into the string `"{}"`: a valid-looking payload with every field gone.
+    //
+    // Membership of `tomReflector.annotatedClasses` cannot tell the two apart
+    // — that list holds the quantified types as well, and, worse, does *not*
+    // hold the mirror of a generic instantiation. The discriminator asserted
+    // here is the `@tomReflector` metadata on the resolved class mirror, which
+    // is present exactly on the classes a developer annotated.
+
+    Matcher refusesToReflect(String operation, String type) => throwsA(
+      isA<TomReflectorException>().having(
+        (e) => e.defaultUserMessage,
+        'message',
+        allOf(contains(operation), contains(type), contains('@tomReflector')),
+      ),
+    );
+
+    test('getValues refuses a String instead of returning an empty map', () {
+      expect(
+        () => tomReflectionInfo.getValues('hello'),
+        refusesToReflect('getValues', 'String'),
+      );
+    });
+
+    test('getValues names the not-annotated key for a quantified type', () {
+      // The key is the part a caller writes code against, so it is pinned
+      // separately from the message. It is deliberately *not*
+      // `reflector.reflect.not_reflectable`: the class has reflection data,
+      // it simply is not one of ours, and the remedy differs.
+      expect(
+        () => tomReflectionInfo.getValues(42),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.type.not_annotated',
+          ),
+        ),
+      );
+    });
+
+    test('getValues refuses a DateTime', () {
+      expect(
+        () => tomReflectionInfo.getValues(DateTime.utc(2026, 1, 2)),
+        refusesToReflect('getValues', 'DateTime'),
+      );
+    });
+
+    test('getValues refuses a List, which could not even resolve', () {
+      // This one never reached the empty map: resolving the class mirror of a
+      // generic instantiation the reflector does not own threw a bare
+      // `_TypeError` ("Null check operator used on a null value") from inside
+      // the reflectable package — no type name, no operation, and not a
+      // `TomReflectorException`. The boundary has to survive the lookup
+      // failing, not just answer once it succeeds.
+      expect(
+        () => tomReflectionInfo.getValues(<int>[1, 2]),
+        refusesToReflect('getValues', 'List<int>'),
+      );
+    });
+
+    test('getValues refuses a plain Map', () {
+      // A `_Map` has no generated data at all, so this arrives by the
+      // not_reflectable door rather than the not_annotated one. Both are
+      // `TomReflectorException`, which is what lets a caller write one catch.
+      expect(
+        () => tomReflectionInfo.getValues(<String, Object?>{'a': 1}),
+        refusesToReflect('getValues', 'Map'),
+      );
+    });
+
+    test('convertToJsonString no longer produces the string "{}"', () {
+      expect(
+        () => tomReflectionInfo.convertToJsonString('hello'),
+        refusesToReflect('getValues', 'String'),
+      );
+    });
+
+    test('setValues refuses a String instead of doing nothing', () {
+      // Returned the string unchanged, reporting success for a write that
+      // could never have happened.
+      expect(
+        () => tomReflectionInfo.setValues('hello', {'a': 1}),
+        refusesToReflect('setValues', 'String'),
+      );
+    });
+
+    test('setValues refuses an int, a DateTime and a List', () {
+      expect(
+        () => tomReflectionInfo.setValues(42, {'a': 1}),
+        refusesToReflect('setValues', 'int'),
+      );
+      expect(
+        () => tomReflectionInfo.setValues(DateTime.utc(2026), {'a': 1}),
+        refusesToReflect('setValues', 'DateTime'),
+      );
+      expect(
+        () => tomReflectionInfo.setValues(<int>[1, 2], {'a': 1}),
+        refusesToReflect('setValues', 'List<int>'),
+      );
+    });
+
+    test('setValues refuses a plain Map', () {
+      expect(
+        () => tomReflectionInfo.setValues(<String, Object?>{}, {'a': 1}),
+        refusesToReflect('setValues', 'Map'),
+      );
+    });
+
+    test('convertFromJsonString inherits the refusal', () {
+      expect(
+        () => tomReflectionInfo.convertFromJsonString('hello', '{"a":1}'),
+        refusesToReflect('setValues', 'String'),
+      );
+    });
+
+    test('reportReflectObject inherits the refusal', () {
+      expect(
+        () => tomReflectionInfo.reportReflectObject(42),
+        refusesToReflect('reportReflectObject', 'int'),
+      );
+    });
+
+    test('an annotated class is untouched by the check', () {
+      final person = SimplePerson()
+        ..name = 'Ada'
+        ..age = 36;
+
+      expect(
+        tomReflectionInfo.getValues(person),
+        containsPair('name', 'Ada'),
+      );
+      expect(
+        tomReflectionInfo.setValues(SimplePerson(), {'name': 'Ada'}).name,
+        'Ada',
+      );
+    });
+
+    test('an annotated *generic* class is untouched by the check', () {
+      // The trap this check has to avoid. `im.type` for `GenericHolder<int>`
+      // is an instantiated mirror that is absent from
+      // `tomReflector.annotatedClasses`, so the membership test the obvious
+      // implementation reaches for would reject a class that is annotated.
+      // Metadata survives the instantiation; membership does not.
+      final holder = GenericHolder<int>()..name = 'boxed';
+
+      expect(
+        tomReflectionInfo.getValues(holder),
+        containsPair('name', 'boxed'),
+      );
+      expect(
+        tomReflectionInfo.setValues(GenericHolder<int>(), {'name': 'x'}).name,
+        'x',
+      );
+    });
+  });
+
   group('a typed primitive collection is checked before it is assigned', () {
     // These assert on the *offending element*, not on length. A lazy
     // `.cast<T>()` passes a length assertion and every well-typed element,

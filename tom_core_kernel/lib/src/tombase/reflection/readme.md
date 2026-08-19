@@ -52,6 +52,16 @@ void main() {
 }
 ```
 
+Every entry point insists the target class carries `@tomReflector`. Passing a
+`String`, an `int`, a `DateTime`, a `List` or a plain `Map` raises
+`reflector.type.not_annotated` rather than doing nothing: those types have
+mirror data only because they appear as *field types* of annotated classes, so
+they reflect successfully and then present no settable fields — `getValues`
+used to return `{}` and `convertToJsonString` the string `"{}"`, a
+valid-looking payload with every field dropped. A class with no generated data
+at all still raises `reflector.reflect.not_reflectable`; both are
+`TomReflectorException`, so one `catch` covers either.
+
 Collection fields are deserialized **atomically**: a `List<T>` or
 `Map<String, T>` is materialized in full before the field is touched, so an
 element the target type rejects throws a `TomReflectorException` and leaves the
