@@ -21,8 +21,6 @@ import '02_preference_contract_example.dart' as contract;
 
 /// Standalone entry point for running preferences examples.
 void main() {
-  // The codec resolves reflected preference values through the reflector, so
-  // the reflection registry has to exist before example 4 of the codec file.
   bootstrapSamples();
   run();
 }

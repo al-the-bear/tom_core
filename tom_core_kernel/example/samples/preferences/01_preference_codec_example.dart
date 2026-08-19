@@ -17,11 +17,17 @@ import '../../sample_bootstrap.dart';
 /// A structured preference — the shape a preference takes when it is a set of
 /// related choices rather than a single scalar.
 ///
-/// Declared here, in the sample, because the codec resolves a reflected type
-/// through `tomReflector.reflectType`: a class the generator has not captured
-/// fails at the *decode*, not at the write. The sample tree is one reflection
-/// domain seeded by `example/run_all_samples.dart`, so declaring it in a sample
-/// file is what makes it reflectable.
+/// Declared here, in the sample, because the sample tree is one reflection
+/// domain: the generator sweeps it into a single registry, which
+/// `bootstrapSamples()` installs. Declaring the class in a sample file is what
+/// makes it reflectable, and it is why this file's `main()` bootstraps before
+/// it runs anything.
+///
+/// The codec resolves a reflected type through `tomReflector.reflectType`, so a
+/// class the generator has not captured is refused at the *write*: a value
+/// whose type the registry cannot name has no name to be stored under, and
+/// inventing one would write a row nothing could read back. Example 7b is that
+/// refusal, on a class left unannotated for it.
 ///
 /// The fields are plain and non-`final` because `createInstanceFromJson`
 /// constructs a blank instance and assigns members — a `final` field would come
