@@ -757,6 +757,38 @@ void main() {
       expect(TomUserPreferenceCodec.decode<int>(stored), 3);
     });
 
+    test('a double preference whose stored text is integral still reads as a '
+        'double', () {
+      // The case the widening exists for, and — the refusal above being the
+      // other one — the only case that reaches it. JSON writes `1.0` as `1`,
+      // so a row a non-Dart client wrote for a `double` preference arrives
+      // integral. The boundary lets it through on purpose: the read-side
+      // predicate for `double` is `is num`, not `is double`. That makes the
+      // widening the second half of one guarantee rather than a convenience,
+      // and the halves are asserted together here because a boundary that
+      // accepts a row the read then refuses stores successfully and fails on
+      // another device.
+      final stored = TomUserPreferenceDto(
+        key: 'ui.scale',
+        valueType: TomUserPreferenceCodec.doubleType,
+        value: '14',
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          stored.valueType,
+          stored.value,
+          key: stored.key,
+        ),
+        returnsNormally,
+      );
+
+      final value = TomUserPreferenceCodec.decode<double>(stored);
+      expect(value, 14.0);
+      // `14 == 14.0`, so the value alone would not tell the two apart.
+      expect(value, isA<double>());
+    });
+
     test('the refusal names both types, so the caller knows which is wrong',
         () {
       final stored = TomUserPreferenceCodec.encode('ui.lastSeen', 3);

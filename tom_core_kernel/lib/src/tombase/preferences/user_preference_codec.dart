@@ -1063,8 +1063,18 @@ class TomUserPreferenceCodec {
   /// is narrowing an element. It appears only in errors, so that a bad element
   /// is reported against the preference the reader actually asked for.
   ///
-  /// An `int` widens to a `double` here: JSON writes `1.0` as `1`, so a row
-  /// written by a non-Dart client is integral even where the preference is not.
+  /// An `int` widens to a `double` here — for the *row*, not for the reader.
+  /// JSON writes `1.0` as `1`, so a `double` preference a non-Dart client
+  /// wrote arrives integral, and [validateEncoded] admits it on that
+  /// understanding: the read-side predicate for `double` is `is num`. The
+  /// widening is the second half of that admission, so removing it would let
+  /// a row through the boundary that the read then refuses.
+  ///
+  /// A caller reading an `int`-declared preference as a `double` never gets
+  /// here. [decode] compares the stored name against the requested one before
+  /// any narrowing, and refuses — the widening is not a way around a declared
+  /// type.
+  ///
   /// A `DateTime` must name its zone — see [parseInstant].
   static Object _narrowScalar(
     String scalarType,
