@@ -246,3 +246,6 @@ void run() {
   assert(otherRow == TomAuthState.read);
   assert(cannotWiden == TomAuthState.read);
 }
+
+/// Standalone entry point.
+void main() => run();

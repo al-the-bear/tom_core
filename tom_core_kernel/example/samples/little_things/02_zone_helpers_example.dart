@@ -336,3 +336,6 @@ Future<void> run() async {
   await AsyncCheckedErrorExample.example7AsyncCheckedError();
   ZoneInheritanceExample.example8ZoneInheritance();
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

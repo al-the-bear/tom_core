@@ -135,3 +135,6 @@ void run() {
   // Example 5: named-parameter wrapper
   assert(counterResult == 'form:chars 4/10');
 }
+
+/// Standalone entry point.
+void main() => run();

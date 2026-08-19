@@ -235,3 +235,6 @@ void run() {
   assert(timezonePreserved == true);
   assert(original.millisecondsSinceEpoch == restored.millisecondsSinceEpoch);
 }
+
+/// Standalone entry point.
+void main() => run();

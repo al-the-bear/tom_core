@@ -13,10 +13,7 @@
 /// ```
 library;
 
-import 'package:timezone/standalone.dart' as tz;
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 // Import all example files
 import '01_tom_object_basics.dart' as tom_object;
@@ -30,10 +27,7 @@ import '08_observable_enum.dart' as observable_enum;
 
 /// Standalone entry point for running observable examples.
 Future<void> main() async {
-  initializeReflection();
-  await tz.initializeTimeZone();
-  final _ = TomTimezone.timezones;
-  await Future.delayed(Duration(milliseconds: 100));
+  bootstrapSamples();
   await run();
 }
 

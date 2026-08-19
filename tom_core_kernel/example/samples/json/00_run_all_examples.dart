@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_json_formatting_example.dart' as json_formatting;
 import '02_json_navigation_example.dart' as json_navigation;
@@ -20,7 +20,7 @@ import '04_json_serialization_example.dart' as json_serialization;
 
 /// Standalone entry point for running JSON examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

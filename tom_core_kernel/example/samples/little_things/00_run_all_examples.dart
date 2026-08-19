@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_utility_functions_example.dart' as utility_functions;
 import '02_zone_helpers_example.dart' as zone_helpers;
@@ -20,7 +20,7 @@ import '04_formatting_and_exceptions_example.dart' as formatting_exceptions;
 
 /// Standalone entry point for running little things examples.
 Future<void> main() async {
-  initializeReflection();
+  bootstrapSamples();
   await run();
 }
 

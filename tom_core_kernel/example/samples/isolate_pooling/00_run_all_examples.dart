@@ -13,7 +13,7 @@ library;
 
 import 'dart:io';
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_worker_basics_example.dart' as worker_basics;
 import '02_worker_pool_example.dart' as worker_pool;
@@ -37,7 +37,7 @@ import '05_creator_backchannel_example.dart' as creator_backchannel;
 /// way — the master runner (`example/run_all_samples.dart`) calls it
 /// mid-sequence.
 Future<void> main() async {
-  initializeReflection();
+  bootstrapSamples();
   try {
     await run();
   } catch (e, st) {

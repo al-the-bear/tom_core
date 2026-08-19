@@ -145,3 +145,6 @@ void run() {
   assert(textStillCustom == 'Custom App');
   assert(configStillTimeout == 30000);
 }
+
+/// Standalone entry point.
+void main() => run();

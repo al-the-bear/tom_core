@@ -93,3 +93,6 @@ Future<void> run() async {
   assert(recovered == 2, 'the pool should respawn a replacement after a death');
   assert(after == 42, 'recovered pool should compute 20 + 22');
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

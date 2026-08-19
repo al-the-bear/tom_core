@@ -23,7 +23,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 // ============================================================================
 // The beans this sample discovers
@@ -223,6 +223,6 @@ void run() {
 /// the whole sample tree; run on its own, this file has to call it itself —
 /// step 1 is precisely about that precondition.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }

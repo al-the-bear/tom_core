@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_rsa_encryption_example.dart' as rsa_encryption;
 import '02_password_hashing_example.dart' as password_hashing;
@@ -22,7 +22,7 @@ import '06_advanced_jwt_example.dart' as advanced_jwt;
 
 /// Standalone entry point for running crypto examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

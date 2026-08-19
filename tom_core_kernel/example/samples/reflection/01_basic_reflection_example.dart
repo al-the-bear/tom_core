@@ -14,6 +14,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
+
 // ============================================================================
 // Model Classes
 // ============================================================================
@@ -251,4 +253,7 @@ class BasicReflectionExample {
 
 void run() => BasicReflectionExample.run();
 
-void main() => run();
+void main() {
+  bootstrapSamples();
+  run();
+}

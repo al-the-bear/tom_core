@@ -294,3 +294,6 @@ Future<void> run() async {
   await UnhandledMessageExample.example6UnhandledMessage(worker);
   await WorkerLifecycleExample.example7WorkerLifecycle(worker);
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

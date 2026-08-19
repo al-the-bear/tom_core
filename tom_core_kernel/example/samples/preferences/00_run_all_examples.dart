@@ -13,7 +13,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 // Import all example files
 import '01_preference_codec_example.dart' as codec;
@@ -23,7 +23,7 @@ import '02_preference_contract_example.dart' as contract;
 void main() {
   // The codec resolves reflected preference values through the reflector, so
   // the reflection registry has to exist before example 4 of the codec file.
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

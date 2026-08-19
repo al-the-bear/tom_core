@@ -419,3 +419,6 @@ Future<void> run() async {
 
   print('\n✓ All worker setup and guard examples passed!\n');
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

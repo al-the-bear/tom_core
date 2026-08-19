@@ -101,12 +101,19 @@ class ClosableConnectionExample {
 class ShutdownCleanupInstanceExample {
   static bool instanceCreated = false;
 
-  static void example3ShutdownCleanupInstance() {
+  static Future<void> example3ShutdownCleanupInstance() async {
     final customCleanup = TomShutdownCleanup();
 
     instanceCreated = customCleanup != null;
 
     assert(instanceCreated, 'Cleanup instance should be created');
+
+    // The constructor starts watching SIGHUP and SIGINT, and an active signal
+    // watcher keeps the Dart process alive. Any short-lived instance must
+    // therefore be disposed or the program never exits — which is why every
+    // example here ends with a dispose, and why this file's `main()` returns
+    // at all.
+    await customCleanup.dispose();
   }
 }
 
@@ -119,7 +126,7 @@ class RegisterDisposablesExample {
   static bool resource2BeforeCleanup = false;
   static bool registrationWorks = false;
 
-  static void example4RegisterDisposables() {
+  static Future<void> example4RegisterDisposables() async {
     final resource1 = ExampleDisposableResource('Resource1');
     final resource2 = ExampleDisposableResource('Resource2');
 
@@ -136,6 +143,11 @@ class RegisterDisposablesExample {
     assert(!resource1BeforeCleanup, 'Resource1 should not be disposed yet');
     assert(!resource2BeforeCleanup, 'Resource2 should not be disposed yet');
     assert(registrationWorks, 'Registration should work');
+
+    // Releases the signal watchers only. Disposing the cleanup is not the same
+    // as running it — `resource1` and `resource2` stay undisposed; for that you
+    // would call `performShutdown()`.
+    await cleanup.dispose();
   }
 }
 
@@ -148,7 +160,7 @@ class RegisterClosablesExample {
   static bool connection2BeforeCleanup = false;
   static bool registrationWorks = false;
 
-  static void example5RegisterClosables() {
+  static Future<void> example5RegisterClosables() async {
     final connection1 = ExampleClosableConnection('Connection1');
     final connection2 = ExampleClosableConnection('Connection2');
 
@@ -165,6 +177,8 @@ class RegisterClosablesExample {
     assert(!connection1BeforeCleanup, 'Connection1 should not be closed yet');
     assert(!connection2BeforeCleanup, 'Connection2 should not be closed yet');
     assert(registrationWorks, 'Registration should work');
+
+    await cleanup.dispose();
   }
 }
 
@@ -176,7 +190,7 @@ class RegisterSignalHandlerExample {
   static bool handlerRegistered = false;
   static bool handlerInvoked = false;
 
-  static void example6RegisterSignalHandler() {
+  static Future<void> example6RegisterSignalHandler() async {
     final cleanup = TomShutdownCleanup();
 
     cleanup.addSignalHandler((signal) {
@@ -188,6 +202,8 @@ class RegisterSignalHandlerExample {
     // Handler should not be invoked until a signal is received
     assert(handlerRegistered, 'Handler should be registered');
     assert(!handlerInvoked, 'Handler should not be invoked yet');
+
+    await cleanup.dispose();
   }
 }
 
@@ -221,11 +237,18 @@ class CleanupOrderExample {
 class GlobalCleanupExample {
   static bool globalExists = false;
 
-  static void example8GlobalCleanup() {
+  static Future<void> example8GlobalCleanup() async {
     // The tomShutdownCleanup is a global default instance
     globalExists = tomShutdownCleanup != null;
 
     assert(globalExists, 'Global cleanup instance should exist');
+
+    // `tomShutdownCleanup` is a lazy top-level `final`, so this is the line
+    // that constructs it — and construction starts the SIGHUP/SIGINT watchers.
+    // A long-running application wants exactly that and never disposes the
+    // global. A sample has to, or reading the variable is enough to stop the
+    // process from ever exiting.
+    await tomShutdownCleanup.dispose();
   }
 }
 
@@ -233,15 +256,16 @@ class GlobalCleanupExample {
 // RUN ALL EXAMPLES
 // =============================================================================
 
-void run() {
+Future<void> run() async {
   DisposableResourceExample.example1DisposableResource();
   ClosableConnectionExample.example2ClosableConnection();
-  ShutdownCleanupInstanceExample.example3ShutdownCleanupInstance();
-  RegisterDisposablesExample.example4RegisterDisposables();
-  RegisterClosablesExample.example5RegisterClosables();
-  RegisterSignalHandlerExample.example6RegisterSignalHandler();
+  await ShutdownCleanupInstanceExample.example3ShutdownCleanupInstance();
+  await RegisterDisposablesExample.example4RegisterDisposables();
+  await RegisterClosablesExample.example5RegisterClosables();
+  await RegisterSignalHandlerExample.example6RegisterSignalHandler();
   CleanupOrderExample.example7CleanupOrder();
-  GlobalCleanupExample.example8GlobalCleanup();
+  await GlobalCleanupExample.example8GlobalCleanup();
 }
 
-void main() => run();
+/// Standalone entry point.
+Future<void> main() async => run();

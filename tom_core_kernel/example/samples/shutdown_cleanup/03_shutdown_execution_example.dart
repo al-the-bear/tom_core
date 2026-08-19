@@ -21,6 +21,8 @@ import 'dart:io';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
+
 // =============================================================================
 // Shutdown Execution Example
 // =============================================================================
@@ -78,8 +80,10 @@ class LegacyService {
 /// Runs the shutdown-execution demonstrations.
 ///
 /// [TomCloseAdaptor] resolves teardown methods via reflection, so the reflected
-/// [LegacyService] target must already be registered before [run] is called —
-/// the runner (`00_run_all_examples.dart`) owns that one-time initialization.
+/// [LegacyService] target must already be registered before [run] is called.
+/// Both entry points do that: the group runner
+/// (`00_run_all_examples.dart`) and this file's own `main()` each call
+/// `bootstrapSamples()` first.
 Future<void> run() async {
   print('=== 03: Shutdown Execution Example ===\n');
 
@@ -198,6 +202,18 @@ Future<void> run() async {
 
   print('   - cancelAll() is idempotent and dispose() tears down cleanly\n');
 
+  // ---------------------------------------------------------------------------
+  // Teardown for the instances the examples above created
+  // ---------------------------------------------------------------------------
+  // Running a cleanup is not the same as disposing it: `performShutdown()`
+  // executes the registered handlers, closables and disposables, but leaves the
+  // SIGHUP/SIGINT watchers that the constructor started. Those watchers keep the
+  // process alive, so without this block the sample prints everything below and
+  // then hangs forever instead of exiting.
+  for (final cleanup in [ordered, once, isolated, paused, silent, adaptorCleanup]) {
+    await cleanup.dispose();
+  }
+
   // =========================================================================
   // Assertions
   // =========================================================================
@@ -223,4 +239,10 @@ Future<void> run() async {
 
   // Example 6: the adaptor resolved and invoked the custom teardown method.
   assert(legacy.shutdownCalled == true);
+}
+
+/// Standalone entry point.
+Future<void> main() async {
+  bootstrapSamples();
+  await run();
 }

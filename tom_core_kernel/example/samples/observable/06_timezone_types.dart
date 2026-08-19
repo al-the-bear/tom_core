@@ -10,6 +10,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
+
 // ============================================================================
 // Example Class
 // ============================================================================
@@ -327,4 +329,7 @@ class TimezoneTypesExample {
 
 void run() => TimezoneTypesExample.run();
 
-void main() => run();
+void main() {
+  bootstrapSamples();
+  run();
+}

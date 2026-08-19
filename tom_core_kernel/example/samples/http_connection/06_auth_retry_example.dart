@@ -245,3 +245,6 @@ Future<void> run() async {
   // (assertions embedded above via identical(...) prints; re-check default)
   assert(identical(TomAuthRetryPolicy.active, tomDefaultAuthRetryPolicy));
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

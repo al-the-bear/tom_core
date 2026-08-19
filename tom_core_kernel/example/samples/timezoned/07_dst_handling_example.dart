@@ -217,3 +217,6 @@ void run() {
   assert(offset330 == '+05:30');
   assert(offset0 == 'Z');
 }
+
+/// Standalone entry point.
+void main() => run();

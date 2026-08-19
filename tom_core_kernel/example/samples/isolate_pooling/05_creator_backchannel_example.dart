@@ -282,3 +282,6 @@ Future<void> run() async {
   assert(removed);
   assert(executorsOnExit == executorsOnEntry);
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

@@ -116,3 +116,6 @@ void run() {
   assert(titleExistsText);
   assert(!missingExistsObject);
 }
+
+/// Standalone entry point.
+void main() => run();

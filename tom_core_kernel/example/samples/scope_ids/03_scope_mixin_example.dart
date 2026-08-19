@@ -130,3 +130,6 @@ void run() {
   assert(lazy.id == 'lazy');
   assert(lazy.getScopePath() == 'app.lazy');
 }
+
+/// Standalone entry point.
+void main() => run();

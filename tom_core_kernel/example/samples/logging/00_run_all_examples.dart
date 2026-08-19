@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_basic_logging_example.dart' as basic_logging;
 import '02_log_levels_example.dart' as log_levels;
@@ -22,7 +22,7 @@ import '06_log_replay_and_isolate_plumbing_example.dart' as log_replay_plumbing;
 
 /// Standalone entry point for running logging examples.
 Future<void> main() async {
-  initializeReflection();
+  bootstrapSamples();
   await run();
 }
 

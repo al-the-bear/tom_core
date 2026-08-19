@@ -13,7 +13,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 // Import all example files
 import '01_initialization_sequence_example.dart' as init_sequence;
@@ -25,7 +25,7 @@ import '06_type_and_environment_registration_example.dart' as type_env_registrat
 
 /// Standalone entry point for running beanlocator examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

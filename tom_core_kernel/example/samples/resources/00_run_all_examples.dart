@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_resource_provider_example.dart' as resource_provider;
 import '02_config_resource_provider_example.dart' as config_provider;
@@ -20,7 +20,7 @@ import '04_app_singleton_example.dart' as app_singleton;
 
 /// Standalone entry point for running resources examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

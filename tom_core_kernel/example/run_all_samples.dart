@@ -27,10 +27,7 @@ library;
 
 import 'dart:io';
 
-import 'package:timezone/standalone.dart' as tz;
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-
-import 'run_all_samples.reflection.dart';
+import 'sample_bootstrap.dart';
 
 // Import all sample runners
 import 'samples/beanlocator/00_run_all_examples.dart' as beanlocator;
@@ -56,13 +53,7 @@ import 'samples/timezoned/00_run_all_examples.dart' as timezoned;
 
 Future<void> main() async {
   // Initialize reflection - required before any reflection operations
-  initializeReflection();
-
-  // Initialize timezone database for timezone-aware examples
-  await tz.initializeTimeZone();
-  // Trigger TomTimezone lazy init and wait for async completion
-  final _ = TomTimezone.timezones;
-  await Future.delayed(Duration(milliseconds: 100));
+  bootstrapSamples();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║           TOM CORE - ALL SAMPLES RUNNER                          ║');

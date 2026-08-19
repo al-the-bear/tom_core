@@ -179,6 +179,32 @@ and Dart compiles asserts away unless the flag is passed — without it the
 examples still print their output and still exit 0, but nothing they claim is
 actually verified.
 
+Every sample also runs on its own, which is usually what you want while reading
+one:
+
+```bash
+dart run --enable-asserts example/samples/observable/03_tom_class.dart
+```
+
+Samples that build reflected types call `bootstrapSamples()`
+([`example/sample_bootstrap.dart`](example/sample_bootstrap.dart)) as the first
+statement of their `main()`; that is the one place the generated reflection
+registry is installed. The rest reflect over nothing and skip it, because
+importing the registry costs roughly three seconds of compile time per entry
+point.
+
+The master runner cannot police the standalone path — it drives samples through
+their group runners and ends in `exit(0)`, so a sample that has no `main()`,
+never registers reflection, or never terminates is invisible to it.
+[`tool/run_standalone_examples.sh`](tool/run_standalone_examples.sh) is the guard
+for that: it runs every sample by itself under a watchdog and fails on a hang as
+well as on a non-zero exit.
+
+```bash
+./tool/run_standalone_examples.sh              # all of them
+./tool/run_standalone_examples.sh observable   # one group
+```
+
 > **Cross-package sample.** Beyond these per-module examples, the shared
 > [`tom_core_samples/todo_domain`](../tom_core_samples/todo_domain/readme.md)
 > project models one todo-management domain on this kernel's reflection — the

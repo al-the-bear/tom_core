@@ -263,3 +263,6 @@ void run() {
   assert(detectedTypes['@D@'] == 'TomZonedDate (@D@)');
   assert(detectedTypes['@T@'] == 'TomZonedTime (@T@)');
 }
+
+/// Standalone entry point.
+void main() => run();

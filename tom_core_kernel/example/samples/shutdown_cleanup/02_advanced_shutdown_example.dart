@@ -11,6 +11,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
+
 // ============================================================================
 // Example Support Classes
 // ============================================================================
@@ -389,4 +391,7 @@ void run() {
   print('\n✓ All advanced shutdown cleanup examples passed!\n');
 }
 
-void main() => run();
+void main() {
+  bootstrapSamples();
+  run();
+}

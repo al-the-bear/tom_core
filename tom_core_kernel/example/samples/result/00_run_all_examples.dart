@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_result_envelope_example.dart' as result_envelope;
 import '02_error_details_example.dart' as error_details;
@@ -19,7 +19,7 @@ import '03_result_wire_format_example.dart' as result_wire_format;
 
 /// Standalone entry point for running result examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

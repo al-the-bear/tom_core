@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_shutdown_handler_example.dart' as shutdown_handler;
 import '02_advanced_shutdown_example.dart' as advanced_shutdown;
@@ -19,7 +19,7 @@ import '03_shutdown_execution_example.dart' as shutdown_execution;
 
 /// Standalone entry point for running shutdown cleanup examples.
 Future<void> main() async {
-  initializeReflection();
+  bootstrapSamples();
   await run();
 }
 
@@ -31,7 +31,7 @@ Future<void> run() async {
 
   print('\n01: Shutdown Handler Example');
   print('-' * 40);
-  shutdown_handler.run();
+  await shutdown_handler.run();
   print('✓ Shutdown handler examples passed\n');
 
   print('02: Advanced Shutdown Example');

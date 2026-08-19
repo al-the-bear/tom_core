@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_platform_detection_example.dart' as platform_detection;
 import '02_environment_platform_example.dart' as environment_platform;
@@ -20,7 +20,7 @@ import '04_advanced_runtime_example.dart' as advanced_runtime;
 
 /// Standalone entry point for running runtime examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

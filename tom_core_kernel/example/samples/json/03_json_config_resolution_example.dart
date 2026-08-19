@@ -140,3 +140,6 @@ void run() {
   assert(tree['audit'] == 'preset'); // pre-existing key not overwritten
   assert(tree['flags'] is Map); // spread also injected the keyName map
 }
+
+/// Standalone entry point.
+void main() => run();

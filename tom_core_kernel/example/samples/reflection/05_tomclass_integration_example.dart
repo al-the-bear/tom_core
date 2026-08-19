@@ -14,6 +14,8 @@ library;
 import 'dart:convert' show jsonEncode;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
+
 // ============================================================================
 // Model Classes (TomClass-based)
 // ============================================================================
@@ -331,4 +333,7 @@ class TomClassIntegrationExample {
 
 void run() => TomClassIntegrationExample.run();
 
-void main() => run();
+void main() {
+  bootstrapSamples();
+  run();
+}

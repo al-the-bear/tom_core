@@ -143,3 +143,6 @@ void run() {
   assert(insideIsWidget);
   assert(afterRunPath.isEmpty);
 }
+
+/// Standalone entry point.
+void main() => run();

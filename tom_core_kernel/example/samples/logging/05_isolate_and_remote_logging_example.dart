@@ -37,7 +37,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 // =============================================================================
 // REMOTE LOGGING ROUND-TRIP (deterministic; runs in the aggregate runner)
@@ -327,7 +327,7 @@ Future<void> runIsolateLoggingDemo(List<String> args) async {
 /// this call is what makes the file runnable on its own.
 Future<void> main(List<String> args) async {
   print('=== 05: Isolate and Remote Logging Example ===\n');
-  initializeReflection();
+  bootstrapSamples();
   run();
   await runIsolateLoggingDemo(args);
   print('All isolate/remote logging demonstrations completed.');

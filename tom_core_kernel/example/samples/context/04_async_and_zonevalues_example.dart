@@ -157,3 +157,6 @@ Future<void> run() async {
       'parentContext merges the context (see example 02)');
   print('');
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

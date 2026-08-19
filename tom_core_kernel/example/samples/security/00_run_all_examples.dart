@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_user_principal_example.dart' as user_principal;
 import '02_access_control_example.dart' as access_control;
@@ -22,7 +22,7 @@ import '06_graded_access_example.dart' as graded_access;
 
 /// Standalone entry point for running security examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

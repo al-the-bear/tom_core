@@ -13,7 +13,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 // Import all example files
 import '01_http_client_example.dart' as http_client;
@@ -25,7 +25,7 @@ import '06_auth_retry_example.dart' as auth_retry;
 
 /// Standalone entry point for running HTTP connection examples.
 Future<void> main() async {
-  initializeReflection();
+  bootstrapSamples();
   await run();
 }
 

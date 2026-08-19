@@ -15,7 +15,7 @@
 /// then the guarantee every job body has to live with.
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_memory_substrate_example.dart' as memory_substrate;
 import '02_declared_job_example.dart' as declared_job;
@@ -26,7 +26,7 @@ import '04_execution_guarantee_example.dart' as execution_guarantee;
 Future<void> main() async {
   // Example 02 discovers its jobs by annotation, so the reflection build has to
   // be initialised before anything scans it.
-  initializeReflection();
+  bootstrapSamples();
   await run();
 }
 

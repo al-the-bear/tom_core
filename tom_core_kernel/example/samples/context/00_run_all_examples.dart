@@ -11,7 +11,7 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_basic_context_example.dart' as basic_context;
 import '02_context_nesting_example.dart' as context_nesting;
@@ -20,7 +20,7 @@ import '04_async_and_zonevalues_example.dart' as async_zonevalues;
 
 /// Standalone entry point for running context examples.
 Future<void> main() async {
-  initializeReflection();
+  bootstrapSamples();
   await run();
 }
 

@@ -13,10 +13,7 @@
 /// ```
 library;
 
-import 'package:timezone/standalone.dart' as tz;
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 // Import all example files
 import '01_timezone_basics_example.dart' as timezone_basics;
@@ -31,10 +28,7 @@ import '09_practical_patterns_example.dart' as practical_patterns;
 
 /// Standalone entry point for running timezoned examples.
 Future<void> main() async {
-  initializeReflection();
-  await tz.initializeTimeZone();
-  final _ = TomTimezone.timezones;
-  await Future.delayed(Duration(milliseconds: 100));
+  bootstrapSamples();
   await run();
 }
 

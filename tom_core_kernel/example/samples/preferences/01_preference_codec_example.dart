@@ -8,6 +8,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
+
 // =============================================================================
 // A reflected preference value
 // =============================================================================
@@ -252,4 +254,7 @@ void run() {
   ValidateEncodedExample.example6ValidateEncoded();
 }
 
-void main() => run();
+void main() {
+  bootstrapSamples();
+  run();
+}

@@ -283,3 +283,6 @@ Future<void> run() async {
   await SequentialVsParallelExample.example5SequentialVsParallel(pool);
   await PoolCleanupExample.example6PoolCleanup(pool);
 }
+
+/// Standalone entry point.
+Future<void> main() async => run();

@@ -11,13 +11,13 @@
 /// ```
 library;
 
-import '../../run_all_samples.reflection.dart';
+import '../../sample_bootstrap.dart';
 
 import '01_client_authorization_example.dart' as client_authorization;
 
 /// Standalone entry point for running settings examples.
 void main() {
-  initializeReflection();
+  bootstrapSamples();
   run();
 }
 

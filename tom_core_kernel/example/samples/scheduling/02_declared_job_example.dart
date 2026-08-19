@@ -18,6 +18,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
 import 'scheduling_support.dart';
 
 // =============================================================================
@@ -379,4 +380,7 @@ Future<void> run() async {
   await CoexistenceExample.example4DeclaredAndHandWrittenCoexist();
 }
 
-Future<void> main() => run();
+Future<void> main() async {
+  bootstrapSamples();
+  await run();
+}

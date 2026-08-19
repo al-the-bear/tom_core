@@ -12,6 +12,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_bootstrap.dart';
+
 // ============================================================================
 // Model Classes
 // ============================================================================
@@ -271,4 +273,7 @@ class TomListExample {
 
 void run() => TomListExample.run();
 
-void main() => run();
+void main() {
+  bootstrapSamples();
+  run();
+}

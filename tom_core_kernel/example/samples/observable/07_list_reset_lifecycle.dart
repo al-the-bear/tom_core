@@ -142,3 +142,6 @@ void run() {
   assert(eventCountBefore == 2);
   assert(eventCountAfter == 2);
 }
+
+/// Standalone entry point.
+void main() => run();

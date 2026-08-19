@@ -226,3 +226,6 @@ void run() {
   assert(utcIsSingleton == true);
   assert(utcOffset == 0);
 }
+
+/// Standalone entry point.
+void main() => run();
