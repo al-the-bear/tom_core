@@ -877,7 +877,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
   @override
   Map<String, TomObject> set(Map<String, TomObject> value) {
     throw TomObservableException(
-      "TomClass.state_error.set_not_allowed",
+      "observable.class_state.set_not_allowed",
       "You can't set the value of TomClass, you can only set individuals fields",
     );
   }
@@ -889,7 +889,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
   @override
   Map<String, TomObject> get() {
     throw TomObservableException(
-      "TomClass.state_error.get_not_allowed",
+      "observable.class_state.get_not_allowed",
       "You can't get the value of TomClass, you can only get individuals fields",
     );
   }
@@ -907,7 +907,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
   @override
   TomClass operator <<(Map<String, dynamic> value) {
     throw TomObservableException(
-      "TomClass.state_error.set_not_allowed",
+      "observable.class_state.set_not_allowed",
       "You can't set the value of TomClass, you can only set individuals fields",
     );
   }
@@ -964,7 +964,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
       }
     } catch (e, s) {
       throw TomObservableException(
-        "TomClass.initialization_error.could_not_register_superclass_members",
+        "observable.class_initialization.could_not_register_superclass_members",
         "Failure during TomClass superclass member registration for observable notifications",
         rootException: e,
         stack: s,
@@ -1065,7 +1065,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
           rethrow;
         } catch (exception, stacktrace) {
           throw TomObservableException(
-            "TomClass.set_values_error.member_assignment_failed",
+            "observable.class_set_values.member_assignment_failed",
             "Failed to set TomClass member '$key' from a "
                 "${value.runtimeType}: $exception",
             parameters: {"key": key, "valueType": "${value.runtimeType}"},
@@ -1146,13 +1146,13 @@ class TomClass extends TomObject<Map<String, TomObject>>
               obj.setValues(element);
             } else {
               throw TomObservableException(
-                "TomClass.set_map_member_error.invalid_element_type",
+                "observable.class_set_map_member.invalid_element_type",
                 "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
               );
             }
           } else {
             throw TomObservableException(
-              "TomClass.set_map_member_error.invalid_list_type",
+              "observable.class_set_map_member.invalid_list_type",
               "Only lists with TomObject or TomClass types are allowed. Found ${obj.runtimeType}",
             );
           }
@@ -1163,7 +1163,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
       }
     } else {
       throw TomObservableException(
-        "TomClass.set_map_member_error.not_a_map",
+        "observable.class_set_map_member.not_a_map",
         "TomMap member $key must be deserialized from a Map, but got ${value.runtimeType}",
       );
     }
@@ -1177,7 +1177,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
   ) {
     if (value is! List) {
       throw TomObservableException(
-        "TomClass.set_list_member_error.not_a_list",
+        "observable.class_set_list_member.not_a_list",
         "TomList member $key must get deserialized from a list, but ${value.runtimeType} ",
       );
     }
@@ -1195,13 +1195,13 @@ class TomClass extends TomObject<Map<String, TomObject>>
             obj.setValues(element);
           } else {
             throw TomObservableException(
-              "TomClass.set_list_member_error.not_a_map",
+              "observable.class_set_list_member.not_a_map",
               "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
             );
           }
         } else {
           throw TomObservableException(
-            "TomClass.set_list_member_error.invalid_list_type",
+            "observable.class_set_list_member.invalid_list_type",
             "Only lists with TomObject or TomClass types are allowed. Found ${obj.runtimeType}",
           );
         }
@@ -1220,7 +1220,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
       final candidate = newElements[i];
       if (!member._acceptsElement(candidate)) {
         throw TomObservableException(
-          "TomClass.set_list_member_error.invalid_element_type",
+          "observable.class_set_list_member.invalid_element_type",
           "TomList member '$key' element $i cannot be deserialized from a "
               "${value[i].runtimeType}: that yields a "
               "${candidate.runtimeType}, but the list holds "
@@ -1271,7 +1271,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
         // data: name the offending member, route diagnostics through tomLog
         // (TomException autoLog), and rethrow so callers see the failure.
         throw TomObservableException(
-          "TomClass.get_values_error.member_serialization_failed",
+          "observable.class_get_values.member_serialization_failed",
           "Failed to serialize TomClass member '$key': $exception",
           parameters: {"key": key},
           rootException: exception,
@@ -1510,7 +1510,7 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   @override
   List<E> set(List<E> value) {
     throw TomObservableException(
-      "TomClass.tomlist_state_error.set_not_allowed",
+      "observable.list_state.set_not_allowed",
       "You can't set the value of TomList, you can only set individuals elements",
     );
   }
@@ -1661,7 +1661,7 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     if (newLength == _value.length) return;
     if (newLength > _value.length) {
       throw TomObservableException(
-        "TomClass.tomlist_state_error.length_cannot_grow",
+        "observable.list_state.length_cannot_grow",
         "A TomList cannot be grown by assigning its length: going from "
             "${_value.length} to $newLength would need elements that do not "
             "exist. Use add, addAll or insert instead.",
@@ -2136,7 +2136,7 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
   @override
   Map<K, V> set(Map<K, V> value) {
     throw TomObservableException(
-      "TomClass.tommap_state_error.set_not_allowed",
+      "observable.map_state.set_not_allowed",
       "You can't set the value of TomMap, you can only set individuals elements",
     );
   }
@@ -2354,7 +2354,7 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     }
     if (ifAbsent == null) {
       throw TomObservableException(
-        "TomClass.tommap_state_error.update_key_not_found_no_ifabsent",
+        "observable.map_state.update_key_not_found_no_ifabsent",
         "Map doesn't contain key $key and no ifAbsent method provided",
       );
     }

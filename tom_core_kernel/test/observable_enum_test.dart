@@ -193,11 +193,17 @@ void main() {
       // once the release compiler rewrites the type name.
       expect(
         () => TomObservableEnum.enumTypeSegment(LegacyFlag.on),
-        throwsA(isA<TomObservableException>().having(
-          (e) => e.toString(),
-          'message',
-          contains('TomEnumResourceSegment'),
-        )),
+        throwsA(isA<TomObservableException>()
+            .having(
+              (e) => e.key,
+              'key',
+              equals('observable.enum_segment.unstable_type_name'),
+            )
+            .having(
+              (e) => e.toString(),
+              'message',
+              contains('TomEnumResourceSegment'),
+            )),
       );
     });
   });
@@ -219,7 +225,7 @@ void main() {
         throwsA(isA<TomObservableException>().having(
           (e) => e.key,
           'key',
-          equals('TomObservableEnum.enum_value_error.not_in_values'),
+          equals('observable.enum_value.not_in_values'),
         )),
       );
       // The rejected write left the cell alone.

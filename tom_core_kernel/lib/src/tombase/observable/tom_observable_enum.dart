@@ -196,7 +196,7 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
       return text.substring(0, text.length - suffix.length).toLowerCase();
     }
     throw TomObservableException(
-      'TomObservableEnum.enum_segment_error.unstable_type_name',
+      'observable.enum_segment.unstable_type_name',
       "Cannot derive a stable resource segment for enum value '${value.name}': "
           "its toString() returns '$text', not '<EnumType>.${value.name}'. "
           'Implement TomEnumResourceSegment on the enum to declare the segment '
@@ -317,7 +317,7 @@ class TomObservableEnum<E extends Enum> extends TomObject<E> {
       E value, List<E> permitted, String operation) {
     if (permitted.contains(value)) return;
     throw TomObservableException(
-      'TomObservableEnum.enum_value_error.not_in_values',
+      'observable.enum_value.not_in_values',
       "Cannot $operation a TomObservableEnum with '${value.name}': it is not "
           'one of the permitted values '
           '[${permitted.map((v) => v.name).join(', ')}].',

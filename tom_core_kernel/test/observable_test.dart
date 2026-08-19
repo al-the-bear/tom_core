@@ -4425,6 +4425,99 @@ void main() {
       });
     });
   });
+
+  // The key is the half of an exception that callers match on; the message is
+  // prose and may be reworded, the key may not. Elsewhere in this suite the
+  // assertions are `isA<TomObservableException>()` alone, which cannot tell a
+  // renamed key from a correct one — so each raise site is pinned here once,
+  // by exact key.
+  //
+  // The grammar is `observable.<type>_<operation>.<condition>`: module first,
+  // as `TomException` documents, then the type that raised it. Grouping the
+  // expectations by raising type is the point of the group — a key filed under
+  // the wrong type reads as obviously wrong here, which is the failure these
+  // tests exist to catch.
+  group('exception keys', () {
+    void expectKey(String key, void Function() trigger) {
+      expect(
+        trigger,
+        throwsA(isA<TomObservableException>()
+            .having((e) => e.key, 'key', equals(key))),
+      );
+    }
+
+    group('raised by TomClass', () {
+      test('set, get and << on the class itself', () {
+        expectKey('observable.class_state.set_not_allowed',
+            () => TestPerson().set({}));
+        expectKey(
+            'observable.class_state.get_not_allowed', () => TestPerson().get());
+        expectKey('observable.class_state.set_not_allowed',
+            () => TestPerson() << {'name': 'Jane'});
+      });
+
+      test('a member rejecting the value setValues offered it', () {
+        expectKey('observable.class_set_values.member_assignment_failed',
+            () => TestPerson().setValues({'age': 'not a number'}));
+      });
+
+      test('a member throwing while getValues reads it', () {
+        expectKey('observable.class_get_values.member_serialization_failed',
+            () => TestThrowingMember().getValues());
+      });
+
+      test('a list member given a non-list', () {
+        expectKey('observable.class_set_list_member.not_a_list',
+            () => TestTaggedItem().setValues({'tags': 'not a list'}));
+      });
+
+      test('a TomClass list element given a non-map', () {
+        expectKey('observable.class_set_list_member.not_a_map',
+            () => TestTaggedItem().setValues({
+                  'subtasks': ['not a map']
+                }));
+      });
+
+      test('a list element deserializing to the wrong type', () {
+        expectKey(
+            'observable.class_set_list_member.invalid_element_type',
+            () => TestTaggedItem().setValues({
+                  'tags': [1]
+                }));
+      });
+
+      test('a map member given a non-map', () {
+        expectKey('observable.class_set_map_member.not_a_map',
+            () => TestPricedItem().setValues({'surcharges': 'not a map'}));
+      });
+    });
+
+    group('raised by TomList', () {
+      test('set on the list itself', () {
+        expectKey('observable.list_state.set_not_allowed',
+            () => TomList<TomString>().set([]));
+      });
+
+      test('growing the list by assigning length', () {
+        expectKey('observable.list_state.length_cannot_grow',
+            () => TomList<TomString>().length = 2);
+      });
+    });
+
+    group('raised by TomMap', () {
+      test('set on the map itself', () {
+        expectKey('observable.map_state.set_not_allowed',
+            () => TomMap<String, TomInt>().set({}));
+      });
+
+      test('update on an absent key with no ifAbsent', () {
+        expectKey(
+            'observable.map_state.update_key_not_found_no_ifabsent',
+            () => TomMap<String, TomInt>()
+                .update('missing', (value) => TomInt(1)));
+      });
+    });
+  });
 }
 
 // ============================================================================

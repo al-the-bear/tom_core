@@ -1916,16 +1916,55 @@ try {
 }
 ```
 
-### Common Error Keys
+### Error Keys
 
-| Error Key | Description |
+`e.key` is the code to match on — the message is for humans and may be
+reworded, the key may not. Every key the module raises is listed below.
+
+Keys follow the workspace grammar `<area>.<operation>.<condition>`, all
+lowercase. The area is the *module*, `observable`, so these keys cannot
+collide with keys raised elsewhere in the kernel. The operation segment
+names the raising type first (`class_`, `list_`, `map_`, `enum_`), so a
+failure is always attributable to the type that raised it and the same
+condition can occur on more than one type without ambiguity.
+
+**Raised by `TomClass`**
+
+| Error Key | Raised when |
 |-----------|-------------|
-| `TomClass.state_error.set_not_allowed` | Cannot set entire TomClass value |
-| `TomClass.tomlist_state_error.set_not_allowed` | Cannot replace the backing list via `set` — use `<<` or `resetWith` |
-| `TomClass.tommap_state_error.set_not_allowed` | Cannot replace the backing map via `set` — use `<<` |
-| `TomClass.set_list_member_error.not_a_list` | Expected list for TomList member |
-| `TomObservableEnum.enum_segment_error.unstable_type_name` | The enum overrides `toString()` and does not implement `TomEnumResourceSegment`, so no stable key segment can be derived |
-| `TomObservableEnum.enum_value_error.not_in_values` | The value constructed or set is not one of the cell's permitted `values` |
+| `observable.class_state.set_not_allowed` | `set` or `<<` was called on a class — write the members, not the class |
+| `observable.class_state.get_not_allowed` | `get` was called on a class — use `getValues` |
+| `observable.class_initialization.could_not_register_superclass_members` | Registering inherited members for observation failed |
+| `observable.class_set_values.member_assignment_failed` | A member rejected the value `setValues` offered it |
+| `observable.class_set_map_member.not_a_map` | A `TomMap` member was given something other than a `Map` |
+| `observable.class_set_map_member.invalid_list_type` | A list inside a map member holds a type that is neither `TomObject` nor `TomClass` |
+| `observable.class_set_map_member.invalid_element_type` | A map member's element cannot be deserialized from the value given |
+| `observable.class_set_list_member.not_a_list` | A `TomList` member was given something other than a `List` |
+| `observable.class_set_list_member.not_a_map` | A list member's `TomClass` element was given something other than a `Map` |
+| `observable.class_set_list_member.invalid_list_type` | A list member holds a type that is neither `TomObject` nor `TomClass` |
+| `observable.class_set_list_member.invalid_element_type` | A list member's element deserializes to the wrong type |
+| `observable.class_get_values.member_serialization_failed` | A member threw while `getValues` was reading it |
+
+**Raised by `TomList`**
+
+| Error Key | Raised when |
+|-----------|-------------|
+| `observable.list_state.set_not_allowed` | `set` was called on a list — use `<<` or `resetWith` |
+| `observable.list_state.length_cannot_grow` | `length` was assigned a larger value, which would need elements that do not exist — use `add`, `addAll` or `insert` |
+
+**Raised by `TomMap`**
+
+| Error Key | Raised when |
+|-----------|-------------|
+| `observable.map_state.set_not_allowed` | `set` was called on a map — use `<<` |
+| `observable.map_state.update_key_not_found_no_ifabsent` | `update` was given an absent key and no `ifAbsent` |
+
+**Raised by `TomObservableEnum`**
+
+| Error Key | Raised when |
+|-----------|-------------|
+| `observable.enum_segment.unstable_type_name` | The enum overrides `toString()` and does not implement `TomEnumResourceSegment`, so no stable key segment can be derived |
+| `observable.enum_value.not_in_values` | The value constructed or set is not one of the cell's permitted `values` |
 
 ## Class Hierarchy
 
