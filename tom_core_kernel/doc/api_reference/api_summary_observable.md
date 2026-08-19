@@ -268,7 +268,7 @@ TomObject(T initialValue)
 | `set` | `T set(T value)` | Sets the value and notifies observers if it changed; returns the new value. |
 | `getOrNull` | `T? getOrNull()` | Returns the value, or `null` if it is null (for nullable types). Delegates to `get()`, so every override applies: on `TomList`/`TomMap` it returns a copy, and on `TomClass` it throws. |
 | `call` | `T call()` | Call-operator form of `get()`. |
-| `toString` | `String toString()` | *(override)* Returns `"~<value>"`. |
+| `toString` | `String toString()` | *(override)* The value with a leading `~`, matching the read operator: `TomString("hello")` → `~hello`, `TomInt(42)` → `~42`, `TomNString(null)` → `~null`. Inherited unchanged by every scalar wrapper and by `TomMap`; `TomList`, `TomClass` and `TomObservableEnum` override it. |
 
 #### Operators
 
@@ -727,7 +727,7 @@ TomClass()
 | `getValues` | `Map<String, dynamic> getValues()` | Returns all member values as a JSON-safe map (recursing nested classes; prefixing date/timezone values). The output round-trips back through `setValues`, zoned members included. |
 | `fromJson` | `void fromJson(String json)` | Populates this class from a JSON string via `setValues`. |
 | `toJson` | `Map<String, dynamic> toJson()` | Returns the JSON-compatible map (equivalent to `getValues`). |
-| `toString` | `String toString()` | *(override)* Reflection-based string of all values. |
+| `toString` | `String toString()` | *(override)* The reflected member map, rendered as Dart renders a `Map` — no leading `~`, because a class has no single value to mark. A class whose members are `name`, `age`, `email` and `isActive`, holding `Jane`, `30`, null and true, gives `{name: Jane, age: 30, email: null, isActive: true}`. The values are those of `getValues()`, so nested classes recurse and date/timezone members carry their prefix. Subclasses that add no `toString` of their own — `TomDateRange`, `TomTimeRange`, `TomDateTimeRange` — render as their member map in the same way. |
 
 #### Operators
 
@@ -857,7 +857,7 @@ TomList.ofList(List<E> list)
 | `takeWhile` | `Iterable<E> takeWhile(bool Function(E value) test)` | *(override)* Takes while `test` holds. |
 | `toList` | `List<E> toList({bool growable = true})` | *(override)* Returns a list copy. |
 | `toSet` | `Set<E> toSet()` | *(override)* Returns a set of the elements. |
-| `toString` | `String toString()` | *(override)* String of the backing list. |
+| `toString` | `String toString()` | *(override)* The backing list rendered as Dart renders a `List`, **without** a leading `~`: a list of `TomInt` holding 1 and 2 gives `[~1, ~2]`. Each element renders through its own `toString`, so the `~` appears once per element rather than once for the list. `TomMap` does *not* override, so it keeps the outer marker and prints `~{a: ~1}`. |
 | `where` | `Iterable<E> where(bool Function(E element) test)` | *(override)* Elements matching `test`. |
 | `whereType` | `Iterable<T> whereType<T>()` | *(override)* Elements of type `T`. |
 
@@ -1091,6 +1091,7 @@ write; see `set`. `scope` overrides the ambient scope.
 | `displayTextOf` | `String displayTextOf(E value)` | Bundle text for `value`, resolved in this cell's scope. |
 | `displayKeyOf` | `String displayKeyOf(E value)` | Resource key for `value`, resolved in this cell's scope. |
 | `detachFromResources` | `void detachFromResources()` | Stops reacting to bundle changes; value changes still notify. |
+| `toString` | `String toString()` | *(override)* `~<value name> (<display text>)` — a cell holding the constant `inReview`, labelled *In review* by the bundle, renders as `~inReview (In review)`. Both halves are deliberate: the parenthesised label is what the user sees and follows the installed bundle (`~done (Erledigt)` under a German bundle), while the bare constant name stays fixed, so a log line remains readable to someone who does not share the user's locale. An unresolved label degrades like `displayText` does, to the raw name: `~done (done)`. |
 
 ### TomEnumResourceSegment
 

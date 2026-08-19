@@ -1831,23 +1831,81 @@ void main() {
     });
   });
 
+  // The rendered forms are asserted exactly, not with `contains`. These strings
+  // are published in `doc/api_reference/api_summary_observable.md`, and a
+  // documented format that no test pins is a format free to drift away from its
+  // own documentation. `contains("42")` passed for every conceivable rendering
+  // of a TomInt holding 42, which is precisely why the doc could go stale
+  // without a test noticing.
   group('toString()', () {
-    test('TomObject toString includes value', () {
-      final str = TomString("hello");
-      expect(str.toString(), contains("hello"));
+    test('a TomClass subclass inherits the map form, it does not re-add the ~',
+        () {
+      // The range types are TomClass subclasses and declare no toString of
+      // their own, so they must render as the member map. Asserted
+      // structurally rather than against a frozen literal: the member *values*
+      // of an empty range are the subject of tcincb51 and will change, but the
+      // inherited *form* is what this test is for.
+      final range = TomDateRange();
+      expect(range.toString(), equals(range.getValues().toString()));
+      expect(range.toString(), startsWith('{startDate: '));
+      expect(range.toString(), isNot(startsWith('~')));
     });
 
-    test('TomInt toString includes value', () {
-      final num = TomInt(42);
-      expect(num.toString(), contains("42"));
+    test('TomObject renders as ~<value>', () {
+      expect(TomString("hello").toString(), equals('~hello'));
+      expect(TomInt(42).toString(), equals('~42'));
+      expect(TomBool(true).toString(), equals('~true'));
+      expect(TomNString(null).toString(), equals('~null'));
     });
 
-    test('TomList toString shows elements', () {
+    test('TomList renders the backing list, without a leading ~', () {
       final list = TomList<TomInt>();
       list.append(TomInt(1)).append(TomInt(2));
-      final str = list.toString();
-      expect(str, contains("1"));
-      expect(str, contains("2"));
+
+      // The elements render through their own toString, so the `~` appears per
+      // element rather than once for the list. TomList overriding toString is
+      // what drops the outer marker; TomMap does not override, so it keeps one
+      // — see the next test. That asymmetry is documented, so it is pinned.
+      expect(list.toString(), equals('[~1, ~2]'));
+    });
+
+    test('TomMap inherits TomObject, so it keeps the leading ~', () {
+      final map = TomMap<String, TomInt>();
+      map['a'] = TomInt(1);
+
+      expect(map.toString(), equals('~{a: ~1}'));
+    });
+
+
+    test('TomClass rendering agrees with getValues(), nested and zoned', () {
+      // `toString()` goes through `tomReflectionInfo.getValues(this)` while
+      // `getValues()` is TomClass's own `_serializeMember` walk — two separate
+      // implementations. The summary documents them as producing the same
+      // values, so the agreement is asserted rather than assumed; nothing else
+      // would notice the two drifting apart.
+      final customer = TestCustomer();
+      customer.name | 'Acme';
+      customer.address.city | 'Berlin';
+
+      expect(customer.toString(), equals(customer.getValues().toString()));
+      expect(customer.toString(), contains('address: {street: , city: Berlin'),
+          reason: 'a nested class recurses rather than printing its type');
+
+      final zoned = TestZonedMembers();
+      expect(zoned.toString(), equals(zoned.getValues().toString()));
+      expect(zoned.toString(), contains('@D@'),
+          reason: 'zoned members keep their wire prefix');
+    });
+
+    test('TomClass renders its reflected values', () {
+      final person = TestPerson();
+      person.name | 'Jane';
+      person.age | 30;
+
+      expect(
+        person.toString(),
+        equals('{name: Jane, age: 30, email: null, isActive: true}'),
+      );
     });
   });
 

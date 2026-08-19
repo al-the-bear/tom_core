@@ -351,6 +351,46 @@ void main() {
   });
 
   // ===========================================================================
+  // Rendering
+  // ===========================================================================
+  group('TomObservableEnum toString', () {
+    // This is the form that appears in every log line and debug inspection of
+    // an enum cell, and it is published in
+    // `doc/api_reference/api_summary_observable.md`. Asserted exactly, so the
+    // documented form cannot drift away from the code.
+    test('renders as ~<value name> (<display text>)', () {
+      final status =
+          TomObservableEnum(TodoStatus.inReview, values: TodoStatus.values);
+
+      expect(status.toString(), equals('~inReview (In review)'));
+    });
+
+    test('carries both halves: the stable name and the localized label', () {
+      final status =
+          TomObservableEnum(TodoStatus.done, values: TodoStatus.values);
+      expect(status.toString(), equals('~done (Done)'));
+
+      // Switching locale changes only the parenthesised half. The bare name is
+      // what makes the rendering usable in a log read by someone who does not
+      // share the user's language — which is the reason it prints both.
+      installBundle(germanBundle());
+      expect(status.toString(), equals('~done (Erledigt)'));
+    });
+
+    test('a missing label degrades to the raw name, never to blank', () {
+      installBundle({
+        'global': {
+          'todostatus': {'open': 'Open'}
+        }
+      });
+      final status =
+          TomObservableEnum(TodoStatus.done, values: TodoStatus.values);
+
+      expect(status.toString(), equals('~done (done)'));
+    });
+  });
+
+  // ===========================================================================
   // Two locales
   // ===========================================================================
   group('TomObservableEnum locales', () {
