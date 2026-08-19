@@ -62,6 +62,16 @@ valid-looking payload with every field dropped. A class with no generated data
 at all still raises `reflector.reflect.not_reflectable`; both are
 `TomReflectorException`, so one `catch` covers either.
 
+A string that will not parse into a `DateTime`, `TomZonedDate`,
+`TomZonedTime` or `TomZonedDateTime` field raises
+`reflection.set.date_parse_failed`, naming the class, the field and the text
+that failed — and the map key or list index when the field is a collection.
+The parsers themselves throw a bare `FormatException` that reports only the
+offending text; letting it out told a caller deserializing a thirty-field
+payload that *something* in it was not a date, kept the failure out of the
+module's auto-logging, and slipped past `on TomReflectorException`. The
+original `FormatException` is retained as the `rootException`.
+
 Collection fields are deserialized **atomically**: a `List<T>` or
 `Map<String, T>` is materialized in full before the field is touched, so an
 element the target type rejects throws a `TomReflectorException` and leaves the

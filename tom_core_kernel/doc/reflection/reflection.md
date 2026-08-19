@@ -298,6 +298,35 @@ The following DateTime types are automatically serialized/deserialized:
 - `TomZonedTime` - Custom time with timezone
 - `TomZonedDateTime` - Custom datetime with timezone
 
+A string that will not parse into the field's date/time type raises
+`reflection.set.date_parse_failed`, naming the class, the field and the
+offending text — and, when the field is a `Map<String, DateTime>` or a
+`List<DateTime>`, the map key or the list index of the element that failed:
+
+```dart
+tomReflectionInfo.setValues(order, {'placedAt': 'yesterday'});
+// TomReflectorException: reflection.set.date_parse_failed
+// Cannot set field 'placedAt' on Order: "yesterday" is not a valid DateTime
+
+tomReflectionInfo.setValues(order, {
+  'milestones': ['2026-01-02T00:00:00.000Z', 'soon'],
+});
+// Cannot set field 'milestones' on Order at index 1: "soon" is not a
+// valid DateTime
+```
+
+The underlying `FormatException` is kept as the `rootException`. This matters
+because the parsers — `DateTime.parse` and the `TomZoned*` ones — report only
+the text they choked on; on a thirty-field payload that says *something* was
+not a date and stops there. Wrapping also brings the failure back under the
+module's auto-logging, so it carries an exception id like every other one, and
+under `on TomReflectorException`, so a caller written against the error table
+above catches it rather than having it fly past.
+
+The field keeps its previous value, and a collection keeps its previous
+contents: elements are parsed into a fresh collection that is only assigned
+once every one of them has succeeded.
+
 ### Collection Types
 
 **Lists:**
@@ -524,6 +553,7 @@ try {
 | `reflection.set.unexpected_string_type` | String value for non-DateTime field |
 | `reflection.set.datetime_must_be_filled_from_string_in_map` | Non-String element in a `Map<String, DateTime>`-style field |
 | `reflection.set.datetime_must_be_filled_from_string_for_list` | Non-String element in a `List<DateTime>`-style field |
+| `reflection.set.date_parse_failed` | A String destined for a date/time field could not be parsed — names the class, the field, the offending text and, inside a collection, the map key or list index |
 | `reflection.set.map_value_materialization_failed` | A value could not be materialized into a `Map<String, T>` field |
 | `reflection.set.list_element_materialization_failed` | An element could not be materialized into a `List<T>` field |
 | `reflection.set.collection_element_type_mismatch` | An element of a typed primitive collection is not of the field's element type |

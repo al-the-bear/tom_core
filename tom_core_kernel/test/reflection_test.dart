@@ -2020,6 +2020,188 @@ void main() {
     });
   });
 
+  group('an unparseable date string names where it came from', () {
+    // The parse failure used to escape as a bare FormatException carrying
+    // only the offending text — no field, no class, no position, no
+    // exception id — which defeated both `on TomReflectorException` and the
+    // module's auto-logging. Each test below asserts on the *context*, not
+    // merely on the fact that something threw.
+
+    Matcher refusesToParse(String field, String owner, String text) =>
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.date_parse_failed',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(contains(field), contains(owner), contains(text)),
+              ),
+        );
+
+    test('a malformed string for a DateTime field is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeHolder(), {
+          'dateTime': 'not-a-date',
+        }),
+        refusesToParse('dateTime', 'DateTimeHolder', 'not-a-date'),
+      );
+    });
+
+    test('an empty string for a DateTime field is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeHolder(), {'dateTime': ''}),
+        refusesToParse('dateTime', 'DateTimeHolder', '""'),
+      );
+    });
+
+    test('the underlying FormatException is kept as the cause', () {
+      try {
+        tomReflectionInfo.setValues(DateTimeHolder(), {
+          'dateTime': 'not-a-date',
+        });
+        fail('expected a TomReflectorException');
+      } on TomReflectorException catch (e) {
+        expect(e.rootException, isA<FormatException>());
+      }
+    });
+
+    test('a malformed string for a TomZonedDate field is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(ZonedDateTimeHolder(), {
+          'zonedDate': 'not-a-date',
+        }),
+        refusesToParse('zonedDate', 'ZonedDateTimeHolder', 'not-a-date'),
+      );
+    });
+
+    test('an empty string for a TomZonedDate field is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(ZonedDateTimeHolder(), {
+          'zonedDate': '',
+        }),
+        refusesToParse('zonedDate', 'ZonedDateTimeHolder', '""'),
+      );
+    });
+
+    test('a malformed string for a TomZonedTime field is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(ZonedDateTimeHolder(), {
+          'zonedTime': 'not-a-time',
+        }),
+        refusesToParse('zonedTime', 'ZonedDateTimeHolder', 'not-a-time'),
+      );
+    });
+
+    test('a malformed string for a TomZonedDateTime field is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(ZonedDateTimeHolder(), {
+          'zonedDateTime': 'nope',
+        }),
+        refusesToParse('zonedDateTime', 'ZonedDateTimeHolder', 'nope'),
+      );
+    });
+
+    test('a bad element in a DateTime map names the map key', () {
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeMapHolder(), {
+          'dateTimeMap': {'due': 'not-a-date'},
+        }),
+        allOf(
+          refusesToParse('dateTimeMap', 'DateTimeMapHolder', 'not-a-date'),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.defaultUserMessage,
+              'message names the key',
+              contains("'due'"),
+            ),
+          ),
+        ),
+      );
+    });
+
+    test('a bad element in a TomZonedDate map is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeMapHolder(), {
+          'zonedDateMap': {'due': 'not-a-date'},
+        }),
+        refusesToParse('zonedDateMap', 'DateTimeMapHolder', 'not-a-date'),
+      );
+    });
+
+    test('a bad element in a DateTime list names the index', () {
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeListHolder(), {
+          'dateTimeList': ['2024-01-01T00:00:00.000Z', 'not-a-date'],
+        }),
+        allOf(
+          refusesToParse('dateTimeList', 'DateTimeListHolder', 'not-a-date'),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.defaultUserMessage,
+              'message names the index',
+              contains('index 1'),
+            ),
+          ),
+        ),
+      );
+    });
+
+    test('a bad element in a TomZonedDate list is wrapped', () {
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeListHolder(), {
+          'zonedDateList': ['not-a-date'],
+        }),
+        refusesToParse('zonedDateList', 'DateTimeListHolder', 'not-a-date'),
+      );
+    });
+
+    test('convertFromJsonString inherits the wrap', () {
+      expect(
+        () => tomReflectionInfo.convertFromJsonString(
+          DateTimeHolder(),
+          '{"dateTime":"not-a-date"}',
+        ),
+        refusesToParse('dateTime', 'DateTimeHolder', 'not-a-date'),
+      );
+    });
+
+    test('a failed parse leaves the previous field value intact', () {
+      final holder = DateTimeHolder()..dateTime = DateTime.utc(2020, 1, 1);
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {'dateTime': 'not-a-date'}),
+        throwsA(isA<TomReflectorException>()),
+      );
+      expect(holder.dateTime, DateTime.utc(2020, 1, 1));
+    });
+
+    test('a failed element leaves the previous collection intact', () {
+      final holder = DateTimeListHolder()
+        ..dateTimeList = [DateTime.utc(2020, 1, 1)];
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'dateTimeList': ['not-a-date'],
+        }),
+        throwsA(isA<TomReflectorException>()),
+      );
+      expect(holder.dateTimeList, [DateTime.utc(2020, 1, 1)]);
+    });
+
+    test('well-formed strings are still parsed', () {
+      final holder = DateTimeHolder();
+      tomReflectionInfo.setValues(holder, {
+        'dateTime': '2026-01-02T03:04:05.000Z',
+      });
+
+      expect(holder.dateTime, DateTime.utc(2026, 1, 2, 3, 4, 5));
+    });
+  });
+
   group('a typed primitive collection is checked before it is assigned', () {
     // These assert on the *offending element*, not on length. A lazy
     // `.cast<T>()` passes a length assertion and every well-typed element,

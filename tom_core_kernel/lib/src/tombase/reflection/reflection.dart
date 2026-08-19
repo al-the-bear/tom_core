@@ -963,11 +963,11 @@ class TomReflectionInfo {
     if (_trySetWidenedNumericValue(im, imGet, entry)) {
       return;
     } else if (entry.value is String) {
-      _setStringValue(im, imGet, entry);
+      _setStringValue(im, cm, imGet, entry);
     } else if (entry.value is Map) {
       _setMapValue(im, cm, imGet, entry);
     } else if (entry.value is List) {
-      _setListValue(im, imGet, entry);
+      _setListValue(im, cm, imGet, entry);
     } else {
       throw TomReflectorException(
         "reflection.set.unexpected_type",
@@ -1003,25 +1003,81 @@ class TomReflectionInfo {
   // String Value Setting
   // ---------------------------------------------------------------------------
 
+  /// Parses [text] into a date/time value, naming the site on failure.
+  ///
+  /// Why: `DateTime.parse` and the `TomZoned*` parsers throw a bare
+  /// [FormatException] that carries the offending text and nothing else. Let
+  /// out unwrapped it told a caller deserializing a thirty-field payload only
+  /// that *something* in it was not a date — no field, no class, no position.
+  /// It also escaped the module's auto-logging, so the one failure with no
+  /// exception id was the one hardest to trace, and it slipped past a
+  /// `catch (e) on TomReflectorException` written against the documented
+  /// error table.
+  ///
+  /// [owner] is the class being filled, [field] the field being set, and [at]
+  /// the position within a collection — a map key or a list index — or null
+  /// for a scalar field, where the field name is already the whole story.
+  static T _parseDateTimeString<T>(
+    String text,
+    T Function(String) parser, {
+    required String owner,
+    required String field,
+    required Object targetType,
+    String? at,
+  }) {
+    try {
+      return parser(text);
+    } on FormatException catch (e, s) {
+      throw TomReflectorException(
+        "reflection.set.date_parse_failed",
+        "Cannot set field '$field' on $owner"
+            "${at == null ? '' : ' at $at'}: "
+            "\"$text\" is not a valid $targetType",
+        autoLog: true,
+        rootException: e,
+        stack: s,
+        parameters: {
+          'owner': owner,
+          'field': field,
+          'targetType': targetType.toString(),
+          'value': text,
+          if (at != null) 'at': at,
+        },
+      );
+    }
+  }
+
   /// Sets a String value that represents a date/time type.
   ///
   /// Parses the string and converts to the appropriate DateTime type
-  /// based on the field's declared return type.
+  /// based on the field's declared return type. A string the target type
+  /// cannot parse raises `reflection.set.date_parse_failed` rather than
+  /// letting a context-free [FormatException] out; see
+  /// [_parseDateTimeString].
   void _setStringValue(
     InstanceMirror im,
+    ClassMirror cm,
     MethodMirror imGet,
     MapEntry<String, dynamic> entry,
   ) {
     final returnType = imGet.reflectedReturnType;
 
+    T parse<T>(T Function(String) parser) => _parseDateTimeString<T>(
+      entry.value,
+      parser,
+      owner: cm.simpleName,
+      field: entry.key,
+      targetType: returnType,
+    );
+
     if (returnType == DateTime) {
-      im.invokeSetter(entry.key, DateTime.parse(entry.value));
+      im.invokeSetter(entry.key, parse(DateTime.parse));
     } else if (returnType == TomZonedDate) {
-      im.invokeSetter(entry.key, TomZonedDate.parseFromString(entry.value));
+      im.invokeSetter(entry.key, parse(TomZonedDate.parseFromString));
     } else if (returnType == TomZonedTime) {
-      im.invokeSetter(entry.key, TomZonedTime.parseFromString(entry.value));
+      im.invokeSetter(entry.key, parse(TomZonedTime.parseFromString));
     } else if (returnType == TomZonedDateTime) {
-      im.invokeSetter(entry.key, TomZonedDateTime.parseFromString(entry.value));
+      im.invokeSetter(entry.key, parse(TomZonedDateTime.parseFromString));
     } else {
       throw TomReflectorException(
         "reflection.set.unexpected_string_type",
@@ -1055,7 +1111,7 @@ class TomReflectionInfo {
     if (_trySetPrimitiveMapType(im, returnType, entry)) return;
 
     // Try DateTime map types
-    if (_trySetDateTimeMapType(im, returnType, entry)) return;
+    if (_trySetDateTimeMapType(im, cm, returnType, entry)) return;
 
     // Try annotated object map types
     if (_trySetAnnotatedObjectMapType(im, imGet, entry)) return;
@@ -1091,60 +1147,89 @@ class TomReflectionInfo {
   /// Attempts to set a DateTime Map type (`Map<String, DateTime>`, etc.).
   bool _trySetDateTimeMapType(
     InstanceMirror im,
+    ClassMirror cm,
     Type returnType,
     MapEntry<String, dynamic> entry,
   ) {
-    if (returnType == Map<String, DateTime>) {
-      im.invokeSetter(entry.key, _parseStringMap<DateTime>(entry.value as Map, DateTime.parse));
+    bool set<T>(T Function(String) parser, {bool nullable = false}) {
+      im.invokeSetter(
+        entry.key,
+        _parseStringMap<T>(
+          entry,
+          parser,
+          owner: cm.simpleName,
+          nullable: nullable,
+        ),
+      );
       return true;
+    }
+
+    if (returnType == Map<String, DateTime>) {
+      return set<DateTime>(DateTime.parse);
     }
     if (returnType == Map<String, DateTime?>) {
-      im.invokeSetter(entry.key, _parseStringMap<DateTime?>(entry.value as Map, DateTime.parse, nullable: true));
-      return true;
+      return set<DateTime?>(DateTime.parse, nullable: true);
     }
     if (returnType == Map<String, TomZonedDate>) {
-      im.invokeSetter(entry.key, _parseStringMap<TomZonedDate>(entry.value as Map, TomZonedDate.parseFromString));
-      return true;
+      return set<TomZonedDate>(TomZonedDate.parseFromString);
     }
     if (returnType == Map<String, TomZonedDate?>) {
-      im.invokeSetter(entry.key, _parseStringMap<TomZonedDate?>(entry.value as Map, TomZonedDate.parseFromString, nullable: true));
-      return true;
+      return set<TomZonedDate?>(
+        TomZonedDate.parseFromString,
+        nullable: true,
+      );
     }
     if (returnType == Map<String, TomZonedTime>) {
-      im.invokeSetter(entry.key, _parseStringMap<TomZonedTime>(entry.value as Map, TomZonedTime.parseFromString));
-      return true;
+      return set<TomZonedTime>(TomZonedTime.parseFromString);
     }
     if (returnType == Map<String, TomZonedTime?>) {
-      im.invokeSetter(entry.key, _parseStringMap<TomZonedTime?>(entry.value as Map, TomZonedTime.parseFromString, nullable: true));
-      return true;
+      return set<TomZonedTime?>(
+        TomZonedTime.parseFromString,
+        nullable: true,
+      );
     }
     if (returnType == Map<String, TomZonedDateTime>) {
-      im.invokeSetter(entry.key, _parseStringMap<TomZonedDateTime>(entry.value as Map, TomZonedDateTime.parseFromString));
-      return true;
+      return set<TomZonedDateTime>(TomZonedDateTime.parseFromString);
     }
     if (returnType == Map<String, TomZonedDateTime?>) {
-      im.invokeSetter(entry.key, _parseStringMap<TomZonedDateTime?>(entry.value as Map, TomZonedDateTime.parseFromString, nullable: true));
-      return true;
+      return set<TomZonedDateTime?>(
+        TomZonedDateTime.parseFromString,
+        nullable: true,
+      );
     }
     return false;
   }
 
   /// Parses a map of strings into typed datetime values.
-  Map<String, T> _parseStringMap<T>(
-    Map sourceMap,
+  ///
+  /// The result is built in full before the caller assigns it, so a single
+  /// unparseable element leaves the target field holding its previous map.
+  /// A parse failure names the field and the offending map key rather than
+  /// escaping as a bare [FormatException]; see [_parseDateTimeString].
+  static Map<String, T> _parseStringMap<T>(
+    MapEntry<String, dynamic> entry,
     T Function(String) parser, {
+    required String owner,
     bool nullable = false,
   }) {
     final result = <String, T>{};
-    for (var entry in sourceMap.entries) {
-      if (entry.value != null && entry.value is String) {
-        result[entry.key] = parser(entry.value);
-      } else if (entry.value == null && nullable) {
-        result[entry.key] = null as T;
+    for (var element in (entry.value as Map).entries) {
+      if (element.value is String) {
+        result[element.key] = _parseDateTimeString<T>(
+          element.value,
+          parser,
+          owner: owner,
+          field: entry.key,
+          targetType: T,
+          at: "key '${element.key}'",
+        );
+      } else if (element.value == null && nullable) {
+        result[element.key] = null as T;
       } else {
         throw TomReflectorException(
           "reflection.set.datetime_must_be_filled_from_string_in_map",
-          "Attempt to set datetime from non-String element ${entry.key}: ${entry.value}",
+          "Attempt to set datetime from non-String element "
+              "${element.key}: ${element.value}",
           autoLog: true,
         );
       }
@@ -1285,6 +1370,7 @@ class TomReflectionInfo {
   /// 4. Fallback: direct value setting
   void _setListValue(
     InstanceMirror im,
+    ClassMirror cm,
     MethodMirror imGet,
     MapEntry<String, dynamic> entry,
   ) {
@@ -1294,7 +1380,7 @@ class TomReflectionInfo {
     if (_trySetPrimitiveListType(im, returnType, entry)) return;
 
     // Try DateTime list type
-    if (_trySetDateTimeListType(im, returnType, entry)) return;
+    if (_trySetDateTimeListType(im, cm, returnType, entry)) return;
 
     // Try annotated object list type
     if (_trySetAnnotatedObjectListType(im, imGet, entry)) return;
@@ -1329,54 +1415,86 @@ class TomReflectionInfo {
   /// Attempts to set a DateTime List type (`List<DateTime>`, etc.).
   bool _trySetDateTimeListType(
     InstanceMirror im,
+    ClassMirror cm,
     Type returnType,
     MapEntry<String, dynamic> entry,
   ) {
-    if (returnType == List<DateTime>) {
-      im.invokeSetter(entry.key, _parseStringList<DateTime>(entry.value, DateTime.parse));
+    bool set<T>(T Function(String) parser, {bool nullable = false}) {
+      im.invokeSetter(
+        entry.key,
+        _parseStringList<T>(
+          entry,
+          parser,
+          owner: cm.simpleName,
+          nullable: nullable,
+        ),
+      );
       return true;
+    }
+
+    if (returnType == List<DateTime>) {
+      return set<DateTime>(DateTime.parse);
     }
     if (returnType == List<DateTime?>) {
-      im.invokeSetter(entry.key, _parseStringList<DateTime?>(entry.value, DateTime.parse, nullable: true));
-      return true;
+      return set<DateTime?>(DateTime.parse, nullable: true);
     }
     if (returnType == List<TomZonedDate>) {
-      im.invokeSetter(entry.key, _parseStringList<TomZonedDate>(entry.value, TomZonedDate.parseFromString));
-      return true;
+      return set<TomZonedDate>(TomZonedDate.parseFromString);
     }
     if (returnType == List<TomZonedDate?>) {
-      im.invokeSetter(entry.key, _parseStringList<TomZonedDate?>(entry.value, TomZonedDate.parseFromString, nullable: true));
-      return true;
+      return set<TomZonedDate?>(
+        TomZonedDate.parseFromString,
+        nullable: true,
+      );
     }
     if (returnType == List<TomZonedTime>) {
-      im.invokeSetter(entry.key, _parseStringList<TomZonedTime>(entry.value, TomZonedTime.parseFromString));
-      return true;
+      return set<TomZonedTime>(TomZonedTime.parseFromString);
     }
     if (returnType == List<TomZonedTime?>) {
-      im.invokeSetter(entry.key, _parseStringList<TomZonedTime?>(entry.value, TomZonedTime.parseFromString, nullable: true));
-      return true;
+      return set<TomZonedTime?>(
+        TomZonedTime.parseFromString,
+        nullable: true,
+      );
     }
     if (returnType == List<TomZonedDateTime>) {
-      im.invokeSetter(entry.key, _parseStringList<TomZonedDateTime>(entry.value, TomZonedDateTime.parseFromString));
-      return true;
+      return set<TomZonedDateTime>(TomZonedDateTime.parseFromString);
     }
     if (returnType == List<TomZonedDateTime?>) {
-      im.invokeSetter(entry.key, _parseStringList<TomZonedDateTime?>(entry.value, TomZonedDateTime.parseFromString, nullable: true));
-      return true;
+      return set<TomZonedDateTime?>(
+        TomZonedDateTime.parseFromString,
+        nullable: true,
+      );
     }
     return false;
   }
 
   /// Parses a list of strings into typed datetime values.
-  List<T> _parseStringList<T>(
-    List<dynamic> sourceList,
+  ///
+  /// The result is built in full before the caller assigns it, so a single
+  /// unparseable element leaves the target field holding its previous list.
+  /// A parse failure names the field and the offending index rather than
+  /// escaping as a bare [FormatException]; see [_parseDateTimeString].
+  static List<T> _parseStringList<T>(
+    MapEntry<String, dynamic> entry,
     T Function(String) parser, {
+    required String owner,
     bool nullable = false,
   }) {
+    final sourceList = entry.value as List<dynamic>;
     final result = <T>[];
-    for (var element in sourceList) {
-      if (element != null && element is String) {
-        result.add(parser(element));
+    for (var index = 0; index < sourceList.length; index++) {
+      final element = sourceList[index];
+      if (element is String) {
+        result.add(
+          _parseDateTimeString<T>(
+            element,
+            parser,
+            owner: owner,
+            field: entry.key,
+            targetType: T,
+            at: 'index $index',
+          ),
+        );
       } else if (element == null && nullable) {
         result.add(null as T);
       } else {
