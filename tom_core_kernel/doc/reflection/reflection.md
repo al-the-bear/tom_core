@@ -75,9 +75,7 @@ void main() {
 
 ```dart
 // Create an instance
-final person = tomReflectionInfo.createInstance<Person>(DbPersonImpl);
-
-// Or: final person = tomReflectionInfo.createInstance(DbPersonImpl) as Person;
+final person = tomReflectionInfo.createInstance<Person>();
 
 // Set values from JSON
 tomReflectionInfo.setValues(person, {
@@ -169,12 +167,32 @@ for reflection at runtime.
 ### Create Empty Instance
 
 ```dart
-// Using type parameter
-final person = tomReflectionInfo.createInstance<Person>();
+// The type is known where you write the call
+final Person person = tomReflectionInfo.createInstance<Person>();
 
-// Using Type object
-final person = tomReflectionInfo.createInstance(Person);
+// The type is only known at runtime
+final Type someType = Person;
+final Object instance = tomReflectionInfo.createInstance(someType);
 ```
+
+`createInstance` names the type twice over, and the two are not the same
+question. The **positional** says *what to build*; the **type argument** says
+*what to call the result*, and is applied as a cast to whatever the positional
+produced. Each defaults to the other, so most calls pass only one.
+
+Passing only the positional means there is nothing for `T` to be inferred from,
+so it falls back to its bound and you get an `Object` — the instance is of the
+requested class, but the static type is not. Give both when the runtime `Type`
+is the thing you have and a supertype is the thing you want back:
+
+```dart
+// Builds `someType`, hands it back typed as its supertype
+final Person person = tomReflectionInfo.createInstance<Person>(someType);
+```
+
+Because the two are independent until the cast, a positional that is not a `T`
+is not caught by the compiler. It fails when the cast does, reported as
+`reflector.instance_creation.failed`.
 
 ### Create from JSON
 
@@ -582,13 +600,21 @@ This prints:
 The system throws `TomReflectorException` for reflection errors:
 
 ```dart
+// No @tomReflector, so the builder generated no mirror data for it
+class NotAnnotated {}
+
 try {
-  final instance = tomReflectionInfo.createInstance<UnknownClass>();
+  tomReflectionInfo.createInstance<NotAnnotated>();
 } on TomReflectorException catch (e) {
-  print('Error key: ${e.key}');
-  print('Message: ${e.defaultUserMessage}');
+  print('Error key: ${e.key}'); // reflector.instance_creation.failed
+  print('Message: ${e.defaultUserMessage}'); // names NotAnnotated
 }
 ```
+
+`createInstance` wraps everything that goes wrong inside it, so the class being
+unreflectable arrives under the same key as a class that reflects but has no
+usable default constructor. The type name in the message is what tells the two
+apart.
 
 ### Common Error Keys
 
@@ -717,6 +743,7 @@ the field keeps its previous content — it is never left cleared, truncated, or
 half-populated.
 
 ```dart
+// Team declares `List<TeamMember> members = []`; TeamMember declares `String name`
 final team = Team()..members.add(TeamMember()..name = 'Old');
 
 try {
@@ -743,6 +770,7 @@ and the well-typed elements keep working, a shallow check after deserialization
 reports success:
 
 ```dart
+// ListHolder declares `List<int> intList = []`
 final holder = ListHolder()..intList = [7, 8];
 
 try {

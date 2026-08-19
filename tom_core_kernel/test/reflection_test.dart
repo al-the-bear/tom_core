@@ -376,6 +376,50 @@ void main() {
       expect(person.active, false);
       expect(person.salary, 0.0);
     });
+
+    // `createInstance<T>([Type? type])` takes the type twice over, and the two
+    // are not the same question: the positional says *what to build*, the type
+    // argument says *what to call the result*. They default to each other, and
+    // documenting them as interchangeable is what produced a Quick Start that
+    // named a class it never declared.
+    //
+    // The positional exists for the case where the type is only known at
+    // runtime — `server_connection` picks a response type out of a map — and
+    // there the type argument cannot be written, so it infers to the bound.
+
+    test('the positional selects the class when there is no type argument', () {
+      // Statically this is an `Object`: `T` is not inferred from the
+      // positional, so it falls to the bound. The built object is still a
+      // SimplePerson, which is the whole point of passing the Type.
+      final Object person = tomReflectionInfo.createInstance(SimplePerson);
+      expect(person, isA<SimplePerson>());
+      expect((person as SimplePerson).age, 0);
+    });
+
+    test('the type argument is the cast applied to what the positional built', () {
+      // A supertype is therefore accepted — the cast succeeds — which is the
+      // only reason to pass both.
+      final Object person = tomReflectionInfo.createInstance<Object>(
+        SimplePerson,
+      );
+      expect(person, isA<SimplePerson>());
+    });
+
+    test('a positional that is not a T fails as an instance-creation error', () {
+      // The mismatch is not caught statically — the two parameters are
+      // unrelated until the cast — so it surfaces at runtime, wrapped like any
+      // other construction failure rather than as a bare CastError.
+      expect(
+        () => tomReflectionInfo.createInstance<SimplePerson>(Address),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.instance_creation.failed',
+          ),
+        ),
+      );
+    });
   });
 
   group('tomReflectionInfo.setValues - Primitives', () {
@@ -2197,14 +2241,26 @@ void main() {
     test('createInstance keeps reporting its own failure', () {
       // Already wrapped before this change; asserted so that routing it
       // through the shared boundary later cannot quietly drop the type name.
+      //
+      // The key is pinned as well as the message: `createInstance` wraps
+      // everything, so an unreflectable class and a class with no usable
+      // default constructor arrive under the same key, and the prose doc's
+      // Error Handling example names it. Asserting only the exception type
+      // would let that name drift — the failure mode tcinc188 found.
       expect(
         () => tomReflectionInfo.createInstance<NotReflectedHolder>(),
         throwsA(
-          isA<TomReflectorException>().having(
-            (e) => e.defaultUserMessage,
-            'message',
-            contains('NotReflectedHolder'),
-          ),
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.instance_creation.failed',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('NotReflectedHolder'),
+              ),
         ),
       );
     });

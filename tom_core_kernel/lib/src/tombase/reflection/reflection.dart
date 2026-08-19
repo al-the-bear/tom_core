@@ -867,19 +867,35 @@ class TomReflectionInfo {
     );
   }
 
-  /// Creates a new instance of type [T] using its default constructor.
+  /// Creates a new instance using its default constructor.
   ///
-  /// The type must be annotated with `@tomReflector` and have a default
+  /// The class must be annotated with `@tomReflector` and have a default
   /// (no-argument) constructor.
   ///
-  /// Example:
+  /// The type is named twice over, and the two are not the same question:
+  /// [type] says *what to build*, [T] says *what to call the result* and is
+  /// applied to it as a cast. Each defaults to the other, so most calls pass
+  /// only one.
+  ///
   /// ```dart
+  /// // The type is known here; T carries it and the result is a Person.
   /// final person = tomReflectionInfo.createInstance<Person>();
-  /// // Or with explicit type:
-  /// final person = tomReflectionInfo.createInstance(Person);
+  ///
+  /// // Only a runtime Type is available. Nothing infers T, so it falls to its
+  /// // bound: the instance is a Person, but the static type is Object.
+  /// final instance = tomReflectionInfo.createInstance(someType);
+  ///
+  /// // Both: build someType, hand it back typed as a supertype it satisfies.
+  /// final person = tomReflectionInfo.createInstance<Person>(someType);
   /// ```
   ///
-  /// Throws [TomReflectorException] if instantiation fails.
+  /// Passing both is only worthwhile when they differ, and nothing checks that
+  /// they agree until the cast runs — a [type] that is not a [T] is not a
+  /// compile error.
+  ///
+  /// Throws [TomReflectorException] (`reflector.instance_creation.failed`) if
+  /// the class cannot be reflected or constructed, or if the result is not a
+  /// [T].
   T createInstance<T extends Object>([Type? type]) {
     try {
       return (tomReflector.reflectType(type ?? T) as ClassMirror).newInstance(
