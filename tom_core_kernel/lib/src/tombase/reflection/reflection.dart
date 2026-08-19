@@ -155,8 +155,10 @@ class TomReflectionInfo {
 
   /// Handlers for setting primitive Map types via reflection.
   ///
-  /// Maps type signatures to functions that set the value correctly,
-  /// handling necessary type casting for typed maps like `Map<String, int>`.
+  /// Maps type signatures to functions that set the value correctly, building
+  /// a checked map for typed targets like `Map<String, int>`. The two
+  /// unconstrained targets pass the source map through unchanged — there is no
+  /// element type for them to violate.
   static final Map<
     Type,
     void Function(InstanceMirror, MapEntry<String, dynamic>)
@@ -165,29 +167,28 @@ class TomReflectionInfo {
     Map<String, dynamic>: (im, e) => im.invokeSetter(e.key, e.value),
     Map<String, Object?>: (im, e) => im.invokeSetter(e.key, e.value),
     Map<String, Object>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, Object>()),
+        im.invokeSetter(e.key, _checkedMap<Object>(e)),
     Map<String, String>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, String>()),
+        im.invokeSetter(e.key, _checkedMap<String>(e)),
     Map<String, String?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, String?>()),
-    Map<String, int>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, int>()),
-    Map<String, int?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, int?>()),
+        im.invokeSetter(e.key, _checkedMap<String?>(e)),
+    Map<String, int>: (im, e) => im.invokeSetter(e.key, _checkedMap<int>(e)),
+    Map<String, int?>: (im, e) => im.invokeSetter(e.key, _checkedMap<int?>(e)),
     Map<String, double>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, double>()),
+        im.invokeSetter(e.key, _checkedMap<double>(e)),
     Map<String, double?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, double?>()),
-    Map<String, bool>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, bool>()),
+        im.invokeSetter(e.key, _checkedMap<double?>(e)),
+    Map<String, bool>: (im, e) => im.invokeSetter(e.key, _checkedMap<bool>(e)),
     Map<String, bool?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as Map).cast<String, bool?>()),
+        im.invokeSetter(e.key, _checkedMap<bool?>(e)),
   };
 
   /// Handlers for setting primitive List types via reflection.
   ///
-  /// Maps type signatures to functions that set the value correctly,
-  /// handling necessary type casting for typed lists like `List<int>`.
+  /// Maps type signatures to functions that set the value correctly, building
+  /// a checked list for typed targets like `List<int>`. The two unconstrained
+  /// targets pass the source list through unchanged — there is no element type
+  /// for them to violate.
   static final Map<
     Type,
     void Function(InstanceMirror, MapEntry<String, dynamic>)
@@ -195,24 +196,88 @@ class TomReflectionInfo {
   _primitiveListTypeHandlers = {
     List<Object?>: (im, e) => im.invokeSetter(e.key, e.value),
     List<dynamic>: (im, e) => im.invokeSetter(e.key, e.value),
-    List<Object>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<Object>()),
-    List<String>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<String>()),
-    List<String?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<String?>()),
-    List<int>: (im, e) => im.invokeSetter(e.key, (e.value as List).cast<int>()),
-    List<int?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<int?>()),
-    List<double>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<double>()),
-    List<double?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<double?>()),
-    List<bool>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<bool>()),
-    List<bool?>: (im, e) =>
-        im.invokeSetter(e.key, (e.value as List).cast<bool?>()),
+    List<Object>: (im, e) => im.invokeSetter(e.key, _checkedList<Object>(e)),
+    List<String>: (im, e) => im.invokeSetter(e.key, _checkedList<String>(e)),
+    List<String?>: (im, e) => im.invokeSetter(e.key, _checkedList<String?>(e)),
+    List<int>: (im, e) => im.invokeSetter(e.key, _checkedList<int>(e)),
+    List<int?>: (im, e) => im.invokeSetter(e.key, _checkedList<int?>(e)),
+    List<double>: (im, e) => im.invokeSetter(e.key, _checkedList<double>(e)),
+    List<double?>: (im, e) => im.invokeSetter(e.key, _checkedList<double?>(e)),
+    List<bool>: (im, e) => im.invokeSetter(e.key, _checkedList<bool>(e)),
+    List<bool?>: (im, e) => im.invokeSetter(e.key, _checkedList<bool?>(e)),
   };
+
+  /// Builds a `List<T>` from [entry]'s value, checking every element up front.
+  ///
+  /// Why not `.cast<T>()`: a cast view is *lazy*. It accepts a list holding an
+  /// element of the wrong type without complaint and throws a bare `TypeError`
+  /// only when that element is read — in another layer, another method, quite
+  /// possibly another isolate, with a stack trace pointing at the consumer
+  /// rather than at the payload that was wrong, and carrying neither the field
+  /// name nor the source value. Worse, `length` and every well-typed element
+  /// keep working, so a shallow post-deserialization check reports success.
+  ///
+  /// One pass up front costs a copy and moves the failure to the only place
+  /// that still knows the field, the position and the offending value. It also
+  /// makes the assignment atomic for primitive collections, which is what the
+  /// module already promises for collections of annotated objects.
+  static List<T> _checkedList<T>(MapEntry<String, dynamic> entry) {
+    final source = entry.value as List;
+    final result = <T>[];
+    for (var i = 0; i < source.length; i++) {
+      result.add(_checkedElement<T>(entry.key, "[$i]", source[i]));
+    }
+    return result;
+  }
+
+  /// Builds a `Map<String, T>` from [entry]'s value, checking it up front.
+  ///
+  /// The map counterpart of [_checkedList], which explains why a lazy `cast`
+  /// will not do. Keys are checked as well as values: `cast<String, T>()`
+  /// defers those too, and a non-`String` key reaches here from any caller
+  /// that built its map in Dart rather than decoding it from JSON.
+  static Map<String, T> _checkedMap<T>(MapEntry<String, dynamic> entry) {
+    final source = entry.value as Map;
+    final result = <String, T>{};
+    for (var sourceEntry in source.entries) {
+      final key = sourceEntry.key;
+      if (key is! String) {
+        throw TomReflectorException(
+          "reflection.set.map_key_type_mismatch",
+          "TomReflectionInfo.setValues: map field '${entry.key}' expects "
+              "String keys but found the key '$key' of type "
+              "${key.runtimeType}",
+          parameters: {"key": entry.key},
+          autoLog: true,
+        );
+      }
+      final at = "['$key']";
+      result[key] = _checkedElement<T>(entry.key, at, sourceEntry.value);
+    }
+    return result;
+  }
+
+  /// Returns [value] as a `T`, or reports why it is not one.
+  ///
+  /// [field] is the field being deserialized and [at] its position within the
+  /// collection (`[2]`, `['name']`), so the message identifies the one element
+  /// that is wrong rather than the whole payload.
+  static T _checkedElement<T>(String field, String at, Object? value) {
+    if (value is T) return value;
+    // Widened for the same reason the scalar path widens (see
+    // [_trySetWidenedNumericValue]): JSON and `key=value` command lines have
+    // no int/double distinction, so `[1, 2]` for a `List<double>` is a pair of
+    // whole-number doubles, not a type error. Only reachable when `value is T`
+    // already said no, so this cannot intercept an int bound for an int.
+    if (value is int && 0.0 is T) return value.toDouble() as T;
+    throw TomReflectorException(
+      "reflection.set.collection_element_type_mismatch",
+      "TomReflectionInfo.setValues: '$field$at' expects $T but the value is "
+          "${value == null ? 'null' : "'$value'"} of type ${value.runtimeType}",
+      parameters: {"key": field, "at": at},
+      autoLog: true,
+    );
+  }
 
   /// Regular expression to extract element types from generic type strings.
   ///

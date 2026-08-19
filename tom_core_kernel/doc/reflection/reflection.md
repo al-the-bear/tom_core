@@ -286,6 +286,9 @@ sets a `double rate` to `2.0`. The converse is deliberately absent: a `double`
 for an `int` field is an error, because narrowing would need a rounding policy
 and truncating `2.5` loses data.
 
+The same widening applies inside collections, for the same reason:
+`{"rates": [1, 2.5]}` sets a `List<double>` to `[1.0, 2.5]`.
+
 ### DateTime Types
 
 The following DateTime types are automatically serialized/deserialized:
@@ -486,6 +489,8 @@ try {
 | `reflection.set.datetime_must_be_filled_from_string_for_list` | Non-String element in a `List<DateTime>`-style field |
 | `reflection.set.map_value_materialization_failed` | A value could not be materialized into a `Map<String, T>` field |
 | `reflection.set.list_element_materialization_failed` | An element could not be materialized into a `List<T>` field |
+| `reflection.set.collection_element_type_mismatch` | An element of a typed primitive collection is not of the field's element type |
+| `reflection.set.map_key_type_mismatch` | A `Map<String, T>` field was given a key that is not a `String` |
 
 ### Atomic Collection Updates
 
@@ -511,6 +516,33 @@ try {
 print(team.members.length); // 1 — the original content is intact
 print(team.members[0].name); // 'Old'
 ```
+
+This covers collections of **primitives** as well. A typed primitive collection
+is built and checked element by element, never handed to the field as a lazy
+`cast<T>()` view — a view accepts the wrong element without complaint and throws
+a bare `TypeError` when that element is eventually *read*, in whichever layer
+happens to touch it, with no mention of the field it came from. Since `length`
+and the well-typed elements keep working, a shallow check after deserialization
+reports success:
+
+```dart
+final holder = ListHolder()..intList = [7, 8];
+
+try {
+  tomReflectionInfo.setValues(holder, {
+    'intList': [1, 'x'],
+  });
+} on TomReflectorException catch (e) {
+  print(e.key); // reflection.set.collection_element_type_mismatch
+  // "TomReflectionInfo.setValues: 'intList[1]' expects int but the value is
+  //  'x' of type String"
+}
+
+print(holder.intList); // [7, 8] — the original content is intact
+```
+
+The message names the field, the position (`[1]`, or `['key']` for a map) and
+the offending value, at the one point that still knows all three.
 
 ### Ambiguous Type Names
 

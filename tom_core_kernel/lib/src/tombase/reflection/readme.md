@@ -57,6 +57,13 @@ Collection fields are deserialized **atomically**: a `List<T>` or
 element the target type rejects throws a `TomReflectorException` and leaves the
 field's previous content intact.
 
+This holds for collections of primitives as much as for collections of
+annotated objects — every element is checked at `setValues`, and the exception
+names the field, the position and the offending value. The one deliberate
+exception is a whole-number `int` bound for a `double` collection: JSON has no
+int/double distinction, so `[1, 2]` for a `List<double>` is widened rather than
+refused, exactly as it is for a scalar `double` field.
+
 ---
 
 Part of [`tom_core_kernel`](../../../../README.md) — see the package README for

@@ -1659,4 +1659,168 @@ void main() {
       });
     });
   });
+
+  group('a typed primitive collection is checked before it is assigned', () {
+    // These assert on the *offending element*, not on length. A lazy
+    // `.cast<T>()` passes a length assertion and every well-typed element,
+    // and only fails when the bad one is read — so a test that stops at
+    // `length` cannot tell the two implementations apart.
+
+    test('a wrong-typed list element is refused at setValues', () {
+      final holder = ListHolder();
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'intList': [1, 'x', 3],
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.collection_element_type_mismatch',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(
+                  contains('intList'),
+                  contains('[1]'),
+                  contains("'x'"),
+                  contains('String'),
+                  contains('int'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('a refused list element leaves the field as it was', () {
+      final holder = ListHolder()..intList = [7, 8];
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'intList': [1, 'x'],
+        }),
+        throwsA(isA<TomReflectorException>()),
+      );
+      expect(holder.intList, [7, 8]);
+    });
+
+    test('null in a non-nullable list is refused', () {
+      // The commonest wire accident: a nullable column serialized straight
+      // into a non-nullable field. `cast<int>()` hides it until a read.
+      final holder = ListHolder();
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'stringList': ['a', null],
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            allOf(contains('stringList'), contains('[1]'), contains('null')),
+          ),
+        ),
+      );
+      expect(holder.stringList, isNull);
+    });
+
+    test('a wrong-typed map value is refused at setValues', () {
+      final holder = MapHolder();
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'intMap': {'a': 1, 'b': 'x'},
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.collection_element_type_mismatch',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(
+                  contains('intMap'),
+                  contains("['b']"),
+                  contains("'x'"),
+                  contains('String'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('a refused map value leaves the field as it was', () {
+      final holder = MapHolder()..intMap = {'kept': 9};
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'intMap': {'a': 'x'},
+        }),
+        throwsA(isA<TomReflectorException>()),
+      );
+      expect(holder.intMap, {'kept': 9});
+    });
+
+    test('a non-String map key is refused at setValues', () {
+      final holder = MapHolder();
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'intMap': {1: 2},
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.map_key_type_mismatch',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(contains('intMap'), contains('int')),
+              ),
+        ),
+      );
+    });
+
+    test('whole-number JSON numbers widen onto a double collection', () {
+      // Same reason the scalar path widens: `{"rates": [1, 2]}` has no way to
+      // say "double". Refusing it would make a whole-number double
+      // unrepresentable on the wire — see _trySetWidenedNumericValue.
+      final listHolder = ListHolder();
+      tomReflectionInfo.setValues(listHolder, {
+        'doubleList': [1, 2.5],
+      });
+      expect(listHolder.doubleList, [1.0, 2.5]);
+
+      final mapHolder = MapHolder();
+      tomReflectionInfo.setValues(mapHolder, {
+        'doubleMap': {'a': 1, 'b': 2.5},
+      });
+      expect(mapHolder.doubleMap, {'a': 1.0, 'b': 2.5});
+    });
+
+    test('a well-typed collection still arrives element for element', () {
+      // The control: the check must not reject anything that used to work.
+      final holder = ListHolder();
+      tomReflectionInfo.setValues(holder, {
+        'stringList': ['a', 'b'],
+        'intList': [1, 2],
+        'boolList': [true, false],
+        'dynamicList': [1, 'two', null],
+      });
+
+      expect(holder.stringList, ['a', 'b']);
+      expect(holder.intList, [1, 2]);
+      expect(holder.boolList, [true, false]);
+      expect(holder.dynamicList, [1, 'two', null]);
+    });
+  });
 }
