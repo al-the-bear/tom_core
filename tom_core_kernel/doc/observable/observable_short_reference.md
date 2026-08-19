@@ -28,7 +28,7 @@ wins and this document has a bug.
 The foundation of the observer pattern. Any class that needs to notify others of changes should extend `TomObservable`.
 
 **Key Features:**
-- Maintains a list of observers using `WeakReference`, so the observable never
+- Holds its observers by `WeakReference`, so the observable never
   keeps a dead observer alive — and correspondingly **never keeps yours alive
   either: you must retain every observer you register**, or it is collected and
   silently stops firing (see

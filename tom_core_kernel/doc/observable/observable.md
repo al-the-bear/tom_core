@@ -180,7 +180,7 @@ class Counter extends TomObservable {
 
 | Method | Description |
 |--------|-------------|
-| `void addObserver(TomObserver observer)` | Registers an observer (as a `WeakReference`); a no-op if it is already registered |
+| `void addObserver(TomObserver observer)` | Registers an observer (as a `WeakReference`); a no-op if the *same object* is already registered. Keyed on identity, not `==`, and O(1) whatever the observer count |
 | `void removeObserver(TomObserver observer)` | Unregisters an observer; a no-op if it is not registered |
 | `void notifyObservers([dynamic message])` | Notifies every live observer, or marks the object dirty if muted. Also prunes references whose observer has been collected. `message` is accepted but unused — reserved for future context |
 | `T batch<T>(T Function() body)` | Runs `body` with notifications suppressed, releasing even if it throws; returns the body's result |
@@ -204,25 +204,25 @@ The notifications simply stop, at a point determined by when the collector
 happens to run, and a program that was working keeps running with one of its
 observers no longer connected.
 
-The rule follows from `addObserver`, which stores a `WeakReference` rather than
-the observer itself. Written out with the private helper inlined, it is:
+The rule follows from `addObserver`, which registers a `WeakReference` rather
+than the observer itself:
 
 ```dart
-final List<WeakReference<TomObserver>> observers = [];
-
 void addObserver(TomObserver observer) {
-  final alreadyRegistered =
-      observers.any((ref) => identical(ref.target, observer));
-  if (!alreadyRegistered) {
-    observers.add(WeakReference(observer)); // weak, not strong
-  }
+  registrations.add(WeakReference(observer)); // weak, not strong
 }
 ```
 
+Registration is keyed on the **identity** of the observer, so registering the
+same object twice attaches it once, while two observers that declare themselves
+`==` are still two observers and both are notified. The lookup is O(1): a
+`TomList` registers itself with every element it holds, so attaching must not
+cost more as the collection grows.
+
 `notifyObservers` skips references whose target has been collected and prunes
-them from the list. That is the "automatic cleanup" this design buys — it
-prevents the observable from keeping dead observers alive. It is not a promise
-that your observer will still be there.
+them. That is the "automatic cleanup" this design buys — it prevents the
+observable from keeping dead observers alive. It is not a promise that your
+observer will still be there.
 
 ##### The pattern
 
@@ -1325,7 +1325,7 @@ rows.addLifecycleListener(rowFormSync);
 rows.removeLifecycleListener(rowFormSync);
 ```
 
-Both `resetWith` and `notifyObservers` snapshot their listener/observer lists
+Both `resetWith` and `notifyObservers` snapshot their listeners/observers
 before iterating, so a listener or observer callback may itself add or remove
 listeners/observers without triggering a `ConcurrentModificationError`.
 

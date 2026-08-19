@@ -203,6 +203,46 @@ class TestObserver<T extends TomObservable> implements TomObserver<T> {
   }
 }
 
+/// An observer that declares itself equal to every other instance of its kind.
+///
+/// Registration keys on *identity*, not on `==`, so two of these are two
+/// observers however equal they claim to be. Kept as a distinct type so the
+/// pathological equality cannot leak into the tests that use [TestObserver].
+class AlwaysEqualObserver extends TestObserver<TomObservable> {
+  @override
+  bool operator ==(Object other) => other is AlwaysEqualObserver;
+
+  @override
+  int get hashCode => 0;
+}
+
+/// Registers an observer with [observable] and returns a weak handle on it,
+/// keeping no strong reference of its own.
+///
+/// A local variable in a test body can stay reachable from the frame for the
+/// rest of the test, which would defeat the point; going through a function
+/// that returns leaves the observable's own weak reference as the only one.
+WeakReference<TomObserver> registerTransientObserver(TomObservable observable) {
+  final observer = TestObserver<TomObservable>();
+  observable.addObserver(observer);
+  return WeakReference(observer);
+}
+
+/// Allocates until [probe]'s target has been collected, or a budget runs out.
+///
+/// The VM offers no way to demand a collection, so this makes one likely by
+/// producing garbage, and reports whether it worked. A caller must treat
+/// `false` as "could not observe", not as a failure — see the pruning test.
+Future<bool> collectGarbageUntilCleared(WeakReference<Object> probe) async {
+  final sink = <List<int>>[];
+  for (var round = 0; round < 60 && probe.target != null; round++) {
+    sink.add(List.filled(2000000, round));
+    if (sink.length > 3) sink.removeAt(0);
+    await Future<void>.delayed(Duration.zero);
+  }
+  return probe.target == null;
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -313,6 +353,168 @@ void main() {
 
       observable.notifyObservers();
       expect(observer.notifyCount, equals(1)); // Should only notify once
+    });
+  });
+
+  group('observer registration scales linearly', () {
+    // `addObserver` used to scan the whole observer list looking for an
+    // existing weak reference before appending, so attaching n observers cost
+    // O(n^2) comparisons. That is invisible for the handful of observers a
+    // typical cell carries and very visible for a `TomList`, which registers
+    // itself with every element: a thousand-element `resetWith` paid the cost
+    // in full.
+    //
+    // An algorithmic class is only observable from outside as a shape, so this
+    // asserts a *ratio* rather than a duration — the machine cancels out.
+    // Quadratic growth multiplies the time by ~16 when the count quadruples;
+    // linear growth multiplies it by ~4. The threshold sits between the two,
+    // well clear of both.
+
+    /// Microseconds spent registering [count] fresh observers, best of five
+    /// runs so one GC pause cannot decide the result. The observers are built
+    /// before the clock starts: allocation is not what is being measured.
+    int registrationMicros(int count) {
+      var best = -1;
+      for (var run = 0; run < 5; run++) {
+        final observable = TomObservable();
+        final observers =
+            List.generate(count, (_) => TestObserver<TomObservable>());
+        final stopwatch = Stopwatch()..start();
+        for (final observer in observers) {
+          observable.addObserver(observer);
+        }
+        stopwatch.stop();
+        final micros = stopwatch.elapsedMicroseconds;
+        if (best < 0 || micros < best) best = micros;
+      }
+      return best;
+    }
+
+    test('registering 10,000 observers costs ~4x registering 2,500, not ~16x',
+        () {
+      registrationMicros(500); // warm the JIT before the readings that count
+
+      final small = registrationMicros(2500);
+      final large = registrationMicros(10000);
+
+      // A zero reading would make the ratio meaningless; one microsecond is
+      // below anything measurable here, so floor the divisor.
+      final ratio = large / (small < 1 ? 1 : small);
+
+      expect(ratio, lessThan(8.0),
+          reason: 'quadrupling the observer count multiplied the registration '
+              'time by ${ratio.toStringAsFixed(1)}x '
+              '(${small}us for 2500 -> ${large}us for 10000). Linear growth is '
+              '~4x; anything approaching 16x means the registration path is '
+              'still scanning the observer list.');
+    });
+
+    test('every one of 10,000 registered observers is notified exactly once',
+        () {
+      final observable = TomObservable();
+      final observers =
+          List.generate(10000, (_) => TestObserver<TomObservable>());
+      for (final observer in observers) {
+        observable.addObserver(observer);
+      }
+
+      observable.notifyObservers();
+
+      expect(observers.where((o) => o.notifyCount != 1), isEmpty);
+    });
+
+    test('re-registering all 10,000 attaches none of them a second time', () {
+      final observable = TomObservable();
+      final observers =
+          List.generate(10000, (_) => TestObserver<TomObservable>());
+      for (final observer in observers) {
+        observable.addObserver(observer);
+      }
+      for (final observer in observers) {
+        observable.addObserver(observer); // every one a duplicate
+      }
+
+      observable.notifyObservers();
+
+      expect(observers.where((o) => o.notifyCount != 1), isEmpty);
+    });
+
+    test('observers are notified in registration order', () {
+      final observable = TomObservable();
+      final order = <int>[];
+      final observers = List.generate(
+          200,
+          (index) => TomFunctionObserver<TomObservable>((_) {
+                order.add(index);
+              }));
+      for (final observer in observers) {
+        observable.addObserver(observer);
+      }
+
+      observable.notifyObservers();
+
+      expect(order, equals(List.generate(200, (index) => index)));
+    });
+
+    test('registration keys on identity, not on ==', () {
+      // Two observers that declare themselves equal are still two observers.
+      final observable = TomObservable();
+      final first = AlwaysEqualObserver();
+      final second = AlwaysEqualObserver();
+      expect(first, equals(second), reason: 'precondition for this test');
+
+      observable.addObserver(first);
+      observable.addObserver(second);
+      observable.notifyObservers();
+
+      expect(first.notifyCount, equals(1));
+      expect(second.notifyCount, equals(1));
+    });
+
+    test('removing one of two ==-equal observers leaves the other attached',
+        () {
+      final observable = TomObservable();
+      final kept = AlwaysEqualObserver();
+      final dropped = AlwaysEqualObserver();
+      observable.addObserver(kept);
+      observable.addObserver(dropped);
+
+      observable.removeObserver(dropped);
+      observable.notifyObservers();
+
+      expect(kept.notifyCount, equals(1));
+      expect(dropped.notifyCount, equals(0));
+    });
+
+    test('collecting registered observers does not disturb the survivors',
+        () async {
+      // The pruning path is the one place where a handle has to be found in
+      // the set *after* its target is gone, so it is worth exercising even
+      // though the collector cannot be commanded.
+      final observable = TomObservable();
+      final retained = TestObserver<TomObservable>();
+      observable.addObserver(retained);
+
+      final probe = registerTransientObserver(observable);
+      for (var i = 0; i < 500; i++) {
+        registerTransientObserver(observable);
+      }
+
+      if (!await collectGarbageUntilCleared(probe)) {
+        markTestSkipped('the VM did not collect the dropped observers, so '
+            'there is nothing here to observe');
+        return;
+      }
+
+      observable.notifyObservers(); // sees the dead handles and prunes them
+      expect(retained.notifyCount, equals(1));
+
+      final late = TestObserver<TomObservable>();
+      observable.addObserver(late);
+      observable.notifyObservers();
+
+      expect(late.notifyCount, equals(1));
+      expect(retained.notifyCount, equals(2));
     });
   });
 

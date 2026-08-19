@@ -51,7 +51,16 @@ class TomObservable {
   /// removed mid-batch was muted here and still is released here.
   final List<List<TomObservable>> _cascades = [];
 
-  final List<WeakReference<TomObserver>> _observers = [];
+  /// The registered observers, in registration order.
+  ///
+  /// A set rather than a list because [addObserver] must reject a duplicate,
+  /// and looking one up by walking the collection made attaching *n* observers
+  /// cost O(n^2) comparisons — a bill a [TomList] pays in full, since it
+  /// registers itself with every element it holds. [_ObserverRef] carries the
+  /// identity hash of its target, so membership is an O(1) lookup. The default
+  /// [Set] is insertion-ordered, so observers are still notified in the order
+  /// they registered.
+  final Set<_ObserverRef> _observers = {};
 
   /// The observables that [mute] cascades to.
   ///
@@ -161,18 +170,6 @@ class TomObservable {
     }
   }
 
-  /// Finds the weak reference wrapper for the given observer.
-  ///
-  /// Returns `null` if the observer is not registered.
-  WeakReference<TomObserver>? _getObserverReference(TomObserver observer) {
-    for (var observerReference in _observers) {
-      if (identical(observer, observerReference.target)) {
-        return observerReference;
-      }
-    }
-    return null;
-  }
-
   /// Registers an observer to receive change notifications.
   ///
   /// The observer is stored as a [WeakReference], so it will be automatically
@@ -180,20 +177,17 @@ class TomObservable {
   /// observers that are no longer in use.
   ///
   /// If the observer is already registered, this method does nothing.
+  /// "Already registered" means *the same object*, not an equal one: an
+  /// observer that overrides `==` is still distinct from its equals.
   void addObserver(TomObserver observer) {
-    if (_getObserverReference(observer) == null) {
-      _observers.add(WeakReference(observer));
-    }
+    _observers.add(_ObserverRef(observer));
   }
 
   /// Unregisters an observer so it no longer receives change notifications.
   ///
   /// If the observer is not registered, this method does nothing.
   void removeObserver(TomObserver observer) {
-    var ref = _getObserverReference(observer);
-    if (ref != null) {
-      _observers.remove(ref);
-    }
+    _observers.remove(_ObserverRef(observer));
   }
 
   /// Notifies all registered observers of a change.
@@ -213,10 +207,10 @@ class TomObservable {
       return;
     }
 
-    // Snapshot the observer list before iterating so that add/remove calls
-    // inside onNotify callbacks (e.g. from TomMultiObservableBuilder disposing
-    // or a form save propagating through nested TomClass / TomList chains)
-    // cannot cause a ConcurrentModificationError on _observers.
+    // Snapshot the observers before iterating so that add/remove calls inside
+    // onNotify callbacks (e.g. from TomMultiObservableBuilder disposing or a
+    // form save propagating through nested TomClass / TomList chains) cannot
+    // cause a ConcurrentModificationError on _observers.
     final snapshot = List.of(_observers);
     bool hasDeadReferences = false;
 
@@ -229,9 +223,9 @@ class TomObservable {
       }
     }
 
-    // Clean up dead weak references from the live list (snapshot may have
-    // captured stale entries; the live list may also have grown since then,
-    // so removeWhere only affects entries that are still dead).
+    // Clean up dead weak references from the live set (the snapshot may have
+    // captured stale entries; the live set may also have grown since then, so
+    // removeWhere only affects entries that are still dead).
     if (hasDeadReferences) {
       _observers.removeWhere((ref) => ref.target == null);
     }
@@ -263,6 +257,45 @@ class TomObservable {
     var observer = TomFunctionObserver<TomObservable>(callback);
     addObserver(observer);
     return observer;
+  }
+}
+
+/// A weakly-held, identity-keyed handle on one registered [TomObserver].
+///
+/// Holding the observer through a [WeakReference] is the whole point of the
+/// registry — the observable must not keep its observers alive. The identity
+/// hash is captured at construction rather than computed on demand, so the
+/// handle keeps the same hash after its target has been collected and stays
+/// findable in the set; a dead entry that could not be found again could not
+/// be pruned either.
+///
+/// Equality is *identity of the target*, deliberately. It is what the linear
+/// scan this replaced compared on, and it is the behaviour that matters: two
+/// observers that declare themselves `==` are still two observers, and both
+/// get notified.
+class _ObserverRef {
+  final WeakReference<TomObserver> _reference;
+  final int _identityHash;
+
+  _ObserverRef(TomObserver observer)
+      : _reference = WeakReference(observer),
+        _identityHash = identityHashCode(observer);
+
+  /// The observer, or `null` once it has been garbage collected.
+  TomObserver? get target => _reference.target;
+
+  @override
+  int get hashCode => _identityHash;
+
+  @override
+  bool operator ==(Object other) {
+    // A handle is always equal to itself — including after its target has
+    // been collected, which is what lets pruning find and remove it. Two
+    // *different* dead handles are not equal: they were two registrations.
+    if (identical(this, other)) return true;
+    if (other is! _ObserverRef) return false;
+    final observer = target;
+    return observer != null && identical(observer, other.target);
   }
 }
 

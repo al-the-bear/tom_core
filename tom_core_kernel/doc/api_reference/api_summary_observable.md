@@ -173,9 +173,9 @@ Supports muting to defer notifications during batch updates.
 | `batchSelf` | `T batchSelf<T>(T Function() body)` | Like `batch`, but mutes this observable only — `muteCascadeTargets` stay audible. For container mutators consolidating their own notifications. |
 | `mute` | `void mute()` | Mutes notifications and cascades to `muteCascadeTargets`; subsequent `notifyObservers` calls mark the observable dirty instead of notifying. Nests — each call needs one `unmute`. |
 | `unmute` | `void unmute()` | Releases one `mute`, first releasing the targets that mute silenced. Notifies once when the last mute is released and the observable is dirty. Releasing more often than muting is a no-op. |
-| `addObserver` | `void addObserver(TomObserver observer)` | Registers `observer` (as a weak reference); a no-op if already registered. |
-| `removeObserver` | `void removeObserver(TomObserver observer)` | Unregisters `observer`; a no-op if not registered. |
-| `notifyObservers` | `void notifyObservers([dynamic message])` | Notifies all live observers (or marks dirty if muted) and prunes dead weak references. `message` is reserved. |
+| `addObserver` | `void addObserver(TomObserver observer)` | Registers `observer` (as a weak reference); a no-op if the same object is already registered. Registration is keyed on **identity**, not `==`, so two observers that declare themselves equal are two registrations and both are notified. O(1) whatever the observer count. |
+| `removeObserver` | `void removeObserver(TomObserver observer)` | Unregisters `observer`; a no-op if not registered. Identity-keyed like `addObserver`, and likewise O(1). |
+| `notifyObservers` | `void notifyObservers([dynamic message])` | Notifies all live observers **in registration order** (or marks dirty if muted) and prunes dead weak references. `message` is reserved. |
 
 #### Operators
 
