@@ -250,6 +250,10 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
 
   /// Writes the already-encoded preference named by [request].
   ///
+  /// The key travels in the body and nowhere else — the write endpoint's URI
+  /// is the bare collection — so no `parameters` are passed here, and there is
+  /// no path key that could name a different preference than the body does.
+  ///
   /// Throws a [TomUserPreferenceKeyException] when the request's key is not a
   /// legal key. A DTO is checked here rather than in its constructor because
   /// the DTOs are instantiated blank and filled by reflection — a constructor
@@ -261,7 +265,6 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     TomUserPreferenceKeys.validate(request.key);
     final response = await _call(
       tomUserPreferencesApi[tomUserPreferencesWriteEndpointId],
-      parameters: {'key': request.key},
       body: tomReflectionInfo.convertToJsonString(request),
     );
     _requireSuccess(response, key: request.key);

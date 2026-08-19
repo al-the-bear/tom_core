@@ -205,7 +205,7 @@ carries an inline access annotation: the contract declares
 | ------ | -------- | ----------- |
 | `listPreferences()` | `listPreferences` — `GET /preferences` | Every preference of the caller. |
 | `readPreference(TomUserPreferenceKeyRequest request)` | `readPreference` — `GET /preferences/{key}` | One preference; throws `TomEndpointHandlerException('preferences.not_found')` when absent, and is served under `TomUserPreferencesErrorHandler` so that miss reaches the client as a `404`. Reporting a miss distinctly is safe because the scope makes "not yours" indistinguishable from "not there". |
-| `writePreference(TomUserPreferenceWriteRequest request)` | `writePreference` — `PUT /preferences/{key}` | Validates the encoded pair, then upserts. |
+| `writePreference(TomUserPreferenceWriteRequest request)` | `writePreference` — `PUT /preferences` | Validates the encoded pair, then upserts under `request.key`. The URI carries no `{key}`: the request already has one, and a second statement of the key would be one the body could contradict. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `deletePreference` — `DELETE /preferences/{key}` | Deletes; the absent case is not an error. |
 
 All four resolve the store per call and throw

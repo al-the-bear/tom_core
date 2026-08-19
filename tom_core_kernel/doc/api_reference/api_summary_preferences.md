@@ -167,6 +167,10 @@ and fills it field by field.
 The request for writing one preference — the DTO's three value fields without
 the timestamp, because when a preference was written is the server's answer.
 
+This request is the write's only statement of which preference it means: the
+write endpoint's URI carries no `{key}`, so `key` is read from the body and
+nothing can contradict it.
+
 #### Constructors
 
 ```dart
@@ -228,7 +232,7 @@ annotation because the server-side annotations live in `tom_core_server`.
 | ------ | ------- | ----------- |
 | `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the calling principal. |
 | `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | The caller's preference under `request.key`. |
-| `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | Writes one preference of the caller, replacing any previous value. |
+| `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | Writes one preference of the caller, replacing any previous value. The written key is `request.key` and only that — the endpoint is a `PUT` at the collection, so the URL names no key. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | Deletes the caller's preference under `request.key`. |
 
 ### TomUserPreferenceCodec
@@ -343,11 +347,16 @@ anonymous preference, because a preference is per principal.
 | ----------- | ------ | --- | ------------ | ----------- |
 | `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` |
 | `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` |
-| `writePreference` | PUT | `/{key}` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
+| `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
 | `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `Object?` |
 
-The by-key endpoints map the `{key}` path segment onto the request DTO's `key`
-field. **Which** rows a caller reaches is not an endpoint-level question and is
+Read and delete map the `{key}` path segment onto the request DTO's `key`
+field. The write does not: its request carries a `key` field of its own, so the
+endpoint is a `PUT` at the collection with no capture and no
+`urlParameterMapping` — the key is stated once, in the body, and a URL and a
+body naming different preferences is not expressible.
+
+**Which** rows a caller reaches is not an endpoint-level question and is
 not decided by this API: the server's entity declares
 `@TomDbScope(field: 'principal_id')`, so the repository confines every statement
 to the caller. No URI carries a principal parameter, because there is nothing to

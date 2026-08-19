@@ -147,8 +147,9 @@ void main() {
       // Read from the shipped class's own annotations, not from a copy built
       // here: the handler only matters if it is the one the pipeline finds, and
       // an annotation restated in the test would pass while the source had
-      // none. All three key-taking endpoints need it — the key is in the path
-      // of the read, the write and the delete alike, so a 400 only the read
+      // none. All three key-taking endpoints need it — the read and the delete
+      // take their key from the path and the write takes its own from the
+      // body, but all three take one from the caller, so a 400 only the read
       // could produce would leave two thirds of the surface answering 500.
       final declared = _declaredEndpointHandlers();
 

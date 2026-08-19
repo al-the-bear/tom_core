@@ -570,7 +570,7 @@ void main() {
         expect(transport.lastMethod, 'PUT');
         expect(
           transport.lastUrl.toString(),
-          'https://api.example.com/preferences/tom.theme',
+          'https://api.example.com/preferences',
         );
         // The body carries the codec's encoding, not the raw value: the type
         // name is what lets the server reject a mismatched write and what lets
@@ -579,6 +579,31 @@ void main() {
         expect(sent['key'], 'tom.theme');
         expect(sent['valueType'], 'String');
         expect(sent['value'], '"dark"');
+      });
+
+      test('a write states its key once, in the body', () async {
+        // The write URI carries no `{key}` capture, so there is no second
+        // place for the key to be stated and nothing for the body to disagree
+        // with. Whichever key the request names is the key that is written —
+        // unlike read and delete, whose key is addressed by the path.
+        transport.answer(body: _dtoBody('tom.language', 'de'));
+        await build().writePreference(
+          TomUserPreferenceWriteRequest(
+            key: 'tom.language',
+            valueType: 'String',
+            value: '"de"',
+          ),
+        );
+
+        expect(transport.lastMethod, 'PUT');
+        expect(
+          transport.lastUrl.toString(),
+          'https://api.example.com/preferences',
+        );
+        expect(transport.lastUrl.pathSegments, ['preferences']);
+        expect(transport.lastUrl.query, isEmpty);
+        final sent = jsonDecode(transport.lastBody!) as Map<String, Object?>;
+        expect(sent['key'], 'tom.language');
       });
 
       test('remove() issues the delete endpoint', () async {
@@ -633,8 +658,10 @@ void main() {
       });
 
       test('read and write refuse an illegal key too', () {
-        // All three key-taking calls, not just the delete: the key is in the
-        // path of each, so a rule enforced on one is a rule with two ways past.
+        // All three key-taking calls, not just the delete. Read and delete put
+        // the key in the path, and write puts it in the body — but the key
+        // rules are the store's, not the URI's, so a rule enforced on one call
+        // is a rule with two ways past.
         final client = build();
 
         expect(

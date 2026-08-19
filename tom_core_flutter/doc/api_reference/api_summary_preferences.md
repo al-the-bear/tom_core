@@ -327,7 +327,7 @@ There is no `clear()`. The contract declares no bulk delete, and a loop over
 | ------ | ------- | ----------- |
 | `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | The list endpoint; decodes the bare JSON array the pipeline produces. |
 | `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | Throws `preferences.client.not_found` on a miss, because the contract's result type is not nullable. `read` is the same call with the miss expressed as `null`, and is what an application should use. |
-| `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | The write endpoint. |
+| `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | The write endpoint; passes no path parameters, because the write URI carries no `{key}` and `request.key` is the whole of what is addressed. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | The delete endpoint; a `404` is success, the same rule the server applies. |
 
 #### Addressing
@@ -337,10 +337,16 @@ There is no `clear()`. The contract declares no bulk delete, and a loop over
 path template and its `urlParameterMapping` — so the address the client calls and
 the route the server serves are two readings of one declaration.
 
+**A write states its key once, in the body.** `read` and `deletePreference` are
+addressed at `/{key}`; `writePreference` is a `PUT` at the collection whose
+request already carries the key, so it passes no path parameters and a URL and
+a body naming different preferences is not expressible.
+
 **A key that could not be a path segment never reaches a request.** `read`,
-`writePreference` and `deletePreference` validate against
-`TomUserPreferenceKeys` before building one, and throw
-`TomUserPreferenceKeyException` instead — so the socket sees nothing. Escaping
+`writePreference` and `deletePreference` all validate against
+`TomUserPreferenceKeys` before building one — the write included, since the
+rule is the store's vocabulary and not the URL's — and throw
+`TomUserPreferenceKeyException` instead, so the socket sees nothing. Escaping
 is not a usable alternative: `%2F` is not a settled outcome, much HTTP
 infrastructure rejects it and some normalises it back to `/`, at which point the
 request addresses a two-segment path the API never declared. The empty key is

@@ -191,8 +191,8 @@ class _ExamplePreferencesServer {
 
   Future<void> _handle(HttpRequest request) async {
     final response = request.response;
-    // `pathSegments` is already percent-decoded, so a key containing a slash
-    // arrives here in one piece — the same round trip `resolveUri` escaped it for.
+    // The client refuses a key that would need escaping, so a segment here is
+    // always a whole key and never part of one.
     final segments = request.uri.pathSegments;
     if (segments.isEmpty || segments.first != 'preferences') {
       response.statusCode = HttpStatus.notFound;
@@ -215,18 +215,20 @@ class _ExamplePreferencesServer {
           return;
         }
         _writeJson(response, tomReflectionInfo.convertToJsonString(stored));
-      case ('PUT', final String k):
+      case ('PUT', null):
+        // A write is addressed at the collection: the key is in the body, so
+        // there is no path segment to read it from and none to disagree with.
         final written = tomReflectionInfo.convertFromJsonString(
           TomUserPreferenceWriteRequest(),
           await utf8.decoder.bind(request).join(),
         );
         final stored = TomUserPreferenceDto(
-          key: k,
+          key: written.key,
           valueType: written.valueType,
           value: written.value,
           updatedAt: DateTime.now().toUtc(),
         );
-        _stored[k] = stored;
+        _stored[written.key] = stored;
         _writeJson(response, tomReflectionInfo.convertToJsonString(stored));
       case ('DELETE', final String k):
         // Idempotent: removing what was never there has already achieved its

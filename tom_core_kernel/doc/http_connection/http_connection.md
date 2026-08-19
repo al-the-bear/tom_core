@@ -208,6 +208,23 @@ A capture with no answering parameter raises `TomEndpointException`
 a URL with a hole in it addresses a different route. An unset query parameter
 is simply omitted, since an optional query parameter is ordinary.
 
+#### Do not capture a field the request already carries
+
+A path capture also wins over a **body** field of the same name, by the same
+mechanism — the server folds the JSON body in first and lets the URL overwrite
+it. Do not lean on that. Precedence answers a question a contract is better off
+not asking: a request that states its subject twice can state it two different
+ways, and a caller that reads the body as authoritative is wrong without ever
+being told.
+
+So declare a capture for a field the request DTO **does not otherwise carry** —
+the by-id request whose only field is the id — or, when the DTO must carry it,
+declare no capture and let the body be the single statement. The preferences
+API is the worked example both ways round: `readPreference` and
+`deletePreference` take a `TomUserPreferenceKeyRequest` whose one field is bound
+from `/{key}`, while `writePreference` — whose request carries a key, a type and
+a value together — is a `PUT` at the bare collection.
+
 `TomServerEndpoint.createApiServerEndpoint` resolves the same way, so a caller
 that goes from a declaration straight to a callable endpoint gets the same
 address without naming a URI:

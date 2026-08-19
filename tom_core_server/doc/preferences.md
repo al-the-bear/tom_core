@@ -188,11 +188,16 @@ pipeline binds each method to the contract's declaration:
 |----------|--------|-----|-----------|
 | `listPreferences` | GET | `/preferences` | Every preference of the caller |
 | `readPreference` | GET | `/preferences/{key}` | One preference; `preferences.not_found` when absent |
-| `writePreference` | PUT | `/preferences/{key}` | Validates the encoded pair, then upserts |
+| `writePreference` | PUT | `/preferences` | Validates the encoded pair, then upserts the key named in the body |
 | `deletePreference` | DELETE | `/preferences/{key}` | Deletes; absent is not an error |
 
 Access is `TomAuthenticatedAccess`, declared **on the contract** and extracted by
 the pipeline — the handlers carry no inline access annotation.
+
+The write is the one key-taking endpoint with no `{key}` in its URI, and that
+too is the contract's decision. Its request already carries a `key` field, so a
+path capture would let one request name two preferences; `writePreference`
+therefore reads `request.key` and there is no path key it could contradict.
 
 Reporting a missing key distinctly is safe precisely because the scope makes
 "not yours" indistinguishable from "not there": the answer leaks nothing about
@@ -217,7 +222,7 @@ handler failure leaves as a `500`. So each key-taking endpoint is served under
 | Error key | Status | Why it is not a server fault |
 |-----------|--------|------------------------------|
 | `preferences.not_found` | `404` | A preference that was never written is a miss, not a break |
-| `preferences.key.invalid` | `400` | The key arrives in the request URL, so a bad one is a bad *request* |
+| `preferences.key.invalid` | `400` | The key is the caller's input — the URL for a read or a delete, the body for a write — so a bad one is a bad *request* |
 
 Everything else goes to `handleErrorDefault` and stays a `500`. The narrowness
 is the design: a client must be able to tell "you have no such preference" from

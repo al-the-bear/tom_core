@@ -107,7 +107,7 @@ class PreferenceDtoExample {
 
     // The write request is the result minus the timestamp: *when* a preference
     // was written is the server's answer, never the client's claim. There is
-    // no field on the request to disagree with the server about.
+    // no timestamp field on the request to disagree with the server about.
     final write = TomUserPreferenceWriteRequest(
       key: TomUserPreferenceKeys.timezone,
       valueType: TomUserPreferenceCodec.stringType,
@@ -177,6 +177,7 @@ class PreferencesApiExample {
   static String baseUri = '';
   static int endpointCount = 0;
   static String readUri = '';
+  static String writeUri = '';
   static bool everyEndpointAuthenticated = false;
   static bool noPrincipalInAnyUri = false;
 
@@ -186,6 +187,12 @@ class PreferencesApiExample {
     baseUri = api.uri ?? '';
     endpointCount = api.endpoints.length;
     readUri = api[tomUserPreferencesReadEndpointId].uri ?? '';
+
+    // The write is the exception, and deliberately: its request already has a
+    // `key` field, so capturing the key from the path as well would let one
+    // request name two preferences with no rule saying which is written. It is
+    // a PUT at the collection, and the body is the single statement of the key.
+    writeUri = api[tomUserPreferencesWriteEndpointId].uri ?? '';
 
     // There is no anonymous preference — a preference is per principal, and an
     // anonymous caller is not one. That is the only policy the *contract* can
@@ -204,6 +211,7 @@ class PreferencesApiExample {
     assert(baseUri == '/preferences', 'The API is mounted at /preferences');
     assert(endpointCount == 4, 'List, read, write and delete');
     assert(readUri == '/{key}', 'A preference is addressed by its key');
+    assert(writeUri == '', 'A write states its key in the body only');
     assert(everyEndpointAuthenticated, 'Every endpoint requires a principal');
     assert(noPrincipalInAnyUri, 'No endpoint takes a principal parameter');
   }

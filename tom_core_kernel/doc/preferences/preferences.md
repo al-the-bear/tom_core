@@ -123,8 +123,8 @@ ASCII letter, and thereafter only ASCII letters, digits, `.`, `_` and `-`.**
 `TomUserPreferenceKeys.validate` throws a `TomUserPreferenceKeyException`
 (`preferences.key.invalid`) when it does not.
 
-A key is not free text, because it is not only a map key: the read, write and
-delete endpoints are all mounted at `/{key}`, so **every key is a URL path
+A key is not free text, because it is not only a map key: the read and delete
+endpoints are mounted at `/{key}`, so **a key read or deleted is a URL path
 segment**. Measured against the contract's own endpoint, an unconstrained key
 does not merely look odd:
 
@@ -154,12 +154,17 @@ Two clauses are worth their reasons:
 one the server would store truncated, and two keys differing only past the cut
 would silently become one row.
 
+A write is bound by the same rule even though its key is not a path segment.
+The rule is the store's vocabulary — one visible key must be one stored row —
+and the store is the same one all four endpoints address, so a key that may not
+be read is a key that may not be written either.
+
 The rule lives in the kernel rather than in either half because both halves
 enforce it. A client refuses to build a request under an illegal key, and the
-server refuses one that arrives anyway — the endpoints read the key off the
-request URL, where it is untrusted input, so `TomUserPreferencesErrorHandler`
-answers `400` for it. A rule stated in one half is a rule the other half's
-callers discover in production.
+server refuses one that arrives anyway — the key is untrusted input whether it
+came from the URL or from the body, so `TomUserPreferencesErrorHandler` answers
+`400` for it. A rule stated in one half is a rule the other half's callers
+discover in production.
 
 ### TomUserPreferenceDto
 
@@ -180,8 +185,12 @@ the two nestings do not compose.
 ### TomUserPreferenceWriteRequest
 
 The same three fields minus the timestamp. *When* a preference was written is
-the server's answer, never the client's claim, so there is no field on the
-request to disagree about.
+the server's answer, never the client's claim, so there is no timestamp field
+on the request to disagree about.
+
+Its `key` is the write's only statement of which preference it means: the write
+endpoint is a `PUT` at `/preferences`, with no `{key}` in the path — see
+[Where the key is stated](#where-the-key-is-stated).
 
 ### TomUserPreferenceKeyRequest
 
@@ -550,8 +559,32 @@ The API declaration, mounted at `/preferences`.
 |-------------|--------|-----|---------|--------|
 | `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` |
 | `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` |
-| `writePreference` | PUT | `/{key}` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
+| `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
 | `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | — |
+
+#### Where the key is stated
+
+Three endpoints name a preference, and each names it exactly once.
+
+Read and delete take a `TomUserPreferenceKeyRequest`, whose only field is bound
+from the `{key}` path capture: the URL is the whole request, and the body is
+empty. The write is the other way round. Its request already carries a `key`
+field of its own — it has to, because a write states a key, a type and a value
+together — so the endpoint declares **no** `{key}` capture and no
+`urlParameterMapping`, and is a `PUT` at the collection:
+
+```text
+PUT /preferences
+{"key": "tom.theme", "valueType": "String", "value": "\"dark\""}
+```
+
+The alternative — `PUT /preferences/tom.theme` with a body naming
+`tom.language` — is a single request that names two different preferences, and
+no answer to "which one is written" is a good one. Silently preferring the path
+makes a body field that is read on some endpoints and ignored on this one;
+rejecting the pair spends a status code on a state the contract could simply
+not have. Dropping the capture removes the question: there is no second place
+for the key to be stated, so there is nothing to disagree with.
 
 Every endpoint is `TomAuthenticatedAccess`, and that is the only policy the
 contract can state: there is no anonymous preference, because a preference is

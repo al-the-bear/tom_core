@@ -117,11 +117,13 @@ class _PreferencesCaller {
 
   /// Writes [value] under [key], as the shipped client does: encode through the
   /// codec, then PUT the write request.
+  ///
+  /// No `key` is handed to [_send]: the write endpoint's URI is the bare
+  /// collection, so the key reaches the server in the body alone.
   Future<void> write(String key, Object value) async {
     final encoded = TomUserPreferenceCodec.encode(key, value);
     final answer = await _send(
       tomUserPreferencesWriteEndpointId,
-      key: key,
       body: tomReflectionInfo.convertToJsonString(
         TomUserPreferenceWriteRequest(
           key: encoded.key,

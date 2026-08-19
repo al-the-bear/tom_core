@@ -170,16 +170,24 @@ path template, its `urlParameterMapping` — so the address the client calls and
 the route the server serves are two readings of one declaration rather than two
 spellings that agree by inspection.
 
+**A write states its key once, in the body.** `read` and `deletePreference`
+address a preference by path — the contract mounts them at `/{key}` — while
+`writePreference` is a `PUT` at `/preferences` whose request already carries the
+key, so it passes no path parameters at all. A URL and a body naming different
+preferences is not something this client can build.
+
 **A key that could not be a path segment never reaches a request.** `read`,
-`writePreference` and `deletePreference` validate the key against
+`writePreference` and `deletePreference` all validate the key against
 `TomUserPreferenceKeys` before building one, and refuse it with
-`TomUserPreferenceKeyException`. Escaping is not a usable alternative: `%2F` is
-not a settled outcome — much HTTP infrastructure rejects it and some normalises
-it back to `/`, at which point the request addresses a two-segment path the API
-never declared. The empty key is worse than ambiguous: it resolves to the *list*
-endpoint's own URI, so "read the preference named `''`" would silently become
-"read them all". The server validates the same key again on arrival, because a
-well-behaved client is not the only thing that can send an HTTP request.
+`TomUserPreferenceKeyException` — the write included, because the rule is the
+store's vocabulary rather than the URL's. Escaping is not a usable alternative:
+`%2F` is not a settled outcome — much HTTP infrastructure rejects it and some
+normalises it back to `/`, at which point the request addresses a two-segment
+path the API never declared. The empty key is worse than ambiguous: it resolves
+to the *list* endpoint's own URI, so "read the preference named `''`" would
+silently become "read them all". The server validates the same key again on
+arrival, because a well-behaved client is not the only thing that can send an
+HTTP request.
 
 There is no `clear()`: it is absent from the contract, and a loop over `all()`
 that failed half way would leave an account in a state no user asked for.

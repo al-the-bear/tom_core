@@ -75,9 +75,15 @@ class TomUserPreferenceDto {
 ///
 /// Carries the same three fields as the result minus the timestamp: *when* a
 /// preference was written is the server's answer, never the client's claim.
+///
+/// This request is the write's *only* statement of which preference it means —
+/// the write URI is the bare collection, not `/{key}` — so [key] is read from
+/// the body and nothing else can contradict it.
 @tomReflector
 class TomUserPreferenceWriteRequest {
   /// The preference key to write.
+  ///
+  /// Travels in the request body, not the URL.
   String key;
 
   /// The name of the type [value] is encoded as — see
@@ -164,11 +170,16 @@ final TomApi tomUserPreferencesApi = TomApi(
       urlParameterMapping: const {'key': 'key'},
       access: const TomAuthenticatedAccess(),
     ),
+    // The write is the one key-taking endpoint whose URI carries no `{key}`:
+    // its request already has a `key` field, and an endpoint that captured the
+    // key from the path *as well* would let one request name two different
+    // preferences with no rule saying which one is written. Read and delete
+    // have no such field, so for them the path is the only statement. The key
+    // is stated exactly once, and here that once is the body.
     TomApiEndpoint<TomUserPreferenceDto, TomUserPreferenceWriteRequest>(
       id: tomUserPreferencesWriteEndpointId,
-      uri: '/{key}',
+      uri: '',
       method: TomHttpMethod.put,
-      urlParameterMapping: const {'key': 'key'},
       access: const TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, TomUserPreferenceKeyRequest>(
@@ -200,6 +211,10 @@ abstract class TomUserPreferencesApiService {
 
   /// [tomUserPreferencesWriteEndpointId] — writes one preference of the
   /// caller, replacing any previous value.
+  ///
+  /// The written preference is [TomUserPreferenceWriteRequest.key] and only
+  /// that: the endpoint is a `PUT` at the collection, so unlike
+  /// [readPreference] and [deletePreference] the URL names no key.
   Future<TomUserPreferenceDto> writePreference(
     TomUserPreferenceWriteRequest request,
   );

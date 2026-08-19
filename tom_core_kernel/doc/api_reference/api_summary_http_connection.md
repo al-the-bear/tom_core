@@ -404,6 +404,15 @@ keyed by **request-DTO field name**, the right-hand side of
 Path segments already carried by `baseUri` are kept, so a base pointing at an
 API-gateway prefix still resolves correctly.
 
+A capture wins over a **body** field of the same name too — the server folds
+the JSON body in first and lets the URL overwrite it — but that precedence is
+not something to design against. Declare a capture only for a field the request
+DTO does not otherwise carry; when the DTO must carry it, declare no capture
+and let the body state it once. `tomUserPreferencesApi` shows both: read and
+delete bind `/{key}` onto a request whose only field is the key, while the
+write, whose request also carries a type and a value, is a `PUT` at the bare
+collection.
+
 #### TomContentDisposition
 
 Constants for HTTP `Content-Disposition` header values, used to specify how

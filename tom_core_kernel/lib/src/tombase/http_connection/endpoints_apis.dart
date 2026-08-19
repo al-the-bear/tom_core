@@ -357,6 +357,17 @@ class TomApiEndpoint<ReturnType, RequestType> {
   /// gets this structurally (it folds query values into the request DTO first
   /// and lets the path overwrite them under the same field name);
   /// [TomApiEndpoint.resolveUri] applies the same rule when building the URL.
+  ///
+  /// A path capture wins over a **body** field of the same name too, by the
+  /// same mechanism — the server folds the JSON body in first and lets the URL
+  /// overwrite it. Do not rely on that. Precedence is the answer to a question
+  /// a contract should not be asking: a request that states its subject twice
+  /// can state it two different ways, and a caller that reads the body as
+  /// authoritative is wrong without ever being told. Declare a capture for a
+  /// field the request DTO *does not otherwise carry* — or, when the DTO must
+  /// carry it, declare no capture and let the body be the single statement.
+  /// The `tomUserPreferencesApi` write endpoint is the worked example: it takes
+  /// a key, its request has a `key` field, so its URI is the bare collection.
   final Map<String, String> urlParameterMapping;
 
   /// The access policy this endpoint is served under, **declared here on the

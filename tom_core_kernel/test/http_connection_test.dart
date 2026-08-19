@@ -1435,6 +1435,26 @@ void main() {
           equals('http://localhost:8080/preferences/tom.theme'),
         );
       });
+
+      test('the preferences write endpoint cannot restate the key in the '
+          'URL', () {
+        // The write request carries a `key` field of its own, so the endpoint
+        // declares no `{key}` capture and no mapping: a caller that offered a
+        // key here has nowhere to put it, and a request whose URL and body
+        // named different preferences is not expressible.
+        final write = tomUserPreferencesApi[tomUserPreferencesWriteEndpointId];
+
+        expect(
+          write
+              .resolveUri(
+                Uri.parse('http://localhost:8080'),
+                parameters: {'key': TomUserPreferenceKeys.language},
+              )
+              .toString(),
+          equals('http://localhost:8080/preferences'),
+        );
+        expect(write.urlParameterMapping, isEmpty);
+      });
     });
   });
 

@@ -150,6 +150,10 @@ class TomUserPreferencesServer implements TomUserPreferencesApiService {
   Future<TomUserPreferenceDto> writePreference(
     TomUserPreferenceWriteRequest request,
   ) {
+    // `request.key` is the whole of what is addressed here: the write endpoint
+    // is a PUT at the collection with no `{key}` capture, so the body is the
+    // only place the key is stated.
+    //
     // The request carries the value already encoded, so the write is a pass
     // through the codec's *decode* and back: it is what rejects a body whose
     // declared type and JSON text disagree, before the pair reaches a column
