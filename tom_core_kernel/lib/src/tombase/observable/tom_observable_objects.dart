@@ -1472,13 +1472,36 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     return TomList.ofList(_value + other._value);
   }
 
+  /// Identity, **not** contents: a list equals only itself.
+  ///
+  /// Two lists holding equal elements are unequal, and that is deliberate. A
+  /// `TomList` is a mutable cell, so a content-based equality would need a
+  /// content-based [hashCode], and an object whose hash changes while it sits
+  /// in a `Set` or serves as a `Map` key can no longer be found there. Dart's
+  /// own `List` and `Map` decline content equality for exactly this reason,
+  /// and so does every other observable in this library — [TomObject],
+  /// [TomClass] and the scalars all inherit identity equality from `Object`.
+  /// This override states the same rule explicitly, because a type that
+  /// implements `Iterable` invites the opposite assumption.
+  ///
+  /// Identity is also the honest answer for what the type *is*: observers
+  /// register per instance, so two lists with equal elements are different
+  /// cells with different observers and different parents.
+  ///
+  /// To compare contents, unwrap the elements. Those are observables too and
+  /// compare by identity in turn, so comparing the raw lists — `~a == ~b`, or
+  /// any list-equality helper over them — is **not** enough:
+  ///
+  /// ```dart
+  /// bool sameContents(TomList<TomInt> a, TomList<TomInt> b) =>
+  ///     a.length == b.length &&
+  ///     Iterable<int>.generate(a.length).every((i) => ~a[i] == ~b[i]);
+  /// ```
+  ///
+  /// For a list of nested [TomClass] elements compare `getValues()` per
+  /// element instead.
   @override
-  bool operator ==(Object other) {
-    if (other is TomList) {
-      return _value == other._value;
-    }
-    return false;
-  }
+  bool operator ==(Object other) => identical(this, other);
 
   @override
   E get first => _value.first;
@@ -1531,8 +1554,15 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 
   Iterable<E> get reversed => _value.reversed;
 
+  /// The identity hash, and therefore **stable across every mutation**.
+  ///
+  /// Agrees with [operator ==], which compares by identity — see there for why
+  /// a hash that tracked the contents would be actively harmful on a cell whose
+  /// contents change. Hashing the backing list instead would break twice over:
+  /// [operator <<] installs a *new* backing list, so the hash of a list already
+  /// filed in a `Set` would move underneath it.
   @override
-  int get hashCode => _value.hashCode;
+  int get hashCode => identityHashCode(this);
 
   @override
   bool get isEmpty => _value.isEmpty;
@@ -2010,13 +2040,25 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     return this;
   }
 
+  /// Identity, **not** contents: a map equals only itself.
+  ///
+  /// The rule, and the reasoning behind it, are the same as for
+  /// [TomList.operator ==] — a mutable cell cannot carry a content-based
+  /// [hashCode] without going missing from the `Set` it was put in, and
+  /// observers register per instance, so two maps with equal entries are
+  /// different cells. Every other observable in this library inherits the same
+  /// identity equality from `Object`.
+  ///
+  /// To compare contents, unwrap the values; they are observables in their own
+  /// right and compare by identity too:
+  ///
+  /// ```dart
+  /// bool sameContents(TomMap<String, TomInt> a, TomMap<String, TomInt> b) =>
+  ///     a.length == b.length &&
+  ///     a.keys.every((k) => b.containsKey(k) && ~a[k]! == ~b[k]!);
+  /// ```
   @override
-  bool operator ==(Object other) {
-    if (other is TomMap) {
-      return _value == other._value;
-    }
-    return false;
-  }
+  bool operator ==(Object other) => identical(this, other);
 
   /// The number of key-value pairs in the map.
   int get length => _value.length;
@@ -2029,8 +2071,12 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
   /// [TomObject._widenForDoubleTarget] for the rule itself.
   dynamic _widenValue(dynamic raw) => TomObject._widenForDoubleTarget<V>(raw);
 
+  /// The identity hash, and therefore **stable across every mutation**.
+  ///
+  /// Agrees with [operator ==]; see [TomList.hashCode] for why a hash that
+  /// tracked the contents would be actively harmful here.
   @override
-  int get hashCode => _value.hashCode;
+  int get hashCode => identityHashCode(this);
 
   /// Returns `true` if the map contains no key-value pairs.
   bool get isEmpty => _value.isEmpty;

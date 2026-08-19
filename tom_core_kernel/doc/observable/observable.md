@@ -28,6 +28,7 @@ and complex objects with automatic change notification and propagation.
   - [Atomic Replacement with resetWith](#atomic-replacement-with-resetwith)
   - [Lifecycle Listeners](#lifecycle-listeners)
 - [TomMap (Observable Maps)](#tommap-observable-maps)
+- [Container Equality Is Identity](#container-equality-is-identity)
 - [TomObservableEnum (Resource-Keyed Enums)](#tomobservableenum-resource-keyed-enums)
   - [Permitted Values](#permitted-values)
   - [Resource Keys and Scope](#resource-keys-and-scope)
@@ -1379,6 +1380,57 @@ map.addAll({'a': TomInt(1)});  // ✓ OK, but notifies twice
 `TomList` works the same way — see
 [Atomic Replacement with resetWith](#atomic-replacement-with-resetwith) for the
 variant that also fires the lifecycle callbacks.
+
+## Container Equality Is Identity
+
+`TomList` and `TomMap` are the only observables that override `==` and
+`hashCode`, and they do so to *state* the rule rather than leave it to be
+inferred from the base class: **a container equals nothing but itself, and its
+hash never moves.** Everything else — `TomObject`, `TomClass`, every scalar —
+inherits the same identity equality from `Object`.
+
+```dart
+final a = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+final b = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+
+print(a == b);  // false — equal contents, different cells
+print(a == a);  // true
+
+// The hash is stable, so a container stays findable in a Set it was put in,
+// however much its contents change afterwards.
+final registry = {a};
+a << [TomInt(9)];
+print(registry.contains(a));  // true
+```
+
+The rule is not a shortcut, it is forced. These are mutable cells, so a
+content-based `==` would need a content-based `hashCode`, and an object whose
+hash changes while it sits in a `Set` — or serves as a `Map` key — can no longer
+be found there. Dart's own `List` and `Map` decline content equality for exactly
+this reason. Identity is also the honest answer for what the type *is*:
+observers register per instance, so two lists holding equal elements are
+different cells with different observers and different parents.
+
+To compare contents, unwrap — and note that the elements and values are
+observables in their own right and compare by identity in turn, so comparing the
+raw collections (`~a == ~b`, or any list-equality helper over them) is **not**
+enough:
+
+```dart
+bool sameContents(TomList<TomInt> a, TomList<TomInt> b) =>
+    a.length == b.length &&
+    Iterable<int>.generate(a.length).every((i) => ~a[i] == ~b[i]);
+
+bool sameEntries(TomMap<String, TomInt> a, TomMap<String, TomInt> b) =>
+    a.length == b.length &&
+    a.keys.every((k) => b.containsKey(k) && ~a[k]! == ~b[k]!);
+```
+
+For a container of nested `TomClass` elements compare `getValues()` per element
+instead.
+
+The same identity rule is what makes `remove` take the element itself rather
+than a value to match — see [List Operations](#list-operations).
 
 ## TomObservableEnum (Resource-Keyed Enums)
 

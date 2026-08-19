@@ -289,6 +289,11 @@ An observable list implementation that automatically observes all contained elem
 - Uses `@tomReflector` annotation for reflection
 - Automatically observes all contained elements
 - Notifies observers on any list modification
+- **`==` is identity, not contents** — a list equals only itself, and `hashCode`
+  is stable across every mutation so a list stays findable in a `Set`. A
+  content-based hash would move underneath such a `Set`, which is why Dart's own
+  `List` declines it too. To compare contents, unwrap the elements — they are
+  observables and compare by identity in turn, so `~a == ~b` is not enough
 
 **Constructors:**
 - `TomList()` — creates empty list
@@ -347,6 +352,8 @@ An observable map implementation that automatically observes all contained value
 - Uses `@tomReflector` annotation for reflection
 - Automatically observes all values (not keys)
 - Notifies observers on any map modification
+- **`==` is identity, not contents** — same rule and same reasoning as
+  [`TomList`](#tomliste-extends-tomobject)
 
 **Constructors:**
 - `TomMap()` — creates empty map

@@ -3159,6 +3159,170 @@ void main() {
     });
   });
 
+  // TomList and TomMap are the only observables that override == / hashCode,
+  // and they exist to state — rather than merely inherit — that a container is
+  // equal to nothing but itself. The rule is load-bearing: these are mutable
+  // cells, so a hash that tracked their contents would move underneath any Set
+  // that held them. These tests pin identity in both directions: distinct
+  // instances stay unequal however alike their contents, and one instance stays
+  // findable however much its contents change.
+  group('container equality is identity, not contents', () {
+    group('TomList', () {
+      test('equal contents in distinct instances are unequal', () {
+        final a = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+        final b = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+
+        expect(a == b, isFalse);
+      });
+
+      test('a list equals itself', () {
+        final list = TomList<TomInt>()..add(TomInt(1));
+
+        expect(list == list, isTrue);
+      });
+
+      test('two lists sharing one backing list are still unequal', () {
+        // TomList.ofList adopts the caller's list rather than copying it, so
+        // two containers can alias the same backing collection. They remain
+        // two cells with two observer sets, so they are not equal.
+        final backing = [TomInt(1), TomInt(2)];
+        final a = TomList<TomInt>.ofList(backing);
+        final b = TomList<TomInt>.ofList(backing);
+
+        expect(a == b, isFalse);
+        expect(a.hashCode == b.hashCode, isFalse);
+      });
+
+      test('a list is unequal to a non-list', () {
+        final list = TomList<TomInt>()..add(TomInt(1));
+
+        expect(list == TomInt(1), isFalse);
+        expect(list == Object(), isFalse);
+      });
+
+      test('hashCode survives an element mutation', () {
+        final list = TomList<TomInt>()..add(TomInt(1));
+        final before = list.hashCode;
+
+        list.add(TomInt(2));
+        list[0] | 99;
+
+        expect(list.hashCode, equals(before));
+      });
+
+      test('hashCode survives a wholesale replacement', () {
+        // `<<` installs a *new* backing list; hashing that list would move the
+        // container's hash.
+        final list = TomList<TomInt>()..add(TomInt(1));
+        final before = list.hashCode;
+
+        list << [TomInt(7), TomInt(8)];
+
+        expect(list.hashCode, equals(before));
+      });
+
+      test('a mutated list is still found in a Set', () {
+        final list = TomList<TomInt>()..add(TomInt(1));
+        final set = {list};
+
+        list << [TomInt(7)];
+        list.add(TomInt(8));
+
+        expect(set.contains(list), isTrue);
+      });
+
+      test('a Set keeps two lists with equal contents apart', () {
+        final a = TomList<TomInt>()..add(TomInt(1));
+        final b = TomList<TomInt>()..add(TomInt(1));
+
+        expect({a, b}, hasLength(2));
+      });
+
+      test('contents are compared by unwrapping the elements', () {
+        // The recipe the dartdoc prescribes, since the elements are themselves
+        // observables and compare by identity in turn.
+        bool sameContents(TomList<TomInt> a, TomList<TomInt> b) =>
+            a.length == b.length &&
+            Iterable<int>.generate(a.length).every((i) => ~a[i] == ~b[i]);
+
+        final a = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+        final b = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+        final c = TomList<TomInt>()..addAll([TomInt(1), TomInt(3)]);
+
+        expect(sameContents(a, b), isTrue);
+        expect(sameContents(a, c), isFalse);
+      });
+    });
+
+    group('TomMap', () {
+      TomMap<String, TomInt> mapOf(Map<String, int> values) {
+        final map = TomMap<String, TomInt>();
+        values.forEach((k, v) => map[k] = TomInt(v));
+        return map;
+      }
+
+      test('equal contents in distinct instances are unequal', () {
+        expect(mapOf({'a': 1}) == mapOf({'a': 1}), isFalse);
+      });
+
+      test('a map equals itself', () {
+        final map = mapOf({'a': 1});
+
+        expect(map == map, isTrue);
+      });
+
+      test('a map is unequal to a non-map', () {
+        final map = mapOf({'a': 1});
+
+        expect(map == TomInt(1), isFalse);
+        expect(map == Object(), isFalse);
+      });
+
+      test('hashCode survives an entry mutation', () {
+        final map = mapOf({'a': 1});
+        final before = map.hashCode;
+
+        map['b'] = TomInt(2);
+        map.remove('a');
+
+        expect(map.hashCode, equals(before));
+      });
+
+      test('hashCode survives a wholesale replacement', () {
+        final map = mapOf({'a': 1});
+        final before = map.hashCode;
+
+        map << {'x': TomInt(9)};
+
+        expect(map.hashCode, equals(before));
+      });
+
+      test('a mutated map is still found in a Set', () {
+        final map = mapOf({'a': 1});
+        final set = {map};
+
+        map << {'x': TomInt(9)};
+        map['y'] = TomInt(10);
+
+        expect(set.contains(map), isTrue);
+      });
+
+      test('a Set keeps two maps with equal contents apart', () {
+        expect({mapOf({'a': 1}), mapOf({'a': 1})}, hasLength(2));
+      });
+
+      test('contents are compared by unwrapping the values', () {
+        bool sameContents(TomMap<String, TomInt> a, TomMap<String, TomInt> b) =>
+            a.length == b.length &&
+            a.keys.every((k) => b.containsKey(k) && ~a[k]! == ~b[k]!);
+
+        expect(sameContents(mapOf({'a': 1}), mapOf({'a': 1})), isTrue);
+        expect(sameContents(mapOf({'a': 1}), mapOf({'a': 2})), isFalse);
+        expect(sameContents(mapOf({'a': 1}), mapOf({'b': 1})), isFalse);
+      });
+    });
+  });
+
   // No accessor may hand out a live, writable handle on a composite's backing
   // collection. Writing through such a handle bypasses the notification the
   // mutator would have sent, and on a TomClass it deregisters a member without

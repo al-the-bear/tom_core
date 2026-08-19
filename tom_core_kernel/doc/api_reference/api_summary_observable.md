@@ -772,7 +772,7 @@ TomList.ofList(List<E> list)
 | `isNotEmpty` | `bool` | *(override)* `true` if the list has at least one element. |
 | `iterator` | `Iterator<E>` | *(override)* Iterator over the elements. |
 | `single` | `E` | *(override)* The single element (throws if not exactly one). |
-| `hashCode` | `int` | *(override)* Hash of the backing list. |
+| `hashCode` | `int` | *(override)* The identity hash, stable across every mutation — a list filed in a `Set` stays findable. Agrees with `operator ==`. |
 | `muteCascadeTargets` | `Iterable<TomObservable>` | *(override)* The elements, so `mute` and `batch` cascade to them. |
 
 #### Methods
@@ -843,13 +843,45 @@ TomList.ofList(List<E> list)
 | `operator []=(index, value)` | `void` | Sets and re-observes the element at `index`. |
 | `operator +(other)` | `TomList<E>` | Concatenates two lists. |
 | `operator <<(value)` | `TomList<E>` | *(override)* Replaces **all** elements, returning the list. Detaches the outgoing elements, attaches the incoming ones, and notifies **once** for the whole exchange. |
-| `operator ==(other)` | `bool` | *(override)* Equal when backing lists are equal. |
+| `operator ==(other)` | `bool` | *(override)* **Identity, not contents** — a list equals only itself, however alike two lists are. To compare contents, unwrap the elements: they are observables and compare by identity too, so `~a == ~b` is not enough. See below. |
 
 `set` throws on a list, so `<<` is the only operator-form wholesale swap. It is
 silent when the new sequence is element-for-element **identical** to the old
 one — the comparison is by identity, not equality, because observers hold
 element references, so an equal-but-distinct element is a real change. See
 `resetWith` for the same swap with lifecycle callbacks.
+
+**Equality is identity — for both containers.** `TomList` and `TomMap` are the
+only observables that override `==` / `hashCode`, and they do so to *state* the
+rule rather than leave it to be inferred: a container equals nothing but itself,
+and its hash never moves. Everything else in the module — `TomObject`,
+`TomClass`, every scalar — inherits the same identity equality from `Object`.
+
+The rule is not a shortcut, it is forced. These are mutable cells, so a
+content-based `==` would need a content-based `hashCode`, and an object whose
+hash changes while it sits in a `Set` (or serves as a `Map` key) can no longer
+be found there. Dart's own `List` and `Map` decline content equality for exactly
+this reason. Identity is also the honest answer for what the type is: observers
+register per instance, so two lists holding equal elements are different cells
+with different observers and different parents.
+
+To compare contents, unwrap — remembering that the elements and values are
+observables in their own right and compare by identity in turn, so comparing the
+raw collections (`~a == ~b`, or any list-equality helper over them) is **not**
+enough:
+
+```dart
+bool sameContents(TomList<TomInt> a, TomList<TomInt> b) =>
+    a.length == b.length &&
+    Iterable<int>.generate(a.length).every((i) => ~a[i] == ~b[i]);
+
+bool sameEntries(TomMap<String, TomInt> a, TomMap<String, TomInt> b) =>
+    a.length == b.length &&
+    a.keys.every((k) => b.containsKey(k) && ~a[k]! == ~b[k]!);
+```
+
+For a container of nested `TomClass` elements compare `getValues()` per element
+instead.
 
 ### TomMap
 
@@ -885,7 +917,7 @@ TomMap.ofMap(Map<K, V> map)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `length` | `int` | Number of key-value pairs. |
-| `hashCode` | `int` | *(override)* Hash of the backing map. |
+| `hashCode` | `int` | *(override)* The identity hash, stable across every mutation — a map filed in a `Set` stays findable. Agrees with `operator ==`. |
 | `isEmpty` | `bool` | `true` if the map has no pairs. |
 | `isNotEmpty` | `bool` | `true` if the map has at least one pair. |
 | `keys` | `Iterable<K>` | All keys. |
@@ -923,7 +955,7 @@ TomMap.ofMap(Map<K, V> map)
 | `operator []=(key, value)` | `void` | Sets and observes the value for `key`. |
 | `operator +(other)` | `TomMap<K, V>` | Merges two maps into a new one. |
 | `operator <<(newMap)` | `TomMap<K, V>` | *(override)* Replaces **all** entries, returning the map. Detaches the outgoing values, attaches the incoming ones, and notifies **once** for the whole exchange. |
-| `operator ==(other)` | `bool` | *(override)* Equal when backing maps are equal. |
+| `operator ==(other)` | `bool` | *(override)* **Identity, not contents** — a map equals only itself. Same rule and same reasoning as `TomList.operator ==`; see "Equality is identity" above for the content-comparison recipe. |
 
 As on `TomList`, `set` throws on a map, so `<<` is the operator form of a
 wholesale swap and the only one.
