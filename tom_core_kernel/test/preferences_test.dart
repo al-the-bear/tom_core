@@ -1532,4 +1532,422 @@ void main() {
       expect(TomUserPreferenceCodec.encodeValue('dark'), '"dark"');
     });
   });
+
+  group('TomUserPreferenceCodec — a scalar round-trips through the DTO', () {
+    // `encodeValue` is asserted on its own above, but a round trip is a
+    // different claim: that the name `encode` writes is the name `decode`
+    // demands. Two methods that each work in isolation and disagree on one
+    // type name store successfully and fail every read of that key.
+    test('a String', () {
+      final dto = TomUserPreferenceCodec.encode('ui.theme', 'dark');
+      expect(dto.valueType, TomUserPreferenceCodec.stringType);
+      expect(dto.value, '"dark"');
+      expect(TomUserPreferenceCodec.decode<String>(dto), 'dark');
+    });
+
+    test('an int', () {
+      final dto = TomUserPreferenceCodec.encode('ui.font_size', 14);
+      expect(dto.valueType, TomUserPreferenceCodec.intType);
+      expect(dto.value, '14');
+      expect(TomUserPreferenceCodec.decode<int>(dto), 14);
+    });
+
+    test('a double', () {
+      final dto = TomUserPreferenceCodec.encode('ui.scale', 1.25);
+      expect(dto.valueType, TomUserPreferenceCodec.doubleType);
+      expect(dto.value, '1.25');
+      expect(TomUserPreferenceCodec.decode<double>(dto), 1.25);
+    });
+
+    test('a bool', () {
+      final dto = TomUserPreferenceCodec.encode('ui.compact', true);
+      expect(dto.valueType, TomUserPreferenceCodec.boolType);
+      expect(dto.value, 'true');
+      expect(TomUserPreferenceCodec.decode<bool>(dto), isTrue);
+    });
+
+    test('the published scalar names are exactly the ones a value gets', () {
+      // `scalarTypes` is the list `typeNameOf` tests in order and the list
+      // `validateEncoded` treats as scalar. A name in one and not the other is
+      // a value that can be written and never read, so the two are pinned to
+      // each other rather than each to a literal.
+      expect(
+        <Object>[
+          'dark',
+          14,
+          1.25,
+          true,
+          DateTime.utc(2026, 3, 4),
+        ].map(TomUserPreferenceCodec.typeNameOf).toList(),
+        TomUserPreferenceCodec.scalarTypes,
+      );
+    });
+
+    test('the DTO carries the key it was encoded under', () {
+      expect(
+        TomUserPreferenceCodec.encode('ui.theme', 'dark').key,
+        'ui.theme',
+      );
+    });
+
+    test('the timestamp is passed through, never invented', () {
+      // *When* a preference was written is the store's answer. An `updatedAt`
+      // defaulted to `now` here would be a claim about a row that has not been
+      // written yet, and it would be indistinguishable from the real one.
+      final writtenAt = DateTime.utc(2026, 3, 4, 5, 6, 7);
+      expect(
+        TomUserPreferenceCodec.encode(
+          'ui.theme',
+          'dark',
+          updatedAt: writtenAt,
+        ).updatedAt,
+        writtenAt,
+      );
+      expect(
+        TomUserPreferenceCodec.encode('ui.theme', 'dark').updatedAt,
+        isNull,
+      );
+    });
+  });
+
+  group('TomUserPreferenceCodec — text that is not JSON is refused', () {
+    test('a write whose value is not JSON never reaches the store', () {
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          TomUserPreferenceCodec.stringType,
+          '{oops',
+          key: 'ui.theme',
+        ),
+        throwsCodecKey('preferences.encoded.invalid_json'),
+      );
+    });
+
+    test('the write-side refusal names the preference and the type', () {
+      // Both, because neither alone is actionable: the key says which row to
+      // look at and the declared type says what the text was supposed to be.
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          TomUserPreferenceCodec.intType,
+          'oops',
+          key: 'ui.font_size',
+        ),
+        throwsA(
+          isA<TomUserPreferenceCodecException>()
+              .having(
+                (error) => error.key,
+                'key',
+                'preferences.encoded.invalid_json',
+              )
+              .having(
+                (error) => error.parameters?['key'],
+                'parameters.key',
+                'ui.font_size',
+              )
+              .having(
+                (error) => error.parameters?['valueType'],
+                'parameters.valueType',
+                'int',
+              )
+              .having(
+                (error) => error.rootException,
+                'rootException',
+                isA<FormatException>(),
+              ),
+        ),
+      );
+    });
+
+    test('a stored row that is not JSON is refused on the way out too', () {
+      // The same text, a different moment and so a different key: a write can
+      // still be rejected, whereas a row already in the store can only be
+      // reported. Collapsing the two would hide which of the halves let it
+      // through.
+      expect(
+        () => decodeStored<String>('{oops', 'ui.theme'),
+        throwsCodecKey('preferences.decode.invalid_json'),
+      );
+    });
+
+    test('the read-side refusal names the preference', () {
+      expect(
+        () => decodeStored<int>('12,', 'ui.font_size'),
+        throwsA(
+          isA<TomUserPreferenceCodecException>()
+              .having(
+                (error) => error.key,
+                'key',
+                'preferences.decode.invalid_json',
+              )
+              .having(
+                (error) => error.parameters?['key'],
+                'parameters.key',
+                'ui.font_size',
+              )
+              .having(
+                (error) => error.rootException,
+                'rootException',
+                isA<FormatException>(),
+              ),
+        ),
+      );
+    });
+
+    test('a reflected row reports malformed text the same way', () {
+      // The JSON check is ahead of the reflection branch, so a class row and a
+      // scalar row agree on what "this is not JSON" is called. Reached through
+      // the class path it would otherwise surface as a failed construction,
+      // which blames the class for the store's text.
+      expect(
+        () => TomUserPreferenceCodec.decode<DisplayPreference>(
+          TomUserPreferenceDto(
+            key: 'ui.display',
+            valueType: TomUserPreferenceCodec.typeNameForType(
+              DisplayPreference,
+            ),
+            value: '{',
+          ),
+        ),
+        throwsCodecKey('preferences.decode.invalid_json'),
+      );
+    });
+  });
+
+  group('the preference wire DTOs', () {
+    test('a DTO carries key, declared type, value and timestamp', () {
+      final dto = TomUserPreferenceDto(
+        key: TomUserPreferenceKeys.timezone,
+        valueType: TomUserPreferenceCodec.stringType,
+        value: '"Europe/Berlin"',
+        updatedAt: DateTime.utc(2026, 3, 4, 5, 6, 7),
+      );
+
+      expect(dto.key, 'tom.timezone');
+      expect(dto.valueType, 'String');
+      expect(dto.value, '"Europe/Berlin"');
+      expect(dto.updatedAt!.isUtc, isTrue);
+    });
+
+    test('every field defaults, because reflection fills a blank one', () {
+      // The reflection path instantiates the DTO with no arguments and then
+      // writes member by member, so a required field would make the wire type
+      // unconstructible on the way in.
+      final blank = TomUserPreferenceDto();
+      expect(blank.key, isEmpty);
+      expect(blank.valueType, isEmpty);
+      expect(blank.value, isEmpty);
+      expect(blank.updatedAt, isNull);
+      expect(TomUserPreferenceWriteRequest().key, isEmpty);
+      expect(TomUserPreferenceKeyRequest().key, isEmpty);
+    });
+
+    test('the write request is the result minus the timestamp', () {
+      final request = TomUserPreferenceWriteRequest(
+        key: TomUserPreferenceKeys.timezone,
+        valueType: TomUserPreferenceCodec.stringType,
+        value: '"Europe/Berlin"',
+      );
+
+      expect(request.key, 'tom.timezone');
+      expect(request.valueType, 'String');
+      expect(request.value, '"Europe/Berlin"');
+    });
+
+    test('each DTO names itself and its type in one line', () {
+      // These end up in logs beside a failing write, where the useful pair is
+      // which preference and what it claimed to be — not the value, which may
+      // be long and is often the user's.
+      expect(
+        TomUserPreferenceDto(
+          key: 'tom.theme',
+          valueType: 'String',
+          value: '"dark"',
+        ).toString(),
+        'TomUserPreferenceDto(tom.theme: String)',
+      );
+      expect(
+        TomUserPreferenceWriteRequest(
+          key: 'tom.theme',
+          valueType: 'String',
+        ).toString(),
+        'TomUserPreferenceWriteRequest(tom.theme: String)',
+      );
+      expect(
+        TomUserPreferenceKeyRequest(key: 'tom.theme').toString(),
+        'TomUserPreferenceKeyRequest(tom.theme)',
+      );
+    });
+  });
+
+  group('tomUserPreferencesApi — the contract both halves bind to', () {
+    test('the API is mounted at /preferences under its own id', () {
+      expect(tomUserPreferencesApi.id, tomUserPreferencesApiId);
+      expect(tomUserPreferencesApiId, 'tomUserPreferences');
+      expect(tomUserPreferencesApi.uri, '/preferences');
+    });
+
+    test('it declares exactly the four endpoints its ids name', () {
+      expect(
+        tomUserPreferencesApi.endpoints.keys,
+        unorderedEquals(<String>[
+          tomUserPreferencesListEndpointId,
+          tomUserPreferencesReadEndpointId,
+          tomUserPreferencesWriteEndpointId,
+          tomUserPreferencesDeleteEndpointId,
+        ]),
+      );
+    });
+
+    test('the endpoint ids are the literal text the server restates', () {
+      // The server's `@TomApiEndpointImplementation(endpointId: …)` names these
+      // as strings. Renaming a constant compiles on both sides and leaves the
+      // handler bound to nothing, so the literals are pinned here.
+      expect(tomUserPreferencesListEndpointId, 'listPreferences');
+      expect(tomUserPreferencesReadEndpointId, 'readPreference');
+      expect(tomUserPreferencesWriteEndpointId, 'writePreference');
+      expect(tomUserPreferencesDeleteEndpointId, 'deletePreference');
+    });
+
+    test('each endpoint states its method and its address', () {
+      final api = tomUserPreferencesApi;
+
+      expect(api[tomUserPreferencesListEndpointId].method, TomHttpMethod.get);
+      expect(api[tomUserPreferencesListEndpointId].uri, '');
+      expect(api[tomUserPreferencesReadEndpointId].method, TomHttpMethod.get);
+      expect(api[tomUserPreferencesReadEndpointId].uri, '/{key}');
+      expect(api[tomUserPreferencesWriteEndpointId].method, TomHttpMethod.put);
+      expect(
+        api[tomUserPreferencesDeleteEndpointId].method,
+        TomHttpMethod.delete,
+      );
+      expect(api[tomUserPreferencesDeleteEndpointId].uri, '/{key}');
+    });
+
+    test('each endpoint states the request type it reads', () {
+      final api = tomUserPreferencesApi;
+
+      expect(api[tomUserPreferencesListEndpointId].requestTypes, isEmpty);
+      expect(api[tomUserPreferencesReadEndpointId].requestTypes, [
+        TomUserPreferenceKeyRequest,
+      ]);
+      expect(api[tomUserPreferencesWriteEndpointId].requestTypes, [
+        TomUserPreferenceWriteRequest,
+      ]);
+      expect(api[tomUserPreferencesDeleteEndpointId].requestTypes, [
+        TomUserPreferenceKeyRequest,
+      ]);
+    });
+
+    test('a read and a write both answer with the stored preference', () {
+      final api = tomUserPreferencesApi;
+
+      expect(
+        api[tomUserPreferencesListEndpointId].responseType,
+        List<TomUserPreferenceDto>,
+      );
+      expect(
+        api[tomUserPreferencesReadEndpointId].responseType,
+        TomUserPreferenceDto,
+      );
+      // A write answers with the row as stored rather than with nothing: the
+      // timestamp is the server's, so the caller has no other way to learn it.
+      expect(
+        api[tomUserPreferencesWriteEndpointId].responseType,
+        TomUserPreferenceDto,
+      );
+    });
+
+    test('the by-key endpoints bind the capture onto the request field', () {
+      expect(
+        tomUserPreferencesApi[tomUserPreferencesReadEndpointId]
+            .urlParameterMapping,
+        {'key': 'key'},
+      );
+      expect(
+        tomUserPreferencesApi[tomUserPreferencesDeleteEndpointId]
+            .urlParameterMapping,
+        {'key': 'key'},
+      );
+    });
+
+    test('the write states its key in the body and nowhere else', () {
+      // Its request already carries a `key` field. A capture of the same name
+      // would let one request name two preferences, and the pipeline folds the
+      // body first — so the path would win silently. The URI is therefore the
+      // bare collection and the body is the single statement.
+      final write = tomUserPreferencesApi[tomUserPreferencesWriteEndpointId];
+
+      expect(write.uri, '');
+      expect(write.urlParameterMapping, isEmpty);
+      expect(write.requestTypes, [TomUserPreferenceWriteRequest]);
+    });
+
+    test('every endpoint requires a principal', () {
+      // There is no anonymous preference: a preference is per principal and an
+      // anonymous caller is not one. That is the only policy the *contract* can
+      // state — which rows a caller reaches is the server entity's row scope.
+      expect(
+        tomUserPreferencesApi.endpoints.values.map(
+          (endpoint) => endpoint.access,
+        ),
+        everyElement(isA<TomAuthenticatedAccess>()),
+      );
+    });
+
+    test('no endpoint takes a principal parameter', () {
+      // The row scope means there is nothing to ask for but your own, so a
+      // principal in a URI could only be a second and weaker statement of who
+      // the caller is.
+      for (final endpoint in tomUserPreferencesApi.endpoints.values) {
+        expect(endpoint.uri ?? '', isNot(contains('principal')));
+        expect(endpoint.urlParameterMapping, isNot(contains('principal')));
+      }
+    });
+
+    test('a read addresses one preference by its key', () {
+      // The client-side inverse of the route, built from the same declaration.
+      // This is also what makes the key rule load-bearing: whatever the write
+      // put in the body has to come back out as one path segment here.
+      expect(
+        tomUserPreferencesApi[tomUserPreferencesReadEndpointId]
+            .resolveUri(
+              Uri.parse('https://api.example.com'),
+              parameters: {'key': TomUserPreferenceKeys.theme},
+            )
+            .toString(),
+        'https://api.example.com/preferences/tom.theme',
+      );
+    });
+  });
+
+  group('registerTomUserPreferencesApi', () {
+    test('it puts the contract itself into the registry', () {
+      // The registry holds the declaration, not a copy of it, so a caller that
+      // resolves an endpoint by id gets the same object the contract exports.
+      registerTomUserPreferencesApi();
+
+      expect(
+        tomRemoteApis.apis.containsKey(tomUserPreferencesApiId),
+        isTrue,
+      );
+      expect(
+        identical(
+          tomRemoteApis[tomUserPreferencesApiId],
+          tomUserPreferencesApi,
+        ),
+        isTrue,
+      );
+    });
+
+    test('registering twice registers once', () {
+      // Keyed by API id, which is what lets both halves call it without
+      // coordinating: a server registers before mounting the endpoints and a
+      // client before building a caller, and neither has to know about the
+      // other.
+      registerTomUserPreferencesApi();
+      final registeredCount = tomRemoteApis.apis.length;
+      registerTomUserPreferencesApi();
+
+      expect(tomRemoteApis.apis.length, registeredCount);
+    });
+  });
 }

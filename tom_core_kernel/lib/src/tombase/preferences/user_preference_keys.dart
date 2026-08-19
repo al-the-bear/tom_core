@@ -48,11 +48,14 @@ class TomUserPreferenceKeyException extends TomException {
 /// **One to [maxLength] characters, starting with an ASCII letter, and
 /// thereafter only ASCII letters, digits, `.`, `_` and `-`.**
 ///
-/// A key is not free text, because it is not only a map key: the read, write
-/// and delete endpoints are all mounted at `/{key}`, so **every key is a URL
-/// path segment**, and a segment that has to be escaped to be sent is a
-/// segment whose meaning depends on what unescapes it. Measured against the
-/// contract's own endpoint, an unconstrained key does not merely look odd:
+/// A key is not free text, because it is not only a map key: the read and
+/// delete endpoints are mounted at `/{key}`, so **every key is a URL path
+/// segment**, and a segment that has to be escaped to be sent is a segment
+/// whose meaning depends on what unescapes it. The write is the exception —
+/// it states its key in the body — but that buys nothing here: a key written
+/// through the body is read and deleted through the path, so a key the path
+/// cannot carry is a key that can only be stored. Measured against the
+/// contract's own endpoints, an unconstrained key does not merely look odd:
 ///
 /// | Key | Resolves to | What that is |
 /// | --- | ----------- | ------------ |
