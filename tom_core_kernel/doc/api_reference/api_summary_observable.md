@@ -758,7 +758,7 @@ TomList.ofList(List<E> list)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `castFrom` | `static TomList<E> castFrom<S extends TomObject, E extends TomObject>(TomList<S> source)` | Casts a `TomList` from element type `S` to `E`. |
+| `castFrom` | `static TomList<E> castFrom<S extends TomObject, E extends TomObject>(TomList<S> source)` | A new list of type `E` holding `source`'s elements: **structure copied, elements shared** — see "castFrom" below. Both type arguments must be written out: `TomList.castFrom<TomInt, TomObject>(source)`. Throws a `TypeError` at the cast, not on a later read, if an element is not an `E`. |
 
 #### Properties
 
@@ -883,6 +883,34 @@ bool sameEntries(TomMap<String, TomInt> a, TomMap<String, TomInt> b) =>
 For a container of nested `TomClass` elements compare `getValues()` per element
 instead.
 
+**`castFrom` copies the structure and shares the elements.** Both halves of that
+sentence carry weight. The cast is an independent cell — adding to it does not
+add to the source, and vice versa — but it holds the *same* element instances,
+so both containers observe them and a change inside an element notifies both.
+Element sharing is inherent to a cast: it re-types what is there and cannot
+manufacture replacements. The source is left untouched and fully functional;
+nothing is taken from it. Use `TomList.of` / `TomMap.of` for the same copy
+without the re-typing.
+
+A live re-typed *`TomList`/`TomMap`* sharing the backing collection is
+deliberately not offered: each container carries its own observers, so a shared
+structure would let one side grow the other without notifying it, and would
+leave elements added through one side unobserved by the other. When a live view
+is what you want, the instance method `cast<R>()` gives one — read-only, and a
+plain `List<R>` / `Map<RK, RV>` rather than an observable cell.
+
+Both methods are **static generic methods**, not constructors, and Dart takes
+type arguments all-or-nothing — so every type argument must be written out even
+though `source` determines the input ones:
+
+```dart
+final widened  = TomList.castFrom<TomInt, TomObject>(ints);
+final widenedM = TomMap.castFrom<String, TomInt, String, TomObject>(scores);
+```
+
+A mismatched target type throws a `TypeError` **at the cast**, not on a later
+read: the copy type-checks the whole collection up front.
+
 ### TomMap
 
 Observable map with `TomObject` values that automatically observes all values
@@ -910,7 +938,7 @@ TomMap.ofMap(Map<K, V> map)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `castFrom` | `static TomMap<K2, V2> castFrom<K, V extends TomObject, K2, V2 extends TomObject>(TomMap<K, V> source)` | Casts a `TomMap` from key/value types `K`/`V` to `K2`/`V2`. |
+| `castFrom` | `static TomMap<K2, V2> castFrom<K, V extends TomObject, K2, V2 extends TomObject>(TomMap<K, V> source)` | A new map of type `K2`/`V2` holding `source`'s entries: **structure copied, values shared**, same contract as `TomList.castFrom`. All four type arguments must be written out: `TomMap.castFrom<String, TomInt, String, TomObject>(source)`. Throws a `TypeError` at the cast. |
 
 #### Properties
 

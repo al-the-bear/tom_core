@@ -1856,11 +1856,38 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 
   List<E> sublist(int start, [int? end]) => _value.sublist(start, end);
 
-  /// Casts a [TomList] from one element type to another.
+  /// A new list of type `E` holding [source]'s elements.
+  ///
+  /// **The structure is copied; the elements are shared.** The two lists are
+  /// independent cells from here on — adding to one does not add to the other —
+  /// but they hold the *same* element instances, so both observe them and a
+  /// change inside an element notifies both. That is inherent to a cast: no new
+  /// elements can be manufactured, only re-typed. [source] is left untouched
+  /// and fully functional; nothing is taken from it.
+  ///
+  /// A *live* re-typed `TomList` sharing the backing list is deliberately not
+  /// offered: each container carries its own observers, so a shared structure
+  /// would let one side grow the other without notifying it, and would leave
+  /// elements added through one side unobserved by the other. When a live view
+  /// is what you want, [cast] gives one — read-only, and a plain `List<R>`
+  /// rather than an observable cell. Use [TomList.of] for this copy without the
+  /// re-typing.
+  ///
+  /// Both type arguments must be written out — Dart takes type arguments
+  /// all-or-nothing, so `S` cannot be left to inference even though [source]
+  /// determines it:
+  ///
+  /// ```dart
+  /// final ints = TomList<TomInt>()..add(TomInt(1));
+  /// final widened = TomList.castFrom<TomInt, TomObject>(ints);
+  /// ```
+  ///
+  /// Throws a `TypeError` **here**, not on a later read, if an element is not
+  /// an `E`: the copy type-checks the whole sequence up front.
   static TomList<E> castFrom<S extends TomObject, E extends TomObject>(
     TomList<S> source,
   ) {
-    return TomList<E>.ofList(List.castFrom<S, E>(source._value));
+    return TomList<E>.ofList(source._value.cast<E>().toList(growable: true));
   }
 }
 
@@ -2224,13 +2251,31 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     });
   }
 
-  /// Casts a [TomMap] from one key/value type to another.
+  /// A new map of type `K2`/`V2` holding [source]'s entries.
+  ///
+  /// **The structure is copied; the values are shared.** Same contract as
+  /// [TomList.castFrom] — the two maps are independent cells, but they hold the
+  /// same value instances, so both observe them and a change inside a value
+  /// notifies both. [source] is left untouched. For a live view instead, [cast]
+  /// gives one — read-only, and a plain `Map<RK, RV>` rather than an observable
+  /// cell. Use [TomMap.of] for this copy without the re-typing.
+  ///
+  /// All four type arguments must be written out, since Dart takes type
+  /// arguments all-or-nothing:
+  ///
+  /// ```dart
+  /// final scores = TomMap<String, TomInt>();
+  /// final widened = TomMap.castFrom<String, TomInt, String, TomObject>(scores);
+  /// ```
+  ///
+  /// Throws a `TypeError` **here**, not on a later read, if a key or value does
+  /// not have the target type: the copy type-checks every entry up front.
   static TomMap<K2, V2> castFrom<
     K,
     V extends TomObject,
     K2,
     V2 extends TomObject
   >(TomMap<K, V> source) {
-    return TomMap<K2, V2>.ofMap(Map.castFrom<K, V, K2, V2>(source._value));
+    return TomMap<K2, V2>.ofMap(Map<K2, V2>.of(source._value.cast<K2, V2>()));
   }
 }

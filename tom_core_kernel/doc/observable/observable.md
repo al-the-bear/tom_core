@@ -29,6 +29,7 @@ and complex objects with automatic change notification and propagation.
   - [Lifecycle Listeners](#lifecycle-listeners)
 - [TomMap (Observable Maps)](#tommap-observable-maps)
 - [Container Equality Is Identity](#container-equality-is-identity)
+- [Re-Typing a Container: `castFrom` and `cast`](#re-typing-a-container-castfrom-and-cast)
 - [TomObservableEnum (Resource-Keyed Enums)](#tomobservableenum-resource-keyed-enums)
   - [Permitted Values](#permitted-values)
   - [Resource Keys and Scope](#resource-keys-and-scope)
@@ -1431,6 +1432,61 @@ instead.
 
 The same identity rule is what makes `remove` take the element itself rather
 than a value to match — see [List Operations](#list-operations).
+
+## Re-Typing a Container: `castFrom` and `cast`
+
+There are two ways to change the static type of a container's elements, and
+they produce different things.
+
+`castFrom` builds a **new observable container**. It **copies the structure and
+shares the elements**: the two containers are independent cells — adding to one
+does not add to the other — but they hold the *same* element instances, so both
+observe them and a change inside an element notifies both. Element sharing is
+inherent to a cast; it re-types what is there and cannot manufacture
+replacements. The source is left untouched and fully functional.
+
+```dart
+final ints = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+final widened = TomList.castFrom<TomInt, TomObject>(ints);
+
+widened.add(TomInt(3));
+print(ints.length);     // 2 — separate structures
+print(widened.length);  // 3
+
+// …but the first two elements are shared, so both lists hear this:
+ints[0] | 99;
+```
+
+Both methods are **static generic methods**, not constructors, and Dart takes
+type arguments all-or-nothing — so every type argument must be spelled out even
+though `source` determines the input ones. `TomMap` needs all four:
+
+```dart
+final scores = TomMap<String, TomInt>();
+final widenedScores =
+    TomMap.castFrom<String, TomInt, String, TomObject>(scores);
+```
+
+A mismatched target type throws a `TypeError` **at the cast**, not on some later
+read: the copy type-checks the whole collection up front.
+
+A live re-typed `TomList`/`TomMap` sharing the backing collection is
+deliberately not offered. Each container carries its own observers, so a shared
+structure would let one side grow the other without notifying it, and would
+leave elements added through one side unobserved by the other — two
+half-informed containers instead of one working one.
+
+When a live view *is* what you want, the instance method `cast<R>()` gives one —
+but note what it returns: a **read-only plain `List<R>` / `Map<RK, RV>`**, not
+an observable cell. It stays in step with the container it came from, and
+writing to it throws `UnsupportedError` (only the mutators may write, because
+only they notify).
+
+| Want | Use | You get |
+| ---- | --- | ------- |
+| A second observable container, re-typed | `TomList.castFrom<S, E>(src)` | A new `TomList<E>`; independent structure, shared elements |
+| A live re-typed handle for reading | `src.cast<E>()` | A read-only `List<E>` view; writes throw |
+| A plain snapshot | `src.get()` / `src.toList()` | A detached copy |
 
 ## TomObservableEnum (Resource-Keyed Enums)
 

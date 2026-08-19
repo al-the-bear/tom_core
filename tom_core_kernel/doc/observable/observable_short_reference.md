@@ -328,7 +328,12 @@ An observable list implementation that automatically observes all contained elem
 - `cast<R>()` — a **live, read-only** re-typed view; writing to it throws `UnsupportedError`
 
 **Static Methods:**
-- `TomList.castFrom<S, E>()` — casts list element types
+- `TomList.castFrom<S, E>(source)` — a **new** `TomList<E>` holding `source`'s
+  elements: structure copied, elements shared (so both lists observe them and
+  both are notified when one changes; neither can alter the other's shape).
+  Both type arguments must be written out. Throws a `TypeError` at the cast, not
+  on a later read. Contrast `cast<R>()`, which is a live read-only *plain*
+  `List<R>` view rather than an observable cell
 
 ---
 
@@ -385,7 +390,10 @@ An observable map implementation that automatically observes all contained value
 - `cast<RK, RV>()` — a **live, read-only** re-typed view; writing to it throws `UnsupportedError`
 
 **Static Methods:**
-- `TomMap.castFrom<K, V, K2, V2>()` — casts map key/value types
+- `TomMap.castFrom<K, V, K2, V2>(source)` — a **new** `TomMap<K2, V2>` holding
+  `source`'s entries: structure copied, values shared. Same contract as
+  [`TomList.castFrom`](#tomliste-extends-tomobject); all four type arguments
+  must be written out
 
 ---
 

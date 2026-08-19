@@ -3323,6 +3323,212 @@ void main() {
     });
   });
 
+  // castFrom copies the structure and shares the elements. The two halves of
+  // that sentence are both load-bearing: sharing the *structure* would let one
+  // container grow the other without notifying it and leave the newcomers
+  // unobserved on the far side, while copying the *elements* is impossible —
+  // a cast re-types what is there, it cannot manufacture replacements. Both
+  // containers therefore observe the shared elements, and neither can disturb
+  // the other's shape.
+  group('castFrom copies the structure and shares the elements', () {
+    group('TomList', () {
+      test('the cast holds the very same element instances', () {
+        final source = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+
+        final cast = TomList.castFrom<TomInt, TomInt>(source);
+
+        expect(cast.length, equals(2));
+        expect(identical(cast[0], source[0]), isTrue);
+        expect(identical(cast[1], source[1]), isTrue);
+      });
+
+      test('growing the cast leaves the source the length it was', () {
+        final source = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+        final cast = TomList.castFrom<TomInt, TomInt>(source);
+
+        cast.add(TomInt(3));
+
+        expect(cast.length, equals(3));
+        expect(source.length, equals(2));
+      });
+
+      test('growing the source leaves the cast the length it was', () {
+        final source = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+        final cast = TomList.castFrom<TomInt, TomInt>(source);
+
+        source.add(TomInt(3));
+
+        expect(source.length, equals(3));
+        expect(cast.length, equals(2));
+      });
+
+      test('a change inside a shared element notifies both', () {
+        final source = TomList<TomInt>()..add(TomInt(1));
+        final cast = TomList.castFrom<TomInt, TomInt>(source);
+        final sourceObserver = TestObserver<TomList<TomInt>>();
+        final castObserver = TestObserver<TomList<TomInt>>();
+        source.addObserver(sourceObserver);
+        cast.addObserver(castObserver);
+
+        source[0] | 99;
+
+        expect(sourceObserver.notifyCount, equals(1));
+        expect(castObserver.notifyCount, equals(1));
+      });
+
+      test('an element added to the cast is unknown to the source', () {
+        final source = TomList<TomInt>()..add(TomInt(1));
+        final cast = TomList.castFrom<TomInt, TomInt>(source);
+        final sourceObserver = TestObserver<TomList<TomInt>>();
+        final castObserver = TestObserver<TomList<TomInt>>();
+        source.addObserver(sourceObserver);
+        cast.addObserver(castObserver);
+
+        final newcomer = TomInt(7);
+        cast.add(newcomer);
+        newcomer | 8;
+
+        // One notification for the add, one for the change — both on the cast.
+        expect(castObserver.notifyCount, equals(2));
+        expect(sourceObserver.notifyCount, equals(0));
+      });
+
+      test('an element added to the source is unknown to the cast', () {
+        final source = TomList<TomInt>()..add(TomInt(1));
+        final cast = TomList.castFrom<TomInt, TomInt>(source);
+        final sourceObserver = TestObserver<TomList<TomInt>>();
+        final castObserver = TestObserver<TomList<TomInt>>();
+        source.addObserver(sourceObserver);
+        cast.addObserver(castObserver);
+
+        final newcomer = TomInt(7);
+        source.add(newcomer);
+        newcomer | 8;
+
+        expect(sourceObserver.notifyCount, equals(2));
+        expect(castObserver.notifyCount, equals(0));
+      });
+
+      test('removing from the cast leaves the source observing the element', () {
+        final source = TomList<TomInt>()..addAll([TomInt(1), TomInt(2)]);
+        final cast = TomList.castFrom<TomInt, TomInt>(source);
+        final sourceObserver = TestObserver<TomList<TomInt>>();
+        source.addObserver(sourceObserver);
+
+        final shared = cast[0];
+        cast.remove(shared);
+        shared | 99;
+
+        expect(source.length, equals(2));
+        expect(sourceObserver.notifyCount, equals(1));
+      });
+
+      test('the element type can be widened', () {
+        final source = TomList<TomInt>()..add(TomInt(1));
+
+        final widened = TomList.castFrom<TomInt, TomObject>(source);
+
+        expect(widened, isA<TomList<TomObject>>());
+        expect(identical(widened.first, source.first), isTrue);
+      });
+
+      test('a mismatched element type throws at the cast, not on a read', () {
+        final source = TomList<TomInt>()..add(TomInt(1));
+
+        expect(
+          () => TomList.castFrom<TomInt, TomString>(source),
+          throwsA(isA<TypeError>()),
+        );
+      });
+    });
+
+    group('TomMap', () {
+      TomMap<String, TomInt> mapOf(Map<String, int> values) {
+        final map = TomMap<String, TomInt>();
+        values.forEach((k, v) => map[k] = TomInt(v));
+        return map;
+      }
+
+      test('the cast holds the very same value instances', () {
+        final source = mapOf({'a': 1, 'b': 2});
+
+        final cast = TomMap.castFrom<String, TomInt, String, TomInt>(source);
+
+        expect(cast.length, equals(2));
+        expect(identical(cast['a'], source['a']), isTrue);
+      });
+
+      test('adding to the cast leaves the source the size it was', () {
+        final source = mapOf({'a': 1});
+        final cast = TomMap.castFrom<String, TomInt, String, TomInt>(source);
+
+        cast['b'] = TomInt(2);
+
+        expect(cast.length, equals(2));
+        expect(source.length, equals(1));
+      });
+
+      test('adding to the source leaves the cast the size it was', () {
+        final source = mapOf({'a': 1});
+        final cast = TomMap.castFrom<String, TomInt, String, TomInt>(source);
+
+        source['b'] = TomInt(2);
+
+        expect(source.length, equals(2));
+        expect(cast.length, equals(1));
+      });
+
+      test('a change inside a shared value notifies both', () {
+        final source = mapOf({'a': 1});
+        final cast = TomMap.castFrom<String, TomInt, String, TomInt>(source);
+        final sourceObserver = TestObserver<TomMap<String, TomInt>>();
+        final castObserver = TestObserver<TomMap<String, TomInt>>();
+        source.addObserver(sourceObserver);
+        cast.addObserver(castObserver);
+
+        source['a']! | 99;
+
+        expect(sourceObserver.notifyCount, equals(1));
+        expect(castObserver.notifyCount, equals(1));
+      });
+
+      test('a value added to the cast is unknown to the source', () {
+        final source = mapOf({'a': 1});
+        final cast = TomMap.castFrom<String, TomInt, String, TomInt>(source);
+        final sourceObserver = TestObserver<TomMap<String, TomInt>>();
+        final castObserver = TestObserver<TomMap<String, TomInt>>();
+        source.addObserver(sourceObserver);
+        cast.addObserver(castObserver);
+
+        final newcomer = TomInt(7);
+        cast['b'] = newcomer;
+        newcomer | 8;
+
+        expect(castObserver.notifyCount, equals(2));
+        expect(sourceObserver.notifyCount, equals(0));
+      });
+
+      test('the value type can be widened', () {
+        final source = mapOf({'a': 1});
+
+        final widened =
+            TomMap.castFrom<String, TomInt, String, TomObject>(source);
+
+        expect(widened, isA<TomMap<String, TomObject>>());
+        expect(identical(widened['a'], source['a']), isTrue);
+      });
+
+      test('a mismatched value type throws at the cast, not on a read', () {
+        final source = mapOf({'a': 1});
+
+        expect(
+          () => TomMap.castFrom<String, TomInt, String, TomString>(source),
+          throwsA(isA<TypeError>()),
+        );
+      });
+    });
+  });
+
   // No accessor may hand out a live, writable handle on a composite's backing
   // collection. Writing through such a handle bypasses the notification the
   // mutator would have sent, and on a TomClass it deregisters a member without
