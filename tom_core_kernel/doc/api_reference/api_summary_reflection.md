@@ -94,8 +94,15 @@ element types from collections.
 #### Constructors
 
 ```dart
-TomReflectionInfo(TomReflector reflector)
+TomReflectionInfo()
 ```
+
+Takes no reflector: every operation goes through the global `tomReflector`.
+The generator emits mirror data only for a **direct** subclass of `Reflection`,
+which `TomReflector` already is, so no second reflector can carry data; and
+`const TomReflector()` is canonicalised to `tomReflector` besides. Prefer the
+shared `tomReflectionInfo` instance — a converter of your own differs in
+nothing.
 
 #### Static Properties
 
@@ -107,9 +114,8 @@ TomReflectionInfo(TomReflector reflector)
 
 #### Properties
 
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `reflector` | `TomReflector` | The reflector instance used for all reflection operations. |
+None public. The only instance state is a private compiled `RegExp` used to
+parse type arguments out of a runtime type string.
 
 #### Methods
 
@@ -117,19 +123,19 @@ TomReflectionInfo(TomReflector reflector)
 | ------ | --------- | ----------- |
 | `mapValueElementType` | `ClassMirror mapValueElementType(Object collection)` | Extracts the value type's `ClassMirror` from a `Map<K, V>` type annotation. Throws `TomReflectorException` if the collection is not generic, carries fewer than two type arguments, the value type is not among annotated classes, or its simple name is ambiguous. |
 | `singleElementType` | `ClassMirror singleElementType(Object collection)` | Extracts the element type's `ClassMirror` from a single-type-parameter collection (e.g. `List`, `Set`). Throws `TomReflectorException` if the collection is not generic, the element type is not found, or its simple name is ambiguous. |
-| `reportReflectObject` | `void reportReflectObject(Object o)` | Prints detailed reflection information about an object (declarations, instance members, superclass hierarchy) for debugging. |
+| `reportReflectObject` | `void reportReflectObject(Object o)` | Prints detailed reflection information about an object (declarations, instance members, superclass hierarchy) for debugging. Throws `TomReflectorException` (`reflector.reflect.not_reflectable`) if the object's class is not reflectable. |
 | `reportReflect` | `void reportReflect(ClassMirror cm)` | Prints detailed reflection information about a `ClassMirror` for debugging. |
 | `convertFromJsonString` | `T convertFromJsonString<T extends Object>(T o, String s)` | Parses a JSON string and populates the fields of object `o`; returns the same object. |
 | `createInstanceFromJsonString` | `T? createInstanceFromJsonString<T extends Object>(ClassMirror objectMirror, String s)` | Creates a new instance of `T` from a JSON string using `objectMirror`; returns null if creation fails. |
 | `createInstanceFromJson` | `T? createInstanceFromJson<T extends Object>(ClassMirror objectMirror, Map<String, Object?> jsonData)` | Creates a new instance of `T` from JSON data, preferring a `fromJson` constructor and falling back to the default constructor plus `setValues`. |
 | `createInstance` | `T createInstance<T extends Object>([Type? type])` | Creates a new instance of `T` (or `type`) using its default constructor; throws `TomReflectorException` if instantiation fails. |
-| `setValues` | `T setValues<T extends Object>(T o, Map<String, dynamic> values)` | Sets field values on `o` from a map (the main deserialization entry point); handles primitives, `int`→`double` widening, date/time types, nested annotated objects, and collections. Collections of annotated objects are assigned atomically — the field is untouched unless every element materializes. Resolves the class from the instance, so an annotated generic class is populated like any other; see `getValues`. |
+| `setValues` | `T setValues<T extends Object>(T o, Map<String, dynamic> values)` | Sets field values on `o` from a map (the main deserialization entry point); handles primitives, `int`→`double` widening, date/time types, nested annotated objects, and collections. Collections of annotated objects are assigned atomically — the field is untouched unless every element materializes. Resolves the class from the instance, so an annotated generic class is populated like any other; see `getValues`. Throws `TomReflectorException` (`reflector.reflect.not_reflectable`) if `o`'s class is not reflectable. |
 | `convertToJsonString` | `String convertToJsonString(Object o)` | Calls `getValues` and encodes the result to a JSON string. |
-| `getValues` | `Map<String, Object?> getValues(Object o)` | Extracts all values from an object as a JSON-compatible map (the main serialization entry point). Resolves the class from the *instance*, so an annotated **generic** class serializes like any other — the registry is keyed by declaration and holds no `Holder<int>` entry, which is what a `reflectType(o.runtimeType)` lookup would fall over on. The type argument is not a member, so two instantiations of one declaration produce one JSON shape. |
+| `getValues` | `Map<String, Object?> getValues(Object o)` | Extracts all values from an object as a JSON-compatible map (the main serialization entry point). Resolves the class from the *instance*, so an annotated **generic** class serializes like any other — the registry is keyed by declaration and holds no `Holder<int>` entry, which is what a `reflectType(o.runtimeType)` lookup would fall over on. The type argument is not a member, so two instantiations of one declaration produce one JSON shape. Throws `TomReflectorException` (`reflector.reflect.not_reflectable`) if `o`'s class is not reflectable. |
 
 ## Global Functions and Constants
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `tomReflector` | `const TomReflector tomReflector` | Global reflector annotation applied to classes (`@tomReflector`) that need reflection support. |
-| `tomReflectionInfo` | `final TomReflectionInfo tomReflectionInfo` | Global reflection-info instance used for all reflection operations, built from `tomReflector`. |
+| `tomReflectionInfo` | `final TomReflectionInfo tomReflectionInfo` | Global reflection-info instance used for all reflection operations. The one to reach for: a converter is stateless as far as callers are concerned, so there is nothing a second one could do differently. |

@@ -120,6 +120,24 @@ class TomReflector extends Reflection {
 /// final jsonString = tomReflectionInfo.convertToJsonString(person);
 /// ```
 ///
+/// ## There is exactly one reflector, and it is not a parameter
+///
+/// Every operation goes through the global [tomReflector]. The class used to
+/// take a reflector as a constructor argument, which read as an extension
+/// point and was not one: the code generator that produces the mirror data
+/// refuses to emit anything for a class that is not a **direct** subclass of
+/// `Reflection` (it warns *"An indirect subclass of `Reflection` will not work
+/// as a reflector"* and skips it). [TomReflector] is that direct subclass, so
+/// a subclass of *it* is one step too far and silently gets no data at all;
+/// and because [TomReflector]'s constructor is `const`, every
+/// `const TomReflector()` is canonicalised to the very same object as
+/// [tomReflector]. The parameter could therefore only ever be handed the
+/// global — or a value guaranteed to fail at the first mirror lookup.
+///
+/// Do not reintroduce it. A genuine second reflector would need a second
+/// direct subclass of `Reflection` and a field typed to their common
+/// supertype, which is a different design and one nothing currently asks for.
+///
 /// ## Debug Switches
 /// Enable debug logging for troubleshooting reflection operations:
 /// - [debugSwitchLogReflectionDetailsMembers]: Log class member information
@@ -196,18 +214,19 @@ class TomReflectionInfo {
         im.invokeSetter(e.key, (e.value as List).cast<bool?>()),
   };
 
-  /// The reflector instance used for all reflection operations.
-  final TomReflector reflector;
-
   /// Regular expression to extract element types from generic type strings.
   ///
   /// Matches the type parameter(s) inside angle brackets, e.g.,
   /// `List<String>` -> `String`, `Map<String, int>` -> `String, int`.
   final RegExp _elementTypeExp = RegExp(r'<([^>]+)>');
 
-  /// Creates a new [TomReflectionInfo] with the given reflector.
-  /// Creates a new [TomReflectionInfo] with the given reflector.
-  TomReflectionInfo(this.reflector);
+  /// Creates a converter over the global [tomReflector].
+  ///
+  /// It takes no reflector, and that is not an omission — see the class
+  /// documentation for why a second one cannot exist. Use the shared
+  /// [tomReflectionInfo] instance in preference to constructing your own;
+  /// the class holds no per-instance state beyond a compiled [RegExp].
+  TomReflectionInfo();
 
   // ---------------------------------------------------------------------------
   // Type Resolution Methods
@@ -300,7 +319,7 @@ class TomReflectionInfo {
     String errorMessage,
   ) {
     final matches = <ClassMirror>[];
-    for (var t in reflector.annotatedClasses) {
+    for (var t in tomReflector.annotatedClasses) {
       if (t.simpleName == typeName) {
         matches.add(t);
       }
@@ -321,6 +340,36 @@ class TomReflectionInfo {
       );
     }
     return matches.first;
+  }
+
+  /// Reflects [o] through the global [tomReflector] on behalf of [operation].
+  ///
+  /// The single door through which every instance-mirror lookup passes, so
+  /// that the one thing that can go wrong here goes wrong the same way
+  /// everywhere. That thing is an object whose class carries no
+  /// `@tomReflector`: the reflectable package answers with a
+  /// `NoSuchCapabilityError` naming the type and nothing else — not the
+  /// operation that wanted it, not the annotation that would fix it, and not
+  /// in the exception type the rest of this class raises. Callers that catch
+  /// [TomReflectorException] would miss it entirely.
+  ///
+  /// [operation] is the public method the caller is inside, so the message
+  /// says which of serialization, deserialization or reporting failed.
+  InstanceMirror _reflect(Object o, String operation) {
+    try {
+      return tomReflector.reflect(o);
+    } catch (e, s) {
+      throw TomReflectorException(
+        "reflector.reflect.not_reflectable",
+        "TomReflectionInfo.$operation: cannot reflect on "
+            "${o.runtimeType} — the class is not annotated with "
+            "@tomReflector, or its generated reflection data was not "
+            "initialized: $e",
+        autoLog: true,
+        rootException: e,
+        stack: s,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -344,7 +393,7 @@ class TomReflectionInfo {
   void reportReflectObject(Object o) {
     // Via the instance, so a generic value reports rather than throwing — see
     // [getValues].
-    reportReflect(reflector.reflect(o).type);
+    reportReflect(_reflect(o, 'reportReflectObject').type);
   }
 
   /// Prints detailed reflection information about a [ClassMirror] for debugging.
@@ -543,7 +592,7 @@ class TomReflectionInfo {
       return o;
     }
 
-    final im = tomReflector.reflect(o);
+    final im = _reflect(o, 'setValues');
 
     if (_tryInvokeJsonDecode(im, values)) {
       return o;
@@ -561,7 +610,6 @@ class TomReflectionInfo {
     return o;
   }
 
-  /// Attempts to invoke a `jsonDecode` method on the object.
   /// Attempts to invoke a `jsonDecode` method on the object.
   bool _tryInvokeJsonDecode(InstanceMirror im, Map<String, dynamic> values) {
     try {
@@ -1228,7 +1276,7 @@ class TomReflectionInfo {
       return o.toJson();
     }
 
-    final im = tomReflector.reflect(o);
+    final im = _reflect(o, 'getValues');
 
     if (_tryGetJsonEncode(im) case Map<String, Object?> encoded) {
       return encoded;
@@ -1370,4 +1418,4 @@ const TomReflector tomReflector = TomReflector();
 /// // Get values as JSON
 /// final json = tomReflectionInfo.getValues(person);
 /// ```
-final TomReflectionInfo tomReflectionInfo = TomReflectionInfo(tomReflector);
+final TomReflectionInfo tomReflectionInfo = TomReflectionInfo();

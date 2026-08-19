@@ -140,8 +140,12 @@ Two global instances are provided for convenience:
 const TomReflector tomReflector = TomReflector();
 
 /// The reflection operations instance
-TomReflectionInfo tomReflectionInfo = TomReflectionInfo(tomReflector);
+final TomReflectionInfo tomReflectionInfo = TomReflectionInfo();
 ```
+
+`TomReflectionInfo` takes no reflector — it always uses `tomReflector`. There
+is no second reflector to pass: the generator emits mirror data only for a
+*direct* subclass of `Reflection`, and `TomReflector` is that subclass.
 
 ## Annotations
 

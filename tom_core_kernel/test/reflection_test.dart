@@ -231,6 +231,18 @@ class GenericHolder<T> {
   GenericHolder();
 }
 
+/// Deliberately **not** annotated, so no mirror data exists for it.
+///
+/// The one input for which the reflectable package, rather than Tom's code,
+/// decides what the failure looks like — which is what makes it the test
+/// subject for the error boundary.
+class NotReflectedHolder {
+  String name = '';
+  int count = 0;
+
+  NotReflectedHolder();
+}
+
 void main() {
   setUpAll(() {
     initializeReflection();
@@ -1529,6 +1541,122 @@ void main() {
       expect(restored.address!.street, '1 Main St');
       expect(restored.address!.city, 'Springfield');
       expect(restored.address!.zipCode, '12345');
+    });
+  });
+
+  group('there is one reflector, and unreflected input is reported', () {
+    // The constructor used to take a reflector and store it in a public
+    // `final reflector` field documented as "used for all reflection
+    // operations", while `createInstance`, `setValues` and `getValues` read
+    // the global `tomReflector` regardless. The choice could never have been
+    // honoured — the generator emits no data for an indirect subclass of
+    // `Reflection`, and `const TomReflector()` is canonicalised to the global
+    // — so the parameter was removed rather than obeyed. What remains
+    // testable is the consequence the split was hiding: what a caller sees
+    // when the reflector does not know the type.
+
+    test('a converter of your own is the same converter', () {
+      // Standing in for "the constructor no longer offers a choice", which is
+      // a compile-time fact. What is observable is that a locally built
+      // converter has nothing to differ about: same registry, same answers.
+      final own = TomReflectionInfo();
+      final person = SimplePerson()
+        ..name = 'Ada'
+        ..age = 36;
+
+      expect(own.getValues(person), tomReflectionInfo.getValues(person));
+      expect(own.createInstance<SimplePerson>(), isA<SimplePerson>());
+    });
+
+    test('getValues reports an unreflected class instead of leaking', () {
+      // Was a bare `NoSuchCapabilityError` from inside the reflectable
+      // package: it named the type and nothing else — not the operation, not
+      // the missing annotation — and slipped past every `on
+      // TomReflectorException` the framework has.
+      expect(
+        () => tomReflectionInfo.getValues(NotReflectedHolder()),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.reflect.not_reflectable',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(
+                  contains('getValues'),
+                  contains('NotReflectedHolder'),
+                  contains('@tomReflector'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('setValues reports an unreflected class instead of leaking', () {
+      expect(
+        () => tomReflectionInfo.setValues(NotReflectedHolder(), {'name': 'x'}),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.reflect.not_reflectable',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('setValues'),
+              ),
+        ),
+      );
+    });
+
+    test('reportReflectObject reports rather than leaking', () {
+      // A debug helper, but it reflects the same way and so failed the same
+      // way; left out, it would be the one door still open.
+      expect(
+        () => tomReflectionInfo.reportReflectObject(NotReflectedHolder()),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            contains('reportReflectObject'),
+          ),
+        ),
+      );
+    });
+
+    test('createInstance keeps reporting its own failure', () {
+      // Already wrapped before this change; asserted so that routing it
+      // through the shared boundary later cannot quietly drop the type name.
+      expect(
+        () => tomReflectionInfo.createInstance<NotReflectedHolder>(),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.defaultUserMessage,
+            'message',
+            contains('NotReflectedHolder'),
+          ),
+        ),
+      );
+    });
+
+    test('a reflected class is untouched by the boundary', () {
+      // The control: the wrapping must not turn a working reflect into a
+      // failure, nor swallow an error raised further in.
+      final person = SimplePerson()
+        ..name = 'Grace'
+        ..age = 45;
+
+      expect(tomReflectionInfo.getValues(person), {
+        'name': 'Grace',
+        'age': 45,
+        'active': false,
+        'salary': 0.0,
+      });
     });
   });
 }
