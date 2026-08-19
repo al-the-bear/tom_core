@@ -154,6 +154,28 @@ class ConstructedPreference {
   ConstructedPreference(this.size);
 }
 
+/// [DisplayPreference]'s members, defaulted through constructor parameters
+/// instead of field initializers.
+///
+/// The two forms look like a style choice and are not obviously
+/// interchangeable: rebuilding goes through `newInstance("", [])`, which passes
+/// no arguments at all, so whether a defaulted *parameter* leaves the instance
+/// as usable as a defaulted *field* is a question about the reflector, not
+/// about taste. It is asserted rather than assumed because the documentation
+/// shows both forms and a reader has to know that neither one is a trap.
+@tomReflector
+class ConstructorDefaultedPreference {
+  String theme;
+  int fontSize;
+  bool compact;
+
+  ConstructorDefaultedPreference({
+    this.theme = 'light',
+    this.fontSize = 14,
+    this.compact = false,
+  });
+}
+
 /// An enum preference value — a theme, the canonical one.
 ///
 /// Annotated, because an enum is a non-scalar and so follows the same rule as
@@ -607,6 +629,35 @@ void main() {
         expect(restored.theme, 'dark');
         expect(restored.fontSize, 18);
         expect(restored.compact, isTrue);
+      });
+
+      test('a default reaches the rebuilt instance from either form', () {
+        // Rebuilding calls the unnamed constructor with no arguments and then
+        // assigns members, so a class whose defaults live on constructor
+        // parameters gets them applied exactly as one whose defaults live on
+        // the fields does — including for a member the payload omits, which is
+        // the only case where the two forms could have differed.
+        final original = ConstructorDefaultedPreference()..theme = 'dark';
+
+        final encoded = TomUserPreferenceCodec.encodeValue(
+          original,
+          'ui.display',
+        );
+        final restored = decodeStored<ConstructorDefaultedPreference>(
+          encoded,
+          'ui.display',
+        );
+
+        expect(restored.theme, 'dark');
+        expect(restored.fontSize, 14);
+        expect(restored.compact, isFalse);
+
+        final fromEmpty = decodeStored<ConstructorDefaultedPreference>(
+          '{}',
+          'ui.display',
+        );
+        expect(fromEmpty.theme, 'light');
+        expect(fromEmpty.fontSize, 14);
       });
     });
 

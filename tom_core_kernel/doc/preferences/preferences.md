@@ -637,6 +637,10 @@ class DisplayPreference {
   bool compact = false;
 }
 
+final preference = DisplayPreference()
+  ..theme = 'dark'
+  ..fontSize = 18;
+
 final request = TomUserPreferenceWriteRequest(
   key: 'ui.display',
   valueType: TomUserPreferenceCodec.typeNameOf(preference, 'ui.display'),
@@ -649,10 +653,27 @@ takes the stored name from the registry the annotation puts the class in, so
 dropping the annotation does not silently store the value under the compiler's
 name — it refuses the write with `preferences.type.not_reflected`.
 
-Reading it back gives a genuinely reconstructed instance:
+The fields are plain and non-`final`, and every one of them has a value before
+anything is stored. Both matter, and for the same reason: reading a preference
+back calls the class's no-argument constructor and then assigns members, so a
+`final` field could not be assigned and an un-defaulted one would have no value
+for a member the stored payload happens to omit. Where the default comes
+from — a field initializer, as here, or a defaulted constructor parameter — is
+yours to choose; the framework's own DTOs use both.
+
+Reading it back gives a genuinely reconstructed instance. The value arrives as
+a `TomUserPreferenceDto`, and it is the DTO's own `valueType` that decides
+whether the read is allowed to produce a `DisplayPreference` at all:
 
 ```dart
-final display = TomUserPreferenceCodec.decode<DisplayPreference>(stored);
+Future<DisplayPreference> readDisplay(
+  TomUserPreferencesApiService preferences,
+) async {
+  final TomUserPreferenceDto stored = await preferences.readPreference(
+    TomUserPreferenceKeyRequest(key: 'ui.display'),
+  );
+  return TomUserPreferenceCodec.decode<DisplayPreference>(stored);
+}
 ```
 
 ### Preferring a Stored Value Over an Asserted One

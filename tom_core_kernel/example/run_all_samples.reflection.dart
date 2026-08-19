@@ -30273,6 +30273,7 @@ final _data = <r.Reflection, r.ReflectorData>{
           const prefix64.TomApiEndpointImplementation(
             apiId: prefix27.tomUserPreferencesApiId,
             endpointId: prefix27.tomUserPreferencesWriteEndpointId,
+            errorHandler: const prefix77.TomUserPreferencesErrorHandler(),
           ),
           override,
         ],
@@ -30291,6 +30292,7 @@ final _data = <r.Reflection, r.ReflectorData>{
           const prefix64.TomApiEndpointImplementation(
             apiId: prefix27.tomUserPreferencesApiId,
             endpointId: prefix27.tomUserPreferencesDeleteEndpointId,
+            errorHandler: const prefix77.TomUserPreferencesErrorHandler(),
           ),
           override,
         ],
