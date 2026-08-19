@@ -66,8 +66,11 @@ final TomObject<String> tomNull = TomObject<String>("tomNull");
 /// ```dart
 /// final name = TomString("John");
 ///
-/// // Subscribe to changes
-/// name >> (obs) => print("Name changed to: ${~obs}");
+/// // Subscribe to changes. Retain the observer — it is held weakly, so
+/// // discarding it stops the callback firing at some later point.
+/// // The callback is handed the plain TomObservable, so read the value
+/// // through the typed variable rather than through the parameter.
+/// final observer = name >> (obs) => print("Name changed to: ${~name}");
 ///
 /// // Set new value (triggers observer)
 /// name | "Jane";
@@ -75,6 +78,8 @@ final TomObject<String> tomNull = TomObject<String>("tomNull");
 /// // Get value
 /// print(~name); // "Jane"
 /// print(name()); // "Jane"
+///
+/// name.removeObserver(observer);
 /// ```
 @tomReflector
 class TomObject<T> extends TomObservable {
@@ -436,7 +441,9 @@ abstract class TomOTimezoned<TZ extends TomTimezoned?> extends TomObject<TZ> {
 ///
 /// Example:
 /// ```dart
-/// final meetingTime = TomOZonedTime(TomZonedTime.now());
+/// final meetingTime = TomOZonedTime(
+///   TomZonedTime.fromDateTime(DateTime.now(), TomTimezone.fromName('Asia/Tokyo')),
+/// );
 /// ```
 @tomReflector
 class TomOZonedTime extends TomOTimezoned<TomZonedTime> {
@@ -482,7 +489,9 @@ class TomOZonedTime extends TomOTimezoned<TomZonedTime> {
 ///
 /// Example:
 /// ```dart
-/// final birthDate = TomOZonedDate(TomZonedDate.now());
+/// final birthDate = TomOZonedDate(
+///   TomZonedDate.fromDateTime(DateTime.now(), TomTimezone.fromName('Asia/Tokyo')),
+/// );
 /// ```
 @tomReflector
 class TomOZonedDate extends TomOTimezoned<TomZonedDate> {
@@ -766,8 +775,11 @@ class TomNOZonedDateTime extends TomNOTimezoned<TomZonedDateTime?> {
 /// Example:
 /// ```dart
 /// final vacation = TomDateRange();
-/// vacation.startDate | TomZonedDate.now();
-/// vacation.endDate | TomZonedDate.now().add(Duration(days: 7));
+/// final today = DateTime.now();
+/// vacation.startDate | TomZonedDate.fromDateTime(today);
+/// // Add the duration to the `DateTime`, before wrapping: arithmetic
+/// // inherited from `DateTime` returns a plain `DateTime`, not a zoned one.
+/// vacation.endDate | TomZonedDate.fromDateTime(today.add(Duration(days: 7)));
 /// ```
 @tomReflector
 class TomDateRange extends TomClass {
@@ -1392,11 +1404,14 @@ abstract class TomListLifecycleListener {
 ///
 /// ```dart
 /// final items = TomList<TomString>();
-/// items.append(TomString(\"first\"));
-/// items.append(TomString(\"second\"));
+/// items.append(TomString("first"));
+/// items.append(TomString("second"));
 ///
-/// items >> (obs) => print(\"List changed!\");
-/// items[0] | \"updated\"; // Triggers observer
+/// // Retain the observer — it is held weakly.
+/// final observer = items >> (obs) => print("List changed!");
+/// items[0] | "updated"; // Triggers observer
+///
+/// items.removeObserver(observer);
 /// ```
 @tomReflector
 class TomList<E extends TomObject> extends TomObject<List<E>>
@@ -2035,11 +2050,19 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 /// ## Example
 ///
 /// ```dart
-/// final users = TomMap<String, Person>();
-/// users[\"john\"] = Person();
+/// @tomReflector
+/// class Person extends TomClass {
+///   final name = TomString("");
+/// }
 ///
-/// users >> (obs) => print(\"Map changed!\");
-/// users[\"john\"]!.name | \"John Doe\"; // Triggers observer
+/// final users = TomMap<String, Person>();
+/// users["john"] = Person();
+///
+/// // Retain the observer — it is held weakly.
+/// final observer = users >> (obs) => print("Map changed!");
+/// users["john"]!.name | "John Doe"; // Triggers observer
+///
+/// users.removeObserver(observer);
 /// ```
 @tomReflector
 class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
