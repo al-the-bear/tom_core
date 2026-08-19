@@ -1225,6 +1225,149 @@ void main() {
     });
   });
 
+  group('every TomOTimezoned implements setByString', () {
+    // setByString is the sole entry point for a serialized zoned value:
+    // TomClass._setMember routes every String destined for a TomOTimezoned
+    // member through it. It therefore must never have an inherited
+    // implementation that does nothing -- a subtype that forgot to write one
+    // would drop the field during deserialization without a throw, a log or a
+    // return value to inspect.
+    //
+    // TomOTimezoned and TomNOTimezoned are abstract and declare setByString
+    // abstract, so "forgot to implement it" is a compile error. These tests
+    // pin the runtime half: every TomOTimezoned the library can hand out
+    // reaches a real implementation.
+
+    final instant = DateTime.utc(2024, 5, 20, 6, 7, 8);
+
+    /// One entry per concrete [TomOTimezoned] in the library, paired with a
+    /// value of its own flavour. Serializing that value and feeding it back
+    /// through [TomOTimezoned.setByString] must reproduce it.
+    List<(String, TomOTimezoned, TomTimezoned)> roundTripCases() => [
+      (
+        'TomOZonedTime',
+        TomOZonedTime(TomOZonedTime.noZonedTime),
+        TomZonedTime.fromDateTime(instant),
+      ),
+      (
+        'TomOZonedDate',
+        TomOZonedDate(TomOZonedDate.noZonedDate),
+        TomZonedDate.fromDateTime(instant),
+      ),
+      (
+        'TomOZonedDateTime',
+        TomOZonedDateTime(TomOZonedDateTime.noZonedDateTime),
+        TomZonedDateTime.fromDateTime(instant),
+      ),
+      ('TomNOZonedTime', TomNOZonedTime(null), TomZonedTime.fromDateTime(instant)),
+      ('TomNOZonedDate', TomNOZonedDate(null), TomZonedDate.fromDateTime(instant)),
+      (
+        'TomNOZonedDateTime',
+        TomNOZonedDateTime(null),
+        TomZonedDateTime.fromDateTime(instant),
+      ),
+    ];
+
+    test('the base sentinels are concrete subtypes, not bare bases', () {
+      // TomOTimezoned.noDateTime and TomNOTimezoned.noDateTime are the only
+      // values the library ever handed out whose runtime type was the base
+      // itself. Once the base is abstract they cannot be, and they must be the
+      // datetime flavour specifically -- that is the flavour whose wire prefix
+      // the base's getSerializationPrefix() already defaults to.
+      expect(TomOTimezoned.noDateTime, isA<TomOZonedDateTime>());
+      expect(TomNOTimezoned.noDateTime, isA<TomNOZonedDateTime>());
+      expect(
+        TomOTimezoned.noDateTime.getSerializationPrefix(),
+        equals(TomZonedDateTime.serializationPrefix),
+      );
+      expect(
+        TomNOTimezoned.noDateTime.getSerializationPrefix(),
+        equals(TomZonedDateTime.serializationPrefix),
+      );
+    });
+
+    test('the base sentinels parse the string instead of ignoring it', () {
+      // The sentinels are shared statics, so mutating one would leak into the
+      // sentinel tests further down the file. Each is restored on the way out.
+      final baseOriginal = TomOTimezoned.noDateTime.get();
+      final nullableOriginal = TomNOTimezoned.noDateTime.get();
+      addTearDown(() {
+        TomOTimezoned.noDateTime.set(baseOriginal);
+        TomNOTimezoned.noDateTime.set(nullableOriginal);
+      });
+
+      final replacement = TomZonedDateTime.fromDateTime(instant);
+
+      TomOTimezoned.noDateTime.setByString(replacement.toString());
+      expect(
+        TomOTimezoned.noDateTime.get()!.toUtc(),
+        equals(replacement.toUtc()),
+      );
+
+      TomNOTimezoned.noDateTime.setByString(replacement.toString());
+      expect(
+        TomNOTimezoned.noDateTime.get()!.toUtc(),
+        equals(replacement.toUtc()),
+      );
+    });
+
+    test('a value held as the abstract base reaches the subtype parser', () {
+      // The static type at the call site is the base -- which is exactly how
+      // TomClass._setMember sees it. Dispatch must still land on the concrete
+      // implementation.
+      for (final (name, observable, replacement) in roundTripCases()) {
+        final TomOTimezoned held = observable;
+        held.setByString(replacement.toString());
+        expect(
+          held.get()!.toUtc(),
+          equals(replacement.toUtc()),
+          reason: '$name.setByString must apply the string it is given',
+        );
+      }
+    });
+
+    test('an unprefixed ISO-8601 string is accepted as well', () {
+      // The wire format carries the flavour prefix, but every implementation
+      // also accepts a bare timestamp so that hand-written and third-party
+      // payloads deserialize.
+      for (final (name, observable, _) in roundTripCases()) {
+        observable.setByString(instant.toIso8601String());
+        expect(
+          observable.get(),
+          isNotNull,
+          reason: '$name.setByString must accept an unprefixed timestamp',
+        );
+      }
+    });
+
+    test('getSerializationPrefix defaults where setByString cannot', () {
+      // getSerializationPrefix has a defensible default -- the datetime prefix
+      // -- and the datetime subtypes deliberately inherit it rather than
+      // restate it. setByString has no comparable default: the base cannot
+      // know which of the three wire formats to parse, which is why it is
+      // abstract rather than an inherited no-op. This test is the pair that
+      // keeps the asymmetry deliberate.
+      expect(
+        TomOZonedTime(TomOZonedTime.noZonedTime).getSerializationPrefix(),
+        equals(TomZonedTime.serializationPrefix),
+      );
+      expect(
+        TomOZonedDate(TomOZonedDate.noZonedDate).getSerializationPrefix(),
+        equals(TomZonedDate.serializationPrefix),
+      );
+      expect(
+        TomOZonedDateTime(
+          TomOZonedDateTime.noZonedDateTime,
+        ).getSerializationPrefix(),
+        equals(TomZonedDateTime.serializationPrefix),
+      );
+      expect(
+        TomNOZonedDateTime(null).getSerializationPrefix(),
+        equals(TomZonedDateTime.serializationPrefix),
+      );
+    });
+  });
+
   group('TomClass reads back its own zoned members', () {
     // TomTimezoned extends DateTime, so every zoned observable also satisfies
     // TomObject<DateTime?>. Dispatch in TomClass._setMember must therefore

@@ -197,8 +197,10 @@ Notifies on a **value change or a bundle change**; the bundle trigger is
 | `TomOZonedDateTime` | `TomZonedDateTime` | Observable datetime with timezone (prefix: `@X@`) |
 
 **Common Methods:**
-- `setByString(String s)` — sets the value by parsing a serialized string
-- `getSerializationPrefix()` — returns the serialization prefix for this type
+- `setByString(String s)` — **abstract**; sets the value by parsing a serialized string. Accepts the prefixed wire form and a bare ISO-8601 timestamp. Every subtype must implement it: it is the only entry point for a serialized zoned value, so an inherited empty body would drop the field during deserialization in silence.
+- `getSerializationPrefix()` — returns the serialization prefix for this type. Concrete, defaulting to `@X@`; the datetime subtypes inherit it, `TomOZonedDate`/`TomOZonedTime` and their nullable counterparts override it.
+
+`TomOTimezoned<TZ>` and `TomNOTimezoned<TZ>` are abstract — construct one of the concrete flavours below.
 
 ### Nullable
 
@@ -232,7 +234,7 @@ Placeholders for code that needs a "not set" marker but cannot use `null`. Each 
 | Type | Plain | Observable |
 |------|-------|------------|
 | `TomDateTime` / `TomNDateTime` | — | `noDateTime` |
-| `TomOTimezoned` / `TomNOTimezoned` | — | `noDateTime` |
+| `TomOTimezoned` / `TomNOTimezoned` | — | `noDateTime` (a datetime-flavoured instance — the bases are abstract) |
 | `TomOZonedTime` / `TomNOZonedTime` | `noZonedTime` | `noTime` |
 | `TomOZonedDate` / `TomNOZonedDate` | `noZonedDate` | `noTime` |
 | `TomOZonedDateTime` / `TomNOZonedDateTime` | `noZonedDateTime` | `noTime` |

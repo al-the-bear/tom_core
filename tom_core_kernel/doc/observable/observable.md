@@ -662,6 +662,46 @@ deadline | TomZonedDateTime(
 deadline.setByString("@X@2024-12-31T23:59:00.000Z_Z_UTC ");
 ```
 
+#### The abstract bases, and why `setByString` has no default
+
+The six concrete types above sit under two bases — `TomOTimezoned<TZ>` and, for
+the nullable half, `TomNOTimezoned<TZ>`. **Both are abstract.** You never
+construct one; you pick a flavour.
+
+The reason is `setByString`. It is declared abstract on `TomOTimezoned`, so
+every zoned observable is forced to state how it parses its own wire format:
+
+```dart
+abstract class TomOTimezoned<TZ extends TomTimezoned?> extends TomObject<TZ> {
+  String getSerializationPrefix() => TomZonedDateTime.serializationPrefix;
+  void setByString(String s);   // abstract — no inherited body
+}
+```
+
+That matters more than it looks, because `setByString` is the **only** entry
+point for a serialized zoned value. `TomClass.setOrMergeValues` routes every
+`String` destined for a `TomOTimezoned` member through it — it has to, because
+`TomTimezoned` extends `DateTime`, so a zoned member would otherwise reach
+`DateTime.parse` with its `@D@`/`@T@`/`@X@` prefix still attached. A subtype
+that inherited an empty body would therefore drop that field on every
+deserialization: no throw, no log, no return value to inspect, just a member
+left at whatever it happened to hold. Abstract turns that from a runtime
+mystery into a compile error. A subtype with genuinely nothing to parse writes
+the empty override itself, so the silence is a stated decision rather than an
+oversight.
+
+`getSerializationPrefix` is deliberately **not** abstract, and the contrast is
+the point. It has a defensible default — `@X@`, which `TomOZonedDateTime` and
+`TomNOZonedDateTime` inherit rather than restate — and a subtype that inherits
+the wrong prefix produces a value that is visibly mislabelled on the wire,
+not one that vanishes. Only the failure that is silent gets the compile-time
+guard.
+
+Both bases still carry a `noDateTime` sentinel; because the bases are abstract,
+each is a datetime-flavoured instance (`TomOZonedDateTime` and
+`TomNOZonedDateTime` respectively) — the flavour matching the prefix the base
+returns by default.
+
 ### Range Types
 
 For representing date/time ranges, use the range types which extend `TomClass`:
@@ -711,14 +751,19 @@ bare value, and an **observable** one already wrapped.
 | Type | Plain sentinel | Observable sentinel |
 |------|----------------|---------------------|
 | `TomDateTime` | — | `TomDateTime.noDateTime` |
-| `TomOTimezoned` | — | `TomOTimezoned.noDateTime` |
+| `TomOTimezoned` | — | `TomOTimezoned.noDateTime` (a `TomOZonedDateTime`) |
 | `TomOZonedTime` | `TomOZonedTime.noZonedTime` | `TomOZonedTime.noTime` |
 | `TomOZonedDate` | `TomOZonedDate.noZonedDate` | `TomOZonedDate.noTime` |
 | `TomOZonedDateTime` | `TomOZonedDateTime.noZonedDateTime` | `TomOZonedDateTime.noTime` |
 
 The nullable types (`TomNDateTime`, `TomNOZonedTime`, `TomNOZonedDate`,
 `TomNOZonedDateTime`, `TomNOTimezoned`) expose the same pairs under the same
-names.
+names; `TomNOTimezoned.noDateTime` is a `TomNOZonedDateTime`.
+
+The two base sentinels are datetime-flavoured because their classes are
+abstract — see [the abstract bases](#the-abstract-bases-and-why-setbystring-has-no-default)
+above. Treat them as read-only: they are shared statics, so setting one is
+visible to every other holder.
 
 **Every sentinel denotes one instant: the Unix epoch in UTC.** That is the
 whole point of a sentinel — two machines in different timezones must agree on
@@ -1868,7 +1913,7 @@ The full tree — every leaf type and its exact `extends` / `implements` clauses
 which is the authoritative statement. It is not repeated here: a second copy is
 a second thing to keep in step with the source.
 
-What a reader of this guide needs are the three rules the tree encodes:
+What a reader of this guide needs are the four rules the tree encodes:
 
 1. **Everything that notifies extends `TomObservable`**, and every *value*
    — scalar, nullable, timezone-aware, enum, range, or container — is a
@@ -1891,6 +1936,12 @@ What a reader of this guide needs are the three rules the tree encodes:
    offer the familiar surface, but neither is assignable to `List<E>` or
    `Map<K, V>` — convert at the boundary with `toList()` / `get()`, each of
    which hands back a copy.
+
+4. **Two nodes are abstract: `TomOTimezoned<TZ>` and `TomNOTimezoned<TZ>`.**
+   Every other type in the tree can be constructed; these two exist only to
+   hold the shared behaviour, and you instantiate one of the six zoned flavours
+   instead. See
+   [The abstract bases, and why `setByString` has no default](#the-abstract-bases-and-why-setbystring-has-no-default).
 
 ## Best Practices
 

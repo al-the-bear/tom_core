@@ -88,11 +88,11 @@ TomObservable
         ├── TomDouble
         ├── TomBool
         ├── TomDateTime
-        ├── TomOTimezoned<TZ>
+        ├── TomOTimezoned<TZ>  (abstract)
         │   ├── TomOZonedTime
         │   ├── TomOZonedDate
         │   ├── TomOZonedDateTime
-        │   └── TomNOTimezoned<TZ>
+        │   └── TomNOTimezoned<TZ>  (abstract)
         │       ├── TomNOZonedTime
         │       ├── TomNOZonedDate
         │       └── TomNOZonedDateTime
@@ -109,10 +109,10 @@ TomObservable
         ├── TomMap<K, V>  (implements TomObserver)
         └── TomObservableEnum<E extends Enum>
 
-TomObserver<T>
+TomObserver<T>  (abstract)
     └── TomFunctionObserver<T>  (implements TomObserver<T>)
 
-TomListLifecycleListener
+TomListLifecycleListener  (abstract)
 
 TomEnumResourceSegment  (implemented by enums, not by observables)
 
@@ -120,7 +120,7 @@ TomException  (little_things)
     └── TomObservableException
 ```
 
-Three properties of this shape are worth stating outright, because each one
+Four properties of this shape are worth stating outright, because each one
 decides something a caller can otherwise only find out by compiling:
 
 - **`TomObserver` is a separate interface, not part of the `TomObservable`
@@ -141,6 +141,13 @@ decides something a caller can otherwise only find out by compiling:
 - **The range types are `TomClass`es, not scalars.** `TomDateRange`,
   `TomTimeRange` and `TomDateTimeRange` are composites with observable members,
   so they cascade like any other `TomClass`.
+- **The two zoned bases are abstract; you always instantiate a flavour.**
+  `TomOTimezoned<TZ>` and `TomNOTimezoned<TZ>` exist to hold the shared
+  behaviour, not to be constructed — pick `TomOZonedTime` / `TomOZonedDate` /
+  `TomOZonedDateTime` or their nullable `TomNO…` counterparts. The reason is
+  `setByString`: it is abstract, so every zoned observable is forced to say how
+  it parses its own wire format instead of inheriting a body that silently does
+  nothing. Their `noDateTime` sentinels are datetime-flavoured instances.
 
 ## Classes
 
@@ -346,25 +353,41 @@ TomDateTime(DateTime initialValue)
 
 ### TomOTimezoned
 
-Observable wrapper for timezone-aware `TomTimezoned` values; base class for the
-zoned observable types. Subclasses override `setByString` and
-`getSerializationPrefix`.
+Abstract observable wrapper for timezone-aware `TomTimezoned` values; base
+class for the zoned observable types. Subtypes **must** implement
+`setByString`; they may inherit `getSerializationPrefix`.
 
 - **Extends:** `TomObject<TZ>`
 - **Type Parameters:** `<TZ extends TomTimezoned?>`
+- **Abstract:** yes — instantiate one of the concrete zoned subtypes.
 
 #### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noDateTime` | `TomOTimezoned` | Sentinel "no datetime" (Unix epoch in UTC). |
+| `noDateTime` | `TomOTimezoned` | Sentinel "no datetime" (Unix epoch in UTC). A `TomOZonedDateTime` instance — the datetime flavour, matching the prefix `getSerializationPrefix` returns by default. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getSerializationPrefix` | `String getSerializationPrefix()` | Returns the serialization prefix for this timezone type (override in subclasses). |
-| `setByString` | `void setByString(String s)` | Parses a serialized string and sets the value (override in subclasses). |
+| `getSerializationPrefix` | `String getSerializationPrefix()` | The wire prefix marking a serialized value of this flavour. Concrete, defaulting to `@X@`; the datetime subtypes inherit it, the date and time subtypes override it with `@D@` / `@T@`. |
+| `setByString` | `void setByString(String s)` | **Abstract.** Parses a serialized string and sets the value. Accepts both the prefixed wire form and a bare ISO-8601 timestamp. |
+
+**`setByString` is abstract on purpose.** It is the only entry point for a
+serialized zoned value — `TomClass.setOrMergeValues` routes every `String`
+destined for a `TomOTimezoned` member through it, because `TomTimezoned`
+extends `DateTime` and would otherwise reach `DateTime.parse` with its
+`@D@`/`@T@`/`@X@` prefix still attached. No default could be right, since the
+base cannot know which of the three wire formats to parse, and a subtype that
+inherited an empty body would drop the field during deserialization with no
+throw, no log and no return value to inspect. Abstract turns "forgot to
+implement it" into a compile error; a subtype with genuinely nothing to parse
+writes the empty override itself, so the silence is a stated decision.
+
+`getSerializationPrefix` is deliberately *not* abstract, and the contrast is
+the point: an inherited-but-wrong prefix produces a value that is visibly
+mislabelled on the wire, not one that vanishes.
 
 ### TomOZonedTime
 
@@ -515,17 +538,20 @@ TomNDateTime(DateTime? initialValue)
 
 ### TomNOTimezoned
 
-Observable wrapper for nullable timezone-aware values; base class for the
-nullable zoned observable types.
+Abstract observable wrapper for nullable timezone-aware values; base class for
+the nullable zoned observable types. Abstract for the same reason as
+`TomOTimezoned`: it adds no parsing of its own, so leaving it concrete would
+give it an inherited `setByString` with no implementation behind it.
 
 - **Extends:** `TomOTimezoned<TZ>`
 - **Type Parameters:** `<TZ extends TomTimezoned?>`
+- **Abstract:** yes — instantiate one of the concrete nullable zoned subtypes.
 
 #### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `noDateTime` | `TomNOTimezoned` | Sentinel "no datetime" (Unix epoch in UTC). |
+| `noDateTime` | `TomNOTimezoned` | Sentinel "no datetime" (Unix epoch in UTC). A `TomNOZonedDateTime` instance — see `TomOTimezoned.noDateTime`. |
 
 ### TomNOZonedTime
 

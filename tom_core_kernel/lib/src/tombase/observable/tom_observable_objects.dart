@@ -343,23 +343,52 @@ class TomDateTime extends TomObject<DateTime> {
 /// - [TomOZonedDate] - date with timezone
 /// - [TomOZonedDateTime] - datetime with timezone
 ///
-/// Subclasses override [setByString] and [getSerializationPrefix] for
-/// proper serialization/deserialization.
+/// The class is abstract, and so is [setByString]: see that method for why a
+/// concrete base would be a data-loss hazard. [getSerializationPrefix], by
+/// contrast, has a usable default and may simply be inherited.
 @tomReflector
-class TomOTimezoned<TZ extends TomTimezoned?> extends TomObject<TZ> {
-  /// Returns the serialization prefix for this timezone type.
-  /// Override in subclasses to return the appropriate prefix.
+abstract class TomOTimezoned<TZ extends TomTimezoned?> extends TomObject<TZ> {
+  /// Returns the wire prefix that marks a serialized value of this flavour.
+  ///
+  /// Defaults to [TomZonedDateTime.serializationPrefix] (`@X@`), which is
+  /// correct for the datetime subtypes — they inherit this method rather than
+  /// restating it. The date and time subtypes override it with `@D@` / `@T@`.
+  ///
+  /// Unlike [setByString] this has a defensible default, so it is concrete: a
+  /// subtype that inherits the wrong prefix produces a value that is visibly
+  /// mislabelled on the wire, not one that vanishes.
   String getSerializationPrefix() {
     return TomZonedDateTime.serializationPrefix;
   }
 
   /// Sets the value by parsing a serialized string representation.
-  /// Override in subclasses to handle the specific timezone type.
-  void setByString(String s) {}
+  ///
+  /// This is the **only** entry point for a serialized zoned value:
+  /// `TomClass.setOrMergeValues` routes every `String` destined for a
+  /// [TomOTimezoned] member through here, because [TomTimezoned] extends
+  /// [DateTime] and would otherwise be handed to `DateTime.parse` with its
+  /// `@D@`/`@T@`/`@X@` prefix still attached.
+  ///
+  /// It is abstract rather than an inherited no-op. There is no default that
+  /// could be right — the base cannot know which of the three wire formats to
+  /// parse — and a subtype that inherited an empty body would drop the field
+  /// during deserialization with no throw, no log and no return value to
+  /// inspect. Making it abstract turns "forgot to implement it" into a compile
+  /// error. A subtype that genuinely has nothing to parse must write the empty
+  /// override itself, so that the silence is a stated decision.
+  ///
+  /// Implementations accept both the prefixed wire form emitted by
+  /// [TomTimezoned.toString] and a bare ISO-8601 timestamp.
+  void setByString(String s);
 
   /// A sentinel value representing "no datetime" (Unix epoch in UTC).
-  static final TomOTimezoned noDateTime = TomOTimezoned._(
-    TomTimezoned.fromDateTime(DateTime.utc(1970)),
+  ///
+  /// A [TomOZonedDateTime] rather than a bare [TomOTimezoned], which the
+  /// abstract base no longer permits. The datetime flavour is the right
+  /// choice: it is the one whose prefix [getSerializationPrefix] already
+  /// returns by default.
+  static final TomOTimezoned noDateTime = TomOZonedDateTime(
+    TomZonedDateTime.fromDateTime(DateTime.utc(1970)),
   );
 
   /// Creates a new observable timezone-aware value with the given initial value.
@@ -559,11 +588,19 @@ class TomNDateTime extends TomObject<DateTime?> {
 /// - [TomNOZonedTime] - nullable time with timezone
 /// - [TomNOZonedDate] - nullable date with timezone
 /// - [TomNOZonedDateTime] - nullable datetime with timezone
+///
+/// Abstract for the same reason as [TomOTimezoned]: it adds no parsing of its
+/// own, so leaving it concrete would give it an inherited [setByString] with
+/// no implementation behind it.
 @tomReflector
-class TomNOTimezoned<TZ extends TomTimezoned?> extends TomOTimezoned<TZ> {
+abstract class TomNOTimezoned<TZ extends TomTimezoned?>
+    extends TomOTimezoned<TZ> {
   /// A sentinel value representing "no datetime" (Unix epoch in UTC).
-  static final TomNOTimezoned noDateTime = TomNOTimezoned._(
-    TomTimezoned.fromDateTime(DateTime.utc(1970)),
+  ///
+  /// A [TomNOZonedDateTime] rather than a bare [TomNOTimezoned] — see
+  /// [TomOTimezoned.noDateTime].
+  static final TomNOTimezoned noDateTime = TomNOZonedDateTime(
+    TomZonedDateTime.fromDateTime(DateTime.utc(1970)),
   );
 
   /// Creates a new observable nullable timezone-aware value.
