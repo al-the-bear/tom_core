@@ -218,10 +218,62 @@ class NullableValueMapHolder {
   NullableValueMapHolder();
 }
 
+/// A *generic* reflected class.
+///
+/// The registry is keyed by declaration, so `reflectType(GenericHolder<int>)`
+/// finds nothing while `reflect(instance)` does. Any code that reflects a value
+/// by way of `o.runtimeType` therefore fails on this class and on no other.
+@tomReflector
+class GenericHolder<T> {
+  String name = '';
+  int count = 0;
+
+  GenericHolder();
+}
+
 void main() {
   setUpAll(() {
     initializeReflection();
     tz_init.initializeTimeZones();
+  });
+
+  // tcinc165: `getValues` and `setValues` each reflected the instance and then
+  // threw that mirror away to look the class up again by `o.runtimeType`. The
+  // second lookup is declaration-keyed, so a generic value was reflected
+  // successfully and then reported as un-reflectable one line later — it could
+  // be neither serialized nor populated, despite being annotated.
+  group('a generic reflected class is read and written like any other', () {
+    test('getValues reads the members of a generic instance', () {
+      final holder = GenericHolder<int>()
+        ..name = 'boxed'
+        ..count = 7;
+
+      expect(tomReflectionInfo.getValues(holder), {
+        'name': 'boxed',
+        'count': 7,
+      });
+    });
+
+    test('setValues populates a generic instance', () {
+      final holder = GenericHolder<String>();
+
+      tomReflectionInfo.setValues(holder, {'name': 'filled', 'count': 3});
+
+      expect(holder.name, 'filled');
+      expect(holder.count, 3);
+    });
+
+    test('the instantiation does not change what is read', () {
+      // The type argument is not a member and has no bearing on the payload,
+      // so two instantiations of one declaration produce one JSON shape.
+      final ints = GenericHolder<int>()..name = 'a';
+      final strings = GenericHolder<String>()..name = 'a';
+
+      expect(
+        tomReflectionInfo.getValues(ints),
+        tomReflectionInfo.getValues(strings),
+      );
+    });
   });
 
   group('tomReflectionInfo.createInstance', () {

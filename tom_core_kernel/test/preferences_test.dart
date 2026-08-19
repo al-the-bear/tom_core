@@ -99,6 +99,22 @@ class BoxPreference<T> {
   int count = 0;
 }
 
+/// A reflected preference value with a reflected subclass, which is what makes
+/// the runtime/static difference between the two naming methods observable.
+///
+/// Every other fixture is named identically whether you start from a value or
+/// from a type, so none of them can tell the two apart.
+@tomReflector
+class BasePreference {
+  int size = 1;
+}
+
+/// A reflected subclass of [BasePreference]; see there.
+@tomReflector
+class SubPreference extends BasePreference {
+  String label = 'sub';
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -616,6 +632,86 @@ void main() {
         () => decodeStored<String>('{"size":9}', 'ui.size'),
         throwsCodecKey('preferences.decode.failed'),
       );
+    });
+  });
+
+  // tcinc165: the dartdoc claimed the two naming methods "agree for every type
+  // either of them can see". They do not, and cannot: `typeNameOf` asks a
+  // *value* what it is, `typeNameForType` asks a *type*. Those are different
+  // questions wherever the value's runtime class is not the type the caller
+  // wrote down.
+  //
+  // tcinc164 removed the accidental half of the divergence — the generic
+  // instantiation leaking into the stored name. What is left is inherent, so
+  // these tests assert it rather than assert against it.
+  group('TomUserPreferenceCodec — where the two naming methods diverge', () {
+    test('they agree when the value is exactly the type asked about', () {
+      // The ordinary case, and the reason the divergence below is easy to
+      // miss: for a value stored under the class it is declared as, the
+      // runtime answer and the static one are the same string.
+      expect(
+        TomUserPreferenceCodec.typeNameOf(BasePreference()),
+        TomUserPreferenceCodec.typeNameForType(BasePreference),
+      );
+    });
+
+    test('a subclass value is named by its runtime class, not its supertype',
+        () {
+      // `typeNameOf` sees the instance, so it answers `SubPreference`.
+      // `typeNameForType` can only see what it was handed. Both are correct
+      // answers — to different questions.
+      expect(
+        TomUserPreferenceCodec.typeNameOf(SubPreference()),
+        'SubPreference',
+      );
+      expect(
+        TomUserPreferenceCodec.typeNameForType(BasePreference),
+        'BasePreference',
+      );
+    });
+
+    test('so a value stored as a subclass is not readable as its supertype',
+        () {
+      // The consequence, and the reason it is worth documenting rather than
+      // repairing: reading a `SubPreference` row as a `BasePreference` would
+      // silently drop the members only the subclass declares, so refusing is
+      // the intended strictness. Store a preference under the class it is
+      // declared as.
+      final stored = TomUserPreferenceCodec.encode('ui.pref', SubPreference());
+
+      expect(stored.valueType, 'SubPreference');
+      expect(
+        () => TomUserPreferenceCodec.decode<BasePreference>(stored),
+        throwsCodecKey('preferences.decode.type_mismatch'),
+      );
+      expect(TomUserPreferenceCodec.decode<SubPreference>(stored).label, 'sub');
+    });
+
+    test('an instantiated generic type has no stored identity of its own', () {
+      // The registry is keyed by *declaration*: it holds an entry for
+      // `BoxPreference` and none for `BoxPreference<int>`. `typeNameOf` gets
+      // past that because it resolves from the instance, which the registry
+      // can match against its generic entries; a bare `Type` offers no route
+      // back to the declaration, so this is the one shape where the value side
+      // answers and the type side cannot.
+      expect(
+        () => TomUserPreferenceCodec.typeNameForType(BoxPreference<int>),
+        throwsCodecKey('preferences.type.not_reflected'),
+      );
+    });
+
+    test('a generic preference is read back under its bare class literal', () {
+      // The practical consequence of the previous test. The instantiation is
+      // deliberately not part of the stored name, so it is not part of what
+      // comes back either: `decode<BoxPreference>` is the spelling that works,
+      // and it returns a `BoxPreference<dynamic>`.
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.box',
+        BoxPreference<int>()..count = 7,
+      );
+
+      expect(stored.valueType, 'BoxPreference');
+      expect(TomUserPreferenceCodec.decode<BoxPreference>(stored).count, 7);
     });
   });
 }

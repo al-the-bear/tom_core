@@ -100,6 +100,10 @@ class TomUserPreferenceCodec {
   /// registry cannot produce is one no reader can ask for. See
   /// [typeNameForType] for why the registry is the identity.
   ///
+  /// This is a question about the *value*, so the answer is its runtime class
+  /// — which is not always the type a caller would write down for it. See
+  /// [typeNameForType] for the two shapes where the two methods part company.
+  ///
   /// [key] only names the preference in that exception, and is optional because
   /// a caller may ask for a value's stored name before it has decided where to
   /// put it.
@@ -324,6 +328,27 @@ class TomUserPreferenceCodec {
   /// It is the same registry [decode] resolves its type argument through,
   /// which is what makes the two halves symmetric: a value can be written
   /// under a name exactly when it can be read back under it.
+  ///
+  /// **Where this and [typeNameOf] diverge.** They answer different questions
+  /// — [typeNameOf] names the class a *value* turned out to have, this names
+  /// the class a *type* denotes. For a value stored under the class it is
+  /// declared as those are the same string, which is what makes the two cases
+  /// below easy to miss:
+  ///
+  /// * A **subclass** value is named by its own class rather than by the
+  ///   supertype the caller declared, so a row written from a `Sub` is refused
+  ///   by `decode<Base>` as `preferences.decode.type_mismatch`. That is the
+  ///   intended strictness rather than a gap: reading it as the supertype
+  ///   would silently drop the members only the subclass declares. Store a
+  ///   preference under the class it is declared as.
+  /// * An **instantiated generic** `Type` has no entry of its own, because the
+  ///   registry is keyed by declaration: it holds `BoxPreference` and not
+  ///   `BoxPreference<int>`. [typeNameOf] gets past that by resolving from the
+  ///   instance, but a bare `Type` offers no route back to the declaration, so
+  ///   `typeNameForType(BoxPreference<int>)` throws where
+  ///   `typeNameForType(BoxPreference)` answers. Read a generic preference
+  ///   under its bare class literal — the instantiation is deliberately not
+  ///   part of the stored identity, and so is not restored by the read.
   static String typeNameForType(Type type, [String key = '']) =>
       _identityOf(type, key).name;
 

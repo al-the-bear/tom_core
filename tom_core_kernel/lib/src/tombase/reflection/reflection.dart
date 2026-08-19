@@ -342,8 +342,9 @@ class TomReflectionInfo {
   /// tomReflectionInfo.reportReflectObject(person);
   /// ```
   void reportReflectObject(Object o) {
-    final classMirror = reflector.reflectType(o.runtimeType) as ClassMirror;
-    reportReflect(classMirror);
+    // Via the instance, so a generic value reports rather than throwing — see
+    // [getValues].
+    reportReflect(reflector.reflect(o).type);
   }
 
   /// Prints detailed reflection information about a [ClassMirror] for debugging.
@@ -548,7 +549,9 @@ class TomReflectionInfo {
       return o;
     }
 
-    final cm = tomReflector.reflectType(o.runtimeType) as ClassMirror;
+    // From the instance mirror, not a second `reflectType(o.runtimeType)` —
+    // see [getValues] for why that lookup cannot see a generic instantiation.
+    final cm = im.type;
     _logReflectionDetails(o, cm);
 
     for (var entry in values.entries) {
@@ -1231,7 +1234,14 @@ class TomReflectionInfo {
       return encoded;
     }
 
-    final classMirror = reflector.reflectType(o.runtimeType) as ClassMirror;
+    // Taken from the instance mirror rather than looked up again by
+    // `reflectType(o.runtimeType)`: the registry is keyed by *declaration*, so
+    // that lookup finds nothing for a generic value — `Box<int>` is not a key,
+    // only `Box` is — and a generic class would be unserializable despite
+    // being reflected. `im.type` is the mirror the instance itself resolved
+    // to, so it is right for both, and there is no second lookup to disagree
+    // with the first.
+    final classMirror = im.type;
     final result = <String, dynamic>{};
 
     for (var d in classMirror.declarations.entries) {

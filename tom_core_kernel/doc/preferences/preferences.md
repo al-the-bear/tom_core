@@ -221,13 +221,46 @@ for was already unreadable, and failing at the write is failing on the device
 that can still do something about it. Callers building a write request by hand
 should pass the key, so the exception names the preference.
 
+#### Where the two naming methods diverge
+
 `typeNameForType(type)` answers the same question from a `Type` rather than a
-value. It agrees with `typeNameOf` on the class — both read the registry — but
-it can only see the type it is handed: a value whose runtime class is a
-*subclass* of the declared type is named by the subclass on the way out and by
-the declared type on the way in, and `decode<T>` will report that as a
-`preferences.decode.type_mismatch`. Store a preference under the class it is
-declared as.
+value, and both read the registry — so for a value stored under the class it is
+declared as, the two produce the same string. That is the ordinary case, and it
+is what makes the two exceptions easy to miss. They are not the same question:
+`typeNameOf` names the class a **value** turned out to have, `typeNameForType`
+the class a **type** denotes.
+
+| | `typeNameOf(value)` | `typeNameForType(T)` |
+|---|---|---|
+| A value of the class itself | `DisplayPreference` | `DisplayPreference` — they agree |
+| A value of a **subclass** | `SubPreference`, its runtime class | `BasePreference`, the type handed in |
+| An **instantiated generic** | `BoxPreference`, via the instance | throws — the registry has no `BoxPreference<int>` |
+
+**Subclasses.** A value whose runtime class is a subclass of the declared type
+is named by the subclass on the way out and by the declared type on the way in,
+so `decode<BasePreference>` of a row written from a `SubPreference` is refused
+with `preferences.decode.type_mismatch`. That is the intended strictness rather
+than a gap — reading it as the supertype would silently drop the members only
+the subclass declares. Store a preference under the class it is declared as.
+
+**Generics.** The registry is keyed by *declaration*, so it holds an entry for
+`BoxPreference` and none for `BoxPreference<int>`. `typeNameOf` gets past that
+because it resolves from the instance, which the registry can match against its
+generic entries; a bare `Type` offers no route back to the declaration. So read
+a generic preference under its **bare class literal**:
+
+```dart
+final stored = TomUserPreferenceCodec.encode('ui.box', BoxPreference<int>());
+stored.valueType;                                        // 'BoxPreference'
+
+TomUserPreferenceCodec.decode<BoxPreference>(stored);    // works
+TomUserPreferenceCodec.decode<BoxPreference<int>>(stored);
+// throws preferences.type.not_reflected
+```
+
+The instantiation is deliberately not part of the stored identity — one class
+written from two call sites at two instantiations is one preference type — and
+so it is not restored either: the value comes back as a `BoxPreference<dynamic>`.
 
 #### A reflected value is rebuilt member by member
 
@@ -419,6 +452,11 @@ have captured it. A class it has not captured fails at the *write*, with
 comes from and there is none to write. That is the useful place for it to fail:
 the alternative is a row that stores cleanly and then fails every read of that
 key, on whichever device reads it next.
+
+Store it under the class it is *declared* as, and read a generic one under its
+bare class literal — see [Where the two naming methods
+diverge](#where-the-two-naming-methods-diverge) for the two cases where the name
+a value is written under is not the one a caller would reach for.
 
 ### 4. Namespace Application Keys
 
