@@ -110,7 +110,7 @@ class ScalarRoundTripExample {
 
 class DateTimeRoundTripExample {
   static DateTime? decoded;
-  static bool isUtc = false;
+  static String storedText = '';
   static bool sameMoment = false;
 
   static void example3DateTimeRoundTrip() {
@@ -121,12 +121,63 @@ class DateTimeRoundTripExample {
     final stored = TomUserPreferenceCodec.encode('ui.lastSeen', local);
 
     decoded = TomUserPreferenceCodec.decode<DateTime>(stored);
-    isUtc = decoded!.isUtc;
+    storedText = stored.value;
     sameMoment = decoded!.isAtSameMomentAs(local);
 
     assert(stored.valueType == TomUserPreferenceCodec.dateTimeType, 'Type name');
-    assert(isUtc, 'A decoded DateTime is UTC-flagged');
+    // What is asserted is the *stored text*, not `decoded.isUtc`. The flag only
+    // says a conversion happened; it says nothing about which zone was
+    // converted *from*, so it is true even of a value read wrongly. The `Z` in
+    // the stored text is the thing that makes the instant unambiguous.
+    assert(storedText.endsWith('Z"'), 'The stored text names its zone');
     assert(sameMoment, 'The moment survives the round-trip');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 3b: A timestamp that names no zone is refused, not guessed
+// =============================================================================
+
+class ZonelessTimestampExample {
+  static bool writeRejected = false;
+  static bool readRejected = false;
+  static String errorKey = '';
+
+  static void example3bZonelessTimestamp() {
+    // Nothing forces a client to use `encodeValue` — a hand-built write
+    // request, or any non-Dart client, can put its own text on the wire.
+    // `2026-03-04T05:06:07` is well-formed and completely ambiguous: it is a
+    // wall-clock reading, and which instant it denotes depends on who reads it.
+    const zoneless = '"2026-03-04T05:06:07"';
+
+    try {
+      TomUserPreferenceCodec.validateEncoded(
+        TomUserPreferenceCodec.dateTimeType,
+        zoneless,
+        key: 'ui.lastSeen',
+      );
+    } on TomUserPreferenceCodecException catch (error) {
+      writeRejected = true;
+      errorKey = error.key;
+    }
+
+    try {
+      // And if such a value ever reached storage, the read refuses too rather
+      // than silently answering with this device's interpretation.
+      TomUserPreferenceCodec.decodeValue<DateTime>(zoneless, 'ui.lastSeen');
+    } on TomUserPreferenceCodecException {
+      readRejected = true;
+    }
+
+    // `parseInstant` is the same test, available to a client that wants to
+    // check its own text before sending it.
+    assert(TomUserPreferenceCodec.parseInstant('2026-03-04T05:06:07') == null,
+        'A zoneless timestamp is not an instant');
+    assert(TomUserPreferenceCodec.parseInstant('2026-03-04T05:06:07Z') != null,
+        'A zoned timestamp is');
+    assert(writeRejected, 'The boundary refuses an ambiguous timestamp');
+    assert(errorKey == 'preferences.encoded.not_an_instant', 'Named error');
+    assert(readRejected, 'So does the read');
   }
 }
 
@@ -249,6 +300,7 @@ void run() {
   ScalarEncodingExample.example1ScalarEncoding();
   ScalarRoundTripExample.example2ScalarRoundTrip();
   DateTimeRoundTripExample.example3DateTimeRoundTrip();
+  ZonelessTimestampExample.example3bZonelessTimestamp();
   ReflectedRoundTripExample.example4ReflectedRoundTrip();
   TypeMismatchExample.example5TypeMismatch();
   ValidateEncodedExample.example6ValidateEncoded();

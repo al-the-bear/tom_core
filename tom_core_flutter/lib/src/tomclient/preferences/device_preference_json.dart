@@ -91,14 +91,30 @@ class TomDevicePreferenceJson {
         );
       }
       final updatedAt = entry['updatedAt'];
+      final DateTime? parsedUpdatedAt;
+      if (updatedAt is String) {
+        // [encode] always writes a `Z`, but this document is meant to travel
+        // between devices, so the reader cannot assume it wrote it. A timestamp
+        // with no zone would be read as *this* device's local time — the one
+        // device whose clock is certainly not the one that wrote it.
+        parsedUpdatedAt = TomUserPreferenceCodec.parseInstant(updatedAt);
+        if (parsedUpdatedAt == null) {
+          throw TomDevicePreferenceException(
+            'device_preferences.store.invalid_content',
+            'The device preference store $source holds an entry whose '
+                'updatedAt is not a timestamp naming its time zone.',
+            parameters: {'source': source, 'updatedAt': updatedAt},
+          );
+        }
+      } else {
+        parsedUpdatedAt = null;
+      }
       values.add(
         TomUserPreferenceDto(
           key: '${entry['key'] ?? ''}',
           valueType: '${entry['valueType'] ?? ''}',
           value: '${entry['value'] ?? ''}',
-          updatedAt: updatedAt is String
-              ? DateTime.parse(updatedAt).toUtc()
-              : null,
+          updatedAt: parsedUpdatedAt,
         ),
       );
     }

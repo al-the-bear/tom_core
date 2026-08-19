@@ -259,6 +259,11 @@ store nothing here can supply a more authoritative timestamp, but the
 normalisation means a preference that later moves to the server carries an
 instant the server can store unchanged.
 
+It is read back with the same strictness: the document is meant to travel
+between devices, so an `updatedAt` that names no time zone throws
+`device_preferences.store.invalid_content` rather than being read as the
+*importing* device's local time — the one clock that certainly did not write it.
+
 ## Core Components
 
 - **`TomDevicePreferences`** — the interface, the precedence rule, and

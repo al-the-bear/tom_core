@@ -65,6 +65,11 @@ class TomUserPreferenceCodec {
   /// Always written in UTC: a preference follows the user across devices, and
   /// an instant that carried a device's local offset would come back meaning a
   /// different moment on the next one.
+  ///
+  /// The read path enforces the same rule rather than trusting the writer: a
+  /// stored timestamp must name its zone, and one that does not is rejected by
+  /// [validateEncoded] and [decodeValue] instead of being read as the reading
+  /// device's local time. See [parseInstant].
   static const String dateTimeType = 'DateTime';
 
   /// The scalar type names, in the order [typeNameOf] tests them.
@@ -185,6 +190,22 @@ class TomUserPreferenceCodec {
         parameters: {'key': key, 'valueType': valueType},
       );
     }
+    // A timestamp can be well-formed and still ambiguous, so this is a second
+    // question and not part of the type check above. Asking it here is the
+    // whole point of the boundary: the text is stored once and read on devices
+    // whose local zone nobody knows yet.
+    if (valueType == dateTimeType &&
+        raw is String &&
+        parseInstant(raw) == null) {
+      throw TomUserPreferenceCodecException(
+        'preferences.encoded.not_an_instant',
+        "Preference '$key' was written as a $dateTimeType whose text names no "
+            'time zone, so it would be read as a different instant on every '
+            'device. Write it in UTC (a trailing Z) or with an explicit '
+            'offset.',
+        parameters: {'key': key, 'valueType': valueType, 'value': raw},
+      );
+    }
   }
 
   /// Decodes [dto] as a [T].
@@ -217,7 +238,33 @@ class TomUserPreferenceCodec {
   /// type either of them can see.
   static String typeNameForType(Type type) => type.toString();
 
+  /// Parses [text] as a UTC instant, or returns `null` if it does not name one.
+  ///
+  /// Stricter than `DateTime.parse`, and deliberately so. `DateTime.parse`
+  /// accepts a timestamp with no zone designator (`2026-03-04T05:06:07`, or a
+  /// bare `2026-03-04`) and reads it as local time *in the reading process's
+  /// zone* — so one stored string would mean a different instant on every
+  /// device, which is precisely what [dateTimeType] promises cannot happen.
+  ///
+  /// The zone test is delegated to the SDK rather than written as a pattern:
+  /// `DateTime.parse` returns a UTC-flagged value for exactly those strings
+  /// that carry a designator — `Z`, `+HH:MM`, `+HHMM` or `+HH` — so
+  /// [DateTime.isUtc] on the parse result *is* the answer, and there is no
+  /// second, drifting copy of the ISO 8601 grammar to keep correct.
+  ///
+  /// Callers that build a write request themselves can use this to check their
+  /// text before sending it, and get the same verdict the boundary will give.
+  static DateTime? parseInstant(String text) {
+    final parsed = DateTime.tryParse(text);
+    if (parsed == null || !parsed.isUtc) return null;
+    return parsed;
+  }
+
   /// Decodes [json] as a [T]; [key] only names the preference in an error.
+  ///
+  /// A `DateTime` is returned in UTC and only if the stored text names its
+  /// zone — see [parseInstant] for why a zoneless one is refused rather than
+  /// localised.
   static T decodeValue<T extends Object>(String json, [String key = '']) {
     final Object? raw;
     try {
@@ -233,7 +280,22 @@ class TomUserPreferenceCodec {
     }
     if (raw is T) return raw;
     if (T == DateTime && raw is String) {
-      return DateTime.parse(raw).toUtc() as T;
+      final instant = parseInstant(raw);
+      if (instant != null) return instant as T;
+      final isTimestamp = DateTime.tryParse(raw) != null;
+      throw TomUserPreferenceCodecException(
+        isTimestamp
+            ? 'preferences.decode.not_an_instant'
+            : 'preferences.decode.type_mismatch',
+        isTimestamp
+            ? "Preference '$key' holds a timestamp that names no time zone, so "
+                "reading it would have to invent one — this device's. That is "
+                'an instant the writer did not necessarily mean, so it is '
+                'refused instead.'
+            : "Preference '$key' was read as a $dateTimeType but its text is "
+                'not a timestamp.',
+        parameters: {'key': key, 'requested': T.toString(), 'value': raw},
+      );
     }
     if (T == double && raw is int) return raw.toDouble() as T;
     if (raw is Map<String, Object?>) {

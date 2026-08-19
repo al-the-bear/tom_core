@@ -136,10 +136,32 @@ Encodes and decodes preference values.
 | `validateEncoded(valueType, valueJson, {key})` | Checks an already-encoded pair |
 | `decode<T>(dto)` | The stored value as a `T` |
 | `decodeValue<T>(json, [key])` | The JSON text alone as a `T` |
+| `parseInstant(text)` | The instant `text` names, or `null` if it names none |
 
 A `DateTime` is always written in UTC: a preference follows the user across
 devices, and an instant carrying one device's local offset would come back
 meaning a different moment on the next.
+
+The read path enforces that rather than trusting the writer. Nothing obliges a
+client to use `encodeValue` — a hand-built write request, or a non-Dart client,
+can put its own text on the wire — so a stored timestamp is required to name its
+zone, with a trailing `Z` or an explicit offset. One that does not is refused:
+
+| Path | Error key |
+|------|-----------|
+| `validateEncoded` | `preferences.encoded.not_an_instant` |
+| `decodeValue` / `decode` | `preferences.decode.not_an_instant` |
+
+The alternative is worse than an error. `2026-03-04T05:06:07` is well-formed and
+completely ambiguous — `DateTime.parse` reads it as local time *in the reading
+process's zone*, so the same stored text denotes a different instant on every
+device. `.toUtc()` does not rescue it: the resulting value is UTC-*flagged*, so
+the flag proves a conversion happened and says nothing about which zone it
+converted from. A date-only `2026-03-04` is the same case; it means local
+midnight.
+
+`parseInstant` is that test, exposed: a client building its own write request can
+check its text and get the same verdict the boundary will give.
 
 A non-scalar value must be a `@tomReflector` class. It is serialized through the
 same reflection path the endpoint pipeline uses for every other DTO, so a

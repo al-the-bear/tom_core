@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 114 files
-// Generated: 2026-08-19T12:06:36.886924
+// Generated: 2026-08-19T16:00:31.160240
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -16595,11 +16595,6 @@ BridgedClass _createTomDbTypeBridge() {
         final other = D4.getRequiredArg<dynamic>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbType>(target, 'TomDbType');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
-      },
     },
     methodSignatures: {
       'toString': 'String toString()',
@@ -16734,11 +16729,6 @@ BridgedClass _createTomDbIntBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt');
         final other = D4.getRequiredArg<int?>(positional, 0, 'other', 'operator<<');
         return t << other;
-      },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbInt>(target, 'TomDbInt');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
       },
     },
     staticMethods: {
@@ -16888,11 +16878,6 @@ BridgedClass _createTomDbDoubleBridge() {
         final other = D4.getRequiredArg<double?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbDouble>(target, 'TomDbDouble');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
-      },
     },
     staticMethods: {
       'of': (visitor, positional, named, typeArgs) {
@@ -17040,11 +17025,6 @@ BridgedClass _createTomDbStringBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString');
         final other = D4.getRequiredArg<String?>(positional, 0, 'other', 'operator<<');
         return t << other;
-      },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbString>(target, 'TomDbString');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
       },
     },
     staticMethods: {
@@ -17194,11 +17174,6 @@ BridgedClass _createTomDbDateTimeBridge() {
         final other = D4.getRequiredArg<DateTime?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbDateTime>(target, 'TomDbDateTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
-      },
     },
     staticMethods: {
       'of': (visitor, positional, named, typeArgs) {
@@ -17346,11 +17321,6 @@ BridgedClass _createTomDbDateBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate');
         final other = D4.getRequiredArg<$tom_core_kernel_21.TomZonedDate?>(positional, 0, 'other', 'operator<<');
         return t << other;
-      },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbDate>(target, 'TomDbDate');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
       },
     },
     staticMethods: {
@@ -17500,11 +17470,6 @@ BridgedClass _createTomDbTimeBridge() {
         final other = D4.getRequiredArg<$tom_core_kernel_21.TomZonedTime?>(positional, 0, 'other', 'operator<<');
         return t << other;
       },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbTime>(target, 'TomDbTime');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
-      },
     },
     staticMethods: {
       'of': (visitor, positional, named, typeArgs) {
@@ -17652,11 +17617,6 @@ BridgedClass _createTomDbBoolBridge() {
         final t = D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool');
         final other = D4.getRequiredArg<bool?>(positional, 0, 'other', 'operator<<');
         return t << other;
-      },
-      '>>': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_core_server_42.TomDbBool>(target, 'TomDbBool');
-        final other = D4.getRequiredArg<void Function($tom_core_kernel_6.TomObservable)>(positional, 0, 'other', 'operator>>');
-        return t >> other;
       },
     },
     staticMethods: {

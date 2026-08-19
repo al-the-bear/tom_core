@@ -191,7 +191,7 @@ path the endpoint pipeline uses for every other DTO.
 | `intType` | `String` | `int` | The `valueType` of an `int` value. |
 | `doubleType` | `String` | `double` | The `valueType` of a `double` value. |
 | `boolType` | `String` | `bool` | The `valueType` of a `bool` value. |
-| `dateTimeType` | `String` | `DateTime` | The `valueType` of a `DateTime` value; always written in UTC. |
+| `dateTimeType` | `String` | `DateTime` | The `valueType` of a `DateTime` value; always written in UTC, and required to name its zone on the way back in. |
 | `scalarTypes` | `List<String>` | — | The scalar type names, in the order `typeNameOf` tests them. |
 
 #### Static Methods
@@ -202,9 +202,10 @@ path the endpoint pipeline uses for every other DTO.
 | `typeNameForType(Type type)` | `String` | The `valueType` a value of that type is stored under; agrees with `typeNameOf` for every type either can see. |
 | `encode(String key, Object value, {DateTime? updatedAt})` | `TomUserPreferenceDto` | Builds the whole DTO. `updatedAt` is the server's write timestamp; a client leaves it `null`. |
 | `encodeValue(Object value)` | `String` | The value's JSON text alone. Throws `TomUserPreferenceCodecException` (`preferences.encode.failed`) when a non-scalar value is not reflectable. |
-| `validateEncoded(String valueType, String valueJson, {String key = ''})` | `void` | Checks that the text is JSON and is shaped like the declared type. Throws `preferences.encoded.invalid_json` or `preferences.encoded.type_mismatch`. A non-scalar type is only required to be a JSON object — which reflected class it names is deliberately not checked. |
+| `validateEncoded(String valueType, String valueJson, {String key = ''})` | `void` | Checks that the text is JSON and is shaped like the declared type. Throws `preferences.encoded.invalid_json`, `preferences.encoded.type_mismatch`, or `preferences.encoded.not_an_instant` for a `DateTime` whose text names no zone. A non-scalar type is only required to be a JSON object — which reflected class it names is deliberately not checked. |
 | `decode<T extends Object>(TomUserPreferenceDto dto)` | `T` | The stored value as a `T`. Throws `preferences.decode.type_mismatch` when the stored `valueType` is not the one `T` is stored under. |
-| `decodeValue<T extends Object>(String json, [String key = ''])` | `T` | The JSON text alone as a `T`. Widens an `int` to a `double`, parses a `DateTime` as UTC, and reconstructs a reflected object through `createInstanceFromJson`. Throws `preferences.decode.invalid_json`, `preferences.decode.not_reflected` or `preferences.decode.failed`. |
+| `decodeValue<T extends Object>(String json, [String key = ''])` | `T` | The JSON text alone as a `T`. Widens an `int` to a `double`, reads a `DateTime` as the UTC instant its text names, and reconstructs a reflected object through `createInstanceFromJson`. Throws `preferences.decode.invalid_json`, `preferences.decode.type_mismatch`, `preferences.decode.not_an_instant`, `preferences.decode.not_reflected` or `preferences.decode.failed`. |
+| `parseInstant(String text)` | `DateTime?` | The UTC instant `text` names, or `null` when it names none. Stricter than `DateTime.parse`, which reads a zoneless timestamp as the reading process's local time — so one stored string would mean a different instant on every device. Public so a client can check its own text before sending it. |
 
 ### TomUserPreferenceCodecException
 
@@ -226,8 +227,9 @@ TomUserPreferenceCodecException(
 
 Parameters mirror `TomException`. The `key` is one of
 `preferences.encode.failed`, `preferences.encoded.invalid_json`,
-`preferences.encoded.type_mismatch`, `preferences.decode.type_mismatch`,
-`preferences.decode.invalid_json`, `preferences.decode.not_reflected` or
+`preferences.encoded.type_mismatch`, `preferences.encoded.not_an_instant`,
+`preferences.decode.type_mismatch`, `preferences.decode.invalid_json`,
+`preferences.decode.not_an_instant`, `preferences.decode.not_reflected` or
 `preferences.decode.failed`.
 
 ## Global Functions and Constants

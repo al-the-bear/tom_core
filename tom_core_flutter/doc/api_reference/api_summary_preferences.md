@@ -219,7 +219,7 @@ server's `/preferences` list endpoint answers.
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
 | `encode(List<TomUserPreferenceDto> values)` | `String` | The stored JSON text; `updatedAt` normalised to UTC and omitted when `null`. |
-| `decode(String content, {String source})` | `List<TomUserPreferenceDto>` | Parses it back. Blank content decodes to an empty document; anything else that is not an array of objects throws `device_preferences.store.invalid_content`. `source` only names the backend in the failure. |
+| `decode(String content, {String source})` | `List<TomUserPreferenceDto>` | Parses it back. Blank content decodes to an empty document; anything else that is not an array of objects — or that carries an `updatedAt` naming no time zone — throws `device_preferences.store.invalid_content`. `source` only names the backend in the failure. |
 
 The DTO is written field by field rather than through reflection: a framework
 store must keep working in an application whose generator never saw

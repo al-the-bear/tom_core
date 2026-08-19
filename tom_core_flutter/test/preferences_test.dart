@@ -422,6 +422,35 @@ void main() {
       expect(TomDevicePreferenceJson.decode('   \n'), isEmpty);
     });
 
+    // tcinc160: the document is meant to move between devices, so an
+    // updatedAt with no zone would be read as the *importing* device's local
+    // time — silently, and differently on each one.
+    test('rejects an updatedAt that names no time zone', () {
+      const content = '[{"key":"device.theme","valueType":"String",'
+          '"value":"\\"dark\\"","updatedAt":"2026-03-14T09:26:53"}]';
+
+      expect(
+        () => TomDevicePreferenceJson.decode(content, source: 'store'),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.invalid_content',
+          ),
+        ),
+      );
+    });
+
+    test('accepts an updatedAt written with an explicit offset', () {
+      const content = '[{"key":"device.theme","valueType":"String",'
+          '"value":"\\"dark\\"","updatedAt":"2026-03-14T10:26:53+01:00"}]';
+
+      expect(
+        TomDevicePreferenceJson.decode(content).single.updatedAt,
+        DateTime.utc(2026, 3, 14, 9, 26, 53),
+      );
+    });
+
     test('rejects content that is not a JSON array of objects', () {
       for (final content in ['{', '{"a": 1}', '[1, 2]']) {
         expect(
