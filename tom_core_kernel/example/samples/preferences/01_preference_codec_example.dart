@@ -163,8 +163,17 @@ class ZonelessTimestampExample {
 
     try {
       // And if such a value ever reached storage, the read refuses too rather
-      // than silently answering with this device's interpretation.
-      TomUserPreferenceCodec.decodeValue<DateTime>(zoneless, 'ui.lastSeen');
+      // than silently answering with this device's interpretation. Reading
+      // means handing over the whole row: the codec has no entry point taking
+      // the text alone, because such an entry point would have nothing to
+      // check the caller's requested type against.
+      TomUserPreferenceCodec.decode<DateTime>(
+        TomUserPreferenceDto(
+          key: 'ui.lastSeen',
+          valueType: TomUserPreferenceCodec.dateTimeType,
+          value: zoneless,
+        ),
+      );
     } on TomUserPreferenceCodecException {
       readRejected = true;
     }

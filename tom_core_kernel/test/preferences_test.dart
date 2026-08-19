@@ -14,6 +14,21 @@ import 'preferences_test.reflection.dart';
 /// timestamp is JSON *text*, so the stored bytes carry the quotes.
 String storedText(String text) => jsonEncode(text);
 
+/// Reads [json] as a [T] the only way the codec allows: through a DTO that
+/// declares the value is a [T].
+///
+/// The codec has no public entry point taking the text alone (tcinc163), so a
+/// test that wants to exercise the narrowing has to say what the stored value
+/// claims to be — which is exactly what a caller has to say too.
+T decodeStored<T extends Object>(String json, [String key = 'ui.value']) =>
+    TomUserPreferenceCodec.decode<T>(
+      TomUserPreferenceDto(
+        key: key,
+        valueType: TomUserPreferenceCodec.typeNameForType(T),
+        value: json,
+      ),
+    );
+
 Matcher throwsCodecKey(String key) => throwsA(
       isA<TomUserPreferenceCodecException>()
           .having((error) => error.key, 'key', key),
@@ -162,10 +177,10 @@ void main() {
       });
     });
 
-    group('decodeValue', () {
+    group('decode', () {
       for (final text in zonedTimestamps) {
         test('reads "$text" as the instant it names', () {
-          final decoded = TomUserPreferenceCodec.decodeValue<DateTime>(
+          final decoded = decodeStored<DateTime>(
             storedText(text),
             'ui.lastSeen',
           );
@@ -181,10 +196,7 @@ void main() {
           // proved only that a conversion happened — not that it converted
           // from the zone the writer meant.
           expect(
-            () => TomUserPreferenceCodec.decodeValue<DateTime>(
-              storedText(text),
-              'ui.lastSeen',
-            ),
+            () => decodeStored<DateTime>(storedText(text), 'ui.lastSeen'),
             throwsCodecKey('preferences.decode.not_an_instant'),
           );
         });
@@ -194,10 +206,7 @@ void main() {
         // Previously this escaped as a bare FormatException from
         // `DateTime.parse`, naming neither the preference nor the codec.
         expect(
-          () => TomUserPreferenceCodec.decodeValue<DateTime>(
-            storedText('yesterday'),
-            'ui.lastSeen',
-          ),
+          () => decodeStored<DateTime>(storedText('yesterday'), 'ui.lastSeen'),
           throwsCodecKey('preferences.decode.type_mismatch'),
         );
       });
@@ -217,7 +226,7 @@ void main() {
           returnsNormally,
         );
         expect(
-          TomUserPreferenceCodec.decodeValue<DateTime>(encoded),
+          decodeStored<DateTime>(encoded),
           DateTime.utc(2026, 3, 4, 5, 6, 7),
         );
       });
@@ -239,7 +248,7 @@ void main() {
         final encoded = TomUserPreferenceCodec.encodeValue(instant);
 
         expect(encoded, storedText('2026-03-04T05:06:07.123456Z'));
-        expect(TomUserPreferenceCodec.decodeValue<DateTime>(encoded), instant);
+        expect(decodeStored<DateTime>(encoded), instant);
       });
     });
   });
@@ -312,13 +321,18 @@ void main() {
 
   // tcinc162: a reflected value is rebuilt member by member, so a payload
   // belonging to a different class produces a defaulted instance rather than
-  // an error. That is intended (the type name is what identifies a stored
-  // object, and `decode` checks it) but it was documented nowhere, and these
-  // tests are what stops it drifting.
+  // an error. The `valueType` guard in `decode` is what keeps that from being
+  // reachable by asking for the wrong class — what is left is a row whose
+  // declared type and text disagree. Intended, but documented nowhere until
+  // now, and these tests are what stops it drifting.
   group('TomUserPreferenceCodec — a reflected value is rebuilt by member', () {
-    group('decodeValue takes the payload as it finds it', () {
+    // Each of these stores a row whose `valueType` says DisplayPreference, so
+    // the guard passes and the payload is all that is left to go on. That is
+    // the only shape the defaulting is still reachable in: a mislabelled row,
+    // not a caller asking for the wrong class.
+    group('a mislabelled row takes the payload as it finds it', () {
       test('a payload sharing no member name yields the defaults', () {
-        final decoded = TomUserPreferenceCodec.decodeValue<DisplayPreference>(
+        final decoded = decodeStored<DisplayPreference>(
           '{"enabled":false,"quietHour":6}',
           'ui.display',
         );
@@ -329,17 +343,14 @@ void main() {
       });
 
       test('an empty object yields the defaults', () {
-        final decoded = TomUserPreferenceCodec.decodeValue<DisplayPreference>(
-          '{}',
-          'ui.display',
-        );
+        final decoded = decodeStored<DisplayPreference>('{}', 'ui.display');
 
         expect(decoded.theme, 'light');
         expect(decoded.fontSize, 14);
       });
 
       test('unrecognised members are ignored, recognised ones applied', () {
-        final decoded = TomUserPreferenceCodec.decodeValue<DisplayPreference>(
+        final decoded = decodeStored<DisplayPreference>(
           '{"theme":"dark","quietHour":6}',
           'ui.display',
         );
@@ -359,8 +370,7 @@ void main() {
           original,
           'ui.display',
         );
-        final restored =
-            TomUserPreferenceCodec.decodeValue<DisplayPreference>(encoded);
+        final restored = decodeStored<DisplayPreference>(encoded, 'ui.display');
 
         expect(restored.theme, 'dark');
         expect(restored.fontSize, 18);
@@ -419,12 +429,62 @@ void main() {
 
     test('an unreflected class is refused rather than defaulted', () {
       expect(
-        () => TomUserPreferenceCodec.decodeValue<UnreflectedPreference>(
-          '{"size":9}',
-          'ui.size',
-        ),
+        () => decodeStored<UnreflectedPreference>('{"size":9}', 'ui.size'),
         throwsCodecKey('preferences.decode.not_reflected'),
       );
+    });
+  });
+
+  // tcinc163: the module's headline promise is that a mismatched read fails
+  // rather than coerces, but `decodeValue` was public and took the text alone,
+  // so the promise held only for callers who reached for `decode`. It is
+  // private now; these tests pin the cases that used to slip past it.
+  //
+  // That the whole file compiles without naming `decodeValue` is the other
+  // half of the assertion: there is no longer an entry point to reach for.
+  group('TomUserPreferenceCodec — the type guard has no way around it', () {
+    test('a stored DateTime cannot be read as the String it looks like', () {
+      // The exact probe that motivated this: JSON stores an instant as text,
+      // so a String read is well-typed at every level below the valueType.
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.lastSeen',
+        DateTime.utc(2026, 3, 4, 5, 6, 7),
+      );
+
+      expect(stored.value, storedText('2026-03-04T05:06:07.000Z'));
+      expect(
+        () => TomUserPreferenceCodec.decode<String>(stored),
+        throwsCodecKey('preferences.decode.type_mismatch'),
+      );
+    });
+
+    test('a stored int cannot be read as the double it widens to', () {
+      // `decode` refuses before the widening branch is reached, so the
+      // convenience does not become a second way past the declared type.
+      final stored = TomUserPreferenceCodec.encode('ui.scale', 3);
+
+      expect(
+        () => TomUserPreferenceCodec.decode<double>(stored),
+        throwsCodecKey('preferences.decode.type_mismatch'),
+      );
+      expect(TomUserPreferenceCodec.decode<int>(stored), 3);
+    });
+
+    test('the refusal names both types, so the caller knows which is wrong',
+        () {
+      final stored = TomUserPreferenceCodec.encode('ui.lastSeen', 3);
+
+      try {
+        TomUserPreferenceCodec.decode<String>(stored);
+        fail('A mismatched read must not succeed');
+      } on TomUserPreferenceCodecException catch (error) {
+        expect(error.parameters?['key'], 'ui.lastSeen');
+        expect(error.parameters?['stored'], TomUserPreferenceCodec.intType);
+        expect(
+          error.parameters?['requested'],
+          TomUserPreferenceCodec.stringType,
+        );
+      }
     });
   });
 }

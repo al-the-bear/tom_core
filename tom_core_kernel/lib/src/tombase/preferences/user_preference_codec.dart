@@ -16,6 +16,13 @@
 /// was written as a `Duration` and is read as an `int` is a bug in the caller —
 /// answering `3` (whatever that would mean) hides it, and the value the caller
 /// then acts on is not the one the user chose.
+///
+/// That is a property of the codec, not of the calling convention.
+/// [TomUserPreferenceCodec.decode] takes the whole [TomUserPreferenceDto]
+/// because the check needs the stored type name alongside the text, and there
+/// is deliberately no public sibling that takes the text alone: a guarantee
+/// with an unguarded way around it holds only for the callers who happen to
+/// pick the guarded method.
 library;
 
 import 'dart:convert';
@@ -68,7 +75,7 @@ class TomUserPreferenceCodec {
   ///
   /// The read path enforces the same rule rather than trusting the writer: a
   /// stored timestamp must name its zone, and one that does not is rejected by
-  /// [validateEncoded] and [decodeValue] instead of being read as the reading
+  /// [validateEncoded] and [decode] instead of being read as the reading
   /// device's local time. See [parseInstant].
   static const String dateTimeType = 'DateTime';
 
@@ -238,12 +245,32 @@ class TomUserPreferenceCodec {
     }
   }
 
-  /// Decodes [dto] as a [T].
+  /// Decodes [dto] as a [T] — the only way in to a stored preference value.
   ///
   /// Throws a [TomUserPreferenceCodecException] when the stored
   /// [TomUserPreferenceDto.valueType] is not the one [T] is stored under — the
   /// mismatch is reported rather than coerced, because a preference read as the
   /// wrong type is a value the caller will act on believing it is the user's.
+  /// The whole DTO is required rather than just its text because that check
+  /// needs the stored type name; a caller holding only the text should say what
+  /// it believes the text to be, by building the DTO, rather than be given a
+  /// way to skip saying it.
+  ///
+  /// A `DateTime` comes back in UTC, and only if the stored text names its own
+  /// zone — see [parseInstant] for why a zoneless one is refused rather than
+  /// localised. An `int` widens to a `double` when [T] asks for one.
+  ///
+  /// **A reflected [T] is rebuilt member by member.** A JSON member the class
+  /// does not declare is ignored, and a member the class declares but the
+  /// payload omits keeps its declared default. The `valueType` comparison is
+  /// what makes that safe: a caller asking for the wrong class is refused
+  /// before a single member is assigned.
+  ///
+  /// What no read can catch is a stored *row* whose `valueType` and text
+  /// disagree, because a JSON object is shaped like every reflected class at
+  /// once and nothing in the payload says which one wrote it. Such a row
+  /// decodes to a fully-defaulted instance. [validateEncoded] does not close
+  /// that gap either, and says why it does not try.
   static T decode<T extends Object>(TomUserPreferenceDto dto) {
     final expected = typeNameForType(T);
     if (dto.valueType != expected) {
@@ -258,7 +285,7 @@ class TomUserPreferenceCodec {
         },
       );
     }
-    return decodeValue<T>(dto.value, dto.key);
+    return _decodeValue<T>(dto.value, dto.key);
   }
 
   /// The [TomUserPreferenceDto.valueType] a value of type [type] is stored
@@ -290,32 +317,15 @@ class TomUserPreferenceCodec {
     return parsed;
   }
 
-  /// Decodes [json] as a [T]; [key] only names the preference in an error.
+  /// Narrows the JSON text [json] to a [T]; [key] only names the preference in
+  /// an error.
   ///
-  /// A `DateTime` is returned in UTC and only if the stored text names its
-  /// zone — see [parseInstant] for why a zoneless one is refused rather than
-  /// localised.
-  ///
-  /// **A reflected [T] is rebuilt member by member, on the payload's terms.**
-  /// A JSON member the class does not declare is ignored, and a member the
-  /// class declares but the payload omits keeps its declared default. So a
-  /// payload that belongs to a *different* reflected class decodes to a
-  /// fully-defaulted instance rather than to an error.
-  ///
-  /// That is not an oversight, and it is not fixable here. A JSON object is
-  /// shaped like every reflected class at once: nothing in the payload says
-  /// which class wrote it, so this method has no evidence to test. A scalar is
-  /// different — the decoded value carries its own type, which is why reading
-  /// a stored `int` as a `String` throws here and reading one object's payload
-  /// as another class does not.
-  ///
-  /// What identifies a stored object is its [TomUserPreferenceDto.valueType],
-  /// and [decode] compares it against [T] before calling this. **Prefer
-  /// [decode] for anything that came out of a store.** Reach for this method
-  /// only when the type is already established by other means — an endpoint
-  /// result whose shape the caller declared, say — because using it on a
-  /// stored preference opts out of the one check that can catch the mistake.
-  static T decodeValue<T extends Object>(String json, [String key = '']) {
+  /// Private, and deliberately so. Given the text alone there is nothing to
+  /// contradict the caller's [T]: a stored `DateTime` read as a `String`
+  /// succeeds here, because `"2026-03-04T05:06:07Z"` *is* a string. Only the
+  /// stored [TomUserPreferenceDto.valueType] says otherwise, so [decode]
+  /// compares it first and is the sole caller.
+  static T _decodeValue<T extends Object>(String json, String key) {
     final Object? raw;
     try {
       raw = jsonDecode(json);

@@ -45,9 +45,9 @@ lets a reflected object be reconstructed, and what makes a mismatched read fail
 loudly instead of quietly parsing a `Duration` as an `int`.
 
 Read the last sentence literally: it is **the type name** that makes a
-mismatched read fail, so the failure is only available where the type name is.
-`decode(dto)` has it and checks it. `decodeValue(json)` is handed text alone,
-and for an object there is nothing left to check — see
+mismatched read fail, so a read that cannot see the type name cannot fail. That
+is why `decode` takes the whole DTO and why the module offers nothing that
+takes the value's text on its own — see
 [A reflected value is rebuilt member by member](#a-reflected-value-is-rebuilt-member-by-member).
 
 ## Quick Start
@@ -143,9 +143,13 @@ Encodes and decodes preference values.
 | `encode(key, value, {updatedAt})` | Builds the whole DTO |
 | `encodeValue(value, [key])` | The JSON text alone |
 | `validateEncoded(valueType, valueJson, {key})` | Checks an already-encoded pair |
-| `decode<T>(dto)` | The stored value as a `T` |
-| `decodeValue<T>(json, [key])` | The JSON text alone as a `T` |
+| `decode<T>(dto)` | The stored value as a `T` — the only way to read one |
 | `parseInstant(text)` | The instant `text` names, or `null` if it names none |
+
+The read side is one method, not two. There is no counterpart to `encodeValue`
+taking the value's text on its own: it would have nothing to compare the
+caller's `T` against, and the guarantee below would then hold only for callers
+who picked the other method.
 
 A `DateTime` is always written in UTC: a preference follows the user across
 devices, and an instant carrying one device's local offset would come back
@@ -159,7 +163,7 @@ zone, with a trailing `Z` or an explicit offset. One that does not is refused:
 | Path | Error key |
 |------|-----------|
 | `validateEncoded` | `preferences.encoded.not_an_instant` |
-| `decodeValue` / `decode` | `preferences.decode.not_an_instant` |
+| `decode` | `preferences.decode.not_an_instant` |
 
 The alternative is worse than an error. `2026-03-04T05:06:07` is well-formed and
 completely ambiguous — `DateTime.parse` reads it as local time *in the reading
@@ -186,27 +190,26 @@ the payload omits keeps its declared default. So a payload belonging to a
 *different* reflected class decodes to a fully-defaulted instance, and an empty
 object decodes to nothing but defaults. Neither is an error.
 
-That is not an oversight, and `decodeValue` could not do better. A JSON object
-is shaped like every reflected class at once: nothing in the payload says which
-class wrote it, so given text alone there is no evidence to test. A scalar is
-the opposite case — the decoded value carries its own runtime type, which is
-why reading a stored `int` as a `String` does throw.
+The `valueType` is what stops that being a hazard. `decode<T>(dto)` compares
+the stored type name against `T` and refuses a mismatch with
+`preferences.decode.type_mismatch` before a single member is assigned, so a
+caller asking for the wrong class never reaches the reconstruction at all.
 
-What identifies a stored object is its `valueType`, so the check lives where the
-`valueType` does: `decode<T>(dto)` compares it against `T` and refuses a
-mismatch before any member is assigned.
+What remains is a *row* whose declared type and text disagree — written by a
+buggy producer, or hand-edited in the database. Nothing on the read side can
+catch that: a JSON object is shaped like every reflected class at once, so
+there is no evidence in the payload of which one wrote it. The boundary does
+not catch it either, and says why not: `validateEncoded` deliberately declines
+to reflect a type it may not know. A mislabelled row is therefore the one way
+a defaulted instance still comes back, and it is a data fault rather than a
+caller's mistake.
 
-| Read through | Is given | A payload of the wrong class |
-|--------------|----------|------------------------------|
-| `decode<T>(dto)` | type name and text | `preferences.decode.type_mismatch` |
-| `decodeValue<T>(json)` | text alone | a defaulted `T` |
-
-**Read anything that came out of a store through `decode`.** `decodeValue` is
-for a value whose type is already established by other means — text the caller
-has just encoded, or an endpoint result whose shape it declared. Using it on a
-stored preference opts out of the one check that can catch the mistake, and
-knowing that the stored `valueType` matches the class being asked for becomes
-the caller's responsibility alone.
+The scalar case is the opposite, which is worth stating because it explains why
+the guard has to exist at all: a decoded scalar carries its own runtime type, so
+narrowing has something to test — but only *after* the `valueType` check has
+already refused the same mistake. `3` is a valid `double`, and
+`"2026-03-04T05:06:07Z"` is a valid `String`; the declared type is what makes
+either read wrong.
 
 Best-effort applies to a payload's members, not to whether the type is
 reflected at all: a class the generator never captured is still refused, with
@@ -337,16 +340,16 @@ The codec is what makes both halves agree on a `DateTime`'s zone and a
 mismatch's outcome. A caller that decodes the text itself has quietly opted out
 of both.
 
-### 2. Let a Mismatch Throw — and Read Through `decode`
+### 2. Let a Mismatch Throw
 
 `decode<T>` refuses a stored type it was not asked for rather than coercing. Do
 not wrap it in a `try` that returns a default: an unwritten preference is an
 ordinary state that a default answers, while a preference stored as the wrong
 type is a bug, and defaulting hides it.
 
-Reaching past it to `decodeValue` on a stored value throws that guarantee away,
-and for a reflected value it throws it away *silently* — the wrong class comes
-back defaulted rather than refused. See
+There is nothing to reach past it to. Read through the DTO even when the text
+is all you were handed — building one is how you state what you believe the
+text to be, and stating it is what lets the codec disagree. See
 [A reflected value is rebuilt member by member](#a-reflected-value-is-rebuilt-member-by-member).
 
 ### 3. Annotate Reflected Preference Values
