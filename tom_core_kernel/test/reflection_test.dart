@@ -423,12 +423,26 @@ void main() {
     // The converse is deliberately not symmetric: narrowing a double to an int
     // would have to pick a rounding policy, and silently truncating 2.5 loses
     // data. It stays an error.
+    //
+    // The key is asserted, not just the exception type, because the key is what
+    // the documentation quotes. Checking only `isA<TomReflectorException>` left
+    // the documented `reflection.set.unexpected_type` unpinned — and the prose
+    // example that quoted it had drifted onto a field the class did not
+    // declare, so it demonstrated the silent-ignore path instead and nothing
+    // caught that.
     test('should reject a double value for an int field', () {
       final person = SimplePerson();
       expect(
         () => tomReflectionInfo.setValues(person, {'age': 2.5}),
-        throwsA(isA<TomReflectorException>()),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unexpected_type',
+          ),
+        ),
       );
+      expect(person.age, 0, reason: 'the field is left as it was');
     });
 
     test('should set multiple values at once', () {
