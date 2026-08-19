@@ -275,7 +275,7 @@ actionable. Wrap those in a reflected class.
 | `doubleType` | `String` | `double` | The `valueType` of a `double` value. |
 | `boolType` | `String` | `bool` | The `valueType` of a `bool` value. |
 | `dateTimeType` | `String` | `DateTime` | The `valueType` of a `DateTime` value; always written in UTC, and required to name its zone on the way back in. |
-| `scalarTypes` | `List<String>` | — | The scalar type names, in the order `typeNameOf` tests them. |
+| `scalarTypes` | `List<String>` | — | The scalar type names, in the order `typeNameOf` tests them. An unmodifiable view of the codec's scalar table, not a list of its own, so the order is the one the tests actually run in. `int` precedes `double` because on the web both are JS numbers and an integral `double` answers to `is int` — the first row that matches decides the stored name. |
 | `enumNameField` | `String` | `name` | The JSON member an enum value is stored in: its constant *name*, never its index. An index is positional, so inserting a constant silently changes what every already-stored preference means; the name moves only when the constant is renamed, and a renamed one is refused loudly by `decode` rather than misread. |
 
 #### Static Methods

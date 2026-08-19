@@ -1566,20 +1566,71 @@ void main() {
       expect(TomUserPreferenceCodec.decode<bool>(dto), isTrue);
     });
 
-    test('the published scalar names are exactly the ones a value gets', () {
-      // `scalarTypes` is the list `typeNameOf` tests in order and the list
-      // `validateEncoded` treats as scalar. A name in one and not the other is
-      // a value that can be written and never read, so the two are pinned to
-      // each other rather than each to a literal.
+    test('every scalar a write can produce is one a read accepts', () {
+      // A scalar is described in one place by two predicates asked on
+      // opposite sides of the column: one of a live Dart value on the way in,
+      // one of decoded JSON on the way out. When they disagree the write
+      // still succeeds — the failure surfaces only at the next read, which is
+      // typically on another device — so the loop is closed here instead.
+      final samples = <Object>[
+        'dark',
+        14,
+        1.25,
+        true,
+        DateTime.utc(2026, 3, 4),
+      ];
+
+      // Keyed to `scalarTypes` and not to a literal, so that a scalar added
+      // to the codec without a sample here fails this line rather than
+      // quietly going untested. It pins the write side at the same time: the
+      // names must come out in the published order, which they only do if
+      // each sample is claimed by its own row and by no earlier one.
       expect(
-        <Object>[
-          'dark',
-          14,
-          1.25,
-          true,
-          DateTime.utc(2026, 3, 4),
-        ].map(TomUserPreferenceCodec.typeNameOf).toList(),
+        samples.map(TomUserPreferenceCodec.typeNameOf).toList(),
         TomUserPreferenceCodec.scalarTypes,
+        reason: 'the samples must cover every scalar, in the published order',
+      );
+
+      for (final sample in samples) {
+        final dto = TomUserPreferenceCodec.encode('ui.sample', sample);
+        expect(
+          () => TomUserPreferenceCodec.validateEncoded(
+            dto.valueType,
+            dto.value,
+            key: dto.key,
+          ),
+          returnsNormally,
+          reason: '${dto.valueType} can be written but not read back',
+        );
+
+        // A caller who reads a preference back by type never presents a
+        // value, so that path names the scalar from the `Type` alone. It has
+        // to arrive at the name the write side chose, or the read looks for a
+        // `valueType` no write produces.
+        expect(
+          TomUserPreferenceCodec.typeNameForType(sample.runtimeType),
+          dto.valueType,
+          reason: 'naming ${sample.runtimeType} by type and by value disagree',
+        );
+      }
+    });
+
+    test('int is published before double, because the web needs it so', () {
+      // On the web an integral `double` answers to `is int` — both are JS
+      // numbers and the test is one of integrality — so the first matching
+      // row decides the stored name, and swapping these two would change
+      // what an entire platform writes. On the VM they are disjoint types
+      // and the order is free, which is why no behavioural test in this
+      // suite can catch a reorder and this one states the order outright.
+      expect(
+        TomUserPreferenceCodec.scalarTypes.indexOf(
+          TomUserPreferenceCodec.intType,
+        ),
+        lessThan(
+          TomUserPreferenceCodec.scalarTypes.indexOf(
+            TomUserPreferenceCodec.doubleType,
+          ),
+        ),
       );
     });
 

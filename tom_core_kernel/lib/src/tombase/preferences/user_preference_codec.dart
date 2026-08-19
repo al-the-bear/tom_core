@@ -116,14 +116,49 @@ class TomUserPreferenceCodec {
   /// device's local time. See [parseInstant].
   static const String dateTimeType = 'DateTime';
 
-  /// The scalar type names, in the order [typeNameOf] tests them.
-  static const List<String> scalarTypes = [
-    stringType,
-    intType,
-    doubleType,
-    boolType,
-    dateTimeType,
+  /// The five scalar shapes, in the order [typeNameOf] tests a value against
+  /// them.
+  ///
+  /// The order is load-bearing, and `int` before `double` is the reason. On the
+  /// web both are JS numbers and an integral `double` answers to `is int`, so
+  /// the first row that matches decides the stored name; swapping the two would
+  /// change what a whole platform writes. On the VM the types are disjoint and
+  /// the order is free — which is exactly why it needs saying here, where the
+  /// order is set, rather than being discovered by a reader who reshuffles the
+  /// rows and sees every test still pass.
+  ///
+  /// Only the value tests are ordered. [_identityOf] matches a row by its
+  /// [_ScalarKind.dartType], and `Type` equality is exact, so no row can shadow
+  /// another there.
+  ///
+  /// `static final` rather than `const`, because a function literal is not a
+  /// constant expression. That is the same trade [_collectionTypes] makes: a
+  /// table that holds what the code does cannot drift from the code that does
+  /// it, which is worth more than a constness nothing here asks for.
+  static final List<_ScalarKind> _scalars = [
+    _ScalarKind(String, stringType, (v) => v is String, (j) => j is String),
+    _ScalarKind(int, intType, (v) => v is int, (j) => j is int),
+    // `num` and not `double` on the read side: JSON writes `1.0` as `1`, and a
+    // row a non-Dart client wrote is integral even where the preference is not.
+    _ScalarKind(double, doubleType, (v) => v is double, (j) => j is num),
+    _ScalarKind(bool, boolType, (v) => v is bool, (j) => j is bool),
+    _ScalarKind(
+      DateTime,
+      dateTimeType,
+      (v) => v is DateTime,
+      (j) => j is String && DateTime.tryParse(j) != null,
+    ),
   ];
+
+  /// The scalar type names, in the order [typeNameOf] tests them.
+  ///
+  /// A view of [_scalars] rather than a list of its own. The ordering above is
+  /// therefore not a claim about this list that someone has to keep true; it is
+  /// the only order there is, and [typeNameOf] and [validateEncoded] read the
+  /// same rows this is projected from.
+  static final List<String> scalarTypes = List.unmodifiable(
+    _scalars.map((scalar) => scalar.name),
+  );
 
   /// The [TomUserPreferenceDto.valueType] of a list whose elements are
   /// [element]s.
@@ -238,11 +273,9 @@ class TomUserPreferenceCodec {
   /// a caller may ask for a value's stored name before it has decided where to
   /// put it.
   static String typeNameOf(Object value, [String key = '']) {
-    if (value is String) return stringType;
-    if (value is int) return intType;
-    if (value is double) return doubleType;
-    if (value is bool) return boolType;
-    if (value is DateTime) return dateTimeType;
+    for (final scalar in _scalars) {
+      if (scalar.matchesValue(value)) return scalar.name;
+    }
     final collection = _collectionNameOf(value);
     if (collection != null) return collection;
     if (value is Iterable || value is Map) {
@@ -655,24 +688,18 @@ class TomUserPreferenceCodec {
   /// Whether [raw] is shaped like the scalar named [scalarType].
   ///
   /// Shared by [validateEncoded]'s top level and its element check, so that
-  /// "what an `int` looks like in JSON" is answered once. `double` accepts any
-  /// `num`, because JSON writes `1.0` as `1` and a row a non-Dart client wrote
-  /// is integral even where the preference is not.
+  /// "what an `int` looks like in JSON" is answered once — and answered out of
+  /// the same [_scalars] rows [typeNameOf] writes the name from, so a shape the
+  /// codec can write is by construction a shape it will read back.
+  ///
+  /// `false` for a name no row claims, which is how a `valueType` naming a
+  /// class reaches [validateEncoded]'s object branch rather than being mistaken
+  /// for an unrecognised scalar.
   static bool _scalarMatches(String scalarType, Object? raw) {
-    switch (scalarType) {
-      case stringType:
-        return raw is String;
-      case intType:
-        return raw is int;
-      case doubleType:
-        return raw is num;
-      case boolType:
-        return raw is bool;
-      case dateTimeType:
-        return raw is String && DateTime.tryParse(raw) != null;
-      default:
-        return false;
+    for (final scalar in _scalars) {
+      if (scalar.name == scalarType) return scalar.matchesJson(raw);
     }
+    return false;
   }
 
   /// Every text in [raw] that the declared [valueType] says is an instant.
@@ -821,11 +848,11 @@ class TomUserPreferenceCodec {
     Type type,
     String key,
   ) {
-    if (type == String) return (name: stringType, reflectedClass: null);
-    if (type == int) return (name: intType, reflectedClass: null);
-    if (type == double) return (name: doubleType, reflectedClass: null);
-    if (type == bool) return (name: boolType, reflectedClass: null);
-    if (type == DateTime) return (name: dateTimeType, reflectedClass: null);
+    for (final scalar in _scalars) {
+      if (scalar.dartType == type) {
+        return (name: scalar.name, reflectedClass: null);
+      }
+    }
     final collection = _collectionTypes[type];
     if (collection != null) return (name: collection, reflectedClass: null);
     // `List` *is* `List<dynamic>`, so a caller who wrote the bare literal lands
@@ -1161,4 +1188,49 @@ class TomUserPreferenceCodec {
       },
     );
   }
+}
+
+/// One scalar shape: the Dart type it is, the name it is stored under, and the
+/// two questions the codec asks about it.
+///
+/// One row rather than parallel lists, because it is one fact. That `int` is
+/// stored as `int`, is recognised by `is int`, and looks like a JSON integer is
+/// a single sentence about a single shape. Split across a list of names, a
+/// chain of `is` tests, a chain of `Type` comparisons and a `switch` over those
+/// names, the parts can fall out of step without anything failing to compile —
+/// and a name the write side produces that the read side will not accept is a
+/// preference that stores successfully and never comes back.
+///
+/// The two predicates are deliberately not one. They are asked on opposite
+/// sides of the column: [matchesValue] of a live Dart value on the way in,
+/// [matchesJson] of whatever `jsonDecode` returned on the way out. `double` is
+/// where that shows — `is double` going in, `is num` coming back.
+class _ScalarKind {
+  /// Creates a row of the scalar table.
+  const _ScalarKind(
+    this.dartType,
+    this.name,
+    this.matchesValue,
+    this.matchesJson,
+  );
+
+  /// The Dart type this shape is, as a caller names it when reading a
+  /// preference back by type rather than by value.
+  ///
+  /// Matched by [TomUserPreferenceCodec.typeNameForType], which asks its
+  /// question of a `Type` and so cannot use [matchesValue] — there is no value
+  /// yet. Same row, same answer, one place to add the next scalar.
+  final Type dartType;
+
+  /// The [TomUserPreferenceDto.valueType] a value of this shape is stored
+  /// under.
+  final String name;
+
+  /// Whether a Dart value has this shape — the write side's question, asked by
+  /// [TomUserPreferenceCodec.typeNameOf].
+  final bool Function(Object value) matchesValue;
+
+  /// Whether decoded JSON has this shape — the read side's question, asked by
+  /// [TomUserPreferenceCodec.validateEncoded].
+  final bool Function(Object? raw) matchesJson;
 }
