@@ -1293,9 +1293,6 @@ abstract class TomListLifecycleListener {
 @tomReflector
 class TomList<E extends TomObject> extends TomObject<List<E>>
     implements TomObserver, Iterable<E> {
-  // ignore: prefer_final_fields
-  bool _serializing = false;
-
   /// Registered lifecycle listeners.
   final List<TomListLifecycleListener> _lifecycleListeners = [];
 
@@ -1378,19 +1375,21 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     }
   }
 
-  /// Throws [TomObservableException] unless called during serialization.
+  /// Always throws [TomObservableException]: a list is never assigned wholesale
+  /// through [set].
   ///
-  /// Use [add], [addAll], or index assignment to modify the list.
+  /// Replacing the backing list here would leave the outgoing elements still
+  /// registered as observed and the incoming ones unobserved — the list would
+  /// go quiet for every element it now holds. The operations that *do* replace
+  /// the contents perform that exchange properly: [operator <<] for an ordinary
+  /// swap, [resetWith] when the lifecycle callbacks are wanted too. For single
+  /// elements use [add], [addAll], or index assignment.
   @override
   List<E> set(List<E> value) {
-    if (!_serializing) {
-      throw TomObservableException(
-        "TomClass.tomlist_state_error.set_not_allowed",
-        "You can't set the value of TomList, you can only set individuals elements",
-      );
-    }
-    _value = value;
-    return _value;
+    throw TomObservableException(
+      "TomClass.tomlist_state_error.set_not_allowed",
+      "You can't set the value of TomList, you can only set individuals elements",
+    );
   }
 
   /// Returns a copy of the internal list.

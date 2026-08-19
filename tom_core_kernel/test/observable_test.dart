@@ -790,6 +790,42 @@ void main() {
       );
     });
 
+    test('set() throws in every state, and leaves the list untouched', () {
+      // There is no mode in which `set` succeeds — in particular not on the
+      // deserialization path, where a wholesale assignment would be most
+      // tempting. So check both a populated list and one that has just been
+      // through `resetWith`.
+      final list = TomList<TomInt>();
+      list.append(TomInt(1)).append(TomInt(2));
+
+      int notifications = 0;
+      final observer = list >> (_) => notifications++;
+
+      expect(
+        () => list.set([TomInt(9)]),
+        throwsA(isA<TomObservableException>()),
+      );
+
+      list.resetWith([TomInt(3), TomInt(4)]);
+      notifications = 0;
+      expect(
+        () => list.set([TomInt(9)]),
+        throwsA(isA<TomObservableException>()),
+      );
+
+      // The rejected call changed nothing and said nothing.
+      expect(list.length, equals(2));
+      expect(~list[0], equals(3));
+      expect(~list[1], equals(4));
+      expect(notifications, equals(0));
+
+      // The elements are still observed — the whole reason `set` refuses.
+      list[0] | 99;
+      expect(notifications, equals(1));
+
+      list.removeObserver(observer);
+    });
+
     test('mute mutes all elements', () {
       final list = TomList<TomInt>();
       list.append(TomInt(1)).append(TomInt(2)).append(TomInt(3));

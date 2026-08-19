@@ -728,8 +728,9 @@ Abstract listener for structural reset events on a `TomList`. Register via
 
 Observable list that automatically observes all contained `TomObject` elements
 and cascades their notifications. Provides the standard `List`/`Iterable`
-surface with observer management. Direct whole-value `set` is disallowed
-(except during serialization).
+surface with observer management. Direct whole-value `set` always throws; the
+contents are replaced with `<<` or `resetWith`, which exchange the element
+observers as part of the swap.
 
 Every mutator below obeys one contract: **it notifies exactly once when it
 changed the element sequence, and not at all when it left it as it was.**
@@ -777,7 +778,7 @@ TomList.ofList(List<E> list)
 | ------ | --------- | ----------- |
 | `addLifecycleListener` | `void addLifecycleListener(TomListLifecycleListener listener)` | Registers a lifecycle listener for reset events. |
 | `removeLifecycleListener` | `void removeLifecycleListener(TomListLifecycleListener listener)` | Unregisters a lifecycle listener. |
-| `set` | `List<E> set(List<E> value)` | *(override)* Throws `TomObservableException` unless serializing. |
+| `set` | `List<E> set(List<E> value)` | *(override)* Always throws `TomObservableException`. Assigning the backing list would strand the element observers; use `<<` or `resetWith`, which re-attach them. |
 | `get` | `List<E> get()` | *(override)* Returns a growable copy of the backing list. |
 | `onNotify` | `void onNotify(TomObservable observable)` | *(override)* Propagates an element change to this list's observers. |
 | `append` | `TomList<E> append(E element)` | Adds an element and returns the list for chaining. |

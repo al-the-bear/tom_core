@@ -491,13 +491,17 @@ Subscription is not declared here: `operator >>` and the
 `addObserver`/`removeObserver`/`notifyObservers` trio come from
 [`TomObservable`](#tomobservable).
 
-The composites narrow this contract rather than extending it.
-[`TomClass`](#tomclass-observable-objects) and [`TomMap`](#tommap-observable-maps)
-throw from `set` — there is no single value to replace — and
-[`TomList`](#tomlist-observable-lists) throws too unless it is deserializing;
-`get` on `TomList` and `TomMap` returns a **copy**, so mutating the result
-changes nothing. Use the collection's own API (`add`, `[]=`, `setValues`, …)
-instead.
+The composites narrow this contract rather than extending it. All three throw
+from `set`, and for two different reasons.
+[`TomClass`](#tomclass-observable-objects) has no single value to replace: its
+members are fixed by its declaration. [`TomList`](#tomlist-observable-lists) and
+[`TomMap`](#tommap-observable-maps) *do* have replaceable contents, but
+assigning the backing collection would leave the outgoing entries still observed
+and the incoming ones unobserved — so the swap is done by `<<` (and, on a list,
+[`resetWith`](#atomic-replacement-with-resetwith)),
+which exchange the observers as part of the operation. `get` on `TomList` and
+`TomMap` returns a **copy**, so mutating the result changes nothing. For
+individual entries use the collection's own API (`add`, `[]=`, `setValues`, …).
 
 ### Non-Nullable Types
 
@@ -1678,7 +1682,8 @@ try {
 | Error Key | Description |
 |-----------|-------------|
 | `TomClass.state_error.set_not_allowed` | Cannot set entire TomClass value |
-| `TomMap.set.not_allowed` | Cannot replace entire map |
+| `TomClass.tomlist_state_error.set_not_allowed` | Cannot replace the backing list via `set` — use `<<` or `resetWith` |
+| `TomClass.tommap_state_error.set_not_allowed` | Cannot replace the backing map via `set` — use `<<` |
 | `TomClass.set_list_member_error.not_a_list` | Expected list for TomList member |
 
 ## Class Hierarchy
