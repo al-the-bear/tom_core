@@ -5,6 +5,20 @@ This document describes the **Observer/Observable architecture** of the Tom fram
 - `tom_observable.dart` — Base classes for the Observer pattern
 - `tom_observable_objects.dart` — Observable wrapper types for values
 
+## Scope of this document
+
+**Public surface only, and only the part of it you reach for often.** Nothing
+private appears here: a member you cannot call is not part of the surface you
+are being oriented in, and listing one only invites a call that will not
+compile. Where a private mechanism explains an observable behaviour, the
+*behaviour* is described without naming the member that implements it.
+
+Being short is the point, so this is a selection rather than an inventory. For
+the complete member-by-member listing — every overload, every signature, every
+static — see **[the API reference](../api_reference/api_summary_observable.md)**,
+which is the authoritative statement. Where the two differ, the API reference
+wins and this document has a bug.
+
 ---
 
 ## Base Classes (`tom_observable.dart`)
@@ -19,7 +33,7 @@ The foundation of the observer pattern. Any class that needs to notify others of
   either: you must retain every observer you register**, or it is collected and
   silently stops firing (see
   [Memory Management](observable.md#memory-management--you-must-retain-the-observer))
-- Supports muting/unmuting notifications for batch updates
+- Supports batching several changes into a single notification
 - Automatically prunes references whose observer has already been collected
 
 **Properties:**
@@ -30,9 +44,28 @@ The foundation of the observer pattern. Any class that needs to notify others of
 |--------|-------------|
 | `addObserver(TomObserver)` | Registers an observer to receive notifications |
 | `removeObserver(TomObserver)` | Unregisters an observer |
-| `notifyObservers([message])` | Notifies all registered observers of a change |
-| `mute()` | Temporarily suppresses notifications |
-| `unmute()` | Resumes notifications (triggers if dirty) |
+| `notifyObservers([message])` | Notifies all registered observers of a change; the optional message is passed through untouched |
+| `batch<T>(T Function() body)` | Runs `body` with notifications muted and emits **one** notification afterwards, returning whatever `body` returned |
+| `mute()` | Suppresses notifications until the matching `unmute()` |
+| `unmute()` | Releases one `mute()`, notifying once if anything changed meanwhile |
+
+**Reach for `batch()`, not `mute()`/`unmute()`.** It is the same mechanism with
+the release in a `finally`, so a `body` that throws cannot leave the object
+silent for the rest of its life — which is exactly what a bare `mute()` does
+when the code before its `unmute()` fails:
+
+```dart
+order.batch(() {
+  order.quantity | 5;
+  order.price | 12.50;
+}); // one notification; a throw still releases the mute, then propagates
+```
+
+Mutes **nest** — each `mute()` needs exactly one `unmute()`, and notifications
+resume only when the outermost is released, so a batching method can be called
+from inside a caller's batch without cutting it short. Muting a composite
+(`TomClass`, `TomList`, `TomMap`) cascades to its members, so a batch that
+touches several of them still surfaces as one notification from the container.
 
 **Operators:**
 | Operator | Description |
@@ -43,10 +76,10 @@ The foundation of the observer pattern. Any class that needs to notify others of
 ```dart
 class Counter extends TomObservable {
   int _count = 0;
-  
+
   void increment() {
     _count++;
-    notifyObservers();
+    notifyObservers(_count); // the optional message reaches every observer
   }
 }
 ```
@@ -105,7 +138,7 @@ Custom exception class for observable-related errors, extending `TomException`.
 The generic observable wrapper that all other types extend.
 
 **Key Features:**
-- **Value storage**: Internal `_value` of type `T`
+- **Value storage**: holds exactly one value of type `T`, reached through `get()`/`set()` and the operators below
 - **Operator overloads**:
   - `~obj` — get value (prefix operator)
   - `obj()` — get value (call operator)
@@ -168,6 +201,8 @@ minifying compile, unlike `runtimeType`). An enum that overrides `toString()`
 must implement `TomEnumResourceSegment` and declare its segment, or resolution
 throws.
 
+Instance members — called on a cell:
+
 | Member | Description |
 |--------|-------------|
 | `values` | The values the cell may hold, in declaration order (required, unmodifiable); constructing or setting anything else throws |
@@ -176,9 +211,15 @@ throws.
 | `displayKey` / `displayKeyOf(v)` | The key that resolved, else the `global` key |
 | `displayTexts` | Bundle text for every entry of `values` |
 | `detachFromResources()` | Stop reacting to bundle changes (value changes still notify) |
-| `resourceKeysFor(v, {scope})` | The candidate keys, most specific scope first, ending at `global` |
-| `resolveText(v, {scope})` | Bundle text, else the raw enum name (logs once per key per revision) |
-| `resolveTextOrNull(v, {scope})` | Bundle text, else `null` — for a caller-supplied fallback |
+
+**Static** members — called on the class, and they take a bare `Enum`, so they
+resolve text for an enum value you do not hold a cell for:
+
+| Member | Description |
+|--------|-------------|
+| `TomObservableEnum.resourceKeysFor(v, {scope})` | The candidate keys, most specific scope first, ending at `global` |
+| `TomObservableEnum.resolveText(v, {scope})` | Bundle text, else the raw enum name (logs once per key per revision) |
+| `TomObservableEnum.resolveTextOrNull(v, {scope})` | Bundle text, else `null` — for a caller-supplied fallback |
 
 Notifies on a **value change or a bundle change**; the bundle trigger is
 `TomTextResourceProvider.appResourcesRevision`.
@@ -268,8 +309,9 @@ A powerful base class for creating observable domain objects with automatic memb
 
 ### Value Operations
 - `get()`, `set()` and `operator <<` all throw `TomObservableException` — a class is addressed through its members, and its set of members is fixed by its declaration, so there is no whole value to read or replace. (This is the deliberate asymmetry with `TomList`/`TomMap`, whose contents *are* replaceable via `<<`.)
-- `setValues(Map<String, dynamic>)` — bulk update multiple fields
-- `setOrMergeValues(Map<String, dynamic>)` — update or merge with existing values
+- `setValues(Map<String, dynamic> values)` — bulk update multiple fields; equivalent to `setOrMergeValues(values, false)`
+- `setOrMergeValues(Map<String, dynamic> values, bool merge)` — the same bulk update, with `merge` deciding what happens to `TomList`/`TomMap` members: `false` clears them before adding, `true` adds to what is already there. The flag is a required positional, not optional
+- Both run inside a `batch`, so a bulk update surfaces as **one** notification; an unknown key is skipped rather than rejected, and a value of the wrong shape throws a `TomObservableException` naming the key and the type supplied
 - `getValues()` — returns all registered members as a `Map<String, dynamic>`
 - Timezone-aware members are dispatched to `setByString` before the plain-`DateTime` handling — `TomTimezoned` extends `DateTime`, so a zoned member also satisfies `TomObject<DateTime?>` and would otherwise reach `DateTime.parse` with its `@D@`/`@T@`/`@X@` prefix attached
 - `getValues()` output round-trips back through `setValues()`, zoned members included
@@ -290,7 +332,7 @@ An observable list implementation that automatically observes all contained elem
   `remove`, `sort`, …), but is **not** a `List<E>` — `List<TomString> l = myTomList;`
   does not compile. Use `toList()` (a copy) at the boundary
 - Uses `@tomReflector` annotation for reflection
-- Automatically observes all contained elements
+- Automatically observes every contained element: one added is attached, one removed is detached, so the list never keeps observing an element it no longer holds
 - Notifies observers on any list modification
 - **`==` is identity, not contents** — a list equals only itself, and `hashCode`
   is stable across every mutation so a list stays findable in a `Set`. A
@@ -304,12 +346,9 @@ An observable list implementation that automatically observes all contained elem
 - `TomList.of(TomList<E>)` — creates copy of existing TomList
 - `TomList.ofList(List<E>)` — creates from standard List
 
-**Observer Management:**
-- `_attachTo(Iterable<E>)` — adds this list as observer to all elements
-- `_detachFrom(Iterable<E>)` — removes this list as observer from elements
-
 **All Standard List Operations:**
 - `add()`, `addAll()`, `insert()`, `insertAll()`
+- `append()` — `add()` that returns the list instead of `void`, so appends chain (`rows.append(a).append(b)`)
 - `remove()`, `removeAt()`, `removeLast()`, `removeRange()`, `removeWhere()`
 - `clear()`, `sort()`, `shuffle()`
 - `operator []`, `operator []=`
@@ -358,7 +397,7 @@ An observable map implementation that automatically observes all contained value
   implements **no** `Map` interface — `Map<String, TomInt> m = myTomMap;` does
   not compile. Use `get()` (a copy) at the boundary
 - Uses `@tomReflector` annotation for reflection
-- Automatically observes all values (not keys)
+- Automatically observes all values (not keys): a value added is attached, one removed or overwritten is detached
 - Notifies observers on any map modification
 - **`==` is identity, not contents** — same rule and same reasoning as
   [`TomList`](#tomliste-extends-tomobject)
@@ -372,10 +411,6 @@ An observable map implementation that automatically observes all contained value
 **Whole-value operations:**
 - `set()` throws `TomObservableException` — replacing the backing map directly would strand the value observers
 - `operator <<` is the supported wholesale swap: it detaches the outgoing values, attaches the incoming ones, and emits **one** notification for the exchange (`scores << {'ada': TomInt(10)}`), returning the map
-
-**Observer Management:**
-- `_attachTo(Iterable<V>)` — adds this map as observer to all values
-- `_detachFrom(Iterable<V>)` — removes this map as observer from values
 
 **All Standard Map Operations:**
 - `operator []`, `operator []=`
