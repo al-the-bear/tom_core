@@ -249,8 +249,16 @@ class TomUserPreferenceCodec {
   ///
   /// A scalar's own type name, a supported collection's composed name, or —
   /// for anything else — the name the reflection registry holds for the value's
-  /// class. The scalar cases are tested first, so an `int` never reaches
-  /// reflection.
+  /// class.
+  ///
+  /// Those three are consulted in that order, and only one of the two
+  /// precedences decides an answer. The scalar table comes before the registry
+  /// to keep a scalar's stored name in the same row as the predicates that
+  /// produce and check it — not to change what it is named, because the
+  /// registry knows all five core scalars and returns the same strings. Which
+  /// is why no behavioural test can catch that half of the ordering, and why
+  /// the agreement itself is asserted instead. The precedence that does decide
+  /// an answer is collections before the registry, two paragraphs down.
   ///
   /// Throws `preferences.type.not_reflected` when the registry does not know
   /// the class. That is the point rather than a limitation: the name written

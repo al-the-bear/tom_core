@@ -855,8 +855,10 @@ void main() {
     });
 
     test('a scalar is named without the registry being asked', () {
-      // None of these are reflected, so answering at all is the assertion:
-      // the scalar branches are tested before anything reaches reflection.
+      // The by-type path consults the same table in the same order as the
+      // by-value one, so the five names a `Type` resolves to are the five a
+      // value resolves to. That is what lets a caller read a preference back
+      // by type without knowing anything about how it was written.
       expect(TomUserPreferenceCodec.typeNameForType(String),
           TomUserPreferenceCodec.stringType);
       expect(TomUserPreferenceCodec.typeNameForType(int),
@@ -867,6 +869,32 @@ void main() {
           TomUserPreferenceCodec.boolType);
       expect(TomUserPreferenceCodec.typeNameForType(DateTime),
           TomUserPreferenceCodec.dateTimeType);
+    });
+
+    test('the registry names a scalar exactly as its own row does', () {
+      // The scalar table is consulted before the registry, and this is the
+      // fact that makes that precedence invisible: a scalar falling through
+      // to reflection would come back under the same string. So the ordering
+      // cannot be caught by any behavioural test, and the agreement it rests
+      // on is stated outright here instead — if the registry ever stopped
+      // knowing a core scalar, or started naming one differently, the table
+      // would stop being a fast path and become load-bearing, and this line
+      // is what says so before a reader believes the ordering is free.
+      for (final sample in <Object>[
+        'dark',
+        14,
+        1.25,
+        true,
+        DateTime.utc(2026, 3, 4),
+      ]) {
+        expect(
+          tomReflector.reflect(sample).type.simpleName,
+          TomUserPreferenceCodec.typeNameOf(sample),
+          reason:
+              'the registry and the scalar table disagree about '
+              '${sample.runtimeType}',
+        );
+      }
     });
 
     test('a reflected value still round-trips under its registry name', () {
