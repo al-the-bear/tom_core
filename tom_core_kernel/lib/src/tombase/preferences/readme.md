@@ -13,7 +13,8 @@ agree on, in the one package they both already depend on.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomUserPreferenceKeys` | The keys the framework itself reads (`tom.timezone`, `tom.language`, …) |
+| `TomUserPreferenceKeys` | The keys the framework itself reads (`tom.timezone`, `tom.language`, …), and the rule every other key satisfies: 1–191 characters, starting with an ASCII letter, thereafter letters, digits, `.`, `_`, `-` |
+| `TomUserPreferenceKeyException` | Raised by `TomUserPreferenceKeys.validate` for a key that breaks the rule; the endpoints answer it with a `400` |
 | `TomUserPreferenceDto` | One preference on the wire: key, value type, JSON value, `updatedAt` |
 | `TomUserPreferenceWriteRequest` / `TomUserPreferenceKeyRequest` | The typed request DTOs |
 | `TomUserPreferenceCodec` | Encodes/decodes scalars and reflected objects; refuses a type-mismatched read |

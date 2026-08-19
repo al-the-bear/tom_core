@@ -55,6 +55,14 @@ Matcher throwsCodecMessage(String key, Matcher message) => throwsA(
           ),
     );
 
+/// The `cause` a key refusal reports — the clause of the rule that was
+/// broken, which is what tells a caller what to change.
+Matcher throwsKeyCause(String cause) => throwsA(
+      isA<TomUserPreferenceKeyException>()
+          .having((error) => error.key, 'key', 'preferences.key.invalid')
+          .having((error) => error.parameters?['cause'], 'cause', cause),
+    );
+
 /// Timestamps that name the instant they mean — the reader cannot be wrong
 /// about them, whatever zone it runs in.
 const zonedTimestamps = <String>[
@@ -1365,6 +1373,163 @@ void main() {
         ),
         throwsCodecKey('preferences.type.unsupported_collection'),
       );
+    });
+  });
+
+  // The key is a URL path segment, so it is not free text. These tests hold
+  // the rule that says what it may be, and the reasons for its two least
+  // obvious clauses — the leading letter and the ASCII restriction.
+  group('TomUserPreferenceKeys — a key has to survive being a path segment',
+      () {
+    test('the framework\'s own keys satisfy the rule', () {
+      // A rule its author's own vocabulary fails is a rule that gets an
+      // exception list, and then a second one.
+      for (final key in <String>[
+        TomUserPreferenceKeys.timezone,
+        TomUserPreferenceKeys.language,
+        TomUserPreferenceKeys.country,
+        TomUserPreferenceKeys.theme,
+      ]) {
+        expect(TomUserPreferenceKeys.isValid(key), isTrue, reason: key);
+      }
+    });
+
+    test('an ordinary application key is accepted', () {
+      for (final key in <String>[
+        'ui.theme',
+        'device.lastAccount',
+        'forge.layout.sidebarWidth',
+        'count',
+        'a',
+        'a_b-c.d0',
+        'A' * TomUserPreferenceKeys.maxLength,
+      ]) {
+        expect(TomUserPreferenceKeys.isValid(key), isTrue, reason: key);
+      }
+    });
+
+    test('an empty key is refused, because it addresses the list endpoint', () {
+      // Not a contrived input: it is what TomUserPreferenceKeyRequest()'s own
+      // default produces, so any caller that forgets to set one sends it.
+      expect(TomUserPreferenceKeys.isValid(''), isFalse);
+      expect(
+        () => TomUserPreferenceKeys.validate(''),
+        throwsKeyCause('empty'),
+      );
+    });
+
+    test('a key containing a separator is refused', () {
+      // `a/b` percent-encodes to `a%2Fb`, which a large share of HTTP
+      // infrastructure rejects or silently normalises back to a `/` — at which
+      // point the request addresses a path the API never declared.
+      for (final key in <String>['a/b', 'a\\b', 'a?b', 'a#b', 'a%2Fb', 'a:b']) {
+        expect(TomUserPreferenceKeys.isValid(key), isFalse, reason: key);
+      }
+      expect(
+        () => TomUserPreferenceKeys.validate('a/b'),
+        throwsKeyCause('illegal_character'),
+      );
+    });
+
+    test('a key containing whitespace is refused', () {
+      for (final key in <String>['has space', 'tab\tkey', 'line\nkey', 'a ']) {
+        expect(TomUserPreferenceKeys.isValid(key), isFalse, reason: key);
+      }
+    });
+
+    test('a dot-only key is refused, and that is why a key starts with a '
+        'letter', () {
+      // The strongest case for the leading-letter clause. Measured against the
+      // contract's own endpoint: `..` is consumed by URI resolution itself, so
+      // the request leaves the API's path entirely rather than merely
+      // addressing an odd key, and `.` collapses to the list endpoint's URI
+      // exactly as an empty key does.
+      for (final key in <String>['.', '..', '...']) {
+        expect(TomUserPreferenceKeys.isValid(key), isFalse, reason: key);
+      }
+      expect(
+        () => TomUserPreferenceKeys.validate('..'),
+        throwsKeyCause('leading_character'),
+      );
+    });
+
+    test('a key starting with a digit, dot, dash or underscore is refused', () {
+      for (final key in <String>['1key', '.key', '-key', '_key']) {
+        expect(TomUserPreferenceKeys.isValid(key), isFalse, reason: key);
+      }
+    });
+
+    test('a non-ASCII key is refused, because two spellings can look the same',
+        () {
+      // The module's opening problem, one layer down: `ü` has a composed and a
+      // decomposed Unicode form that render identically, so one visible key
+      // can be two stored keys — the silent split the vocabulary exists to
+      // prevent, and one no reader would ever see in a diff.
+      final composed = 'grüsse'; // ü as one code point
+      final decomposed = 'grüsse'; // u + combining diaeresis
+
+      expect(composed == decomposed, isFalse);
+      expect(TomUserPreferenceKeys.isValid(composed), isFalse);
+      expect(TomUserPreferenceKeys.isValid(decomposed), isFalse);
+      expect(TomUserPreferenceKeys.isValid('日本語'), isFalse);
+    });
+
+    test('a key longer than the stored column is refused', () {
+      // 191 is not arbitrary: it is `tom_user_preference.preference_key`'s
+      // width. A longer key is one the server would silently truncate, and two
+      // keys that differ past the cut would become one row.
+      final tooLong = 'a' * (TomUserPreferenceKeys.maxLength + 1);
+
+      expect(TomUserPreferenceKeys.isValid(tooLong), isFalse);
+      expect(
+        () => TomUserPreferenceKeys.validate(tooLong),
+        throwsKeyCause('too_long'),
+      );
+    });
+
+    test('the refusal names the key and the rule', () {
+      // The message has to be actionable from the exception alone: the caller
+      // is often a constant three files away from the call that failed.
+      expect(
+        () => TomUserPreferenceKeys.validate('a/b'),
+        throwsA(
+          isA<TomUserPreferenceKeyException>()
+              .having((error) => error.key, 'key', 'preferences.key.invalid')
+              .having(
+                (error) => error.parameters?['key'],
+                'parameters.key',
+                'a/b',
+              )
+              .having(
+                (error) => error.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(contains("'a/b'"), contains('/')),
+              ),
+        ),
+      );
+    });
+
+    test('encode refuses to build a DTO under an illegal key', () {
+      // The write path's first gate. A DTO is the addressed artifact, so a key
+      // that cannot be addressed must not reach one — the alternative is a
+      // value encoded successfully and then unstorable.
+      expect(
+        () => TomUserPreferenceCodec.encode('a/b', 'dark'),
+        throwsKeyCause('illegal_character'),
+      );
+      expect(
+        () => TomUserPreferenceCodec.encode('', 'dark'),
+        throwsKeyCause('empty'),
+      );
+    });
+
+    test('the value-only entry points still take no key at all', () {
+      // `typeNameOf` and `encodeValue` take an *optional* key that only names
+      // the preference in an exception, and '' there means "not decided yet",
+      // not "the empty key". Validating it would refuse the documented way to
+      // encode a value before choosing where to put it.
+      expect(TomUserPreferenceCodec.typeNameOf('dark'), 'String');
+      expect(TomUserPreferenceCodec.encodeValue('dark'), '"dark"');
     });
   });
 }

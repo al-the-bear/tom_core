@@ -152,7 +152,14 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
 
   /// The preference stored under [key] as stored, or `null` when the server has
   /// never been given one.
+  ///
+  /// Throws a [TomUserPreferenceKeyException] when [key] is not a legal key —
+  /// see [TomUserPreferenceKeys]. The check is here rather than left to the
+  /// server because an illegal key does not survive being made into a URI: an
+  /// empty key resolves to the *list* endpoint's own URI, so the request the
+  /// server would answer is not the one this method was asked to make.
   Future<TomUserPreferenceDto?> read(String key) async {
+    TomUserPreferenceKeys.validate(key);
     final response = await _call(
       tomUserPreferencesApi[tomUserPreferencesReadEndpointId],
       parameters: {'key': key},
@@ -241,10 +248,17 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     return dto;
   }
 
+  /// Writes the already-encoded preference named by [request].
+  ///
+  /// Throws a [TomUserPreferenceKeyException] when the request's key is not a
+  /// legal key. A DTO is checked here rather than in its constructor because
+  /// the DTOs are instantiated blank and filled by reflection — a constructor
+  /// that refused the empty default would refuse every deserialization.
   @override
   Future<TomUserPreferenceDto> writePreference(
     TomUserPreferenceWriteRequest request,
   ) async {
+    TomUserPreferenceKeys.validate(request.key);
     final response = await _call(
       tomUserPreferencesApi[tomUserPreferencesWriteEndpointId],
       parameters: {'key': request.key},
@@ -254,8 +268,15 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     return _decodeDto(response, key: request.key);
   }
 
+  /// Deletes the preference named by [request].
+  ///
+  /// Throws a [TomUserPreferenceKeyException] when the request's key is not a
+  /// legal key — including the empty one [TomUserPreferenceKeyRequest]'s own
+  /// default produces, which would otherwise resolve to the list endpoint's URI
+  /// and send a `DELETE` at the collection.
   @override
   Future<void> deletePreference(TomUserPreferenceKeyRequest request) async {
+    TomUserPreferenceKeys.validate(request.key);
     final response = await _call(
       tomUserPreferencesApi[tomUserPreferencesDeleteEndpointId],
       parameters: {'key': request.key},

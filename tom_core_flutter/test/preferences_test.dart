@@ -210,6 +210,37 @@ void runSharedStoreTests(
         expect(resolved, 'light');
       },
     );
+
+    test('an illegal key is refused, and nothing is stored under it', () async {
+      // A device store never builds a URL, so nothing *here* would break
+      // under a looser rule — but the precedence above only means
+      // anything if both stores answer to the same names, and a preference
+      // that later moves to the server must already carry a key the server
+      // would accept. One vocabulary, one rule, both stores.
+      final preferences = build();
+
+      for (final key in <String>['a/b', '', 'has space', '..', '1key']) {
+        await expectLater(
+          preferences.set(key, 'dark'),
+          throwsA(isA<TomUserPreferenceKeyException>()),
+          reason: key,
+        );
+        await expectLater(
+          preferences.read(key),
+          throwsA(isA<TomUserPreferenceKeyException>()),
+          reason: key,
+        );
+        await expectLater(
+          preferences.remove(key),
+          throwsA(isA<TomUserPreferenceKeyException>()),
+          reason: key,
+        );
+      }
+
+      // The refusal happens before the read-modify-write cycle, so a rejected
+      // write leaves no half-made entry behind.
+      expect(await preferences.all(), isEmpty);
+    });
   });
 }
 
@@ -561,15 +592,60 @@ void main() {
         );
       });
 
-      test('a key needing escaping addresses one path segment', () async {
-        transport.answer(body: '');
-        await build().remove('tom/theme');
+      test('a key needing escaping never reaches the socket', () async {
+        // A key that would have to be escaped to be sent is refused outright,
+        // so there is no escaped request to reason about. Escaping it is not a
+        // usable alternative: `%2F` is not a settled outcome — much HTTP
+        // infrastructure rejects it and some normalises it back to `/`, at
+        // which point the request addresses a two-segment path the API never
+        // declared.
+        final client = build();
 
         expect(
-          transport.lastUrl.path,
-          '/preferences/tom%2Ftheme',
-          reason: 'a key must not be able to address a different route',
+          () => client.remove('tom/theme'),
+          throwsA(
+            isA<TomUserPreferenceKeyException>().having(
+              (error) => error.key,
+              'key',
+              'preferences.key.invalid',
+            ),
+          ),
         );
+        expect(
+          transport.callCount,
+          0,
+          reason: 'an illegal key is refused before a request is built',
+        );
+      });
+
+      test('the empty key is refused rather than sent at the list URI', () {
+        // The empty key resolves to `/preferences` — the *list* endpoint — so
+        // an unset TomUserPreferenceKeyRequest would have sent a DELETE at the
+        // whole collection. It is also the default that request produces, which
+        // makes it the bad key most likely to actually happen.
+        final client = build();
+
+        expect(
+          () => client.deletePreference(TomUserPreferenceKeyRequest()),
+          throwsA(isA<TomUserPreferenceKeyException>()),
+        );
+        expect(transport.callCount, 0);
+      });
+
+      test('read and write refuse an illegal key too', () {
+        // All three key-taking calls, not just the delete: the key is in the
+        // path of each, so a rule enforced on one is a rule with two ways past.
+        final client = build();
+
+        expect(
+          () => client.read('a b'),
+          throwsA(isA<TomUserPreferenceKeyException>()),
+        );
+        expect(
+          () => client.set('1key', 'dark'),
+          throwsA(isA<TomUserPreferenceKeyException>()),
+        );
+        expect(transport.callCount, 0);
       });
     });
 

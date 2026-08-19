@@ -33,16 +33,20 @@ import '../endpoints/endpoint_annotation.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import 'user_preferences_service.dart';
 
-/// Answers `404` for a preference that was never written, and nothing else.
+/// Answers `404` for a preference that was never written and `400` for a key
+/// that is not a legal key at all, and nothing else.
 ///
 /// The default handler turns every failure into an opaque `500`, which is right
-/// for a fault and wrong for a miss: a client that cannot tell them apart must
-/// either treat every failure as "no such preference" — papering a broken server
-/// over with a default — or every miss as a failure, which makes reading an
-/// unset key an error. So exactly one key gets a status of its own.
+/// for a fault and wrong for both of these. A client that cannot tell a miss
+/// from a fault must either treat every failure as "no such preference" —
+/// papering a broken server over with a default — or every miss as a failure,
+/// which makes reading an unset key an error. And a rejected key is squarely
+/// the *caller's* mistake: the key arrives in the request URL, so on this side
+/// it is untrusted input, and reporting a `500` would tell a client its own
+/// malformed request was a server fault it should retry.
 ///
-/// Only `preferences.not_found` is translated. `preferences.not_configured` is
-/// a deployment fault, not the client's business, and stays opaque along with
+/// Only those two keys are translated. `preferences.not_configured` is a
+/// deployment fault, not the client's business, and stays opaque along with
 /// everything else.
 class TomUserPreferencesErrorHandler extends TomErrorHandler {
   /// Const constructor so the handler can be used as an annotation argument.
@@ -51,13 +55,24 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
   /// The error key a read raises for a key the caller has never written.
   static const String notFoundKey = 'preferences.not_found';
 
+  /// The error key raised for a key that violates [TomUserPreferenceKeys].
+  static const String invalidKeyKey = 'preferences.key.invalid';
+
+  /// The status each translated error key answers with.
+  static const Map<String, int> _statusByErrorKey = {
+    notFoundKey: 404,
+    invalidKeyKey: 400,
+  };
+
   @override
   Response handleInvocationError(Object error, Object stacktrace, Request r) {
-    if (error is TomException && error.key == notFoundKey) {
+    final status = error is TomException ? _statusByErrorKey[error.key] : null;
+    if (error is TomException && status != null) {
       // The body follows the framework's error shape (`TomServer.errorHandler`)
       // so a client branches on `errorKey`, not on a message or a status alone.
-      return Response.notFound(
-        jsonEncode({
+      return Response(
+        status,
+        body: jsonEncode({
           'errorType': error.runtimeType.toString(),
           'errorKey': error.key,
           'uuid': error.uuid,
@@ -129,6 +144,7 @@ class TomUserPreferencesServer implements TomUserPreferencesApiService {
   @TomApiEndpointImplementation(
     apiId: tomUserPreferencesApiId,
     endpointId: tomUserPreferencesWriteEndpointId,
+    errorHandler: TomUserPreferencesErrorHandler(),
   )
   @override
   Future<TomUserPreferenceDto> writePreference(
@@ -148,6 +164,7 @@ class TomUserPreferencesServer implements TomUserPreferencesApiService {
   @TomApiEndpointImplementation(
     apiId: tomUserPreferencesApiId,
     endpointId: tomUserPreferencesDeleteEndpointId,
+    errorHandler: TomUserPreferencesErrorHandler(),
   )
   @override
   Future<void> deletePreference(TomUserPreferenceKeyRequest request) async {

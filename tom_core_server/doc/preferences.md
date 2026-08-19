@@ -84,6 +84,24 @@ written**. A type *mismatch* still throws: an unwritten preference is an ordinar
 state that a default answers, while a preference stored as the wrong type is a
 bug, and silently answering the fallback would hide it.
 
+### Every key is checked on the way in
+
+`read`, `get`, `set`, `setEncoded` and `remove` reject a key that does not
+satisfy the kernel's `TomUserPreferenceKeys` rule — 1–191 characters, starting
+with an ASCII letter, thereafter letters, digits, `.`, `_` and `-` — with
+`TomUserPreferenceKeyException` (`preferences.key.invalid`).
+
+That is not a redundant second guard on something the client already refused.
+The endpoints read the key off the request URL, so on this side it is untrusted
+input, and `maxLength` is `preference_key`'s own column width: a wider key would
+be stored truncated, silently merging two preferences into one row.
+
+Each of them checks the key *first*, before the caller is resolved from the
+zone. A bad key is the one fault the caller can see from the call site, so it is
+the one worth reporting when the ambient state is unusable too; the reverse
+ordering answers `preferences.no_principal` to a call that was malformed anyway,
+and sends the caller after the wrong problem.
+
 ## Authorization Is the Row Scope
 
 The entity declares:
@@ -181,11 +199,12 @@ Reporting a missing key distinctly is safe precisely because the scope makes
 another principal. A delete of something absent has already achieved its purpose,
 so a client clearing a preference twice is not a client doing anything wrong.
 
-### A miss is a 404, and nothing else is
+### A miss is a 404, a bad key is a 400, and nothing else is either
 
-`preferences.not_found` only helps a client if it *arrives* as something a client
-can branch on, and by default every handler failure leaves as a `500`. So the
-read endpoint is served under `TomUserPreferencesErrorHandler`:
+Neither `preferences.not_found` nor `preferences.key.invalid` helps a client
+unless it *arrives* as something a client can branch on, and by default every
+handler failure leaves as a `500`. So each key-taking endpoint is served under
+`TomUserPreferencesErrorHandler`:
 
 ```dart
 @TomApiEndpointImplementation(
@@ -195,16 +214,32 @@ read endpoint is served under `TomUserPreferencesErrorHandler`:
 )
 ```
 
-It maps that **one** key to a `404` and leaves everything else to
-`handleErrorDefault`. The narrowness is the design: a client must be able to tell
-"you have no such preference" from "the server is broken", and a client that
-cannot must either treat every failure as a miss or every miss as a failure.
-Mapping `preferences.not_configured` — a deployment fault — the same way would
-let a client read an outage as absence and paper it over with a default.
+| Error key | Status | Why it is not a server fault |
+|-----------|--------|------------------------------|
+| `preferences.not_found` | `404` | A preference that was never written is a miss, not a break |
+| `preferences.key.invalid` | `400` | The key arrives in the request URL, so a bad one is a bad *request* |
+
+Everything else goes to `handleErrorDefault` and stays a `500`. The narrowness
+is the design: a client must be able to tell "you have no such preference" from
+"the server is broken", and a client that cannot must either treat every
+failure as a miss or every miss as a failure. Mapping
+`preferences.not_configured` — a deployment fault — the same way would let a
+client read an outage as absence and paper it over with a default. Answering
+`500` for a malformed key makes the
+opposite mistake: it tells a client its own bad request is worth retrying.
+
+**Read, write and delete all carry the handler**; the list endpoint carries none
+and needs none. The key sits in the path of all three, so a `400` only the read
+could produce would leave two thirds of the surface answering `500` for the same
+mistake — while the list endpoint takes no key and cannot miss, since an empty
+list is an answer.
 
 `TomUserPreferencesClient` (`tom_core_flutter`) is the counterpart: `404` is the
 only status it reads as absence, so `read` and `get` answer `null` and `getOr`
-answers its fallback, while every other status throws.
+answers its fallback, while every other status throws. It rarely sees the `400`
+at all — it validates the key before building the request — but the server
+cannot rely on that, because a client is not the only thing that can send an
+HTTP request.
 
 The write path validates the declared type against the JSON text before storing.
 The request carries the value already encoded, so nothing on the way in has

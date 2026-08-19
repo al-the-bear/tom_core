@@ -157,6 +157,16 @@ class TomDevicePreferenceException extends TomClientException {
 ///
 /// The rule is stated once here and applied once in [getPreferred] — no caller
 /// re-derives it, and no caller may quietly invert it.
+///
+/// ## Keys obey the same rule as the server's
+///
+/// [read], [get], [set] and [remove] reject a key that does not satisfy
+/// [TomUserPreferenceKeys] with a [TomUserPreferenceKeyException]. A device
+/// store never puts a key in a URL, so nothing *here* would break under a
+/// looser rule — but the precedence above only means anything if both stores
+/// answer to the same names, and a preference that can move from this store to
+/// the server's must already carry a key the server would accept. One
+/// vocabulary, one rule.
 abstract class TomDevicePreferences {
   /// Allows `const` implementations.
   const TomDevicePreferences();

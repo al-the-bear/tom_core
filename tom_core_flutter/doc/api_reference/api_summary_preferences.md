@@ -103,6 +103,14 @@ const TomDevicePreferences()
 There is no `getFor` — a device store has one user by definition, so a principal
 parameter would have nothing to select.
 
+**Keys obey the same rule as the server's.** `read`, `get`, `set` and `remove`
+reject a key that does not satisfy the kernel's `TomUserPreferenceKeys` with a
+`TomUserPreferenceKeyException`. A device store never puts a key in a URL, so
+nothing *here* would break under a looser rule — but the precedence below only
+means anything if both stores answer to the same names, and a preference that
+can move from this store to the server's must already carry a key the server
+would accept. One vocabulary, one rule.
+
 **Precedence.** Where a key exists in both this store and the server-side
 `TomUserPreferences`, the device value wins for as long as it exists. Writing on
 *this* device is the later, more specific act, so the account value behaves as a
@@ -329,6 +337,16 @@ There is no `clear()`. The contract declares no bulk delete, and a loop over
 path template and its `urlParameterMapping` — so the address the client calls and
 the route the server serves are two readings of one declaration.
 
+**A key that could not be a path segment never reaches a request.** `read`,
+`writePreference` and `deletePreference` validate against
+`TomUserPreferenceKeys` before building one, and throw
+`TomUserPreferenceKeyException` instead — so the socket sees nothing. Escaping
+is not a usable alternative: `%2F` is not a settled outcome, much HTTP
+infrastructure rejects it and some normalises it back to `/`, at which point the
+request addresses a two-segment path the API never declared. The empty key is
+worse than ambiguous — it resolves to the *list* endpoint's own URI, so a read
+of `''` would silently become a read of everything.
+
 #### What a miss looks like
 
 The server answers `404` for a key the caller has never written
@@ -336,7 +354,9 @@ The server answers `404` for a key the caller has never written
 status this client reads as absence: `read` and `get` answer `null`, `getOr`
 answers its fallback. Every other failure throws, because a deployment whose
 preference store is unreachable must not be indistinguishable from a user who has
-set nothing.
+set nothing. The same handler answers `400` for `preferences.key.invalid`; this
+client rarely provokes it, having refused the key itself, but the server checks
+because a client is not the only thing that can send an HTTP request.
 
 #### Credentials
 

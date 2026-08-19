@@ -46,6 +46,7 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
 
   @override
   Future<TomUserPreferenceDto?> read(String key) async {
+    TomUserPreferenceKeys.validate(key);
     for (final stored in await store.read()) {
       if (stored.key == key) return stored;
     }
@@ -67,12 +68,14 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
     String key,
     T value,
   ) async {
-    // Encode before reading the store: an unencodable value must not cause a
-    // read-modify-write cycle that ends in a rewrite of unchanged content.
-    final written = TomUserPreferenceDto(
-      key: key,
-      valueType: TomUserPreferenceCodec.typeNameOf(value, key),
-      value: TomUserPreferenceCodec.encodeValue(value, key),
+    // Encode before reading the store: neither an illegal key nor an
+    // unencodable value must cause a read-modify-write cycle that ends in a
+    // rewrite of unchanged content. `encode` is also what checks the key, so
+    // this store holds the same vocabulary as the server one — which is what
+    // lets a preference move between them.
+    final written = TomUserPreferenceCodec.encode(
+      key,
+      value,
       // The device's own clock. Unlike the server store, nothing here can
       // supply a more authoritative timestamp — but it is still normalised to
       // UTC, so a preference that later moves to the server carries an instant
@@ -93,6 +96,7 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
 
   @override
   Future<bool> remove(String key) async {
+    TomUserPreferenceKeys.validate(key);
     final values = await store.read();
     final existing = values.indexWhere((stored) => stored.key == key);
     if (existing < 0) return false;

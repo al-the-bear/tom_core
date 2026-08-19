@@ -24,7 +24,7 @@ principal: there is nothing to address but your own.
 | `TomUserPreferences` | The service: typed `get` / `set` / `getOr` / `read` / `all` / `remove` for *the caller*, plus `getFor` for the login path. Installed as a bean. |
 | `TomUserPreferenceException` | Raised when an operation cannot identify the caller. |
 | `TomUserPreferencesServer` | The `@TomApiImplementation` behind `tomUserPreferencesApi`. |
-| `TomUserPreferencesErrorHandler` | Maps `preferences.not_found` — and only that key — to a `404`. Everything else stays opaque, so a client can tell "you have no such preference" from "the server is broken" instead of papering an outage over with a default. |
+| `TomUserPreferencesErrorHandler` | Maps `preferences.not_found` to a `404` and `preferences.key.invalid` to a `400` — and no other key to anything. Everything else stays opaque, so a client can tell "you have no such preference" and "you sent a key that is not a key" from "the server is broken", instead of papering an outage over with a default or retrying its own bad request. |
 
 ## Quick start
 

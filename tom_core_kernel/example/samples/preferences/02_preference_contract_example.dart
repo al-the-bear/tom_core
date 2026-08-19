@@ -18,7 +18,7 @@ class PreferenceKeysExample {
   static bool allNamespaced = false;
 
   static void example1PreferenceKeys() {
-    // A key is just a string — which is exactly why the ones the framework
+    // A key's *text* is the contract, which is why the ones the framework
     // itself reads are declared once. A client writing "timezone" against a
     // server reading "timeZone" fails silently: the reader finds nothing and
     // falls back, forever.
@@ -39,7 +39,54 @@ class PreferenceKeysExample {
 }
 
 // =============================================================================
-// EXAMPLE 2: The wire DTOs
+// EXAMPLE 2: What an application's own key may be
+// =============================================================================
+
+class PreferenceKeyRuleExample {
+  static bool appKeyAccepted = false;
+  static List<String> refusedCauses = <String>[];
+  static int capEqualsColumnWidth = 0;
+
+  static void example2PreferenceKeyRule() {
+    // An application names its own keys, but not freely: a key is a URL path
+    // segment on the way to the server and a unique-key column once it lands.
+    // The rule is 1..maxLength characters, starting with an ASCII letter, then
+    // letters, digits, '.', '_' and '-'.
+    appKeyAccepted = TomUserPreferenceKeys.isValid('shop.cart.last_currency');
+
+    // `isValid` is for deciding something — offering a name, filtering a list.
+    // `validate` is for asserting it, and names the reason it refused.
+    for (final key in <String>['', '1st', 'a/b', 'a' * 500]) {
+      try {
+        TomUserPreferenceKeys.validate(key);
+      } on TomUserPreferenceKeyException catch (error) {
+        refusedCauses.add(error.parameters!['cause']! as String);
+      }
+    }
+
+    // The two least obvious clauses each buy something concrete. Requiring a
+    // leading letter is what makes '.' and '..' illegal: both resolve away
+    // from the preference they name — '.' onto the *list* endpoint's URI and
+    // '..' out of the API's path altogether — and one rule handles them
+    // instead of two special cases. Restricting to ASCII is about identity
+    // rather than transport: 'ü' has a composed and a decomposed form that
+    // render identically and compare unequal, so one visible key would be two
+    // stored keys.
+    capEqualsColumnWidth = TomUserPreferenceKeys.maxLength;
+
+    assert(appKeyAccepted, 'A namespaced application key is a legal key');
+    assert(
+      refusedCauses.join(',') == 'empty,leading_character,'
+              'illegal_character,too_long' &&
+          refusedCauses.length == 4,
+      'The refusal names the reason, so a caller can branch on it',
+    );
+    assert(capEqualsColumnWidth == 191, "The cap is the column's own width");
+  }
+}
+
+// =============================================================================
+// EXAMPLE 3: The wire DTOs
 // =============================================================================
 
 class PreferenceDtoExample {
@@ -47,7 +94,7 @@ class PreferenceDtoExample {
   static String dtoType = '';
   static bool writeRequestHasNoTimestamp = false;
 
-  static void example2PreferenceDtos() {
+  static void example3PreferenceDtos() {
     final dto = TomUserPreferenceDto(
       key: TomUserPreferenceKeys.timezone,
       valueType: TomUserPreferenceCodec.stringType,
@@ -77,14 +124,14 @@ class PreferenceDtoExample {
 }
 
 // =============================================================================
-// EXAMPLE 3: Building a write request from a value
+// EXAMPLE 4: Building a write request from a value
 // =============================================================================
 
 class BuildWriteRequestExample {
   static String requestType = '';
   static String requestJson = '';
 
-  static void example3BuildWriteRequest() {
+  static void example4BuildWriteRequest() {
     // A client encodes once, with the same codec the server decodes with, and
     // hands the pair over as text. Two encoders that disagreed by one
     // convention would store successfully and read wrongly.
@@ -123,7 +170,7 @@ class BuildWriteRequestExample {
 }
 
 // =============================================================================
-// EXAMPLE 4: The API declaration
+// EXAMPLE 5: The API declaration
 // =============================================================================
 
 class PreferencesApiExample {
@@ -133,7 +180,7 @@ class PreferencesApiExample {
   static bool everyEndpointAuthenticated = false;
   static bool noPrincipalInAnyUri = false;
 
-  static void example4PreferencesApi() {
+  static void example5PreferencesApi() {
     final api = tomUserPreferencesApi;
 
     baseUri = api.uri ?? '';
@@ -163,14 +210,14 @@ class PreferencesApiExample {
 }
 
 // =============================================================================
-// EXAMPLE 5: Registering the API
+// EXAMPLE 6: Registering the API
 // =============================================================================
 
 class RegisterApiExample {
   static bool registered = false;
   static bool idempotent = false;
 
-  static void example5RegisterApi() {
+  static void example6RegisterApi() {
     // Explicit rather than implicit in a top-level initializer: a deployment
     // that stores no preferences should not carry the API in its registry.
     registerTomUserPreferencesApi();
@@ -198,10 +245,11 @@ class RegisterApiExample {
 /// Runs every contract example in this file.
 void run() {
   PreferenceKeysExample.example1PreferenceKeys();
-  PreferenceDtoExample.example2PreferenceDtos();
-  BuildWriteRequestExample.example3BuildWriteRequest();
-  PreferencesApiExample.example4PreferencesApi();
-  RegisterApiExample.example5RegisterApi();
+  PreferenceKeyRuleExample.example2PreferenceKeyRule();
+  PreferenceDtoExample.example3PreferenceDtos();
+  BuildWriteRequestExample.example4BuildWriteRequest();
+  PreferencesApiExample.example5PreferencesApi();
+  RegisterApiExample.example6RegisterApi();
 }
 
 void main() => run();

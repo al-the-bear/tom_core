@@ -31,6 +31,7 @@ import 'package:tom_reflection/tom_reflection.dart';
 
 import '../little_things/exception_base.dart';
 import '../reflection/reflection.dart';
+import 'user_preference_keys.dart';
 import 'user_preferences_contract.dart';
 
 /// Raised when a preference cannot be encoded or decoded.
@@ -255,11 +256,20 @@ class TomUserPreferenceCodec {
   /// [updatedAt] is the server's write timestamp; a client building a write
   /// request leaves it `null`, because when a preference was written is the
   /// server's answer.
+  ///
+  /// Throws a [TomUserPreferenceKeyException] when [key] does not satisfy
+  /// [TomUserPreferenceKeys]. This is the write path's first gate: a DTO is the
+  /// *addressed* artifact, so a key that cannot be addressed must not reach one
+  /// — the alternative is a value that encodes successfully and is then
+  /// unstorable. Unlike [typeNameOf] and [encodeValue], whose key is optional
+  /// and only names the preference in an exception, the key here is the
+  /// preference's identity.
   static TomUserPreferenceDto encode(
     String key,
     Object value, {
     DateTime? updatedAt,
   }) {
+    TomUserPreferenceKeys.validate(key);
     return TomUserPreferenceDto(
       key: key,
       valueType: typeNameOf(value, key),

@@ -99,9 +99,10 @@ registerTomUserPreferencesApi(); // idempotent; both halves may call it
 
 ### TomUserPreferenceKeys
 
-The keys the framework's own code looks up. A key is any string, so an
-application is free to invent its own; these exist so that an application
-storing the same concept lands on the same key rather than a synonym.
+The keys the framework's own code looks up. An application invents its own
+freely — any key satisfying the rule below is its to use; these exist so that an
+application storing the same concept lands on the same key rather than a
+synonym.
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
@@ -112,6 +113,53 @@ storing the same concept lands on the same key rather than a synonym.
 
 Constants rather than an enum: preference keys cross the wire and sit in a
 database column, so their *text* is the contract.
+
+#### What a key may be
+
+**1 to `TomUserPreferenceKeys.maxLength` (191) characters, starting with an
+ASCII letter, and thereafter only ASCII letters, digits, `.`, `_` and `-`.**
+
+`TomUserPreferenceKeys.isValid` answers whether a key obeys the rule and
+`TomUserPreferenceKeys.validate` throws a `TomUserPreferenceKeyException`
+(`preferences.key.invalid`) when it does not.
+
+A key is not free text, because it is not only a map key: the read, write and
+delete endpoints are all mounted at `/{key}`, so **every key is a URL path
+segment**. Measured against the contract's own endpoint, an unconstrained key
+does not merely look odd:
+
+| Key | Resolves to | What that is |
+| --- | ----------- | ------------ |
+| `a/b` | `/preferences/a%2Fb` | a `%2F` much HTTP infrastructure rejects, or normalises back to `/` — addressing a two-segment path the API never declared |
+| `""` | `/preferences/` | the **list** endpoint's URI |
+| `.` | `/preferences/` | the same again |
+| `..` | `/` | outside the API's path entirely |
+
+The empty key is not a contrived input: it is what
+`TomUserPreferenceKeyRequest()`'s own default produces, so a caller that forgets
+to set one sends it.
+
+Two clauses are worth their reasons:
+
+- **It starts with a letter.** That is what excludes `.` and `..` above, as a
+  consequence of the rule rather than as two special cases — and with them every
+  other leading character (`-`, `_`, a digit) that some reader somewhere treats
+  as a flag, a hidden file or a number.
+- **ASCII only.** `ü` has a composed and a decomposed Unicode form that render
+  identically and compare unequal, so one *visible* key would be two stored
+  keys — the silent split this vocabulary exists to prevent, in a form no diff
+  would ever show.
+
+`maxLength` is `tom_user_preference.preference_key`'s own width: a longer key is
+one the server would store truncated, and two keys differing only past the cut
+would silently become one row.
+
+The rule lives in the kernel rather than in either half because both halves
+enforce it. A client refuses to build a request under an illegal key, and the
+server refuses one that arrives anyway — the endpoints read the key off the
+request URL, where it is untrusted input, so `TomUserPreferencesErrorHandler`
+answers `400` for it. A rule stated in one half is a rule the other half's
+callers discover in production.
 
 ### TomUserPreferenceDto
 
@@ -485,6 +533,15 @@ raw runtime type stays available as the `valueType` parameter.
 exception can name *which* preference failed rather than only which line;
 `encode(key, value)` passes its own key down.
 
+Only `encode` *validates* that key. Its key is the preference's identity — a DTO
+is the addressed artifact, so a key that cannot be addressed must not reach one,
+and `encode` raises `TomUserPreferenceKeyException` before it encodes anything.
+The key `typeNameOf` and `encodeValue` take is a different thing: it is
+optional, and its default `''` means "the caller has not decided on a key yet"
+— a perfectly ordinary state for code that is naming a type before it knows
+where the value will live. Checking it there would refuse the documented
+default.
+
 ### tomUserPreferencesApi
 
 The API declaration, mounted at `/preferences`.
@@ -639,7 +696,10 @@ reaching for `@tomReflector`.
 ### 4. Namespace Application Keys
 
 The framework's keys start with `tom.`. Give an application's own keys a prefix
-too, so a later framework key cannot collide with one already in the field.
+too, so a later framework key cannot collide with one already in the field. A
+prefix is a convention on top of the rule in [What a key may
+be](#what-a-key-may-be), not a second rule: `TomUserPreferenceKeys` says what a
+key *can* be, and a prefix says which part of that space is yours.
 
 ### 5. Register the API Only Where It Is Used
 

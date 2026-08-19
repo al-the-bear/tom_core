@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 65 files
-// Generated: 2026-08-19T18:24:38.846218
+// Generated: 2026-08-19T20:03:16.303125
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -188,6 +188,7 @@ class TomCoreKernelBridge {
       _createTomRemoteLogServerBridge(),
       _createTomUserPreferenceCodecExceptionBridge(),
       _createTomUserPreferenceCodecBridge(),
+      _createTomUserPreferenceKeyExceptionBridge(),
       _createTomUserPreferenceKeysBridge(),
       _createTomUserPreferenceDtoBridge(),
       _createTomUserPreferenceWriteRequestBridge(),
@@ -451,6 +452,7 @@ class TomCoreKernelBridge {
       'TomRemoteLogServer': _createTomRemoteLogServerBridge,
       'TomUserPreferenceCodecException': _createTomUserPreferenceCodecExceptionBridge,
       'TomUserPreferenceCodec': _createTomUserPreferenceCodecBridge,
+      'TomUserPreferenceKeyException': _createTomUserPreferenceKeyExceptionBridge,
       'TomUserPreferenceKeys': _createTomUserPreferenceKeysBridge,
       'TomUserPreferenceDto': _createTomUserPreferenceDtoBridge,
       'TomUserPreferenceWriteRequest': _createTomUserPreferenceWriteRequestBridge,
@@ -713,6 +715,7 @@ class TomCoreKernelBridge {
       'TomRemoteLogServer': $tom_core_kernel_22.TomRemoteLogServer,
       'TomUserPreferenceCodecException': $tom_core_kernel_26.TomUserPreferenceCodecException,
       'TomUserPreferenceCodec': $tom_core_kernel_26.TomUserPreferenceCodec,
+      'TomUserPreferenceKeyException': $tom_core_kernel_27.TomUserPreferenceKeyException,
       'TomUserPreferenceKeys': $tom_core_kernel_27.TomUserPreferenceKeys,
       'TomUserPreferenceDto': $tom_core_kernel_28.TomUserPreferenceDto,
       'TomUserPreferenceWriteRequest': $tom_core_kernel_28.TomUserPreferenceWriteRequest,
@@ -976,6 +979,7 @@ class TomCoreKernelBridge {
       'TomRemoteLogServer': 'package:tom_core_kernel/src/tombase/logging/remote_logserver.dart',
       'TomUserPreferenceCodecException': 'package:tom_core_kernel/src/tombase/preferences/user_preference_codec.dart',
       'TomUserPreferenceCodec': 'package:tom_core_kernel/src/tombase/preferences/user_preference_codec.dart',
+      'TomUserPreferenceKeyException': 'package:tom_core_kernel/src/tombase/preferences/user_preference_keys.dart',
       'TomUserPreferenceKeys': 'package:tom_core_kernel/src/tombase/preferences/user_preference_keys.dart',
       'TomUserPreferenceDto': 'package:tom_core_kernel/src/tombase/preferences/user_preferences_contract.dart',
       'TomUserPreferenceWriteRequest': 'package:tom_core_kernel/src/tombase/preferences/user_preferences_contract.dart',
@@ -1184,6 +1188,7 @@ class TomCoreKernelBridge {
       'TomRemoteLogOutput': ['TomLogOutput'],
       'TomFileLogReplayStore': ['TomLogReplayStore'],
       'TomUserPreferenceCodecException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
+      'TomUserPreferenceKeyException': ['TomException', 'TomBaseException', 'Exception', 'TomLoggable'],
       'TomFieldError': ['TomJsonSerializable'],
       'TomErrorResult': ['TomJsonSerializable'],
       'TomResult': ['TomJsonSerializable'],
@@ -8910,6 +8915,112 @@ BridgedClass _createTomUserPreferenceCodecBridge() {
 }
 
 // =============================================================================
+// TomUserPreferenceKeyException Bridge
+// =============================================================================
+
+BridgedClass _createTomUserPreferenceKeyExceptionBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_27.TomUserPreferenceKeyException,
+    name: 'TomUserPreferenceKeyException',
+    isAssignable: (v) => v is $tom_core_kernel_27.TomUserPreferenceKeyException,
+    hierarchyDepth: 4,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 2, 'TomUserPreferenceKeyException');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'TomUserPreferenceKeyException');
+        final defaultUserMessage = D4.getRequiredArg<String>(positional, 1, 'defaultUserMessage', 'TomUserPreferenceKeyException');
+        final parameters = D4.coerceMapOrNull<String, Object?>(named['parameters'], 'parameters');
+        final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
+        final stack = D4.getOptionalNamedArg<StackTrace?>(named, 'stack');
+        return $tom_core_kernel_27.TomUserPreferenceKeyException(key, defaultUserMessage, parameters: parameters, rootException: rootException, stack: stack);
+      },
+    },
+    getters: {
+      'uuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').stackTrace,
+      'autoLog': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').autoLog,
+      'serverCallError': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').serverCallError,
+      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').logRepresentation,
+    },
+    setters: {
+      'uuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
+      'requestUuid': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
+      'timeStamp': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
+      'key': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').key = D4.extractBridgedArg<String>(value, 'key'),
+      'defaultUserMessage': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
+      'stack': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
+      'rootException': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
+      'stackTrace': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
+      'autoLog': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').autoLog = D4.extractBridgedArg<bool>(value, 'autoLog'),
+      'serverCallError': (visitor, target, value) => 
+        D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException').serverCallError = D4.extractBridgedArgOrNull<$tom_core_kernel_11.TomServerCallError>(value, 'serverCallError'),
+    },
+    methods: {
+      'toString': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException');
+        return t.toString();
+      },
+      'printStackTrace': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_27.TomUserPreferenceKeyException>(target, 'TomUserPreferenceKeyException');
+        final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
+        t.printStackTrace(depth);
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'TomUserPreferenceKeyException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, Object? rootException, StackTrace? stack})',
+    },
+    methodSignatures: {
+      'toString': 'String toString()',
+      'printStackTrace': 'void printStackTrace([int depth = -1])',
+    },
+    getterSignatures: {
+      'uuid': 'String get uuid',
+      'requestUuid': 'String? get requestUuid',
+      'timeStamp': 'DateTime get timeStamp',
+      'key': 'String get key',
+      'defaultUserMessage': 'String get defaultUserMessage',
+      'parameters': 'Map<String, Object?>? get parameters',
+      'stack': 'Object? get stack',
+      'rootException': 'Object? get rootException',
+      'stackTrace': 'String get stackTrace',
+      'autoLog': 'bool get autoLog',
+      'serverCallError': 'TomServerCallError? get serverCallError',
+      'logRepresentation': 'String get logRepresentation',
+    },
+    setterSignatures: {
+      'uuid': 'set uuid(String value)',
+      'requestUuid': 'set requestUuid(String? value)',
+      'timeStamp': 'set timeStamp(DateTime value)',
+      'key': 'set key(String value)',
+      'defaultUserMessage': 'set defaultUserMessage(String value)',
+      'parameters': 'set parameters(Map<String, Object?>? value)',
+      'stack': 'set stack(Object? value)',
+      'rootException': 'set rootException(Object? value)',
+      'stackTrace': 'set stackTrace(String value)',
+      'autoLog': 'set autoLog(bool value)',
+      'serverCallError': 'set serverCallError(TomServerCallError? value)',
+    },
+  );
+}
+
+// =============================================================================
 // TomUserPreferenceKeys Bridge
 // =============================================================================
 
@@ -8921,12 +9032,30 @@ BridgedClass _createTomUserPreferenceKeysBridge() {
     constructors: {
     },
     staticGetters: {
+      'maxLength': (visitor) => $tom_core_kernel_27.TomUserPreferenceKeys.maxLength,
       'timezone': (visitor) => $tom_core_kernel_27.TomUserPreferenceKeys.timezone,
       'language': (visitor) => $tom_core_kernel_27.TomUserPreferenceKeys.language,
       'country': (visitor) => $tom_core_kernel_27.TomUserPreferenceKeys.country,
       'theme': (visitor) => $tom_core_kernel_27.TomUserPreferenceKeys.theme,
     },
+    staticMethods: {
+      'isValid': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'isValid');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'isValid');
+        return $tom_core_kernel_27.TomUserPreferenceKeys.isValid(key);
+      },
+      'validate': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 1, 'validate');
+        final key = D4.getRequiredArg<String>(positional, 0, 'key', 'validate');
+        return $tom_core_kernel_27.TomUserPreferenceKeys.validate(key);
+      },
+    },
+    staticMethodSignatures: {
+      'isValid': 'bool isValid(String key)',
+      'validate': 'void validate(String key)',
+    },
     staticGetterSignatures: {
+      'maxLength': 'int get maxLength',
       'timezone': 'String get timezone',
       'language': 'String get language',
       'country': 'String get country',
@@ -9541,6 +9670,7 @@ BridgedClass _createTomResultBridge() {
           case $tom_core_kernel_25.TomTimeRange _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_25.TomTimeRange>.success(value);
           case $tom_core_kernel_51.TomTimezoneException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_51.TomTimezoneException>.success(value);
           case $tom_core_kernel_26.TomUserPreferenceCodecException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_26.TomUserPreferenceCodecException>.success(value);
+          case $tom_core_kernel_27.TomUserPreferenceKeyException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_27.TomUserPreferenceKeyException>.success(value);
           case $tom_core_kernel_12.TomWorkerDiedException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_12.TomWorkerDiedException>.success(value);
           case $tom_core_kernel_12.TomWorkerException _: return $tom_core_kernel_31.TomResult<$tom_core_kernel_12.TomWorkerException>.success(value);
           case $tom_reflection_2.ClosureMirror _: return $tom_core_kernel_31.TomResult<$tom_reflection_2.ClosureMirror>.success(value);
@@ -15932,6 +16062,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_25.TomTimeRange _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_25.TomTimeRange>(initialValue);
           case $tom_core_kernel_51.TomTimezoneException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_51.TomTimezoneException>(initialValue);
           case $tom_core_kernel_26.TomUserPreferenceCodecException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_26.TomUserPreferenceCodecException>(initialValue);
+          case $tom_core_kernel_27.TomUserPreferenceKeyException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_27.TomUserPreferenceKeyException>(initialValue);
           case $tom_core_kernel_12.TomWorkerDiedException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_12.TomWorkerDiedException>(initialValue);
           case $tom_core_kernel_12.TomWorkerException _: return $tom_core_kernel_25.TomObject<$tom_core_kernel_12.TomWorkerException>(initialValue);
           case $tom_reflection_2.ClosureMirror _: return $tom_core_kernel_25.TomObject<$tom_reflection_2.ClosureMirror>(initialValue);

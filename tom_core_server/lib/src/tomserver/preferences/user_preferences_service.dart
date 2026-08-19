@@ -69,6 +69,22 @@ class TomUserPreferenceException extends TomServerException {
 ///   TomUserPreferenceKeys.timezone,
 /// );
 /// ```
+///
+/// ## Every key is checked on the way in
+///
+/// [read], [get], [set], [setEncoded] and [remove] all reject a key that does
+/// not satisfy [TomUserPreferenceKeys] with a
+/// [TomUserPreferenceKeyException] (`preferences.key.invalid`), which the
+/// endpoints map to a `400`. Here the check is not a redundant second guard on
+/// something the client already refused: the endpoints read the key off the
+/// request URL, so on this side it is untrusted input — and a key wider than
+/// `preference_key` would otherwise be stored truncated, silently merging two
+/// preferences into one row.
+///
+/// Each of them checks it *first*, before the caller is resolved from the zone.
+/// A bad key is the one fault the caller can see from the call site, so it is
+/// the one worth reporting when the ambient state is unusable too; the reverse
+/// ordering answers "no principal" to a call that was malformed anyway.
 class TomUserPreferences {
   /// The repository preference rows are read and written through.
   final TomSqlDatasourceRepository<TomUserPreference, int> repository;
@@ -99,6 +115,7 @@ class TomUserPreferences {
   /// The calling principal's preference stored under [key], or `null` when it
   /// has never been written.
   Future<TomUserPreferenceDto?> read(String key) async {
+    TomUserPreferenceKeys.validate(key);
     final row = await _rowFor(key);
     return row?.toDto();
   }
@@ -133,6 +150,7 @@ class TomUserPreferences {
   /// synchronously instead would be caught by a `try` the caller wrote around
   /// the `await` and missed by everything else.
   Future<TomUserPreferenceDto> set<T extends Object>(String key, T value) async {
+    TomUserPreferenceKeys.validate(key);
     return _write(
       key,
       TomUserPreferenceCodec.typeNameOf(value, key),
@@ -152,6 +170,7 @@ class TomUserPreferences {
     required String valueType,
     required String valueJson,
   }) async {
+    TomUserPreferenceKeys.validate(key);
     TomUserPreferenceCodec.validateEncoded(valueType, valueJson, key: key);
     return _write(key, valueType, valueJson);
   }
@@ -187,6 +206,7 @@ class TomUserPreferences {
   /// Answers whether a row was removed, so a caller can tell "deleted" from
   /// "was never there" without a second read.
   Future<bool> remove(String key) async {
+    TomUserPreferenceKeys.validate(key);
     final row = await _rowFor(key);
     if (row == null) return false;
     await repository.deleteById(row.id);
@@ -208,6 +228,9 @@ class TomUserPreferences {
   }
 
   /// The calling principal's row under [key], or `null`.
+  ///
+  /// Takes [key] already validated — every caller is a public method that
+  /// checked it on entry.
   Future<TomUserPreference?> _rowFor(String key) async {
     final matches = await repository.findByQuerySentence(
       'FIND BY principal_id = :principalId AND preference_key = :key',
