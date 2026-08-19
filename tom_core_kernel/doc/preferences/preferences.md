@@ -430,8 +430,8 @@ is the only exception the rest of this module tells callers to catch:
 |-------|-----------|-----------|
 | A value whose class has no name it could be stored under | `typeNameOf`, and so `encode` | `preferences.type.not_reflected` |
 | A collection that is not one of the ten supported shapes | `typeNameOf`, and so `encode` | `preferences.type.unsupported_collection` |
-| A value JSON cannot represent — in practice a non-finite `double` | `encodeValue` | `preferences.encode.not_json` |
-| A non-scalar value the reflection path cannot serialize | `encodeValue` | `preferences.encode.failed` |
+| A value JSON cannot represent — in practice a non-finite `double`, at the top level or as a collection element | `encodeValue` | `preferences.encode.not_json` |
+| A value whose JSON text could not be written for any other reason | `encodeValue` | `preferences.encode.failed` |
 
 `preferences.type.not_reflected` and `preferences.encode.failed` both mean "an
 unreflected object", reached from two directions: `encode` asks for the name
@@ -447,7 +447,39 @@ every other scalar encodes. They are not exotic values for a preference — a co
 scale produces a NaN the moment the number it divided by is zero — and JSON has
 no notation for either, so there is nothing to store and no substitute worth
 storing. Refusing at the write is the only place the caller still holds the
-value that went wrong.
+value that went wrong. A non-finite *element* takes the same key rather than a
+shape key: `[1.0, double.nan]` is a well-formed `List<double>` that `typeNameOf`
+names without complaint, so the defect is the number, not the shape.
+
+##### A write refusal names the cause it detected
+
+Five situations reach the write refusal and they have five different remedies,
+only one of which is the `@tomReflector` annotation. Each refusal therefore
+names its own, and carries a `cause` entry in `parameters` so a caller that has
+to branch is not left parsing prose:
+
+| `cause` | The value | The remedy |
+|---------|-----------|------------|
+| `value_not_json` | a non-finite number | store a finite one, or a `String` naming the special case |
+| `element_not_json` | a collection holding one | the same, one level on |
+| `map_key_not_string` | a `Map` keyed by anything but `String` | key it by `String`, or wrap it |
+| `element_not_scalar` | a `List` or `Map` holding an element that is not a scalar | wrap the whole collection |
+| `not_a_list_or_map` | a `Set`, or a lazy `Iterable` | `toList()` it, which makes the order part of the stored value |
+| `unreflected_class` | an instance of a class the registry does not know | annotate the class with `@tomReflector` |
+
+The distinction is not cosmetic. A `Set` and a `Map<int, String>` have no class
+of their own to annotate, and a `List<Thing>` stays an unsupported shape however
+well `Thing` is annotated — the element type is part of the stored name, so
+`List<Thing>` is still no name a preference can be stored under. Advice a caller
+cannot act on costs more time than no advice, because it reads as a fix and only
+turns out not to be one after it has been tried.
+
+The `cause` for a `Map` also carries `keyType`, and the one for an element
+carries `elementType`, so the offending part is named and not only the whole.
+Neither message repeats the value's `runtimeType` in its prose where that would
+be a private SDK class: a `Map<int, String>` literal is a `_Map<int, String>`,
+and telling a reader their value is a `_Map` explains nothing they can use. The
+raw runtime type stays available as the `valueType` parameter.
 
 `encodeValue` takes the preference key as an optional second argument so the
 exception can name *which* preference failed rather than only which line;
@@ -597,6 +629,12 @@ Store it under the class it is *declared* as, and read a generic one under its
 bare class literal — see [Where the two naming methods
 diverge](#where-the-two-naming-methods-diverge) for the two cases where the name
 a value is written under is not the one a caller would reach for.
+
+The annotation is not the answer to every write refusal, and the exception says
+which refusal it is. Annotating the element class of a `List<Thing>` does not
+make the list storable — wrap the collection instead; a `Set` and a
+`Map<int, String>` have nothing to annotate at all. Read the `cause` before
+reaching for `@tomReflector`.
 
 ### 4. Namespace Application Keys
 

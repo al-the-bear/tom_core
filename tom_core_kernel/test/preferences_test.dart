@@ -34,6 +34,27 @@ Matcher throwsCodecKey(String key) => throwsA(
           .having((error) => error.key, 'key', key),
     );
 
+/// The `cause` a refusal reports, which is what a caller switches on when the
+/// prose is for a human and the branch is for a program.
+Matcher throwsCodecCause(String key, String cause) => throwsA(
+      isA<TomUserPreferenceCodecException>()
+          .having((error) => error.key, 'key', key)
+          .having((error) => error.parameters?['cause'], 'cause', cause),
+    );
+
+/// Asserts the sentence a caller is actually given, because the remedy is the
+/// point of these refusals — a message naming the wrong fix costs more time
+/// than no message at all.
+Matcher throwsCodecMessage(String key, Matcher message) => throwsA(
+      isA<TomUserPreferenceCodecException>()
+          .having((error) => error.key, 'key', key)
+          .having(
+            (error) => error.defaultUserMessage,
+            'defaultUserMessage',
+            message,
+          ),
+    );
+
 /// Timestamps that name the instant they mean — the reader cannot be wrong
 /// about them, whatever zone it runs in.
 const zonedTimestamps = <String>[
@@ -365,6 +386,142 @@ void main() {
         () => TomUserPreferenceCodec.encodeValue(UnreflectedPreference()),
         throwsCodecKey('preferences.encode.failed'),
       );
+    });
+
+    // tcinc168: there are five ways to reach a write failure and they have
+    // five different remedies, but every one of them used to be told to add
+    // an annotation — advice a Set, a Map keyed by int and a NaN cannot act
+    // on. These tests hold each refusal to its own diagnosis.
+    group('the refusal names the cause it can actually detect', () {
+      test('a non-finite element is the JSON problem it is, not a shape one',
+          () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(<double>[1.0, double.nan]),
+          throwsCodecCause('preferences.encode.not_json', 'element_not_json'),
+        );
+      });
+
+      test('and says which element and what to store instead', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(<double>[double.nan]),
+          throwsCodecMessage(
+            'preferences.encode.not_json',
+            allOf(contains('NaN'), contains('finite')),
+          ),
+        );
+      });
+
+      test('a top-level non-finite is told apart from an element one', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(double.nan),
+          throwsCodecCause('preferences.encode.not_json', 'value_not_json'),
+        );
+      });
+
+      test('a Map keyed by anything but String says so', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(<int, String>{1: 'one'}),
+          throwsCodecCause(
+            'preferences.encode.failed',
+            'map_key_not_string',
+          ),
+        );
+      });
+
+      test('and names the key type rather than the private Map class', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(<int, String>{1: 'one'}),
+          throwsCodecMessage(
+            'preferences.encode.failed',
+            allOf(
+              contains('keyed by int'),
+              contains('String'),
+              isNot(contains('_Map')),
+            ),
+          ),
+        );
+      });
+
+      test('an element that is not a scalar is its own cause', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(
+            <UnreflectedPreference>[UnreflectedPreference()],
+          ),
+          throwsCodecCause('preferences.encode.failed', 'element_not_scalar'),
+        );
+      });
+
+      test('and says outright that annotating the element does not help', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(
+            <UnreflectedPreference>[UnreflectedPreference()],
+          ),
+          throwsCodecMessage(
+            'preferences.encode.failed',
+            allOf(
+              contains('UnreflectedPreference'),
+              contains('does not help'),
+            ),
+          ),
+        );
+      });
+
+      test('a Map value that is not a scalar takes the same cause', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(
+            <String, UnreflectedPreference>{'a': UnreflectedPreference()},
+          ),
+          throwsCodecCause('preferences.encode.failed', 'element_not_scalar'),
+        );
+      });
+
+      test('a Set is refused as a shape, not as a missing annotation', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(<int>{1, 2}),
+          throwsCodecCause('preferences.encode.failed', 'not_a_list_or_map'),
+        );
+      });
+
+      test('and is told the conversion that would work', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(<int>{1, 2}),
+          throwsCodecMessage(
+            'preferences.encode.failed',
+            allOf(contains('Set'), contains('toList()')),
+          ),
+        );
+      });
+
+      test('a lazy Iterable is refused the same way a Set is', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(<int>[1, 2].map((e) => e)),
+          throwsCodecCause('preferences.encode.failed', 'not_a_list_or_map'),
+        );
+      });
+
+      test('an unannotated class is the one case the annotation fixes', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(UnreflectedPreference()),
+          throwsCodecCause('preferences.encode.failed', 'unreflected_class'),
+        );
+      });
+
+      test('and is the case that keeps the @tomReflector advice', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(UnreflectedPreference()),
+          throwsCodecMessage(
+            'preferences.encode.failed',
+            contains('@tomReflector'),
+          ),
+        );
+      });
+
+      test('the cause survives the DTO-building entry point too', () {
+        expect(
+          () => TomUserPreferenceCodec.encode('ui.scale', <double>[double.nan]),
+          throwsCodecCause('preferences.encode.not_json', 'element_not_json'),
+        );
+      });
     });
 
     group('the scalars that JSON can represent are untouched', () {

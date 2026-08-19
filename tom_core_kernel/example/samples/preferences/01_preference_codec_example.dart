@@ -474,6 +474,69 @@ class NonFiniteNumberExample {
 }
 
 // =============================================================================
+// EXAMPLE 7b: A write refusal names the cause it detected
+// =============================================================================
+
+/// A class the generator has not captured — deliberately *not* annotated,
+/// because it is the one case in which "add `@tomReflector`" is the right
+/// advice, and the sample needs a value that earns it.
+class UnnamedWindowState {
+  /// The last window width, in logical pixels.
+  int width = 800;
+}
+
+class RefusalCauseExample {
+  static String topLevelCause = '';
+  static String elementCause = '';
+  static String mapKeyCause = '';
+  static String elementTypeCause = '';
+  static String setCause = '';
+  static String unreflectedCause = '';
+  static String setMessage = '';
+
+  /// Encodes [value], which is expected to be refused, and answers the
+  /// `cause` the refusal reported.
+  static String _causeOf(Object value) {
+    try {
+      TomUserPreferenceCodec.encodeValue(value);
+    } on TomUserPreferenceCodecException catch (error) {
+      return error.parameters?['cause']?.toString() ?? '';
+    }
+    throw StateError('$value was expected to be refused');
+  }
+
+  static void example7bRefusalCauses() {
+    // There are five ways to reach a write failure and they have five
+    // different remedies. Only the last is fixed by annotating a class: a
+    // Set and a Map<int, String> have no class of their own to annotate, and
+    // a NaN is a number problem, not a shape problem.
+    topLevelCause = _causeOf(double.nan);
+    elementCause = _causeOf(<double>[1.0, double.infinity]);
+    mapKeyCause = _causeOf(<int, String>{1: 'one'});
+    elementTypeCause = _causeOf(<UnnamedWindowState>[UnnamedWindowState()]);
+    setCause = _causeOf(<int>{1, 2});
+    unreflectedCause = _causeOf(UnnamedWindowState());
+
+    try {
+      TomUserPreferenceCodec.encodeValue(<int>{1, 2});
+    } on TomUserPreferenceCodecException catch (error) {
+      setMessage = error.defaultUserMessage;
+    }
+
+    assert(topLevelCause == 'value_not_json', 'The NaN is the value itself');
+    assert(elementCause == 'element_not_json', 'The Infinity is an element');
+    assert(mapKeyCause == 'map_key_not_string', 'A JSON object keys by text');
+    assert(elementTypeCause == 'element_not_scalar', 'Wrap the collection');
+    assert(setCause == 'not_a_list_or_map', 'JSON has arrays, not sets');
+    assert(unreflectedCause == 'unreflected_class', 'Annotate the class');
+
+    // The Set is told to become a List, not to grow an annotation it has no
+    // class of its own to carry.
+    assert(setMessage.contains('toList()'), 'The remedy is in the sentence');
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -489,6 +552,7 @@ void run() {
   TypeMismatchExample.example5TypeMismatch();
   ValidateEncodedExample.example6ValidateEncoded();
   NonFiniteNumberExample.example7NonFiniteNumber();
+  RefusalCauseExample.example7bRefusalCauses();
 }
 
 void main() {

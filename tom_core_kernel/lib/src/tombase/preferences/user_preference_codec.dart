@@ -295,6 +295,27 @@ class TomUserPreferenceCodec {
   /// it for having no name to be stored under. A mixed `List<Object>` takes it
   /// too — `["a",1]` is perfectly good JSON, so it is written here and refused
   /// by [typeNameOf] for naming no supported shape.
+  ///
+  /// A refusal names the cause it detected rather than a single generic one,
+  /// and carries it as a `cause` parameter for a caller that has to branch:
+  ///
+  /// | `cause` | The value | The remedy |
+  /// | ------- | --------- | ---------- |
+  /// | `value_not_json` | a non-finite number | store a finite one |
+  /// | `element_not_json` | a collection holding one | the same, one level on |
+  /// | `map_key_not_string` | a `Map<int, …>` | key it by `String` |
+  /// | `element_not_scalar` | a `List<Thing>` | wrap the whole collection |
+  /// | `not_a_list_or_map` | a `Set`, a lazy `Iterable` | `toList()` it |
+  /// | `unreflected_class` | an unannotated class | annotate it |
+  ///
+  /// Only the last is fixed by the annotation, which is why they are told
+  /// apart: a `Set` and a `Map<int, …>` have no class of their own to
+  /// annotate, and a `List<Thing>` stays an unsupported shape however well
+  /// `Thing` is annotated, because the element type is part of the stored
+  /// name. A non-finite element keeps the `preferences.encode.not_json` key
+  /// its top-level twin has — `[1.0, double.nan]` is a well-formed
+  /// `List<double>` that [typeNameOf] names, so the defect is the number, not
+  /// the shape.
   static String encodeValue(Object value, [String key = '']) {
     if (value is String || value is int || value is double || value is bool) {
       try {
@@ -305,13 +326,14 @@ class TomUserPreferenceCodec {
         // read back as if it were the one stored.
         throw TomUserPreferenceCodecException(
           'preferences.encode.not_json',
-          "Preference '$key' holds the ${value.runtimeType} value $value, "
+          '${_subjectOf(key)} holds the ${value.runtimeType} value $value, '
               'which JSON cannot represent. Store a finite number, or a '
               'String naming the special case.',
           parameters: {
             'key': key,
             'valueType': value.runtimeType.toString(),
             'value': value.toString(),
+            'cause': 'value_not_json',
           },
           rootException: error,
           stack: stack,
@@ -340,17 +362,188 @@ class TomUserPreferenceCodec {
       }
       return tomReflectionInfo.convertToJsonString(value);
     } catch (error, stack) {
-      throw TomUserPreferenceCodecException(
-        'preferences.encode.failed',
-        "Preference '$key' holds a value of type ${value.runtimeType}, which "
-            'could not be encoded. A preference value must be a scalar, a '
-            'List or Map<String, …> of one scalar type, or an instance of a '
-            'class annotated with @tomReflector.',
-        parameters: {'key': key, 'valueType': value.runtimeType.toString()},
+      throw _notEncodable(value, key, error, stack);
+    }
+  }
+
+  /// The refusal for a value whose JSON text could not be written.
+  ///
+  /// The cause is worked out from the *value*, not from [error]. Both
+  /// `jsonEncode` and the reflection registry report the same thing — "could
+  /// not convert" — which is the one fact the caller already has. Five
+  /// situations arrive here and they have five different remedies, and for
+  /// four of them the `@tomReflector` annotation this message used to advise
+  /// for all of them is not something the caller could add: a `Set` and a
+  /// `Map<int, …>` have no class of their own to annotate, a `List<Thing>`
+  /// stays an unsupported shape however well `Thing` is annotated, and a
+  /// non-finite number is not a shape problem at all.
+  ///
+  /// Each refusal therefore names its own remedy, and carries a `cause`
+  /// parameter — `element_not_json`, `map_key_not_string`,
+  /// `element_not_scalar`, `not_a_list_or_map`, `unreflected_class` — so a
+  /// caller that has to branch is not left parsing the prose. The top-level
+  /// non-finite case, which has its own throw site, reports `value_not_json`.
+  ///
+  /// A non-finite *element* keeps `preferences.encode.not_json` rather than
+  /// taking a shape key: `[1.0, double.nan]` is a perfectly well-formed
+  /// `List<double>`, [typeNameOf] names it, and the defect is the same one a
+  /// bare `double.nan` has. The same defect gets the same key.
+  static TomUserPreferenceCodecException _notEncodable(
+    Object value,
+    String key,
+    Object error,
+    StackTrace stack,
+  ) {
+    final subject = _subjectOf(key);
+    final valueType = value.runtimeType.toString();
+
+    final nonFinite = _nonFiniteElementOf(value);
+    if (nonFinite != null) {
+      return TomUserPreferenceCodecException(
+        'preferences.encode.not_json',
+        '$subject holds $nonFinite as an element, and JSON has no NaN and no '
+            'Infinity. Store finite numbers, or Strings naming the special '
+            'cases.',
+        parameters: {
+          'key': key,
+          'valueType': valueType,
+          'value': nonFinite.toString(),
+          'cause': 'element_not_json',
+        },
         rootException: error,
         stack: stack,
       );
     }
+
+    final foreignKeys = _foreignKeyTypesOf(value);
+    if (foreignKeys != null) {
+      return TomUserPreferenceCodecException(
+        'preferences.encode.failed',
+        '$subject is a Map keyed by $foreignKeys, and a JSON object has '
+            'String keys. Key the map by String, or wrap it in a class '
+            'annotated with @tomReflector if the keys have to stay what they '
+            'are. There is deliberately no encoding convention for another '
+            'key type: it would be one more thing a non-Dart reader of the '
+            'row would have to know.',
+        parameters: {
+          'key': key,
+          'valueType': valueType,
+          'keyType': foreignKeys,
+          'cause': 'map_key_not_string',
+        },
+        rootException: error,
+        stack: stack,
+      );
+    }
+
+    final foreignElement = _nonScalarElementTypeOf(value);
+    if (foreignElement != null) {
+      final shape = value is Map ? 'Map' : 'List';
+      return TomUserPreferenceCodecException(
+        'preferences.encode.failed',
+        '$subject is a $shape holding an element of type $foreignElement, and '
+            'a collection preference holds elements that are all one of '
+            '${scalarTypes.join(', ')}. Annotating $foreignElement does not '
+            'help: the element type is part of the stored name, so '
+            '$shape<$foreignElement> is still no name a preference can be '
+            'stored under. Wrap the whole collection in a class annotated '
+            'with @tomReflector.',
+        parameters: {
+          'key': key,
+          'valueType': valueType,
+          'elementType': foreignElement,
+          'cause': 'element_not_scalar',
+        },
+        rootException: error,
+        stack: stack,
+      );
+    }
+
+    if (value is Iterable) {
+      // Named by what it is rather than by `runtimeType`, which for the SDK's
+      // own iterables is a private class (`_Set`, `MappedListIterable`) that
+      // tells the reader nothing they can act on.
+      final shape = value is Set ? 'Set' : 'Iterable';
+      return TomUserPreferenceCodecException(
+        'preferences.encode.failed',
+        '$subject is a $shape, and a collection preference must be a List or '
+            'a Map<String, …> — JSON has an array and an object and nothing '
+            'else. Store `toList()` of it, which makes the order part of the '
+            'stored value, or wrap it in a class annotated with '
+            '@tomReflector.',
+        parameters: {
+          'key': key,
+          'valueType': valueType,
+          'cause': 'not_a_list_or_map',
+        },
+        rootException: error,
+        stack: stack,
+      );
+    }
+
+    return TomUserPreferenceCodecException(
+      'preferences.encode.failed',
+      '$subject holds a $valueType, which the reflection registry could not '
+          'encode. A preference value that is not a scalar and not a '
+          'collection of scalars must be an instance of a class annotated '
+          'with @tomReflector.',
+      parameters: {
+        'key': key,
+        'valueType': valueType,
+        'cause': 'unreflected_class',
+      },
+      rootException: error,
+      stack: stack,
+    );
+  }
+
+  /// The first element of [value] that JSON cannot write as a number.
+  ///
+  /// Only a `List` or a `Map` is looked at; a top-level non-finite scalar is
+  /// caught at its own throw site, with its own wording.
+  static num? _nonFiniteElementOf(Object value) {
+    for (final element in _elementsOf(value)) {
+      if (element is num && !element.isFinite) return element;
+    }
+    return null;
+  }
+
+  /// The distinct types of [value]'s keys that are not `String`, or `null`
+  /// when it is not a `Map` or every key is one.
+  static String? _foreignKeyTypesOf(Object value) {
+    if (value is! Map) return null;
+    final foreign = value.keys
+        .where((candidate) => candidate is! String)
+        .map((candidate) => candidate.runtimeType.toString())
+        .toSet();
+    return foreign.isEmpty ? null : foreign.join(', ');
+  }
+
+  /// The type of [value]'s first element that is not a scalar.
+  ///
+  /// `null` elements are skipped: JSON writes a null, so one is never the
+  /// reason an encode failed, and reporting it would send the reader after
+  /// the wrong element.
+  static String? _nonScalarElementTypeOf(Object value) {
+    for (final element in _elementsOf(value)) {
+      if (element == null) continue;
+      if (element is String ||
+          element is num ||
+          element is bool ||
+          element is DateTime) {
+        continue;
+      }
+      return element.runtimeType.toString();
+    }
+    return null;
+  }
+
+  /// What a `List` holds, or what a `Map` maps to. Nothing else has elements
+  /// this class knows how to look through.
+  static Iterable<Object?> _elementsOf(Object value) {
+    if (value is List) return value;
+    if (value is Map) return value.values;
+    return const [];
   }
 
   /// Encodes a collection element `jsonEncode` cannot write by itself.
@@ -665,13 +858,21 @@ class TomUserPreferenceCodec {
     }
   }
 
+  /// How a refusal refers to the value it is about.
+  ///
+  /// [key] is optional throughout the write path, because a caller may encode
+  /// or name a value before it has decided where to put it — so every message
+  /// has to read correctly without one.
+  static String _subjectOf(String key) =>
+      key.isEmpty ? 'A preference value' : "Preference '$key'";
+
   static TomUserPreferenceCodecException _noStoredIdentity(
     Type type,
     String key,
     Object? error,
     StackTrace? stack,
   ) {
-    final subject = key.isEmpty ? 'A preference value' : "Preference '$key'";
+    final subject = _subjectOf(key);
     return TomUserPreferenceCodecException(
       'preferences.type.not_reflected',
       '$subject is a $type, which the reflection registry does not know, so '
@@ -694,7 +895,7 @@ class TomUserPreferenceCodec {
     Type type,
     String key,
   ) {
-    final subject = key.isEmpty ? 'A preference value' : "Preference '$key'";
+    final subject = _subjectOf(key);
     return TomUserPreferenceCodecException(
       'preferences.type.unsupported_collection',
       '$subject is a $type, which is not a preference value. A collection '
