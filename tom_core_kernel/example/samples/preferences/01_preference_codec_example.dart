@@ -292,6 +292,38 @@ class ValidateEncodedExample {
 }
 
 // =============================================================================
+// EXAMPLE 7: A number JSON cannot represent is refused by the codec
+// =============================================================================
+
+class NonFiniteNumberExample {
+  static bool nanRejected = false;
+  static String errorKey = '';
+  static Object? reportedType;
+
+  static void example7NonFiniteNumber() {
+    // A NaN is not exotic for a preference: it is what a computed UI scale
+    // produces when the number it divided by turned out to be zero. JSON has
+    // no NaN and no Infinity, so there is nothing to store.
+    final scale = 0.0 / 0.0;
+
+    try {
+      TomUserPreferenceCodec.encode('ui.scale', scale);
+    } on TomUserPreferenceCodecException catch (error) {
+      // The failure arrives as the one exception the whole module tells
+      // callers to catch, and it names the preference that could not be
+      // written — not just the line that could not write it.
+      nanRejected = true;
+      errorKey = error.key;
+      reportedType = error.parameters?['valueType'];
+    }
+
+    assert(nanRejected, 'A non-finite double is refused');
+    assert(errorKey == 'preferences.encode.not_json', 'The exception is named');
+    assert(reportedType == 'double', 'The offending type is reported');
+  }
+}
+
+// =============================================================================
 // RUN ALL EXAMPLES
 // =============================================================================
 
@@ -304,6 +336,7 @@ void run() {
   ReflectedRoundTripExample.example4ReflectedRoundTrip();
   TypeMismatchExample.example5TypeMismatch();
   ValidateEncodedExample.example6ValidateEncoded();
+  NonFiniteNumberExample.example7NonFiniteNumber();
 }
 
 void main() {

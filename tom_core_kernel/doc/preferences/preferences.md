@@ -60,7 +60,10 @@ const timezone = 'Europe/Berlin';
 final request = TomUserPreferenceWriteRequest(
   key: TomUserPreferenceKeys.timezone,
   valueType: TomUserPreferenceCodec.typeNameOf(timezone),
-  value: TomUserPreferenceCodec.encodeValue(timezone),
+  value: TomUserPreferenceCodec.encodeValue(
+    timezone,
+    TomUserPreferenceKeys.timezone,
+  ),
 );
 ```
 
@@ -132,7 +135,7 @@ Encodes and decodes preference values.
 | `stringType` / `intType` / `doubleType` / `boolType` / `dateTimeType` | The scalar type names |
 | `typeNameOf(value)` | The type name a value is stored under |
 | `encode(key, value, {updatedAt})` | Builds the whole DTO |
-| `encodeValue(value)` | The JSON text alone |
+| `encodeValue(value, [key])` | The JSON text alone |
 | `validateEncoded(valueType, valueJson, {key})` | Checks an already-encoded pair |
 | `decode<T>(dto)` | The stored value as a `T` |
 | `decodeValue<T>(json, [key])` | The JSON text alone as a `T` |
@@ -167,6 +170,28 @@ A non-scalar value must be a `@tomReflector` class. It is serialized through the
 same reflection path the endpoint pipeline uses for every other DTO, so a
 preference object is written exactly as it would be if it were an endpoint
 result.
+
+#### Every write failure is a codec exception
+
+`encodeValue` reports both of its failures as a
+`TomUserPreferenceCodecException`, which is the only exception the rest of this
+module tells callers to catch:
+
+| Cause | Error key |
+|-------|-----------|
+| A value JSON cannot represent — in practice a non-finite `double` | `preferences.encode.not_json` |
+| A non-scalar value the reflection path cannot serialize | `preferences.encode.failed` |
+
+`double.nan` and `double.infinity` are the whole of the first row: every other
+scalar encodes. They are not exotic values for a preference — a computed UI
+scale produces a NaN the moment the number it divided by is zero — and JSON has
+no notation for either, so there is nothing to store and no substitute worth
+storing. Refusing at the write is the only place the caller still holds the
+value that went wrong.
+
+`encodeValue` takes the preference key as an optional second argument so the
+exception can name *which* preference failed rather than only which line;
+`encode(key, value)` passes its own key down.
 
 ### tomUserPreferencesApi
 
@@ -226,7 +251,7 @@ class DisplayPreference {
 final request = TomUserPreferenceWriteRequest(
   key: 'ui.display',
   valueType: TomUserPreferenceCodec.typeNameOf(preference),
-  value: TomUserPreferenceCodec.encodeValue(preference),
+  value: TomUserPreferenceCodec.encodeValue(preference, 'ui.display'),
 );
 ```
 

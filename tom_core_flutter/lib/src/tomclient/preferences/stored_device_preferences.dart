@@ -72,7 +72,7 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
     final written = TomUserPreferenceDto(
       key: key,
       valueType: TomUserPreferenceCodec.typeNameOf(value),
-      value: TomUserPreferenceCodec.encodeValue(value),
+      value: TomUserPreferenceCodec.encodeValue(value, key),
       // The device's own clock. Unlike the server store, nothing here can
       // supply a more authoritative timestamp — but it is still normalised to
       // UTC, so a preference that later moves to the server carries an instant

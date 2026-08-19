@@ -136,7 +136,7 @@ class TomUserPreferences {
     return _write(
       key,
       TomUserPreferenceCodec.typeNameOf(value),
-      TomUserPreferenceCodec.encodeValue(value),
+      TomUserPreferenceCodec.encodeValue(value, key),
     );
   }
 

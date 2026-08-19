@@ -108,15 +108,45 @@ class TomUserPreferenceCodec {
     return TomUserPreferenceDto(
       key: key,
       valueType: typeNameOf(value),
-      value: encodeValue(value),
+      value: encodeValue(value, key),
       updatedAt: updatedAt,
     );
   }
 
   /// Encodes [value] to its JSON text, without the surrounding DTO.
-  static String encodeValue(Object value) {
+  ///
+  /// [key] names the preference being written, and appears in the exception
+  /// when the value cannot be encoded. It is optional because a caller may
+  /// encode a value before it has decided where to put it.
+  ///
+  /// Every failure leaves here as a [TomUserPreferenceCodecException], which is
+  /// the only exception the rest of the module tells callers to catch. That
+  /// includes the scalar path: `jsonEncode` refuses a non-finite double, and
+  /// `double.nan` is an ordinary outcome for a computed preference whose
+  /// divisor turned out to be zero, not a programming error worth a different
+  /// exception type.
+  static String encodeValue(Object value, [String key = '']) {
     if (value is String || value is int || value is double || value is bool) {
-      return jsonEncode(value);
+      try {
+        return jsonEncode(value);
+      } catch (error, stack) {
+        // JSON has no NaN and no Infinity, so there is nothing to write and
+        // nothing to fall back on — a substitute would be a different value
+        // read back as if it were the one stored.
+        throw TomUserPreferenceCodecException(
+          'preferences.encode.not_json',
+          "Preference '$key' holds the ${value.runtimeType} value $value, "
+              'which JSON cannot represent. Store a finite number, or a '
+              'String naming the special case.',
+          parameters: {
+            'key': key,
+            'valueType': value.runtimeType.toString(),
+            'value': value.toString(),
+          },
+          rootException: error,
+          stack: stack,
+        );
+      }
     }
     if (value is DateTime) {
       return jsonEncode(value.toUtc().toIso8601String());
@@ -126,10 +156,10 @@ class TomUserPreferenceCodec {
     } catch (error, stack) {
       throw TomUserPreferenceCodecException(
         'preferences.encode.failed',
-        'A preference value of type ${value.runtimeType} could not be '
-            'encoded. Reflected preference values must be annotated with '
-            '@tomReflector.',
-        parameters: {'valueType': value.runtimeType.toString()},
+        "Preference '$key' holds a value of type ${value.runtimeType}, which "
+            'could not be encoded. Reflected preference values must be '
+            'annotated with @tomReflector.',
+        parameters: {'key': key, 'valueType': value.runtimeType.toString()},
         rootException: error,
         stack: stack,
       );

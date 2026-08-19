@@ -40,6 +40,21 @@ const zonelessTimestamps = <String>[
   '2026-03-04',
 ];
 
+/// The only scalar values `jsonEncode` refuses. A non-finite double is not
+/// exotic for a preference: it is what a computed UI scale produces when the
+/// number it divided by turned out to be zero.
+const nonFiniteDoubles = <String, double>{
+  'double.nan': double.nan,
+  'double.infinity': double.infinity,
+  'double.negativeInfinity': double.negativeInfinity,
+};
+
+/// A value the reflection path cannot serialize, so the reflected branch's own
+/// failure stays distinguishable from the scalar one.
+class UnreflectedPreference {
+  int size = 3;
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -202,6 +217,72 @@ void main() {
 
         expect(encoded, storedText('2026-03-04T05:06:07.123456Z'));
         expect(TomUserPreferenceCodec.decodeValue<DateTime>(encoded), instant);
+      });
+    });
+  });
+
+  // tcinc161: the scalar branch called `jsonEncode` outside the guard, so a
+  // non-finite double threw `JsonUnsupportedObjectError` straight through a
+  // codec whose whole documented contract is that it throws
+  // `TomUserPreferenceCodecException`.
+  group('TomUserPreferenceCodec — encodeValue reports its own failures', () {
+    for (final entry in nonFiniteDoubles.entries) {
+      test('refuses ${entry.key} as a codec exception', () {
+        expect(
+          () => TomUserPreferenceCodec.encodeValue(entry.value),
+          throwsCodecKey('preferences.encode.not_json'),
+        );
+      });
+    }
+
+    test('names the value type in parameters', () {
+      expect(
+        () => TomUserPreferenceCodec.encodeValue(double.nan),
+        throwsA(
+          isA<TomUserPreferenceCodecException>().having(
+            (error) => error.parameters?['valueType'],
+            'valueType',
+            'double',
+          ),
+        ),
+      );
+    });
+
+    test('names the preference key when encode() supplies one', () {
+      expect(
+        () => TomUserPreferenceCodec.encode('ui.scale', double.nan),
+        throwsA(
+          isA<TomUserPreferenceCodecException>().having(
+            (error) => error.parameters?['key'],
+            'key',
+            'ui.scale',
+          ),
+        ),
+      );
+    });
+
+    test('the reflected path keeps its own key', () {
+      expect(
+        () => TomUserPreferenceCodec.encodeValue(UnreflectedPreference()),
+        throwsCodecKey('preferences.encode.failed'),
+      );
+    });
+
+    group('the scalars that JSON can represent are untouched', () {
+      test('a finite double', () {
+        expect(TomUserPreferenceCodec.encodeValue(1.25), '1.25');
+      });
+
+      test('an int', () {
+        expect(TomUserPreferenceCodec.encodeValue(14), '14');
+      });
+
+      test('a bool', () {
+        expect(TomUserPreferenceCodec.encodeValue(true), 'true');
+      });
+
+      test('a String', () {
+        expect(TomUserPreferenceCodec.encodeValue('hi'), '"hi"');
       });
     });
   });

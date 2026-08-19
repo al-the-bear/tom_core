@@ -92,7 +92,10 @@ class BuildWriteRequestExample {
     final request = TomUserPreferenceWriteRequest(
       key: TomUserPreferenceKeys.timezone,
       valueType: TomUserPreferenceCodec.typeNameOf(value),
-      value: TomUserPreferenceCodec.encodeValue(value),
+      value: TomUserPreferenceCodec.encodeValue(
+        value,
+        TomUserPreferenceKeys.timezone,
+      ),
     );
 
     requestType = request.valueType;
