@@ -49,22 +49,35 @@ class TomUserPreferenceCodecException extends TomException {
 ///
 /// ## What a preference value may be
 ///
-/// Three shapes, and nothing else:
+/// Four shapes, and nothing else:
 ///
 /// | Shape | Stored as | Named by |
 /// | ----- | --------- | -------- |
 /// | `String`, `int`, `double`, `bool` | plain JSON | itself |
 /// | `DateTime` | an ISO 8601 instant in UTC | `DateTime` |
+/// | a `List`/`Map<String,…>` of one scalar | array or object | `List<int>` |
 /// | a `@tomReflector` **enum** | `{"name": "<constant>"}` | the registry |
 /// | a `@tomReflector` **class** | a JSON object of members | the registry |
 ///
-/// A value of any other shape is refused when it is named, by [typeNameOf],
-/// because the registry has nothing to name it with. In particular a plain
-/// `List` or `Map` is *not* a preference value, however ordinary that looks:
-/// wrap it in a reflected class, whose members can then evolve under a name
-/// that survives.
+/// A value of any other shape is refused when it is named, by [typeNameOf].
+/// That includes a collection that is not one of the ten supported ones — an
+/// untyped `[]`, a mixed `List<Object>`, a `Map` keyed by anything but
+/// `String`, a nested collection, a list of reflected objects: those raise
+/// `preferences.type.unsupported_collection`, whose message names the actual
+/// restriction rather than advising an annotation a `List<Object>` cannot
+/// carry. Wrap such a value in a reflected class, whose members can then
+/// evolve under a name that survives.
 ///
-/// The two non-scalar shapes share one rule — the value's class must carry
+/// **Why collections are a shape of their own** rather than something to wrap.
+/// The element type is *in* the stored name, so it survives the round-trip on
+/// the same terms a scalar does — the name is composed from this class's own
+/// constants, not from `Type.toString()`, which [typeNameForType] explains is
+/// not durable enough to store. And because the name carries the element type,
+/// [validateEncoded] can check every element of a stored row without
+/// reflecting anything: a collection is the one non-scalar shape the boundary
+/// verifies *completely*, which a reflected class is not.
+///
+/// The two reflected shapes share one rule — the value's class must carry
 /// `@tomReflector` — so there is no separate thing to know about enums. What
 /// the annotation buys is the same in both cases: a name that is a literal the
 /// generator emitted rather than one the compiler is free to rewrite, and, for
@@ -111,6 +124,80 @@ class TomUserPreferenceCodec {
     dateTimeType,
   ];
 
+  /// The [TomUserPreferenceDto.valueType] of a list whose elements are
+  /// [element]s.
+  ///
+  /// Composed from this class's own constants rather than rendered from a
+  /// `Type`, which is what makes a collection name as durable as a scalar one:
+  /// there is no compiler rendering in it to be minified or to leak an
+  /// instantiation. See [typeNameForType] for why that matters.
+  static String _listTypeOf(String element) => 'List<$element>';
+
+  /// The [TomUserPreferenceDto.valueType] of a map whose values are [element]s.
+  ///
+  /// The key is always [stringType], and is written into the name rather than
+  /// left implicit: JSON object keys are strings, so any other key type would
+  /// need an encoding convention — exactly the kind of silent convention this
+  /// module exists to settle once. A `Map` keyed by anything else is refused.
+  static String _mapTypeOf(String element) => 'Map<$stringType, $element>';
+
+  /// The ten supported collection shapes, keyed by the `Type` a caller reads
+  /// one back as.
+  ///
+  /// `static final` rather than `const`: the names are composed by
+  /// [_listTypeOf] and [_mapTypeOf] so that the naming rule lives in one place
+  /// and this table cannot drift from [_collectionParts], which parses it.
+  static final Map<Type, String> _collectionTypes = {
+    List<String>: _listTypeOf(stringType),
+    List<int>: _listTypeOf(intType),
+    List<double>: _listTypeOf(doubleType),
+    List<bool>: _listTypeOf(boolType),
+    List<DateTime>: _listTypeOf(dateTimeType),
+    Map<String, String>: _mapTypeOf(stringType),
+    Map<String, int>: _mapTypeOf(intType),
+    Map<String, double>: _mapTypeOf(doubleType),
+    Map<String, bool>: _mapTypeOf(boolType),
+    Map<String, DateTime>: _mapTypeOf(dateTimeType),
+  };
+
+  /// The stored name of [value] if it is a supported collection, else `null`.
+  ///
+  /// An `is` chain rather than a `runtimeType` lookup in [_collectionTypes],
+  /// because a runtime class is not the declared one: a decoded list is a
+  /// `JSArray` under dart2js and a map literal is a `_Map`, neither of which is
+  /// `== List<String>`. `is` asks the question the table cannot.
+  static String? _collectionNameOf(Object value) {
+    if (value is List<String>) return _listTypeOf(stringType);
+    if (value is List<int>) return _listTypeOf(intType);
+    if (value is List<double>) return _listTypeOf(doubleType);
+    if (value is List<bool>) return _listTypeOf(boolType);
+    if (value is List<DateTime>) return _listTypeOf(dateTimeType);
+    if (value is Map<String, String>) return _mapTypeOf(stringType);
+    if (value is Map<String, int>) return _mapTypeOf(intType);
+    if (value is Map<String, double>) return _mapTypeOf(doubleType);
+    if (value is Map<String, bool>) return _mapTypeOf(boolType);
+    if (value is Map<String, DateTime>) return _mapTypeOf(dateTimeType);
+    return null;
+  }
+
+  /// Reads [valueType] back as the collection it names, or `null` if it names
+  /// no collection.
+  ///
+  /// Matched against [_listTypeOf] and [_mapTypeOf] rather than parsed with a
+  /// pattern, so the name this understands is by construction the name
+  /// [typeNameOf] writes. A grammar written twice is a grammar that drifts.
+  static ({bool isMap, String element})? _collectionParts(String valueType) {
+    for (final element in scalarTypes) {
+      if (valueType == _listTypeOf(element)) {
+        return (isMap: false, element: element);
+      }
+      if (valueType == _mapTypeOf(element)) {
+        return (isMap: true, element: element);
+      }
+    }
+    return null;
+  }
+
   /// The JSON member an enum value is stored in: its constant *name*.
   ///
   /// The name and not the index, which is the convention this module's own
@@ -124,15 +211,23 @@ class TomUserPreferenceCodec {
 
   /// The [TomUserPreferenceDto.valueType] that [value] is stored under.
   ///
-  /// A scalar's own type name, or — for anything else — the name the reflection
-  /// registry holds for the value's class. The scalar cases are tested first,
-  /// so an `int` never reaches reflection.
+  /// A scalar's own type name, a supported collection's composed name, or —
+  /// for anything else — the name the reflection registry holds for the value's
+  /// class. The scalar cases are tested first, so an `int` never reaches
+  /// reflection.
   ///
   /// Throws `preferences.type.not_reflected` when the registry does not know
   /// the class. That is the point rather than a limitation: the name written
   /// here is read back by another release on another platform, and a name the
   /// registry cannot produce is one no reader can ask for. See
   /// [typeNameForType] for why the registry is the identity.
+  ///
+  /// A collection that is not one of the ten supported shapes throws
+  /// `preferences.type.unsupported_collection` *here*, before reflection is
+  /// asked about it. Reflection would answer for some of them — the registry
+  /// knows `List` — and the value would then be stored under that name and
+  /// silently encoded as `{}`, every element dropped. Refusing at the name is
+  /// what turns that into an error the writer can read.
   ///
   /// This is a question about the *value*, so the answer is its runtime class
   /// — which is not always the type a caller would write down for it. See
@@ -147,6 +242,11 @@ class TomUserPreferenceCodec {
     if (value is double) return doubleType;
     if (value is bool) return boolType;
     if (value is DateTime) return dateTimeType;
+    final collection = _collectionNameOf(value);
+    if (collection != null) return collection;
+    if (value is Iterable || value is Map) {
+      throw _unsupportedCollection(value.runtimeType, key);
+    }
     return _reflectedClassOf(value, key).simpleName;
   }
 
@@ -192,7 +292,9 @@ class TomUserPreferenceCodec {
   /// durable name has nothing to be written under, whatever its text. An
   /// unreflected *enum* takes that same split: its text is writable here,
   /// since a constant name needs no registry, and it is [encode] that refuses
-  /// it for having no name to be stored under.
+  /// it for having no name to be stored under. A mixed `List<Object>` takes it
+  /// too — `["a",1]` is perfectly good JSON, so it is written here and refused
+  /// by [typeNameOf] for naming no supported shape.
   static String encodeValue(Object value, [String key = '']) {
     if (value is String || value is int || value is double || value is bool) {
       try {
@@ -228,18 +330,38 @@ class TomUserPreferenceCodec {
       return jsonEncode({enumNameField: value.name});
     }
     try {
+      // A collection needs no envelope: an array and an object are JSON's own
+      // shapes, and the element type is already in the stored name, so there is
+      // nothing a wrapper would add but a second thing for a non-Dart client to
+      // know. `toEncodable` exists only for `DateTime` elements, which follow
+      // the same UTC rule one level down that a top-level instant does.
+      if (value is List || value is Map) {
+        return jsonEncode(value, toEncodable: _encodeNested);
+      }
       return tomReflectionInfo.convertToJsonString(value);
     } catch (error, stack) {
       throw TomUserPreferenceCodecException(
         'preferences.encode.failed',
         "Preference '$key' holds a value of type ${value.runtimeType}, which "
-            'could not be encoded. Reflected preference values must be '
-            'annotated with @tomReflector.',
+            'could not be encoded. A preference value must be a scalar, a '
+            'List or Map<String, …> of one scalar type, or an instance of a '
+            'class annotated with @tomReflector.',
         parameters: {'key': key, 'valueType': value.runtimeType.toString()},
         rootException: error,
         stack: stack,
       );
     }
+  }
+
+  /// Encodes a collection element `jsonEncode` cannot write by itself.
+  ///
+  /// Only [DateTime] qualifies, and it is encoded exactly as a top-level one
+  /// is. Anything else is rejected rather than given a `toString()` fallback:
+  /// a fallback would write text no reader could turn back into the value, and
+  /// [encodeValue] would report success.
+  static Object _encodeNested(Object? value) {
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    throw JsonUnsupportedObjectError(value);
   }
 
   /// Checks that [valueJson] is JSON and is shaped like a [valueType].
@@ -250,10 +372,17 @@ class TomUserPreferenceCodec {
   /// every future read of that key — including reads on other devices, which is
   /// where it would be found.
   ///
-  /// A non-scalar [valueType] is only required to be a JSON object. Which
-  /// reflected class it names is deliberately not checked: a preference type
-  /// may be one only the client knows, and a server that insisted on reflecting
-  /// it would refuse to store values it is not meant to interpret.
+  /// A *reflected* [valueType] is only required to be a JSON object. Which
+  /// class it names is deliberately not checked: a preference type may be one
+  /// only the client knows, and a server that insisted on reflecting it would
+  /// refuse to store values it is not meant to interpret.
+  ///
+  /// A **collection** is the exception, and gets a complete check — every
+  /// element against the element type, and every instant against the zone rule.
+  /// Not a stricter policy, the same one: the element type is part of the
+  /// stored name, so verifying it asks the server nothing it does not already
+  /// have. This is what a class name cannot offer, and the reason collections
+  /// are a first-class shape rather than something to wrap.
   ///
   /// That is also why an enum is stored as an object: this check sees a type
   /// *name* and cannot tell an enum from a class without reflecting it, so
@@ -278,20 +407,20 @@ class TomUserPreferenceCodec {
         stack: stack,
       );
     }
+    final parts = _collectionParts(valueType);
     final bool matches;
-    switch (valueType) {
-      case stringType:
-        matches = raw is String;
-      case intType:
-        matches = raw is int;
-      case doubleType:
-        matches = raw is num;
-      case boolType:
-        matches = raw is bool;
-      case dateTimeType:
-        matches = raw is String && DateTime.tryParse(raw) != null;
-      default:
-        matches = raw is Map<String, Object?>;
+    if (scalarTypes.contains(valueType)) {
+      matches = _scalarMatches(valueType, raw);
+    } else if (parts == null) {
+      matches = raw is Map<String, Object?>;
+    } else if (parts.isMap) {
+      matches =
+          raw is Map<String, Object?> &&
+          raw.values.every((v) => _scalarMatches(parts.element, v));
+    } else {
+      matches =
+          raw is List<Object?> &&
+          raw.every((v) => _scalarMatches(parts.element, v));
     }
     if (!matches) {
       throw TomUserPreferenceCodecException(
@@ -304,18 +433,65 @@ class TomUserPreferenceCodec {
     // A timestamp can be well-formed and still ambiguous, so this is a second
     // question and not part of the type check above. Asking it here is the
     // whole point of the boundary: the text is stored once and read on devices
-    // whose local zone nobody knows yet.
-    if (valueType == dateTimeType &&
-        raw is String &&
-        parseInstant(raw) == null) {
+    // whose local zone nobody knows yet. A list of instants is exactly as
+    // ambiguous as a single one, so the question is asked of every position the
+    // declared type says holds one.
+    for (final text in _instantTexts(valueType, parts, raw)) {
+      if (parseInstant(text) != null) continue;
       throw TomUserPreferenceCodecException(
         'preferences.encoded.not_an_instant',
-        "Preference '$key' was written as a $dateTimeType whose text names no "
+        "Preference '$key' was written as a $valueType, but '$text' names no "
             'time zone, so it would be read as a different instant on every '
             'device. Write it in UTC (a trailing Z) or with an explicit '
             'offset.',
-        parameters: {'key': key, 'valueType': valueType, 'value': raw},
+        parameters: {'key': key, 'valueType': valueType, 'value': text},
       );
+    }
+  }
+
+  /// Whether [raw] is shaped like the scalar named [scalarType].
+  ///
+  /// Shared by [validateEncoded]'s top level and its element check, so that
+  /// "what an `int` looks like in JSON" is answered once. `double` accepts any
+  /// `num`, because JSON writes `1.0` as `1` and a row a non-Dart client wrote
+  /// is integral even where the preference is not.
+  static bool _scalarMatches(String scalarType, Object? raw) {
+    switch (scalarType) {
+      case stringType:
+        return raw is String;
+      case intType:
+        return raw is int;
+      case doubleType:
+        return raw is num;
+      case boolType:
+        return raw is bool;
+      case dateTimeType:
+        return raw is String && DateTime.tryParse(raw) != null;
+      default:
+        return false;
+    }
+  }
+
+  /// Every text in [raw] that the declared [valueType] says is an instant.
+  ///
+  /// [parts] is the collection [valueType] was already parsed into, passed
+  /// rather than re-derived so the two cannot disagree about what the name
+  /// means.
+  static Iterable<String> _instantTexts(
+    String valueType,
+    ({bool isMap, String element})? parts,
+    Object? raw,
+  ) sync* {
+    if (valueType == dateTimeType) {
+      if (raw is String) yield raw;
+      return;
+    }
+    if (parts == null || parts.element != dateTimeType) return;
+    final elements = parts.isMap
+        ? (raw is Map<String, Object?> ? raw.values : const <Object?>[])
+        : (raw is List<Object?> ? raw : const <Object?>[]);
+    for (final element in elements) {
+      if (element is String) yield element;
     }
   }
 
@@ -333,6 +509,13 @@ class TomUserPreferenceCodec {
   /// A `DateTime` comes back in UTC, and only if the stored text names its own
   /// zone — see [parseInstant] for why a zoneless one is refused rather than
   /// localised. An `int` widens to a `double` when [T] asks for one.
+  ///
+  /// **A collection comes back as the exact `List<E>` or `Map<String, E>` it
+  /// was stored as**, not as a `List<dynamic>` the caller has to cast: the
+  /// element type is in the stored name, so the read knows it. Every element
+  /// obeys the rule its own type obeys one level up — the zone check and the
+  /// widening included — so a `List<double>` reads a JSON `[1, 2]` back as
+  /// `[1.0, 2.0]`, and a list holding one zoneless timestamp is refused whole.
   ///
   /// **A reflected [T] is rebuilt member by member.** A JSON member the class
   /// does not declare is ignored, and a member the class declares but the
@@ -367,7 +550,12 @@ class TomUserPreferenceCodec {
         },
       );
     }
-    return _decodeValue<T>(dto.value, dto.key, identity.reflectedClass);
+    return _decodeValue<T>(
+      dto.value,
+      dto.key,
+      identity.name,
+      identity.reflectedClass,
+    );
   }
 
   /// The [TomUserPreferenceDto.valueType] a value of type [type] is stored
@@ -383,9 +571,15 @@ class TomUserPreferenceCodec {
   /// platform. That rendering is not durable enough for the job: it is not
   /// preserved by web minification, it carries the generic instantiation (so
   /// one class reached from two call sites can produce two names), and for an
-  /// SDK type it can be a private name — `<String, int>{}` renders as `_Map`,
+  /// SDK type it can be a private name — a `Uri` renders as `_SimpleUri`,
   /// which no caller can write and therefore no caller can read back. The
   /// registry name is a literal the generator emits, so it survives all three.
+  ///
+  /// A **collection** is named by neither route: its name is composed from
+  /// this class's own constants (`List<String>`), which has the same property
+  /// for the same reason — nothing in it is a compiler rendering. That is why a
+  /// `Map<String, int>` is storable although a map literal's runtime class is
+  /// the private `_Map`.
   ///
   /// It is the same registry [decode] resolves its type argument through,
   /// which is what makes the two halves symmetric: a value can be written
@@ -429,6 +623,14 @@ class TomUserPreferenceCodec {
     if (type == double) return (name: doubleType, reflectedClass: null);
     if (type == bool) return (name: boolType, reflectedClass: null);
     if (type == DateTime) return (name: dateTimeType, reflectedClass: null);
+    final collection = _collectionTypes[type];
+    if (collection != null) return (name: collection, reflectedClass: null);
+    // `List` *is* `List<dynamic>`, so a caller who wrote the bare literal lands
+    // here and would otherwise be told the registry does not know it — which is
+    // false, and would send them looking for the wrong fix.
+    if (type == List || type == Map || type == Set || type == Iterable) {
+      throw _unsupportedCollection(type, key);
+    }
     final mirror = _reflectedClass(type, key);
     return (name: mirror.simpleName, reflectedClass: mirror);
   }
@@ -481,6 +683,30 @@ class TomUserPreferenceCodec {
     );
   }
 
+  /// Raised for a collection that is not one of the ten supported shapes.
+  ///
+  /// A key of its own rather than `preferences.type.not_reflected`, because for
+  /// a `List<Object>` that message is untrue twice over: the registry *does*
+  /// know `List`, and annotating the value is not something the caller can do
+  /// to a collection. The advice a caller can act on is the restriction itself,
+  /// so the message states it.
+  static TomUserPreferenceCodecException _unsupportedCollection(
+    Type type,
+    String key,
+  ) {
+    final subject = key.isEmpty ? 'A preference value' : "Preference '$key'";
+    return TomUserPreferenceCodecException(
+      'preferences.type.unsupported_collection',
+      '$subject is a $type, which is not a preference value. A collection '
+          'preference must be a List or a Map<String, …> whose elements are '
+          'all one of ${scalarTypes.join(', ')} — the element type is part of '
+          'the stored name, which is what lets the value be read back and '
+          'checked. Wrap anything else in a class annotated with '
+          '@tomReflector.',
+      parameters: {'key': key, 'valueType': type.toString()},
+    );
+  }
+
   /// Parses [text] as a UTC instant, or returns `null` if it does not name one.
   ///
   /// Stricter than `DateTime.parse`, and deliberately so. `DateTime.parse`
@@ -506,11 +732,12 @@ class TomUserPreferenceCodec {
   /// Narrows the JSON text [json] to a [T]; [key] only names the preference in
   /// an error.
   ///
-  /// [reflectedClass] is the registry entry [decode] already resolved [T] to,
-  /// or `null` when [T] is a scalar. It is passed rather than looked up again
-  /// because [decode] cannot have compared the stored name without resolving
-  /// it, and a second lookup could only either repeat that work or disagree
-  /// with it.
+  /// [storedName] is the name [decode] resolved [T] to and has already matched
+  /// against the row, and [reflectedClass] is the registry entry behind it, or
+  /// `null` when [T] is a scalar or a collection. Both are passed rather than
+  /// looked up again because [decode] cannot have compared the stored name
+  /// without resolving them, and a second lookup could only either repeat that
+  /// work or disagree with it.
   ///
   /// Private, and deliberately so. Given the text alone there is nothing to
   /// contradict the caller's [T]: a stored `DateTime` read as a `String`
@@ -520,6 +747,7 @@ class TomUserPreferenceCodec {
   static T _decodeValue<T extends Object>(
     String json,
     String key,
+    String storedName,
     ClassMirror? reflectedClass,
   ) {
     final Object? raw;
@@ -534,30 +762,20 @@ class TomUserPreferenceCodec {
         stack: stack,
       );
     }
-    if (raw is T) return raw;
-    if (T == DateTime && raw is String) {
-      final instant = parseInstant(raw);
-      if (instant != null) return instant as T;
-      final isTimestamp = DateTime.tryParse(raw) != null;
-      throw TomUserPreferenceCodecException(
-        isTimestamp
-            ? 'preferences.decode.not_an_instant'
-            : 'preferences.decode.type_mismatch',
-        isTimestamp
-            ? "Preference '$key' holds a timestamp that names no time zone, so "
-                "reading it would have to invent one — this device's. That is "
-                'an instant the writer did not necessarily mean, so it is '
-                'refused instead.'
-            : "Preference '$key' was read as a $dateTimeType but its text is "
-                'not a timestamp.',
-        parameters: {'key': key, 'requested': T.toString(), 'value': raw},
-      );
+    if (reflectedClass == null) {
+      // Driven by the stored name rather than by `T` — the same thing here,
+      // since [decode] derived the name from `T`, but it is the form the
+      // element rule needs too, so both levels narrow through one method.
+      final parts = _collectionParts(storedName);
+      if (parts != null) {
+        return _decodeCollection<T>(raw, key, storedName, parts);
+      }
+      return _narrowScalar(storedName, raw, key, storedName) as T;
     }
-    if (T == double && raw is int) return raw.toDouble() as T;
-    if (reflectedClass != null && reflectedClass.isEnum) {
+    if (reflectedClass.isEnum) {
       return _decodeEnum<T>(raw, key, reflectedClass);
     }
-    if (reflectedClass != null && raw is Map<String, Object?>) {
+    if (raw is Map<String, Object?>) {
       final T? instance;
       try {
         instance = tomReflectionInfo.createInstanceFromJson<T>(
@@ -589,12 +807,116 @@ class TomUserPreferenceCodec {
       }
       return instance;
     }
+    throw _notDecodable(key, T.toString());
+  }
+
+  /// Narrows the decoded JSON [raw] to the scalar named [scalarType].
+  ///
+  /// [requested] is the type the *caller* asked for, which is [scalarType] at
+  /// the top level and the whole collection name — `List<DateTime>` — when this
+  /// is narrowing an element. It appears only in errors, so that a bad element
+  /// is reported against the preference the reader actually asked for.
+  ///
+  /// An `int` widens to a `double` here: JSON writes `1.0` as `1`, so a row
+  /// written by a non-Dart client is integral even where the preference is not.
+  /// A `DateTime` must name its zone — see [parseInstant].
+  static Object _narrowScalar(
+    String scalarType,
+    Object? raw,
+    String key,
+    String requested,
+  ) {
+    switch (scalarType) {
+      case stringType:
+        if (raw is String) return raw;
+      case intType:
+        if (raw is int) return raw;
+      case doubleType:
+        if (raw is double) return raw;
+        if (raw is int) return raw.toDouble();
+      case boolType:
+        if (raw is bool) return raw;
+      case dateTimeType:
+        if (raw is String) {
+          final instant = parseInstant(raw);
+          if (instant != null) return instant;
+          final isTimestamp = DateTime.tryParse(raw) != null;
+          throw TomUserPreferenceCodecException(
+            isTimestamp
+                ? 'preferences.decode.not_an_instant'
+                : 'preferences.decode.type_mismatch',
+            isTimestamp
+                ? "Preference '$key' holds a timestamp that names no time "
+                      "zone, so reading it would have to invent one — this "
+                      "device's. That is an instant the writer did not "
+                      'necessarily mean, so it is refused instead.'
+                : "Preference '$key' was read as a $requested but its text is "
+                      'not a timestamp.',
+            parameters: {'key': key, 'requested': requested, 'value': raw},
+          );
+        }
+    }
     throw TomUserPreferenceCodecException(
       'preferences.decode.failed',
-      "Preference '$key' could not be decoded as $T.",
-      parameters: {'key': key, 'requested': T.toString()},
+      "Preference '$key' could not be decoded as $requested.",
+      parameters: {'key': key, 'requested': requested},
     );
   }
+
+  /// Rebuilds the collection [storedName] describes from the decoded JSON
+  /// [raw].
+  ///
+  /// The elements are narrowed one at a time by [_narrowScalar], so an element
+  /// obeys exactly the rule a top-level value of that type obeys — the zone
+  /// check and the `int`-to-`double` widening included — rather than a second,
+  /// looser copy of it.
+  static T _decodeCollection<T extends Object>(
+    Object? raw,
+    String key,
+    String storedName,
+    ({bool isMap, String element}) parts,
+  ) {
+    if (parts.isMap) {
+      if (raw is! Map<String, Object?>) {
+        throw _notDecodable(key, storedName);
+      }
+      final values = <String, Object>{
+        for (final entry in raw.entries)
+          entry.key: _narrowScalar(parts.element, entry.value, key, storedName),
+      };
+      return switch (parts.element) {
+        stringType => Map<String, String>.from(values),
+        intType => Map<String, int>.from(values),
+        doubleType => Map<String, double>.from(values),
+        boolType => Map<String, bool>.from(values),
+        // Only the five scalars reach here: `parts` came from
+        // [_collectionParts], which recognises nothing else.
+        _ => Map<String, DateTime>.from(values),
+      } as T;
+    }
+    if (raw is! List<Object?>) throw _notDecodable(key, storedName);
+    final values = [
+      for (final element in raw)
+        _narrowScalar(parts.element, element, key, storedName),
+    ];
+    return switch (parts.element) {
+      stringType => List<String>.from(values),
+      intType => List<int>.from(values),
+      doubleType => List<double>.from(values),
+      boolType => List<bool>.from(values),
+      _ => List<DateTime>.from(values),
+    } as T;
+  }
+
+  /// Raised when a stored row is not shaped like the type it was read as.
+  static TomUserPreferenceCodecException _notDecodable(
+    String key,
+    String requested,
+  ) => TomUserPreferenceCodecException(
+    'preferences.decode.failed',
+    "Preference '$key' could not be decoded as $requested.",
+    parameters: {'key': key, 'requested': requested},
+  );
 
   /// Resolves the enum constant [raw] names, against the constants [enumClass]
   /// declares *now*.

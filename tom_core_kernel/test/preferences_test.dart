@@ -585,12 +585,13 @@ void main() {
     });
 
     test('a private SDK class can no longer be stored under its name', () {
-      // `typeNameOf(<String,int>{})` answered `_Map<String, int>`. `_Map` is
-      // not a type any caller can write, so such a row was unreadable by
+      // `typeNameOf` once answered `runtimeType.toString()`, and an SDK value's
+      // runtime class is routinely private: a `Uri` is a `_SimpleUri`. `_Uri`
+      // is not a type any caller can write, so such a row was unreadable by
       // construction the moment it was written — a silent write and a
       // permanent read failure. Refusing the write is the whole point.
       expect(
-        () => TomUserPreferenceCodec.typeNameOf(<String, int>{'a': 1}),
+        () => TomUserPreferenceCodec.typeNameOf(Uri.parse('https://tom.dev/')),
         throwsCodecKey('preferences.type.not_reflected'),
       );
     });
@@ -932,6 +933,280 @@ void main() {
       expect(
         () => TomUserPreferenceCodec.decode<ConstructedPreference>(stored),
         throwsCodecKey('preferences.decode.failed'),
+      );
+    });
+  });
+
+  // tcinc167: a list of strings — pinned items, recent files, enabled feature
+  // names — is one of the most ordinary preferences there is, and it had no
+  // path through the codec: `List` and `Map` are not scalars, so they fell
+  // into the reflected branch and `convertToJsonString` could not serialize
+  // them. The failure also arrived one call late, `typeNameOf` having already
+  // answered `List<int>`, which reads as support.
+  group('TomUserPreferenceCodec — a collection of scalars is a value', () {
+    test('a List<String> round-trips', () {
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.pinned',
+        <String>['alpha', 'beta'],
+      );
+
+      expect(stored.valueType, 'List<String>');
+      expect(
+        TomUserPreferenceCodec.decode<List<String>>(stored),
+        ['alpha', 'beta'],
+      );
+    });
+
+    test('a Map<String, String> round-trips', () {
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.labels',
+        <String, String>{'home': 'Start', 'away': 'Guest'},
+      );
+
+      expect(stored.valueType, 'Map<String, String>');
+      expect(
+        TomUserPreferenceCodec.decode<Map<String, String>>(stored),
+        {'home': 'Start', 'away': 'Guest'},
+      );
+    });
+
+    test('the stored text is a plain JSON array, with no wrapper', () {
+      // Unlike an enum, a collection needs no envelope: an array and an object
+      // are JSON's own shapes, and the element type is already in the stored
+      // name. A wrapper would only be a second thing for a non-Dart client to
+      // know about.
+      final stored = TomUserPreferenceCodec.encode('ui.sizes', <int>[10, 20]);
+
+      expect(stored.value, '[10,20]');
+      expect(
+        TomUserPreferenceCodec.encode('ui.labels', <String, int>{'a': 1}).value,
+        '{"a":1}',
+      );
+    });
+
+    test('every scalar element type round-trips, in a list and in a map', () {
+      // The rule is "elements are scalars", with no sub-exception, so each of
+      // the five is asserted rather than a representative one.
+      expect(
+        TomUserPreferenceCodec.decode<List<String>>(
+          TomUserPreferenceCodec.encode('ui.v', <String>['a']),
+        ),
+        ['a'],
+      );
+      expect(
+        TomUserPreferenceCodec.decode<List<int>>(
+          TomUserPreferenceCodec.encode('ui.v', <int>[1]),
+        ),
+        [1],
+      );
+      expect(
+        TomUserPreferenceCodec.decode<List<double>>(
+          TomUserPreferenceCodec.encode('ui.v', <double>[1.5]),
+        ),
+        [1.5],
+      );
+      expect(
+        TomUserPreferenceCodec.decode<List<bool>>(
+          TomUserPreferenceCodec.encode('ui.v', <bool>[true, false]),
+        ),
+        [true, false],
+      );
+      expect(
+        TomUserPreferenceCodec.decode<Map<String, bool>>(
+          TomUserPreferenceCodec.encode('ui.v', <String, bool>{'a': true}),
+        ),
+        {'a': true},
+      );
+      expect(
+        TomUserPreferenceCodec.decode<Map<String, double>>(
+          TomUserPreferenceCodec.encode('ui.v', <String, double>{'a': 1.5}),
+        ),
+        {'a': 1.5},
+      );
+    });
+
+    test('an empty list keeps the element type it was declared with', () {
+      // The element type comes from the value's own type argument, so an empty
+      // `<String>[]` still says what it is. A bare `[]` does not, and is
+      // refused — see the untyped-collection test below.
+      final stored = TomUserPreferenceCodec.encode('ui.pinned', <String>[]);
+
+      expect(stored.valueType, 'List<String>');
+      expect(stored.value, '[]');
+      expect(TomUserPreferenceCodec.decode<List<String>>(stored), isEmpty);
+    });
+
+    test('the zone rule reaches inside a collection', () {
+      // A DateTime element is a DateTime, so the promise [dateTimeType] makes
+      // has to hold one level down too — otherwise the same value means a
+      // different instant per device as soon as it is put in a list.
+      final local = DateTime.utc(2026, 3, 4, 5, 6, 7).toLocal();
+      final stored = TomUserPreferenceCodec.encode(
+        'ui.recent',
+        <DateTime>[local],
+      );
+
+      expect(stored.valueType, 'List<DateTime>');
+      expect(stored.value, contains('Z'));
+
+      final decoded = TomUserPreferenceCodec.decode<List<DateTime>>(stored);
+      expect(decoded.single.isAtSameMomentAs(local), isTrue);
+      expect(decoded.single.isUtc, isTrue);
+    });
+
+    test('a stored collection passes the boundary check', () {
+      // The check the server runs, and the reason collections are worth having
+      // as a shape of their own: the element type is *in* the stored name, so
+      // the boundary can verify the whole value without reflecting anything —
+      // which it cannot do for a reflected class.
+      for (final value in <Object>[
+        <String>['a'],
+        <int>[1],
+        <String, bool>{'a': true},
+        <String, DateTime>{'a': DateTime.utc(2026)},
+      ]) {
+        final stored = TomUserPreferenceCodec.encode('ui.v', value);
+        expect(
+          () => TomUserPreferenceCodec.validateEncoded(
+            stored.valueType,
+            stored.value,
+            key: stored.key,
+          ),
+          returnsNormally,
+          reason: stored.valueType,
+        );
+      }
+    });
+
+    test('the boundary refuses an element of the wrong type', () {
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          'List<int>',
+          '[1, "two"]',
+          key: 'ui.sizes',
+        ),
+        throwsCodecKey('preferences.encoded.type_mismatch'),
+      );
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          'Map<String, int>',
+          '{"a": true}',
+          key: 'ui.sizes',
+        ),
+        throwsCodecKey('preferences.encoded.type_mismatch'),
+      );
+    });
+
+    test('the boundary refuses a zoneless timestamp inside a collection', () {
+      // The one check that would have been easy to leave at the top level.
+      // A row of instants is exactly as ambiguous as a single one.
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          'List<DateTime>',
+          '["2026-03-04T05:06:07Z", "2026-03-04T05:06:07"]',
+          key: 'ui.recent',
+        ),
+        throwsCodecKey('preferences.encoded.not_an_instant'),
+      );
+    });
+
+    test('a declared List<double> reads an integral array back as doubles', () {
+      // The widening the scalar path already allows, applied one level down:
+      // JSON writes 1.0 as 1, so a row a non-Dart client wrote is integral
+      // even though the preference is a list of doubles.
+      expect(
+        decodeStored<List<double>>('[1, 2]', 'ui.scales'),
+        [1.0, 2.0],
+      );
+    });
+
+    test('a collection is not readable as a collection of another type', () {
+      final stored = TomUserPreferenceCodec.encode('ui.v', <String>['1']);
+
+      expect(
+        () => TomUserPreferenceCodec.decode<List<int>>(stored),
+        throwsCodecKey('preferences.decode.type_mismatch'),
+      );
+      expect(
+        () => TomUserPreferenceCodec.decode<Map<String, String>>(stored),
+        throwsCodecKey('preferences.decode.type_mismatch'),
+      );
+    });
+
+    test('the two naming methods agree about a collection', () {
+      // The property that makes the halves symmetric: a value can be written
+      // under a name exactly when it can be read back under it.
+      expect(
+        TomUserPreferenceCodec.typeNameOf(<String>['a']),
+        TomUserPreferenceCodec.typeNameForType(List<String>),
+      );
+      expect(
+        TomUserPreferenceCodec.typeNameOf(<String, DateTime>{}),
+        TomUserPreferenceCodec.typeNameForType(Map<String, DateTime>),
+      );
+    });
+
+    test('the composed name owes nothing to the compiler rendering', () {
+      // The value that used to prove collections were unstorable: a map
+      // literal's runtime class is `_Map`, a private name no caller can write,
+      // so `runtimeType.toString()` could never have named this row. The name
+      // is composed from the codec's own constants instead, which is what makes
+      // a collection storable on the same terms a scalar is.
+      final value = <String, int>{'a': 1};
+
+      expect(value.runtimeType.toString(), isNot('Map<String, int>'));
+      expect(TomUserPreferenceCodec.typeNameOf(value), 'Map<String, int>');
+      expect(
+        TomUserPreferenceCodec.decode<Map<String, int>>(
+          TomUserPreferenceCodec.encode('ui.counts', value),
+        ),
+        value,
+      );
+    });
+
+    test('an untyped or mixed collection is refused, and the message says '
+        'what is allowed', () {
+      // The restriction is real and has to be stated where it is met. Before
+      // this the advice was "annotate it with @tomReflector", which a
+      // `List<Object>` cannot act on.
+      for (final value in <Object>[
+        <Object>['a', 1],
+        <dynamic>[],
+        <int, String>{1: 'a'},
+        <String, Object>{'a': <String>['nested']},
+        <String>{'a'},
+      ]) {
+        expect(
+          () => TomUserPreferenceCodec.typeNameOf(value, 'ui.v'),
+          throwsCodecKey('preferences.type.unsupported_collection'),
+          reason: '${value.runtimeType}',
+        );
+      }
+
+      Object? message;
+      try {
+        TomUserPreferenceCodec.typeNameOf(<Object>['a', 1], 'ui.v');
+      } on TomUserPreferenceCodecException catch (error) {
+        message = error.defaultUserMessage;
+      }
+      expect(message, contains('List'));
+      expect(message, contains('Map<String'));
+      expect(message, contains('DateTime'));
+    });
+
+    test('a list of reflected objects is refused rather than half-supported',
+        () {
+      // Tempting to allow, and deliberately not: the read would have to build
+      // each element from a class named nowhere in the stored type, and
+      // `decode<List<DisplayPreference>>` has no route from its type argument
+      // back to the registry entry. A reflected class whose *member* is a list
+      // is the supported way to store this.
+      expect(
+        () => TomUserPreferenceCodec.encode(
+          'ui.displays',
+          <DisplayPreference>[DisplayPreference()],
+        ),
+        throwsCodecKey('preferences.type.unsupported_collection'),
       );
     });
   });

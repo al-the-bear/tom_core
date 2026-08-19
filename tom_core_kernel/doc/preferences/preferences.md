@@ -189,21 +189,20 @@ check its text and get the same verdict the boundary will give.
 
 #### What a preference value may be
 
-Three shapes, and nothing else:
+Four shapes, and nothing else:
 
 | Shape | Stored as | Named by |
 |-------|-----------|----------|
 | `String`, `int`, `double`, `bool` | plain JSON | itself |
 | `DateTime` | an ISO 8601 instant in UTC | `DateTime` |
+| a `List` or `Map<String, …>` of **one** scalar type | a JSON array or object | e.g. `List<String>` |
 | a `@tomReflector` **enum** | `{"name": "<constant>"}` | the registry |
 | a `@tomReflector` **class** | a JSON object of its members | the registry |
 
 A value of any other shape is refused when it is *named*, by `typeNameOf`,
-because the registry has nothing to name it with. In particular a plain `List`
-or `Map` is **not** a preference value, however ordinary that looks — wrap it in
-a reflected class, whose members can then evolve under a name that survives.
+before anything is written.
 
-The two non-scalar shapes share one rule — the value's class must carry
+The two reflected shapes share one rule — the value's class must carry
 `@tomReflector` — so an enum is not a special case to remember. What the
 annotation buys is the same either way: a name that is a literal the generator
 emitted rather than one the compiler is free to rewrite, and, for an enum, the
@@ -212,6 +211,56 @@ constants to match a stored name against on the way back.
 A reflected class is serialized through the same reflection path the endpoint
 pipeline uses for every other DTO, so a preference object is written exactly as
 it would be if it were an endpoint result.
+
+#### A collection of scalars
+
+A list of pinned items or a map of labels is one of the most ordinary
+preferences there is, so it is a shape of its own rather than something to wrap:
+
+```dart
+final stored = TomUserPreferenceCodec.encode('ui.pinned', <String>['a', 'b']);
+stored.valueType;   // 'List<String>'
+stored.value;       // '["a","b"]'
+
+TomUserPreferenceCodec.decode<List<String>>(stored);  // ['a', 'b']
+```
+
+Ten shapes qualify: a `List` of each of the five scalars, and a `Map<String, …>`
+of each. There is no envelope — an array and an object are JSON's own shapes,
+and the element type is already in the stored name, so a wrapper would only be a
+second thing for a non-Dart client to know.
+
+**The name is composed, not rendered.** `List<String>` is built from the codec's
+own type constants, never from `Type.toString()`, which is why a collection name
+survives everything a scalar name survives — minification included. This is what
+makes the shape storable at all: a map literal's runtime class is the private
+`_Map`, a name no reader could ever ask for.
+
+**The boundary checks a collection completely** — every element against the
+element type, and every `DateTime` element against the zone rule. Not a stricter
+policy than the one for a reflected class, the same one: the element type is
+part of the stored name, so verifying it asks the server nothing it does not
+already have. A class *name* offers no such thing, which is the concrete reason
+collections earn their own shape.
+
+The read is symmetric. `decode<Map<String, int>>` returns exactly that, not a
+`Map<String, dynamic>` to be cast, and every element obeys the rule its own type
+obeys one level up — so a `List<double>` reads a JSON `[1, 2]` back as
+`[1.0, 2.0]`, and a list holding one zoneless timestamp is refused whole.
+
+**What does not qualify** is refused with
+`preferences.type.unsupported_collection`, whose message states the restriction:
+an untyped `[]`, a mixed `List<Object>`, a `Map` keyed by anything but `String`
+(JSON object keys are strings, and any other key type would need an encoding
+convention — precisely the kind of silent convention this module exists to
+settle), a nested collection, a `Set`, and a list of reflected objects. Wrap
+those in a reflected class, whose members can then evolve under a name that
+survives. A reflected class whose *member* is a list is the supported way to
+store a list of objects.
+
+The refusal has a key of its own because `preferences.type.not_reflected` would
+be untrue twice over for a `List<Object>`: the registry *does* know `List`, and
+"annotate it with `@tomReflector`" is not advice a collection can act on.
 
 #### An enum is stored by name, never by index
 
@@ -262,9 +311,10 @@ mechanisms differ, and only that one cares.)
 #### Which name a value is stored under
 
 A scalar is stored under its own name — `String`, `int`, `double`, `bool`,
-`DateTime`. Anything else is stored under **the name the reflection registry
-holds for its class**: `typeNameOf` resolves the value through the registry and
-writes the `simpleName` it finds there.
+`DateTime` — and a supported collection under a name composed from those, such
+as `List<String>`. Anything else is stored under **the name the reflection
+registry holds for its class**: `typeNameOf` resolves the value through the
+registry and writes the `simpleName` it finds there.
 
 That is deliberately *not* `value.runtimeType.toString()`, which is what the
 name would otherwise be. This string is written into a database column, sent
@@ -277,11 +327,16 @@ concrete ways:
 |--------|-------------------------------------|-------------------------|
 | Web minification | The obfuscated name, so a client compiled with `dart compile js -O4` and a server running from source disagree about the same class | A string literal the generator emitted, which minification cannot rewrite |
 | Generics | `BoxPreference<int>` from a value and `BoxPreference<dynamic>` from the bare class literal — the write and the read can never meet | `BoxPreference` from both; one class is one preference type, whatever it was instantiated at |
-| Private SDK classes | `_Map<String, int>` for a plain map — a name no caller can write, so the row is unreadable the moment it is written | Nothing: the registry does not know it, so the write is refused |
+| Private SDK classes | `_SimpleUri` for a `Uri` — a name no caller can write, so the row is unreadable the moment it is written | Nothing: the registry does not know it, so the write is refused |
 
 The same registry is what the read path resolves `T` through, so the two halves
 are symmetric by construction: a value can be written under a name exactly when
 it can be read back under it.
+
+A collection name is neither of these. It is composed from the codec's own type
+constants, so it has the durability the registry name has, for the same reason:
+there is no compiler rendering in it. That is why `<String, int>{}` is storable
+as `Map<String, int>` even though its runtime class is the private `_Map`.
 
 The cost is that `typeNameOf` and `typeNameForType` can now throw
 `preferences.type.not_reflected` where they previously always answered. That is
@@ -374,6 +429,7 @@ is the only exception the rest of this module tells callers to catch:
 | Cause | Raised by | Error key |
 |-------|-----------|-----------|
 | A value whose class has no name it could be stored under | `typeNameOf`, and so `encode` | `preferences.type.not_reflected` |
+| A collection that is not one of the ten supported shapes | `typeNameOf`, and so `encode` | `preferences.type.unsupported_collection` |
 | A value JSON cannot represent — in practice a non-finite `double` | `encodeValue` | `preferences.encode.not_json` |
 | A non-scalar value the reflection path cannot serialize | `encodeValue` | `preferences.encode.failed` |
 
@@ -382,7 +438,9 @@ unreflected object", reached from two directions: `encode` asks for the name
 first and stops there, while `encodeValue` called on its own never asks and
 fails at the serializer. Nothing gets past both. An unreflected *enum* takes the
 same split — its text is writable, since a constant name needs no registry, so
-it is `encode` that refuses it for having no name to be stored under.
+it is `encode` that refuses it for having no name to be stored under. So does a
+mixed `List<Object>`: `["a",1]` is perfectly good JSON, so `encodeValue` writes
+it and `typeNameOf` is what refuses it, for naming no supported shape.
 
 `double.nan` and `double.infinity` are the whole of `preferences.encode.not_json`:
 every other scalar encodes. They are not exotic values for a preference — a computed UI
@@ -495,6 +553,12 @@ The server runs this check before it stores; a client can run the same one to
 fail early. A disagreeing pair costs nothing to store and breaks every future
 read of that key — on every device.
 
+How much it can check depends on how much the declared name says. A scalar is
+checked exactly; a **collection** is checked exactly *and* element by element,
+because the element type is in the name; a reflected class is only required to
+be a JSON object, since which class the name denotes is deliberately not
+resolved — a preference type may be one only the client knows.
+
 ## Best Practices
 
 ### 1. Read Through the Codec, Never Through `jsonDecode`
@@ -517,10 +581,11 @@ text to be, and stating it is what lets the codec disagree. See
 
 ### 3. Annotate Reflected Preference Values
 
-A non-scalar preference type must be `@tomReflector`, and the generator must
-have captured it. **This includes enums** — an enum is a non-scalar like any
-other, and the annotation is what supplies both its durable name and, on the way
-back, the constants a stored name is matched against.
+A preference type that is neither a scalar nor a supported collection must be
+`@tomReflector`, and the generator must have captured it. **This includes
+enums** — an enum is a non-scalar like any other, and the annotation is what
+supplies both its durable name and, on the way back, the constants a stored name
+is matched against.
 
 A type the generator has not captured fails at the *write*, with
 `preferences.type.not_reflected`, because the registry is where the stored name

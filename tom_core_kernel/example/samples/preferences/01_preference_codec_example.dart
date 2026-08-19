@@ -289,6 +289,85 @@ class EnumRoundTripExample {
 }
 
 // =============================================================================
+// EXAMPLE 4c: A collection of scalars is a value in its own right
+// =============================================================================
+
+class CollectionRoundTripExample {
+  static String listType = '';
+  static String listText = '';
+  static List<String> restoredList = const [];
+  static String mapType = '';
+  static Map<String, int> restoredMap = const {};
+  static bool zonelessElementRejected = false;
+  static bool mixedListRefused = false;
+  static String errorKey = '';
+
+  static void example4cCollectionRoundTrip() {
+    // A list of pinned items is one of the most ordinary preferences there is,
+    // so it is a shape of its own rather than something to wrap in a class.
+    // Note the stored text: no envelope. An array is JSON's own shape, and the
+    // element type is already in the name, so a wrapper would only be a second
+    // thing for a non-Dart client to know about.
+    final pinned = TomUserPreferenceCodec.encode('ui.pinned', <String>[
+      'inbox',
+      'today',
+    ]);
+
+    listType = pinned.valueType;
+    listText = pinned.value;
+    restoredList = TomUserPreferenceCodec.decode<List<String>>(pinned);
+
+    // The name is *composed* from the codec's own type constants, never
+    // rendered from a `Type` — which is the whole reason this works. A map
+    // literal's runtime class is the private `_Map`, a name no reader could
+    // ever ask for; `Map<String, int>` is one every reader can.
+    final counts = TomUserPreferenceCodec.encode('ui.counts', <String, int>{
+      'inbox': 3,
+    });
+
+    mapType = counts.valueType;
+    restoredMap = TomUserPreferenceCodec.decode<Map<String, int>>(counts);
+
+    try {
+      // And because the element type is in the name, the boundary can check
+      // every element without reflecting anything — including the zone rule,
+      // which a list of instants needs exactly as much as a single one does.
+      // This is the one non-scalar shape `validateEncoded` verifies in full.
+      TomUserPreferenceCodec.validateEncoded(
+        'List<DateTime>',
+        '["2026-03-04T05:06:07Z", "2026-03-04T05:06:07"]',
+        key: 'ui.recent',
+      );
+    } on TomUserPreferenceCodecException {
+      zonelessElementRejected = true;
+    }
+
+    try {
+      // The restriction, stated where it is met. `List<Object>` has no element
+      // type to put in a name, so there would be nothing to read it back by —
+      // and the advice cannot be "annotate it", which is why this has an error
+      // key of its own rather than borrowing the unreflected-class one.
+      TomUserPreferenceCodec.encode('ui.mixed', <Object>['a', 1]);
+    } on TomUserPreferenceCodecException catch (error) {
+      mixedListRefused = true;
+      errorKey = error.key;
+    }
+
+    assert(listType == 'List<String>', 'The element type is part of the name');
+    assert(listText == '["inbox","today"]', 'A bare array, with no envelope');
+    assert(restoredList.length == 2, 'The list comes back typed, not dynamic');
+    assert(mapType == 'Map<String, int>', 'A map is named the same way');
+    assert(restoredMap['inbox'] == 3, 'And read back as the map it was');
+    assert(zonelessElementRejected, 'The zone rule reaches into a collection');
+    assert(mixedListRefused, 'A mixed collection has no name to be stored by');
+    assert(
+      errorKey == 'preferences.type.unsupported_collection',
+      'The refusal names the actual restriction',
+    );
+  }
+}
+
+// =============================================================================
 // EXAMPLE 5: A mismatched read fails rather than coercing
 // =============================================================================
 
@@ -406,6 +485,7 @@ void run() {
   ZonelessTimestampExample.example3bZonelessTimestamp();
   ReflectedRoundTripExample.example4ReflectedRoundTrip();
   EnumRoundTripExample.example4bEnumRoundTrip();
+  CollectionRoundTripExample.example4cCollectionRoundTrip();
   TypeMismatchExample.example5TypeMismatch();
   ValidateEncodedExample.example6ValidateEncoded();
   NonFiniteNumberExample.example7NonFiniteNumber();
