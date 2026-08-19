@@ -109,10 +109,20 @@ The generic observable wrapper that all other types extend.
 - **Operator overloads**:
   - `~obj` — get value (prefix operator)
   - `obj()` — get value (call operator)
-  - `obj | newValue` — set value and notify observers
+  - `obj | newValue` — set value and notify observers; returns the value
+  - `obj << newValue` — set value and notify observers; returns `obj`, so writes chain (`count << 1 << 2`)
   - `obj >> callback` — observe changes (inherited from `TomObservable`)
 - **Nullable access**: `getOrNull()`, `isNull` property
 - **Observer integration**: Automatically notifies observers on value changes via `set()`
+
+`|` and `<<` write identically and differ only in what they return. Both go
+through `set()`, so both are silent when the value does not change. A chain's
+static type is `TomObject<T>`, not the subtype it started from.
+
+The composites override `<<` to mean *wholesale replacement* — see
+[`TomList`](#tomliste-extends-tomobject) and
+[`TomMap`](#tommapk-v-extends-tomobject); `TomClass` throws, having no single
+value to replace.
 
 **Core Methods:**
 - `T get()` — returns the current value
@@ -249,6 +259,7 @@ A powerful base class for creating observable domain objects with automatic memb
 - Changes to any member notify the parent `TomClass`
 
 ### Value Operations
+- `get()`, `set()` and `operator <<` all throw `TomObservableException` — a class is addressed through its members, and its set of members is fixed by its declaration, so there is no whole value to read or replace. (This is the deliberate asymmetry with `TomList`/`TomMap`, whose contents *are* replaceable via `<<`.)
 - `setValues(Map<String, dynamic>)` — bulk update multiple fields
 - `setOrMergeValues(Map<String, dynamic>)` — update or merge with existing values
 - `getValues()` — returns all registered members as a `Map<String, dynamic>`
@@ -288,6 +299,13 @@ An observable list implementation that automatically observes all contained elem
 - `clear()`, `sort()`, `shuffle()`
 - `operator []`, `operator []=`
 - `operator +` — concatenates two TomLists
+- `operator <<` — **replaces all elements** with the given list and returns the list
+
+**Whole-value operations:**
+- `set()` throws `TomObservableException` — replacing the backing list directly would strand the element observers
+- `operator <<` is the supported wholesale swap: it detaches the outgoing elements, attaches the incoming ones, and emits **one** notification for the exchange (`rows << [a, b]`)
+- Silent when the new sequence is element-for-element *identical* to the old; the comparison is by identity, not equality, because observers hold element references
+- `resetWith()` performs the same swap with the `TomListLifecycleListener` callbacks
 - Iterable methods: `map()`, `where()`, `fold()`, `expand()`, etc.
 
 **Structural Replacement:**
@@ -328,8 +346,9 @@ An observable map implementation that automatically observes all contained value
 - `TomMap.of(TomMap<K, V>)` — creates copy of existing TomMap
 - `TomMap.ofMap(Map<K, V>)` — creates from standard Map
 
-**Restrictions:**
-- `set()` throws `TomObservableException` — cannot replace entire map, only individual elements
+**Whole-value operations:**
+- `set()` throws `TomObservableException` — replacing the backing map directly would strand the value observers
+- `operator <<` is the supported wholesale swap: it detaches the outgoing values, attaches the incoming ones, and emits **one** notification for the exchange (`scores << {'ada': TomInt(10)}`), returning the map
 
 **Observer Management:**
 - `_attachTo(Iterable<V>)` — adds this map as observer to all values
@@ -338,6 +357,7 @@ An observable map implementation that automatically observes all contained value
 **All Standard Map Operations:**
 - `operator []`, `operator []=`
 - `operator +` — merges two TomMaps
+- `operator <<` — **replaces all entries** with the given map and returns the map
 - `add()`, `addAll()`, `addEntries()`
 - `remove()`, `removeWhere()`, `clear()`
 - `update()`, `updateAll()`, `putIfAbsent()`

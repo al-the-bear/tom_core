@@ -3203,6 +3203,217 @@ void main() {
       expectEpoch('round-tripped endDate', read.endDate.get()!);
     });
   });
+
+  group('operator <<', () {
+    // `<<` is the "set and hand the object back" operator, so the property
+    // that makes it worth having — over `|`, which hands back the value — is
+    // that the result is *the same instance*, not an equal one. Every
+    // assertion below on the return value therefore uses `same`, not `equals`:
+    // an implementation that returned a copy would satisfy `equals` while
+    // breaking every chained call.
+
+    group('on a scalar TomObject', () {
+      test('sets the value and returns the same instance', () {
+        final name = TomString("John");
+
+        final returned = name << "Jane";
+
+        expect(~name, equals("Jane"));
+        expect(returned, same(name));
+      });
+
+      test('chains, applying each write in order', () {
+        final count = TomInt(0);
+
+        count << 1 << 2 << 3;
+
+        expect(~count, equals(3));
+      });
+
+      test('notifies once per changed write', () {
+        final count = TomInt(0);
+        int notifications = 0;
+        final observer = count >> (obs) => notifications++;
+
+        count << 1 << 2 << 3;
+
+        expect(notifications, equals(3));
+        count.removeObserver(observer);
+      });
+
+      test('stays silent when the value does not change, like set()', () {
+        // `<<` delegates to `set`, so it inherits the notify-only-on-change
+        // rule rather than firing per call.
+        final name = TomString("same");
+        int notifications = 0;
+        final observer = name >> (obs) => notifications++;
+
+        name << "same" << "same";
+
+        expect(notifications, isZero);
+        name.removeObserver(observer);
+      });
+
+      test('is available on a nullable cell, including a write back to null',
+          () {
+        final nickname = TomNString(null);
+
+        expect(nickname << "Johnny", same(nickname));
+        expect(~nickname, equals("Johnny"));
+
+        nickname << null;
+        expect(nickname.isNull, isTrue);
+      });
+    });
+
+    group('on a TomList', () {
+      // TomList overrides `<<` to mean wholesale replacement. This matters:
+      // `set` throws on a list, so `<<` is the operator form of "swap all the
+      // contents", and it is the only one.
+      test('replaces the whole list and returns the same instance', () {
+        final rows = TomList<TomString>();
+        rows.append(TomString('a')).append(TomString('b'));
+
+        final returned = rows << [TomString('x'), TomString('y')];
+
+        expect(returned, same(rows));
+        expect(rows.map((e) => ~e), equals(['x', 'y']));
+      });
+
+      test('replaces in one notification, not one per element', () {
+        final rows = TomList<TomString>();
+        rows.append(TomString('a')).append(TomString('b'));
+        int notifications = 0;
+        final observer = rows >> (obs) => notifications++;
+
+        rows << [TomString('x'), TomString('y'), TomString('z')];
+
+        expect(notifications, equals(1));
+        rows.removeObserver(observer);
+      });
+
+      test('detaches the outgoing elements, so they no longer notify the list',
+          () {
+        final outgoing = TomString('a');
+        final rows = TomList<TomString>()..append(outgoing);
+
+        rows << [TomString('x')];
+
+        int notifications = 0;
+        final observer = rows >> (obs) => notifications++;
+        outgoing | 'changed';
+
+        expect(notifications, isZero,
+            reason: 'an element that has left the list must not keep '
+                'notifying it');
+        rows.removeObserver(observer);
+      });
+
+      test('attaches the incoming elements, so they do notify the list', () {
+        final incoming = TomString('x');
+        final rows = TomList<TomString>()..append(TomString('a'));
+
+        rows << [incoming];
+
+        int notifications = 0;
+        final observer = rows >> (obs) => notifications++;
+        incoming | 'changed';
+
+        expect(notifications, equals(1));
+        rows.removeObserver(observer);
+      });
+
+      test('stays silent when the identical sequence is written back', () {
+        // The change test is by identity, not equality — see
+        // `_notifyIfChangedSince`.
+        final a = TomString('a');
+        final b = TomString('b');
+        final rows = TomList<TomString>()..append(a)..append(b);
+        int notifications = 0;
+        final observer = rows >> (obs) => notifications++;
+
+        rows << [a, b];
+
+        expect(notifications, isZero);
+        rows.removeObserver(observer);
+      });
+
+      test('notifies for an equal-but-distinct sequence', () {
+        // Observers hold element references, so swapping in an equal element
+        // is a real change even though `==` cannot see it.
+        final rows = TomList<TomString>()..append(TomString('a'));
+        int notifications = 0;
+        final observer = rows >> (obs) => notifications++;
+
+        rows << [TomString('a')];
+
+        expect(notifications, equals(1));
+        rows.removeObserver(observer);
+      });
+    });
+
+    group('on a TomMap', () {
+      test('replaces the whole map and returns the same instance', () {
+        final scores = TomMap<String, TomInt>();
+        scores['a'] = TomInt(1);
+
+        final returned = scores << {'x': TomInt(9)};
+
+        expect(returned, same(scores));
+        expect(scores.keys, equals(['x']));
+        expect(~scores['x']!, equals(9));
+      });
+
+      test('replaces in one notification', () {
+        final scores = TomMap<String, TomInt>();
+        scores['a'] = TomInt(1);
+        int notifications = 0;
+        final observer = scores >> (obs) => notifications++;
+
+        scores << {'x': TomInt(9), 'y': TomInt(8)};
+
+        expect(notifications, equals(1));
+        scores.removeObserver(observer);
+      });
+
+      test('attaches the incoming values, so they notify the map', () {
+        final incoming = TomInt(9);
+        final scores = TomMap<String, TomInt>();
+
+        scores << {'x': incoming};
+
+        int notifications = 0;
+        final observer = scores >> (obs) => notifications++;
+        incoming | 10;
+
+        expect(notifications, equals(1));
+        scores.removeObserver(observer);
+      });
+    });
+
+    group('on a TomClass', () {
+      test('throws, because a class has no single value to replace', () {
+        // The asymmetry with TomList/TomMap is deliberate: their contents are
+        // replaceable, a class's set of members is not. Use `setValues` to
+        // write many members at once.
+        final person = TestPerson();
+
+        expect(
+          () => person << {'name': 'Jane'},
+          throwsA(isA<TomObservableException>()),
+        );
+      });
+
+      test('leaves the members untouched when it throws', () {
+        final person = TestPerson();
+        person.name | 'John';
+
+        expect(() => person << {'name': 'Jane'},
+            throwsA(isA<TomObservableException>()));
+        expect(~person.name, equals('John'));
+      });
+    });
+  });
 }
 
 // ============================================================================

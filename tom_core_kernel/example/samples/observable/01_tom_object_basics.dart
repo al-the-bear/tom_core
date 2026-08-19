@@ -4,6 +4,7 @@
 /// This example demonstrates the fundamental features of TomObject:
 /// - Creating observable wrappers for primitive values
 /// - Getting and setting values using operators
+/// - Chaining writes with the &lt;&lt; operator
 /// - Observer notifications
 /// - Nullable wrappers
 library;
@@ -102,10 +103,46 @@ class TomObjectBasicsExample {
   }
 
   // -------------------------------------------------------------------------
-  // Example 5: Using get() and set() methods
+  // Example 5: Chaining writes with the << operator
   // -------------------------------------------------------------------------
-  static void example5GetSetMethods() {
-    print('\n5. Using get() and set() methods:');
+  static void example5ChainWithShiftOperator() {
+    print('\n5. Chaining writes with the << operator:');
+
+    // `<<` writes exactly like `|` — both go through set(), so both notify
+    // only when the value actually changes. They differ solely in what they
+    // hand back: `|` yields the value, `<<` yields the observable itself, and
+    // that is what lets writes chain.
+    final count = TomInt(0);
+    count << 1 << 2 << 3;
+    print('   count after "count << 1 << 2 << 3": ${~count}');
+
+    // Because the receiver comes back, the result is usable directly.
+    final returned = name << 'Alice';
+    print('   name: ${~name}');
+    print('   returned is the same object: ${identical(returned, name)}');
+
+    // A chain's static type is TomObject<T>, not the subtype it started from,
+    // so chain for the writes rather than to keep hold of a TomString.
+
+    age << 41;
+    balance << 99.5;
+    isActive << true;
+    print('   age: ${~age}, balance: ${~balance}, isActive: ${~isActive}');
+
+    // Assertions
+    assert(~count == 3, 'Chained writes should leave the last value, 3');
+    assert(identical(returned, name), '<< should return the observable itself');
+    assert(~name == 'Alice', "name should be 'Alice' after <<");
+    assert(~age == 41, '<< should set TomInt like |');
+    assert(~balance == 99.5, '<< should set TomDouble like |');
+    assert(~isActive == true, '<< should set TomBool like |');
+  }
+
+  // -------------------------------------------------------------------------
+  // Example 6: Using get() and set() methods
+  // -------------------------------------------------------------------------
+  static void example6GetSetMethods() {
+    print('\n6. Using get() and set() methods:');
 
     name.set('Bob');
     print('   name.get(): ${name.get()}');
@@ -115,10 +152,10 @@ class TomObjectBasicsExample {
   }
 
   // -------------------------------------------------------------------------
-  // Example 6: Nullable wrappers
+  // Example 7: Nullable wrappers
   // -------------------------------------------------------------------------
-  static void example6NullableWrappers() {
-    print('\n6. Nullable wrappers:');
+  static void example7NullableWrappers() {
+    print('\n7. Nullable wrappers:');
 
     nickname = TomNString(null);
     score = TomNInt(null);
@@ -139,10 +176,10 @@ class TomObjectBasicsExample {
   }
 
   // -------------------------------------------------------------------------
-  // Example 7: Observer on single value
+  // Example 8: Observer on single value
   // -------------------------------------------------------------------------
-  static void example7SingleValueObserver() {
-    print('\n7. Observer on single value:');
+  static void example8SingleValueObserver() {
+    print('\n8. Observer on single value:');
 
     final counter = TomInt(0);
     int notifyCount = 0;
@@ -179,9 +216,10 @@ class TomObjectBasicsExample {
     example2GetWithTildeOperator();
     example3GetWithCallOperator();
     example4SetWithPipeOperator();
-    example5GetSetMethods();
-    example6NullableWrappers();
-    example7SingleValueObserver();
+    example5ChainWithShiftOperator();
+    example6GetSetMethods();
+    example7NullableWrappers();
+    example8SingleValueObserver();
 
     print('\n=== TomObject Basics Example Complete ===\n');
   }

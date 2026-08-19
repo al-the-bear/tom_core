@@ -51,8 +51,15 @@ final TomObject<String> tomNull = TomObject<String>("tomNull");
 ///
 /// - `~obj` - Get the value (prefix operator)
 /// - `obj()` - Get the value (call operator)
-/// - `obj | newValue` - Set the value and notify observers
+/// - `obj | newValue` - Set the value and notify observers, returning the value
+/// - `obj << newValue` - Set the value and notify observers, returning `obj`
+///   itself so that writes chain
 /// - `obj >> callback` - Add an observer callback function
+///
+/// `|` and `<<` write identically and differ only in what they hand back: use
+/// `|` when the value is what you need next, `<<` when you want to keep
+/// working on the observable. The composites override `<<` — see [TomList],
+/// [TomMap] and [TomClass].
 ///
 /// ## Example
 ///
@@ -131,6 +138,27 @@ class TomObject<T> extends TomObservable {
   }
 
   /// Left shift operator to set the value: `myObject << newValue`
+  ///
+  /// Identical to [set] — and therefore to `|` — except in what it returns:
+  /// this hands back the observable itself rather than the value, so writes
+  /// chain.
+  ///
+  /// ```dart
+  /// final count = TomInt(0);
+  /// count << 1 << 2 << 3;   // three writes, three notifications
+  /// print(~count);          // 3
+  /// ```
+  ///
+  /// Because it delegates to [set], it inherits the notify-only-on-change
+  /// rule: writing the value the cell already holds is silent.
+  ///
+  /// The chain's static type is `TomObject<T>`, not the subtype it started
+  /// from — `TomString("a") << "b"` is a `TomObject<String>`. Chain for the
+  /// writes, not to keep hold of a `TomString`.
+  ///
+  /// The composites override this to mean *wholesale replacement*, which is
+  /// not what [set] does on them: see [TomList.operator <<] and
+  /// [TomMap.operator <<]. [TomClass.operator <<] throws.
   TomObject<T> operator <<(T value) {
     set(value);
     return this;
@@ -716,6 +744,14 @@ class TomDateTimeRange extends TomClass {
 /// - **Batch updates**: [setValues] for updating multiple fields at once
 /// - **Muting**: Temporarily suppress notifications during bulk updates
 ///
+/// ## Operators
+///
+/// A class is addressed through its members, so the whole-value operators do
+/// not apply to it: [get], [set] and `<<` all throw. Write members
+/// individually (`person.name | "John"`) or many at once with [setValues].
+/// `>>` works as it does on any observable, and fires for a change to any
+/// member.
+///
 /// ## Example
 ///
 /// ```dart
@@ -774,6 +810,16 @@ class TomClass extends TomObject<Map<String, TomObject>>
     );
   }
 
+  /// Throws [TomObservableException] — a class has no single value to replace.
+  ///
+  /// This is the one place where `<<` is *not* available, and the asymmetry
+  /// with [TomList.operator <<] and [TomMap.operator <<] is deliberate: their
+  /// contents are replaceable, whereas a class's set of members is fixed by its
+  /// declaration. Replacing it wholesale is not a write, it is a different
+  /// object.
+  ///
+  /// To write many members at once, use [setValues] (or [setOrMergeValues]),
+  /// which addresses the members by name and leaves the shape alone.
   @override
   TomClass operator <<(Map<String, dynamic> value) {
     throw TomObservableException(
@@ -1211,6 +1257,9 @@ abstract class TomListLifecycleListener {
 /// - `list[index]` - Get element at index
 /// - `list[index] = value` - Set element at index
 /// - `list + other` - Concatenate two TomLists
+/// - `list << [a, b]` - Replace **all** elements in one notification, returning
+///   the list (see [TomList.operator <<]). Note that `<<` swaps the contents
+///   wholesale; to add a single element, use `append`
 ///
 /// ## Notification contract
 ///
@@ -1358,7 +1407,25 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   @override
   Iterable<TomObservable> get muteCascadeTargets => _value;
 
-  /// Override parent's << operator for setting the entire list value.
+  /// Replaces every element with [value] and returns this list.
+  ///
+  /// This is the operator form of a wholesale swap, and on a list it is not
+  /// what [set] does — [set] throws, because replacing the backing list behind
+  /// the element observers would silently strand them. `<<` performs the swap
+  /// *properly*: it detaches the outgoing elements, attaches the incoming ones,
+  /// and emits **one** notification for the whole exchange rather than one per
+  /// element.
+  ///
+  /// ```dart
+  /// final rows = TomList<TomString>();
+  /// rows << [TomString('x'), TomString('y')];   // one notification
+  /// ```
+  ///
+  /// Silent if the new sequence is element-for-element **identical** to the
+  /// old one. The comparison is by identity, not equality, because observers
+  /// hold element references: swapping in an equal-but-distinct element is a
+  /// real change. See [resetWith] for the same swap with lifecycle callbacks,
+  /// which for that reason notifies unconditionally.
   @override
   TomList<E> operator <<(List<E> value) {
     final before = _snapshot();
@@ -1777,6 +1844,8 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
 /// - `map[key]` - Get value for key
 /// - `map[key] = value` - Set value for key
 /// - `map + other` - Merge two TomMaps
+/// - `map << {...}` - Replace **all** entries in one notification, returning
+///   the map (see [TomMap.operator <<])
 ///
 /// ## Notification contract
 ///
@@ -1911,7 +1980,17 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
     return TomMap.ofMap(map);
   }
 
-  /// Replaces the entire map with [newMap], updating observers.
+  /// Replaces every entry with [newMap] and returns this map.
+  ///
+  /// The map counterpart of [TomList.operator <<], with the same contract:
+  /// [set] throws on a map, so this is the operator form of a wholesale swap.
+  /// It detaches the outgoing values, attaches the incoming ones, and emits
+  /// **one** notification for the exchange rather than one per entry.
+  ///
+  /// ```dart
+  /// final scores = TomMap<String, TomInt>();
+  /// scores << {'ada': TomInt(10), 'bob': TomInt(8)};   // one notification
+  /// ```
   @override
   TomMap<K, V> operator <<(Map<K, V> newMap) {
     final before = _snapshot();

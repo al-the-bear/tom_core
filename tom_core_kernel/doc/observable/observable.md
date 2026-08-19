@@ -408,9 +408,26 @@ The observable system uses custom operators for a clean, expressive API:
 | `<<` | `observable << value` | `TomObject<T>` | Set the value and notify observers; yields the observable, so calls chain |
 | `>>` | `observable >> callback` | `TomFunctionObserver<TomObservable>` | Wrap the callback in an observer, register it, and return it. **Keep the returned observer** — it is held weakly (see [Memory Management](#memory-management--you-must-retain-the-observer)) |
 
-`|` and `<<` differ only in what they hand back. Use `|` when the value is what
-you want next (`final next = counter | 5;`), `<<` when you want to keep working
-on the observable (`counter << 5 << 6;`).
+On a value cell, `|` and `<<` differ only in what they hand back. Use `|` when
+the value is what you want next (`final next = counter | 5;`), `<<` when you
+want to keep working on the observable (`counter << 5 << 6;`). Both go through
+`set()`, so both are silent when the value does not change. A chain's static
+type is `TomObject<T>`, not the subtype it started from — chain for the writes,
+not to keep hold of a `TomString`.
+
+**The composites override `<<`, and it does not mean the same thing on them.**
+`set()` throws on a list and on a map, so there `<<` is the *only* operator-form
+whole-value write, and it means wholesale replacement:
+
+| Receiver | `receiver << value` |
+|----------|---------------------|
+| `TomObject<T>` | Sets the value, returns the observable |
+| [`TomList<E>`](#tomlist-observable-lists) | Replaces **all** elements — detaches the outgoing ones, attaches the incoming ones, **one** notification for the exchange. Silent when the new sequence is element-for-element identical (compared by identity, since observers hold element references) |
+| [`TomMap<K, V>`](#tommap-observable-maps) | Replaces **all** entries, same contract |
+| [`TomClass`](#tomclass-observable-objects) | **Throws** `TomObservableException` — a class has no single value to replace. Use `setValues` to write many members at once |
+
+The `TomClass` asymmetry is deliberate: a list's and a map's contents are
+replaceable, whereas a class's set of members is fixed by its declaration.
 
 `>>` is declared on `TomObservable`, so it is available on every observable —
 not only on the `TomObject<T>` value cells.
@@ -1192,6 +1209,14 @@ This is the path `TomClass` uses internally when a parent form writes a bind-tim
 snapshot back via `setValues()` — the list member's contents are swapped
 wholesale rather than diffed.
 
+`rows << [...]` performs the same exchange in operator form, and differs in two
+ways. `resetWith` fires the [lifecycle listeners](#lifecycle-listeners) and `<<`
+does not; and `resetWith` notifies *unconditionally* — even when the new
+contents are the old ones — because the listeners have already torn down and
+rebuilt whatever they hold per element, whereas `<<` is silent when the new
+sequence is element-for-element identical. Reach for `<<` when nothing is tied
+to element identity, and for `resetWith` when something is.
+
 ### Lifecycle Listeners
 
 `TomListLifecycleListener` lets observers tear down and recreate state that is
@@ -1324,9 +1349,12 @@ print(mapNotifications);  // 2
 users.removeObserver(observer);
 ```
 
-### Restriction: Cannot Replace Entire Map
+### Replacing the Entire Map: `<<`, not `set()`
 
-Unlike regular maps, you cannot replace the entire contents at once using `set()`:
+`set()` throws on a map. Replacing the backing map behind the value observers
+would silently strand them, so the plain whole-value write is refused and `<<`
+is provided instead — it performs the same exchange *properly*, detaching the
+outgoing values and attaching the incoming ones:
 
 ```dart
 final map = TomMap<String, TomInt>();
@@ -1334,14 +1362,17 @@ final map = TomMap<String, TomInt>();
 // This throws TomObservableException
 // map.set({'a': TomInt(1)});  // ✗ Not allowed
 
-// Instead, clear and add new entries
-map.clear();
-map.addAll({'a': TomInt(1)});  // ✓ OK
-
-// Or replace in one shot with <<, which is a single notification rather
-// than the two the clear/addAll pair produces.
+// Replace in one shot with <<, which is a single notification …
 map << {'a': TomInt(1)};       // ✓ OK
+
+// … rather than the two the clear/addAll pair produces.
+map.clear();
+map.addAll({'a': TomInt(1)});  // ✓ OK, but notifies twice
 ```
+
+`TomList` works the same way — see
+[Atomic Replacement with resetWith](#atomic-replacement-with-resetwith) for the
+variant that also fires the lifecycle callbacks.
 
 ## TomObservableEnum (Resource-Keyed Enums)
 

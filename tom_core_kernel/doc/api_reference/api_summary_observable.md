@@ -236,8 +236,13 @@ TomObject(T initialValue)
 | Operator | Return Type | Description |
 | -------- | ----------- | ----------- |
 | `operator ~()` | `T` | Prefix get: `~obj`. |
-| `operator |(value)` | `T` | Sets the value and notifies: `obj | value`. |
-| `operator <<(value)` | `TomObject<T>` | Sets the value and returns `this` for chaining: `obj << value`. |
+| `operator |(value)` | `T` | Sets the value and notifies, returning the value: `obj | value`. |
+| `operator <<(value)` | `TomObject<T>` | Sets the value and notifies, returning `this` so writes chain: `obj << 1 << 2`. |
+
+`|` and `<<` both delegate to `set`, so they write identically — including the
+notify-only-on-change rule — and differ only in what they return. A chain's
+static type is `TomObject<T>`, not the subtype it started from. The composites
+override `<<` to mean wholesale replacement; `TomClass` throws.
 
 ### TomString
 
@@ -670,7 +675,12 @@ TomClass()
 
 | Operator | Return Type | Description |
 | -------- | ----------- | ----------- |
-| `operator <<(value)` | `TomClass` | *(override)* Throws `TomObservableException` — set individual fields instead. |
+| `operator <<(value)` | `TomClass` | *(override)* Throws `TomObservableException` — a class has no single value to replace. |
+
+The asymmetry with `TomList` and `TomMap`, whose contents *are* replaceable via
+`<<`, is deliberate: a class's set of members is fixed by its declaration.
+Write members individually (`person.name | "John"`) or many at once with
+`setValues` / `setOrMergeValues`, which address them by name.
 
 ### TomListLifecycleListener
 
@@ -799,8 +809,14 @@ TomList.ofList(List<E> list)
 | `operator [](index)` | `E` | Element at `index`. |
 | `operator []=(index, value)` | `void` | Sets and re-observes the element at `index`. |
 | `operator +(other)` | `TomList<E>` | Concatenates two lists. |
-| `operator <<(value)` | `TomList<E>` | *(override)* Replaces the whole list, re-observing, and notifies. |
+| `operator <<(value)` | `TomList<E>` | *(override)* Replaces **all** elements, returning the list. Detaches the outgoing elements, attaches the incoming ones, and notifies **once** for the whole exchange. |
 | `operator ==(other)` | `bool` | *(override)* Equal when backing lists are equal. |
+
+`set` throws on a list, so `<<` is the only operator-form wholesale swap. It is
+silent when the new sequence is element-for-element **identical** to the old
+one — the comparison is by identity, not equality, because observers hold
+element references, so an equal-but-distinct element is a real change. See
+`resetWith` for the same swap with lifecycle callbacks.
 
 ### TomMap
 
@@ -873,8 +889,11 @@ TomMap.ofMap(Map<K, V> map)
 | `operator [](key)` | `V?` | Value for `key`, or `null`. |
 | `operator []=(key, value)` | `void` | Sets and observes the value for `key`. |
 | `operator +(other)` | `TomMap<K, V>` | Merges two maps into a new one. |
-| `operator <<(newMap)` | `TomMap<K, V>` | *(override)* Replaces the whole map, re-observing, and notifies. |
+| `operator <<(newMap)` | `TomMap<K, V>` | *(override)* Replaces **all** entries, returning the map. Detaches the outgoing values, attaches the incoming ones, and notifies **once** for the whole exchange. |
 | `operator ==(other)` | `bool` | *(override)* Equal when backing maps are equal. |
+
+As on `TomList`, `set` throws on a map, so `<<` is the operator form of a
+wholesale swap and the only one.
 
 ### TomObservableEnum
 

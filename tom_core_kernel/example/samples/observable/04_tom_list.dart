@@ -8,6 +8,7 @@
 /// - List operations (add, remove, access by index)
 /// - Notifications on list and element changes
 /// - Concatenating lists with + operator
+/// - Replacing the whole list with the &lt;&lt; operator
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -61,9 +62,12 @@ class TomListExample {
   }
 
   // -------------------------------------------------------------------------
-  // Example 2: Using << operator to add elements
+  // Example 2: Using append() to add elements
+  //
+  // append() is how single elements are added. `<<` does NOT add — on a list
+  // it replaces the whole contents; see example 9.
   // -------------------------------------------------------------------------
-  static void example2AddOperator() {
+  static void example2AppendChaining() {
     print('\n2. Using append() to add elements:');
 
     names = TomList<TomString>();
@@ -253,19 +257,57 @@ class TomListExample {
   }
 
   // -------------------------------------------------------------------------
+  // Example 9: Replacing the whole list with the << operator
+  // -------------------------------------------------------------------------
+  static void example9ReplaceAllWithShiftOperator() {
+    print('\n9. Replacing the whole list with <<:');
+
+    final rows = TomList<TomString>();
+    rows.append(TomString('a')).append(TomString('b'));
+
+    int notifications = 0;
+
+    // Retain the returned observer — see example 3 for why.
+    final rowsObserver = rows >> (obs) => notifications++;
+
+    // `set()` throws on a list: replacing the backing list behind the element
+    // observers would strand them. `<<` performs the swap properly — it
+    // detaches the outgoing elements, attaches the incoming ones, and emits a
+    // single notification for the whole exchange rather than one per element.
+    final returned = rows << [TomString('x'), TomString('y')];
+
+    print('   rows: [${rows.map((e) => ~e).join(', ')}]');
+    print('   notifications for the swap: $notifications');
+    print('   returned is the same list: ${identical(returned, rows)}');
+
+    // The outgoing elements are no longer observed, the incoming ones are.
+    rows[0] | 'z';
+    print('   notifications after changing a new element: $notifications');
+
+    // Assertions
+    assert(rows.length == 2, 'List should still have 2 elements');
+    assert(identical(returned, rows), '<< should return the list itself');
+    assert(notifications == 2, 'One notification for the swap, one for the edit');
+    assert(~rows[0] == 'z', 'The incoming element should be observed and set');
+
+    rows.removeObserver(rowsObserver);
+  }
+
+  // -------------------------------------------------------------------------
   // Run all examples
   // -------------------------------------------------------------------------
   static void run() {
     print('=== 04: TomList Example ===\n');
 
     example1CreatingLists();
-    example2AddOperator();
+    example2AppendChaining();
     example3ObservingChanges();
     example4ListOperations();
     example5ModifyByIndex();
     example6RemovingElements();
     example7Concatenating();
     example8TomClassElements();
+    example9ReplaceAllWithShiftOperator();
 
     print('\n=== TomList Example Complete ===\n');
   }
