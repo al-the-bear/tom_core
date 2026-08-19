@@ -182,6 +182,17 @@ One stored preference as it travels the wire.
 twice — once as the DTO's own field and again as the preference's payload — and
 the two nestings do not compose.
 
+`updatedAt` is UTC because the constructor converts it, not because writers
+remember to. A `DateTime` cannot carry its zone in its type, so a server
+writing `DateTime.now()` rather than `DateTime.now().toUtc()` would pass every
+check and still be wrong — and wrong in a way that does not survive the wire,
+since reflection writes a `DateTime` with `toIso8601String()` (no zone marker
+for a local one) and reads it back with `DateTime.parse` (which resolves a
+zoneless string against the *reading* device). Normalising at construction is
+what keeps the stored instant the same instant everywhere. Assigning the field
+directly afterwards is not intercepted: a reflected DTO's fields are plain and
+public, so there is no setter to hook.
+
 ### TomUserPreferenceWriteRequest
 
 The same three fields minus the timestamp. *When* a preference was written is

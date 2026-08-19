@@ -1886,7 +1886,74 @@ void main() {
       expect(dto.key, 'tom.timezone');
       expect(dto.valueType, 'String');
       expect(dto.value, '"Europe/Berlin"');
+      // Given a UTC input this says nothing about the zone — the normalising
+      // is asserted below, on a local one. It is here to show the timestamp
+      // arrives intact alongside the other three fields.
+      expect(dto.updatedAt, DateTime.utc(2026, 3, 4, 5, 6, 7));
+    });
+
+    test('a local timestamp is stored as the UTC instant it names', () {
+      // The field is documented as UTC, and a `DateTime` cannot carry that
+      // promise by type — a server writing `DateTime.now()` instead of
+      // `DateTime.now().toUtc()` satisfies every check. The normalisation is
+      // therefore the DTO's job, not the writer's, and it happens for every
+      // route into the field: the constructor here, the setter below, and the
+      // reflection path that rebuilds a DTO off the wire.
+      final local = DateTime(2026, 3, 4, 5, 6, 7);
+      final dto = TomUserPreferenceDto(updatedAt: local);
+
       expect(dto.updatedAt!.isUtc, isTrue);
+      expect(dto.updatedAt, local.toUtc());
+      // Normalised, not reinterpreted: the moment is the same one.
+      expect(
+        dto.updatedAt!.millisecondsSinceEpoch,
+        local.millisecondsSinceEpoch,
+      );
+    });
+
+    test('a directly assigned timestamp is not intercepted', () {
+      // The seam, stated so that nobody reads the constructor above and
+      // concludes the field self-normalises. A wire DTO's fields are plain
+      // and public (G-DTO) — reflection fills them by setter — so there is no
+      // accessor to hook, and giving this one a private backing field would
+      // change the shape every generated mirror of this class was built
+      // against. The constructor is therefore the whole of the guarantee, and
+      // it is enough because every DTO the framework produces comes from it.
+      final dto = TomUserPreferenceDto()
+        ..updatedAt = DateTime(2026, 3, 4, 5, 6, 7);
+
+      expect(dto.updatedAt!.isUtc, isFalse);
+    });
+
+    test('a timestamp survives the wire as the instant it was', () {
+      // The reason the promise has to be kept rather than documented away.
+      // Reflection writes a `DateTime` with `toIso8601String()`, which emits
+      // no zone marker for a local one, and reads it back with
+      // `DateTime.parse`, which then reads a zoneless string as the *reading*
+      // device's local time. So a local timestamp would not merely arrive
+      // unconverted — its offset would be destroyed in transit and the
+      // instant would silently shift by the difference between the two
+      // machines, with nothing left for a receiving caller to convert from.
+      // The constructor is what stops that: by the time anything is
+      // serialized the field is UTC, so the text carries a zone marker.
+      final dto = TomUserPreferenceDto(
+        key: 'ui.theme',
+        valueType: TomUserPreferenceCodec.stringType,
+        value: storedText('dark'),
+        updatedAt: DateTime(2026, 3, 4, 5, 6, 7),
+      );
+
+      final json = tomReflectionInfo.convertToJsonString(dto);
+      final restored = tomReflectionInfo.createInstanceFromJson(
+        tomReflector.reflectType(TomUserPreferenceDto) as ClassMirror,
+        jsonDecode(json) as Map<String, dynamic>,
+      ) as TomUserPreferenceDto;
+
+      expect(restored.updatedAt!.isUtc, isTrue);
+      expect(
+        restored.updatedAt!.millisecondsSinceEpoch,
+        dto.updatedAt!.millisecondsSinceEpoch,
+      );
     });
 
     test('every field defaults, because reflection fills a blank one', () {

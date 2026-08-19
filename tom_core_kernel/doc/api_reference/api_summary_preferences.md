@@ -145,7 +145,8 @@ TomUserPreferenceDto({
 ```
 
 Every field defaults, because the reflection path instantiates a blank instance
-and fills it field by field.
+and fills it field by field. `updatedAt` is converted with `toUtc()` on the way
+in, so the UTC guarantee below is enforced rather than assumed.
 
 #### Properties
 
@@ -154,7 +155,7 @@ and fills it field by field.
 | `key` | `String` | The preference key. |
 | `valueType` | `String` | The name of the type `value` was written as — a scalar's Dart type name or the simple name of a `@tomReflector` class. |
 | `value` | `String` | The value's JSON text; text rather than a decoded `Object?` so the DTO stays flat. |
-| `updatedAt` | `DateTime?` | When the preference was last written, in UTC; `null` for one that has never been stored. |
+| `updatedAt` | `DateTime?` | When the preference was last written, in UTC; `null` for one that has never been stored. The constructor normalises a local input, so a writer that passes `DateTime.now()` still stores the instant unambiguously. Assigning the field directly afterwards is not intercepted — the field is plain and public, as a reflected DTO's must be. |
 
 #### Methods
 

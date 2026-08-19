@@ -56,6 +56,28 @@ class TomUserPreferenceDto {
 
   /// When the preference was last written, in UTC, or `null` for one that has
   /// never been stored.
+  ///
+  /// UTC because the constructor converts it, not because callers remember to:
+  /// a `DateTime` cannot carry the zone in its type, so a server writing
+  /// `DateTime.now()` instead of `DateTime.now().toUtc()` would satisfy every
+  /// check and still hand a client an instant whose meaning depends on which
+  /// machine wrote it. That is the same rule the *value* path already applies
+  /// to a stored `DateTime` — see [TomUserPreferenceCodec.dateTimeType] — and
+  /// it applies here for the same reason: a preference follows the user across
+  /// devices.
+  ///
+  /// The conversion preserves the instant; it only settles how the instant is
+  /// named. Doing it here is what makes the wire safe, because reflection
+  /// writes a `DateTime` with `toIso8601String()` — which emits a zone marker
+  /// for a UTC instant and *none* for a local one — and reads it back with
+  /// `DateTime.parse`, which resolves a zoneless string against the reading
+  /// device. A local timestamp would therefore not merely arrive
+  /// unconverted: it would arrive as a different instant, with nothing left
+  /// to convert from. Normalising before it is ever serialized removes that.
+  ///
+  /// Assigning the field directly afterwards is not intercepted — a wire
+  /// DTO's fields are plain and public (G-DTO), so there is no setter to hook.
+  /// Every DTO the framework itself produces goes through this constructor.
   DateTime? updatedAt;
 
   /// Creates a preference DTO. Every field defaults, because the reflection
@@ -64,8 +86,8 @@ class TomUserPreferenceDto {
     this.key = '',
     this.valueType = '',
     this.value = '',
-    this.updatedAt,
-  });
+    DateTime? updatedAt,
+  }) : updatedAt = updatedAt?.toUtc();
 
   @override
   String toString() => 'TomUserPreferenceDto($key: $valueType)';
