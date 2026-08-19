@@ -115,7 +115,11 @@ class TomClassIntegrationExample {
     print('\n2. Observing changes:');
 
     personNotifyCount = 0;
-    person >> (obs) {
+    // Retain the returned observer. TomObservable holds its observers by
+    // WeakReference, so the wrapper `>>` hands back is the only strong
+    // reference keeping the callback alive; discard it and notifications stop
+    // at the next garbage collection, silently and nondeterministically.
+    final personObserver = person >> (obs) {
       personNotifyCount++;
       print('   [Observer] Person changed! (notification #$personNotifyCount)');
     };
@@ -131,6 +135,8 @@ class TomClassIntegrationExample {
     // Assertions
     assert(~person.name == 'John Smith', 'Name should be updated');
     assert(personNotifyCount >= 1, 'Should have at least 1 notification');
+
+    person.removeObserver(personObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -186,7 +192,7 @@ class TomClassIntegrationExample {
     print('\n5. Observing nested changes:');
 
     customerNotifyCount = 0;
-    customer >> (obs) {
+    final customerObserver = customer >> (obs) {
       customerNotifyCount++;
       print('   [Observer] Customer changed! (#$customerNotifyCount)');
     };
@@ -199,6 +205,8 @@ class TomClassIntegrationExample {
     // Assertions
     assert(~customer.address.city == 'Los Angeles', 'City should be updated');
     assert(customerNotifyCount >= 1, 'Should have notifications for nested changes');
+
+    customer.removeObserver(customerObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -251,7 +259,7 @@ class TomClassIntegrationExample {
     print('\n7. Mute/unmute during batch updates:');
 
     orderNotifyCount = 0;
-    order >> (obs) {
+    final orderObserver = order >> (obs) {
       orderNotifyCount++;
     };
 
@@ -275,6 +283,8 @@ class TomClassIntegrationExample {
     // Assertions
     assert(~order.status == 'shipped', 'Status should be updated');
     assert(withoutMuteNotifications >= 1, 'Should have notifications without mute');
+
+    order.removeObserver(orderObserver);
   }
 
   // -------------------------------------------------------------------------

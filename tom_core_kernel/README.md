@@ -171,8 +171,13 @@ Run the whole set:
 
 ```bash
 dart run build_runner build      # generate reflection (once / on signature change)
-dart run example/run_all_samples.dart
+dart run --enable-asserts example/run_all_samples.dart
 ```
+
+`--enable-asserts` is not optional. The samples check themselves with `assert`,
+and Dart compiles asserts away unless the flag is passed — without it the
+examples still print their output and still exit 0, but nothing they claim is
+actually verified.
 
 > **Cross-package sample.** Beyond these per-module examples, the shared
 > [`tom_core_samples/todo_domain`](../tom_core_samples/todo_domain/readme.md)

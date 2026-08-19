@@ -109,21 +109,27 @@ class TimezoneTypesExample {
     print('\n4. Observing timezone-aware observable changes:');
 
     final appointment = TomOZonedDateTime(
-      TomZonedDateTime.fromDateTime(DateTime(2024, 1, 10, 9, 0)),
+      TomZonedDateTime.fromDateTime(DateTime.utc(2024, 1, 10, 9, 0)),
     );
     int notifyCount = 0;
 
-    appointment >> (obs) {
+    // Retain the returned observer. TomObservable holds its observers by
+    // WeakReference, so the wrapper `>>` hands back is the only strong
+    // reference keeping the callback alive; discard it and notifications stop
+    // at the next garbage collection, silently and nondeterministically.
+    final appointmentObserver = appointment >> (obs) {
       notifyCount++;
       print('   Appointment changed! (notification #$notifyCount)');
     };
 
     // Change the value
-    appointment | TomZonedDateTime.fromDateTime(DateTime(2024, 1, 11, 10, 0));
+    appointment | TomZonedDateTime.fromDateTime(DateTime.utc(2024, 1, 11, 10, 0));
     print('   New appointment: ${~appointment}');
 
     // Assertions
     assert(notifyCount == 1, 'Should notify on change');
+
+    appointment.removeObserver(appointmentObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -141,9 +147,9 @@ class TimezoneTypesExample {
     print('   optionalDateTime.isNull: ${optionalDateTime.isNull}');
 
     // Set values
-    optionalDate | TomZonedDate.fromDateTime(DateTime(2024, 6, 1));
-    optionalTime | TomZonedTime.fromDateTime(DateTime(2024, 1, 1, 12, 30));
-    optionalDateTime | TomZonedDateTime.fromDateTime(DateTime(2024, 3, 15, 14, 0));
+    optionalDate | TomZonedDate.fromDateTime(DateTime.utc(2024, 6, 1));
+    optionalTime | TomZonedTime.fromDateTime(DateTime.utc(2024, 1, 1, 12, 30));
+    optionalDateTime | TomZonedDateTime.fromDateTime(DateTime.utc(2024, 3, 15, 14, 0));
 
     print('   After setting optionalDate: ${(~optionalDate)?.localYear}-${(~optionalDate)?.localMonth}-${(~optionalDate)?.localDay}');
     print('   After setting optionalTime: ${(~optionalTime)?.localHour}:${(~optionalTime)?.localMinute}');
@@ -164,12 +170,12 @@ class TimezoneTypesExample {
     final vacation = TomDateRange();
     int rangeNotifyCount = 0;
 
-    vacation >> (obs) {
+    final vacationObserver = vacation >> (obs) {
       rangeNotifyCount++;
     };
 
-    vacation.startDate | TomZonedDate.fromDateTime(DateTime(2024, 7, 1));
-    vacation.endDate | TomZonedDate.fromDateTime(DateTime(2024, 7, 14));
+    vacation.startDate | TomZonedDate.fromDateTime(DateTime.utc(2024, 7, 1));
+    vacation.endDate | TomZonedDate.fromDateTime(DateTime.utc(2024, 7, 14));
 
     print('   Vacation start: ${(~vacation.startDate)?.localYear}-${(~vacation.startDate)?.localMonth}-${(~vacation.startDate)?.localDay}');
     print('   Vacation end: ${(~vacation.endDate)?.localYear}-${(~vacation.endDate)?.localMonth}-${(~vacation.endDate)?.localDay}');
@@ -179,6 +185,8 @@ class TimezoneTypesExample {
     assert(rangeNotifyCount >= 1, 'Range should notify on changes');
     assert(~vacation.startDate != null, 'Start date should be set');
     assert(~vacation.endDate != null, 'End date should be set');
+
+    vacation.removeObserver(vacationObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -218,8 +226,13 @@ class TimezoneTypesExample {
 
     final event = TomDateTimeRange();
 
-    event.startDateTime | TomZonedDateTime.fromDateTime(DateTime(2024, 12, 31, 20, 0));
-    event.endDateTime | TomZonedDateTime.fromDateTime(DateTime(2025, 1, 1, 2, 0));
+    // Explicit UTC instants. This range straddles a year boundary, so a
+    // wall-clock local DateTime would be the worst possible choice here:
+    // fromDateTime stores the *absolute instant* and localYear reads it back in
+    // the attached zone (UTC), so on a host east of UTC+2 the end instant falls
+    // back into 2024, and west of UTC-4 the start instant moves up into 2025.
+    event.startDateTime | TomZonedDateTime.fromDateTime(DateTime.utc(2024, 12, 31, 20, 0));
+    event.endDateTime | TomZonedDateTime.fromDateTime(DateTime.utc(2025, 1, 1, 2, 0));
 
     print('   Event start: ${~event.startDateTime}');
     print('   Event end: ${~event.endDateTime}');
@@ -235,7 +248,7 @@ class TimezoneTypesExample {
   static void example9SetByString() {
     print('\n9. setByString for deserialization:');
 
-    final deserializedDate = TomOZonedDate(TomZonedDate.fromDateTime(DateTime(1970)));
+    final deserializedDate = TomOZonedDate(TomZonedDate.fromDateTime(DateTime.utc(1970)));
 
     // Create a serialized string
     final originalDate = TomZonedDate(

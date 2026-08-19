@@ -147,7 +147,11 @@ class TomObjectBasicsExample {
     final counter = TomInt(0);
     int notifyCount = 0;
 
-    counter >> (obs) {
+    // Retain the returned observer. TomObservable holds its observers by
+    // WeakReference, so the wrapper `>>` hands back is the only strong
+    // reference keeping the callback alive; discard it and notifications stop
+    // at the next garbage collection, silently and nondeterministically.
+    final counterObserver = counter >> (obs) {
       notifyCount++;
       print('   [Observer] Counter changed to ${~(obs as TomInt)}');
     };
@@ -161,6 +165,8 @@ class TomObjectBasicsExample {
     // Assertions
     assert(notifyCount == 3, 'Should have 3 notifications');
     assert(~counter == 3, 'Counter should be 3');
+
+    counter.removeObserver(counterObserver);
   }
 
   // -------------------------------------------------------------------------

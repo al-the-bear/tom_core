@@ -106,7 +106,11 @@ class ObserverPatternExample {
     final score = TomDouble(100.0);
     muteTestCount = 0;
 
-    score >> (obs) {
+    // Retain the returned observer. TomObservable holds its observers by
+    // WeakReference, so the wrapper `>>` hands back is the only strong
+    // reference keeping the callback alive; discard it and notifications stop
+    // at the next garbage collection, silently and nondeterministically.
+    final scoreObserver = score >> (obs) {
       muteTestCount++;
       print('   Score observer: muteTestCount = $muteTestCount');
     };
@@ -132,6 +136,8 @@ class ObserverPatternExample {
     // Assertions
     assert(~score == 140.0, 'Value should still change while muted');
     assert(score.isMuted == false, 'Should not be muted after unmute');
+
+    score.removeObserver(scoreObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -145,9 +151,13 @@ class ObserverPatternExample {
     observer2Count = 0;
     observer3Count = 0;
 
-    price >> (obs) => observer1Count++;
-    price >> (obs) => observer2Count++;
-    price >> (obs) => observer3Count++;
+    // Every observer must be retained — observers are held by WeakReference,
+    // so a list of the returned wrappers is what keeps all three subscribed.
+    final priceObservers = [
+      price >> (obs) => observer1Count++,
+      price >> (obs) => observer2Count++,
+      price >> (obs) => observer3Count++,
+    ];
 
     price | 19.99;
     print('   After first change: [$observer1Count, $observer2Count, $observer3Count]');
@@ -159,6 +169,10 @@ class ObserverPatternExample {
     assert(observer1Count == 2, 'Observer 1 count should be 2');
     assert(observer2Count == 2, 'Observer 2 count should be 2');
     assert(observer3Count == 2, 'Observer 3 count should be 2');
+
+    for (final observer in priceObservers) {
+      price.removeObserver(observer);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -169,7 +183,7 @@ class ObserverPatternExample {
 
     final flag = TomBool(true);
     int flagCount = 0;
-    flag >> (obs) => flagCount++;
+    final flagObserver = flag >> (obs) => flagCount++;
 
     flag | true; // Same value - should not notify
     print('   Set same value (true): flagCount = $flagCount (unchanged)');
@@ -179,6 +193,8 @@ class ObserverPatternExample {
 
     // Assertions
     assert(flagCount == 1, 'Should only notify when value changed');
+
+    flag.removeObserver(flagObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -190,19 +206,27 @@ class ObserverPatternExample {
     final value = TomInt(0);
     int totalNotifications = 0;
 
-    // Add multiple observers in a fluent style (each >> returns an observer)
-    value >> (obs) {
-      totalNotifications++;
-    };
-    value >> (obs) {
-      totalNotifications++;
-    };
+    // Add multiple observers in a fluent style. Each `>>` returns an observer,
+    // and each one must be kept: they are held weakly, so the wrappers
+    // collected here are what keep both callbacks subscribed.
+    final valueObservers = [
+      value >> (obs) {
+        totalNotifications++;
+      },
+      value >> (obs) {
+        totalNotifications++;
+      },
+    ];
 
     value | 1;
     print('   Total notifications from 2 observers: $totalNotifications');
 
     // Assertions
     assert(totalNotifications == 2, 'Should have 2 notifications (one per observer)');
+
+    for (final observer in valueObservers) {
+      value.removeObserver(observer);
+    }
   }
 
   // -------------------------------------------------------------------------

@@ -2,12 +2,12 @@
 ///
 /// Execute this file to run all security module examples:
 /// ```
-/// dart run example/samples/security/00_run_all_examples.dart
+/// dart run --enable-asserts example/samples/security/00_run_all_examples.dart
 /// ```
 ///
 /// Or run all samples together:
 /// ```bash
-/// dart run example/run_all_samples.dart
+/// dart run --enable-asserts example/run_all_samples.dart
 /// ```
 library;
 

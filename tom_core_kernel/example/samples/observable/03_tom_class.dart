@@ -86,7 +86,11 @@ class TomClassExample {
 
     notificationCount = 0;
 
-    person >> (obs) {
+    // Retain the returned observer. TomObservable holds its observers by
+    // WeakReference, so the wrapper `>>` hands back is the only strong
+    // reference keeping the callback alive; discard it and notifications stop
+    // at the next garbage collection, silently and nondeterministically.
+    final personObserver = person >> (obs) {
       notificationCount++;
       print('   Person changed! (notification #$notificationCount)');
     };
@@ -99,6 +103,8 @@ class TomClassExample {
     // Assertions
     assert(notificationCount >= 2, 'Should notify for each member change');
     assert(~person.name == 'Jane Doe', 'Name should be updated');
+
+    person.removeObserver(personObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -110,7 +116,7 @@ class TomClassExample {
     final person2 = SamplePerson();
     batchNotifyCount = 0;
 
-    person2 >> (obs) {
+    final person2Observer = person2 >> (obs) {
       batchNotifyCount++;
       print('   Batch update notification #$batchNotifyCount');
     };
@@ -128,6 +134,8 @@ class TomClassExample {
     // Assertions
     assert(~person2.name == 'Alice Smith', 'Name should be updated');
     assert(~person2.age == 28, 'Age should be updated');
+
+    person2.removeObserver(person2Observer);
     assert(~person2.email == 'alice@example.com', 'Email should be updated');
     assert(~person2.isActive == false, 'isActive should be updated');
     assert(batchNotifyCount == 1, 'setValues should result in one notification');
@@ -171,7 +179,7 @@ class TomClassExample {
     customer = SampleCustomer();
     int customerNotifyCount = 0;
 
-    customer >> (obs) {
+    final customerObserver = customer >> (obs) {
       customerNotifyCount++;
       print('   Customer changed! (notification #$customerNotifyCount)');
     };
@@ -189,6 +197,8 @@ class TomClassExample {
     // Assertions
     assert(~customer.address.street == '123 Main St', 'Nested street should be set');
     assert(~customer.address.city == 'New York', 'Nested city should be set');
+
+    customer.removeObserver(customerObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -245,7 +255,7 @@ class TomClassExample {
     final person5 = SamplePerson();
     int muteTestCount = 0;
 
-    person5 >> (obs) {
+    final person5Observer = person5 >> (obs) {
       muteTestCount++;
     };
 
@@ -263,6 +273,8 @@ class TomClassExample {
     assert(person5.isMuted == false, 'Should not be muted after unmute');
     assert(~person5.name == 'Muted Name', 'Value should be set even while muted');
     assert(muteTestCount == 1, 'Single consolidated notification after unmute');
+
+    person5.removeObserver(person5Observer);
   }
 
   // -------------------------------------------------------------------------

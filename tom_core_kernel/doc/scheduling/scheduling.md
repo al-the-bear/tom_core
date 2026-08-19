@@ -106,7 +106,7 @@ timing.
 | [`04_execution_guarantee_example.dart`](../../example/samples/scheduling/04_execution_guarantee_example.dart) | The duplicate a retry produces, the two abandonment cases, and a fencing token making a displaced node harmless |
 
 ```bash
-dart run example/samples/scheduling/00_run_all_examples.dart
+dart run --enable-asserts example/samples/scheduling/00_run_all_examples.dart
 ```
 
 ## The Execution Guarantee

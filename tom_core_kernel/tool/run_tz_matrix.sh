@@ -4,6 +4,14 @@
 # run cannot see.
 #
 #   tom_core_kernel/tool/run_tz_matrix.sh [test-path ...]
+#   tom_core_kernel/tool/run_tz_matrix.sh --examples
+#
+# With --examples it sweeps the sample runner instead of the test suite. The
+# samples check themselves with ~1800 `assert`s, which Dart strips unless
+# `--enable-asserts` is passed, so they are run with that flag here — without
+# it they print their output, exit 0, and verify nothing. The samples are as
+# zone-sensitive as the tests: an assertion on a wall-clock `DateTime(...)`
+# holds only within a band of UTC offsets around the author's own.
 #
 # Why this exists: a value built from `DateTime(1970)` (local) and one built
 # from `DateTime.utc(1970)` are *the same object* when the process runs in UTC.
@@ -42,21 +50,41 @@ ZONES=(
   Pacific/Kiritimati
 )
 
-TARGETS=("$@")
-if [ ${#TARGETS[@]} -eq 0 ]; then
-  TARGETS=(test)
+if [ "${1:-}" = "--examples" ]; then
+  shift
+  COMMAND=(dart run --enable-asserts example/run_all_samples.dart)
+  what="examples"
+else
+  TARGETS=("$@")
+  if [ ${#TARGETS[@]} -eq 0 ]; then
+    TARGETS=(test)
+  fi
+  COMMAND=(dart test "${TARGETS[@]}")
+  what="tests"
 fi
+
+echo "Sweeping $what across ${#ZONES[@]} timezones."
+echo
 
 failed=()
 
 for zone in "${ZONES[@]}"; do
   printf '%-22s ' "$zone"
-  output=$(TZ="$zone" dart test "${TARGETS[@]}" 2>&1)
+  output=$(TZ="$zone" "${COMMAND[@]}" 2>&1)
   if [ $? -eq 0 ]; then
-    echo "$(echo "$output" | tail -1)"
+    if [ "$what" = "examples" ]; then
+      # The sample runner ends in a drawn box, so its last line says nothing.
+      # Report the assertions that actually ran instead.
+      echo "OK"
+    else
+      echo "$output" | tail -1
+    fi
   else
     echo "FAILED"
-    echo "$output" | tail -30
+    # An assertion failure is the interesting line and it is not always last —
+    # the runner prints a stack trace after it.
+    echo "$output" | grep -E "Failed assertion|❌ ERROR running samples" | head -3 | sed 's/^/    /'
+    echo "$output" | tail -15 | sed 's/^/    /'
     failed+=("$zone")
   fi
 done

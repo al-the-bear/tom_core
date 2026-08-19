@@ -70,13 +70,19 @@ void run() {
   final batch = TomList<TomInt>();
   batch.add(TomInt(1));
   int notifyCount = 0;
-  batch >> (obs) => notifyCount++;
+  // Retain the returned observer. TomObservable holds its observers by
+  // WeakReference, so the wrapper `>>` hands back is the only strong reference
+  // keeping the callback alive; discard it and notifications stop at the next
+  // garbage collection, silently and nondeterministically.
+  final batchObserver = batch >> (obs) => notifyCount++;
 
   batch.resetWith([TomInt(10), TomInt(20), TomInt(30)]);
 
   print('   elements: [${batch.map((e) => ~e).join(', ')}]');
   print('   observer notifications for the reset: $notifyCount');
   print('');
+
+  batch.removeObserver(batchObserver);
 
   // ===========================================================================
   // Example 3: lifecycle hooks fire around the swap

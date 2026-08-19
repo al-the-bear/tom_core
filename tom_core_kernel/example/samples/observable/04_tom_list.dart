@@ -85,7 +85,11 @@ class TomListExample {
     final items = TomList<TomString>();
     listNotifyCount = 0;
 
-    items >> (obs) {
+    // Retain the returned observer. TomObservable holds its observers by
+    // WeakReference, so the wrapper `>>` hands back is the only strong
+    // reference keeping the callback alive; discard it and notifications stop
+    // at the next garbage collection, silently and nondeterministically.
+    final itemsObserver = items >> (obs) {
       listNotifyCount++;
       print('   List notification #$listNotifyCount');
     };
@@ -101,6 +105,8 @@ class TomListExample {
     // Assertions
     assert(listNotifyCount == 3, 'Should notify on add and element change');
     assert(~items[0] == 'modified item1', 'First item should be modified');
+
+    items.removeObserver(itemsObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -143,7 +149,7 @@ class TomListExample {
     values.append(TomDouble(1.0)).append(TomDouble(2.0)).append(TomDouble(3.0));
     int modifyCount = 0;
 
-    values >> (obs) => modifyCount++;
+    final valuesObserver = values >> (obs) => modifyCount++;
 
     // Replace element at index
     values[1] = TomDouble(2.5);
@@ -160,6 +166,8 @@ class TomListExample {
     assert(~values[1] == 2.5, 'values[1] should be 2.5');
     assert(~values[0] == 1.5, 'values[0] should be 1.5');
     assert(modifyCount == 2, 'Should notify on index assignment and element change');
+
+    values.removeObserver(valuesObserver);
   }
 
   // -------------------------------------------------------------------------

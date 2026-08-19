@@ -10,8 +10,19 @@
 ///
 /// Then run this file:
 /// ```bash
-/// dart run example/run_all_samples.dart
+/// dart run --enable-asserts example/run_all_samples.dart
 /// ```
+///
+/// `--enable-asserts` is required, not cosmetic. Every sample states its
+/// expected outcome with `assert`, and Dart strips asserts unless the flag is
+/// passed — run without it and the samples print the same output and still
+/// exit 0 while checking nothing at all. The flag is what turns this runner
+/// from a demonstration into a test of the kernel's public surface.
+///
+/// The samples are also written to be timezone-independent: they build
+/// instants with `DateTime.utc(...)` rather than wall-clock `DateTime(...)`,
+/// so the assertions hold on any host. Verified against UTC, Europe/Berlin,
+/// Asia/Tokyo, Pacific/Honolulu, Pacific/Kiritimati and Asia/Kathmandu.
 library;
 
 import 'dart:io';

@@ -94,7 +94,11 @@ class TomMapExample {
     final config = TomMap<String, TomString>();
     mapNotifyCount = 0;
 
-    config >> (obs) {
+    // Retain the returned observer. TomObservable holds its observers by
+    // WeakReference, so the wrapper `>>` hands back is the only strong
+    // reference keeping the callback alive; discard it and notifications stop
+    // at the next garbage collection, silently and nondeterministically.
+    final configObserver = config >> (obs) {
       mapNotifyCount++;
       print('   Map notification #$mapNotifyCount');
     };
@@ -110,6 +114,8 @@ class TomMapExample {
     // Assertions
     assert(mapNotifyCount == 3, 'Should notify on add and value change');
     assert(~config['theme']! == 'dark', 'Theme should be dark');
+
+    config.removeObserver(configObserver);
   }
 
   // -------------------------------------------------------------------------
@@ -123,7 +129,7 @@ class TomMapExample {
     counters['clicks'] = TomInt(50);
 
     int updateNotifyCount = 0;
-    counters >> (obs) => updateNotifyCount++;
+    final countersObserver = counters >> (obs) => updateNotifyCount++;
 
     // Update existing key with new TomObject
     counters['page_views'] = TomInt(150);
@@ -138,6 +144,8 @@ class TomMapExample {
     assert(~counters['page_views']! == 150, 'page_views should be 150');
     assert(~counters['clicks']! == 75, 'clicks should be 75');
     assert(updateNotifyCount == 2, 'Should notify on replacement and value change');
+
+    counters.removeObserver(countersObserver);
   }
 
   // -------------------------------------------------------------------------
