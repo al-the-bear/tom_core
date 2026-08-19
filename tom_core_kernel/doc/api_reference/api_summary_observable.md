@@ -802,7 +802,7 @@ TomList.ofList(List<E> list)
 | `removeAt` | `E removeAt(int index)` | Removes and un-observes the element at `index`. |
 | `removeLast` | `E removeLast()` | Removes and un-observes the last element. |
 | `removeRange` | `void removeRange(int start, int end)` | Removes and un-observes elements in `[start, end)`. |
-| `removeWhere` | `void removeWhere(bool Function(E element) test)` | Removes and un-observes matching elements. |
+| `removeWhere` | `void removeWhere(bool Function(E element) test)` | Removes and un-observes matching elements, notifying once however many matched; silent if nothing matched. Survivors stay observed. |
 | `replaceRange` | `void replaceRange(int start, int end, Iterable<E> replacements)` | Replaces a range as a single consolidated notification. It runs inside a `batchSelf`, which mutes only the list — the elements stay audible — and releases in a `finally`, so an out-of-range index does not silence the list, and an enclosing `batch` is left intact. |
 | `retainWhere` | `void retainWhere(bool Function(E element) test)` | Retains only matching elements as a single notification. It delegates to `removeWhere`, which already notifies at most once, so no batch is involved. |
 | `setAll` | `void setAll(int index, Iterable<E> iterable)` | Overwrites elements from `index`, re-observing; silent if the sequence is unchanged. |

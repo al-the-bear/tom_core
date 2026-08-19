@@ -84,6 +84,18 @@ class TestPricedItem extends TomClass {
   final counts = TomList<TomInt>();
 }
 
+/// Test class whose only non-scalar member is a nested [TomClass] carrying
+/// collections of its own.
+///
+/// [TomClass.setOrMergeValues] hands its `merge` flag down to a nested class
+/// unchanged, and that recursion is only observable when the nested class has
+/// a member the flag actually affects — scalars are replaced either way.
+@tomReflector
+class TestInventory extends TomClass {
+  final label = TomString("");
+  final item = TestPricedItem();
+}
+
 /// Test class for TomMap with TomClass values
 @tomReflector
 class TestUserProfile extends TomClass {
@@ -1854,6 +1866,192 @@ void main() {
     });
   });
 
+  // ==========================================================================
+  // `merge` is the only thing that separates the two public entry points:
+  // `setValues(v)` is `setOrMergeValues(v, false)`. It changes the treatment of
+  // collection members alone — a list is appended to rather than replaced, a
+  // map keeps the keys the payload does not mention — and it is handed down to
+  // nested classes unchanged. Scalars are replaced in both modes, which is what
+  // makes "merge" a statement about containers, not about values.
+  // ==========================================================================
+  group('TomClass.setOrMergeValues merge path', () {
+    /// A priced item seeded through the replacing path, ready to be merged into.
+    TestPricedItem seeded() {
+      final item = TestPricedItem();
+      item.setValues({
+        'price': 10.0,
+        'rates': [1.0, 2.0],
+        'surcharges': {'ship': 5.0, 'tax': 7.0},
+      });
+      return item;
+    }
+
+    test('merging appends to a list member', () {
+      final item = seeded();
+
+      item.setOrMergeValues({
+        'rates': [3.0]
+      }, true);
+
+      expect(item.rates.map((e) => e.get()), equals([1.0, 2.0, 3.0]));
+    });
+
+    test('setValues replaces a list member wholesale', () {
+      final item = seeded();
+
+      // The contrast that gives the merge flag its meaning: same payload, same
+      // member, opposite outcome.
+      item.setValues({
+        'rates': [3.0]
+      });
+
+      expect(item.rates.map((e) => e.get()), equals([3.0]));
+    });
+
+    test('merging keeps map keys the payload does not mention', () {
+      final item = seeded();
+
+      item.setOrMergeValues({
+        'surcharges': {'handling': 2.0}
+      }, true);
+
+      expect(
+        item.surcharges.get().map((k, v) => MapEntry(k, v.get())),
+        equals({'ship': 5.0, 'tax': 7.0, 'handling': 2.0}),
+      );
+    });
+
+    test('setValues drops map keys the payload does not mention', () {
+      final item = seeded();
+
+      item.setValues({
+        'surcharges': {'handling': 2.0}
+      });
+
+      expect(
+        item.surcharges.get().map((k, v) => MapEntry(k, v.get())),
+        equals({'handling': 2.0}),
+      );
+    });
+
+    test('merging overwrites a map key the payload does mention', () {
+      final item = seeded();
+
+      item.setOrMergeValues({
+        'surcharges': {'tax': 9.0}
+      }, true);
+
+      expect(item.surcharges['tax']!.get(), equals(9.0));
+      expect(item.surcharges['ship']!.get(), equals(5.0));
+    });
+
+    test('merging still replaces a scalar member', () {
+      final item = seeded();
+
+      // There is no sense in which a scalar can be "merged"; the flag reaches
+      // only the collection branches of _setMember.
+      item.setOrMergeValues({'price': 99.0}, true);
+
+      expect(item.price.get(), equals(99.0));
+    });
+
+    test('a member the payload omits is untouched in either mode', () {
+      final item = seeded();
+
+      item.setOrMergeValues({'price': 99.0}, true);
+      expect(item.rates.length, equals(2));
+
+      item.setValues({'price': 98.0});
+      expect(item.rates.length, equals(2));
+    });
+
+    test('appended elements are observed by the list', () {
+      final item = seeded();
+      final observer = TestObserver<TestPricedItem>();
+      item.addObserver(observer);
+
+      item.setOrMergeValues({
+        'rates': [3.0]
+      }, true);
+      observer.reset();
+      item.rates.last | 30.0;
+
+      // The append path goes through `add`, which registers the list as an
+      // observer; a merge that skipped that would produce elements the
+      // container cannot hear.
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('merging notifies once for the whole payload', () {
+      final item = seeded();
+      final observer = TestObserver<TestPricedItem>();
+      item.addObserver(observer);
+
+      item.setOrMergeValues({
+        'price': 99.0,
+        'rates': [3.0],
+        'surcharges': {'handling': 2.0},
+      }, true);
+
+      // The work runs inside a batch, so a multi-member update is one event.
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('merging appends TomClass elements to a list', () {
+      final item = TestTaggedItem();
+      item.setValues({
+        'subtasks': [
+          {'title': 'first'}
+        ]
+      });
+
+      item.setOrMergeValues({
+        'subtasks': [
+          {'title': 'second'}
+        ]
+      }, true);
+
+      expect(
+        item.subtasks.map((t) => t.title.get()),
+        equals(['first', 'second']),
+      );
+    });
+
+    test('merge propagates into a nested TomClass', () {
+      final inventory = TestInventory();
+      inventory.setValues({
+        'item': {
+          'rates': [1.0]
+        }
+      });
+
+      inventory.setOrMergeValues({
+        'item': {
+          'rates': [2.0]
+        }
+      }, true);
+
+      expect(inventory.item.rates.map((e) => e.get()), equals([1.0, 2.0]));
+    });
+
+    test('setValues replaces inside a nested TomClass', () {
+      final inventory = TestInventory();
+      inventory.setValues({
+        'item': {
+          'rates': [1.0]
+        }
+      });
+
+      inventory.setValues({
+        'item': {
+          'rates': [2.0]
+        }
+      });
+
+      expect(inventory.item.rates.map((e) => e.get()), equals([2.0]));
+    });
+  });
+
   // The batch mutators suppress their own notifications around a composite
   // edit; a throw in the middle must not leave that suppression in place.
   group('TomList batch mutator failure handling', () {
@@ -1946,6 +2144,54 @@ void main() {
       target | 20;
 
       expect(observer.notifyCount, equals(0));
+    });
+
+    test('removeWhere that matches nothing notifies nothing', () {
+      seed([1, 2, 3]);
+
+      list.removeWhere((e) => false);
+
+      expect(observer.notifyCount, equals(0));
+      expect(list.length, equals(3));
+    });
+
+    test('removeWhere on an empty list notifies nothing', () {
+      seed([]);
+
+      list.removeWhere((e) => true);
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('removeWhere notifies once however many elements it matches', () {
+      seed([1, 2, 3, 4]);
+
+      list.removeWhere((e) => e.get().isEven);
+
+      expect(list.map((e) => e.get()), equals([1, 3]));
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('removeWhere leaves the removed elements unobserved', () {
+      seed([1, 2, 3]);
+      final dropped = list[1];
+
+      list.removeWhere((e) => e.get() == 2);
+      observer.reset();
+      dropped | 20;
+
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('removeWhere leaves the surviving elements observed', () {
+      seed([1, 2, 3]);
+      final survivor = list[2];
+
+      list.removeWhere((e) => e.get() == 2);
+      observer.reset();
+      survivor | 30;
+
+      expect(observer.notifyCount, equals(1));
     });
 
     test('a shorter length truncates, deregisters and notifies once', () {
