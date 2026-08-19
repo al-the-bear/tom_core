@@ -154,6 +154,38 @@ class TestZonedMembers extends TomClass {
   final stamp = TomDateTime(DateTime.utc(2020));
 }
 
+/// Test class whose members are *containers* of temporal elements, one per
+/// serialization prefix the wire format defines.
+///
+/// Container elements are the only way to reach `TomObject._createFrom`
+/// with a prefixed string. A scalar member is written into the cell that
+/// already exists, so it dispatches on the member's own type and never has to
+/// recover a type from the string; an element has no cell yet, so the prefix is
+/// the only clue there is.
+@tomReflector
+class TestZonedElements extends TomClass {
+  final dates = TomList<TomOZonedDate>();
+  final times = TomList<TomOZonedTime>();
+  final dateTimes = TomList<TomOZonedDateTime>();
+  final stamps = TomList<TomDateTime>();
+  final plain = TomList<TomString>();
+}
+
+/// Test class whose observable lives in a private field and is published
+/// through a public getter.
+///
+/// Reflection excludes private fields and private accessors, so the member
+/// registers under the **public getter name**. This is the whole reason
+/// [TomClass.setOrMergeValues] needs no underscore-prefixed fallback lookup:
+/// an underscore-prefixed key can never appear in the member map to be found.
+@tomReflector
+class TestPrivateBackedMember extends TomClass {
+  final TomString _label = TomString("");
+  final visible = TomInt(0);
+
+  TomString get label => _label;
+}
+
 /// Custom observer implementation for testing
 class TestObserver<T extends TomObservable> implements TomObserver<T> {
   int notifyCount = 0;
@@ -1435,6 +1467,190 @@ void main() {
       read.setValues(written.getValues());
 
       expect(read.stamp.get(), equals(DateTime.utc(2024, 6, 15, 10, 30)));
+    });
+  });
+
+  group('every serialization prefix is reachable from a string alone', () {
+    // These pin the prefix table that TomObject._createFrom consults. The
+    // scalar paths cannot stand in for them: a scalar member dispatches on the
+    // cell it is writing into, so it never has to recover a type from the
+    // string. An element has no cell yet, which is why a prefix exists at all.
+    //
+    // This is the shape of failure the table is meant to prevent: add a zoned
+    // flavour, teach the polymorphic paths nothing (they already handle it via
+    // `member is TomOTimezoned`), and forget the one table that maps its
+    // prefix — the type then silently deserializes as a TomString.
+
+    test('a @D@ date element rebuilds as TomOZonedDate', () {
+      final o = TestZonedElements();
+      final source = TomZonedDate(
+        year: 2024,
+        month: 6,
+        day: 15,
+        timezone: TomTimezone.utc,
+      );
+
+      o.setValues({
+        'dates': [source.toString()],
+      });
+
+      expect(o.dates, hasLength(1));
+      expect(o.dates.first, isA<TomOZonedDate>());
+      expect(o.dates.first.get().toUtc(), equals(source.toUtc()));
+    });
+
+    test('a @T@ time element rebuilds as TomOZonedTime', () {
+      final o = TestZonedElements();
+      final source = TomZonedTime(
+        hour: 14,
+        minute: 30,
+        second: 45,
+        timezone: TomTimezone.utc,
+      );
+
+      o.setValues({
+        'times': [source.toString()],
+      });
+
+      expect(o.times, hasLength(1));
+      expect(o.times.first, isA<TomOZonedTime>());
+      expect(o.times.first.get().toUtc(), equals(source.toUtc()));
+    });
+
+    test('a @X@ datetime element rebuilds as TomOZonedDateTime', () {
+      final o = TestZonedElements();
+      final source = TomZonedDateTime(
+        year: 2024,
+        month: 12,
+        day: 25,
+        hour: 18,
+        timezone: TomTimezone.utc,
+      );
+
+      o.setValues({
+        'dateTimes': [source.toString()],
+      });
+
+      expect(o.dateTimes, hasLength(1));
+      expect(o.dateTimes.first, isA<TomOZonedDateTime>());
+      expect(o.dateTimes.first.get().toUtc(), equals(source.toUtc()));
+    });
+
+    test('a @!@ stamp element rebuilds as TomDateTime, prefix stripped', () {
+      // The zoned parsers consume their own prefix; this one does not, so the
+      // table has to strip it before DateTime.parse sees the string. Getting
+      // that backwards throws rather than corrupting, but only for this entry.
+      final o = TestZonedElements();
+      final instant = DateTime.utc(2024, 6, 15, 10, 30);
+
+      o.setValues({
+        'stamps': ['${TomDateTime.serializationPrefix}'
+            '${instant.toIso8601String()}'],
+      });
+
+      expect(o.stamps, hasLength(1));
+      expect(o.stamps.first, isA<TomDateTime>());
+      expect(o.stamps.first.get(), equals(instant));
+    });
+
+    test('an unprefixed string stays a TomString', () {
+      // The negative half: the table must not claim a string it does not own.
+      final o = TestZonedElements();
+
+      o.setValues({
+        'plain': ['just text', '2024-06-15T10:30:00.000Z'],
+      });
+
+      expect(o.plain, everyElement(isA<TomString>()));
+      expect(
+        o.plain.map((e) => e.get()).toList(),
+        equals(['just text', '2024-06-15T10:30:00.000Z']),
+      );
+    });
+
+    test('a full container round trip preserves every element type', () {
+      final written = TestZonedElements();
+      written.setValues({
+        'dates': [
+          TomZonedDate(
+            year: 2024,
+            month: 6,
+            day: 15,
+            timezone: TomTimezone.utc,
+          ).toString(),
+        ],
+        'times': [
+          TomZonedTime(hour: 14, minute: 30, timezone: TomTimezone.utc)
+              .toString(),
+        ],
+        'dateTimes': [
+          TomZonedDateTime(
+            year: 2024,
+            month: 12,
+            day: 25,
+            hour: 18,
+            timezone: TomTimezone.utc,
+          ).toString(),
+        ],
+      });
+
+      final read = TestZonedElements();
+      read.setValues(written.getValues());
+
+      expect(read.dates.first.get().toUtc(),
+          equals(written.dates.first.get().toUtc()));
+      expect(read.times.first.get().toUtc(),
+          equals(written.times.first.get().toUtc()));
+      expect(read.dateTimes.first.get().toUtc(),
+          equals(written.dateTimes.first.get().toUtc()));
+    });
+  });
+
+  group('members register under their public getter name', () {
+    // Why this matters: setOrMergeValues used to look up
+    // `_value[key] ?? _value["_$key"]`, an inline underscore-prefix convention
+    // with nothing explaining it. These tests pin why the fallback could never
+    // fire — reflection excludes private fields and private accessors, so an
+    // underscore-prefixed key cannot be in the member map to be found.
+
+    test('a private field published by a public getter registers publicly', () {
+      final o = TestPrivateBackedMember();
+
+      expect(o.getMembers().keys, contains('label'));
+      expect(
+        o.getMembers().keys,
+        isNot(contains('_label')),
+        reason: 'reflection never yields a private accessor, so the private '
+            'field name cannot become a member key',
+      );
+    });
+
+    test('the public name deserializes the private-backed member', () {
+      final o = TestPrivateBackedMember();
+
+      o.setValues({'label': 'written', 'visible': 7});
+
+      expect(o.label.get(), equals('written'));
+      expect(o.visible.get(), equals(7));
+    });
+
+    test('the underscore-prefixed name is not a second way in', () {
+      final o = TestPrivateBackedMember();
+
+      o.setValues({'_label': 'sneaky'});
+
+      expect(
+        o.label.get(),
+        isEmpty,
+        reason: 'an unknown key is skipped; there is no underscore alias',
+      );
+    });
+
+    test('the member serializes under its public name too', () {
+      final o = TestPrivateBackedMember();
+      o.label | 'round';
+
+      expect(o.getValues(), equals({'label': 'round', 'visible': 0}));
     });
   });
 

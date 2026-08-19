@@ -164,11 +164,54 @@ class TomObject<T> extends TomObservable {
     return this;
   }
 
+  /// Every serialization prefix the wire format defines, mapped to the wrapper
+  /// that owns it.
+  ///
+  /// This is the single source of truth for *which prefix denotes which type*.
+  /// Only the construction path consults it. [_createFrom] has to recover a
+  /// type from a string and nothing else, because the element it is building
+  /// has no cell yet; every path that writes into an **existing** member
+  /// dispatches on that member instead — `member is TomOTimezoned` →
+  /// [TomOTimezoned.setByString] in [TomClass._setMember], `value is
+  /// TomOTimezoned` in [TomClass._serializeMember] — and those are already
+  /// polymorphic over the whole zoned family. Adding a zoned flavour is
+  /// therefore one entry here plus the flavour's own `setByString`, not an edit
+  /// to a dispatch ladder in three files.
+  ///
+  /// The zoned factories receive the string **with** its prefix, because their
+  /// `parseFromString` consumes its own; [TomDateTime] receives it **without**,
+  /// because `DateTime.parse` would reject it. Storing factories rather than
+  /// constructors is what lets the two conventions coexist in one table.
+  static final Map<String, TomObject Function(String)>
+  _wrapperFactoriesByPrefix = {
+    TomDateTime.serializationPrefix: (s) => TomDateTime(
+      DateTime.parse(_stripPrefix(s, TomDateTime.serializationPrefix)),
+    ),
+    TomZonedDate.serializationPrefix: (s) =>
+        TomOZonedDate(TomZonedDate.parseFromString(s)),
+    TomZonedTime.serializationPrefix: (s) =>
+        TomOZonedTime(TomZonedTime.parseFromString(s)),
+    TomZonedDateTime.serializationPrefix: (s) =>
+        TomOZonedDateTime(TomZonedDateTime.parseFromString(s)),
+  };
+
+  /// Removes [prefix] from the front of [s], or returns [s] unchanged.
+  ///
+  /// The wire format is `<prefix><payload>`. Both deserialization paths need to
+  /// find the payload — [_createFrom] when building a new wrapper and
+  /// [TomClass._setMember] when writing into an existing one — and both used to
+  /// spell it as a bare `substring(3)`, which silently encodes the assumption
+  /// that every marker is three characters long. The length now comes from the
+  /// prefix itself.
+  static String _stripPrefix(String s, String prefix) =>
+      s.startsWith(prefix) ? s.substring(prefix.length) : s;
+
   /// Creates a [TomObject] wrapper from a dynamic value.
   ///
   /// Automatically determines the appropriate [TomObject] subtype based on
   /// the runtime type of [v]:
-  /// - [String] → [TomString] (or timezone types if prefixed)
+  /// - [String] → [TomString] (or a temporal type if it carries a prefix from
+  ///   [_wrapperFactoriesByPrefix])
   /// - [DateTime] → [TomDateTime]
   /// - [int] → [TomInt]
   /// - [double] → [TomDouble]
@@ -184,16 +227,8 @@ class TomObject<T> extends TomObservable {
   /// Returns [tomNull] if the type cannot be determined.
   static TomObject _createFrom(dynamic v) {
     if (v is String) {
-      if (v.startsWith(TomDateTime.serializationPrefix)) {
-        return TomDateTime(DateTime.parse(v.substring(3)));
-      } else if (v.startsWith(TomZonedDate.serializationPrefix)) {
-        return TomOZonedDate(TomZonedDate.parseFromString(v));
-      }
-      if (v.startsWith(TomZonedTime.serializationPrefix)) {
-        return TomOZonedTime(TomZonedTime.parseFromString(v));
-      }
-      if (v.startsWith(TomZonedDateTime.serializationPrefix)) {
-        return TomOZonedDateTime(TomZonedDateTime.parseFromString(v));
+      for (final entry in _wrapperFactoriesByPrefix.entries) {
+        if (v.startsWith(entry.key)) return entry.value(v);
       }
       return TomString(v);
     }
@@ -877,6 +912,25 @@ class TomClass extends TomObject<Map<String, TomObject>>
     _registerWithMembers(classMirror, instanceMirror);
   }
 
+  /// Registers every reflected [TomObservable] getter of [cm] as a member, then
+  /// recurses into the superclass.
+  ///
+  /// ## Member names are always public
+  ///
+  /// The key is `member.simpleName`, taken from the reflected getter, and
+  /// reflection excludes private fields and private accessors — so a member
+  /// key can never begin with an underscore. A private field published through
+  /// a public getter registers under the **getter's** name:
+  ///
+  /// ```dart
+  /// final TomString _label = TomString("");
+  /// TomString get label => _label;   // registers as "label"
+  /// ```
+  ///
+  /// This is why [setOrMergeValues] looks a key up once and does not also try
+  /// an underscore-prefixed variant. It used to, and that fallback could never
+  /// fire: the name it searched for was one reflection is incapable of
+  /// producing.
   void _registerWithMembers(ClassMirror cm, InstanceMirror im) {
     cm.declarations.forEach((key, value) {
       for (var member in cm.instanceMembers.values) {
@@ -982,9 +1036,14 @@ class TomClass extends TomObject<Map<String, TomObject>>
   void setOrMergeValues(Map<String, dynamic> values, bool merge) {
     batch(() {
       for (var key in values.keys) {
-        TomObject? member = _value[key] ?? _value["_$key"];
-        var value = values[key];
+        // Keys are matched against the member's registered name, which is
+        // always the *public* one — see [_registerWithMembers]. An unknown key
+        // is skipped rather than rejected: the input is usually decoded JSON,
+        // and a payload carrying fields this class does not declare is an
+        // ordinary occurrence, not an error.
+        final TomObject? member = _value[key];
         if (member == null) continue;
+        final value = values[key];
         try {
           _setMember(member, value, key, merge);
         } on TomObservableException {
@@ -1011,36 +1070,48 @@ class TomClass extends TomObject<Map<String, TomObject>>
   void _setMember(TomObject member, dynamic value, String key, bool merge) {
     if (member is TomClass) {
       member.setOrMergeValues(value, merge);
-    } else if (member is TomList) {
+      return;
+    }
+    if (member is TomList) {
       _setListMember(member, value, key, !merge);
-    } else if (member is TomMap) {
+      return;
+    }
+    if (member is TomMap) {
       _setMapMember(member, value, key, !merge);
-    } else if (member is TomOTimezoned && value is String) {
+      return;
+    }
+    if (member is TomOTimezoned && value is String) {
       // Must be tested *before* the plain-DateTime branch below: TomTimezoned
       // extends DateTime, so every zoned member also satisfies
       // `TomObject<DateTime?>` and would otherwise be handed to DateTime.parse
       // with its own `@D@`/`@T@`/`@X@` prefix still attached.
       member.setByString(value);
-    } else if ((member is TomDateTime ||
+      return;
+    }
+    if ((member is TomDateTime ||
             member is TomObject<DateTime> ||
             member is TomObject<DateTime?>) &&
         value is String) {
-      // The wire format is `<prefix><iso8601>` (see getValues()).
-      // Accept both the prefixed and bare forms — the prefix is
-      // a 3-char marker so substring(3) trims it cleanly.
-      final raw = value.startsWith(TomDateTime.serializationPrefix)
-          ? value.substring(3)
-          : value;
-      member.set(DateTime.parse(raw));
-    } else if (member is TomObject<double?> && value is int) {
+      // The wire format is `<prefix><iso8601>` (see getValues()). Accept both
+      // the prefixed and bare forms. Only this member's own prefix is stripped:
+      // a foreign prefix is left in place so that DateTime.parse rejects it,
+      // rather than being trimmed into something that might parse by accident.
+      member.set(
+        DateTime.parse(
+          TomObject._stripPrefix(value, TomDateTime.serializationPrefix),
+        ),
+      );
+      return;
+    }
+    if (member is TomObject<double?> && value is int) {
       // A double-holding member reached by an integral number: JSON has one
       // number type, so widen rather than reject. `TomObject<double?>` covers
       // both TomDouble and TomNDouble by covariance — see
       // TomObject._widenForDoubleTarget for why the check is shaped this way.
       member.set(value.toDouble());
-    } else {
-      member.set(value);
+      return;
     }
+    member.set(value);
   }
 
   void _setMapMember(

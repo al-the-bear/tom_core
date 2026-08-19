@@ -843,9 +843,9 @@ void main() {
 ### Automatic Member Registration
 
 When a `TomClass` is instantiated, it uses reflection to:
-1. Discover all `TomObject` fields
-2. Register itself as an observer on each field
-3. Propagate changes from any field to observers of the `TomClass`
+1. Discover all publicly readable `TomObject` members
+2. Register itself as an observer on each member
+3. Propagate changes from any member to observers of the `TomClass`
 
 ```dart
 @tomReflector
@@ -873,6 +873,28 @@ void main() {
   customer.removeObserver(observer);
 }
 ```
+
+#### Members register under their public name
+
+Discovery enumerates the class's **public** accessors, so the registered name
+is always the public one. A member kept in a private field and published
+through a getter registers under the *getter's* name:
+
+```dart
+@tomReflector
+class Product extends TomClass {
+  final TomString _label = TomString("");
+
+  TomString get label => _label;   // registers as "label"
+}
+```
+
+`getMembers()` returns `label`, and `getValues()` / `setValues()` address it as
+`label`. The private field name is not a second way in — `_label` is neither
+produced by serialization nor accepted by deserialization, because reflection
+never reports it in the first place. Anything you can reach by name is
+therefore part of the class's public surface, which is what makes a member name
+safe to use as a wire name.
 
 ### Key Methods
 

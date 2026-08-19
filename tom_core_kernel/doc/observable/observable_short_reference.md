@@ -255,8 +255,9 @@ A powerful base class for creating observable domain objects with automatic memb
 **Key Features:**
 
 ### Automatic Member Registration
-- Uses reflection to discover all `TomObject` fields
+- Uses reflection to discover all publicly readable `TomObject` members
 - Members are automatically registered and observed in the constructor
+- The registered name is always the **public** one — a private field published by a public getter registers under the getter's name (`_label` behind `get label` registers as `label`), and the private name is neither serialized nor accepted for deserialization
 - `getMembers()` — returns a **read-only, live** view of all registered `TomObject` members; mutating it throws `UnsupportedError`, and members registered later appear in a view taken earlier
 - `getOrNull()` — throws, exactly as `get()` does: a `TomClass` has no scalar value to hand out
 
