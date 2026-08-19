@@ -28,7 +28,18 @@
 # themselves with ~1800 `assert`s that Dart strips without the flag, so a run
 # without it proves only that nothing threw.
 #
-# Exits non-zero if any sample fails, naming the samples that did.
+# Which is also why this script does one thing that is not a run at all: before
+# the sweep it checks that every `dart run …example/…` command the package
+# *documents* — in a sample header, in `README.md`, in `doc/` — carries
+# `--enable-asserts`. That this sweep passes the flag says nothing about what a
+# reader does, and a reader does what the documentation says. A header that
+# omits it hands out a command under which the sample prints its usual
+# "✓ … passed" and exits 0 while verifying nothing — a green run that proves
+# nothing, which is worse than a red one. The omission is easy to make and
+# invisible once made: nothing about a flagless command looks wrong, and the run
+# it produces looks right. Which is why it is checked rather than watched for.
+#
+# Exits non-zero if any sample fails or any documented command omits the flag.
 
 set -uo pipefail
 
@@ -70,6 +81,28 @@ fi
 
 mkdir -p "$LOG_DIR"
 
+# Every documented command, whichever groups were asked for: a header is wrong
+# for every reader, not only for the group under test.
+#
+# A "documented command" is a `dart run` naming a path under `example/` — which
+# is what excludes `dart run build_runner build` (real, and correctly flagless)
+# and prose that merely mentions `dart run` without inviting anyone to type it.
+# `doc/analyzer_analysis.json` is out of scope by file type: it is a generated
+# analyzer dump holding stale copies of dartdoc from before the paths moved, so
+# it documents nothing to anyone.
+flagless=()
+while IFS= read -r hit; do
+  [ -n "$hit" ] && flagless+=("$hit")
+done < <(grep -rn 'dart run [^`]*example/' \
+  --include='*.dart' --include='*.md' --include='*.sh' \
+  example doc README.md 2>/dev/null | grep -v -- '--enable-asserts')
+
+if [ ${#flagless[@]} -gt 0 ]; then
+  echo "Documented commands missing --enable-asserts (${#flagless[@]}):"
+  printf '    %s\n' "${flagless[@]}"
+  echo
+fi
+
 echo "Running ${#files[@]} samples standalone (timeout ${TIMEOUT_SECONDS}s each)."
 echo
 
@@ -108,8 +141,9 @@ for file in "${files[@]}"; do
 done
 
 echo
-if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ]; then
-  echo "All ${#files[@]} samples ran standalone and exited 0."
+if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ] && [ ${#flagless[@]} -eq 0 ]; then
+  echo "All ${#files[@]} samples ran standalone and exited 0,"
+  echo "and every documented command passes --enable-asserts."
   exit 0
 fi
 
@@ -120,6 +154,12 @@ fi
 if [ ${#failed[@]} -gt 0 ]; then
   echo "Failed (${#failed[@]}):"
   printf '    %s\n' "${failed[@]}"
+fi
+# Restated at the end because the check runs before a sweep long enough to
+# scroll its own output away.
+if [ ${#flagless[@]} -gt 0 ]; then
+  echo "Documented without --enable-asserts (${#flagless[@]}):"
+  printf '    %s\n' "${flagless[@]}"
 fi
 echo "Logs: $LOG_DIR"
 exit 1
