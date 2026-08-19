@@ -231,6 +231,47 @@ tomReflectionInfo.setValues(person, {'name': 'Alice', 'age': 25});
 // Observable fields are updated via their setByString methods
 ```
 
+### Custom Deserialization
+
+Two optional hooks let a class take deserialization over from the field walk.
+Declare either and it is used automatically; declare neither and nothing
+changes.
+
+`jsonDecode` — a method — replaces the field walk in `setValues`:
+
+```dart
+@tomReflector
+class CustomPerson {
+  String name = '';
+  int age = 0;
+
+  void jsonDecode(Map<String, dynamic> json) {
+    name = json['fullName'] as String;   // Custom key name
+    age = json['years'] as int;          // Custom key name
+  }
+}
+```
+
+`fromJson` — a named constructor — replaces the default constructor in
+`createInstanceFromJson`, and is tried before it:
+
+```dart
+@tomReflector
+class CustomPerson {
+  String name = '';
+
+  CustomPerson();
+
+  factory CustomPerson.fromJson(Map<String, dynamic> json) =>
+      CustomPerson()..name = json['fullName'] as String;
+}
+```
+
+Together with the `jsonEncode` getter (see [Custom
+Serialization](#custom-serialization)) these are the three conversion hooks.
+All three share the same failure contract — see [Hooks That
+Fail](#hooks-that-fail).
+
 ## Serialization (Object to JSON)
 
 ### Get Values as Map
@@ -267,6 +308,10 @@ class CustomPerson {
   };
 }
 ```
+
+The getter must return a `Map<String, Object?>` (or a subtype — a
+`Map<String, dynamic>` or `Map<String, String>` is fine). Anything else is
+reported rather than ignored; see [Hooks That Fail](#hooks-that-fail).
 
 ## Supported Types
 
@@ -558,6 +603,59 @@ try {
 | `reflection.set.list_element_materialization_failed` | An element could not be materialized into a `List<T>` field |
 | `reflection.set.collection_element_type_mismatch` | An element of a typed primitive collection is not of the field's element type |
 | `reflection.set.map_key_type_mismatch` | A `Map<String, T>` field was given a key that is not a `String` |
+| `reflection.hook.failed` | A `fromJson`, `jsonDecode` or `jsonEncode` hook exists and raised — names the hook and the class, and keeps the original error as `rootException` |
+| `reflection.hook.invalid_return` | A hook exists, returned normally, and returned something unusable — a `jsonEncode` that is not a `Map<String, Object?>`, or a `fromJson` that is not an instance of the requested type |
+
+### Hooks That Fail
+
+The three conversion hooks — the `fromJson` constructor, the `jsonDecode`
+method and the `jsonEncode` getter — are all optional, so *not having one* is
+the ordinary case and must stay silent. It does: a class that declares no hook
+is converted by the field walk exactly as before.
+
+What is no longer silent is a hook that **exists and fails**:
+
+```dart
+@tomReflector
+class Broken {
+  String name = '';
+
+  Map<String, Object?> get jsonEncode => throw StateError('nope');
+}
+
+tomReflectionInfo.getValues(Broken());
+// throws TomReflectorException(reflection.hook.failed):
+// "Broken.jsonEncode raised while converting; the hook exists, so this is
+//  not a missing hook but a failing one: Bad state: nope"
+```
+
+Previously both cases were one event. Each hook was located by *calling* it
+inside an unqualified `catch`, so a hook that threw was indistinguishable from
+a hook that was absent, and the field walk quietly took over. The consequences
+differed by hook and were all bad:
+
+- a bug inside a caller's own `fromJson` was swallowed, the object was rebuilt
+  from the same payload by the fallback path, and the error the caller
+  eventually saw — if any — named a *field* and pointed at the reflection
+  layer rather than at their constructor;
+- a throwing `jsonDecode` or `jsonEncode` did not even produce an error: the
+  custom representation was simply not used, and a plausible-looking
+  field-by-field result was returned in its place.
+
+Each hook is now looked up before it is called — `instanceMembers` for the
+method and the getter, the declared constructor names for `fromJson` — so
+absence is settled without running anything, and the `catch` around the call
+exists only to attribute a failure. Nothing is inferred from the *type* of the
+error, which matters: the reflection package does not report absence
+consistently. A missing constructor raises `NoSuchCapabilityError`, but a
+missing method or getter surfaces as a plain `NoSuchMethodError` from a dynamic
+dispatch, because the generated getters map is shared across the whole
+reflector rather than held per class.
+
+A hook that returns normally but returns something unusable is reported too,
+under `reflection.hook.invalid_return`. Falling back would be the quiet answer
+and the wrong one — the hook exists precisely to replace the field walk, so
+producing the representation it was written to override is not a recovery.
 
 ### The Target Must Be Annotated
 

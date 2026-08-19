@@ -72,6 +72,20 @@ payload that *something* in it was not a date, kept the failure out of the
 module's auto-logging, and slipped past `on TomReflectorException`. The
 original `FormatException` is retained as the `rootException`.
 
+A class may take conversion over from the field walk with any of three
+optional hooks: a `fromJson` constructor (used by `createInstanceFromJson`), a
+`jsonDecode` method (used by `setValues`), or a `jsonEncode` getter (used by
+`getValues`). Each is looked up before it is called, so **declaring no hook
+still falls back silently, while a hook that exists and throws propagates** as
+`reflection.hook.failed`, naming the hook and the class and keeping the
+original error as `rootException`. The lookups used to be the *call itself*
+inside an unqualified `catch`, which made the two cases one: a bug in a
+caller's own `fromJson` was swallowed and the object rebuilt by the fallback
+path, and a throwing `jsonDecode` or `jsonEncode` produced no error at all —
+the custom representation was simply not used. A hook that returns something
+unusable — a `jsonEncode` that is not a `Map<String, Object?>` — raises
+`reflection.hook.invalid_return` rather than being ignored.
+
 Collection fields are deserialized **atomically**: a `List<T>` or
 `Map<String, T>` is materialized in full before the field is touched, so an
 element the target type rejects throws a `TomReflectorException` and leaves the

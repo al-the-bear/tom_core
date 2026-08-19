@@ -542,6 +542,84 @@ class TomReflectionInfo {
     }
   }
 
+  /// Whether [cm] declares a constructor called [name].
+  ///
+  /// Constructors are not keyed by their own name in [ClassMirror.declarations]
+  /// — `PersonWithFromJson.fromJson` is filed under
+  /// `"PersonWithFromJson.fromJson"` — so the lookup is by
+  /// [MethodMirror.constructorName] rather than by key.
+  static bool _declaresConstructor(ClassMirror cm, String name) {
+    return cm.declarations.values.any(
+      (d) => d is MethodMirror && d.isConstructor && d.constructorName == name,
+    );
+  }
+
+  /// Reports that an optional conversion hook ran and raised.
+  ///
+  /// The three hooks — the `fromJson` constructor, the `jsonDecode` method and
+  /// the `jsonEncode` getter — are all *optional*, and each used to be found
+  /// by trying it inside an unqualified `catch`: whatever came out, the hook
+  /// was declared missing and the ordinary field-walking path took over. That
+  /// made a hook that does not exist and a hook that exists and is buggy the
+  /// same event, and the second is the one worth hearing about — the caller's
+  /// own code failed, and nothing said so. The failure was then attributed to
+  /// the reflection layer, or to nothing at all.
+  ///
+  /// Each hook is now *looked up before it is called*, so absence is settled
+  /// without running anything and the invocation itself is guarded only for
+  /// the purpose of attribution. Nothing is inferred from the type of the
+  /// failure, which matters because the reflection package does not report
+  /// absence in one consistent way: a missing constructor raises
+  /// [NoSuchCapabilityError], but a missing method or getter surfaces as a
+  /// plain `NoSuchMethodError` from a dynamic dispatch, because the generated
+  /// getters map is shared across the whole reflector rather than per class.
+  /// Catching by type would therefore have kept the two cases fused for two
+  /// hooks out of three, and would additionally have re-fused them for any
+  /// hook whose own body happens to raise either error.
+  static TomReflectorException _hookFailed(
+    String hook,
+    Object owner,
+    Object error,
+    StackTrace stack,
+  ) {
+    return TomReflectorException(
+      "reflection.hook.failed",
+      "$owner.$hook raised while converting; the hook exists, so this is "
+          "not a missing hook but a failing one: $error",
+      autoLog: true,
+      rootException: error,
+      stack: stack,
+      parameters: {'hook': hook, 'owner': owner.toString()},
+    );
+  }
+
+  /// Reports that an optional conversion hook ran, returned, and returned
+  /// something unusable.
+  ///
+  /// Falling back to the field walk would be the quiet answer, and the wrong
+  /// one: the hook exists precisely to replace that walk, so producing the
+  /// representation it was written to override is not a recovery.
+  static TomReflectorException _hookReturnedWrongType(
+    String hook,
+    Object owner,
+    Object? value,
+    String expected,
+  ) {
+    return TomReflectorException(
+      "reflection.hook.invalid_return",
+      "$owner.$hook returned ${value.runtimeType}, but $expected is "
+          "required; the hook cannot be used and its result cannot be "
+          "silently discarded",
+      autoLog: true,
+      parameters: {
+        'hook': hook,
+        'owner': owner.toString(),
+        'expected': expected,
+        'actual': value.runtimeType.toString(),
+      },
+    );
+  }
+
   /// Resolves the class mirror of [im], insisting it carries `@tomReflector`.
   ///
   /// Reflecting successfully is not the same as being one of ours. The
@@ -742,13 +820,26 @@ class TomReflectionInfo {
     ClassMirror objectMirror,
     Map<String, Object?> jsonData,
   ) {
-    try {
-      return objectMirror.newInstance("fromJson", [jsonData]) as T;
-    } catch (error) {
-      // ignore, try default constructor
+    if (!_declaresConstructor(objectMirror, "fromJson")) {
+      // No such constructor — build the object the ordinary way. This is the
+      // only reason to fall back; see [_hookFailed].
+      return setValues<T>(objectMirror.newInstance("", []) as T, jsonData);
     }
-    T result = objectMirror.newInstance("", []) as T;
-    return setValues<T>(result, jsonData);
+
+    final Object? built;
+    try {
+      built = objectMirror.newInstance("fromJson", [jsonData]);
+    } catch (error, stack) {
+      throw _hookFailed('fromJson', objectMirror.simpleName, error, stack);
+    }
+
+    if (built is T) return built;
+    throw _hookReturnedWrongType(
+      'fromJson',
+      objectMirror.simpleName,
+      built,
+      '$T',
+    );
   }
 
   /// Creates a new instance of type [T] using its default constructor.
@@ -822,14 +913,17 @@ class TomReflectionInfo {
 
     final im = _reflect(o, 'setValues');
 
-    if (_tryInvokeJsonDecode(im, values)) {
-      return o;
-    }
-
     // From the instance mirror, not a second `reflectType(o.runtimeType)` —
     // see [getValues] for why that lookup cannot see a generic instantiation,
     // and [_annotatedType] for why reflecting successfully is not enough.
+    // Resolved before the hook, so that a target which is not ours is
+    // reported as such rather than as a hook that could not be found on it.
     final cm = _annotatedType(im, o, 'setValues');
+
+    if (_tryInvokeJsonDecode(im, cm, o, values)) {
+      return o;
+    }
+
     _logReflectionDetails(o, cm);
 
     for (var entry in values.entries) {
@@ -839,13 +933,26 @@ class TomReflectionInfo {
     return o;
   }
 
-  /// Attempts to invoke a `jsonDecode` method on the object.
-  bool _tryInvokeJsonDecode(InstanceMirror im, Map<String, dynamic> values) {
+  /// Invokes the optional `jsonDecode` hook, if [cm] declares one.
+  ///
+  /// Returns true when the hook ran, having taken over deserialization
+  /// entirely. Returns false only when there is no such hook — a hook that
+  /// exists and raises propagates rather than being mistaken for an absent
+  /// one and quietly replaced by the field walk it was written to override.
+  /// See [_hookFailed].
+  bool _tryInvokeJsonDecode(
+    InstanceMirror im,
+    ClassMirror cm,
+    Object o,
+    Map<String, dynamic> values,
+  ) {
+    if (!cm.instanceMembers.containsKey("jsonDecode")) return false;
+
     try {
       im.invoke("jsonDecode", [values]);
       return true;
-    } catch (exception) {
-      return false;
+    } catch (error, stack) {
+      throw _hookFailed('jsonDecode', o.runtimeType, error, stack);
     }
   }
 
@@ -1634,10 +1741,6 @@ class TomReflectionInfo {
 
     final im = _reflect(o, 'getValues');
 
-    if (_tryGetJsonEncode(im) case Map<String, Object?> encoded) {
-      return encoded;
-    }
-
     // Taken from the instance mirror rather than looked up again by
     // `reflectType(o.runtimeType)`: the registry is keyed by *declaration*, so
     // that lookup finds nothing for a generic value — `Box<int>` is not a key,
@@ -1647,6 +1750,10 @@ class TomReflectionInfo {
     // with the first. Checked for the annotation on the way through: without
     // that, a quantified type walks zero declarations and returns `{}`.
     final classMirror = _annotatedType(im, o, 'getValues');
+
+    final encoded = _tryGetJsonEncode(im, classMirror, o);
+    if (encoded != null) return encoded;
+
     final result = <String, dynamic>{};
 
     for (var d in classMirror.declarations.entries) {
@@ -1662,13 +1769,35 @@ class TomReflectionInfo {
     return result;
   }
 
-  /// Attempts to get a `jsonEncode` getter value from the object.
-  Map<String, Object?>? _tryGetJsonEncode(InstanceMirror im) {
+  /// Reads the optional `jsonEncode` hook, if [cm] declares one.
+  ///
+  /// Returns null only when there is no such hook. A hook that exists and
+  /// raises propagates (see [_hookFailed]); one that returns something other
+  /// than a JSON object is reported too, rather than ignored — the cast used
+  /// to sit inside the same blanket catch, so a hook returning the wrong
+  /// shape was read as no hook at all and the fields it exists to replace
+  /// were serialized in its place.
+  Map<String, Object?>? _tryGetJsonEncode(
+    InstanceMirror im,
+    ClassMirror cm,
+    Object o,
+  ) {
+    if (!cm.instanceMembers.containsKey("jsonEncode")) return null;
+
+    final Object? encoded;
     try {
-      return im.invokeGetter("jsonEncode") as Map<String, Object?>;
-    } catch (exception) {
-      return null;
+      encoded = im.invokeGetter("jsonEncode");
+    } catch (error, stack) {
+      throw _hookFailed('jsonEncode', o.runtimeType, error, stack);
     }
+
+    if (encoded is Map<String, Object?>) return encoded;
+    throw _hookReturnedWrongType(
+      'jsonEncode',
+      o.runtimeType,
+      encoded,
+      'Map<String, Object?>',
+    );
   }
 
   /// Adds a single field's value to the result map.

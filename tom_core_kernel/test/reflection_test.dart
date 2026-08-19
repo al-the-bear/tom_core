@@ -148,6 +148,66 @@ class PersonWithFromJson {
   }
 }
 
+/// A `fromJson` hook that exists and always raises.
+///
+/// Distinct from feeding [PersonWithFromJson] a badly typed payload: this one
+/// fails for a reason of its own, so nothing about the payload could explain
+/// the failure away.
+@tomReflector
+class ThrowingFromJsonHolder {
+  String name = '';
+
+  ThrowingFromJsonHolder();
+
+  factory ThrowingFromJsonHolder.fromJson(Map<String, dynamic> json) =>
+      throw StateError('fromJson is broken');
+}
+
+/// Carries both reflective JSON hooks in working order, so that
+/// `setValues`/`getValues` hand over to them instead of walking fields.
+///
+/// Both hooks write something a field walk could not produce, which is what
+/// makes "the hook ran" observable.
+@tomReflector
+class JsonHookHolder {
+  String name = '';
+  int age = 0;
+
+  JsonHookHolder();
+
+  void jsonDecode(Map<String, dynamic> json) {
+    name = 'decoded:${json['name']}';
+    age = 99;
+  }
+
+  Map<String, Object?> get jsonEncode => {'encoded': name};
+}
+
+/// Both hooks exist and both raise.
+@tomReflector
+class ThrowingJsonHookHolder {
+  String name = '';
+
+  ThrowingJsonHookHolder();
+
+  void jsonDecode(Map<String, dynamic> json) =>
+      throw StateError('jsonDecode is broken');
+
+  Map<String, Object?> get jsonEncode =>
+      throw StateError('jsonEncode is broken');
+}
+
+/// A `jsonEncode` hook that exists, returns normally, and returns something
+/// that is not a JSON object.
+@tomReflector
+class BadJsonEncodeHolder {
+  String name = '';
+
+  BadJsonEncodeHolder();
+
+  Object get jsonEncode => 'not a map';
+}
+
 @tomReflector
 @tomReflector
 class NestedInfo {
@@ -1736,6 +1796,200 @@ void main() {
       expect(restored.address!.street, '1 Main St');
       expect(restored.address!.city, 'Springfield');
       expect(restored.address!.zipCode, '12345');
+    });
+  });
+
+  group('a hook that throws is not a hook that is absent', () {
+    // Three optional hooks let a class take over its own conversion:
+    // `fromJson` (a constructor, used by createInstanceFromJson), `jsonDecode`
+    // (a method, used by setValues) and `jsonEncode` (a getter, used by
+    // getValues). Each was looked up by *trying* it inside an unqualified
+    // catch, so "there is no such member" and "the member ran and raised"
+    // were the same answer: fall back. A bug inside a caller's own hook was
+    // swallowed, the object was rebuilt by the fallback path, and the error
+    // the caller eventually saw — if any — never mentioned their code.
+    //
+    // Absent still falls back silently. Throwing now propagates, wrapped,
+    // naming the hook and the class.
+
+    Matcher hookFailed(String hook, String owner, String because) => throwsA(
+      isA<TomReflectorException>()
+          .having((e) => e.key, 'key', 'reflection.hook.failed')
+          .having(
+            (e) => e.defaultUserMessage,
+            'message',
+            allOf(contains(hook), contains(owner), contains(because)),
+          ),
+    );
+
+    ClassMirror mirrorOf(Type t) => tomReflector.reflectType(t) as ClassMirror;
+
+    group('fromJson', () {
+      test('absent: falls back to the default constructor', () {
+        final restored = tomReflectionInfo.createInstanceFromJson<SimplePerson>(
+          mirrorOf(SimplePerson),
+          {'name': 'Ann', 'age': 30},
+        );
+
+        expect(restored, isNotNull);
+        expect(restored!.name, 'Ann');
+        expect(restored.age, 30);
+      });
+
+      test('present and working: the hook builds the instance', () {
+        final restored = tomReflectionInfo
+            .createInstanceFromJson<PersonWithFromJson>(
+              mirrorOf(PersonWithFromJson),
+              {'name': 'Ann', 'age': 30},
+            );
+
+        expect(restored, isNotNull);
+        expect(restored!.name, 'Ann');
+        expect(restored.age, 30);
+      });
+
+      test('present and throwing: propagates, naming hook and class', () {
+        expect(
+          () => tomReflectionInfo.createInstanceFromJson<ThrowingFromJsonHolder>(
+            mirrorOf(ThrowingFromJsonHolder),
+            {'name': 'Ann'},
+          ),
+          hookFailed('fromJson', 'ThrowingFromJsonHolder', 'is broken'),
+        );
+      });
+
+      test('a bug inside the caller\'s own fromJson is not swallowed', () {
+        // The todo's scenario verbatim: the hook is fine, the payload is not,
+        // and the cast inside `PersonWithFromJson.fromJson` raises. This used
+        // to fall through to the default constructor plus `setValues`, which
+        // rebuilt the object from the same bad payload and reported a type
+        // mismatch on the *field* — pointing at the reflection layer rather
+        // than at the constructor that actually failed.
+        expect(
+          () => tomReflectionInfo.createInstanceFromJson<PersonWithFromJson>(
+            mirrorOf(PersonWithFromJson),
+            {'name': 7, 'age': 30},
+          ),
+          hookFailed('fromJson', 'PersonWithFromJson', 'String'),
+        );
+      });
+
+      test('the original error is kept as rootException', () {
+        try {
+          tomReflectionInfo.createInstanceFromJson<ThrowingFromJsonHolder>(
+            mirrorOf(ThrowingFromJsonHolder),
+            {'name': 'Ann'},
+          );
+          fail('expected a TomReflectorException');
+        } on TomReflectorException catch (e) {
+          expect(e.rootException, isA<StateError>());
+        }
+      });
+    });
+
+    group('jsonDecode', () {
+      test('absent: setValues walks the fields', () {
+        final person = tomReflectionInfo.setValues(SimplePerson(), {
+          'name': 'Ann',
+          'age': 30,
+        });
+
+        expect(person.name, 'Ann');
+        expect(person.age, 30);
+      });
+
+      test('present and working: the hook takes over deserialization', () {
+        final holder = tomReflectionInfo.setValues(JsonHookHolder(), {
+          'name': 'Ann',
+          'age': 30,
+        });
+
+        // Values a field walk could not have produced.
+        expect(holder.name, 'decoded:Ann');
+        expect(holder.age, 99);
+      });
+
+      test('present and throwing: propagates, naming hook and class', () {
+        expect(
+          () => tomReflectionInfo.setValues(ThrowingJsonHookHolder(), {
+            'name': 'Ann',
+          }),
+          hookFailed('jsonDecode', 'ThrowingJsonHookHolder', 'is broken'),
+        );
+      });
+
+      test('a throwing hook does not silently degrade to a field walk', () {
+        // The quiet consequence: `setValues` used to return the object having
+        // written the fields itself, so the caller got a plausible-looking
+        // result that ignored the custom representation entirely.
+        final holder = ThrowingJsonHookHolder();
+
+        expect(
+          () => tomReflectionInfo.setValues(holder, {'name': 'Ann'}),
+          throwsA(isA<TomReflectorException>()),
+        );
+        expect(holder.name, '', reason: 'the fallback walk must not have run');
+      });
+    });
+
+    group('jsonEncode', () {
+      test('absent: getValues walks the fields', () {
+        final person = SimplePerson()
+          ..name = 'Ann'
+          ..age = 30;
+
+        expect(
+          tomReflectionInfo.getValues(person),
+          allOf(
+            containsPair('name', 'Ann'),
+            containsPair('age', 30),
+            isNot(contains('encoded')),
+          ),
+        );
+      });
+
+      test('present and working: the hook supplies the representation', () {
+        final holder = JsonHookHolder()..name = 'Ann';
+
+        expect(tomReflectionInfo.getValues(holder), {'encoded': 'Ann'});
+      });
+
+      test('present and throwing: propagates, naming hook and class', () {
+        expect(
+          () => tomReflectionInfo.getValues(ThrowingJsonHookHolder()),
+          hookFailed('jsonEncode', 'ThrowingJsonHookHolder', 'is broken'),
+        );
+      });
+
+      test('present and returning a non-object: reported, not ignored', () {
+        // Narrowing the catch turns this from "silently walk the fields
+        // instead" into a `TypeError` unless it is handled on purpose. The
+        // hook exists and answered; the answer is unusable, and saying so is
+        // the only honest outcome.
+        expect(
+          () => tomReflectionInfo.getValues(BadJsonEncodeHolder()),
+          throwsA(
+            isA<TomReflectorException>()
+                .having((e) => e.key, 'key', 'reflection.hook.invalid_return')
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'message',
+                  allOf(
+                    contains('jsonEncode'),
+                    contains('BadJsonEncodeHolder'),
+                    contains('String'),
+                  ),
+                ),
+          ),
+        );
+      });
+
+      test('convertToJsonString carries the hook failure through', () {
+        expect(
+          () => tomReflectionInfo.convertToJsonString(ThrowingJsonHookHolder()),
+          hookFailed('jsonEncode', 'ThrowingJsonHookHolder', 'is broken'),
+        );
+      });
     });
   });
 
