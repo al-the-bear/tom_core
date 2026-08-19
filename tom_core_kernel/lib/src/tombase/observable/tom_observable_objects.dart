@@ -37,7 +37,39 @@ class TomObservableException extends TomException {
 ///
 /// Used as a return value when [TomObject._createFrom] cannot determine
 /// the appropriate type for a given value.
-final TomObject<String> tomNull = TomObject<String>("tomNull");
+///
+/// This is **one instance shared by the whole program**, so callers test for it
+/// by identity (`identical(x, tomNull)`). That sharing is why it is read-only:
+/// [set] — and therefore `|` and `<<` — throws
+/// `observable.null_sentinel.set_not_allowed` rather than writing. A single
+/// careless assignment would otherwise be observed by every later reader of the
+/// sentinel, in unrelated objects, anywhere in the process.
+///
+/// It is `final` rather than `const` because [TomObject]'s constructor has a
+/// body, so the instance is created at run time; immutability is enforced by
+/// the type, not by the language.
+final TomObject<String> tomNull = _TomNullObject();
+
+/// The type of [tomNull]: a [TomObject] that refuses to be written.
+///
+/// Private, so [tomNull] is necessarily the only instance — which is what makes
+/// the identity test callers rely on meaningful.
+///
+/// Only [set] is overridden because every write funnels through it: `|` and
+/// `<<` both delegate, so blocking one method blocks all three.
+class _TomNullObject extends TomObject<String> {
+  _TomNullObject() : super("tomNull");
+
+  /// Throws [TomObservableException] — the shared sentinel is read-only.
+  @override
+  String set(String value) {
+    throw TomObservableException(
+      "observable.null_sentinel.set_not_allowed",
+      "tomNull is a shared sentinel and cannot be modified. To hold a "
+          "changeable value, create your own TomObject instead.",
+    );
+  }
+}
 
 /// A generic observable wrapper that holds a value of type [T].
 ///

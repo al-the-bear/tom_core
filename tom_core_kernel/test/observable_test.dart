@@ -4518,6 +4518,68 @@ void main() {
       });
     });
   });
+
+  // ==========================================================================
+  // The tomNull sentinel
+  // ==========================================================================
+
+  group('the tomNull sentinel is not writable', () {
+    test('| throws and leaves the sentinel intact', () {
+      expect(
+        () => tomNull | 'clobbered',
+        throwsA(isA<TomObservableException>().having(
+            (e) => e.key, 'key', equals('observable.null_sentinel.set_not_allowed'))),
+      );
+
+      // The point of the todo that produced this test: before the fix the
+      // write succeeded, and *every* later reader of the sentinel — in
+      // unrelated objects, anywhere in the process — saw 'clobbered'.
+      expect(~tomNull, equals('tomNull'));
+    });
+
+    test('set and << are refused too, not just the | operator', () {
+      expect(() => tomNull.set('clobbered'),
+          throwsA(isA<TomObservableException>()));
+      expect(() => tomNull << 'clobbered',
+          throwsA(isA<TomObservableException>()));
+      expect(~tomNull, equals('tomNull'));
+    });
+
+    test('a rejected write is invisible to a reader holding the same instance',
+        () {
+      // `tomNull` is one process-wide instance handed to every caller, so two
+      // holders are necessarily aliases. That aliasing is the hazard the
+      // immutability removes: a successful write through one holder was
+      // formerly observed through every other, anywhere in the program.
+      final holderA = tomNull;
+      final holderB = tomNull;
+      expect(identical(holderA, holderB), isTrue);
+
+      expect(
+          () => holderA.set('clobbered'), throwsA(isA<TomObservableException>()));
+
+      expect(~holderB, equals('tomNull'),
+          reason: 'a write refused through one alias must not reach another');
+      expect(~tomNull, equals('tomNull'));
+    });
+
+    test('the sentinel keeps its identity, so `identical` tests still work', () {
+      // The fix had two candidate shapes; the todo left the choice to whichever
+      // the sentinel's identity comparisons allow. A getter returning a fresh
+      // instance per call would have broken this, which is why the immutable
+      // single instance was chosen instead.
+      expect(identical(tomNull, tomNull), isTrue);
+    });
+
+    test('reading the sentinel still works', () {
+      // Immutability must not cost the sentinel its readability: callers test
+      // for it by identity and print it in diagnostics.
+      expect(tomNull.get(), equals('tomNull'));
+      expect(tomNull(), equals('tomNull'));
+      expect(tomNull.isNull, isFalse);
+      expect(tomNull.toString(), equals('~tomNull'));
+    });
+  });
 }
 
 // ============================================================================

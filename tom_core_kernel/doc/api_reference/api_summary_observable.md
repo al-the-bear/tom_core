@@ -43,7 +43,7 @@ JSON-serializable data models.
   - [TomMap](#tommap)
   - [TomObservableEnum](#tomobservableenum)
   - [TomEnumResourceSegment](#tomenumresourcesegment)
-- [Global Functions and Constants](#global-functions-and-constants)
+- [Global Values and Functions](#global-values-and-functions)
 
 ## Overview
 
@@ -1119,13 +1119,16 @@ enum ShippingState implements TomEnumResourceSegment {
 | -------- | ---- | ----------- |
 | `resourceSegment` | `String` | The enum's key segment, e.g. `todostatus` in `global.todostatus.inreview`. Lower-cased before use; must be a compile-time-stable literal, since deriving it from `runtimeType` would reintroduce the instability the interface exists to avoid. |
 
-## Global Functions and Constants
+## Global Values and Functions
 
-### Constants
+### Values
 
-| Constant | Type | Description |
-| -------- | ---- | ----------- |
-| `tomNull` | `TomObject<String>` | Sentinel `TomObject` representing a null or unknown value, returned when a value's type cannot be determined. Declared `final`, not `const` — `TomObject`'s constructor has a body, so it cannot be const; the sentinel is one run-time instance, and testing for it means comparing identity against this variable rather than against a canonicalised literal. |
+Not "constants": nothing here is `const`. `TomObject`'s constructor has a body,
+so the sentinel below is a run-time instance held in a `final` top-level.
+
+| Value | Type | Description |
+| ----- | ---- | ----------- |
+| `tomNull` | `TomObject<String>` | Read-only sentinel `TomObject` representing a null or unknown value, returned when a value's type cannot be determined. **One instance is shared by the whole program**, so test for it with `identical(x, tomNull)` rather than against a canonicalised literal. It is immutable by type, not by language: `set` — and therefore `|` and `<<` — throws `observable.null_sentinel.set_not_allowed`. Were it writable, one careless assignment would be observed by every later reader of the sentinel, in unrelated objects, process-wide. |
 
 ### Functions
 

@@ -173,7 +173,7 @@ declarations are omitted.
 | `TomListLifecycleListener` | abstract class | Lifecycle callbacks for `TomList` elements. |
 | `TomObservableEnum<E extends Enum>` | class | Boxed enum whose display text resolves from the text bundle under `<scope>.<enumName>.<value>`. |
 | `TomEnumResourceSegment` | abstract interface class | Implemented by an enum that overrides `toString()`, to declare its key segment explicitly. |
-| `tomNull` | final | The shared null-object `TomObject<String>`. |
+| `tomNull` | final | The shared, read-only null-object `TomObject<String>`; writing to it throws. |
 
 ### Preferences (`lib/src/tombase/preferences/`)
 
