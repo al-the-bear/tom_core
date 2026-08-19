@@ -320,6 +320,40 @@ The following DateTime types are automatically serialized/deserialized:
 - `Map<String, TomZonedDate>`, `Map<String, TomZonedTime>`, `Map<String, TomZonedDateTime>` and their nullable forms
 - `Map<String, MyClass>`, `Map<String, MyClass?>` (where MyClass is annotated)
 
+**Collections nest one level deep.** The element type of a `List<T>` or a
+`Map<String, T>` must be a primitive, one of the date/time types, or a class
+annotated with `@tomReflector` — not another collection. `List<List<String>>`,
+`Map<String, List<Address>>` and `Map<String, Map<String, int>>` are all
+outside the supported set.
+
+They are refused rather than silently mishandled. Both the deserializer and the
+element-type resolution methods raise
+`reflector.type_resolution.nested_generic_unsupported`, naming the declaration
+and the argument that is generic:
+
+```text
+TomReflectionInfo.setValues: field 'nestedLists': 'List<List<String>>' has the
+generic element type 'List<String>'; nested generic collections are not
+supported — an element type must be a primitive, a date/time type, or a class
+annotated with @tomReflector
+```
+
+The field keeps whatever it held before, as with any other rejected collection.
+
+To carry a nested structure, give the inner collection a class of its own:
+
+```dart
+@tomReflector
+class Tags {
+  List<String> values = [];
+}
+
+@tomReflector
+class Article {
+  List<Tags> tagGroups = [];  // instead of List<List<String>>
+}
+```
+
 ## Working with Collections
 
 ### Lists of Objects
@@ -479,6 +513,7 @@ try {
 | `reflector.instance_creation.failed` | Failed to create instance |
 | `reflector.type_resolution.not_a_generic_type` | The collection's runtime type carries no type arguments |
 | `reflector.type_resolution.not_a_map_type` | Expected `Map<K, V>` but found fewer than two type arguments |
+| `reflector.type_resolution.nested_generic_unsupported` | The element type is itself a generic collection (`List<List<X>>`, `Map<String, List<X>>`) |
 | `reflector.classmirror.not_found_for_map_value` | Map value type not found |
 | `reflector.classmirror.not_found_for_iterable_value` | List element type not found |
 | `reflector.classmirror.ambiguous_simple_name` | The simple name matches more than one annotated class |
@@ -691,6 +726,13 @@ final valueMirror = tomReflectionInfo.mapValueElementType(peopleMap);
 ```
 
 These are useful when dynamically creating instances for collection elements.
+
+Both resolve the element type by **simple name** against the classes annotated
+with `@tomReflector`, which is why they go one level deep and no further: a
+generic instantiation such as `List<String>` is not an annotated class and
+never will be. Given `List<List<String>>` or `Map<String, Map<String, int>>`
+they raise `reflector.type_resolution.nested_generic_unsupported` rather than
+searching for a type that cannot exist.
 
 ---
 

@@ -218,6 +218,20 @@ class NullableValueMapHolder {
   NullableValueMapHolder();
 }
 
+/// Test class with collection fields whose element type is itself a collection.
+///
+/// One level of nesting is the supported depth; this fixture exists to pin down
+/// what the *unsupported* second level actually does, so the documentation can
+/// say it rather than infer it.
+@tomReflector
+class NestedCollectionHolder {
+  String name = '';
+  List<List<String>>? nestedLists;
+  Map<String, List<Address>>? nestedMaps;
+
+  NestedCollectionHolder();
+}
+
 /// A *generic* reflected class.
 ///
 /// The registry is keyed by declaration, so `reflectType(GenericHolder<int>)`
@@ -1489,6 +1503,187 @@ void main() {
       expect(
         () => tomReflectionInfo.singleElementType(42),
         throwsA(isA<TomReflectorException>()),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // Type Resolution — nested generic type arguments
+  // ==========================================================================
+  group('tomReflectionInfo type resolution rejects nested generics', () {
+    // These assert on the *message text*, not just on the exception type. The
+    // failure mode being guarded is a message that names a type which does not
+    // exist: truncating `List<List<String>>` at the first `>` yields the
+    // element name `List<String`, and "ClassMirror for type List<String could
+    // not be found" reads like a typo in the framework rather than a limit of
+    // it. A test that only checks `throwsA(isA<TomReflectorException>())`
+    // passes either way.
+
+    test('singleElementType names the real type of a nested list', () {
+      expect(
+        () => tomReflectionInfo.singleElementType(<List<String>>[]),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.type_resolution.nested_generic_unsupported',
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                allOf(
+                  contains('List<List<String>>'),
+                  contains('List<String>'),
+                  contains('nested'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('mapValueElementType names the real type of a nested value', () {
+      expect(
+        () => tomReflectionInfo.mapValueElementType(<String, List<Address>>{}),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.type_resolution.nested_generic_unsupported',
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                allOf(
+                  contains('Map<String, List<Address>>'),
+                  contains('List<Address>'),
+                  contains('nested'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('mapValueElementType splits arguments at the top level only', () {
+      // A comma inside the value's own type arguments is not an argument
+      // separator: splitting `String, Map<String, int` on ',' yields three
+      // parts and picks `Map<String` as the value type. The message must name
+      // `Map<String, int>` whole.
+      expect(
+        () =>
+            tomReflectionInfo.mapValueElementType(<String, Map<String, int>>{}),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.type_resolution.nested_generic_unsupported',
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                allOf(
+                  contains('Map<String, int>'),
+                  isNot(contains("'Map<String'")),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('arity is judged on top-level arguments', () {
+      // `List<List<int>>` carries one type argument, not two — the inner comma
+      // must not make it look like a Map<K, V>.
+      expect(
+        () => tomReflectionInfo.mapValueElementType(<List<int>>[]),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.type_resolution.not_a_map_type',
+          ),
+        ),
+      );
+    });
+
+    test('setValues diagnoses a nested list field by its declared type', () {
+      // The wrapped cast error this replaces read "type 'List<String>' is not
+      // a subtype of type 'Map<String, dynamic>?'" and named the field type
+      // `List<List>` — the mirror's simple name has already dropped the inner
+      // argument. Neither half told the reader that nesting is the problem.
+      final holder = NestedCollectionHolder()
+        ..nestedLists = [
+          ['kept'],
+        ];
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'nestedLists': [
+            ['a'],
+          ],
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.type_resolution.nested_generic_unsupported',
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                allOf(
+                  contains('nestedLists'),
+                  contains('List<List<String>>'),
+                  contains('nested'),
+                ),
+              ),
+        ),
+      );
+      expect(holder.nestedLists, [
+        ['kept'],
+      ]);
+    });
+
+    test('setValues diagnoses a nested map field by its declared type', () {
+      final holder = NestedCollectionHolder();
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'nestedMaps': {
+            'x': [
+              {'street': 's', 'city': 'c', 'zipCode': 'z'},
+            ],
+          },
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.type_resolution.nested_generic_unsupported',
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                allOf(
+                  contains('nestedMaps'),
+                  contains('Map<String, List<Address>>'),
+                  contains('nested'),
+                ),
+              ),
+        ),
+      );
+      expect(holder.nestedMaps, isNull);
+    });
+
+    test('a single-level annotated element type still resolves', () {
+      expect(
+        tomReflectionInfo.singleElementType(<Address>[]).simpleName,
+        'Address',
+      );
+      expect(
+        tomReflectionInfo.mapValueElementType(<String, Address>{}).simpleName,
+        'Address',
       );
     });
   });

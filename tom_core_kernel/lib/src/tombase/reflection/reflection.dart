@@ -279,18 +279,12 @@ class TomReflectionInfo {
     );
   }
 
-  /// Regular expression to extract element types from generic type strings.
-  ///
-  /// Matches the type parameter(s) inside angle brackets, e.g.,
-  /// `List<String>` -> `String`, `Map<String, int>` -> `String, int`.
-  final RegExp _elementTypeExp = RegExp(r'<([^>]+)>');
-
   /// Creates a converter over the global [tomReflector].
   ///
   /// It takes no reflector, and that is not an omission — see the class
   /// documentation for why a second one cannot exist. Use the shared
   /// [tomReflectionInfo] instance in preference to constructing your own;
-  /// the class holds no per-instance state beyond a compiled [RegExp].
+  /// the class carries no instance state at all.
   TomReflectionInfo();
 
   // ---------------------------------------------------------------------------
@@ -310,10 +304,11 @@ class TomReflectionInfo {
   /// ```
   ///
   /// Throws [TomReflectorException] if the value type is not found
-  /// among annotated classes.
+  /// among annotated classes, or if it is itself generic — see
+  /// [singleElementType] for why one level is the limit.
   ClassMirror mapValueElementType(Object collection) {
-    final match = _elementTypeExp.firstMatch(collection.runtimeType.toString());
-    if (match == null) {
+    final typeArguments = _topLevelTypeArguments(collection.runtimeType);
+    if (typeArguments == null) {
       throw TomReflectorException(
         "reflector.type_resolution.not_a_generic_type",
         "TomReflectionInfo.mapValueElementType: '${collection.runtimeType}' "
@@ -321,8 +316,7 @@ class TomReflectionInfo {
         autoLog: true,
       );
     }
-    final elementTypeNames = match.group(1)!.split(',');
-    if (elementTypeNames.length < 2) {
+    if (typeArguments.length < 2) {
       throw TomReflectorException(
         "reflector.type_resolution.not_a_map_type",
         "TomReflectionInfo.mapValueElementType: '${collection.runtimeType}' "
@@ -330,11 +324,11 @@ class TomReflectionInfo {
         autoLog: true,
       );
     }
-    final typeName = elementTypeNames[1].trim();
-    return _findClassMirror(
-      typeName,
+    return _resolveTypeArgument(
+      typeArguments[1],
+      collection,
+      "mapValueElementType",
       "reflector.classmirror.not_found_for_map_value",
-      "TomReflectionInfo:elementType: ClassMirror for type $typeName could not be found",
     );
   }
 
@@ -352,10 +346,14 @@ class TomReflectionInfo {
   /// ```
   ///
   /// Throws [TomReflectorException] if the element type is not found
-  /// among annotated classes.
+  /// among annotated classes, or if it is itself generic: both methods resolve
+  /// a name against the classes annotated with `@tomReflector`, and a generic
+  /// instantiation such as `List<String>` is not one of those and never can be.
+  /// One level of nesting is therefore the supported depth, and the exception
+  /// says so rather than reporting a name that was never going to match.
   ClassMirror singleElementType(Object collection) {
-    final match = _elementTypeExp.firstMatch(collection.runtimeType.toString());
-    if (match == null) {
+    final typeArguments = _topLevelTypeArguments(collection.runtimeType);
+    if (typeArguments == null) {
       throw TomReflectorException(
         "reflector.type_resolution.not_a_generic_type",
         "TomReflectionInfo.singleElementType: '${collection.runtimeType}' "
@@ -363,11 +361,118 @@ class TomReflectionInfo {
         autoLog: true,
       );
     }
-    final elementTypeName = match.group(1)!;
-    return _findClassMirror(
-      elementTypeName,
+    return _resolveTypeArgument(
+      typeArguments.first,
+      collection,
+      "singleElementType",
       "reflector.classmirror.not_found_for_iterable_value",
-      "TomReflectionInfo:elementType: ClassMirror for type $elementTypeName could not be found",
+    );
+  }
+
+  /// Splits the top-level type arguments out of [type]'s name.
+  ///
+  /// `Map<String, List<int>>` yields `['String', 'List<int>']`; a type with no
+  /// arguments yields null.
+  ///
+  /// Why depth counting rather than a pattern: `<([^>]+)>` stops at the *first*
+  /// closing bracket, which is the inner one as soon as an argument is itself
+  /// generic — `List<List<String>>` came back as `List<String`, a name that
+  /// matches nothing and reads, in the "could not be found" message that
+  /// followed, like a typo in the framework rather than a limit of it.
+  /// Splitting the arguments on `,` had the same bug one level down:
+  /// `Map<String, Map<String, int>>` parsed to three arguments and picked
+  /// `Map<String` as the value type. Only bracket depth distinguishes the
+  /// separators that belong to this type from those that belong to its
+  /// arguments.
+  static List<String>? _topLevelTypeArguments(Type type) {
+    final typeName = type.toString();
+    final start = typeName.indexOf("<");
+    if (start < 0 || !typeName.endsWith(">")) return null;
+    final inner = typeName.substring(start + 1, typeName.length - 1);
+    final typeArguments = <String>[];
+    var depth = 0;
+    var argumentStart = 0;
+    for (var i = 0; i < inner.length; i++) {
+      final character = inner[i];
+      if (character == "<") {
+        depth++;
+      } else if (character == ">") {
+        depth--;
+      } else if (character == "," && depth == 0) {
+        typeArguments.add(inner.substring(argumentStart, i).trim());
+        argumentStart = i + 1;
+      }
+    }
+    typeArguments.add(inner.substring(argumentStart).trim());
+    return typeArguments;
+  }
+
+  /// Resolves one parsed type argument to its [ClassMirror].
+  ///
+  /// [method] and [collection] appear in the message so the caller can see
+  /// which collection was being resolved, named as Dart names it.
+  ClassMirror _resolveTypeArgument(
+    String typeArgument,
+    Object collection,
+    String method,
+    String notFoundErrorKey,
+  ) {
+    if (typeArgument.contains("<")) {
+      throw _nestedGenericException(
+        "TomReflectionInfo.$method",
+        collection.runtimeType,
+        typeArgument,
+      );
+    }
+    return _findClassMirror(
+      typeArgument,
+      notFoundErrorKey,
+      "TomReflectionInfo:elementType: ClassMirror for type $typeArgument "
+          "could not be found",
+    );
+  }
+
+  /// The exception every path raises when an element type is itself generic.
+  ///
+  /// [context] is the operation that hit it, [realType] the collection or field
+  /// type spelled as Dart spells it, and [elementType] the argument that is
+  /// generic. Both halves matter: `List<List<String>>` tells the reader which
+  /// declaration to look at, `List<String>` which part of it is the problem.
+  static TomReflectorException _nestedGenericException(
+    String context,
+    Object realType,
+    String elementType,
+  ) => TomReflectorException(
+    "reflector.type_resolution.nested_generic_unsupported",
+    "$context: '$realType' has the generic element type '$elementType'; "
+        "nested generic collections are not supported — an element type must "
+        "be a primitive, a date/time type, or a class annotated with "
+        "@tomReflector",
+    parameters: {"elementType": elementType},
+    autoLog: true,
+  );
+
+  /// Raises [_nestedGenericException] if the field's type argument at
+  /// [argumentIndex] is itself generic; returns quietly otherwise.
+  ///
+  /// Called from the *failure* branch of the two object-collection setters, not
+  /// as a gate in front of them. Nothing that works today should start
+  /// throwing: the check only replaces a diagnosis, and only once materializing
+  /// the field has already failed.
+  static void _throwIfNestedGeneric(
+    MethodMirror imGet,
+    String field,
+    int argumentIndex,
+  ) {
+    final fieldType = imGet.reflectedReturnType;
+    final typeArguments = _topLevelTypeArguments(fieldType);
+    if (typeArguments == null || typeArguments.length <= argumentIndex) return;
+    final typeArgument = typeArguments[argumentIndex];
+    if (!typeArgument.contains("<")) return;
+    throw _nestedGenericException(
+      "TomReflectionInfo.setValues: field '$field'",
+      fieldType,
+      typeArgument,
     );
   }
 
@@ -1029,6 +1134,12 @@ class TomReflectionInfo {
     } on TomReflectorException {
       rethrow;
     } catch (error, stacktrace) {
+      // A field whose value type is itself generic — `Map<String, List<X>>` —
+      // cannot be materialized at all, and the cast error it produces names
+      // neither the field's declared type (the mirror's simple name has
+      // already dropped the inner argument, leaving `List`) nor the reason.
+      // Diagnose it here rather than wrapping the symptom.
+      _throwIfNestedGeneric(imGet, entry.key, 1);
       throw TomReflectorException(
         "reflection.set.map_value_materialization_failed",
         "Failed to materialize value of map field '${entry.key}' "
@@ -1266,6 +1377,9 @@ class TomReflectionInfo {
     } on TomReflectorException {
       rethrow;
     } catch (error, stacktrace) {
+      // See the map counterpart: a `List<List<X>>` field fails with a cast
+      // error that names `List` and no reason. Say what is actually wrong.
+      _throwIfNestedGeneric(imGet, entry.key, 0);
       throw TomReflectorException(
         "reflection.set.list_element_materialization_failed",
         "Failed to materialize element of list field '${entry.key}' "

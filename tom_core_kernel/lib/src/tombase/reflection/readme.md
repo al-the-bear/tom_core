@@ -57,6 +57,13 @@ Collection fields are deserialized **atomically**: a `List<T>` or
 element the target type rejects throws a `TomReflectorException` and leaves the
 field's previous content intact.
 
+Collections nest **one level deep**: the element type of a `List<T>` or a
+`Map<String, T>` must be a primitive, a date/time type, or an annotated class —
+not another collection. `List<List<String>>` and `Map<String, List<Address>>`
+raise `reflector.type_resolution.nested_generic_unsupported`, which names the
+declaration and the argument that is generic. Give the inner collection a class
+of its own to carry the extra level.
+
 This holds for collections of primitives as much as for collections of
 annotated objects — every element is checked at `setValues`, and the exception
 names the field, the position and the offending value. The one deliberate
