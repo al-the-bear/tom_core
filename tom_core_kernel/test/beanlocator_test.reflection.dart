@@ -859,7 +859,12 @@ final _data = <r.Reflection, r.ReflectorData>{
               o is! prefix12.TomDouble &&
               o is! prefix12.TomBool &&
               o is! prefix12.TomDateTime &&
-              o is! prefix12.TomOTimezoned &&
+              o is! prefix12.TomOZonedTime &&
+              o is! prefix12.TomOZonedDate &&
+              o is! prefix12.TomOZonedDateTime &&
+              o is! prefix12.TomNOZonedTime &&
+              o is! prefix12.TomNOZonedDate &&
+              o is! prefix12.TomNOZonedDateTime &&
               o is! prefix12.TomNString &&
               o is! prefix12.TomNInt &&
               o is! prefix12.TomNDouble &&
@@ -1115,7 +1120,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       r.GenericClassMirrorImpl<prefix12.TomOTimezoned>(
         r'TomOTimezoned',
         r'.TomOTimezoned',
-        134217735,
+        134218247,
         24,
         const prefix14.TomReflector(),
         const <int>[77, 419, 420],
@@ -1145,7 +1150,6 @@ final _data = <r.Reflection, r.ReflectorData>{
           398,
           400,
           419,
-          420,
         ],
         const <int>[421],
         18,
@@ -1157,13 +1161,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const <Object>[prefix14.tomReflector],
         null,
-        (o) {
-          return o is prefix12.TomOTimezoned &&
-              o is! prefix12.TomOZonedTime &&
-              o is! prefix12.TomOZonedDate &&
-              o is! prefix12.TomOZonedDateTime &&
-              o is! prefix12.TomNOTimezoned;
-        },
+        (o) => false,
         const <int>[82],
         24,
       ),
@@ -1566,7 +1564,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       r.GenericClassMirrorImpl<prefix12.TomNOTimezoned>(
         r'TomNOTimezoned',
         r'.TomNOTimezoned',
-        134217735,
+        134218247,
         33,
         const prefix14.TomReflector(),
         const <int>[86],
@@ -1596,7 +1594,6 @@ final _data = <r.Reflection, r.ReflectorData>{
           398,
           400,
           419,
-          420,
         ],
         const <int>[443],
         24,
@@ -1608,12 +1605,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const <Object>[prefix14.tomReflector],
         null,
-        (o) {
-          return o is prefix12.TomNOTimezoned &&
-              o is! prefix12.TomNOZonedTime &&
-              o is! prefix12.TomNOZonedDate &&
-              o is! prefix12.TomNOZonedDateTime;
-        },
+        (o) => false,
         const <int>[83],
         33,
       ),
@@ -8024,7 +8016,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       ),
       r.MethodMirrorImpl(
         r'setByString',
-        1310722,
+        1311234,
         24,
         -1,
         -1,
