@@ -184,9 +184,11 @@ class TimezoneTypesExample {
     print('   Range notifications: $rangeNotifyCount');
 
     // Assertions
-    assert(rangeNotifyCount >= 1, 'Range should notify on changes');
-    assert(~vacation.startDate != null, 'Start date should be set');
-    assert(~vacation.endDate != null, 'End date should be set');
+    // One notification per endpoint set. `>= 1` passed even if setting the end
+    // date notified nobody, which is half the behaviour a range should have.
+    assert(rangeNotifyCount == 2, 'Each endpoint should notify once');
+    assert((~vacation.startDate)?.localDay == 1, 'Start date should be July 1');
+    assert((~vacation.endDate)?.localDay == 14, 'End date should be July 14');
 
     vacation.removeObserver(vacationObserver);
   }

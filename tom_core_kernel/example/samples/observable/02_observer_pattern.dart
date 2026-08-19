@@ -117,6 +117,7 @@ class ObserverPatternExample {
 
     score | 110.0;
     print('   After first change: $muteTestCount notification(s)');
+    assert(muteTestCount == 1, 'One change while unmuted, one notification');
 
     // Mute notifications
     score.mute();
@@ -127,6 +128,7 @@ class ObserverPatternExample {
     score | 140.0;
     print('   Count while muted: $muteTestCount (unchanged)');
     print('   Value while muted: ${~score}');
+    assert(muteTestCount == 1, 'Changes while muted must not notify');
 
     // Unmute - should trigger notification
     print('   Unmuting...');
@@ -134,6 +136,12 @@ class ObserverPatternExample {
     print('   Count after unmute: $muteTestCount (consolidated)');
 
     // Assertions
+    // The three muted changes collapse into exactly one notification on
+    // unmute — not three replayed, and not none. That consolidation is the
+    // behaviour this example exists to show, so it is asserted exactly: `>=`
+    // here would pass for a mute that never suppressed anything.
+    assert(muteTestCount == 2,
+        'Unmute should deliver exactly one consolidated notification');
     assert(~score == 140.0, 'Value should still change while muted');
     assert(score.isMuted == false, 'Should not be muted after unmute');
 

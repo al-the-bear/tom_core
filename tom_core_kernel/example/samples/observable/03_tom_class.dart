@@ -103,7 +103,10 @@ class TomClassExample {
     print('   Total notifications: $notificationCount');
 
     // Assertions
-    assert(notificationCount >= 2, 'Should notify for each member change');
+    // Exactly one notification per member change — two changes, two
+    // notifications. `>=` would also pass for a cascade that fired twice per
+    // change, which is the regression worth catching here.
+    assert(notificationCount == 2, 'Should notify once per member change');
     assert(~person.name == 'Jane Doe', 'Name should be updated');
 
     person.removeObserver(personObserver);
@@ -197,6 +200,12 @@ class TomClassExample {
     print('   Customer notifications from nested changes: $customerNotifyCount');
 
     // Assertions
+    // Two direct changes plus three nested ones, each notifying the customer
+    // once. Asserting the count is what actually checks the claim above — that
+    // a change to `address` reaches an observer of `customer`; the value
+    // assertions below would hold even if nesting notified nobody.
+    assert(customerNotifyCount == 5,
+        'Nested member changes should notify the parent, once each');
     assert(~customer.address.street == '123 Main St', 'Nested street should be set');
     assert(~customer.address.city == 'New York', 'Nested city should be set');
 
