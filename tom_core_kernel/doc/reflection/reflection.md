@@ -1,8 +1,9 @@
 # Tom Reflection System
 
-The Tom Reflection System provides runtime reflection capabilities for Dart classes,
-enabling JSON serialization/deserialization without code generation for each model class.
-It uses the `reflection` package to achieve this while maintaining type safety.
+The Tom Reflection System provides runtime reflection capabilities for Dart
+classes, enabling JSON serialization/deserialization without hand-written
+serialization code for each model class. It uses the `reflection` package to
+achieve this while maintaining type safety.
 
 ## Table of Contents
 
@@ -37,8 +38,14 @@ The reflection system consists of three main components:
 
 ### Why Use Reflection?
 
-- **No per-model code generation**: Unlike `json_serializable`, you don't need to generate
-  code for each model class.
+- **No per-model serialization code**: unlike `json_serializable`, there is no
+  `toJson`/`fromJson` to write, no `part` directive to add to each model, and
+  nothing to keep in step when a field is added or renamed. A `build_runner`
+  step *is* required (see [Build Configuration](#build-configuration)), but it
+  produces one `.reflection.dart` per **entry point** you list, covering every
+  annotated class reachable from it, rather than one artifact per model. In this
+  package a single generated file covers all fifteen sample sources that declare
+  annotated classes.
 - **Dynamic JSON handling**: Parse JSON into objects without knowing the structure at compile time.
 - **Observable integration**: Seamlessly works with `TomClass` observable objects.
 
@@ -872,14 +879,21 @@ Configure the reflection builder in your `build.yaml`:
 targets:
   $default:
     builders:
-      reflection_builder:
+      tom_reflection_generator:reflection_generator:
         generate_for:
-          - lib/**.dart           # All library files
-          - test/**_test.dart     # Test files
-          - example/**/**.dart    # Example files
+          # Entry points, not every annotated source: each one becomes a
+          # reflection domain covering the classes reachable from it.
+          - test/reflection_test.dart
+          - example/run_all_samples.dart
         options:
           formatted: true
 ```
+
+List **entry points**, not globs. Discovery walks every annotated class in a
+domain and aborts the whole pass on the first interface it cannot resolve, so
+fixtures that are deliberately ambiguous or deliberately excluded need domains
+of their own — which is why this package's own `build.yaml` names each test
+file individually rather than matching `test/**_test.dart`.
 
 ### Running the Builder
 
@@ -897,17 +911,24 @@ dart run build_runner watch
 
 ### Generated Files
 
-For each file containing annotated classes, a `.reflection.dart` file is generated:
+One `.reflection.dart` is generated per file listed in `generate_for` — not
+per file that happens to contain annotated classes:
 
 ```
-my_models.dart
-my_models.reflection.dart  ← Generated
+run_all_samples.dart
+run_all_samples.reflection.dart  ← Generated
 ```
 
-Import and call `initializeReflection()` from the generated file:
+Each generated file covers every annotated class reachable through its entry
+point's imports, so one artifact spans a whole tree of sources. This package's
+`example/run_all_samples.reflection.dart` is the illustration: fifteen sample
+files declare annotated classes and one generated file serves them all.
+
+Import it and call the `initializeReflection()` it declares before any
+reflection happens:
 
 ```dart
-import 'my_models.reflection.dart';
+import 'run_all_samples.reflection.dart';
 
 void main() {
   initializeReflection();
