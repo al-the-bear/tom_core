@@ -179,9 +179,27 @@ Supports muting to defer notifications during batch updates.
 
 #### Operators
 
+The `>>` observation operator is **not** declared on `TomObservable` itself —
+it comes from the `TomObservableObservation` extension (below), so that its
+result is typed to the observable it is applied to.
+
+### TomObservableObservation
+
+An extension that adds the `>>` observation operator to every observable.
+
+- **On:** `T`, with `<T extends TomObservable>` — so `T` is inferred from the
+  receiver's static type, which is what lets the operator return a handle
+  typed to the cell rather than to the base class.
+- **Import required:** because this is an extension, `>>` is only in scope
+  where `package:tom_core_kernel/tom_core_kernel.dart` (or the observable
+  library) is imported. A package that re-exports observable *types* without
+  re-exporting the kernel does not bring the operator with them.
+
+#### Operators
+
 | Operator | Return Type | Description |
 | -------- | ----------- | ----------- |
-| `operator >>(callback)` | `TomFunctionObserver<TomObservable>` | Registers a callback observer and returns the wrapper (which must be retained to keep the callback alive). |
+| `operator >>(void Function(T observable) callback)` | `TomFunctionObserver<T>` | Registers a callback observer and returns the wrapper (which must be retained to keep the callback alive). The callback receives the observable at type `T`, so `count >> (obs) => obs.get()` reads an `int` from a `TomInt` with no cast. |
 
 ### TomObserver
 

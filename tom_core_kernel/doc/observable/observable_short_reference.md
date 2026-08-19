@@ -67,10 +67,11 @@ from inside a caller's batch without cutting it short. Muting a composite
 (`TomClass`, `TomList`, `TomMap`) cascades to its members, so a batch that
 touches several of them still surfaces as one notification from the container.
 
-**Operators:**
+**Operators:** (from the `TomObservableObservation` extension, not the class —
+so the kernel must be imported for `>>` to be in scope)
 | Operator | Description |
 |----------|-------------|
-| `observable >> callback` | Adds a callback function as an observer (returns `TomFunctionObserver`) |
+| `observable >> callback` | Adds a callback function as an observer. Returns a `TomFunctionObserver` typed to the receiver, and hands the callback the observable at that same type |
 
 **Example:**
 ```dart
@@ -114,7 +115,9 @@ counter.increment(); // Prints: "Counter changed!"
 
 ### `TomFunctionObserver<T extends TomObservable>`
 
-A wrapper that allows using a callback function as a `TomObserver`. This enables the `>>` operator syntax.
+A wrapper that allows using a callback function as a `TomObserver`. This is what
+the `>>` operator creates; `T` is the type of the observable `>>` was applied
+to, so the handle keeps the type the expression started with.
 
 **Example:**
 ```dart
@@ -144,7 +147,7 @@ The generic observable wrapper that all other types extend.
   - `obj()` — get value (call operator)
   - `obj | newValue` — set value and notify observers; returns the value
   - `obj << newValue` — set value and notify observers; returns `obj`, so writes chain (`count << 1 << 2`)
-  - `obj >> callback` — observe changes (inherited from `TomObservable`)
+  - `obj >> callback` — observe changes (from the `TomObservableObservation` extension over `TomObservable`)
 - **Nullable access**: `getOrNull()`, `isNull` property
 - **Observer integration**: Automatically notifies observers on value changes via `set()`
 

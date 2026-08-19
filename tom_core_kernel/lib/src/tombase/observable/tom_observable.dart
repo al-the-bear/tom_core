@@ -231,30 +231,48 @@ class TomObservable {
     }
   }
 
-  /// Operator to add an observer callback: `observable >> (obs) => print('changed')`.
+}
+
+/// Adds the observation operator `>>` to every [TomObservable].
+///
+/// An extension rather than a method on [TomObservable] because the whole
+/// point is the *receiver's* type: an extension type parameter is inferred
+/// from the expression it is applied to, so `count >> …` on a `TomInt` yields
+/// a `TomFunctionObserver<TomInt>` and hands the callback a `TomInt`, while a
+/// method on the base class could only ever promise `TomObservable`. This
+/// works for classes the framework has never heard of — a user's
+/// `Person extends TomClass` gets `TomFunctionObserver<Person>`.
+extension TomObservableObservation<T extends TomObservable> on T {
+  /// Registers [callback] as an observer: `count >> (obs) => print(obs.get())`.
   ///
-  /// The callback is invoked whenever this observable notifies its observers.
-  /// Returns the [TomFunctionObserver] wrapper, which can later be removed via
-  /// [removeObserver].
+  /// The callback runs whenever this observable notifies its observers, and
+  /// receives the observable itself — typed as the receiver was, so a
+  /// `TomInt`'s callback can read `obs.get()` as an `int` with no cast.
+  ///
+  /// Returns the [TomFunctionObserver] wrapper, which can later be passed to
+  /// [TomObservable.removeObserver].
   ///
   /// **You must retain the returned observer for as long as you want
-  /// notifications.** Observers are held by [WeakReference] (see [addObserver]),
-  /// so the returned wrapper is the *only* strong reference keeping the callback
-  /// alive. If you discard it — the fire-and-forget form
-  /// `myObservable >> (obs) => print('Changed!');` — the wrapper becomes eligible
-  /// for garbage collection and the callback **silently stops firing** at a
-  /// nondeterministic later time. Always capture the result:
+  /// notifications.** Observers are held by [WeakReference] (see
+  /// [TomObservable.addObserver]), so the returned wrapper is the *only*
+  /// strong reference keeping the callback alive. If you discard it — the
+  /// fire-and-forget form `myObservable >> (obs) => print('Changed!');` — the
+  /// wrapper becomes eligible for garbage collection and the callback
+  /// **silently stops firing** at a nondeterministic later time. Always
+  /// capture the result:
   ///
-  /// Example:
   /// ```dart
   /// // Keep `observer` alive (e.g. in a field) for as long as you observe:
   /// final observer = myObservable >> (obs) => print('Changed!');
   /// // Later, to stop observing:
   /// myObservable.removeObserver(observer);
   /// ```
-  TomFunctionObserver<TomObservable> operator >>(
-      void Function(TomObservable observable) callback) {
-    var observer = TomFunctionObserver<TomObservable>(callback);
+  ///
+  /// The wrapper is bound to the observable that produced it. Registering it
+  /// on a *different* observable that is not a [T] fails at notification time
+  /// — which is the point: the callback was written against a [T].
+  TomFunctionObserver<T> operator >>(void Function(T observable) callback) {
+    final observer = TomFunctionObserver<T>(callback);
     addObserver(observer);
     return observer;
   }
@@ -326,12 +344,14 @@ abstract class TomObserver<T extends TomObservable> {
 
 /// A wrapper that allows using a callback function as a [TomObserver].
 ///
-/// This enables the `>>` operator syntax for observing changes.
+/// This is what the `>>` operator
+/// ([TomObservableObservation.operator >>]) creates, so [T] is normally
+/// inferred from the observable the operator was applied to.
 ///
-/// **The returned wrapper must be retained for as long as notifications are
-/// wanted.** [TomObservable] holds its observers by [WeakReference], so this
-/// wrapper is the only strong reference keeping the callback alive; if it is
-/// not captured, it can be garbage-collected and the callback silently stops
+/// **The wrapper must be retained for as long as notifications are wanted.**
+/// [TomObservable] holds its observers by [WeakReference], so this wrapper is
+/// the only strong reference keeping the callback alive; if it is not
+/// captured, it can be garbage-collected and the callback silently stops
 /// firing. Store it (e.g. in a field) and remove it explicitly via
 /// [TomObservable.removeObserver] when done — do not use the fire-and-forget
 /// form `myObservable >> (obs) => ...;`.
@@ -342,6 +362,7 @@ abstract class TomObserver<T extends TomObservable> {
 /// // Later, to stop observing:
 /// myObservable.removeObserver(observer);
 /// ```
+@tomReflector
 class TomFunctionObserver<T extends TomObservable> implements TomObserver<T> {
   final void Function(T observable) _callback;
 

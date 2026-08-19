@@ -366,7 +366,7 @@ class GenericObserver implements TomObserver<TomObservable> {
 ### TomFunctionObserver
 
 A wrapper that allows using a callback function as a `TomObserver`. This is what
-enables the `>>` operator syntax.
+the `>>` operator creates.
 
 ```dart
 // `>>` wraps the callback and registers it, returning the wrapper:
@@ -375,6 +375,18 @@ final observer = counter >> (obs) => print('Changed!');
 // The same thing spelled out:
 final sameObserver = TomFunctionObserver<Counter>((obs) => print('Changed!'));
 counter.addObserver(sameObserver);
+```
+
+The two lines above produce the same type. `>>` is an extension on the
+*receiver's* type, so `counter >> …` on a `Counter` yields a
+`TomFunctionObserver<Counter>` and hands the callback a `Counter` — the type
+information the expression started with survives into the handle you retain and
+into the parameter you read:
+
+```dart
+final count = TomInt(0);
+final observer = count >> (obs) => print(obs.get() + 1); // obs is a TomInt
+// observer is a TomFunctionObserver<TomInt>
 ```
 
 #### Keeping References — required, not optional
@@ -410,7 +422,7 @@ The observable system uses custom operators for a clean, expressive API:
 | `()` | `observable()` | `T` | Get the current value (call operator) |
 | `\|` | `observable \| value` | `T` | Set the value and notify observers; yields the value that was set |
 | `<<` | `observable << value` | `TomObject<T>` | Set the value and notify observers; yields the observable, so calls chain |
-| `>>` | `observable >> callback` | `TomFunctionObserver<TomObservable>` | Wrap the callback in an observer, register it, and return it. **Keep the returned observer** — it is held weakly (see [Memory Management](#memory-management--you-must-retain-the-observer)) |
+| `>>` | `observable >> callback` | `TomFunctionObserver<R>`, where `R` is the receiver's static type | Wrap the callback in an observer, register it, and return it. **Keep the returned observer** — it is held weakly (see [Memory Management](#memory-management--you-must-retain-the-observer)) |
 
 On a value cell, `|` and `<<` differ only in what they hand back. Use `|` when
 the value is what you want next (`final next = counter | 5;`), `<<` when you
@@ -433,8 +445,21 @@ whole-value write, and it means wholesale replacement:
 The `TomClass` asymmetry is deliberate: a list's and a map's contents are
 replaceable, whereas a class's set of members is fixed by its declaration.
 
-`>>` is declared on `TomObservable`, so it is available on every observable —
-not only on the `TomObject<T>` value cells.
+`>>` applies to every observable — not only to the `TomObject<T>` value cells.
+Unlike the other operators it is **not** an instance member: it comes from the
+`TomObservableObservation` extension, declared as
+`extension TomObservableObservation<T extends TomObservable> on T`. That is the
+only way to get the *receiver's* type into the result — an instance operator on
+the base class could only ever promise `TomObservable`, whereas the extension's
+type parameter is inferred from the expression it is applied to. It works for
+types the framework has never heard of: your own `Person extends TomClass` gets
+a `TomFunctionObserver<Person>` and a `Person`-typed callback parameter.
+
+Being an extension has one practical consequence: **`>>` is only in scope where
+the kernel is imported.** A package that re-exports observable *types* without
+re-exporting `package:tom_core_kernel/tom_core_kernel.dart` does not bring the
+operator along with them, and `observable >> callback` will fail to compile with
+"the operator '>>' isn't defined". Add the kernel import.
 
 ### Operator Examples
 
@@ -491,9 +516,10 @@ print(~greeting);                              // hello
 `set` — and therefore `|` and `<<` — compares against the current value and
 stays silent when they are equal, so writing the same value twice notifies once.
 
-Subscription is not declared here: `operator >>` and the
-`addObserver`/`removeObserver`/`notifyObservers` trio come from
-[`TomObservable`](#tomobservable).
+Subscription is not declared here: the
+`addObserver`/`removeObserver`/`notifyObservers` trio comes from
+[`TomObservable`](#tomobservable), and `operator >>` from the
+`TomObservableObservation` extension over it.
 
 The composites narrow this contract rather than extending it. All three throw
 from `set`, and for two different reasons.

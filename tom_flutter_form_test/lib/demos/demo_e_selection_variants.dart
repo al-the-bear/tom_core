@@ -106,12 +106,14 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
           (_) => _record('filterChips', _listLabel(_filterChipsSelection)),
       _multiCheckboxSelection >>
           (_) => _record('multiCheckbox', _listLabel(_multiCheckboxSelection)),
-      _segmented >> (o) => _record('segmented', (o as TomString).get()),
-      _radioGroup >> (o) => _record('radioGroup', (o as TomString).get()),
-      _choiceChips >> (o) => _record('choiceChips', (o as TomString).get()),
-      _boolCheckbox >> (o) => _record('boolCheckbox', '${(o as TomBool).get()}'),
-      _boolSwitch >> (o) => _record('boolSwitch', '${(o as TomBool).get()}'),
-      _boolToggle >> (o) => _record('boolToggle', '${(o as TomBool).get()}'),
+      // `o` arrives typed as the field it came from — `>>` is an extension on
+      // the receiver's type — so `get()` needs no cast.
+      _segmented >> (o) => _record('segmented', o.get()),
+      _radioGroup >> (o) => _record('radioGroup', o.get()),
+      _choiceChips >> (o) => _record('choiceChips', o.get()),
+      _boolCheckbox >> (o) => _record('boolCheckbox', '${o.get()}'),
+      _boolSwitch >> (o) => _record('boolSwitch', '${o.get()}'),
+      _boolToggle >> (o) => _record('boolToggle', '${o.get()}'),
     ]);
   }
 

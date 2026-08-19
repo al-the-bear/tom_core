@@ -190,7 +190,9 @@ class TomObjectBasicsExample {
     // at the next garbage collection, silently and nondeterministically.
     final counterObserver = counter >> (obs) {
       notifyCount++;
-      print('   [Observer] Counter changed to ${~(obs as TomInt)}');
+      // `obs` is a TomInt, not a bare TomObservable: `>>` is an extension on
+      // the receiver's type, so the callback parameter follows `counter`.
+      print('   [Observer] Counter changed to ${~obs}');
     };
 
     counter | 1;

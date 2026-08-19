@@ -243,6 +243,14 @@ Future<bool> collectGarbageUntilCleared(WeakReference<Object> probe) async {
   return probe.target == null;
 }
 
+/// Reifies the *static* type the analyzer inferred for [value].
+///
+/// `value.runtimeType` would answer a different question — what the object
+/// happens to be — and would pass even if the expression had been typed
+/// `dynamic`. Binding the type parameter to the argument's static type and
+/// returning it is the only way to assert what the compiler concluded.
+Type staticTypeOf<X>(X value) => X;
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -515,6 +523,98 @@ void main() {
 
       expect(late.notifyCount, equals(1));
       expect(retained.notifyCount, equals(2));
+    });
+  });
+
+  group('>> is typed to the observable it is applied to', () {
+    test('the returned handle keeps the receiver type', () {
+      final count = TomInt(0);
+      final observer = count >> (obs) {};
+
+      expect(
+          staticTypeOf(observer), equals(TomFunctionObserver<TomInt>));
+    });
+
+    test('the callback receives the observable at the receiver type', () {
+      final count = TomInt(0);
+      int? seen;
+      // `obs.get()` returns `int`, not `Object?` — this line only compiles
+      // because the parameter is a TomInt, which is the whole point.
+      final observer = count >> (obs) => seen = obs.get();
+
+      count | 7;
+
+      expect(seen, equals(7));
+      expect(observer, isNotNull); // retain: observers are held weakly
+    });
+
+    test('a user-defined TomClass gets its own type, not TomClass', () {
+      final person = TestPerson();
+      String? seen;
+      final observer = person >> (obs) => seen = obs.name.get();
+
+      expect(staticTypeOf(observer), equals(TomFunctionObserver<TestPerson>));
+
+      person.name | 'Ada';
+
+      expect(seen, equals('Ada'));
+    });
+
+    test('a collection is typed with its element type', () {
+      final names = TomList<TomString>();
+      final observer = names >> (obs) {};
+
+      expect(staticTypeOf(observer),
+          equals(TomFunctionObserver<TomList<TomString>>));
+    });
+
+    test('a callback written against the base type is still accepted', () {
+      // Function types are contravariant in their parameters, so the old
+      // `(TomObservable obs) { ... }` form keeps compiling against the
+      // narrower `void Function(TomInt)` the operator now asks for.
+      final count = TomInt(0);
+      TomObservable? seen;
+      final observer = count >> (TomObservable obs) => seen = obs;
+
+      count | 1;
+
+      expect(identical(seen, count), isTrue);
+      expect(staticTypeOf(observer), equals(TomFunctionObserver<TomInt>));
+    });
+
+    test('the handle can be passed back to removeObserver', () {
+      final count = TomInt(0);
+      var notifications = 0;
+      final observer = count >> (obs) => notifications++;
+
+      count | 1;
+      count.removeObserver(observer);
+      count | 2;
+
+      expect(notifications, equals(1));
+    });
+
+    test('a narrowed observer rejects a foreign observable when notified', () {
+      // The narrowing has a runtime edge: registering an observer built for a
+      // TomInt on a TomString type-checks (addObserver takes the base type)
+      // but fails when the notification arrives. That is the correct outcome —
+      // the callback was written against a TomInt and cannot run — and it now
+      // surfaces where before the callback would have been handed a value of
+      // an unexpected type.
+      final count = TomInt(0);
+      final label = TomString('');
+      final observer = count >> (obs) => obs.get();
+
+      label.addObserver(observer);
+
+      expect(() => label.notifyObservers(), throwsA(isA<TypeError>()));
+    });
+
+    test('TomFunctionObserver is reflected like its neighbours', () {
+      // Everything around it in the module carries @tomReflector; a hole in
+      // the reflected graph breaks anything that walks it (serialization, the
+      // Forge inspectors, the D4rt bridges).
+      expect(tomReflector.reflectType(TomFunctionObserver), isA<ClassMirror>());
     });
   });
 

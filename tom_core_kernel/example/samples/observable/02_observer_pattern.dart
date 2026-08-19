@@ -55,7 +55,9 @@ class ObserverPatternExample {
     // Add observer using >> operator
     final observer = name >> (obs) {
       callbackCount++;
-      lastNotifiedValue = (obs as TomString).get();
+      // `obs` arrives typed as TomString — `>>` is an extension on the
+      // receiver's type, so no cast is needed to reach `get()`.
+      lastNotifiedValue = obs.get();
       print('   Callback triggered: value is now "$lastNotifiedValue"');
     };
 
