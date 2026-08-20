@@ -12,6 +12,7 @@ original zone still resolve resources correctly.
   - [TomScope](#tomscope)
   - [TomScopeBase](#tomscopebase)
   - [TomScopeMixin](#tomscopemixin)
+  - [TomScopeException](#tomscopeexception)
   - [InScopeBuilder](#inscopebuilder)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -37,6 +38,9 @@ TomScope  (abstract — nothing extends it)
 
 TomScopeMixin  (mixin on Object, implements TomScope)
     └── TomScopeBase  (with TomScopeMixin; extends Object)
+
+TomException
+    └── TomScopeException
 
 InScopeBuilder
 ```
@@ -76,7 +80,7 @@ on the current `Zone`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `withScope` | `static T withScope<T>(String scope, T Function() body)` | Runs `body` in a new child scope named `scope`, parented to `current`. The zone bounds reachability, not lifetime: the caller's continuation never sees the scope, but anything `body` schedules inherits it and observes it whenever it later runs. |
+| `withScope` | `static T withScope<T>(String scope, T Function() body)` | Runs `body` in a new child scope named `scope`, parented to `current`. The zone bounds reachability, not lifetime: the caller's continuation never sees the scope, but anything `body` schedules inherits it and observes it whenever it later runs. Throws `TomScopeException` — without running `body` — if `scope` is empty or contains `.`. |
 | `buildScopePath` | `static String buildScopePath(TomScope scope)` | Builds the dot-separated scope path for any `TomScope` (e.g. `app.checkout.orderForm`), eliding only the root sentinel. Requires an acyclic parent chain: the walk is iterative and unguarded, so a loop exhausts the heap rather than raising `StackOverflowError`. Scopes built through this module cannot form one — the obligation falls on hand-rolled `implements TomScope`. |
 
 #### Properties
@@ -123,16 +127,16 @@ known later.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `id` | `String` | The scope's local id. Read-only; written once by `initScope`. Throws `StateError` before `initScope` has run. |
-| `parent` | `TomScope?` | The parent scope. Read-only; written once by `initScope`. Throws `StateError` before `initScope` has run. |
+| `id` | `String` | The scope's local id. Read-only; written once by `initScope`. Throws `TomScopeException` before `initScope` has run. |
+| `parent` | `TomScope?` | The parent scope. Read-only; written once by `initScope`. Throws `TomScopeException` before `initScope` has run. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `StateError` if `parentScope` has no identity of its own — which is also what keeps the chain acyclic, since it makes every parent strictly older than its child and the link is then written once. |
+| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `TomScopeException` if `scopeId` is empty or contains `.`, or if `parentScope` has no identity of its own — the latter is also what keeps the chain acyclic, since it makes every parent strictly older than its child and the link is then written once. Validation runs before any field is written, so a refused call leaves the instance still initialisable. |
 | `getScopePath` | `String getScopePath()` | *(override)* Returns the full dot-separated scope path. |
-| `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. Throws `StateError` before `initScope` has run, without running `body`. |
+| `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. Throws `TomScopeException` before `initScope` has run, without running `body`. |
 
 Until `initScope` runs, the instance is not yet a scope: it can neither be
 installed nor be another scope's parent, and each refusal names the class and
@@ -140,6 +144,26 @@ the missing call. Checking the parent at `initScope` rather than during the path
 walk keeps both checks O(1) — an initialised scope has a fully initialised chain
 by induction — and buys the invariant that whatever `TomScope.current` returns is
 usable. See `doc/scope_ids/scope_ids.md`.
+
+`initScope` is also where the id itself is checked, once per scope, because
+`withScope` and the `TomScopeBase` constructor both route through it. Ids are
+joined with `.` to build the path, so an id carrying a `.` forges a segment
+boundary — `'a.b'` renders exactly as the unrelated chain `'a'` → `'b'` — and an
+empty id renders as `''`, which consumers read as "no scope at all". Since the
+path keys resource and authorization lookups, both are refused rather than
+allowed to name another scope's resources. Nothing else about the id is policed.
+
+### TomScopeException
+
+Raised when a scope cannot be built or used as one. Extends `TomException`;
+keys are `scope_ids.<operation>.<condition>` and `parameters` carries the
+offending value.
+
+| Key | Raised when |
+| --- | ----------- |
+| `scope_ids.init_scope.empty_id` | `initScope` is given an empty `scopeId` (`parameters['scopeId']`) |
+| `scope_ids.init_scope.separator_in_id` | `initScope` is given a `scopeId` containing `.` (`parameters['scopeId']`, `parameters['separator']`) |
+| `scope_ids.use_scope.no_identity` | a `TomScopeMixin` instance is installed or used as a parent before `initScope` has run (`parameters['type']`) |
 
 ### InScopeBuilder
 

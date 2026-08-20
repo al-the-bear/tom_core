@@ -16,6 +16,7 @@ threading an identifier through every call.
     - [The window before initScope](#the-window-before-initscope)
   - [InScopeBuilder](#inscopebuilder)
 - [Scope Paths](#scope-paths)
+  - [Ids may not contain the separator](#ids-may-not-contain-the-separator)
   - [The chain must be acyclic](#the-chain-must-be-acyclic)
 - [Crossing Zone Boundaries](#crossing-zone-boundaries)
   - [Fire-and-forget work started inside a scope](#fire-and-forget-work-started-inside-a-scope)
@@ -112,15 +113,16 @@ print(child.getScopePath()); // app.checkout
 
 Because `initScope` may run after construction, there is a window in which an
 instance exists and is not yet a scope. Using it as one inside that window is
-refused immediately, with a `StateError` naming the class and the call that was
-skipped:
+refused immediately, with a `TomScopeException` naming the class and the call
+that was skipped:
 
 ```dart
 class LazyScope with TomScopeMixin {}
 
 LazyScope().runInScope(() { /* never runs */ });
-// StateError: Cannot install a scope on the zone: LazyScope has no scope
-// identity because initScope() was never called on it. …
+// TomScopeException(scope_ids.use_scope.no_identity): Cannot install a scope on
+// the zone: LazyScope has no scope identity because initScope() was never
+// called on it. …
 ```
 
 Two entry points enforce it, and between them they close the window:
@@ -128,7 +130,7 @@ Two entry points enforce it, and between them they close the window:
 | Entry point | Refuses |
 | ----------- | ------- |
 | `runInScope` — and everything built on it, including `InScopeBuilder` | installing a scope that has no identity |
-| `initScope` | a `parentScope` that has no identity |
+| `initScope` | a `parentScope` that has no identity, and an unusable `scopeId` |
 
 Checking the parent at `initScope`, rather than when the path is built, is what
 keeps both checks O(1): an initialised scope then has a fully initialised
@@ -194,6 +196,44 @@ Matching on the id string instead would delete that segment silently, and
 collapse two genuinely distinct scopes onto one path. That is why the rule is
 written as an identity check rather than a name comparison.
 
+### Ids may not contain the separator
+
+Because the segments are joined with `.`, an id that *contains* a `.` forges a
+segment boundary — it renders as a path belonging to a different, deeper chain:
+
+```dart
+TomScopeBase(scopeId: 'a.b');                          // would render "a.b"
+TomScopeBase(scopeId: 'b', parentScope: TomScopeBase(scopeId: 'a'));  // also "a.b"
+```
+
+The path is what resource and authorization lookups are keyed on, so those two
+being indistinguishable means a scope can name another scope's resources. An
+empty id is the same defect from the other end: at the root it renders as `''`,
+the string consumers are told to read as *no scope at all*.
+
+Both are therefore **refused**, with a `TomScopeException`:
+
+```dart
+TomScopeBase(scopeId: 'a.b');
+// TomScopeException(scope_ids.init_scope.separator_in_id): A scope id must not
+// contain "." … "a.b" would be indistinguishable from a deeper chain of
+// separate scopes.
+
+TomScope.withScope('', () {});
+// TomScopeException(scope_ids.init_scope.empty_id): A scope id must not be
+// empty …
+```
+
+The check lives in `initScope`, which `withScope` and the `TomScopeBase`
+constructor both route through, so all three entry points are covered by one
+check that runs once per scope rather than on every path build. Nothing else
+about the id is policed — spaces, slashes, hyphens and non-ASCII are all
+unambiguous and stay legal.
+
+Ids written as literals in source can never trip this. The exposure it closes is
+the case the module exists for: **one scope per detail row, named from the
+row** — a tenant, a key, a user-supplied label.
+
 ### The chain must be acyclic
 
 The walk is iterative and has **no cycle guard**. A loop therefore does not
@@ -220,7 +260,7 @@ Bending a link back would take one of two things, and both are refused:
 ```dart
 final a = LazyScope();
 final b = LazyScope();
-a.initScope(scopeId: 'a', parentScope: b);  // StateError — b has no identity
+a.initScope(scopeId: 'a', parentScope: b);  // TomScopeException — b has no identity
 b.initScope(scopeId: 'b', parentScope: a);
 
 final child = TomScopeBase(scopeId: 'child', parentScope: root);
@@ -324,8 +364,12 @@ So the two tools are:
 2. **Wrap framework callbacks.** Any builder that the UI framework calls back
    into should be wrapped with `InScopeBuilder` so resource/authorization
    lookups resolve against the right path.
-3. **Keep ids path-safe.** Scope ids become dot-separated path segments — avoid
-   embedding `.` in an id.
+3. **Expect an id derived from data to be checked.** Scope ids become
+   dot-separated path segments, so an empty id or one containing `.` is refused
+   with a `TomScopeException` rather than silently producing another scope's
+   path. Literal ids never trip it; if you build an id from a tenant name, a row
+   key or a user-supplied label, either keep it separator-free or handle the
+   rejection.
 4. **Decide which scope background work belongs to.** A `Future` started inside
    a scope keeps it for its whole life, so a fire-and-forget task inherits the
    scope of whatever happened to start it. Start genuinely independent work

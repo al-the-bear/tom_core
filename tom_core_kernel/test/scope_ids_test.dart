@@ -170,6 +170,112 @@ void main() {
         expect(path, equals('default'));
       });
 
+      // The path is the module's entire output — a resource-lookup and
+      // authorization prefix. A '.' inside an id is therefore not a cosmetic
+      // problem: it forges a segment boundary, so one scope renders as a path
+      // belonging to a different, deeper chain. An empty id is the same defect
+      // from the other side, and worse at the root, where it renders as '' —
+      // the string consumers are told means "no scope at all".
+      group('scope ids are validated', () {
+        void expectRejected(String id, void Function() build) {
+          expect(
+            build,
+            throwsA(
+              isA<TomScopeException>().having(
+                (e) => e.parameters?['scopeId'],
+                'the offending id',
+                equals(id),
+              ),
+            ),
+            reason: 'id "$id" must be refused',
+          );
+        }
+
+        // Every route runs through initScope, so all three are one check —
+        // but all three are public, so all three are pinned.
+        for (final id in const ['a.b', '.', 'a.', '.a', '']) {
+          test('withScope refuses "$id"', () {
+            expectRejected(id, () => TomScope.withScope(id, () {}));
+          });
+
+          test('the TomScopeBase constructor refuses "$id"', () {
+            expectRejected(id, () => TomScopeBase(scopeId: id));
+          });
+
+          test('initScope refuses "$id"', () {
+            expectRejected(id, () => _LazyMixinScope().initScope(scopeId: id));
+          });
+        }
+
+        // The defect itself: without the check these two chains are byte-equal,
+        // so a scope named from data can name another scope's resources.
+        test('a dotted id can no longer forge a deeper chain', () {
+          final threeSegments = TomScopeBase(
+            scopeId: 'c',
+            parentScope: TomScopeBase(
+              scopeId: 'b',
+              parentScope: TomScopeBase(scopeId: 'a'),
+            ),
+          );
+          expect(threeSegments.getScopePath(), equals('a.b.c'));
+
+          // The chain that used to render identically cannot be built at all.
+          expect(
+            () => TomScopeBase(scopeId: 'a.b'),
+            throwsA(isA<TomScopeException>()),
+          );
+        });
+
+        // Rejecting must not mutate: the instance is still a blank slate, so a
+        // caller that catches the error and retries with a clean id succeeds.
+        test('a refused id leaves the instance still initialisable', () {
+          final lazy = _LazyMixinScope();
+          expect(
+            () => lazy.initScope(scopeId: 'bad.id'),
+            throwsA(isA<TomScopeException>()),
+          );
+
+          lazy.initScope(scopeId: 'good');
+          expect(lazy.getScopePath(), equals('good'));
+        });
+
+        // The check must reject the ambiguity, not police the alphabet:
+        // anything that cannot forge a segment boundary stays legal.
+        test('ids that cannot forge a boundary are still accepted', () {
+          for (final id in const [
+            'orderForm',
+            'ft_text',
+            'lay-pair',
+            'row/42',
+            'tenant name',
+            'Ünïcödé',
+            '默认',
+            'a·b', // U+00B7, a middle dot — not the separator
+          ]) {
+            expect(
+              () => TomScopeBase(scopeId: id).getScopePath(),
+              returnsNormally,
+              reason: 'id "$id" is unambiguous and must be allowed',
+            );
+          }
+        });
+
+        test('the message names the id and the rule it broke', () {
+          expect(
+            () => TomScopeBase(scopeId: 'a.b'),
+            throwsA(
+              isA<TomScopeException>()
+                  .having((e) => e.key, 'key', contains('scope_ids'))
+                  .having(
+                    (e) => e.defaultUserMessage,
+                    'message',
+                    allOf(contains('a.b'), contains('.')),
+                  ),
+            ),
+          );
+        });
+      });
+
       // The walk up the parent chain has no cycle guard: it is iterative, so a
       // loop does not raise StackOverflowError — it spins silently, growing the
       // segment list until the heap is exhausted and the isolate dies.
@@ -191,7 +297,7 @@ void main() {
 
           expect(
             () => a.initScope(scopeId: 'a', parentScope: b),
-            throwsA(isA<StateError>()),
+            throwsA(isA<TomScopeException>()),
           );
         });
 
@@ -199,7 +305,7 @@ void main() {
           final a = _LazyMixinScope();
           expect(
             () => a.initScope(scopeId: 'a', parentScope: a),
-            throwsA(isA<StateError>()),
+            throwsA(isA<TomScopeException>()),
           );
         });
 
@@ -297,8 +403,8 @@ void main() {
         expect(
           action,
           throwsA(
-            isA<StateError>().having(
-              (e) => e.message,
+            isA<TomScopeException>().having(
+              (e) => e.defaultUserMessage,
               'message',
               allOf(contains('_LazyMixinScope'), contains('initScope')),
             ),

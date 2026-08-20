@@ -131,8 +131,8 @@ void run() {
     try {
       action();
       return '(no error)';
-    } on StateError catch (e) {
-      return e.message;
+    } on TomScopeException catch (e) {
+      return e.defaultUserMessage;
     }
   }
 
@@ -170,7 +170,7 @@ void run() {
   });
 
   // Re-point an established parent. `initScope` backs `late final` fields, so
-  // this fails as a LateError rather than a StateError.
+  // this fails as a LateError rather than a TomScopeException.
   final child = ScreenSection(
     title: 'Child',
     scopeId: 'child',

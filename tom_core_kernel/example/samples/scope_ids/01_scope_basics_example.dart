@@ -8,6 +8,7 @@
 /// - Building scope paths directly with [TomScope.buildScopePath]
 /// - Running a body inside an explicit scope with `runInScope`
 /// - Why the root is elided from a path by *identity* and not by its id
+/// - Why an id may not be empty or contain `.`, and what is refused instead
 ///
 /// Scopes are carried on the current [Zone], so `TomScope.current` always
 /// resolves to whichever scope was installed by the nearest enclosing
@@ -153,6 +154,49 @@ void run() {
   print('');
 
   // ===========================================================================
+  // Example 8: An id may not carry the separator
+  // ===========================================================================
+  //
+  // Segments are joined with '.', so an id containing one forges a segment
+  // boundary — and the path is what resource and authorization lookups are
+  // keyed on. Rather than let a scope render as a path belonging to a
+  // different, deeper chain, the id is refused where it is accepted.
+
+  print('8. Ids that would forge a path segment:');
+
+  String refusalOf(void Function() action) {
+    try {
+      action();
+      return '(accepted)';
+    } on TomScopeException catch (e) {
+      return e.key;
+    }
+  }
+
+  // The chain a dotted id would render as, were one accepted.
+  final threeSegments = TomScopeBase(
+    scopeId: 'c',
+    parentScope: TomScopeBase(
+      scopeId: 'b',
+      parentScope: TomScopeBase(scopeId: 'a'),
+    ),
+  );
+  final threeSegmentPath = threeSegments.getScopePath();
+
+  final dottedRefusal = refusalOf(() => TomScopeBase(scopeId: 'a.b'));
+  final emptyRefusal = refusalOf(() => TomScope.withScope('', () {}));
+
+  // The rule targets the ambiguity, not the alphabet: anything that cannot
+  // forge a boundary is still a legal id.
+  final oddButLegal = TomScopeBase(scopeId: 'tenant 42/rows').getScopePath();
+
+  print('   "a" > "b" > "c" path:  "$threeSegmentPath"');
+  print('   TomScopeBase("a.b"):   $dottedRefusal');
+  print('   withScope(""):         $emptyRefusal');
+  print('   "tenant 42/rows":      "$oddButLegal" (accepted)');
+  print('');
+
+  // ===========================================================================
   // Assertions
   // ===========================================================================
 
@@ -191,6 +235,17 @@ void run() {
   assert(
     underSentinelPath == 'default',
     'only the sentinel itself is elided, even when its child shares its id',
+  );
+
+  // Example 8: the id check. Without it the first two lines below would be
+  // byte-equal, so a scope named from data could name another scope's
+  // resources.
+  assert(threeSegmentPath == 'a.b.c');
+  assert(dottedRefusal == 'scope_ids.init_scope.separator_in_id');
+  assert(emptyRefusal == 'scope_ids.init_scope.empty_id');
+  assert(
+    oddButLegal == 'tenant 42/rows',
+    'only the separator is refused, not every awkward character',
   );
 }
 

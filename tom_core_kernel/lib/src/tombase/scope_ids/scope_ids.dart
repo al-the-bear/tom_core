@@ -1,6 +1,29 @@
 import 'dart:async';
 
+import '../little_things/exception_base.dart';
 import '../little_things/little_things.dart';
+
+/// Raised when a scope cannot be built or used as one.
+///
+/// Keys are `scope_ids.<operation>.<condition>`:
+/// `scope_ids.init_scope.empty_id`, `scope_ids.init_scope.separator_in_id`,
+/// and `scope_ids.use_scope.no_identity`.
+class TomScopeException extends TomException {
+  TomScopeException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.uuid,
+    super.serverCallError,
+  });
+}
+
+/// The character that separates path segments, and therefore the one character
+/// a scope id may not contain.
+const String _scopePathSeparator = '.';
 
 /// Shared scope-installation policy for [TomScope.runInScope] and
 /// [TomScopeMixin.runInScope].
@@ -31,12 +54,48 @@ T _runScoped<T>(TomScope scope, T Function() body) {
 /// constructor that skipped [TomScopeMixin.initScope].
 void _requireScopeIdentity(TomScope? scope, String attemptedAction) {
   if (scope is! TomScopeMixin || scope._hasIdentity) return;
-  throw StateError(
+  throw TomScopeException(
+    'scope_ids.use_scope.no_identity',
     '$attemptedAction: ${scope.runtimeType} has no scope identity because '
-    'initScope() was never called on it. Call initScope(scopeId: ..., '
-    'parentScope: ...) exactly once — from the constructor, or on the '
-    'constructed instance once its parent is known.',
+        'initScope() was never called on it. Call initScope(scopeId: ..., '
+        'parentScope: ...) exactly once — from the constructor, or on the '
+        'constructed instance once its parent is known.',
+    parameters: {'type': scope.runtimeType.toString()},
   );
+}
+
+/// Refuses a scope id that cannot survive being joined into a path.
+///
+/// The path is this module's entire output — a prefix for resource and
+/// authorization lookups — and it is built by joining ids with
+/// [_scopePathSeparator]. An id containing the separator therefore forges a
+/// segment boundary: `'a.b'` under no parent renders exactly as the unrelated
+/// chain `'a'` → `'b'`, so a scope named from data (a tenant, a row key, a
+/// user-supplied label) can name another scope's resources. An empty id is the
+/// same defect seen from the other end — it renders as a bare `''` at the root,
+/// which consumers are told to read as "no scope at all", or as a doubled
+/// separator further down.
+///
+/// Checked once per scope, at the only place an id is ever accepted, rather
+/// than on every path build.
+void _requireUsableScopeId(String scopeId) {
+  if (scopeId.isEmpty) {
+    throw TomScopeException(
+      'scope_ids.init_scope.empty_id',
+      'A scope id must not be empty: an empty segment renders as the empty '
+          'path, which is how callers are told to spell "no scope at all".',
+      parameters: {'scopeId': scopeId},
+    );
+  }
+  if (scopeId.contains(_scopePathSeparator)) {
+    throw TomScopeException(
+      'scope_ids.init_scope.separator_in_id',
+      'A scope id must not contain "$_scopePathSeparator": ids are joined '
+          'with it to build the scope path, so "$scopeId" would be '
+          'indistinguishable from a deeper chain of separate scopes.',
+      parameters: {'scopeId': scopeId, 'separator': _scopePathSeparator},
+    );
+  }
 }
 
 /// A hierarchical, zone-propagated identifier used to namespace resource
@@ -162,7 +221,16 @@ mixin TomScopeMixin on Object implements TomScope {
   ///
   /// The single write-once entry point: call it exactly once, from the
   /// constructor or — for a scope whose parent is only known later — on the
-  /// constructed instance.
+  /// constructed instance. [TomScopeBase] and [TomScope.withScope] both route
+  /// here, so the checks below hold for every scope the module builds.
+  ///
+  /// [scopeId] must be non-empty and must not contain `.`, because ids are
+  /// joined with `.` to form the scope path. Both are refused with a
+  /// [TomScopeException]: an id that carries the separator forges a segment
+  /// boundary, so the scope renders as a path belonging to a different, deeper
+  /// chain — and the path is what resource and authorization lookups are keyed
+  /// on. Ids written as literals in source can never trip this; ids derived
+  /// from data are exactly what the check is for.
   ///
   /// [parentScope] must already have an identity of its own. Checking it here
   /// rather than when the path is built is what keeps the check O(1): an
@@ -180,6 +248,7 @@ mixin TomScopeMixin on Object implements TomScope {
   void initScope({required String scopeId, TomScope? parentScope}) {
     // Validate before mutating: a rejected call must leave the instance in the
     // state it was in, still initialisable.
+    _requireUsableScopeId(scopeId);
     _requireScopeIdentity(parentScope, 'Cannot use a scope as parentScope');
     _id = scopeId;
     _parent = parentScope;

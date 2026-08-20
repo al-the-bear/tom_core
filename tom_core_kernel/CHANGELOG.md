@@ -9,6 +9,10 @@ anyone who was writing them.
 
 ### Added
 
+- **`TomScopeException`.** The scope module's own `TomException` subclass,
+  keyed `scope_ids.<operation>.<condition>` — `init_scope.empty_id`,
+  `init_scope.separator_in_id`, `use_scope.no_identity` — with `parameters`
+  carrying the offending id or type.
 - **Background scheduling (`scheduling/`, csex7 / csex8 / CSEXB6 / CSEXC1 /
   csexc2).** A complete job-scheduling substrate, previously absent from the
   kernel entirely. `TomScheduler` is the runtime, and the whole loop — window
@@ -125,6 +129,36 @@ anyone who was writing them.
 
 ### Changed
 
+- **Breaking: a scope id that is empty or contains `.` is now refused.** Ids
+  are joined with `.` to build the scope path, and nothing looked at the string,
+  so an id carrying the separator forged a segment boundary: `TomScopeBase(
+  scopeId: 'a.b')` rendered as exactly the same path as the unrelated chain
+  `'a'` → `'b'`, and an empty id rendered as `''`, the string consumers are told
+  to read as *no scope at all*. The path is not cosmetic — it is the prefix that
+  resource and authorization lookups are keyed on — so two structurally
+  different trees producing byte-identical paths meant a scope could name
+  another scope's resources. `initScope` now rejects both with a
+  `TomScopeException`, which covers `TomScope.withScope` and the `TomScopeBase`
+  constructor too, since both route through it; the check therefore runs once
+  per scope rather than on every path build, and runs before any field is
+  written, so a refused call leaves the instance still initialisable. Nothing
+  else about the id is policed — spaces, slashes and non-ASCII are unambiguous
+  and stay legal. Ids written as literals in source cannot trip this at all;
+  the exposure it closes is the case the module exists for, one scope per detail
+  row named from the row. What was Best Practice 3 in
+  `doc/scope_ids/scope_ids.md` ("avoid embedding `.` in an id") is now a
+  guarantee rather than advice.
+- **Breaking: the scope guards now throw `TomScopeException` instead of
+  `StateError`.** Adding id validation would otherwise have given a 300-line
+  module two unrelated error families for the same kind of failure — "this
+  scope is not usable". The kernel's own precedent is decisive (roughly 130
+  `Tom*Exception` subclasses against five `StateError`s in all of
+  `lib/src/tombase/`), so the existing identity guards were converted rather
+  than a second family introduced. Keys are
+  `scope_ids.<operation>.<condition>` and `parameters` carries the offending
+  value, which makes the failures greppable and translatable like every other
+  kernel error. Callers catching `StateError` around scope construction or
+  installation must catch `TomScopeException`.
 - **Breaking: a `TomScopeMixin` instance whose `initScope` never ran is now
   refused at the point of use, not at the point of consequence.** Because
   `initScope` may be called after construction — a documented pattern, for a
@@ -136,7 +170,7 @@ anyone who was writing them.
   for a path — a resource lookup, an authorization check — as a
   `LateInitializationError` naming a mangled private field and mentioning
   neither the class nor the missing call. Installation now throws a
-  `StateError` naming both, and so do `id`, `parent` and `getScopePath()`, which
+  `TomScopeException` naming both, and so do `id`, `parent` and `getScopePath()`, which
   previously threw the same unhelpful `LateError`. `initScope` additionally
   refuses a `parentScope` that has no identity of its own, which closes the
   variant where a perfectly good child installs cleanly and the chain walk hits
@@ -261,6 +295,18 @@ anyone who was writing them.
 
 ### Tests
 
+- **Scope ids are pinned at all three entry points.** A
+  `scope ids are validated` group runs the five unusable ids (`a.b`, `.`, `a.`,
+  `.a`, `''`) through `withScope`, the `TomScopeBase` constructor and
+  `initScope` — one check covers all three, but all three are public, so all
+  three are asserted — and matches on `parameters['scopeId']` so a test cannot
+  pass on some *other* rejection. Three more cover what the check must not
+  break: the deeper chain the dotted id used to forge still builds and still
+  renders `a.b.c`; a refused id leaves the instance initialisable, so a caller
+  that catches and retries with a clean id succeeds; and ids that cannot forge
+  a boundary (slashes, spaces, hyphens, non-ASCII, a U+00B7 middle dot) stay
+  legal, because the rule is about the ambiguity and not the alphabet. Deleting
+  the guard turns all fifteen red.
 - New suites for every new module: `scheduling_test.dart`,
   `scheduled_job_test.dart` (plus `test/contracts/scheduling_contract.dart`, the
   shared store/lock contract), `result_test.dart`, `file_transfer_test.dart`,
@@ -327,6 +373,12 @@ anyone who was writing them.
 
 ### Examples
 
+- `example/samples/scope_ids/01_scope_basics_example.dart` gains an eighth
+  section on unusable ids. It builds the `'a'` → `'b'` → `'c'` chain first, so
+  the reader sees the path the dotted id used to be indistinguishable from
+  before seeing the dotted id refused, and closes with an id full of spaces and
+  slashes being *accepted* — the rule is about the separator, not about
+  awkward characters.
 - `example/samples/scheduling/` (memory substrate, declared jobs, the five
   schedule kinds, the at-least-once execution guarantee),
   `example/samples/result/` (envelope, error details, wire format),
@@ -364,6 +416,15 @@ anyone who was writing them.
 
 ### Documentation
 
+- `doc/scope_ids/scope_ids.md` gains an *Ids may not contain the separator*
+  section under Scope Paths, showing the two chains that used to render
+  identically and why the path being an authorization prefix makes that a
+  security defect rather than a cosmetic one. Best Practice 3 was rewritten
+  from advice the module did not enforce into a statement of what it now
+  guarantees, and the `StateError` references throughout were updated to
+  `TomScopeException`. `doc/api_reference/api_summary_scope_ids.md` gains a
+  `TomScopeException` entry with its three keys, and the `initScope` and
+  `withScope` rows now state the id contract.
 - `doc/scheduling/scheduling.md` (including the execution guarantee in full),
   `doc/result/result.md`, `doc/preferences/preferences.md`, and the matching
   `doc/api_reference/api_summary_*.md` entries.
