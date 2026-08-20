@@ -11,6 +11,11 @@
 /// - Custom deserialization with jsonDecode method
 /// - All supported field types demonstration
 /// - Error handling for reflection operations
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/reflection/06_advanced_reflection_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

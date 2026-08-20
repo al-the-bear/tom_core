@@ -8,6 +8,14 @@
 /// - TomZonedDateTime and TomZonedDate types
 /// - Lists and Maps of date/time types
 /// - Round-trip serialization of date/time values
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/reflection/04_datetime_types_example.dart
+/// ```
+///
+/// The timezone data needs no separate setup: `TomTimezone` loads the embedded
+/// IANA database synchronously the first time it is read.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

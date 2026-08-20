@@ -8,6 +8,11 @@
 /// - Setting nested object values from Maps
 /// - Optional (nullable) nested objects
 /// - Multi-level nesting
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/reflection/02_nested_objects_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

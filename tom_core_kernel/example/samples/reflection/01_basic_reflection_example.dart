@@ -10,6 +10,11 @@
 /// - Setting values from Map with tomReflectionInfo.setValues()
 /// - Getting values as Map with tomReflectionInfo.getValues()
 /// - JSON serialization/deserialization
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/reflection/01_basic_reflection_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -8,6 +8,11 @@
 /// - Lists of @tomReflector objects
 /// - Maps with String keys and various value types
 /// - Nested collections
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/reflection/03_collections_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

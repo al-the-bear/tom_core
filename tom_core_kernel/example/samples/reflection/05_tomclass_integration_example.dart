@@ -9,6 +9,11 @@
 /// - Nested TomClass objects
 /// - Observer notifications with reflection updates
 /// - Serialization of TomClass objects
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/reflection/05_tomclass_integration_example.dart
+/// ```
 library;
 
 import 'dart:convert' show jsonEncode;
