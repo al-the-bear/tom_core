@@ -204,7 +204,6 @@ Use a simple extension like this to make text resources and configuration availa
 
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import '../sample_app_state.dart';
 
 extension TomResourceExtension on Object {
   String Function(String) get t =>
@@ -230,7 +229,8 @@ final timeout = config('api.timeout', 5000);        // int
 final darkMode = config('features.darkMode', false); // bool
 ```
 
-You find this file in the UAM sample application.
+This extension is a real file, not a sketch: it lives in the UAM sample
+application at `tom_uam/tom_uam_client/lib/uam/utils/tom_resource_extension.dart`.
 
 ## Core Components
 
