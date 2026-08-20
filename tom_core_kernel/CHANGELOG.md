@@ -140,6 +140,21 @@ anyone who was writing them.
 
 ### Changed
 
+- **The mirror's `convertTokenPayloadToPrincipal` row states the real
+  `requires2FA` test and its `StateError`.** It said a token "carrying a
+  `requires2FA` claim" yields an unauthenticated principal, which is close to
+  backwards: the reader tests exact string equality against `"true"`, so a token
+  carrying the claim as `"false"` — what Tom's own issuer writes on every
+  completed login — authenticates, and so does one carrying the JSON boolean
+  `true`. The row now says the claim is a string protocol, names the values that
+  read as "no factor owed", records that `authenticated` is *derived* here (from
+  the non-guest username **and** the factor test) rather than read from the
+  token, and documents the `StateError` on a payload-less token that the
+  adjacent `getPrincipal()` row already documented. A test pins the string
+  protocol across six encodings. The asymmetry the row now makes visible — every
+  unrecognised encoding authenticates — is itself under review as a separate
+  question.
+
 - **The mirror's `convertPrincipalToTokenPayload` row no longer misstates both
   of its two-factor claims.** It said `requires2FA` is cleared when
   `twoFactorSatisfied` is `true`, and that `twoFactorVerification` goes into the

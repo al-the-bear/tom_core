@@ -2511,6 +2511,39 @@ void main() {
         expect(restored.cli.enabledModules, isEmpty);
         expect(restored.cli.quotas, isEmpty);
       });
+
+      // `requires2FA` is a string claim by design (see Tom2FAClaims), and the
+      // reader tests it with exact string equality. Pinned because the
+      // consequence is asymmetric: a foreign issuer's JSON boolean reads as
+      // "no factor owed" and authenticates, whereas the string "true" does
+      // not. Tom's own issuer only ever writes the literal strings, so this
+      // is reachable only for tokens minted elsewhere.
+      test('the requires2FA claim is a string protocol, tested exactly', () {
+        TomPrincipal restore(Object? claim) =>
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(
+              _FakeClientJwtToken(
+                payload: {'username': 'dave', Tom2FAClaims.requires2FA: claim},
+              ),
+            );
+
+        // The one value that means "a factor is still owed".
+        expect(restore('true').requires2FA, isTrue);
+        expect(restore('true').authenticated, isFalse);
+
+        // Everything else reads as "no factor owed" — including the JSON
+        // boolean, which is the shape a non-Tom issuer would most plausibly
+        // produce.
+        for (final claim in <Object?>[true, 'True', 'TRUE', 1, 'false', null]) {
+          final principal = restore(claim);
+          expect(
+            principal.requires2FA,
+            isFalse,
+            reason:
+                'claim $claim (${claim.runtimeType}) is not the string "true"',
+          );
+          expect(principal.authenticated, isTrue);
+        }
+      });
     });
 
     group('getPrincipal', () {
