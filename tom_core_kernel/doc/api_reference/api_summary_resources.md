@@ -204,8 +204,10 @@ awaiting: a computed map, a compiled-in constant, an already-decoded string.
 An asynchronous source is resolved first and installed with `.from(...)`:
 
 ```dart
-Future<void> initializeResources() async {
-  final strings = await rootBundle.loadString('assets/strings.json');
+Future<void> initializeResources(
+  Future<String> Function(String assetPath) readAsset,
+) async {
+  final strings = await readAsset('assets/strings.json');
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(jsonDecode(strings) as Map<String, dynamic>),
   );
@@ -213,8 +215,9 @@ Future<void> initializeResources() async {
 ```
 
 One `await` in `main()` buys synchronous reads at every other call site.
-`tom_core_kernel` has no Flutter dependency, so `rootBundle` comes from the
-application; on a server, `File(...).readAsString()` has the same shape.
+`tom_core_kernel` has no Flutter dependency, so the read itself comes from the
+application: `rootBundle.loadString` in Flutter,
+`(path) => File(path).readAsString()` on a server — the same shape either way.
 
 ## Global Functions and Constants
 

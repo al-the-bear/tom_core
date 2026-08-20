@@ -138,45 +138,48 @@ The response containing all settings data.
 ### Basic Settings Retrieval
 
 ```dart
-Future<void> initializeApp(
+typedef AppStartup = ({String theme, int maxItems, String language, String country});
+
+Future<AppStartup?> initializeApp(
   TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult> endpoint,
 ) async {
   final message = TomGetSettingsMessage()
     ..authorizationToken = TomBearerAuthentication.authorizationToken;
 
   final (settings, error) = await endpoint.send(message);
-  if (error?.hasError ?? false) return;
+  if (error?.hasError ?? false) return null;
 
-  // Apply configuration
-  appConfig.theme = settings.config['theme'] as String?;
-  appConfig.maxItems = settings.config['maxItems'] as int? ?? 50;
-  
-  // Store localization
-  localization.language = settings.clientLanguage ?? 'en';
-  localization.country = settings.clientCountry ?? 'US';
+  return (
+    theme: settings.config['theme'] as String? ?? 'light',
+    maxItems: settings.config['maxItems'] as int? ?? 50,
+    language: settings.clientLanguage ?? 'en',
+    country: settings.clientCountry ?? 'US',
+  );
 }
 ```
 
 ### Role-Based Feature Access
 
 ```dart
-Widget buildDashboard(TomGetSettingsResult settings) {
-  return Column(
-    children: [
-      // Always visible
-      UserProfileCard(),
-      
-      // Only for users with 'reports' entitlement
-      if (settings.entitlements.contains('view-reports'))
-        ReportsWidget(),
-      
-      // Only for admins
-      if (settings.roles.contains('admin'))
-        AdminPanel(),
-    ],
-  );
-}
+/// The feature keys this principal may use, derived from the settings the
+/// server returned.
+Set<String> enabledFeatures(TomGetSettingsResult settings) => {
+  // Always available.
+  'profile',
+
+  // Only for users holding the 'view-reports' entitlement.
+  if (settings.entitlements.contains('view-reports')) 'reports',
+
+  // Only for admins.
+  if (settings.roles.contains('admin')) 'admin-panel',
+};
 ```
+
+Deciding *what* is enabled is a kernel concern and belongs in plain Dart, as
+above; deciding what it *looks like* is not. A UI tier renders from the
+returned set and never re-reads `roles` or `entitlements` itself — which is
+also why a Flutter app usually skips this step and binds widgets to the
+four-state `TomAuthState` model directly.
 
 ### Localized Text Display
 
@@ -193,16 +196,15 @@ final errorText = getLocalizedText(settings, 'error_generic');
 ### Multi-Tenant Configuration
 
 ```dart
-void configureForTenant(TomGetSettingsResult settings) {
+void describeTenant(TomGetSettingsResult settings) {
   print('Organization: ${settings.organization}');
   print('Application: ${settings.application}');
   print('Process: ${settings.process}');
-  
-  // Apply tenant-specific branding from config
-  final brandConfig = settings.config['branding'] as Map<String, dynamic>?;
-  if (brandConfig != null) {
-    applyBranding(brandConfig);
-  }
+
+  // Tenant-specific branding travels in `config` like any other value; the
+  // module attaches no meaning to it, so the consumer names the keys.
+  final branding = settings.config['branding'] as Map<String, Object?>?;
+  print('Primary colour: ${branding?['primaryColor'] as String? ?? '#000000'}');
 }
 ```
 
@@ -214,19 +216,28 @@ Settings don't change frequently. Cache the result and refresh periodically or o
 
 ```dart
 class SettingsCache {
+  SettingsCache(this._endpoint);
+
+  final TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult> _endpoint;
+
   TomGetSettingsResult? _cached;
   DateTime? _lastFetch;
-  
-  Future<TomGetSettingsResult> getSettings() async {
-    if (_cached != null && _lastFetch != null) {
+
+  Future<TomGetSettingsResult?> getSettings() async {
+    final cached = _cached;
+    if (cached != null && _lastFetch != null) {
       if (DateTime.now().difference(_lastFetch!) < Duration(minutes: 15)) {
-        return _cached!;
+        return cached;
       }
     }
-    
-    _cached = await _fetchFromServer();
+
+    final (result, error) = await _endpoint.send(TomGetSettingsMessage());
+    // A failed refresh keeps the previous value rather than emptying the cache.
+    if (error?.hasError ?? false) return cached;
+
+    _cached = result;
     _lastFetch = DateTime.now();
-    return _cached!;
+    return result;
   }
 }
 ```
@@ -247,7 +258,7 @@ Check required roles/entitlements at app startup:
 ```dart
 void validateAccess(TomGetSettingsResult settings) {
   if (!settings.roles.contains('user')) {
-    throw UnauthorizedException('User role required');
+    throw TomException('settings.access.role-missing', 'User role required');
   }
 }
 ```

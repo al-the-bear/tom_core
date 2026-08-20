@@ -24,7 +24,7 @@
 ///
 /// // Use entitlement-based access
 /// @TomEntitlementAccess(['feature.premium.*'])
-/// Widget premiumFeature() { ... }
+/// void runPremiumFeature() { ... }
 /// ```
 ///
 /// See also:
@@ -788,7 +788,7 @@ class TomGroupAccess extends TomAccessControl {
 ///
 /// ```dart
 /// @TomResourceKeyAccess('user.salary')
-/// Widget salaryField() { ... }
+/// int readSalary(User user) { ... }
 /// ```
 ///
 /// Unlike its siblings, this control has a second operand: while

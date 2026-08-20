@@ -423,18 +423,25 @@ caller rebuilding them — see [`observable`](../observable/observable.md).
 
 ```dart
 import 'dart:convert';
-import 'package:flutter/services.dart';
 
-// Call this from main(), before runApp(). Asset loading is asynchronous and
-// the providers are not, so the bundles are awaited here and installed once
-// they are in hand — which is also the moment `appResourcesRevision` moves.
-Future<void> initializeResources() async {
-  final strings = await rootBundle.loadString('assets/strings.json');
+// Call this once at startup — from main(), before runApp() in a Flutter app.
+// Asset loading is asynchronous and the providers are not, so the bundles are
+// awaited here and installed once they are in hand — which is also the moment
+// `appResourcesRevision` moves.
+//
+// `readAsset` is whatever reads a named asset on the target: in Flutter
+// `rootBundle.loadString`, on a server or in a script
+// `(path) => File(path).readAsString()`. The kernel has no Flutter dependency,
+// so it is supplied by the application rather than imported here.
+Future<void> initializeResources(
+  Future<String> Function(String assetPath) readAsset,
+) async {
+  final strings = await readAsset('assets/strings.json');
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(jsonDecode(strings) as Map<String, dynamic>),
   );
 
-  final config = await rootBundle.loadString('assets/config.json');
+  final config = await readAsset('assets/config.json');
   TomConfigResourceProvider.setAppConfigProvider(
     TomConfigResourceProvider.from(jsonDecode(config) as Map<String, dynamic>),
   );
@@ -454,10 +461,6 @@ map, a compiled-in constant, an already-decoded string. Everything else is
 awaited in `main()` and installed with `.from(...)`, as above. The one `await`
 in `initializeResources()` is the whole cost, and it buys synchronous reads
 everywhere else in the application.
-
-`tom_core_kernel` has no Flutter dependency, so `rootBundle` above comes from
-the application, not from this package; on a server or in a plain Dart script
-substitute `File(...).readAsString()`, which has the same shape.
 
 ### Environment-Specific Configuration
 
@@ -520,13 +523,12 @@ if (FeatureFlags.isEnabled('newCheckout')) {
 Set up resource providers during application initialization, before any UI code attempts to access resources:
 
 ```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize resources first
-  await initializeResources();
-  
-  runApp(MyApp());
+Future<void> main() async {
+  // Before anything reads a resource — in a Flutter app that means before
+  // runApp(), after WidgetsFlutterBinding.ensureInitialized().
+  await initializeResources(readAsset);
+
+  startApplication();
 }
 ```
 

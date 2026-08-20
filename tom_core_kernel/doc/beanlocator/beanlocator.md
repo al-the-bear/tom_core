@@ -116,7 +116,9 @@ void main() {
   
   // 6. Now beans can be resolved
   final userService = TomBean<UserService>().get();
-  runApp(MyApp());
+
+  // 7. Only now start the application — runApp() in a Flutter app.
+  startApplication(userService);
 }
 ```
 
@@ -616,8 +618,9 @@ void main() {
   
   // 5. Initialize bean context LAST (requires runtime to be ready)
   initializeBeanContext();
-  
-  runApp(MyApp());
+
+  // Only now start the application — runApp() in a Flutter app.
+  startApplication();
 }
 ```
 

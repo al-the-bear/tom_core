@@ -209,18 +209,23 @@ String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
 /// downloaded pack) is therefore awaited *before* the install, and the
 /// resolved map is handed to [TomTextResourceProvider.from]:
 ///
+/// `readAsset` is the target's own asynchronous read — `rootBundle.loadString`
+/// in a Flutter app, `(path) => File(path).readAsString()` on a server. This
+/// package has no Flutter dependency, so the application supplies it.
+///
 /// ```dart
-/// Future<void> initializeResources() async {
-///   final strings = await rootBundle.loadString('assets/strings.json');
+/// Future<void> initializeResources(
+///   Future<String> Function(String assetPath) readAsset,
+/// ) async {
+///   final strings = await readAsset('assets/strings.json');
 ///   TomTextResourceProvider.setAppResourceProvider(
 ///     TomTextResourceProvider.from(jsonDecode(strings) as Map<String, dynamic>),
 ///   );
 /// }
 ///
-/// void main() async {
-///   WidgetsFlutterBinding.ensureInitialized();
-///   await initializeResources();
-///   runApp(const MyApp());
+/// // Called once at startup, before anything reads a resource.
+/// Future<void> main() async {
+///   await initializeResources(readAsset);
 /// }
 /// ```
 ///
@@ -555,7 +560,7 @@ class TomTextResourceProvider {
 /// [TomTextResourceProvider], and usually the same `initializeResources()`:
 ///
 /// ```dart
-/// final contents = await rootBundle.loadString('assets/config.json');
+/// final contents = await readAsset('assets/config.json');
 /// TomConfigResourceProvider.setAppConfigProvider(
 ///   TomConfigResourceProvider.from(jsonDecode(contents) as Map<String, dynamic>),
 /// );

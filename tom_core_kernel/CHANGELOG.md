@@ -993,6 +993,35 @@ anyone who was writing them.
 
 ### Documentation
 
+- **Flutter was removed from every code sample in this Flutter-free package
+  (tcinc296).** `pubspec.yaml` has no `flutter` entry, yet nine samples across
+  the documentation and the shipped dartdoc were written against Flutter: the
+  settings document built a dashboard from `Column` and three widgets that
+  exist nowhere; the security document annotated `Widget reportsButton()`; the
+  resources document imported `package:flutter/services.dart` to reach
+  `rootBundle`; `access_controls.dart` and `tom_resource_provider.dart` carried
+  the same shapes in dartdoc, which reaches pub.dev and IDE hover rather than
+  only a reader who has the repository open.
+
+  Every one is now plain Dart the package can compile. The lessons are
+  unchanged — the settings sample still branches on `entitlements` and `roles`,
+  but answers a `Set<String>` of enabled feature keys instead of a widget tree,
+  and says explicitly that *what* is enabled is a kernel concern while what it
+  *looks like* is not. The resources samples take the asynchronous read as a
+  `Future<String> Function(String)` parameter, so the one place the Flutter
+  binding was load-bearing becomes the caller's business; the prose that
+  previously followed the sample to disown `rootBundle` is now unnecessary and
+  gone, and `rootBundle.loadString` survives only as the named example of what
+  a caller passes.
+
+  Four neighbouring settings samples were fixed in the same pass, because the
+  reason to drop the widgets — a document whose every sample is valid in its
+  own package — applies equally to them: `appConfig` / `localization` (now a
+  returned record), `applyBranding` (now a read), `_fetchFromServer` (the cache
+  now takes its endpoint, and keeps the previous value when a refresh fails
+  rather than emptying itself), and `UnauthorizedException` (now `TomException`
+  with a proper dotted key).
+
 - **Every module document's Dependencies section was checked against its
   source's imports, and ten were wrong.** The settings document was the clearest
   case: it named the **Security** and **Resources** modules, neither of which the

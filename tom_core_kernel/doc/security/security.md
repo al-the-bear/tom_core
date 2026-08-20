@@ -1018,11 +1018,11 @@ if (access.checkAccessibility(principal)) {
 ```dart
 // Exact match
 @TomEntitlementAccess(['feature.reports.view'])
-Widget reportsButton() { ... }
+void openReport(String reportId) { ... }
 
 // Pattern matching (regex)
 @TomEntitlementAccess([r'feature\.reports\..*'])
-Widget anyReportsAccess() { ... }
+void exportReports() { ... }
 ```
 
 ### Custom Access Control
