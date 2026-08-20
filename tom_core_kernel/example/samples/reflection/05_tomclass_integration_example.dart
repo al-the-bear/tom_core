@@ -121,10 +121,14 @@ class TomClassIntegrationExample {
     // WeakReference, so the wrapper `>>` hands back is the only strong
     // reference keeping the callback alive; discard it and notifications stop
     // at the next garbage collection, silently and nondeterministically.
-    final personObserver = person >> (obs) {
-      personNotifyCount++;
-      print('   [Observer] Person changed! (notification #$personNotifyCount)');
-    };
+    final personObserver =
+        person >>
+        (obs) {
+          personNotifyCount++;
+          print(
+            '   [Observer] Person changed! (notification #$personNotifyCount)',
+          );
+        };
 
     // Changes via setValues trigger observers
     tomReflectionInfo.setValues(person, {
@@ -194,10 +198,12 @@ class TomClassIntegrationExample {
     print('\n5. Observing nested changes:');
 
     customerNotifyCount = 0;
-    final customerObserver = customer >> (obs) {
-      customerNotifyCount++;
-      print('   [Observer] Customer changed! (#$customerNotifyCount)');
-    };
+    final customerObserver =
+        customer >>
+        (obs) {
+          customerNotifyCount++;
+          print('   [Observer] Customer changed! (#$customerNotifyCount)');
+        };
 
     // Changing nested address triggers customer observer
     customer.address.city | 'Los Angeles';
@@ -206,7 +212,10 @@ class TomClassIntegrationExample {
 
     // Assertions
     assert(~customer.address.city == 'Los Angeles', 'City should be updated');
-    assert(customerNotifyCount >= 1, 'Should have notifications for nested changes');
+    assert(
+      customerNotifyCount >= 1,
+      'Should have notifications for nested changes',
+    );
 
     customer.removeObserver(customerObserver);
   }
@@ -261,9 +270,11 @@ class TomClassIntegrationExample {
     print('\n7. Mute/unmute during batch updates:');
 
     orderNotifyCount = 0;
-    final orderObserver = order >> (obs) {
-      orderNotifyCount++;
-    };
+    final orderObserver =
+        order >>
+        (obs) {
+          orderNotifyCount++;
+        };
 
     print('   Making 3 changes without mute...');
     final beforeMuteCount = orderNotifyCount;
@@ -284,7 +295,10 @@ class TomClassIntegrationExample {
 
     // Assertions
     assert(~order.status == 'shipped', 'Status should be updated');
-    assert(withoutMuteNotifications >= 1, 'Should have notifications without mute');
+    assert(
+      withoutMuteNotifications >= 1,
+      'Should have notifications without mute',
+    );
 
     order.removeObserver(orderObserver);
   }

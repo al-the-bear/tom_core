@@ -144,16 +144,8 @@ class CollectionsExample {
 
     final settings = tomReflectionInfo.createInstance<Settings>();
     tomReflectionInfo.setValues(settings, {
-      'stringSettings': {
-        'theme': 'dark',
-        'language': 'en',
-        'region': 'US',
-      },
-      'intSettings': {
-        'maxItems': 100,
-        'pageSize': 20,
-        'timeout': 30,
-      },
+      'stringSettings': {'theme': 'dark', 'language': 'en', 'region': 'US'},
+      'intSettings': {'maxItems': 100, 'pageSize': 20, 'timeout': 30},
       'boolSettings': {
         'notifications': true,
         'analytics': false,
@@ -170,7 +162,10 @@ class CollectionsExample {
     // Assertions
     assert(settings.stringSettings['theme'] == 'dark', 'Theme should be dark');
     assert(settings.intSettings['maxItems'] == 100, 'Max items should be 100');
-    assert(settings.boolSettings['notifications'] == true, 'Notifications should be true');
+    assert(
+      settings.boolSettings['notifications'] == true,
+      'Notifications should be true',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -203,7 +198,10 @@ class CollectionsExample {
 
     // Assertions
     assert(article.tags.length == 4, 'Should have 4 tags');
-    assert(article.metadata['author'] == 'Jane Developer', 'Author should match');
+    assert(
+      article.metadata['author'] == 'Jane Developer',
+      'Author should match',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -240,7 +238,10 @@ class CollectionsExample {
     // Assertions
     assert(json.contains('Item One'), 'JSON should contain Item One');
     assert(restored.items.length == 2, 'Should restore 2 items');
-    assert(restored.items[0].name == 'Item One', 'First item should be Item One');
+    assert(
+      restored.items[0].name == 'Item One',
+      'First item should be Item One',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -250,10 +251,7 @@ class CollectionsExample {
     print('\n6. Empty collections:');
 
     final lists = tomReflectionInfo.createInstance<PrimitiveLists>();
-    tomReflectionInfo.setValues(lists, {
-      'tags': [],
-      'scores': [],
-    });
+    tomReflectionInfo.setValues(lists, {'tags': [], 'scores': []});
 
     print('   Empty tags: ${lists.tags}');
     print('   Empty scores: ${lists.scores}');

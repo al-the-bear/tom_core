@@ -32,11 +32,27 @@ class Event {
 class Meeting {
   String title = '';
   TomZonedDateTime startTime = TomZonedDateTime(
-      year: 2000, month: 1, day: 1, hour: 0, minute: 0, timezone: TomTimezone.utc);
+    year: 2000,
+    month: 1,
+    day: 1,
+    hour: 0,
+    minute: 0,
+    timezone: TomTimezone.utc,
+  );
   TomZonedDateTime endTime = TomZonedDateTime(
-      year: 2000, month: 1, day: 1, hour: 0, minute: 0, timezone: TomTimezone.utc);
-  TomZonedDate date =
-      TomZonedDate(year: 2000, month: 1, day: 1, timezone: TomTimezone.utc);
+    year: 2000,
+    month: 1,
+    day: 1,
+    hour: 0,
+    minute: 0,
+    timezone: TomTimezone.utc,
+  );
+  TomZonedDate date = TomZonedDate(
+    year: 2000,
+    month: 1,
+    day: 1,
+    timezone: TomTimezone.utc,
+  );
 }
 
 /// A class with lists of DateTimes.
@@ -121,7 +137,10 @@ class DateTimeTypesExample {
     // Assertions
     assert(eventJson['name'] == 'Product Launch', 'Name should match');
     assert(eventJson['startDate'] != null, 'Start date should be serialized');
-    assert(eventJson['cancelledAt'] != null, 'Cancelled date should be serialized');
+    assert(
+      eventJson['cancelledAt'] != null,
+      'Cancelled date should be serialized',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -186,11 +205,21 @@ class DateTimeTypesExample {
       ],
       'meetings': [
         TomZonedDateTime(
-                year: 2024, month: 8, day: 5, hour: 10, minute: 0, timezone: TomTimezone.utc)
-            .toString(),
+          year: 2024,
+          month: 8,
+          day: 5,
+          hour: 10,
+          minute: 0,
+          timezone: TomTimezone.utc,
+        ).toString(),
         TomZonedDateTime(
-                year: 2024, month: 8, day: 6, hour: 15, minute: 0, timezone: TomTimezone.utc)
-            .toString(),
+          year: 2024,
+          month: 8,
+          day: 6,
+          hour: 15,
+          minute: 0,
+          timezone: TomTimezone.utc,
+        ).toString(),
       ],
     });
 
@@ -209,7 +238,10 @@ class DateTimeTypesExample {
     // Assertions
     assert(schedule.appointments.length == 3, 'Should have 3 appointments');
     assert(schedule.meetings.length == 2, 'Should have 2 meetings');
-    assert(schedule.appointments[0].month == 8, 'First appt should be in August');
+    assert(
+      schedule.appointments[0].month == 8,
+      'First appt should be in August',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -228,12 +260,24 @@ class DateTimeTypesExample {
         'launch': '2024-10-01T00:00:00.000Z',
       },
       'holidays': {
-        'new_year':
-            TomZonedDate(year: 2024, month: 1, day: 1, timezone: TomTimezone.utc).toString(),
-        'independence_day':
-            TomZonedDate(year: 2024, month: 7, day: 4, timezone: TomTimezone.utc).toString(),
-        'christmas':
-            TomZonedDate(year: 2024, month: 12, day: 25, timezone: TomTimezone.utc).toString(),
+        'new_year': TomZonedDate(
+          year: 2024,
+          month: 1,
+          day: 1,
+          timezone: TomTimezone.utc,
+        ).toString(),
+        'independence_day': TomZonedDate(
+          year: 2024,
+          month: 7,
+          day: 4,
+          timezone: TomTimezone.utc,
+        ).toString(),
+        'christmas': TomZonedDate(
+          year: 2024,
+          month: 12,
+          day: 25,
+          timezone: TomTimezone.utc,
+        ).toString(),
       },
     });
 
@@ -252,7 +296,10 @@ class DateTimeTypesExample {
     // Assertions
     assert(timeline.milestones.length == 4, 'Should have 4 milestones');
     assert(timeline.holidays.length == 3, 'Should have 3 holidays');
-    assert(timeline.milestones['kickoff']!.year == 2024, 'Kickoff year should be 2024');
+    assert(
+      timeline.milestones['kickoff']!.year == 2024,
+      'Kickoff year should be 2024',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -264,10 +311,27 @@ class DateTimeTypesExample {
     final meeting = Meeting()
       ..title = 'Team Standup'
       ..startTime = TomZonedDateTime(
-          year: 2024, month: 9, day: 15, hour: 9, minute: 0, timezone: TomTimezone.utc)
+        year: 2024,
+        month: 9,
+        day: 15,
+        hour: 9,
+        minute: 0,
+        timezone: TomTimezone.utc,
+      )
       ..endTime = TomZonedDateTime(
-          year: 2024, month: 9, day: 15, hour: 9, minute: 30, timezone: TomTimezone.utc)
-      ..date = TomZonedDate(year: 2024, month: 9, day: 15, timezone: TomTimezone.utc);
+        year: 2024,
+        month: 9,
+        day: 15,
+        hour: 9,
+        minute: 30,
+        timezone: TomTimezone.utc,
+      )
+      ..date = TomZonedDate(
+        year: 2024,
+        month: 9,
+        day: 15,
+        timezone: TomTimezone.utc,
+      );
 
     final meetingJson = tomReflectionInfo.convertToJsonString(meeting);
     print('   Serialized meeting: $meetingJson');

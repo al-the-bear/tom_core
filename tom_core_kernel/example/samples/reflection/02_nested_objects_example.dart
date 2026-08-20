@@ -263,7 +263,9 @@ class NestedObjectsExample {
     print('   HQ: ${company.headquarters.city}');
     print('   Departments: ${company.departments.length}');
     for (final dept in company.departments) {
-      print('   - ${dept.name} (${dept.code}): ${dept.employees.length} employees');
+      print(
+        '   - ${dept.name} (${dept.code}): ${dept.employees.length} employees',
+      );
       for (final emp in dept.employees) {
         print('     - ${emp.name} (${emp.employeeId})');
       }
@@ -274,8 +276,14 @@ class NestedObjectsExample {
     // Assertions
     assert(company.name == 'Acme Corporation', 'Company name should be set');
     assert(company.departments.length == 2, 'Should have 2 departments');
-    assert(company.departments[0].employees.length == 2, 'Eng should have 2 employees');
-    assert(company.departments[1].employees.length == 1, 'Sales should have 1 employee');
+    assert(
+      company.departments[0].employees.length == 2,
+      'Eng should have 2 employees',
+    );
+    assert(
+      company.departments[1].employees.length == 1,
+      'Sales should have 1 employee',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -298,13 +306,21 @@ class NestedObjectsExample {
     tomReflectionInfo.convertFromJsonString(restored, json);
 
     print('   Restored name: ${restored.name}');
-    print('   Restored address: ${restored.address.street}, ${restored.address.city}');
+    print(
+      '   Restored address: ${restored.address.street}, ${restored.address.city}',
+    );
 
     // Assertions
     assert(restored.name == original.name, 'Names should match');
     assert(restored.age == original.age, 'Ages should match');
-    assert(restored.address.street == original.address.street, 'Streets should match');
-    assert(restored.address.city == original.address.city, 'Cities should match');
+    assert(
+      restored.address.street == original.address.street,
+      'Streets should match',
+    );
+    assert(
+      restored.address.city == original.address.city,
+      'Cities should match',
+    );
   }
 
   // -------------------------------------------------------------------------

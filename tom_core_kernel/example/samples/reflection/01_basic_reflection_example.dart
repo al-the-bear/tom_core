@@ -171,9 +171,7 @@ class BasicReflectionExample {
       ..email = 'old@example.com';
 
     // Only update specific fields
-    tomReflectionInfo.setValues(person, {
-      'email': 'updated@example.com',
-    });
+    tomReflectionInfo.setValues(person, {'email': 'updated@example.com'});
 
     print('   After partial update:');
     print('   - name: ${person.name} (unchanged)');

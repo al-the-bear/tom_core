@@ -39,11 +39,11 @@ class CustomSerializedClass {
   /// Custom serialization via jsonEncode getter.
   /// When present, getValues() uses this instead of reflection.
   Map<String, Object?> get jsonEncode => {
-        'id': internalId, // Custom key name
-        'name': displayName, // Custom key name
-        'v': version, // Shortened key
-        '_type': 'CustomSerializedClass', // Type discriminator
-      };
+    'id': internalId, // Custom key name
+    'name': displayName, // Custom key name
+    'v': version, // Shortened key
+    '_type': 'CustomSerializedClass', // Type discriminator
+  };
 }
 
 /// A class with jsonDecode method for deserialization.
@@ -124,9 +124,15 @@ class AdvancedReflectionExample {
     print('   Declarations: ${productMirror.declarations.keys.toList()}');
 
     // Assertions
-    assert(productMirror.simpleName == 'ProductAdvanced', 'Class name should match');
+    assert(
+      productMirror.simpleName == 'ProductAdvanced',
+      'Class name should match',
+    );
     assert(productMirror.hasReflectedType, 'Should have reflected type');
-    assert(productMirror.declarations.containsKey('id'), 'Should have id declaration');
+    assert(
+      productMirror.declarations.containsKey('id'),
+      'Should have id declaration',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -138,17 +144,26 @@ class AdvancedReflectionExample {
     // List element type
     List<ProductAdvanced> productList = [];
     listElementMirror = tomReflectionInfo.singleElementType(productList);
-    print('   List<ProductAdvanced> element type: ${listElementMirror.simpleName}');
+    print(
+      '   List<ProductAdvanced> element type: ${listElementMirror.simpleName}',
+    );
 
     // Map value type
     Map<String, ProductAdvanced> productMap = {};
     mapValueMirror = tomReflectionInfo.mapValueElementType(productMap);
-    print('   Map<String, ProductAdvanced> value type: ${mapValueMirror.simpleName}');
+    print(
+      '   Map<String, ProductAdvanced> value type: ${mapValueMirror.simpleName}',
+    );
 
     // Assertions
     assert(
-        listElementMirror.simpleName == 'ProductAdvanced', 'List element type should match');
-    assert(mapValueMirror.simpleName == 'ProductAdvanced', 'Map value type should match');
+      listElementMirror.simpleName == 'ProductAdvanced',
+      'List element type should match',
+    );
+    assert(
+      mapValueMirror.simpleName == 'ProductAdvanced',
+      'Map value type should match',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -190,15 +205,25 @@ class AdvancedReflectionExample {
 
     customSerializedJson = tomReflectionInfo.getValues(custom);
     print(
-        '   Object fields: internalId=${custom.internalId}, displayName=${custom.displayName}');
+      '   Object fields: internalId=${custom.internalId}, displayName=${custom.displayName}',
+    );
     print('   Serialized: $customSerializedJson');
     print('   Note: Uses custom keys (id, name, v) and adds _type');
 
     // Assertions
-    assert(customSerializedJson['id'] == 'INT-12345', 'Custom key should be used');
-    assert(customSerializedJson['name'] == 'My Custom Object', 'Custom key should be used');
+    assert(
+      customSerializedJson['id'] == 'INT-12345',
+      'Custom key should be used',
+    );
+    assert(
+      customSerializedJson['name'] == 'My Custom Object',
+      'Custom key should be used',
+    );
     assert(customSerializedJson['v'] == 3, 'Custom key should be used');
-    assert(customSerializedJson['_type'] == 'CustomSerializedClass', 'Type marker should exist');
+    assert(
+      customSerializedJson['_type'] == 'CustomSerializedClass',
+      'Type marker should exist',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -209,16 +234,15 @@ class AdvancedReflectionExample {
 
     final custom2 = CustomDeserializedClass();
     print(
-        '   Before: data="${custom2.data}", count=${custom2.count}, processed=${custom2.processed}');
+      '   Before: data="${custom2.data}", count=${custom2.count}, processed=${custom2.processed}',
+    );
 
     // Uses shortened keys as defined in jsonDecode
-    tomReflectionInfo.setValues(custom2, {
-      'd': 'Custom data',
-      'c': 42,
-    });
+    tomReflectionInfo.setValues(custom2, {'d': 'Custom data', 'c': 42});
 
     print(
-        '   After: data="${custom2.data}", count=${custom2.count}, processed=${custom2.processed}');
+      '   After: data="${custom2.data}", count=${custom2.count}, processed=${custom2.processed}',
+    );
     print('   Note: processed=true set by custom logic');
 
     deserializedInstance = custom2;
@@ -226,7 +250,10 @@ class AdvancedReflectionExample {
     // Assertions
     assert(custom2.data == 'Custom data', 'Data should be set via custom keys');
     assert(custom2.count == 42, 'Count should be set via custom keys');
-    assert(custom2.processed == true, 'Processed should be true from custom logic');
+    assert(
+      custom2.processed == true,
+      'Processed should be true from custom logic',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -261,14 +288,19 @@ class AdvancedReflectionExample {
       'nestedProduct': {'id': 'N1', 'name': 'Nested', 'price': 39.99},
     });
 
-    print('   Primitives: string="${allTypes.stringField}", int=${allTypes.intField}');
     print(
-        '   Nullables: string="${allTypes.nullableString}", double=${allTypes.nullableDouble}');
+      '   Primitives: string="${allTypes.stringField}", int=${allTypes.intField}',
+    );
+    print(
+      '   Nullables: string="${allTypes.nullableString}", double=${allTypes.nullableDouble}',
+    );
     print('   DateTime: ${allTypes.dateTime}');
     print(
-        '   Lists: strings=${allTypes.stringList.length}, products=${allTypes.productList.length}');
+      '   Lists: strings=${allTypes.stringList.length}, products=${allTypes.productList.length}',
+    );
     print(
-        '   Maps: strings=${allTypes.stringMap.length}, products=${allTypes.productMap.length}');
+      '   Maps: strings=${allTypes.stringMap.length}, products=${allTypes.productMap.length}',
+    );
     print('   Nested: ${allTypes.nestedProduct.name}');
 
     allTypesInstance = allTypes;
@@ -277,7 +309,10 @@ class AdvancedReflectionExample {
     assert(allTypes.stringField == 'Hello World', 'String should match');
     assert(allTypes.intField == 42, 'Int should match');
     assert(allTypes.productList.length == 2, 'Should have 2 products');
-    assert(allTypes.nestedProduct.name == 'Nested', 'Nested product name should match');
+    assert(
+      allTypes.nestedProduct.name == 'Nested',
+      'Nested product name should match',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -296,7 +331,9 @@ class AdvancedReflectionExample {
     // Assertions
     assert(annotatedClassNames.isNotEmpty, 'Should have annotated classes');
     assert(
-        annotatedClassNames.contains('ProductAdvanced'), 'Should contain ProductAdvanced');
+      annotatedClassNames.contains('ProductAdvanced'),
+      'Should contain ProductAdvanced',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -314,7 +351,9 @@ class AdvancedReflectionExample {
       print('   Caught TomReflectorException:');
       print('   - Key: ${e.key}');
       final message = e.defaultUserMessage;
-      print('   - Message: ${message.substring(0, message.length.clamp(0, 50))}...');
+      print(
+        '   - Message: ${message.substring(0, message.length.clamp(0, 50))}...',
+      );
     }
 
     // Assertions
@@ -327,7 +366,9 @@ class AdvancedReflectionExample {
   static void example9RoundTrip() {
     print('\n9. Round-trip with all types:');
 
-    final allTypesJson = tomReflectionInfo.convertToJsonString(allTypesInstance);
+    final allTypesJson = tomReflectionInfo.convertToJsonString(
+      allTypesInstance,
+    );
     print('   Serialized length: ${allTypesJson.length} chars');
 
     final allTypes2 = AllTypesDemo();
@@ -339,8 +380,14 @@ class AdvancedReflectionExample {
 
     // Assertions
     assert(allTypes2.stringField == 'Hello World', 'String should be restored');
-    assert(allTypes2.productList.length == 2, 'Product list should be restored');
-    assert(allTypes2.nestedProduct.name == 'Nested', 'Nested product should be restored');
+    assert(
+      allTypes2.productList.length == 2,
+      'Product list should be restored',
+    );
+    assert(
+      allTypes2.nestedProduct.name == 'Nested',
+      'Nested product should be restored',
+    );
   }
 
   // -------------------------------------------------------------------------

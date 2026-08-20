@@ -396,14 +396,17 @@ void main() {
       expect((person as SimplePerson).age, 0);
     });
 
-    test('the type argument is the cast applied to what the positional built', () {
-      // A supertype is therefore accepted — the cast succeeds — which is the
-      // only reason to pass both.
-      final Object person = tomReflectionInfo.createInstance<Object>(
-        SimplePerson,
-      );
-      expect(person, isA<SimplePerson>());
-    });
+    test(
+      'the type argument is the cast applied to what the positional built',
+      () {
+        // A supertype is therefore accepted — the cast succeeds — which is the
+        // only reason to pass both.
+        final Object person = tomReflectionInfo.createInstance<Object>(
+          SimplePerson,
+        );
+        expect(person, isA<SimplePerson>());
+      },
+    );
 
     test('a positional that is not a T fails as an instance-creation error', () {
       // The mismatch is not caught statically — the two parameters are
@@ -521,7 +524,9 @@ void main() {
   group('tomReflectionInfo.setValues - DateTime', () {
     test('should set DateTime from ISO string', () {
       final holder = DateTimeHolder();
-      tomReflectionInfo.setValues(holder, {'dateTime': '2024-06-15T14:30:00.000'});
+      tomReflectionInfo.setValues(holder, {
+        'dateTime': '2024-06-15T14:30:00.000',
+      });
       expect(holder.dateTime, isNotNull);
       expect(holder.dateTime!.year, 2024);
       expect(holder.dateTime!.month, 6);
@@ -532,7 +537,9 @@ void main() {
 
     test('should set DateTime from ISO string with Z suffix', () {
       final holder = DateTimeHolder();
-      tomReflectionInfo.setValues(holder, {'dateTime': '2024-06-15T14:30:00.000Z'});
+      tomReflectionInfo.setValues(holder, {
+        'dateTime': '2024-06-15T14:30:00.000Z',
+      });
       expect(holder.dateTime, isNotNull);
       expect(holder.dateTime!.year, 2024);
       expect(holder.dateTime!.month, 6);
@@ -543,7 +550,9 @@ void main() {
   group('tomReflectionInfo.setValues - TomZoned types', () {
     test('should set TomZonedDate from string', () {
       final holder = ZonedDateTimeHolder();
-      tomReflectionInfo.setValues(holder, {'zonedDate': '@D@2024-06-15T00:00:00.000Z_+02:00_Europe/Berlin'});
+      tomReflectionInfo.setValues(holder, {
+        'zonedDate': '@D@2024-06-15T00:00:00.000Z_+02:00_Europe/Berlin',
+      });
       expect(holder.zonedDate, isNotNull);
       expect(holder.zonedDate!.year, 2024);
       expect(holder.zonedDate!.month, 6);
@@ -553,7 +562,9 @@ void main() {
 
     test('should set TomZonedTime from string', () {
       final holder = ZonedDateTimeHolder();
-      tomReflectionInfo.setValues(holder, {'zonedTime': '@T@1970-01-01T14:30:00.000Z_+09:00_Asia/Tokyo'});
+      tomReflectionInfo.setValues(holder, {
+        'zonedTime': '@T@1970-01-01T14:30:00.000Z_+09:00_Asia/Tokyo',
+      });
       expect(holder.zonedTime, isNotNull);
       expect(holder.zonedTime!.hour, 14);
       expect(holder.zonedTime!.minute, 30);
@@ -563,8 +574,9 @@ void main() {
 
     test('should set TomZonedDateTime from string', () {
       final holder = ZonedDateTimeHolder();
-      tomReflectionInfo.setValues(
-          holder, {'zonedDateTime': '@X@2024-06-15T14:30:00.000Z_-04:00_America/New_York'});
+      tomReflectionInfo.setValues(holder, {
+        'zonedDateTime': '@X@2024-06-15T14:30:00.000Z_-04:00_America/New_York',
+      });
       expect(holder.zonedDateTime, isNotNull);
       expect(holder.zonedDateTime!.year, 2024);
       expect(holder.zonedDateTime!.month, 6);
@@ -576,7 +588,9 @@ void main() {
 
     test('should set TomZonedDate from string with different timezone', () {
       final holder = ZonedDateTimeHolder();
-      tomReflectionInfo.setValues(holder, {'zonedDate': '@D@2024-03-20T00:00:00.000Z_Z_Europe/London'});
+      tomReflectionInfo.setValues(holder, {
+        'zonedDate': '@D@2024-03-20T00:00:00.000Z_Z_Europe/London',
+      });
       expect(holder.zonedDate, isNotNull);
       expect(holder.zonedDate!.year, 2024);
       expect(holder.zonedDate!.month, 3);
@@ -586,7 +600,9 @@ void main() {
 
     test('should set TomZonedTime from string with different timezone', () {
       final holder = ZonedDateTimeHolder();
-      tomReflectionInfo.setValues(holder, {'zonedTime': '@T@1970-01-01T10:45:30.500Z_+10:00_Australia/Sydney'});
+      tomReflectionInfo.setValues(holder, {
+        'zonedTime': '@T@1970-01-01T10:45:30.500Z_+10:00_Australia/Sydney',
+      });
       expect(holder.zonedTime, isNotNull);
       expect(holder.zonedTime!.hour, 10);
       expect(holder.zonedTime!.minute, 45);
@@ -597,7 +613,9 @@ void main() {
 
     test('should set TomZonedDateTime from string with different timezone', () {
       final holder = ZonedDateTimeHolder();
-      tomReflectionInfo.setValues(holder, {'zonedDateTime': '@X@2024-12-25T08:00:00.000Z_+13:00_Pacific/Auckland'});
+      tomReflectionInfo.setValues(holder, {
+        'zonedDateTime': '@X@2024-12-25T08:00:00.000Z_+13:00_Pacific/Auckland',
+      });
       expect(holder.zonedDateTime, isNotNull);
       expect(holder.zonedDateTime!.year, 2024);
       expect(holder.zonedDateTime!.month, 12);
@@ -612,7 +630,7 @@ void main() {
     test('should set Map<String, String>', () {
       final holder = MapHolder();
       tomReflectionInfo.setValues(holder, {
-        'stringMap': {'key1': 'value1', 'key2': 'value2'}
+        'stringMap': {'key1': 'value1', 'key2': 'value2'},
       });
       expect(holder.stringMap, {'key1': 'value1', 'key2': 'value2'});
     });
@@ -620,7 +638,7 @@ void main() {
     test('should set Map<String, int>', () {
       final holder = MapHolder();
       tomReflectionInfo.setValues(holder, {
-        'intMap': {'a': 1, 'b': 2, 'c': 3}
+        'intMap': {'a': 1, 'b': 2, 'c': 3},
       });
       expect(holder.intMap, {'a': 1, 'b': 2, 'c': 3});
     });
@@ -628,7 +646,7 @@ void main() {
     test('should set Map<String, double>', () {
       final holder = MapHolder();
       tomReflectionInfo.setValues(holder, {
-        'doubleMap': {'x': 1.5, 'y': 2.5}
+        'doubleMap': {'x': 1.5, 'y': 2.5},
       });
       expect(holder.doubleMap, {'x': 1.5, 'y': 2.5});
     });
@@ -636,7 +654,7 @@ void main() {
     test('should set Map<String, bool>', () {
       final holder = MapHolder();
       tomReflectionInfo.setValues(holder, {
-        'boolMap': {'enabled': true, 'visible': false}
+        'boolMap': {'enabled': true, 'visible': false},
       });
       expect(holder.boolMap, {'enabled': true, 'visible': false});
     });
@@ -644,7 +662,7 @@ void main() {
     test('should set Map<String, dynamic>', () {
       final holder = MapHolder();
       tomReflectionInfo.setValues(holder, {
-        'dynamicMap': {'str': 'hello', 'num': 42, 'flag': true}
+        'dynamicMap': {'str': 'hello', 'num': 42, 'flag': true},
       });
       expect(holder.dynamicMap, {'str': 'hello', 'num': 42, 'flag': true});
     });
@@ -654,7 +672,7 @@ void main() {
     test('should set List<String>', () {
       final holder = ListHolder();
       tomReflectionInfo.setValues(holder, {
-        'stringList': ['a', 'b', 'c']
+        'stringList': ['a', 'b', 'c'],
       });
       expect(holder.stringList, ['a', 'b', 'c']);
     });
@@ -662,7 +680,7 @@ void main() {
     test('should set List<int>', () {
       final holder = ListHolder();
       tomReflectionInfo.setValues(holder, {
-        'intList': [1, 2, 3, 4, 5]
+        'intList': [1, 2, 3, 4, 5],
       });
       expect(holder.intList, [1, 2, 3, 4, 5]);
     });
@@ -670,7 +688,7 @@ void main() {
     test('should set List<double>', () {
       final holder = ListHolder();
       tomReflectionInfo.setValues(holder, {
-        'doubleList': [1.1, 2.2, 3.3]
+        'doubleList': [1.1, 2.2, 3.3],
       });
       expect(holder.doubleList, [1.1, 2.2, 3.3]);
     });
@@ -678,7 +696,7 @@ void main() {
     test('should set List<bool>', () {
       final holder = ListHolder();
       tomReflectionInfo.setValues(holder, {
-        'boolList': [true, false, true]
+        'boolList': [true, false, true],
       });
       expect(holder.boolList, [true, false, true]);
     });
@@ -686,7 +704,7 @@ void main() {
     test('should set List<dynamic>', () {
       final holder = ListHolder();
       tomReflectionInfo.setValues(holder, {
-        'dynamicList': ['text', 123, true, 4.5]
+        'dynamicList': ['text', 123, true, 4.5],
       });
       expect(holder.dynamicList, ['text', 123, true, 4.5]);
     });
@@ -698,8 +716,8 @@ void main() {
       tomReflectionInfo.setValues(holder, {
         'dateTimeMap': {
           'start': '2024-01-01T00:00:00.000',
-          'end': '2024-12-31T23:59:59.999'
-        }
+          'end': '2024-12-31T23:59:59.999',
+        },
       });
       expect(holder.dateTimeMap, isNotNull);
       expect(holder.dateTimeMap!['start']!.year, 2024);
@@ -712,11 +730,14 @@ void main() {
       tomReflectionInfo.setValues(holder, {
         'zonedDateMap': {
           'berlin': '@D@2024-06-15T00:00:00.000Z_+02:00_Europe/Berlin',
-          'tokyo': '@D@2024-07-20T00:00:00.000Z_+09:00_Asia/Tokyo'
-        }
+          'tokyo': '@D@2024-07-20T00:00:00.000Z_+09:00_Asia/Tokyo',
+        },
       });
       expect(holder.zonedDateMap, isNotNull);
-      expect(holder.zonedDateMap!['berlin']!.timezone.timezone, 'Europe/Berlin');
+      expect(
+        holder.zonedDateMap!['berlin']!.timezone.timezone,
+        'Europe/Berlin',
+      );
       expect(holder.zonedDateMap!['tokyo']!.timezone.timezone, 'Asia/Tokyo');
     });
 
@@ -725,8 +746,8 @@ void main() {
       tomReflectionInfo.setValues(holder, {
         'zonedTimeMap': {
           'morning': '@T@1970-01-01T08:00:00.000Z_Z_Europe/London',
-          'evening': '@T@1970-01-01T20:00:00.000Z_-06:00_America/Chicago'
-        }
+          'evening': '@T@1970-01-01T20:00:00.000Z_-06:00_America/Chicago',
+        },
       });
       expect(holder.zonedTimeMap, isNotNull);
       expect(holder.zonedTimeMap!['morning']!.hour, 8);
@@ -738,8 +759,8 @@ void main() {
       tomReflectionInfo.setValues(holder, {
         'zonedDateTimeMap': {
           'meeting': '@X@2024-06-15T10:00:00.000Z_+02:00_Europe/Paris',
-          'deadline': '@X@2024-06-30T23:59:59.000Z_Z_UTC'
-        }
+          'deadline': '@X@2024-06-30T23:59:59.000Z_Z_UTC',
+        },
       });
       expect(holder.zonedDateTimeMap, isNotNull);
       expect(holder.zonedDateTimeMap!['meeting']!.hour, 10);
@@ -754,8 +775,8 @@ void main() {
         'dateTimeList': [
           '2024-01-01T00:00:00.000',
           '2024-06-15T12:00:00.000',
-          '2024-12-31T23:59:59.999'
-        ]
+          '2024-12-31T23:59:59.999',
+        ],
       });
       expect(holder.dateTimeList, isNotNull);
       expect(holder.dateTimeList!.length, 3);
@@ -770,8 +791,8 @@ void main() {
         'zonedDateList': [
           '@D@2024-01-01T00:00:00.000Z_+01:00_Europe/Berlin',
           '@D@2024-06-15T00:00:00.000Z_+09:00_Asia/Tokyo',
-          '@D@2024-12-25T00:00:00.000Z_-05:00_America/New_York'
-        ]
+          '@D@2024-12-25T00:00:00.000Z_-05:00_America/New_York',
+        ],
       });
       expect(holder.zonedDateList, isNotNull);
       expect(holder.zonedDateList!.length, 3);
@@ -786,8 +807,8 @@ void main() {
         'zonedTimeList': [
           '@T@1970-01-01T08:00:00.000Z_Z_Europe/London',
           '@T@1970-01-01T12:30:00.000Z_+08:00_Asia/Singapore',
-          '@T@1970-01-01T18:45:00.000Z_-08:00_America/Los_Angeles'
-        ]
+          '@T@1970-01-01T18:45:00.000Z_-08:00_America/Los_Angeles',
+        ],
       });
       expect(holder.zonedTimeList, isNotNull);
       expect(holder.zonedTimeList!.length, 3);
@@ -802,14 +823,17 @@ void main() {
         'zonedDateTimeList': [
           '@X@2024-01-01T00:00:00.000Z_Z_UTC',
           '@X@2024-06-15T14:30:00.000Z_+02:00_Europe/Paris',
-          '@X@2024-12-25T08:00:00.000Z_+11:00_Australia/Sydney'
-        ]
+          '@X@2024-12-25T08:00:00.000Z_+11:00_Australia/Sydney',
+        ],
       });
       expect(holder.zonedDateTimeList, isNotNull);
       expect(holder.zonedDateTimeList!.length, 3);
       expect(holder.zonedDateTimeList![0].timezone.timezone, 'UTC');
       expect(holder.zonedDateTimeList![1].timezone.timezone, 'Europe/Paris');
-      expect(holder.zonedDateTimeList![2].timezone.timezone, 'Australia/Sydney');
+      expect(
+        holder.zonedDateTimeList![2].timezone.timezone,
+        'Australia/Sydney',
+      );
     });
   });
 
@@ -818,7 +842,11 @@ void main() {
       final person = PersonWithAddress();
       tomReflectionInfo.setValues(person, {
         'name': 'John Doe',
-        'address': {'street': '123 Main St', 'city': 'Springfield', 'zipCode': '12345'}
+        'address': {
+          'street': '123 Main St',
+          'city': 'Springfield',
+          'zipCode': '12345',
+        },
       });
       expect(person.name, 'John Doe');
       expect(person.address, isNotNull);
@@ -832,7 +860,7 @@ void main() {
       tomReflectionInfo.setValues(employee, {
         'name': 'Alice',
         'department': 'Engineering',
-        'manager': {'name': 'Bob', 'department': 'Management', 'manager': null}
+        'manager': {'name': 'Bob', 'department': 'Management', 'manager': null},
       });
       expect(employee.name, 'Alice');
       expect(employee.manager, isNotNull);
@@ -850,8 +878,8 @@ void main() {
         'members': [
           {'name': 'Alice', 'role': 'Developer'},
           {'name': 'Bob', 'role': 'Designer'},
-          {'name': 'Charlie', 'role': 'Manager'}
-        ]
+          {'name': 'Charlie', 'role': 'Manager'},
+        ],
       });
       expect(team.teamName, 'Alpha Team');
       expect(team.members.length, 3);
@@ -899,7 +927,12 @@ void main() {
       final holder = ZonedDateTimeHolder();
       final tz = TomTimezone.fromName('Europe/Berlin');
       // June 15 at 00:00 Berlin (UTC+2 in summer) = June 14 at 22:00 UTC
-      holder.zonedDate = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tz);
+      holder.zonedDate = TomZonedDate(
+        year: 2024,
+        month: 6,
+        day: 15,
+        timezone: tz,
+      );
 
       final values = tomReflectionInfo.getValues(holder);
       expect(values['zonedDate'], startsWith('@D@2024-06-14T22:00:00.000Z_'));
@@ -939,7 +972,10 @@ void main() {
       );
 
       final values = tomReflectionInfo.getValues(holder);
-      expect(values['zonedDateTime'], startsWith('@X@2024-06-15T18:30:00.000Z_'));
+      expect(
+        values['zonedDateTime'],
+        startsWith('@X@2024-06-15T18:30:00.000Z_'),
+      );
       expect(values['zonedDateTime'], contains('America/New_York'));
     });
 
@@ -1052,7 +1088,7 @@ void main() {
           'street': 'JSON Street',
           'city': 'JSON City',
           'zipCode': '99999',
-        }
+        },
       });
 
       expect(person.name, 'WithAddress');
@@ -1080,7 +1116,7 @@ void main() {
         'nestedList': [
           {'info': 'First', 'level': 1},
           {'info': 'Second', 'level': 2},
-        ]
+        ],
       });
 
       expect(entity.name, 'Complex');
@@ -1149,7 +1185,10 @@ void main() {
       final newHolder = DateTimeMapHolder();
       tomReflectionInfo.setValues(newHolder, values);
 
-      expect(newHolder.zonedDateMap!['date1']!.timezone.timezone, 'Europe/Berlin');
+      expect(
+        newHolder.zonedDateMap!['date1']!.timezone.timezone,
+        'Europe/Berlin',
+      );
       expect(newHolder.zonedDateMap!['date2']!.timezone.timezone, 'Asia/Tokyo');
     });
   });
@@ -1212,7 +1251,10 @@ void main() {
 
   group('TomReflectorException', () {
     test('should have meaningful toString', () {
-      final exception = TomReflectorException('test.error.key', 'Test error message');
+      final exception = TomReflectorException(
+        'test.error.key',
+        'Test error message',
+      );
       expect(exception.toString(), contains('Test error message'));
     });
   });
@@ -1221,58 +1263,61 @@ void main() {
   // Tests for Uninitialized Collections (nullable without default value)
   // ===========================================================================
   group('tomReflectionInfo.setValues - Uninitialized Lists', () {
-    test('should set List<TeamMember>? when field is null (no default value)', () {
-      final holder = UninitializedListHolder();
-      
-      // Verify field starts as null
-      expect(holder.members, isNull);
-      
-      // Set values using reflection
-      tomReflectionInfo.setValues(holder, {
-        'name': 'Test Holder',
-        'members': [
-          {'name': 'Alice', 'role': 'Developer'},
-          {'name': 'Bob', 'role': 'Designer'},
-        ]
-      });
-      
-      // Verify the list was created and populated
-      expect(holder.name, 'Test Holder');
-      expect(holder.members, isNotNull);
-      expect(holder.members!.length, 2);
-      expect(holder.members![0].name, 'Alice');
-      expect(holder.members![0].role, 'Developer');
-      expect(holder.members![1].name, 'Bob');
-      expect(holder.members![1].role, 'Designer');
-    });
+    test(
+      'should set List<TeamMember>? when field is null (no default value)',
+      () {
+        final holder = UninitializedListHolder();
+
+        // Verify field starts as null
+        expect(holder.members, isNull);
+
+        // Set values using reflection
+        tomReflectionInfo.setValues(holder, {
+          'name': 'Test Holder',
+          'members': [
+            {'name': 'Alice', 'role': 'Developer'},
+            {'name': 'Bob', 'role': 'Designer'},
+          ],
+        });
+
+        // Verify the list was created and populated
+        expect(holder.name, 'Test Holder');
+        expect(holder.members, isNotNull);
+        expect(holder.members!.length, 2);
+        expect(holder.members![0].name, 'Alice');
+        expect(holder.members![0].role, 'Developer');
+        expect(holder.members![1].name, 'Bob');
+        expect(holder.members![1].role, 'Designer');
+      },
+    );
 
     test('should handle empty list for uninitialized List<TeamMember>?', () {
       final holder = UninitializedListHolder();
-      
+
       expect(holder.members, isNull);
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Empty List Holder',
-        'members': []
+        'members': [],
       });
-      
+
       expect(holder.members, isNotNull);
       expect(holder.members!.length, 0);
     });
 
     test('should set List<Address>? when field is null', () {
       final holder = UninitializedCollectionsHolder();
-      
+
       expect(holder.addresses, isNull);
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Multi Collection Holder',
         'addresses': [
           {'street': '123 Main St', 'city': 'Springfield', 'zipCode': '12345'},
           {'street': '456 Oak Ave', 'city': 'Shelbyville', 'zipCode': '67890'},
-        ]
+        ],
       });
-      
+
       expect(holder.addresses, isNotNull);
       expect(holder.addresses!.length, 2);
       expect(holder.addresses![0].street, '123 Main St');
@@ -1283,58 +1328,64 @@ void main() {
   });
 
   group('tomReflectionInfo.setValues - Uninitialized Maps', () {
-    test('should set Map<String, NestedInfo>? when field is null (no default value)', () {
-      final holder = UninitializedMapHolder();
-      
-      // Verify field starts as null
-      expect(holder.infoMap, isNull);
-      
-      // Set values using reflection
-      tomReflectionInfo.setValues(holder, {
-        'name': 'Test Map Holder',
-        'infoMap': {
-          'first': {'info': 'First Info', 'level': 1},
-          'second': {'info': 'Second Info', 'level': 2},
-        }
-      });
-      
-      // Verify the map was created and populated
-      expect(holder.name, 'Test Map Holder');
-      expect(holder.infoMap, isNotNull);
-      expect(holder.infoMap!.length, 2);
-      expect(holder.infoMap!['first']!.info, 'First Info');
-      expect(holder.infoMap!['first']!.level, 1);
-      expect(holder.infoMap!['second']!.info, 'Second Info');
-      expect(holder.infoMap!['second']!.level, 2);
-    });
+    test(
+      'should set Map<String, NestedInfo>? when field is null (no default value)',
+      () {
+        final holder = UninitializedMapHolder();
 
-    test('should handle empty map for uninitialized Map<String, NestedInfo>?', () {
-      final holder = UninitializedMapHolder();
-      
-      expect(holder.infoMap, isNull);
-      
-      tomReflectionInfo.setValues(holder, {
-        'name': 'Empty Map Holder',
-        'infoMap': {}
-      });
-      
-      expect(holder.infoMap, isNotNull);
-      expect(holder.infoMap!.length, 0);
-    });
+        // Verify field starts as null
+        expect(holder.infoMap, isNull);
+
+        // Set values using reflection
+        tomReflectionInfo.setValues(holder, {
+          'name': 'Test Map Holder',
+          'infoMap': {
+            'first': {'info': 'First Info', 'level': 1},
+            'second': {'info': 'Second Info', 'level': 2},
+          },
+        });
+
+        // Verify the map was created and populated
+        expect(holder.name, 'Test Map Holder');
+        expect(holder.infoMap, isNotNull);
+        expect(holder.infoMap!.length, 2);
+        expect(holder.infoMap!['first']!.info, 'First Info');
+        expect(holder.infoMap!['first']!.level, 1);
+        expect(holder.infoMap!['second']!.info, 'Second Info');
+        expect(holder.infoMap!['second']!.level, 2);
+      },
+    );
+
+    test(
+      'should handle empty map for uninitialized Map<String, NestedInfo>?',
+      () {
+        final holder = UninitializedMapHolder();
+
+        expect(holder.infoMap, isNull);
+
+        tomReflectionInfo.setValues(holder, {
+          'name': 'Empty Map Holder',
+          'infoMap': {},
+        });
+
+        expect(holder.infoMap, isNotNull);
+        expect(holder.infoMap!.length, 0);
+      },
+    );
 
     test('should set Map<String, TeamMember>? when field is null', () {
       final holder = UninitializedCollectionsHolder();
-      
+
       expect(holder.teamMembers, isNull);
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Team Map Holder',
         'teamMembers': {
           'lead': {'name': 'Charlie', 'role': 'Team Lead'},
           'dev': {'name': 'Diana', 'role': 'Developer'},
-        }
+        },
       });
-      
+
       expect(holder.teamMembers, isNotNull);
       expect(holder.teamMembers!.length, 2);
       expect(holder.teamMembers!['lead']!.name, 'Charlie');
@@ -1347,10 +1398,10 @@ void main() {
   group('tomReflectionInfo.setValues - Uninitialized Collections Combined', () {
     test('should set both uninitialized List and Map in same object', () {
       final holder = UninitializedCollectionsHolder();
-      
+
       expect(holder.addresses, isNull);
       expect(holder.teamMembers, isNull);
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Full Holder',
         'addresses': [
@@ -1358,9 +1409,9 @@ void main() {
         ],
         'teamMembers': {
           'manager': {'name': 'Eve', 'role': 'Manager'},
-        }
+        },
       });
-      
+
       expect(holder.name, 'Full Holder');
       expect(holder.addresses, isNotNull);
       expect(holder.addresses!.length, 1);
@@ -1380,75 +1431,86 @@ void main() {
     // To support null elements/values, you would need List<TeamMember?>? or
     // Map<String, NestedInfo?>? which is exercised in the next group.
 
-    test('should propagate failure and leave list untouched when null element hits non-nullable List<TeamMember>?', () {
-      // A null element cannot be added to List<TeamMember>. The deserialization
-      // must build the new list atomically and propagate a TomReflectorException
-      // on failure — never assigning a half-built list to the field.
-      final holder = UninitializedListHolder();
+    test(
+      'should propagate failure and leave list untouched when null element hits non-nullable List<TeamMember>?',
+      () {
+        // A null element cannot be added to List<TeamMember>. The deserialization
+        // must build the new list atomically and propagate a TomReflectorException
+        // on failure — never assigning a half-built list to the field.
+        final holder = UninitializedListHolder();
 
-      expect(
-        () => tomReflectionInfo.setValues(holder, {
-          'name': 'Mixed Elements Holder',
-          'members': [
-            {'name': 'Frank', 'role': 'Tester'},
-            null, // Cannot be held by List<TeamMember>
-            {'name': 'Grace', 'role': 'QA'},
-          ]
-        }),
-        throwsA(isA<TomReflectorException>()),
-      );
+        expect(
+          () => tomReflectionInfo.setValues(holder, {
+            'name': 'Mixed Elements Holder',
+            'members': [
+              {'name': 'Frank', 'role': 'Tester'},
+              null, // Cannot be held by List<TeamMember>
+              {'name': 'Grace', 'role': 'QA'},
+            ],
+          }),
+          throwsA(isA<TomReflectorException>()),
+        );
 
-      // Atomic: the field was never null-initialized nor partially filled.
-      expect(holder.members, isNull);
-    });
+        // Atomic: the field was never null-initialized nor partially filled.
+        expect(holder.members, isNull);
+      },
+    );
 
-    test('should propagate failure and leave map untouched when null value hits non-nullable Map<String, NestedInfo>?', () {
-      // A null value cannot be added to Map<String, NestedInfo>. The
-      // deserialization must build the new map atomically and propagate a
-      // TomReflectorException — never assigning a half-built map to the field.
-      final holder = UninitializedMapHolder();
+    test(
+      'should propagate failure and leave map untouched when null value hits non-nullable Map<String, NestedInfo>?',
+      () {
+        // A null value cannot be added to Map<String, NestedInfo>. The
+        // deserialization must build the new map atomically and propagate a
+        // TomReflectorException — never assigning a half-built map to the field.
+        final holder = UninitializedMapHolder();
 
-      expect(
-        () => tomReflectionInfo.setValues(holder, {
-          'name': 'Mixed Values Holder',
-          'infoMap': {
-            'valid': {'info': 'Valid Info', 'level': 3},
-            'empty': null, // Cannot be held by Map<String, NestedInfo>
-            'another': {'info': 'Another Info', 'level': 5},
-          }
-        }),
-        throwsA(isA<TomReflectorException>()),
-      );
+        expect(
+          () => tomReflectionInfo.setValues(holder, {
+            'name': 'Mixed Values Holder',
+            'infoMap': {
+              'valid': {'info': 'Valid Info', 'level': 3},
+              'empty': null, // Cannot be held by Map<String, NestedInfo>
+              'another': {'info': 'Another Info', 'level': 5},
+            },
+          }),
+          throwsA(isA<TomReflectorException>()),
+        );
 
-      // Atomic: the field was never null-initialized nor partially filled.
-      expect(holder.infoMap, isNull);
-    });
+        // Atomic: the field was never null-initialized nor partially filled.
+        expect(holder.infoMap, isNull);
+      },
+    );
 
-    test('should preserve pre-populated list content when an update fails atomically', () {
-      // A pre-populated List<TeamMember> must keep its existing content if the
-      // incoming update cannot be materialized in full (bug §48 atomicity).
-      final team = Team()
-        ..teamName = 'Original'
-        ..members.add(TeamMember()
-          ..name = 'Old'
-          ..role = 'Veteran');
+    test(
+      'should preserve pre-populated list content when an update fails atomically',
+      () {
+        // A pre-populated List<TeamMember> must keep its existing content if the
+        // incoming update cannot be materialized in full (bug §48 atomicity).
+        final team = Team()
+          ..teamName = 'Original'
+          ..members.add(
+            TeamMember()
+              ..name = 'Old'
+              ..role = 'Veteran',
+          );
 
-      expect(
-        () => tomReflectionInfo.setValues(team, {
-          'teamName': 'Updated',
-          'members': [
-            {'name': 'New', 'role': 'Rookie'},
-            null, // Forces the whole members update to fail
-            {'name': 'Third', 'role': 'Junior'},
-          ]
-        }),
-        throwsA(isA<TomReflectorException>()),
-      );
+        expect(
+          () => tomReflectionInfo.setValues(team, {
+            'teamName': 'Updated',
+            'members': [
+              {'name': 'New', 'role': 'Rookie'},
+              null, // Forces the whole members update to fail
+              {'name': 'Third', 'role': 'Junior'},
+            ],
+          }),
+          throwsA(isA<TomReflectorException>()),
+        );
 
-      // The original member list is intact — not cleared, not truncated.
-      expect(team.members.length, 1);
-      expect(team.members[0].name, 'Old');
-    });
+        // The original member list is intact — not cleared, not truncated.
+        expect(team.members.length, 1);
+        expect(team.members[0].name, 'Old');
+      },
+    );
   });
 
   // ==========================================================================
@@ -1457,16 +1519,16 @@ void main() {
   group('tomReflectionInfo.setValues - Nullable Element Collections', () {
     test('should add null elements to List<TeamMember?>?', () {
       final holder = NullableElementListHolder();
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Nullable Elements Holder',
         'members': [
           {'name': 'Frank', 'role': 'Tester'},
           null,
           {'name': 'Grace', 'role': 'QA'},
-        ]
+        ],
       });
-      
+
       expect(holder.members, isNotNull);
       expect(holder.members!.length, 3);
       expect(holder.members![0]!.name, 'Frank');
@@ -1476,16 +1538,16 @@ void main() {
 
     test('should add null values to Map<String, NestedInfo?>?', () {
       final holder = NullableValueMapHolder();
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Nullable Values Holder',
         'infoMap': {
           'valid': {'info': 'Valid Info', 'level': 3},
           'empty': null,
           'another': {'info': 'Another Info', 'level': 5},
-        }
+        },
       });
-      
+
       expect(holder.infoMap, isNotNull);
       expect(holder.infoMap!.length, 3);
       expect(holder.infoMap!['valid']!.info, 'Valid Info');
@@ -1495,7 +1557,7 @@ void main() {
 
     test('should handle list with multiple null elements', () {
       final holder = NullableElementListHolder();
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Multiple Nulls Holder',
         'members': [
@@ -1504,9 +1566,9 @@ void main() {
           null,
           null,
           {'name': 'Bob', 'role': 'QA'},
-        ]
+        ],
       });
-      
+
       expect(holder.members, isNotNull);
       expect(holder.members!.length, 5);
       expect(holder.members![0], isNull);
@@ -1518,7 +1580,7 @@ void main() {
 
     test('should handle map with multiple null values', () {
       final holder = NullableValueMapHolder();
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'Multiple Null Values Holder',
         'infoMap': {
@@ -1526,9 +1588,9 @@ void main() {
           'second': {'info': 'Some Info', 'level': 1},
           'third': null,
           'fourth': null,
-        }
+        },
       });
-      
+
       expect(holder.infoMap, isNotNull);
       expect(holder.infoMap!.length, 4);
       expect(holder.infoMap!['first'], isNull);
@@ -1539,12 +1601,12 @@ void main() {
 
     test('should handle list with all null elements', () {
       final holder = NullableElementListHolder();
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'All Nulls Holder',
-        'members': [null, null, null]
+        'members': [null, null, null],
       });
-      
+
       expect(holder.members, isNotNull);
       expect(holder.members!.length, 3);
       expect(holder.members!.every((e) => e == null), isTrue);
@@ -1552,16 +1614,12 @@ void main() {
 
     test('should handle map with all null values', () {
       final holder = NullableValueMapHolder();
-      
+
       tomReflectionInfo.setValues(holder, {
         'name': 'All Null Values Holder',
-        'infoMap': {
-          'a': null,
-          'b': null,
-          'c': null,
-        }
+        'infoMap': {'a': null, 'b': null, 'c': null},
       });
-      
+
       expect(holder.infoMap, isNotNull);
       expect(holder.infoMap!.length, 3);
       expect(holder.infoMap!.values.every((v) => v == null), isTrue);
@@ -1570,27 +1628,27 @@ void main() {
     test('List<X?>? and Map<String, X?>? without nulls work correctly', () {
       final listHolder = NullableElementListHolder();
       final mapHolder = NullableValueMapHolder();
-      
+
       tomReflectionInfo.setValues(listHolder, {
         'name': 'No Nulls List',
         'members': [
           {'name': 'Alice', 'role': 'Dev'},
           {'name': 'Bob', 'role': 'QA'},
-        ]
+        ],
       });
-      
+
       tomReflectionInfo.setValues(mapHolder, {
         'name': 'No Nulls Map',
         'infoMap': {
           'first': {'info': 'First', 'level': 1},
           'second': {'info': 'Second', 'level': 2},
-        }
+        },
       });
-      
+
       expect(listHolder.members!.length, 2);
       expect(listHolder.members![0]!.name, 'Alice');
       expect(listHolder.members![1]!.name, 'Bob');
-      
+
       expect(mapHolder.infoMap!.length, 2);
       expect(mapHolder.infoMap!['first']!.info, 'First');
       expect(mapHolder.infoMap!['second']!.info, 'Second');
@@ -1601,28 +1659,37 @@ void main() {
   // Type Resolution — generic-argument validation (bug §49a)
   // ==========================================================================
   group('tomReflectionInfo type resolution validation', () {
-    test('mapValueElementType throws TomReflectorException on a non-generic value', () {
-      // 42.runtimeType.toString() == 'int' has no '<...>' — must not force-unwrap.
-      expect(
-        () => tomReflectionInfo.mapValueElementType(42),
-        throwsA(isA<TomReflectorException>()),
-      );
-    });
+    test(
+      'mapValueElementType throws TomReflectorException on a non-generic value',
+      () {
+        // 42.runtimeType.toString() == 'int' has no '<...>' — must not force-unwrap.
+        expect(
+          () => tomReflectionInfo.mapValueElementType(42),
+          throwsA(isA<TomReflectorException>()),
+        );
+      },
+    );
 
-    test('mapValueElementType throws TomReflectorException on a single-arg generic', () {
-      // List<int> only has one type argument — not a Map<K, V>; must not RangeError.
-      expect(
-        () => tomReflectionInfo.mapValueElementType(<int>[1, 2, 3]),
-        throwsA(isA<TomReflectorException>()),
-      );
-    });
+    test(
+      'mapValueElementType throws TomReflectorException on a single-arg generic',
+      () {
+        // List<int> only has one type argument — not a Map<K, V>; must not RangeError.
+        expect(
+          () => tomReflectionInfo.mapValueElementType(<int>[1, 2, 3]),
+          throwsA(isA<TomReflectorException>()),
+        );
+      },
+    );
 
-    test('singleElementType throws TomReflectorException on a non-generic value', () {
-      expect(
-        () => tomReflectionInfo.singleElementType(42),
-        throwsA(isA<TomReflectorException>()),
-      );
-    });
+    test(
+      'singleElementType throws TomReflectorException on a non-generic value',
+      () {
+        expect(
+          () => tomReflectionInfo.singleElementType(42),
+          throwsA(isA<TomReflectorException>()),
+        );
+      },
+    );
   });
 
   // ==========================================================================
@@ -1810,28 +1877,37 @@ void main() {
   // Round-trip serialization (tests §33a)
   // ==========================================================================
   group('tomReflectionInfo round-trip serialization', () {
-    test('createInstanceFromJsonString reconstructs a Team with nested members', () {
-      final team = Team()
-        ..teamName = 'Alpha'
-        ..members.add(TeamMember()
-          ..name = 'Alice'
-          ..role = 'Lead')
-        ..members.add(TeamMember()
-          ..name = 'Bob'
-          ..role = 'Dev');
+    test(
+      'createInstanceFromJsonString reconstructs a Team with nested members',
+      () {
+        final team = Team()
+          ..teamName = 'Alpha'
+          ..members.add(
+            TeamMember()
+              ..name = 'Alice'
+              ..role = 'Lead',
+          )
+          ..members.add(
+            TeamMember()
+              ..name = 'Bob'
+              ..role = 'Dev',
+          );
 
-      final json = tomReflectionInfo.convertToJsonString(team);
-      final mirror = tomReflector.reflectType(Team) as ClassMirror;
-      final restored =
-          tomReflectionInfo.createInstanceFromJsonString<Team>(mirror, json);
+        final json = tomReflectionInfo.convertToJsonString(team);
+        final mirror = tomReflector.reflectType(Team) as ClassMirror;
+        final restored = tomReflectionInfo.createInstanceFromJsonString<Team>(
+          mirror,
+          json,
+        );
 
-      expect(restored.teamName, 'Alpha');
-      expect(restored.members.length, 2);
-      expect(restored.members[0].name, 'Alice');
-      expect(restored.members[0].role, 'Lead');
-      expect(restored.members[1].name, 'Bob');
-      expect(restored.members[1].role, 'Dev');
-    });
+        expect(restored.teamName, 'Alpha');
+        expect(restored.members.length, 2);
+        expect(restored.members[0].name, 'Alice');
+        expect(restored.members[0].role, 'Lead');
+        expect(restored.members[1].name, 'Bob');
+        expect(restored.members[1].role, 'Dev');
+      },
+    );
 
     test('createInstanceFromJson round-trips a PersonWithAddress', () {
       final person = PersonWithAddress()
@@ -1842,8 +1918,7 @@ void main() {
           ..zipCode = '12345');
 
       final json = tomReflectionInfo.getValues(person);
-      final mirror =
-          tomReflector.reflectType(PersonWithAddress) as ClassMirror;
+      final mirror = tomReflector.reflectType(PersonWithAddress) as ClassMirror;
       final restored = tomReflectionInfo
           .createInstanceFromJson<PersonWithAddress>(mirror, json);
 
@@ -1872,10 +1947,11 @@ void main() {
     setUp(initializeReflection);
 
     test('createInstanceFromJson is statically non-nullable', () {
-      final Address restored = tomReflectionInfo.createInstanceFromJson<Address>(
-        tomReflector.reflectType(Address) as ClassMirror,
-        {'street': '1 Main St', 'city': 'Springfield', 'zipCode': '12345'},
-      );
+      final Address restored = tomReflectionInfo
+          .createInstanceFromJson<Address>(
+            tomReflector.reflectType(Address) as ClassMirror,
+            {'street': '1 Main St', 'city': 'Springfield', 'zipCode': '12345'},
+          );
 
       expect(restored.street, '1 Main St');
     });
@@ -2010,10 +2086,11 @@ void main() {
 
       test('present and throwing: propagates, naming hook and class', () {
         expect(
-          () => tomReflectionInfo.createInstanceFromJson<ThrowingFromJsonHolder>(
-            mirrorOf(ThrowingFromJsonHolder),
-            {'name': 'Ann'},
-          ),
+          () =>
+              tomReflectionInfo.createInstanceFromJson<ThrowingFromJsonHolder>(
+                mirrorOf(ThrowingFromJsonHolder),
+                {'name': 'Ann'},
+              ),
           hookFailed('fromJson', 'ThrowingFromJsonHolder', 'is broken'),
         );
       });
@@ -2186,11 +2263,7 @@ void main() {
         () => tomReflectionInfo.getValues(NotReflectedHolder()),
         throwsA(
           isA<TomReflectorException>()
-              .having(
-                (e) => e.key,
-                'key',
-                'reflector.reflect.not_reflectable',
-              )
+              .having((e) => e.key, 'key', 'reflector.reflect.not_reflectable')
               .having(
                 (e) => e.defaultUserMessage,
                 'message',
@@ -2209,11 +2282,7 @@ void main() {
         () => tomReflectionInfo.setValues(NotReflectedHolder(), {'name': 'x'}),
         throwsA(
           isA<TomReflectorException>()
-              .having(
-                (e) => e.key,
-                'key',
-                'reflector.reflect.not_reflectable',
-              )
+              .having((e) => e.key, 'key', 'reflector.reflect.not_reflectable')
               .having(
                 (e) => e.defaultUserMessage,
                 'message',
@@ -2251,11 +2320,7 @@ void main() {
         () => tomReflectionInfo.createInstance<NotReflectedHolder>(),
         throwsA(
           isA<TomReflectorException>()
-              .having(
-                (e) => e.key,
-                'key',
-                'reflector.instance_creation.failed',
-              )
+              .having((e) => e.key, 'key', 'reflector.instance_creation.failed')
               .having(
                 (e) => e.defaultUserMessage,
                 'message',
@@ -2417,10 +2482,7 @@ void main() {
         ..name = 'Ada'
         ..age = 36;
 
-      expect(
-        tomReflectionInfo.getValues(person),
-        containsPair('name', 'Ada'),
-      );
+      expect(tomReflectionInfo.getValues(person), containsPair('name', 'Ada'));
       expect(
         tomReflectionInfo.setValues(SimplePerson(), {'name': 'Ada'}).name,
         'Ada',
@@ -2453,20 +2515,15 @@ void main() {
     // module's auto-logging. Each test below asserts on the *context*, not
     // merely on the fact that something threw.
 
-    Matcher refusesToParse(String field, String owner, String text) =>
-        throwsA(
-          isA<TomReflectorException>()
-              .having(
-                (e) => e.key,
-                'key',
-                'reflection.set.date_parse_failed',
-              )
-              .having(
-                (e) => e.defaultUserMessage,
-                'message',
-                allOf(contains(field), contains(owner), contains(text)),
-              ),
-        );
+    Matcher refusesToParse(String field, String owner, String text) => throwsA(
+      isA<TomReflectorException>()
+          .having((e) => e.key, 'key', 'reflection.set.date_parse_failed')
+          .having(
+            (e) => e.defaultUserMessage,
+            'message',
+            allOf(contains(field), contains(owner), contains(text)),
+          ),
+    );
 
     test('a malformed string for a DateTime field is wrapped', () {
       expect(

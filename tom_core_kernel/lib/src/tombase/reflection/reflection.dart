@@ -428,7 +428,7 @@ class TomReflectionInfo {
       typeArgument,
       notFoundErrorKey,
       "TomReflectionInfo:elementType: ClassMirror for type $typeArgument "
-          "could not be found",
+      "could not be found",
     );
   }
 
@@ -1266,12 +1266,11 @@ class TomReflectionInfo {
     // Try to instantiate and fill
     if (_instantiateAndSetMapValue(im, cm, entry)) return;
 
-    if(debugSwitchLogReflectionDetailsValues) {
+    if (debugSwitchLogReflectionDetailsValues) {
       tomLog.trace(
         "Could not set map value for field ${entry.key} of type $returnType",
       );
     }
-
   }
 
   /// Attempts to set a primitive Map type using registered handlers.
@@ -1318,19 +1317,13 @@ class TomReflectionInfo {
       return set<TomZonedDate>(TomZonedDate.parseFromString);
     }
     if (returnType == Map<String, TomZonedDate?>) {
-      return set<TomZonedDate?>(
-        TomZonedDate.parseFromString,
-        nullable: true,
-      );
+      return set<TomZonedDate?>(TomZonedDate.parseFromString, nullable: true);
     }
     if (returnType == Map<String, TomZonedTime>) {
       return set<TomZonedTime>(TomZonedTime.parseFromString);
     }
     if (returnType == Map<String, TomZonedTime?>) {
-      return set<TomZonedTime?>(
-        TomZonedTime.parseFromString,
-        nullable: true,
-      );
+      return set<TomZonedTime?>(TomZonedTime.parseFromString, nullable: true);
     }
     if (returnType == Map<String, TomZonedDateTime>) {
       return set<TomZonedDateTime>(TomZonedDateTime.parseFromString);
@@ -1451,7 +1444,6 @@ class TomReflectionInfo {
     return true;
   }
 
-
   /// Attempts to fill an existing Map or object with values.
   ///
   /// If the field already contains a non-null Map or object,
@@ -1492,7 +1484,7 @@ class TomReflectionInfo {
       im.invokeSetter(entry.key, value);
       return true;
     } catch (error) {
-      if(debugSwitchLogReflectionDetailsValues) {
+      if (debugSwitchLogReflectionDetailsValues) {
         tomLog.trace(
           "Could not instantiate and set map value for field ${entry.key} of type ${mm?.returnType}",
         );
@@ -1533,13 +1525,12 @@ class TomReflectionInfo {
       // Fallback: just try to set value
       im.invokeSetter(entry.key, entry.value);
     } catch (error) {
-      if(debugSwitchLogReflectionDetailsValues) {
+      if (debugSwitchLogReflectionDetailsValues) {
         tomLog.trace(
           "Could not set list value for field ${entry.key} of type $returnType",
         );
       }
     }
-    
   }
 
   /// Attempts to set a primitive List type using registered handlers.
@@ -1586,19 +1577,13 @@ class TomReflectionInfo {
       return set<TomZonedDate>(TomZonedDate.parseFromString);
     }
     if (returnType == List<TomZonedDate?>) {
-      return set<TomZonedDate?>(
-        TomZonedDate.parseFromString,
-        nullable: true,
-      );
+      return set<TomZonedDate?>(TomZonedDate.parseFromString, nullable: true);
     }
     if (returnType == List<TomZonedTime>) {
       return set<TomZonedTime>(TomZonedTime.parseFromString);
     }
     if (returnType == List<TomZonedTime?>) {
-      return set<TomZonedTime?>(
-        TomZonedTime.parseFromString,
-        nullable: true,
-      );
+      return set<TomZonedTime?>(TomZonedTime.parseFromString, nullable: true);
     }
     if (returnType == List<TomZonedDateTime>) {
       return set<TomZonedDateTime>(TomZonedDateTime.parseFromString);
@@ -1771,7 +1756,6 @@ class TomReflectionInfo {
   /// // {'name': 'John', 'age': 30, 'address': {'city': 'NYC'}}
   /// ```
   Map<String, Object?> getValues(Object o) {
-
     if (o is TomClass) {
       return o.toJson();
     }
@@ -1858,9 +1842,12 @@ class TomReflectionInfo {
   ///
   /// Handles primitives, DateTime types, Maps, Lists, and nested objects.
   Object? _convertValueForJson(Object? value) {
-
     // Primitives and null
-    if (value == null ||value is int || value is double || value is bool || value is String) {
+    if (value == null ||
+        value is int ||
+        value is double ||
+        value is bool ||
+        value is String) {
       return value;
     }
 
@@ -1907,7 +1894,7 @@ class TomReflectionInfo {
   List<Object?> _convertListForJson(Iterable o) {
     final result = <Object?>[];
     for (var listElement in o) {
-      result.add(_convertValueForJson(listElement));      
+      result.add(_convertValueForJson(listElement));
     }
     return result;
   }
