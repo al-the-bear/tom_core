@@ -729,11 +729,13 @@ class TomUser {
   /// The user's preferred timezone.
   String? get timeZone => _timeZone;
 
-  Map<String, Object?> _attributes = {};
+  final Map<String, Object?> _attributes = {};
 
   /// Custom attributes for extending user data.
   ///
-  /// Returns an unmodifiable view of the attributes map.
+  /// Returns an unmodifiable view of the attributes map. The constructor copies
+  /// what it is given, so a caller that keeps a reference to the map it passed
+  /// cannot reach back in and edit the user afterwards.
   Map<String, Object?> get attributes => Map.unmodifiable(_attributes);
 
   /// Creates a user instance.
@@ -769,7 +771,9 @@ class TomUser {
     _postcode = postcode;
     _stateRegion = stateRegion;
     _timeZone = timeZone;
-    _attributes = attributes ?? _attributes;
+    if (attributes != null && attributes.isNotEmpty) {
+      _attributes.addAll(attributes);
+    }
   }
 
   @override

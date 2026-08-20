@@ -140,6 +140,21 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomUser` copies the `attributes` map instead of aliasing it.** The getter
+  returned `Map.unmodifiable(_attributes)` and the dartdoc promised "an
+  unmodifiable view", but the constructor kept the caller's own map
+  (`_attributes = attributes ?? _attributes`) rather than copying into its own.
+  The view therefore guarded only the getter: whoever passed the map still held
+  a live handle and could edit an identity's attributes — or inject new ones —
+  at any point after construction. `TomAccessControlInformation` and
+  `TomClientLimitsInformation` both copy; `TomUser` was the one part of a
+  principal that did not, which is also why the read-only contract could not be
+  stated for the principal as a whole until now. Found while documenting
+  `TomUser`, and fixed the same way its two siblings were: a `final` field that
+  the constructor `addAll`s into. Two tests pin it — that a caller's later edit
+  is not visible, and that the default-constructed instance is not a special
+  case.
+
 - **`TomTotp.counterFor` says what it actually requires of `period`.** The
   `ArgumentError` read `must be a positive duration`, but the guard is
   `period.inSeconds <= 0` and `inSeconds` truncates — so a 500 ms period *is* a
@@ -901,6 +916,38 @@ anyone who was writing them.
 
 ### Documentation
 
+- **`doc/security/security.md` names the five public types it never mentioned.**
+  Key Concepts introduced "User" and "CLI (Client Limits Information)" by
+  concept, so a reader who went looking for either class had nothing to search
+  for; three more — `TomGroup`, `TomEntitlement`, `TomAccessControlHandler` —
+  were used by the document without ever being named. Now:
+  - A new **Identity** section documents `TomUser`: the two fields that always
+    have values against the eleven that are nullable, reading it off the
+    principal through the `id`/`username` forwarders, the guest sentinel that
+    `TomGuestAccess` tests, the read-only contract, and — the part a reader
+    cannot infer — that token serialisation runs every optional field through
+    `tomProtect` under `tom.user.<field>`, a *different* key from the
+    `user.email` used as an application-level example elsewhere in the same
+    document, while `username`, `id` and `timeZone` always travel unfiltered.
+  - A `TomClientLimitsInformation` section beside the ACI one, separating what
+    the *user* may do from what the *client* has bought, and stating that the
+    kernel enforces neither quota nor module — it carries the ceiling, the
+    application compares against it. Its provenance is written down as it
+    currently stands: the values ride in the **public** half of the JWT and are
+    a login-time snapshot with no updater, so a subscription change takes
+    effect at the next login and the figures are readable by any token holder.
+  - The `TomAccessControlDefinition` section showed `TomRole` and stopped,
+    implying the schema models roles alone. It now has the three-kind table
+    (`TomRole`, `TomGroup`, `TomEntitlement` — what each may include and what
+    each may grant), a schema using all three, and what the fold does with a
+    name that has no definition.
+  - **Custom Access Control** leads with the `TomAccessControlHandler` typedef,
+    because the extension point is a function signature rather than a class to
+    subclass, and states the two throwing behaviours around the registry:
+    `registerHandler` refuses a duplicate name, `getHandler` refuses an unknown
+    one.
+  - The Overview says once that this document is organised by concept and
+    points at `api_summary_security.md` for the exhaustive member list.
 - `Tom2FAChallenge.fromClaims` no longer promises it "never returns a
   half-built challenge". It does return one, on purpose: an unreadable
   `attemptsAllowed` claim falls back to `0` rather than to the constructor's

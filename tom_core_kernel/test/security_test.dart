@@ -177,6 +177,41 @@ void main() {
           throwsA(isA<UnsupportedError>()),
         );
       });
+
+      test('should copy the caller\'s map rather than alias it', () {
+        // The unmodifiable view only guards the getter. If the constructor
+        // keeps the caller's map instead of copying it, the caller still holds
+        // a live handle and can edit — or inject into — a user's attributes
+        // after construction, which is the one thing the view is there to stop.
+        // [TomAccessControlInformation] and [TomClientLimitsInformation] both
+        // copy; this is the same contract.
+        var attrs = <String, Object?>{'tier': 'gold'};
+        var user = TomUser(attributes: attrs);
+
+        // Act — the caller edits the map it still holds.
+        attrs['tier'] = 'free';
+        attrs['injected'] = true;
+
+        // Assert
+        expect(user.attributes['tier'], equals('gold'));
+        expect(user.attributes.containsKey('injected'), isFalse);
+      });
+
+      test('should refuse modification whether or not attributes were '
+          'supplied', () {
+        // The default-constructed instance must not be a special case.
+        var empty = TomUser();
+        var populated = TomUser(attributes: {'tier': 'gold'});
+
+        expect(
+          () => empty.attributes['tier'] = 'gold',
+          throwsA(isA<UnsupportedError>()),
+        );
+        expect(
+          () => populated.attributes['tier'] = 'free',
+          throwsA(isA<UnsupportedError>()),
+        );
+      });
     });
 
     group('toString', () {

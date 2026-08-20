@@ -8,6 +8,7 @@ The security module provides a comprehensive authentication and authorization sy
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
   - [Authentication](#authentication)
+  - [Identity](#identity)
   - [Authorization](#authorization)
   - [Access Control](#access-control)
 - [UI Authorization (Four-State Model)](#ui-authorization-four-state-model)
@@ -42,22 +43,31 @@ The security module consists of these main files:
 | `server_principal.dart` | The ambient server principal — the deployment's own identity, which caps every user's grants |
 | `oauth_contract.dart` | The wire contract for external-identity login — the provider/authorization/callback DTOs and the `/oauth` API declaration both tiers bind to |
 
+This document explains the module by *concept* and shows the calls each concept
+is used through. It is not an exhaustive member list: for the full signature of
+every public type —
+including the ones named only in passing here — see
+[`api_summary_security.md`](../api_reference/api_summary_security.md).
+
 ### Key Concepts
 
-- **User**: Basic identity information (name, email, etc.)
-- **Principal**: Authenticated session with full context
-- **ACI (Access Control Information)**: Roles, groups, entitlements, resource
-  keys, and resource *roles*
+- **User** (`TomUser`): Basic identity information (name, email, etc.) — see
+  [TomUser](#tomuser)
+- **Principal** (`TomPrincipal`): Authenticated session with full context
+- **ACI (Access Control Information)** (`TomAccessControlInformation`): Roles,
+  groups, entitlements, resource keys, and resource *roles*
 - **Resource Role**: A role scoped to a *single* resource rather than to the
   principal as a whole, so one user can be `owner` of one project and `viewer`
   of another at the same time. See [Per-Resource
   Roles](#per-resource-roles-the-shipped-adapter)
-- **CLI (Client Limits Information)**: Quotas and feature flags
-- Both ACI and CLI are **read-only once constructed**: each copies what its
-  constructor is given and hands out unmodifiable views, so a caller can neither
-  edit a grant nor raise a quota by writing to the object it was handed. Both are
-  decided by whoever issued the principal. To apply new values, build a new
-  instance
+- **CLI (Client Limits Information)** (`TomClientLimitsInformation`): Quotas and
+  feature flags — see [TomClientLimitsInformation](#tomclientlimitsinformation)
+- The principal's three parts — user, ACI and CLI — are **read-only once
+  constructed**: each copies what its constructor is given and hands out
+  unmodifiable views, so a caller can neither edit a grant, nor raise a quota,
+  nor rewrite an identity by holding on to the collection it passed in. All
+  three are decided by whoever issued the principal. To apply new values, build
+  a new instance
 - **2FA Challenge**: A pending second factor, carried in an interim token's
   public claims between pass 1 and pass 2 of a login
 - **2FA Enrolment**: The same interim-token mechanism one step earlier — the
@@ -170,6 +180,71 @@ if (result.error.isNotEmpty) {
 }
 ```
 
+### Identity
+
+#### TomUser
+
+The identity half of a principal — who the user *is*, as opposed to what they
+may do. Authentication produces one; every authorization type in this document
+takes the principal that carries it and never the user directly.
+
+```dart
+var user = TomUser(
+  id: 123,
+  username: 'jdoe',
+  firstname: 'John',
+  lastname: 'Doe',
+  email: 'john.doe@example.com',
+  timeZone: 'America/New_York',
+  attributes: {'department': 'Engineering'},
+);
+```
+
+Only `id` and `username` always have a value — `id` defaults to `-1` and
+`username` to `TomUser.guestUsername` (`'GUEST'`). The eleven name, contact and
+locale fields are all nullable, so an identity from a provider that supplied
+nothing but a login name is a normal `TomUser`, not a broken one. `attributes`
+is never null either, merely empty by default; it carries whatever the
+deployment needs that the fixed fields do not cover.
+
+You rarely construct one. Read it off the principal instead, which also
+forwards the two fields that are always there:
+
+```dart
+var principal = TomBearerAuthentication.getPrincipal();
+
+principal.user.email;    // the full identity
+principal.username;      // == principal.user.username
+principal.id;            // == principal.user.id
+```
+
+Guests are not a separate type. An unauthenticated session carries a real
+`TomUser` whose username is the sentinel, which is what
+[`TomGuestAccess`](#built-in-access-control-types) tests for:
+
+```dart
+if (user.username == TomUser.guestUsername) promptLogin();
+```
+
+**Read-only once constructed.** There are no setters, and `attributes` hands
+out an unmodifiable view of a map the constructor copied — so a caller that
+keeps a reference to the map it passed in cannot edit the identity afterwards.
+This is the same contract as ACI and CLI: to change an identity, issue a new
+one.
+
+**Identity fields are resource-key protected on the way into a token.**
+`convertPrincipalToTokenPayload` runs every optional field through
+[`tomProtect`](#resource-key-protection) under the key `tom.user.<field>` —
+`tom.user.email`, `tom.user.phone`, `tom.user.attributes`, and so on — falling
+back to `null` (or `const {}` for attributes) when the key is protected. Three
+fields are *not* filtered and always travel in the clear: `username`, `id` and
+`timeZone`. Note the prefix: `tom.user.email` is a different key from the
+`user.email` used as an application-level example elsewhere in this document,
+and protecting one does not protect the other.
+
+Runnable:
+[`example/samples/security/01_user_principal_example.dart`](../../example/samples/security/01_user_principal_example.dart).
+
 ### Authorization
 
 #### TomAccessControlInformation (ACI)
@@ -200,6 +275,48 @@ one resource, which is what lets the same principal hold different rights on two
 projects at once. It is resolved by a different mechanism from the other four —
 see [Per-Resource Roles](#per-resource-roles-the-shipped-adapter).
 
+#### TomClientLimitsInformation
+
+The principal's third part, beside the user and the ACI, and the one that
+answers a different question. The ACI says what this *user* is permitted; the
+CLI says what this *client* has bought. Both must allow an action:
+
+```dart
+var cli = TomClientLimitsInformation(
+  enabledModules: ['core', 'reporting'],
+  quotas: {'api_calls': 1000, 'storage_mb': 500},
+);
+
+// The user is a reporting admin, but the subscription has no reporting module.
+principal.aci.roles.contains('reporting.admin');       // true
+principal.cli.enabledModules.contains('reporting');    // false → no feature
+```
+
+It holds two collections and nothing else — `enabledModules`, a list of module
+names the subscription turns on, and `quotas`, a `name → limit` map. Neither is
+enforced by the kernel: nothing counts your API calls or refuses the 1001st.
+The kernel carries the ceiling and the feature list to where the application can
+read them; comparing usage against a quota is the application's job.
+
+```dart
+if (currentUsage < (principal.cli.quotas['api_calls'] ?? 0)) {
+  // allow the call
+}
+```
+
+Like the ACI, it is read-only once constructed — the constructor copies its
+arguments and the getters return unmodifiable views, so a caller cannot raise
+its own ceiling by writing to the object it was handed.
+
+**Where the values come from.** They ride in the **public** half of the JWT, as
+the claims `subscription_enabledModules` and `subscription_quotas`, and are read
+back into `principal.cli` when the token is parsed. Two consequences follow, and
+both matter in practice. First, they are a **login-time snapshot**: a principal's
+CLI is fixed when the principal is built, there is no updater for it (unlike the
+ACI, which [`updatePrincipal`](#token-management) can replace mid-session), so a
+subscription change takes effect on the next login. Second, being in the public
+half, the quota figures are readable by anyone holding the token.
+
 #### TomAccessControlDefinition
 
 Defines the authorization schema for resolving inherited permissions:
@@ -223,6 +340,50 @@ var definition = TomAccessControlDefinition(
 var completeAci = definition.completeFromDefinition(userAci);
 ```
 
+The definition takes three kinds of member, one per inheritable thing an ACI
+carries — `TomRole`, `TomGroup` and `TomEntitlement`. Each names itself and
+lists what it pulls in, and what a kind may pull in narrows as you go down:
+
+| Definition type | Can include | Can grant |
+| --------------- | ----------- | --------- |
+| `TomRole` | other roles (`rolesIncluded`), group memberships (`groupMemberShips`) | `entitlements`, `resourceKeys` |
+| `TomGroup` | roles (`rolesIncluded`), other groups (`groupMemberShips`) | `entitlements`, `resourceKeys` |
+| `TomEntitlement` | other entitlements (`entitlements`) | `resourceKeys` |
+
+Only `name` is required on each; every other argument defaults to empty. So a
+fuller schema uses all three:
+
+```dart
+var definition = TomAccessControlDefinition(
+  roles: [
+    TomRole(name: 'lead', rolesIncluded: ['analyst'],
+            groupMemberShips: ['staff'], entitlements: ['reports.manage']),
+    TomRole(name: 'analyst', entitlements: ['reports.read'],
+            resourceKeys: ['report.summary']),
+  ],
+  groups: [
+    TomGroup(name: 'staff', groupMemberShips: ['everyone'],
+             entitlements: ['directory.view'], resourceKeys: ['user.email']),
+    TomGroup(name: 'everyone', entitlements: ['login']),
+  ],
+  entitlements: [
+    TomEntitlement(name: 'reports.manage',
+                   entitlements: ['reports.read', 'reports.write'],
+                   resourceKeys: ['report.total']),
+  ],
+);
+```
+
+`completeFromDefinition` folds an assigned ACI through all three maps until
+nothing new is reached, so the single assignment `roles: ['lead']` above
+resolves to two roles, two groups, five entitlements and three resource keys.
+Names with no definition are not an error — they survive the fold unchanged,
+which is what lets a deployment define only the parts of its vocabulary that
+actually inherit.
+
+Runnable:
+[`example/samples/security/11_access_control_definition_example.dart`](../../example/samples/security/11_access_control_definition_example.dart).
+
 ### Access Control
 
 #### Built-in Access Control Types
@@ -237,7 +398,7 @@ var completeAci = definition.completeFromDefinition(userAci);
 | `TomGroupAccess` | Requires group membership |
 | `TomEntitlementAccess` | Requires specific entitlements |
 | `TomResourceKeyAccess` | Requires a resource key, while protection is switched on |
-| `TomCustomAccess` | Delegates to custom handler |
+| `TomCustomAccess` | Delegates to a registered `TomAccessControlHandler` — see [Custom Access Control](#custom-access-control) |
 | `TomGradedAccess` | **Composes** three of the above into all four states — see [Graded Access](#graded-access-all-four-states) |
 
 The first nine each state a requirement on the **user**, and each answers about
@@ -832,6 +993,16 @@ Widget anyReportsAccess() { ... }
 
 ### Custom Access Control
 
+The extension point is a plain function, not a class to subclass.
+`TomAccessControlHandler` is its signature:
+
+```dart
+typedef TomAccessControlHandler =
+    bool Function(TomPrincipal? principal, String id);
+```
+
+Register one under a name, then refer to it by that name:
+
 ```dart
 // Register a custom handler
 TomCustomAccess.registerHandler('canEditDocument', (principal, docId) {
@@ -843,6 +1014,17 @@ TomCustomAccess.registerHandler('canEditDocument', (principal, docId) {
 @TomCustomAccess(handler: 'canEditDocument', resourceId: '123')
 void editDocument() { ... }
 ```
+
+The `id` the handler receives is the `resourceId` given at the annotation, so
+one handler serves every instance of a resource. The principal is nullable —
+there may be no session at all — and returning `false` for `null` is the
+handler's own job; nothing checks it first.
+
+Registration is one-shot: `registerHandler` **throws** if the name is already
+taken, rather than replacing the existing handler. Use
+`TomCustomAccess.handlerExists(name)` to test, and `getHandler(name)` to read
+one back — that one throws if the name is *unknown*. See [Validate Custom
+Handlers at Startup](#4-validate-custom-handlers-at-startup).
 
 ### Token Management
 
