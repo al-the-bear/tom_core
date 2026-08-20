@@ -424,6 +424,15 @@ class GenericHolder<T> {
   GenericHolder();
 }
 
+/// A three-argument generic, which is an arity neither element resolver takes.
+///
+/// Unannotated on purpose, and named by no annotated class: the resolvers
+/// refuse it on its shape before any lookup happens, so reflection data for it
+/// would prove nothing and would only add a second class to the quantified set.
+class Triple<A, B, C> {
+  Triple();
+}
+
 /// Deliberately **not** annotated, so no mirror data exists for it.
 ///
 /// The one input for which `tom_reflection`, rather than this module's code,
@@ -1936,15 +1945,95 @@ void main() {
         expect(
           () => tomReflectionInfo.mapValueElementType(<int>[1, 2, 3]),
           throwsA(
-            isA<TomReflectorException>().having(
-              (e) => e.key,
-              'key',
-              'reflector.type_resolution.not_a_map_type',
-            ),
+            isA<TomReflectorException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'reflector.type_resolution.not_a_map_type',
+                )
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'defaultUserMessage',
+                  contains('use singleElementType'),
+                ),
           ),
         );
       },
     );
+
+    test('singleElementType refuses a two-argument generic', () {
+      // The mirror image of the test above, and the one that matters more: a
+      // Map's first type argument is its *key*, so without this check the
+      // method answers with the wrong mirror and calls it success. Asking for
+      // the element type of a Map is asking the wrong method, and the message
+      // has to say which one is right — a plain "not found" would send the
+      // reader looking for a missing annotation that is not the problem.
+      expect(
+        () => tomReflectionInfo.singleElementType(<String, Address>{}),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflector.type_resolution.not_a_single_element_type',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(
+                  contains('Map<String, Address>'),
+                  contains('use mapValueElementType'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('singleElementType refuses a Map whose key type is annotated', () {
+      // The case that made the missing check a wrong answer rather than a
+      // confusing message: `Address` *is* annotated, so the old code resolved
+      // the key type and returned a perfectly valid mirror for the wrong half
+      // of the Map.
+      expect(
+        () => tomReflectionInfo.singleElementType(<Address, TeamMember>{}),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.type_resolution.not_a_single_element_type',
+          ),
+        ),
+      );
+    });
+
+    test('neither resolver suggests the other for an arity it cannot use', () {
+      // Three arguments fit neither method, so naming a sibling that would
+      // also refuse the call would send the reader in a circle. The shape
+      // error still fires; only the hint is withheld.
+      for (final call in <MapEntry<String, void Function()>>[
+        MapEntry(
+          'reflector.type_resolution.not_a_single_element_type',
+          () => tomReflectionInfo.singleElementType(Triple<int, int, int>()),
+        ),
+        MapEntry(
+          'reflector.type_resolution.not_a_map_type',
+          () => tomReflectionInfo.mapValueElementType(Triple<int, int, int>()),
+        ),
+      ]) {
+        expect(
+          call.value,
+          throwsA(
+            isA<TomReflectorException>()
+                .having((e) => e.key, 'key', call.key)
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'defaultUserMessage',
+                  allOf(contains('found 3'), isNot(contains('use '))),
+                ),
+          ),
+        );
+      }
+    });
 
     test(
       'singleElementType throws TomReflectorException on a non-generic value',

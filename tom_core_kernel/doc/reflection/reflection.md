@@ -803,7 +803,8 @@ apart.
 | `reflector.type.not_annotated` | The class reflects, but carries no `@tomReflector` — a built-in such as `String`, `int`, `DateTime` or `List` that only has data because it appears as a field type |
 | `reflector.instance_creation.failed` | Failed to create instance |
 | `reflector.type_resolution.not_a_generic_type` | The collection's runtime type carries no type arguments |
-| `reflector.type_resolution.not_a_map_type` | Expected `Map<K, V>` but found fewer than two type arguments |
+| `reflector.type_resolution.not_a_map_type` | `mapValueElementType` was given a collection with an argument count other than two — see [Each Method Takes One Arity](#each-method-takes-one-arity) |
+| `reflector.type_resolution.not_a_single_element_type` | `singleElementType` was given a collection with an argument count other than one, typically a `Map<K, V>` |
 | `reflector.type_resolution.nested_generic_unsupported` | The element type is itself a generic collection (`List<List<X>>`, `Map<String, List<X>>`) |
 | `reflector.classmirror.not_found_for_map_value` | Map value type not found |
 | `reflector.classmirror.not_found_for_iterable_value` | List element type not found |
@@ -1184,6 +1185,37 @@ final valueMirror = tomReflectionInfo.mapValueElementType(peopleMap);
 ```
 
 These are useful when dynamically creating instances for collection elements.
+
+### Each Method Takes One Arity
+
+The two methods are not interchangeable, and neither one falls back to the
+other. `singleElementType` requires **exactly one** type argument;
+`mapValueElementType` requires **exactly two**. The arity is checked before the
+name is resolved, so a collection of the wrong shape raises rather than
+returning a mirror for whichever argument happened to sit in the right slot:
+
+```dart
+tomReflectionInfo.singleElementType(<String, Person>{});
+// reflector.type_resolution.not_a_single_element_type
+// "…is not a List<T> or Set<T> type (expected one type argument, found 2);
+//  use mapValueElementType for this collection"
+
+tomReflectionInfo.mapValueElementType(<Person>[]);
+// reflector.type_resolution.not_a_map_type
+// "…is not a Map<K, V> type (expected two type arguments, found 1);
+//  use singleElementType for this collection"
+```
+
+The `use …` clause appears **only** when the argument count is the one the
+sibling method takes. A three-argument generic belongs to neither, so both
+methods report the count and stop — pointing at a method that would refuse the
+same collection would send the reader in a circle.
+
+Why the check exists: `singleElementType` on a `Map<K, V>` used to resolve the
+**key** type and report success. For `Map<String, Person>` that is the mirror
+for `String`; for `Map<Address, Person>` it is a perfectly valid mirror for
+`Address`. Nothing at the call site could distinguish that from the right
+answer, so the wrong half of the collection propagated silently.
 
 Both resolve the element type by **simple name** against the classes annotated
 with `@tomReflector`, which is why they go one level deep and no further: a

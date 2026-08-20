@@ -331,6 +331,12 @@ class TomReflectionInfo {
   /// // valueMirror is the ClassMirror for Person
   /// ```
   ///
+  /// Exactly two type arguments are required. A collection with any other
+  /// arity is refused rather than resolved: with one, the caller wanted
+  /// [singleElementType] and the message says so; with three or more, there is
+  /// no "the value type" to return, and picking the second argument would be a
+  /// guess that reads like an answer.
+  ///
   /// Throws [TomReflectorException] if the value type is not found
   /// among annotated classes, or if it is itself generic — see
   /// [singleElementType] for why one level is the limit.
@@ -344,11 +350,13 @@ class TomReflectionInfo {
         autoLog: true,
       );
     }
-    if (typeArguments.length < 2) {
+    if (typeArguments.length != 2) {
       throw TomReflectorException(
         "reflector.type_resolution.not_a_map_type",
         "TomReflectionInfo.mapValueElementType: '${collection.runtimeType}' "
-            "is not a Map<K, V> type (expected two type arguments)",
+            "is not a Map<K, V> type (expected two type arguments, "
+            "found ${typeArguments.length})"
+            "${_siblingHint(typeArguments.length, 1, "singleElementType")}",
         autoLog: true,
       );
     }
@@ -379,6 +387,11 @@ class TomReflectionInfo {
   /// instantiation such as `List<String>` is not one of those and never can be.
   /// One level of nesting is therefore the supported depth, and the exception
   /// says so rather than reporting a name that was never going to match.
+  ///
+  /// Exactly one type argument is required. Passing a `Map<K, V>` used to
+  /// succeed and return the mirror for `K` — a valid mirror for the wrong half
+  /// of the collection, which no caller could detect, so the arity is checked
+  /// before the name is resolved.
   ClassMirror singleElementType(Object collection) {
     final typeArguments = _topLevelTypeArguments(collection.runtimeType);
     if (typeArguments == null) {
@@ -389,6 +402,16 @@ class TomReflectionInfo {
         autoLog: true,
       );
     }
+    if (typeArguments.length != 1) {
+      throw TomReflectorException(
+        "reflector.type_resolution.not_a_single_element_type",
+        "TomReflectionInfo.singleElementType: '${collection.runtimeType}' "
+            "is not a List<T> or Set<T> type (expected one type argument, "
+            "found ${typeArguments.length})"
+            "${_siblingHint(typeArguments.length, 2, "mapValueElementType")}",
+        autoLog: true,
+      );
+    }
     return _resolveTypeArgument(
       typeArguments.first,
       collection,
@@ -396,6 +419,15 @@ class TomReflectionInfo {
       "reflector.classmirror.not_found_for_iterable_value",
     );
   }
+
+  /// The "you reached for the wrong method" clause, when the arity says so.
+  ///
+  /// [found] arguments point at [sibling] only when they are exactly the arity
+  /// that sibling takes ([siblingArity]). Any other count is a shape neither
+  /// resolver handles, and naming one that would refuse it too sends the reader
+  /// in a circle.
+  static String _siblingHint(int found, int siblingArity, String sibling) =>
+      found == siblingArity ? "; use $sibling for this collection" : "";
 
   /// Splits the top-level type arguments out of [type]'s name.
   ///
