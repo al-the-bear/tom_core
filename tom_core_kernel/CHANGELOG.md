@@ -732,6 +732,36 @@ anyone who was writing them.
   mechanism fails here rather than in whichever isolate later walks the loop.
   The loop itself is deliberately untested: a test that hangs until the VM dies
   takes the suite with it.
+- **`oauth_contract.dart` had no test at all; it now has fifteen.** Nothing in
+  the kernel suite named the file — not the four wire DTOs, not the service
+  interface, not the API declaration, not one of the four id constants. Each
+  DTO is round-tripped through the reflection JSON codec, which is the failure
+  these types are actually prone to: they carry no behaviour, so a renamed or
+  dropped field breaks nothing at compile time and surfaces only as a value
+  that arrived empty. A contract group pins the `/oauth` mount, the three
+  endpoint ids as literals (the server restates them as strings in
+  `@TomApiEndpointImplementation`, where a rename compiles and binds the
+  handler to nothing), the methods and addresses, the request and response
+  types, and `TomPublicAccess` on all three — which is not a detail but the
+  precondition for the flow: this is how a caller who is not yet authenticated
+  becomes authenticated. The callback's `urlParameterMapping` is asserted twice
+  over, as a map and as a resolved URL, because `error_description` →
+  `errorDescription` is the one entry whose two spellings differ and a typo in
+  it fails only at run time, on the one path a deployment cannot rehearse
+  without a real provider. A compiled stub implementation links
+  `TomOAuthApiService` to the endpoints it stands for — the interface and the
+  declaration are two independent statements of the same three calls, and an
+  implementation is the only thing that fails when one of them moves.
+- **`Tom2FAMethodDescriptor.scoped` is pinned against the documented table.**
+  The descriptor is three resource keys rather than three strings, and `scoped`
+  is what derives them; a client resolves the result verbatim, so drift in the
+  derivation is a blank label in every locale at once. Six cases cover the
+  derivation itself (against the table in `doc/security/security.md`), the
+  scope constant the server's resource bundle is keyed under, the
+  no-literal-text rule the class documents, the all-defaults constructor the
+  reflection path needs, the `toString()`, and the round-trip — the keys are
+  derived on the server and read on the client, so that is where a renamed
+  field would show up.
 
 ### Examples
 

@@ -4,6 +4,8 @@ import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'security_test.reflection.dart';
+
 // =============================================================================
 // Test Helper Classes
 // =============================================================================
@@ -3461,6 +3463,399 @@ void main() {
       expect(TomTotp.decodeBase32('not-base32!'), isEmpty);
     });
   });
+
+  // ==========================================================================
+  // Tom2FAMethodDescriptor Tests
+  // ==========================================================================
+
+  // The descriptor is how a login offers the user a choice of second factor,
+  // and it is deliberately three resource keys rather than three strings. What
+  // makes that work is `scoped`, which derives all three from the method's
+  // identifier — so the keys are the contract between this payload and every
+  // resource bundle the deployment ships.
+  group('Tom2FAMethodDescriptor', () {
+    setUpAll(initializeReflection);
+
+    test('scoped derives all three keys under the one scope', () {
+      // The table in `doc/security/security.md`, asserted rather than
+      // described. A client resolves these keys verbatim, so any drift in the
+      // derivation is a blank label in every locale at once.
+      final descriptor = Tom2FAMethodDescriptor.scoped('totp');
+
+      expect(descriptor.type, 'totp');
+      expect(descriptor.displayNameKey, 'two_factor.totp.name');
+      expect(descriptor.descriptionKey, 'two_factor.totp.description');
+      expect(descriptor.iconKey, 'two_factor.totp.icon');
+    });
+
+    test('the scope is one constant both halves name', () {
+      // The server's resource bundle is keyed under this prefix, so a rename
+      // has to move the bundle with it — the constant is what makes that one
+      // edit rather than three string literals.
+      expect(Tom2FAMethodDescriptor.resourceScope, 'two_factor');
+      expect(
+        Tom2FAMethodDescriptor.scoped('webauthn').displayNameKey,
+        '${Tom2FAMethodDescriptor.resourceScope}.webauthn.name',
+      );
+    });
+
+    test('a scoped descriptor carries no literal text', () {
+      // The rule the class documents: identifiers only. A descriptor holding
+      // 'Authenticator app' would freeze one locale's English into the wire
+      // format, and would do it silently — nothing else in the stack would
+      // object.
+      final descriptor = Tom2FAMethodDescriptor.scoped('sms');
+
+      for (final key in [
+        descriptor.displayNameKey,
+        descriptor.descriptionKey,
+        descriptor.iconKey,
+      ]) {
+        expect(key, startsWith('two_factor.sms.'));
+        expect(key, isNot(contains(' ')));
+      }
+    });
+
+    test('every field defaults, because reflection fills a blank one', () {
+      // It travels inside `TomAuthenticationResult`, so the reflection path
+      // instantiates it with no arguments and then writes member by member: a
+      // required field would make it unconstructible on the way in.
+      final blank = Tom2FAMethodDescriptor();
+
+      expect(blank.type, isEmpty);
+      expect(blank.displayNameKey, isEmpty);
+      expect(blank.descriptionKey, isEmpty);
+      expect(blank.iconKey, isEmpty);
+    });
+
+    test('it names the method and the key it resolves to', () {
+      expect(
+        Tom2FAMethodDescriptor.scoped('totp').toString(),
+        'Tom2FAMethodDescriptor(totp -> two_factor.totp.name)',
+      );
+    });
+
+    test('the derived keys survive the wire', () {
+      // Deriving them correctly is only half of it — they are derived on the
+      // server and read on the client, so the round-trip is where a renamed
+      // field would actually show up.
+      final restored = _wireRoundTrip(Tom2FAMethodDescriptor.scoped('totp'));
+
+      expect(restored.type, 'totp');
+      expect(restored.displayNameKey, 'two_factor.totp.name');
+      expect(restored.descriptionKey, 'two_factor.totp.description');
+      expect(restored.iconKey, 'two_factor.totp.icon');
+    });
+  });
+
+  // ==========================================================================
+  // OAuth Contract Tests
+  // ==========================================================================
+
+  // These four are the whole of what crosses the wire in an external-identity
+  // login. They are plain reflected DTOs with no behaviour, which is exactly
+  // why they are worth asserting: a renamed field still compiles on both
+  // halves and fails only at run time, on the one code path a deployment
+  // cannot exercise without a real provider.
+  group('TomOAuth wire DTOs', () {
+    setUpAll(initializeReflection);
+
+    test('the provider descriptor survives the wire', () {
+      final restored = _wireRoundTrip(
+        TomOAuthProviderDto(
+          id: 'google',
+          displayNameKey: 'oauth.google.name',
+          iconKey: 'oauth.google.icon',
+        ),
+      );
+
+      expect(restored.id, 'google');
+      expect(restored.displayNameKey, 'oauth.google.name');
+      expect(restored.iconKey, 'oauth.google.icon');
+    });
+
+    test('the authorization request survives the wire', () {
+      // Eight fields, five of which are the client context the issued token
+      // ends up carrying — the ones whose loss would be invisible until a
+      // principal came back with the wrong locale.
+      final restored = _wireRoundTrip(
+        TomOAuthAuthorizationRequest(
+          providerId: 'github',
+          client: 'web',
+          application: 'portal',
+          process: 'checkout',
+          organization: 'acme-corp',
+          clientLanguage: 'de',
+          clientCountry: 'DE',
+          clientTimezone: 'Europe/Berlin',
+        ),
+      );
+
+      expect(restored.providerId, 'github');
+      expect(restored.client, 'web');
+      expect(restored.application, 'portal');
+      expect(restored.process, 'checkout');
+      expect(restored.organization, 'acme-corp');
+      expect(restored.clientLanguage, 'de');
+      expect(restored.clientCountry, 'DE');
+      expect(restored.clientTimezone, 'Europe/Berlin');
+    });
+
+    test('the authorization answer survives the wire', () {
+      final restored = _wireRoundTrip(
+        TomOAuthAuthorizationDto(
+          authorizationUri:
+              'https://accounts.example.com/authorize?client_id=x&state=s-1',
+          state: 's-1',
+        ),
+      );
+
+      expect(
+        restored.authorizationUri,
+        'https://accounts.example.com/authorize?client_id=x&state=s-1',
+      );
+      expect(restored.state, 's-1');
+    });
+
+    test('the callback request survives the wire, error fields included', () {
+      // The failure half is the half a provider actually exercises first, and
+      // it is the only DTO in the set whose Dart field name differs from its
+      // URL spelling — see the mapping assertions below.
+      final restored = _wireRoundTrip(
+        TomOAuthCallbackRequest(
+          code: '',
+          state: 's-1',
+          error: 'access_denied',
+          errorDescription: 'The user declined the request',
+        ),
+      );
+
+      expect(restored.code, isEmpty);
+      expect(restored.state, 's-1');
+      expect(restored.error, 'access_denied');
+      expect(restored.errorDescription, 'The user declined the request');
+    });
+
+    test('every field defaults, because reflection fills a blank one', () {
+      // Same reason as every other wire DTO: the pipeline constructs it empty
+      // and writes member by member.
+      expect(TomOAuthProviderDto().id, isEmpty);
+      expect(TomOAuthProviderDto().displayNameKey, isEmpty);
+      expect(TomOAuthProviderDto().iconKey, isEmpty);
+      expect(TomOAuthAuthorizationRequest().providerId, isEmpty);
+      expect(TomOAuthAuthorizationRequest().clientTimezone, isEmpty);
+      expect(TomOAuthAuthorizationDto().authorizationUri, isEmpty);
+      expect(TomOAuthAuthorizationDto().state, isEmpty);
+      expect(TomOAuthCallbackRequest().code, isEmpty);
+      expect(TomOAuthCallbackRequest().error, isEmpty);
+    });
+
+    test('scoped derives both provider keys under the oauth scope', () {
+      // Two keys, not three: a provider offers no description line, where a
+      // second factor does. The scope constant is shared with the server's
+      // `oauth.providers` configuration.
+      final provider = TomOAuthProviderDto.scoped('acme-sso');
+
+      expect(TomOAuthProviderDto.resourceScope, 'oauth');
+      expect(provider.id, 'acme-sso');
+      expect(provider.displayNameKey, 'oauth.acme-sso.name');
+      expect(provider.iconKey, 'oauth.acme-sso.icon');
+    });
+
+    test('each DTO names the one field a log needs', () {
+      // What identifies the row in a log line beside a failure: the provider
+      // for the first two, and the `state` handle — which is what correlates
+      // the two halves of one flow — for the last two.
+      expect(
+        TomOAuthProviderDto.scoped('google').toString(),
+        'TomOAuthProviderDto(google)',
+      );
+      expect(
+        TomOAuthAuthorizationRequest(providerId: 'github').toString(),
+        'TomOAuthAuthorizationRequest(github)',
+      );
+      expect(
+        TomOAuthAuthorizationDto(state: 's-1').toString(),
+        'TomOAuthAuthorizationDto(s-1)',
+      );
+      expect(
+        TomOAuthCallbackRequest(
+          state: 's-1',
+          error: 'access_denied',
+        ).toString(),
+        'TomOAuthCallbackRequest(s-1, error: access_denied)',
+      );
+    });
+  });
+
+  group('tomOAuthApi — the contract both halves bind to', () {
+    test('the API is mounted at /oauth under its own id', () {
+      expect(tomOAuthApi.id, tomOAuthApiId);
+      expect(tomOAuthApiId, 'tomOAuth');
+      expect(tomOAuthApi.uri, '/oauth');
+    });
+
+    test('it declares exactly the three endpoints its ids name', () {
+      expect(
+        tomOAuthApi.endpoints.keys,
+        unorderedEquals(<String>[
+          tomOAuthProvidersEndpointId,
+          tomOAuthBeginEndpointId,
+          tomOAuthCompleteEndpointId,
+        ]),
+      );
+    });
+
+    test('the endpoint ids are the literal text the server restates', () {
+      // The server's `@TomApiEndpointImplementation(endpointId: …)` names these
+      // as strings. Renaming a constant compiles on both sides and leaves the
+      // handler bound to nothing.
+      expect(tomOAuthProvidersEndpointId, 'listOAuthProviders');
+      expect(tomOAuthBeginEndpointId, 'beginOAuthAuthorization');
+      expect(tomOAuthCompleteEndpointId, 'completeOAuthAuthorization');
+    });
+
+    test('each endpoint states its method and its address', () {
+      // The callback is a `GET` because a provider redirects a *browser* to
+      // it; the other two are the client's own calls.
+      expect(
+        tomOAuthApi[tomOAuthProvidersEndpointId].method,
+        TomHttpMethod.get,
+      );
+      expect(tomOAuthApi[tomOAuthProvidersEndpointId].uri, '/providers');
+      expect(tomOAuthApi[tomOAuthBeginEndpointId].method, TomHttpMethod.post);
+      expect(tomOAuthApi[tomOAuthBeginEndpointId].uri, '/authorize');
+      expect(tomOAuthApi[tomOAuthCompleteEndpointId].method, TomHttpMethod.get);
+      expect(tomOAuthApi[tomOAuthCompleteEndpointId].uri, '/callback');
+    });
+
+    test('each endpoint states the request type it reads', () {
+      // Listing the providers takes nothing at all, and says so explicitly:
+      // the type parameter is `Object?`, which would otherwise be declared as
+      // a body type the endpoint never has.
+      expect(tomOAuthApi[tomOAuthProvidersEndpointId].requestTypes, isEmpty);
+      expect(tomOAuthApi[tomOAuthBeginEndpointId].requestTypes, [
+        TomOAuthAuthorizationRequest,
+      ]);
+      expect(tomOAuthApi[tomOAuthCompleteEndpointId].requestTypes, [
+        TomOAuthCallbackRequest,
+      ]);
+    });
+
+    test('each endpoint states the result type it answers with', () {
+      expect(
+        tomOAuthApi[tomOAuthProvidersEndpointId].responseType,
+        List<TomOAuthProviderDto>,
+      );
+      expect(
+        tomOAuthApi[tomOAuthBeginEndpointId].responseType,
+        TomOAuthAuthorizationDto,
+      );
+      // The point of the whole module: an external identity produces exactly
+      // the result a password login produces, so everything downstream of the
+      // login is unaware of which credential was used.
+      expect(
+        tomOAuthApi[tomOAuthCompleteEndpointId].responseType,
+        TomAuthenticationResult,
+      );
+    });
+
+    test('the callback binds the provider spelling onto the DTO field', () {
+      // The provider chooses these names, not us, and one of the four is not a
+      // Dart identifier. A typo on either side of `error_description` is a
+      // run-time-only failure on the one path a deployment cannot rehearse
+      // without a real provider — which is the whole reason it is pinned here.
+      expect(tomOAuthApi[tomOAuthCompleteEndpointId].urlParameterMapping, {
+        'code': 'code',
+        'state': 'state',
+        'error': 'error',
+        'error_description': 'errorDescription',
+      });
+    });
+
+    test('the other two endpoints bind nothing from the URL', () {
+      // `/authorize` states everything in its body and `/providers` states
+      // nothing at all, so neither has a URL name that could disagree with a
+      // field.
+      expect(tomOAuthApi[tomOAuthProvidersEndpointId].urlParameterMapping, {});
+      expect(tomOAuthApi[tomOAuthBeginEndpointId].urlParameterMapping, {});
+    });
+
+    test('the callback resolves exactly as a provider redirects to it', () {
+      // The mapping asserted as a URL rather than as a map: the snake_cased
+      // name has to survive into the query string, and the field name must not.
+      expect(
+        tomOAuthApi[tomOAuthCompleteEndpointId]
+            .resolveUri(
+              Uri.parse('https://api.example.com'),
+              parameters: {
+                'state': 's-1',
+                'error': 'access_denied',
+                'errorDescription': 'declined',
+              },
+            )
+            .toString(),
+        'https://api.example.com/oauth/callback'
+        '?state=s-1&error=access_denied&error_description=declined',
+      );
+    });
+
+    test('every endpoint is public, and necessarily so', () {
+      // This is how a caller who is not yet authenticated becomes
+      // authenticated. Requiring a principal on any of the three would make the
+      // flow unreachable — the guard is the server-issued `state` handle and
+      // the PKCE verifier, neither of which the caller supplies.
+      expect(
+        tomOAuthApi.endpoints.values.map((endpoint) => endpoint.access),
+        everyElement(isA<TomPublicAccess>()),
+      );
+    });
+
+    test('the service interface matches the endpoints it stands for', () {
+      // `TomOAuthApiService` is the contract's Dart face: the server
+      // implements it and a client calls through it, but nothing links the two
+      // declarations, so a signature that drifted from its endpoint would
+      // compile. The implementation below is the link — it does not compile if
+      // a signature changes — and the assertions restate the types the
+      // endpoints declare.
+      final TomOAuthApiService service = _StubOAuthService();
+
+      expect(
+        service.listOAuthProviders(),
+        isA<Future<List<TomOAuthProviderDto>>>(),
+      );
+      expect(
+        service.beginOAuthAuthorization(TomOAuthAuthorizationRequest()),
+        isA<Future<TomOAuthAuthorizationDto>>(),
+      );
+      expect(
+        service.completeOAuthAuthorization(TomOAuthCallbackRequest()),
+        isA<Future<TomAuthenticationResult>>(),
+      );
+    });
+  });
+
+  group('registerTomOAuthApi', () {
+    test('it puts the contract itself into the registry', () {
+      // The registry holds the declaration, not a copy of it, so a caller that
+      // resolves an endpoint by id gets the same object the contract exports.
+      registerTomOAuthApi();
+
+      expect(tomRemoteApis.apis.containsKey(tomOAuthApiId), isTrue);
+      expect(identical(tomRemoteApis[tomOAuthApiId], tomOAuthApi), isTrue);
+    });
+
+    test('registering twice registers once', () {
+      // Both halves call it without coordinating — a server before mounting
+      // the endpoints, a client before building a caller — so the second call
+      // has to be free rather than a duplicate or a throw.
+      registerTomOAuthApi();
+      final registeredCount = tomRemoteApis.apis.length;
+
+      expect(registerTomOAuthApi, returnsNormally);
+      expect(tomRemoteApis.apis.length, registeredCount);
+    });
+  });
 }
 
 /// Minimal concrete implementation of TomAccessControl for testing.
@@ -3539,6 +3934,40 @@ class _FakeClientJwtToken extends TomClientJwtToken {
 
   @override
   Map<String, dynamic>? get payload => _payload;
+}
+
+/// Sends [original] through the reflection JSON codec and back — the same path
+/// the HTTP pipeline puts a wire DTO through.
+///
+/// Round-tripping is what catches the failure these DTOs are actually prone
+/// to: they have no behaviour, so a renamed or dropped field breaks nothing at
+/// compile time and shows up only as a value that arrived empty.
+T _wireRoundTrip<T extends Object>(T original) {
+  final json = tomReflectionInfo.convertToJsonString(original);
+  return tomReflectionInfo.createInstanceFromJsonString<T>(
+    tomReflector.reflectType(original.runtimeType) as ClassMirror,
+    json,
+  );
+}
+
+/// A do-nothing [TomOAuthApiService].
+///
+/// Exists to be compiled: the interface and the endpoint declarations are two
+/// independent statements of the same three calls, and an implementation is
+/// the only thing that fails when one of them moves.
+class _StubOAuthService implements TomOAuthApiService {
+  @override
+  Future<List<TomOAuthProviderDto>> listOAuthProviders() async => const [];
+
+  @override
+  Future<TomOAuthAuthorizationDto> beginOAuthAuthorization(
+    TomOAuthAuthorizationRequest request,
+  ) async => TomOAuthAuthorizationDto();
+
+  @override
+  Future<TomAuthenticationResult> completeOAuthAuthorization(
+    TomOAuthCallbackRequest request,
+  ) async => TomAuthenticationResult();
 }
 
 /// Builds an unsigned, undecrypted JWT string whose middle segment carries
