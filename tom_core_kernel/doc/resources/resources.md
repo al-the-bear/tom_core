@@ -44,7 +44,9 @@ Both providers share similar patterns:
 - **Singleton access** for application-wide resource sharing
 - **Explicit bootstrap** — the singleton is installed once at startup; there is
   no lazy first-access creation (see [Bootstrap](#bootstrap))
-- **Hierarchical key access** using dot notation (e.g., `'app.settings.theme'`)
+- **Hierarchical key access** using dot notation (e.g., `'app.settings.theme'`),
+  which walks String-keyed maps only — see
+  [What a segment can descend into](#what-a-segment-can-descend-into)
 - **Deferred loading** with optional loader functions
 - **Fallback behavior** returning the key when a resource is not found
 
@@ -607,7 +609,40 @@ Both providers use the singleton pattern with an explicit bootstrap. `setAppReso
 
 ### Hierarchical Access
 
-Resources support dot-notation access (e.g., `'app.settings.theme'`) through the `getObjectFromTree` function from the JSON utilities module. This allows for organized, nested resource structures.
+Resources support dot-notation access (e.g., `'app.settings.theme'`) through the
+`getObjectFromTree` function from the JSON utilities module. This allows for
+organized, nested resource structures.
+
+#### What a segment can descend into
+
+Only a `Map` whose keys are **all Strings**. The check is against the runtime
+keys, not the declared type, so a `Map<String, String>` and a
+`Map<dynamic, dynamic>` holding String keys both traverse. Two shapes that JSON
+produces routinely do not:
+
+| Shape | Path *through* it | Reachable as a terminal value |
+|-------|-------------------|-------------------------------|
+| `List` | ✗ — `'items.0'` does not index it | ✓ `getObject('items')` |
+| `Map` with any non-String key | ✗ — `'byCode.1'` cannot reach into a `Map<int, String>` | ✓ `getObject('byCode')` |
+
+Only the path *through* these is closed; the last segment is never descended
+into, so both values come back intact when you ask for them whole. **A list is
+therefore read by fetching it and indexing in Dart:**
+
+```dart
+final config = TomConfigResourceProvider.getAppConfig();
+
+// Dotted paths stop at the list — 'rateLimits.0.endpoint' would miss.
+final rateLimits = config.getObjectOrNull('limits.rateLimits') as List? ?? [];
+final firstEndpoint = (rateLimits.first as Map)['endpoint'];
+```
+
+Note the failure mode: a path into a list or an int-keyed map misses
+**silently**. The tree walk fails, the flat-key lookup finds nothing, and the
+fallback echoes the key — so `getText('items.0.label')` renders the literal text
+`items.0.label` in the UI, with no error raised anywhere. If a dotted path is
+rendering as itself, check the shape of what it walks through before assuming
+the key is missing.
 
 ---
 

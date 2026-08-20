@@ -1244,6 +1244,72 @@ void main() {
         },
       );
 
+      // -----------------------------------------------------------------------
+      // What a dotted segment can descend into.
+      //
+      // Only a Map whose keys are all Strings. A List is a dead end, and so is a
+      // Map that holds even one non-String key. Both are ordinary shapes in a
+      // JSON-derived bundle, and both miss silently — the fallback echoes the
+      // key, so a bad path renders as its own text rather than raising. These
+      // tests pin the boundary from both sides.
+      // -----------------------------------------------------------------------
+      test('a List is a dead end for dotted traversal', () {
+        final provider = TomTextResourceProvider.from({
+          'items': [
+            {'label': 'First'},
+            {'label': 'Second'},
+          ],
+        });
+
+        // No index syntax reaches into the list — not the element, not a field
+        // of it. Both echo the key back, which is what makes the miss silent.
+        expect(provider.getObject('items.0.label'), equals('items.0.label'));
+        expect(provider.getObject('items.0'), equals('items.0'));
+        expect(provider.existsObject('items.0'), isFalse);
+
+        // The list itself is reachable as a terminal value, which is why
+        // fetching it and indexing in Dart is the way through.
+        expect(provider.getObjectOrNull('items'), isA<List<dynamic>>());
+        expect(
+          ((provider.getObject('items') as List)[0] as Map)['label'],
+          equals('First'),
+        );
+      });
+
+      test('a Map with a non-String key cannot be traversed, but is still '
+          'reachable whole', () {
+        final provider = TomTextResourceProvider.from({
+          'byCode': <int, String>{1: 'one', 2: 'two'},
+        });
+
+        // Descending needs String keys; this map has none, so the walk fails
+        // and the flat-key fallback finds nothing either.
+        expect(provider.getText('byCode.1'), equals('byCode.1'));
+        expect(provider.existsObject('byCode.1'), isFalse);
+
+        // As a terminal segment no descent is attempted, so the map comes back
+        // intact and the caller indexes it directly.
+        expect(provider.existsObject('byCode'), isTrue);
+        expect((provider.getObject('byCode') as Map)[1], equals('one'));
+      });
+
+      test(
+        'traversal turns on the runtime keys, not the declared map type',
+        () {
+          // The rule is checked key by key at walk time. A narrowly reified
+          // Map<String, String> descends even though it is not a
+          // Map<String, dynamic>, and so does a Map<dynamic, dynamic> that
+          // happens to hold only String keys.
+          final provider = TomTextResourceProvider.from({
+            'reified': <String, String>{'label': 'Reified'},
+            'dynamic': <dynamic, dynamic>{'label': 'Dynamic'},
+          });
+
+          expect(provider.getText('reified.label'), equals('Reified'));
+          expect(provider.getText('dynamic.label'), equals('Dynamic'));
+        },
+      );
+
       test('the bundle map still distinguishes a present null from an absent '
           'key', () {
         // The information is not lost, only unreachable through the accessors:

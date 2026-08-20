@@ -39,6 +39,15 @@ so a caller that needs the distinction reads `provider.resources` directly —
 `containsKey` for a flat key, `getObjectFromTree` for a dotted path (it returns
 `null` for a present null and throws for an absent key).
 
+A dotted path descends only through a `Map` whose keys are **all Strings** —
+tested against the runtime keys, not the declared type, so `Map<String, String>`
+and a String-keyed `Map<dynamic, dynamic>` both traverse. A `List` does not
+(`'items.0'` is not an index), and neither does a `Map` holding any non-String
+key (`'byCode.1'` cannot reach into a `Map<int, String>`). Both are still
+reachable as *terminal* values — the last segment is never descended into — so a
+list is read by fetching it whole and indexing in Dart. A path through either
+misses silently, echoing the key back like any other miss.
+
 Both singletons are installed explicitly, before anything reads them:
 `getAppResources` and `getAppConfig` throw
 `resources.text_provider.not_installed` / `resources.config_provider.not_installed`

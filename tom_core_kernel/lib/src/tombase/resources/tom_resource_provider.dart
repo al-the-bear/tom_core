@@ -92,6 +92,22 @@ class TomResourceException extends TomException {
 // absent key — and the bundle itself remains public. A caller that needs it
 // reads `provider.resources.containsKey(key)` for a flat key, or calls
 // [getObjectFromTree] directly for a dotted path.
+//
+// What a dotted segment can descend into is narrower than "anything nested":
+// only a `Map` whose keys are *all* Strings. The test is on the runtime keys,
+// not the declared type, so a `Map<String, String>` and a `Map<dynamic, dynamic>`
+// holding String keys both traverse. Two shapes therefore do not:
+//
+//   - a `List`. `'items.0'` does not index it, and neither does anything past
+//     it. Fetch the list whole and index it in Dart.
+//   - a `Map` with even one non-String key. `'byCode.1'` cannot reach into a
+//     `Map<int, String>`.
+//
+// Both remain reachable as *terminal* values — no descent is attempted on the
+// last segment, so `getObject('items')` and `getObject('byCode')` return them
+// intact. Only the path *through* them is closed, and closed silently: the walk
+// throws, the flat leg finds nothing, and the fallback echoes the key, so a
+// mistaken path renders as its own text instead of raising.
 
 /// Resolves the raw object at [path] in [resources].
 ///

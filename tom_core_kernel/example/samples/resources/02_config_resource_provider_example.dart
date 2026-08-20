@@ -357,15 +357,39 @@ class ConfigResourceProviderExample {
     print('   - Enabled flags: $enabledFlags');
     print('   - Rate limits: $rateLimits');
 
-    // Work with lists
+    // Work with lists.
+    //
+    // Dot notation stops at a list: a segment descends only into a Map with
+    // String keys, so 'allowedOrigins.0' is not an index — it is a path that
+    // cannot be resolved, and the miss is silent (the key comes back as its own
+    // text, like any other miss). Fetching the list whole and indexing it in
+    // Dart is not a stylistic choice here; it is the only way in.
+    assert(
+      config.getText('allowedOrigins.0') == 'allowedOrigins.0',
+      'Dotted paths do not index lists — the key is echoed back',
+    );
+    assert(
+      config.getText('limits.rateLimits.0.endpoint') ==
+          'limits.rateLimits.0.endpoint',
+      'This holds at any depth past the list',
+    );
+
     if (origins is List) {
       print('   - First origin: ${origins[0]}');
       print('   - Origins count: ${origins.length}');
     }
 
+    // The same applies to the list of maps: read it whole, then index.
+    final firstRateLimit = (rateLimits as List).first as Map;
+    print('   - First rate limit endpoint: ${firstRateLimit['endpoint']}');
+
     // Assertions
     assert(origins is List, 'Origins should be a List');
     assert((origins as List).length == 3, 'Should have 3 origins');
+    assert(
+      firstRateLimit['endpoint'] == '/api/users',
+      'Indexing in Dart reaches what the dotted path could not',
+    );
   }
 }
 
