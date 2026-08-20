@@ -1090,7 +1090,7 @@ TomBearerAuthentication()
 | ------ | ----------- | ----------- |
 | `setTokens(String authenticationToken, String authorizationToken, [bool decrypt = true])` | `void` | Stores the tokens and derives the principal. |
 | `clearTokens()` | `void` | Drops the stored tokens and the cached principal. |
-| `convertTokenPayloadToPrincipal(TomClientJwtToken authenticationToken, [TomClientJwtToken? authorizationToken])` | `TomPrincipal` | Builds a [TomPrincipal] from JWT token payloads (defensive against malformed claims). Throws [StateError] when the token has no payload. This is the single point at which `authenticated` is derived, and it is derived rather than read: true only when the username is not [TomUser.guestUsername] **and** no second factor is owed, so every access check rejects an interim token without having to test `requires2FA` itself. The factor test is exact string equality against `"true"` — the claim is a string protocol, not a boolean one (see [Tom2FAClaims.requires2FA]) — so *any* other value, a missing claim, `"false"`, or the JSON boolean `true`, reads as "no factor owed" and yields an authenticated principal. Tom's own issuer always writes the literal `"true"`/`"false"`, so the strictness only matters for tokens minted elsewhere. |
+| `convertTokenPayloadToPrincipal(TomClientJwtToken authenticationToken, [TomClientJwtToken? authorizationToken])` | `TomPrincipal` | Builds a [TomPrincipal] from JWT token payloads (defensive against malformed claims). Throws [StateError] when the token has no payload. This is the single point at which `authenticated` is derived, and it is derived rather than read: true only when the username is not [TomUser.guestUsername] **and** no second factor is owed, so every access check rejects an interim token without having to test `requires2FA` itself. The factor test goes through [Tom2FAClaims.isTrue], so both the string `"true"` Tom's own issuer writes and the JSON boolean `true` read as "a factor is owed" and yield an *un*authenticated principal. Nothing else does: a missing claim, `"false"`, `"True"` and `1` all read as "no factor owed". Accepting both encodings is the fail-safe direction at this gate — a reader that took only the string would authenticate a token saying, in the encoding it did not expect, that it had not finished logging in. |
 | `getPrincipal()` | `TomPrincipal` | The current authenticated principal (cached); throws [StateError] without valid tokens. |
 | `updatePrincipal(List<String> groups, List<String> roles, List<String> entitlements, List<String> resourceKeys, {Map<String, String> resourceRoles = const {}})` | `void` | Refreshes the current principal's ACI without re-authentication. |
 | `convertPrincipalToTokenPayload(TomPrincipal principal, TomAccessControlDefinition? definition, String? clientCountry, String? clientLanguage, {Tom2FAChallenge? challenge, Map<String, Object?>? twoFactorVerification, bool twoFactorSatisfied = false})` | `(Map<String, Object?>, Map<String, Object?>)` | Converts a principal to the public and private JWT payloads. The two second-factor parameters are **not** independent — a `challenge` decides both. Supplying one projects its claims, which include `requires2FA: "true"` unconditionally: `twoFactorSatisfied` is consulted only when there is *no* challenge, so `(challenge: c, twoFactorSatisfied: true)` still yields an interim token. That is the fail-safe direction — forgetting a parameter produces an unusable token, never an over-privileged one. `twoFactorVerification` is written into the private payload **only alongside a `challenge`**, and is silently dropped without one, so a mechanism secret cannot outlive the challenge it was minted for. With no challenge, `requires2FA` is `"true"` exactly when the principal owes a factor and `twoFactorSatisfied` is `false`. |
@@ -1113,7 +1113,7 @@ whatever the mechanism needs on the second pass.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `requires2FA` | `String` | Claim marking the token as an interim one: a second factor is still owed. |
+| `requires2FA` | `String` | Claim marking the token as an interim one: a second factor is still owed. Written as the string `"true"`, read with [isTrue]. |
 | `type` | `String` | Claim holding the mechanism type, e.g. `'totp'`. |
 | `hint` | `String` | Claim holding the mechanism's display hint, e.g. a masked phone number. |
 | `attempt` | `String` | Claim holding the number of attempts already consumed. |
@@ -1121,6 +1121,12 @@ whatever the mechanism needs on the second pass.
 | `expiresAt` | `String` | Claim holding the challenge expiry as an ISO-8601 UTC string. |
 | `clientData` | `String` | Claim holding the mechanism's own opaque payload for its client UI. |
 | `verificationData` | `String` | Claim (in the **encrypted** section) holding the mechanism's own opaque payload for its second pass. |
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `isTrue(Object? raw)` | `bool` | The single rule for reading a boolean claim in **either** 2FA claim family, on both tiers: true for the JSON boolean `true` and for the string `"true"`, false for everything else. The two families disagree on encoding — `requires2FA` and `pendingEnrolment` are strings, `skippable` and `skipSpendsGrace` are JSON booleans — so every read accepts both. Deliberately not general truthiness: `"True"`, `1` and `"yes"` are false, because widening past what a Tom tier writes would be guessing at other issuers' conventions rather than reconciling our own. |
 
 ### Tom2FAChallenge
 
@@ -1184,8 +1190,11 @@ Two encoding details are worth knowing before reading a token by hand.
 `pendingEnrolment` is the string `"true"`, for the same compatibility reason
 [Tom2FAClaims.requires2FA] is; `skippable` and `skipSpendsGrace` are JSON
 booleans, because they are newer and have no tokens in flight to stay
-compatible with. [Tom2FAPendingEnrolment.fromClaims] reads both encodings
-anyway.
+compatible with. That the two disagree is why **every** boolean claim in both
+families is read with [Tom2FAClaims.isTrue], which accepts either encoding —
+on the client (`Tom2FAPendingEnrolment.fromClaims`) and on the server
+(`Tom2FAEnrolmentState.fromClaims`) alike, since the two decode the same token
+and must not disagree about what it says.
 
 #### Constructors
 

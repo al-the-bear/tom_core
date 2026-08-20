@@ -407,20 +407,31 @@ class Tom2FAEnrolmentState {
   /// enrolment but carries an unreadable offer yields the *offered* shape rather
   /// than a half-built confirmation — the user is asked to choose again, which
   /// is the only safe reading.
+  ///
+  /// Every boolean claim is read with [Tom2FAClaims.isTrue], the same rule the
+  /// kernel's [Tom2FAPendingEnrolment.fromClaims] applies. The two decode the
+  /// *same claims from the same token* — one to drive the UI, one to authorise
+  /// the enrolment passes — so a disagreement about what `skippable` means
+  /// would show up as a skip button that the server then refuses.
   static Tom2FAEnrolmentState? fromClaims(
     Map<String, dynamic>? payload, [
     Map<String, dynamic>? secretData,
   ]) {
     if (payload == null) return null;
-    if (payload[Tom2FAEnrolmentClaims.pendingEnrolment] != 'true') return null;
+    if (!Tom2FAClaims.isTrue(payload[Tom2FAEnrolmentClaims.pendingEnrolment])) {
+      return null;
+    }
 
     final offeredRaw = payload[Tom2FAEnrolmentClaims.offeredTypes];
     final offeredTypes = offeredRaw is List
         ? offeredRaw.whereType<String>().toList()
         : const <String>[];
-    final skippable = payload[Tom2FAEnrolmentClaims.skippable] == true;
-    final skipSpendsGrace =
-        payload[Tom2FAEnrolmentClaims.skipSpendsGrace] == true;
+    final skippable = Tom2FAClaims.isTrue(
+      payload[Tom2FAEnrolmentClaims.skippable],
+    );
+    final skipSpendsGrace = Tom2FAClaims.isTrue(
+      payload[Tom2FAEnrolmentClaims.skipSpendsGrace],
+    );
 
     final offer = Tom2FAEnrolmentOffer.fromClaim(
       secretData?[Tom2FAEnrolmentClaims.offerData],

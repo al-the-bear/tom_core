@@ -2572,13 +2572,14 @@ void main() {
         expect(restored.cli.quotas, isEmpty);
       });
 
-      // `requires2FA` is a string claim by design (see Tom2FAClaims), and the
-      // reader tests it with exact string equality. Pinned because the
-      // consequence is asymmetric: a foreign issuer's JSON boolean reads as
-      // "no factor owed" and authenticates, whereas the string "true" does
-      // not. Tom's own issuer only ever writes the literal strings, so this
-      // is reachable only for tokens minted elsewhere.
-      test('the requires2FA claim is a string protocol, tested exactly', () {
+      // Tom's own issuer writes `requires2FA` as a string, but this is the
+      // gate that decides `authenticated`, so the reading is deliberately the
+      // lenient one ([Tom2FAClaims.isTrue]) rather than exact string equality.
+      // The asymmetry is the whole point: reading the JSON boolean too means
+      // *more* tokens are held back as "still owes a factor". Reading only the
+      // string would let a peer that encoded it the other way authenticate a
+      // token that had not finished logging in.
+      test('the requires2FA claim is read in either wire encoding', () {
         TomPrincipal restore(Object? claim) =>
             TomBearerAuthentication.convertTokenPayloadToPrincipal(
               _FakeClientJwtToken(
@@ -2586,20 +2587,35 @@ void main() {
               ),
             );
 
-        // The one value that means "a factor is still owed".
-        expect(restore('true').requires2FA, isTrue);
-        expect(restore('true').authenticated, isFalse);
+        // Both encodings mean "a factor is still owed", and both therefore
+        // leave the principal unauthenticated.
+        for (final claim in <Object?>[true, 'true']) {
+          final principal = restore(claim);
+          expect(
+            principal.requires2FA,
+            isTrue,
+            reason: 'claim $claim (${claim.runtimeType}) means a factor is owed',
+          );
+          expect(principal.authenticated, isFalse);
+        }
 
-        // Everything else reads as "no factor owed" — including the JSON
-        // boolean, which is the shape a non-Tom issuer would most plausibly
-        // produce.
-        for (final claim in <Object?>[true, 'True', 'TRUE', 1, 'false', null]) {
+        // Nothing else does. The near-misses are listed explicitly: leniency
+        // covers the two encodings the framework itself produces, and stops
+        // there rather than becoming a general truthiness coercion.
+        for (final claim in <Object?>[
+          false,
+          'True',
+          'TRUE',
+          1,
+          'false',
+          null,
+        ]) {
           final principal = restore(claim);
           expect(
             principal.requires2FA,
             isFalse,
             reason:
-                'claim $claim (${claim.runtimeType}) is not the string "true"',
+                'claim $claim (${claim.runtimeType}) is neither `true` nor "true"',
           );
           expect(principal.authenticated, isTrue);
         }
@@ -2871,6 +2887,33 @@ void main() {
           isNull,
           reason: 'names a mechanism but carries an unparseable expiry',
         );
+      });
+
+      // The gate that decides whether a challenge is built at all. Reading
+      // only the string would hand the client a token that says it owes a
+      // factor and no challenge to answer it with — stranded mid-login.
+      test('the requires2FA gate is read in either wire encoding', () {
+        Tom2FAChallenge? decode(Object? raw) => Tom2FAChallenge.fromClaims({
+          Tom2FAClaims.requires2FA: raw,
+          Tom2FAClaims.type: 'totp',
+          Tom2FAClaims.expiresAt: DateTime.now()
+              .toUtc()
+              .add(const Duration(minutes: 5))
+              .toIso8601String(),
+        });
+
+        expect(decode(true), isNotNull);
+        expect(decode('true'), isNotNull);
+
+        // Leniency covers the two encodings the framework produces and stops
+        // there — it is not a general truthiness coercion.
+        for (final raw in <Object?>[false, 'True', 1, 'yes', null]) {
+          expect(
+            decode(raw),
+            isNull,
+            reason: '$raw (${raw.runtimeType}) is neither `true` nor "true"',
+          );
+        }
       });
 
       // The one claim whose fallback deliberately disagrees with the
@@ -3295,6 +3338,29 @@ void main() {
         final pending = Tom2FAPendingEnrolment.fromClaims(asStrings);
         expect(pending!.skippable, isTrue);
         expect(pending.skipSpendsGrace, isTrue);
+      });
+
+      // The gate that decides whether an enrolment is built at all reads the
+      // same two encodings as the flags inside it. Reading only the string
+      // would strand a client holding a token that says it owes an enrolment
+      // while exposing nothing to render — the exact failure the lenient rule
+      // exists to prevent, one level further out.
+      test('the pendingEnrolment gate is read in either wire encoding', () {
+        final asBool = claims()
+          ..[Tom2FAEnrolmentClaims.pendingEnrolment] = true;
+
+        expect(Tom2FAPendingEnrolment.fromClaims(asBool), isNotNull);
+
+        // Leniency stops at the two encodings; it is not truthiness.
+        for (final raw in <Object?>['True', 1, 'yes']) {
+          expect(
+            Tom2FAPendingEnrolment.fromClaims(
+              claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = raw,
+            ),
+            isNull,
+            reason: '$raw (${raw.runtimeType}) is neither `true` nor "true"',
+          );
+        }
       });
 
       test('a completed session has no pending enrolment', () {

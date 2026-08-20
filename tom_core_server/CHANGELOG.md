@@ -1,5 +1,25 @@
 ## 1.3.0
 
+### Behaviour Changes
+
+- **`Tom2FAEnrolmentState.fromClaims` reads every boolean claim with
+  `Tom2FAClaims.isTrue`, matching the kernel.** It read three claims three
+  different ways relative to its client-side twin: `pendingEnrolment` by exact
+  string equality, and `skippable` / `skipSpendsGrace` by exact *boolean*
+  equality — while the kernel's `Tom2FAPendingEnrolment.fromClaims` accepted
+  either encoding for the flags.
+
+  The two decode the **same claims out of the same token**, one to render the
+  enrolment UI and one to authorise the enrolment passes, so a disagreement
+  about what `skippable` means surfaces as a skip button the client offers and
+  the server then refuses. The `pendingEnrolment` difference is milder but the
+  same shape: a token that genuinely carries an enrolment, encoded the other
+  way, was refused with `login.error.2fa.no-enrolment`.
+
+  Both now go through the kernel's shared rule, and the server's copy of the
+  decoder gained direct test coverage, including a case that decodes one
+  projected payload with both readers and asserts they agree.
+
 ### Features
 
 - **repository paging and caller-controlled sorting.** The four finders

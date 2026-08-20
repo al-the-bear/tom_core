@@ -140,6 +140,40 @@ anyone who was writing them.
 
 ### Changed
 
+- **Every boolean 2FA claim is now read the same way, `Tom2FAClaims.isTrue`,
+  including at the gates.** The module already stated the rule — a claim can
+  cross the wire as the JSON boolean `true` or the string `"true"`, because the
+  two claim families encode it differently and a deployment mixing framework
+  versions can present either — but applied it to exactly two flags, `skippable`
+  and `skipSpendsGrace`, which decide whether a skip button renders and how it
+  is worded. The reads that actually gate something all used exact string
+  equality: `requires2FA` in `convertTokenPayloadToPrincipal`, `requires2FA` in
+  `Tom2FAChallenge.fromClaims`, and `pendingEnrolment` in
+  `Tom2FAPendingEnrolment.fromClaims`.
+
+  At the first of those the strict reading fails **open**. `authenticated` is
+  derived as "username is not the guest **and** no second factor is owed", so a
+  token carrying the boolean encoding of "I still owe a factor" was read as
+  owing none and authenticated — an interim token becoming a session. At the
+  other two it fails closed but strands the user: the client holds a token that
+  says a factor or an enrolment is pending and gets `null` when it asks what to
+  render, which is precisely the failure the rule's own rationale describes.
+
+  Leniency is the fail-safe direction at all three, so all three now use it.
+  `_claimIsTrue` was private to `Tom2FAPendingEnrolment`; it is now
+  `Tom2FAClaims.isTrue`, public and documented as the rule for both claim
+  families on both tiers, so `tom_core_server` reads the same claims the same
+  way. It stays deliberately narrow — `"True"`, `1` and `"yes"` are still false,
+  because widening past what a Tom tier writes would be guessing at other
+  issuers' conventions rather than reconciling our own.
+
+  **One test changed its premise rather than its assertions.** "the requires2FA
+  claim is a string protocol, tested exactly" pinned the old behaviour, and its
+  comment named the consequence outright — "a foreign issuer's JSON boolean
+  reads as 'no factor owed' and authenticates". That is the defect, not a
+  contract, so the test now asserts the lenient reading and the near-misses that
+  remain false.
+
 - **`TomUser` copies the `attributes` map instead of aliasing it.** The getter
   returned `Map.unmodifiable(_attributes)` and the dartdoc promised "an
   unmodifiable view", but the constructor kept the caller's own map

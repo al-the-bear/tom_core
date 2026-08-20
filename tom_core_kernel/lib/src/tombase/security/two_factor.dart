@@ -54,6 +54,9 @@ class Tom2FAClaims {
   ///
   /// A string rather than a bool because the surrounding payload has always
   /// encoded it that way; changing the encoding would break tokens in flight.
+  /// Written as a string by every Tom tier — but **read with [isTrue]**, which
+  /// accepts the JSON boolean too. This claim gates `authenticated`, so a
+  /// reader that missed the other encoding would fail open.
   static const String requires2FA = 'requires2FA';
 
   /// Public claim: the mechanism key (e.g. `'totp'`) the challenge belongs to.
@@ -79,6 +82,33 @@ class Tom2FAClaims {
   /// Lives in the encrypted section precisely so a client cannot read (or
   /// usefully forge) what it would need to answer its own challenge.
   static const String verificationData = 'twoFactorVerification';
+
+  /// Reads a boolean claim that may have crossed the wire in either encoding.
+  ///
+  /// **The single rule for every boolean claim in both 2FA claim families** —
+  /// this one and [Tom2FAEnrolmentClaims] — on both tiers. The two families
+  /// disagree about encoding for historical reasons: [requires2FA] and
+  /// [Tom2FAEnrolmentClaims.pendingEnrolment] are strings, while
+  /// [Tom2FAEnrolmentClaims.skippable] and
+  /// [Tom2FAEnrolmentClaims.skipSpendsGrace] are JSON booleans. A deployment
+  /// mixing framework versions can plausibly present either, so reading both
+  /// costs one comparison and removes an entire class of upgrade report.
+  ///
+  /// Applying it to the *gates* — the reads that decide whether a token
+  /// authenticates, and whether a challenge or enrolment is built at all — is
+  /// the point, not a convenience. At every one of them leniency is the
+  /// fail-safe direction: reading `true` as well as `"true"` makes more tokens
+  /// count as still owing a second factor, and makes more challenges and
+  /// enrolments renderable. The strict reading fails the other way, and at
+  /// [requires2FA] it fails *open* — a token that says, in the encoding this
+  /// reader did not expect, that it has not finished logging in would
+  /// otherwise authenticate.
+  ///
+  /// Deliberately **not** general truthiness: only the two encodings the
+  /// framework itself produces are accepted. `'True'`, `1` and `'yes'` are
+  /// not, because widening past what any Tom tier writes would start guessing
+  /// at other issuers' conventions rather than reconciling our own.
+  static bool isTrue(Object? raw) => raw == true || raw == 'true';
 }
 
 /// The claim names under which a pending 2FA *enrolment* travels in a token.
@@ -98,7 +128,8 @@ class Tom2FAEnrolmentClaims {
 
   /// Public claim: `"true"` while the token has an enrolment awaiting
   /// confirmation. Encoded as a string for the same reason
-  /// [Tom2FAClaims.requires2FA] is.
+  /// [Tom2FAClaims.requires2FA] is, and read with [Tom2FAClaims.isTrue] for
+  /// the same reason too.
   static const String pendingEnrolment = 'pendingEnrolment';
 
   /// Public claim: the mechanism key (e.g. `'totp'`) being enrolled.
@@ -140,7 +171,8 @@ class Tom2FAEnrolmentClaims {
   /// Public claim: `true` when the user may decline the offer and complete the
   /// login without a second factor. A JSON boolean, unlike the string-encoded
   /// [Tom2FAClaims.requires2FA] — this claim is newer and has no tokens in
-  /// flight to stay compatible with.
+  /// flight to stay compatible with. That the two families disagree on
+  /// encoding is exactly why both are read with [Tom2FAClaims.isTrue].
   ///
   /// Decided once, on the pass that made the offer, and carried — so the
   /// authority for "may I skip?" is the token the server signed, never a flag
@@ -324,6 +356,11 @@ class Tom2FAChallenge {
   /// mechanism or expiry yields `null` — the caller then treats the token as
   /// simply not answerable, which is the safe reading.
   ///
+  /// "Says it requires 2FA" is decided by [Tom2FAClaims.isTrue], so a payload
+  /// carrying either encoding is decoded. Being defensive about *shape* and
+  /// lenient about *encoding* point the same way here: both keep a token that
+  /// owes a factor from quietly looking like one that does not.
+  ///
   /// The remaining claims fall back instead of rejecting, and all but one fall
   /// back to what the constructor would have chosen anyway ([hint] to `''`,
   /// [attempt] to `0`). [attemptsAllowed] is the exception: it falls back to
@@ -335,7 +372,7 @@ class Tom2FAChallenge {
   /// payload is not. [Tom2FAPendingEnrolment.fromClaims] does the same.
   static Tom2FAChallenge? fromClaims(Map<String, dynamic>? payload) {
     if (payload == null) return null;
-    if (payload[Tom2FAClaims.requires2FA] != 'true') return null;
+    if (!Tom2FAClaims.isTrue(payload[Tom2FAClaims.requires2FA])) return null;
 
     final type = payload[Tom2FAClaims.type];
     if (type is! String || type.isEmpty) return null;
@@ -503,7 +540,9 @@ class Tom2FAPendingEnrolment {
   /// same reason.
   static Tom2FAPendingEnrolment? fromClaims(Map<String, dynamic>? payload) {
     if (payload == null) return null;
-    if (payload[Tom2FAEnrolmentClaims.pendingEnrolment] != 'true') return null;
+    if (!Tom2FAClaims.isTrue(payload[Tom2FAEnrolmentClaims.pendingEnrolment])) {
+      return null;
+    }
 
     final typeRaw = payload[Tom2FAEnrolmentClaims.type];
     final type = typeRaw is String ? typeRaw : '';
@@ -538,21 +577,12 @@ class Tom2FAPendingEnrolment {
           ? clientData.cast<String, Object?>()
           : const <String, Object?>{},
       offeredTypes: offeredTypes,
-      skippable: _claimIsTrue(payload[Tom2FAEnrolmentClaims.skippable]),
-      skipSpendsGrace: _claimIsTrue(
+      skippable: Tom2FAClaims.isTrue(payload[Tom2FAEnrolmentClaims.skippable]),
+      skipSpendsGrace: Tom2FAClaims.isTrue(
         payload[Tom2FAEnrolmentClaims.skipSpendsGrace],
       ),
     );
   }
-
-  /// Reads a boolean claim that may have crossed the wire either way.
-  ///
-  /// The enrolment flags are projected as JSON booleans, but the sibling
-  /// [Tom2FAClaims.requires2FA] is a string for historical reasons, and a
-  /// deployment mixing framework versions can plausibly present either. Reading
-  /// both costs one comparison and removes an entire class of "the skip button
-  /// vanished after the upgrade" report.
-  static bool _claimIsTrue(Object? raw) => raw == true || raw == 'true';
 
   @override
   String toString() =>

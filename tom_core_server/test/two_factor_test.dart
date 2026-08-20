@@ -2003,6 +2003,85 @@ void main() {
   });
 
   // ===========================================================================
+  // THE SERVER'S HALF OF THE ENROLMENT CLAIM CONTRACT
+  // ===========================================================================
+
+  /// [Tom2FAEnrolmentState.fromClaims] is the server-side twin of the kernel's
+  /// [Tom2FAPendingEnrolment.fromClaims]: the two read the *same claims out of
+  /// the same token*, one to drive the UI and one to authorise the enrolment
+  /// passes. They must therefore agree on what each claim means, which is why
+  /// both read booleans through [Tom2FAClaims.isTrue].
+  group('Tom2FAEnrolmentState claim decoding', () {
+    Map<String, dynamic> claims() => <String, dynamic>{
+      Tom2FAEnrolmentClaims.pendingEnrolment: 'true',
+      Tom2FAEnrolmentClaims.offeredTypes: ['totp'],
+      Tom2FAEnrolmentClaims.skippable: true,
+      Tom2FAEnrolmentClaims.skipSpendsGrace: true,
+    };
+
+    test('the pendingEnrolment gate is read in either wire encoding', () {
+      expect(Tom2FAEnrolmentState.fromClaims(claims()), isNotNull);
+      expect(
+        Tom2FAEnrolmentState.fromClaims(
+          claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = true,
+        ),
+        isNotNull,
+        reason:
+            'refusing the JSON boolean would reject a token that really does '
+            'carry an enrolment, stranding the login',
+      );
+    });
+
+    test('the two flags are read in either wire encoding', () {
+      // The server used to accept only the JSON boolean here while the kernel
+      // accepted both, so one tier rendered a skip button the other refused.
+      final asStrings = claims()
+        ..[Tom2FAEnrolmentClaims.skippable] = 'true'
+        ..[Tom2FAEnrolmentClaims.skipSpendsGrace] = 'true';
+
+      final state = Tom2FAEnrolmentState.fromClaims(asStrings);
+      expect(state!.skippable, isTrue);
+      expect(state.skipSpendsGrace, isTrue);
+    });
+
+    test('leniency covers the two encodings and nothing else', () {
+      for (final raw in <Object?>[false, 'True', 1, 'yes', null]) {
+        expect(
+          Tom2FAEnrolmentState.fromClaims(
+            claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = raw,
+          ),
+          isNull,
+          reason: '$raw (${raw.runtimeType}) is neither `true` nor "true"',
+        );
+      }
+
+      final state = Tom2FAEnrolmentState.fromClaims(
+        claims()..[Tom2FAEnrolmentClaims.skippable] = 'yes',
+      );
+      expect(state!.skippable, isFalse);
+    });
+
+    test('the server and the kernel decode one payload the same way', () {
+      // The claims a real offered-shape token carries, projected by the
+      // server and read back by both tiers.
+      final projected = Tom2FAEnrolmentState(
+        offeredTypes: const ['totp'],
+        skippable: true,
+        skipSpendsGrace: true,
+      ).toClaims().cast<String, dynamic>();
+
+      final serverSide = Tom2FAEnrolmentState.fromClaims(projected);
+      final clientSide = Tom2FAPendingEnrolment.fromClaims(projected);
+
+      expect(serverSide, isNotNull);
+      expect(clientSide, isNotNull);
+      expect(clientSide!.skippable, equals(serverSide!.skippable));
+      expect(clientSide.skipSpendsGrace, equals(serverSide.skipSpendsGrace));
+      expect(clientSide.offeredTypes, equals(serverSide.offeredTypes));
+    });
+  });
+
+  // ===========================================================================
   // THE FOUR SHAPES A DEPLOYMENT CAN BE IN
   // ===========================================================================
 

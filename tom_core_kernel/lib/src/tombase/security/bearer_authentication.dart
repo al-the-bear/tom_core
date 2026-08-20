@@ -330,7 +330,11 @@ class TomBearerAuthentication {
     // at the single point where every principal is reconstructed — means every
     // existing access check rejects such a token automatically, instead of each
     // call site having to remember to test `requires2FA` as well.
-    final requires2FA = payload[Tom2FAClaims.requires2FA] == "true";
+    //
+    // Read through [Tom2FAClaims.isTrue] rather than against the string alone:
+    // this is the gate where a missed "still owes a factor" fails *open*, so it
+    // accepts both encodings the claim travels in.
+    final requires2FA = Tom2FAClaims.isTrue(payload[Tom2FAClaims.requires2FA]);
 
     return TomPrincipal(
       authenticated:
