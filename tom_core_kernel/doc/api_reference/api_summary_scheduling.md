@@ -688,6 +688,13 @@ An in-process store — the default for tests and single-process use.
 Adds durability by writing the whole store to a JSON file on every mutation, so
 a restart resumes where it left off.
 
+The write is atomic: the new queue is staged in a sibling `<path>.<pid>.tmp` and
+renamed over the target. An interrupted write therefore leaves the previous
+queue intact rather than a truncated file — which the loader, being deliberately
+forgiving of corruption, would otherwise read back as an *empty* queue. The
+process id in the staging name keeps two nodes on a shared mount from publishing
+each other's partial writes; strays are ignored on load.
+
 - **Extends:** `TomMemoryJobStore`
 
 #### Constructors

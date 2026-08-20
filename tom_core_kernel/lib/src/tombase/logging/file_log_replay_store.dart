@@ -21,6 +21,7 @@ import 'dart:io';
 
 import 'package:tom_basics/tom_basics.dart';
 
+import '../little_things/atomic_file.dart';
 import 'remote_logoutput.dart';
 
 // =============================================================================
@@ -238,16 +239,12 @@ class TomFileLogReplayStore implements TomLogReplayStore {
   /// Writes the current queue to [file], creating parent directories as needed
   /// and flushing so the bytes reach disk before returning.
   ///
-  /// The bytes go to a sibling temp file that is then renamed into place.
-  /// Rename within a directory is atomic, so a process killed mid-write leaves
-  /// either the old queue or the new one — never the half-written array that
-  /// [_load] would have to throw away.
+  /// The write is atomic — see [tomWriteFileAtomically] — so a process killed
+  /// mid-write leaves either the old queue or the new one, never the
+  /// half-written array that [_load] would have to throw away.
   void _persist() {
-    file.parent.createSync(recursive: true);
     final encoded = jsonEncode(_records.map(_encodeReplayRecord).toList());
-    final temp = File('${file.path}.tmp');
-    temp.writeAsStringSync(encoded, flush: true);
-    temp.renameSync(file.path);
+    tomWriteFileAtomically(file, encoded);
   }
 }
 

@@ -25,6 +25,12 @@ This is the module's whole exported surface — two classes and nine functions.
 | `tomPrintStackTrace(s, {message, depth})` | Log a trimmed stack trace at ERROR level. Despite the name, it does not `print`. Logs nothing when there is neither a message nor a frame. |
 | `convertMinutesToUtcOffset(minutes)` | Format a minute offset as `±HH:MM`. Throws outside ±840 minutes (±14:00), which no real zone reaches — the hour field is two digits wide, so a wider offset has no valid rendering. |
 
+The module also holds one **internal**, deliberately unexported file:
+`atomic_file.dart`, the crash-safe whole-file write shared by the package's two
+file-backed stores (`TomFileJobStore` and `TomFileLogReplayStore`). It stays off
+the exported surface because it imports `dart:io` and because how a store
+reaches the disk is not something a caller should be reaching for.
+
 ## Quick start
 
 ```dart

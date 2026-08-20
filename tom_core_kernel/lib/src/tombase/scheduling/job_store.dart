@@ -43,6 +43,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import '../little_things/atomic_file.dart';
+
 // =============================================================================
 // RUN STATE
 // =============================================================================
@@ -591,10 +593,16 @@ class TomMemoryJobStore implements TomJobStore {
 /// durability requirement met without a database — which matters, because
 /// `tom_core_kernel` deliberately has no persistence layer.
 ///
-/// Writes are synchronous and flushed, so the record reaches disk before the
-/// call that made it returns. The queue is small (one record per window, purged
-/// once terminal), so rewriting it whole is cheaper than the bookkeeping an
-/// append-only journal would need to compact.
+/// Writes are synchronous, flushed and *atomic*: the new queue is staged in a
+/// sibling file and renamed over the target, so an interrupted write leaves the
+/// previous queue rather than a truncated one. That is not a refinement but the
+/// difference between losing one mutation and losing the whole queue — the file
+/// is rewritten whole each time, and [_load] can only discard an array it
+/// cannot parse.
+///
+/// The queue is small (one record per window, purged once terminal), so
+/// rewriting it whole is cheaper than the bookkeeping an append-only journal
+/// would need to compact.
 class TomFileJobStore extends TomMemoryJobStore {
   /// The file the queue is mirrored to and reloaded from.
   final File file;
@@ -638,11 +646,16 @@ class TomFileJobStore extends TomMemoryJobStore {
 
   /// Writes the current queue to [file], creating parent directories as needed
   /// and flushing so the bytes reach disk before returning.
+  ///
+  /// The write is atomic — see [tomWriteFileAtomically]. It has to be: the
+  /// queue is rewritten whole on every mutation, and [_load] can do nothing
+  /// with a truncated array but discard it. An overwrite interrupted by a kill
+  /// or a full disk would therefore not lose *a* run, it would lose the entire
+  /// durable queue, silently, at the next start.
   void _persist() {
-    file.parent.createSync(recursive: true);
     final encoded = jsonEncode(
       snapshotSync().map((run) => run.toJson()).toList(),
     );
-    file.writeAsStringSync(encoded, flush: true);
+    tomWriteFileAtomically(file, encoded);
   }
 }

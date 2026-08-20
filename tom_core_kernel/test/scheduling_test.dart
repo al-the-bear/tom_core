@@ -15,6 +15,10 @@ import 'dart:math';
 
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+// Internal, deliberately not exported: the staging-file name is an
+// implementation detail of the atomic write, but the durability tests have to
+// plant a file at exactly that path to prove the write survives a failure.
+import 'package:tom_core_kernel/src/tombase/little_things/atomic_file.dart';
 
 // The port contracts — every behaviour required of a TomJobStore or a
 // TomLeaseLock — live in their own file so a second package can run them
@@ -1117,6 +1121,65 @@ void main() {
       await first.purgeFinished(at.add(const Duration(days: 1)));
 
       expect(await TomFileJobStore(path).all(), isEmpty);
+    });
+
+    group('atomic persistence', () {
+      test('a half-written file beside the queue is ignored on load', () async {
+        final path = '${makeTempDir().path}/queue.json';
+        final first = TomFileJobStore(path);
+        await first.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+
+        // What a process killed mid-persist leaves behind. Both the name this
+        // process would use and a bare `.tmp` from some other process: neither
+        // is the queue, so neither may be read as one.
+        const torn = '[{"id":"a","jobName":"job","schedu';
+        File(tomAtomicWriteTempPath(path)).writeAsStringSync(torn);
+        File('$path.tmp').writeAsStringSync(torn);
+
+        expect((await TomFileJobStore(path).all()).map((r) => r.id), ['a']);
+      });
+
+      test('a completed persist leaves no staging file behind', () async {
+        final path = '${makeTempDir().path}/queue.json';
+        final store = TomFileJobStore(path);
+        await store.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+
+        expect(File(tomAtomicWriteTempPath(path)).existsSync(), isFalse);
+        expect(
+          Directory(
+            File(path).parent.path,
+          ).listSync().map((e) => e.uri.pathSegments.last),
+          ['queue.json'],
+        );
+      });
+
+      test('a persist that cannot be written leaves the queue intact', () async {
+        final path = '${makeTempDir().path}/queue.json';
+        final store = TomFileJobStore(path);
+        await store.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+        final persisted = File(path).readAsStringSync();
+
+        // Block the write the only way that is deterministic on every
+        // platform: put a directory where the staging file has to go.
+        Directory(tomAtomicWriteTempPath(path)).createSync();
+
+        await expectLater(
+          store.enqueue(
+            TomJobRun(id: 'b', jobName: 'job', scheduledFor: at, runAt: at),
+          ),
+          throwsA(isA<FileSystemException>()),
+        );
+        // The point of the exercise: the last good queue is still on disk, and
+        // a restart resumes from it rather than from nothing.
+        expect(File(path).readAsStringSync(), persisted);
+        expect((await TomFileJobStore(path).all()).map((r) => r.id), ['a']);
+      });
     });
   });
 

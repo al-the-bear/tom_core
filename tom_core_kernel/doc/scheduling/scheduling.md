@@ -416,9 +416,21 @@ Two implementations ship here:
 
 - **`TomMemoryJobStore`** — one process, nothing survives a restart. Right for
   tests and for jobs whose loss on restart is acceptable.
-- **`TomFileJobStore`** — a JSON-lines file. Survives a restart; an in-flight run
+- **`TomFileJobStore`** — a JSON file. Survives a restart; an in-flight run
   comes back as an *expired claim* rather than as lost work, so the scheduler
   recovers it on its next tick.
+
+The file store rewrites the whole queue on every mutation, and it does so
+*atomically*: the new content is staged in a sibling `<queue>.<pid>.tmp` and
+renamed over the target, a rename being atomic within a directory. So a process
+killed mid-write — or one that hits a full disk — leaves the previous queue on
+disk, not a truncated one. This matters more than it sounds: the loader treats
+an unparseable file as an empty queue (deliberately, so one bad byte cannot stop
+a scheduler from starting), which means a torn write would not lose the run
+being recorded, it would lose *every* run, silently. The staging file carries
+the process id so that two nodes on a shared mount cannot publish each other's
+half-written files; a stray one left by a crash is ignored by the loader and
+overwritten by that process's next write.
 
 A third, **`TomSqlJobStore`**, ships in `tom_core_server` — the kernel has no
 persistence layer, so the relational implementation belongs one layer up. It is
