@@ -1,4 +1,5 @@
 // ignore_for_file: unused_local_variable
+import 'dart:async';
 import 'package:test/test.dart';
 import 'package:timezone/data/latest.dart' as tz_init;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -2136,6 +2137,82 @@ void main() {
     });
   });
 
+  // ==========================================================================
+  // convertFromJsonString — the in-place inverse of convertToJsonString
+  // ==========================================================================
+  group('convertFromJsonString fills the object it is given', () {
+    // The three other string/JSON entry points *construct*; this one is the
+    // only one that writes into an object the caller already holds, and its
+    // whole observable contract is that it returns that same object rather
+    // than a copy. It was reachable only through its two failure tests, so
+    // nothing pinned what it does when it succeeds.
+
+    test('it parses the string and writes the fields in place', () {
+      final person = SimplePerson();
+
+      final returned = tomReflectionInfo.convertFromJsonString(
+        person,
+        '{"name": "Grace", "age": 45, "active": true, "salary": 120.5}',
+      );
+
+      expect(person.name, 'Grace');
+      expect(person.age, 45);
+      expect(person.active, true);
+      expect(person.salary, 120.5);
+      // In place, not a copy: a caller that ignores the return value must
+      // still see the new values on the object it passed in.
+      expect(identical(returned, person), isTrue);
+    });
+
+    test('it is the inverse of convertToJsonString', () {
+      final person = SimplePerson()
+        ..name = 'Grace'
+        ..age = 45
+        ..active = true
+        ..salary = 120.5;
+
+      final restored = tomReflectionInfo.convertFromJsonString(
+        SimplePerson(),
+        tomReflectionInfo.convertToJsonString(person),
+      );
+
+      expect(
+        tomReflectionInfo.getValues(restored),
+        tomReflectionInfo.getValues(person),
+      );
+    });
+
+    test('it fills a nested annotated object from the same string', () {
+      // The parse is one level; the walk below it is `setValues`, so the
+      // nesting is what shows the string form is not a shallow shortcut.
+      final person = PersonWithAddress();
+
+      tomReflectionInfo.convertFromJsonString(
+        person,
+        '{"name": "Carol", "address": {"street": "1 Main St", '
+        '"city": "Springfield", "zipCode": "12345"}}',
+      );
+
+      expect(person.name, 'Carol');
+      expect(person.address, isNotNull);
+      expect(person.address!.city, 'Springfield');
+    });
+
+    test('malformed JSON fails as a FormatException, before any reflection', () {
+      // `jsonDecode` runs first, so a bad payload never reaches the reflective
+      // path and is not dressed up as a TomReflectorException. Asserting the
+      // object is untouched is the part that matters: a partial write would be
+      // far worse than the throw.
+      final person = SimplePerson()..name = 'unchanged';
+
+      expect(
+        () => tomReflectionInfo.convertFromJsonString(person, '{not json'),
+        throwsA(isA<FormatException>()),
+      );
+      expect(person.name, 'unchanged');
+    });
+  });
+
   group('the JSON factories return an instance or throw, never null', () {
     // Both factories were typed `T?` and documented as "returns the new
     // instance, or null if creation fails". Neither had a `return null`
@@ -2749,6 +2826,112 @@ void main() {
         'active': false,
         'salary': 0.0,
       });
+    });
+  });
+
+  // ==========================================================================
+  // The debug reporters
+  // ==========================================================================
+  group('the debug reporters describe the class they are given', () {
+    // Debug helpers, but public API, and their entire result is what they
+    // print — so they were reachable only through their refusal tests and
+    // nothing pinned the report itself. They are the module's answer to "why
+    // did reflection not see my field", which makes an empty or truncated
+    // report a real failure rather than a cosmetic one.
+    //
+    // The assertions are on structure and content, not on the exact line
+    // format: the layout is a debugging convenience and pinning it verbatim
+    // would make every formatting tweak a test failure.
+
+    /// Runs [body] while collecting every `print` line into [sink].
+    void capturePrints(List<String> sink, void Function() body) {
+      runZoned(
+        body,
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => sink.add(line),
+        ),
+      );
+    }
+
+    test('reportReflect names the class, its fields and its members', () {
+      final lines = <String>[];
+      capturePrints(
+        lines,
+        () => tomReflectionInfo.reportReflect(
+          tomReflector.reflectType(SimplePerson) as ClassMirror,
+        ),
+      );
+
+      final report = lines.join('\n');
+      expect(report, contains('Reflecting on SimplePerson'));
+      expect(report, contains('Declarations:'));
+      expect(report, contains('Instance Members:'));
+      // Every declared field appears, which is the question the helper exists
+      // to answer.
+      for (final field in ['name', 'age', 'active', 'salary']) {
+        expect(
+          report,
+          contains(field),
+          reason: 'the report should mention the field $field',
+        );
+      }
+      // Members are reported with their accessor kind, not just their name.
+      expect(report, contains('getter'));
+      expect(report, contains('setter'));
+    });
+
+    test('reportReflect walks up into the superclass', () {
+      // `_printSuperclass` recurses, so the report does not stop at the
+      // annotated class. SimplePerson extends Object directly, so Object is
+      // the whole of the inherited half — enough to show the recursion runs.
+      final lines = <String>[];
+      capturePrints(
+        lines,
+        () => tomReflectionInfo.reportReflect(
+          tomReflector.reflectType(SimplePerson) as ClassMirror,
+        ),
+      );
+
+      expect(lines.join('\n'), contains('Reflecting on Object'));
+    });
+
+    test('reportReflectObject reports the annotated type of its instance', () {
+      // The instance form resolves the object to a mirror and then defers, so
+      // the two must agree line for line. Asserting the agreement rather than
+      // the text pins the delegation itself: a reportReflectObject that
+      // resolved the wrong mirror would still print a plausible report.
+      final fromObject = <String>[];
+      final fromMirror = <String>[];
+
+      capturePrints(
+        fromObject,
+        () => tomReflectionInfo.reportReflectObject(SimplePerson()),
+      );
+      capturePrints(
+        fromMirror,
+        () => tomReflectionInfo.reportReflect(
+          tomReflector.reflectType(SimplePerson) as ClassMirror,
+        ),
+      );
+
+      expect(fromObject, isNotEmpty);
+      expect(fromObject, fromMirror);
+    });
+
+    test('a mirror with no reflected type says so and stops', () {
+      // The early return. Reachable through any generic annotated class: the
+      // registry holds `GenericHolder`'s declaration, but a declaration is not
+      // a type and there is nothing to enumerate. One line, and none of the
+      // three sections — a report that carried on would print a page of
+      // nothing.
+      final generic = tomReflector.annotatedClasses.firstWhere(
+        (cm) => cm.simpleName == 'GenericHolder',
+      );
+
+      final lines = <String>[];
+      capturePrints(lines, () => tomReflectionInfo.reportReflect(generic));
+
+      expect(lines, ['GenericHolder has no reflected type']);
     });
   });
 
