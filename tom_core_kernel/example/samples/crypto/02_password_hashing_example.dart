@@ -7,6 +7,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Basic password hashing
 // =============================================================================
@@ -278,4 +280,7 @@ void run() {
   CaseSensitivityExample.example7CaseSensitivity();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

@@ -9,6 +9,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Service Interfaces
 // ============================================================================
@@ -397,4 +399,7 @@ void run() {
   print('\n✓ All interface and type registration examples passed!\n');
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

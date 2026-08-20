@@ -17,6 +17,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// Records the lifecycle callbacks and the list sizes observed at each hook.
 ///
 /// Capturing the size in `onBeforeClear` (old contents still present) and in
@@ -152,4 +154,7 @@ void run() {
 }
 
 /// Standalone entry point.
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

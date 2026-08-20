@@ -6,6 +6,8 @@ import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // Helper functions to generate stack traces
 void _levelThree() {
   throw Exception('Error at level three');
@@ -314,4 +316,7 @@ void run() {
   RootExceptionExample.example8RootException();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

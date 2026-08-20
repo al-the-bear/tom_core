@@ -16,6 +16,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Basic Pretty Printing
 // =============================================================================
@@ -207,4 +209,7 @@ void run() {
   RoundTripExample.example7RoundTrip();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

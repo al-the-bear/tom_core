@@ -10,6 +10,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Custom Observer Class
 // ============================================================================
@@ -278,4 +280,7 @@ class ObserverPatternExample {
 
 void run() => ObserverPatternExample.run();
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

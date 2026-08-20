@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // MOCK PLATFORM UTILS FOR EXAMPLES
 // =============================================================================
@@ -227,4 +229,7 @@ void run() {
   HttpClientExample.example6HttpClient();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

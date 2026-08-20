@@ -7,6 +7,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Creating a basic JWT token
 // =============================================================================
@@ -283,4 +285,7 @@ void run() {
   TokenRoundTripExample.example8TokenRoundTrip();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

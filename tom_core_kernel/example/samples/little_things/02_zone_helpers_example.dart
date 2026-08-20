@@ -6,6 +6,8 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // Sample configuration class for zone examples
 class AppConfig {
   final String environment;
@@ -335,4 +337,7 @@ Future<void> run() async {
 }
 
 /// Standalone entry point.
-Future<void> main() async => run();
+Future<void> main() async {
+  requireAsserts();
+  await run();
+}

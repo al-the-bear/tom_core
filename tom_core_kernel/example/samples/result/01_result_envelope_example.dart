@@ -4,6 +4,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // A tiny domain to return results from
 // =============================================================================
@@ -151,4 +153,7 @@ void run() {
   BranchingExample.example4Branching();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

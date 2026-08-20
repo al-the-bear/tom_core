@@ -39,7 +39,12 @@
 # invisible once made: nothing about a flagless command looks wrong, and the run
 # it produces looks right. Which is why it is checked rather than watched for.
 #
-# Exits non-zero if any sample fails or any documented command omits the flag.
+# It also checks the reader's side of that: every sample's `main()` must open
+# with `requireAsserts()` (or `bootstrapSamples()`, which calls it), so a
+# flagless run refuses instead of reporting a success it did not verify.
+#
+# Exits non-zero if any sample fails, any documented command omits the flag, or
+# any sample would run hollow without it.
 
 set -uo pipefail
 
@@ -103,6 +108,32 @@ if [ ${#flagless[@]} -gt 0 ]; then
   echo
 fi
 
+# The other half of the same problem. Documenting the flag correctly still
+# leaves the reader who types the command from memory, or copies it from another
+# project, and gets a hollow green. So every sample's `main()` opens with
+# `requireAsserts()` — or with `bootstrapSamples()`, which calls it — and this
+# checks that it does.
+#
+# Checked statically rather than by running each sample twice: the flagless run
+# is another 115 VM starts for a property that is visible in the source. The
+# point is to catch the *next* sample, written by someone who did not know the
+# convention, on the first sweep after they add it.
+#
+# A sample with no `assert` at all is a separate defect and not this one's to
+# report — it has no verification for a missing flag to strip.
+unguarded=()
+while IFS= read -r file; do
+  grep -q 'assert(' "$file" || continue
+  grep -qE '(requireAsserts|bootstrapSamples)\(\)' "$file" && continue
+  unguarded+=("$file")
+done < <(find example/samples -name '[0-9][0-9]_*.dart' | sort; echo example/run_all_samples.dart)
+
+if [ ${#unguarded[@]} -gt 0 ]; then
+  echo "Samples whose main() never calls requireAsserts() (${#unguarded[@]}):"
+  printf '    %s\n' "${unguarded[@]}"
+  echo
+fi
+
 echo "Running ${#files[@]} samples standalone (timeout ${TIMEOUT_SECONDS}s each)."
 echo
 
@@ -141,9 +172,11 @@ for file in "${files[@]}"; do
 done
 
 echo
-if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ] && [ ${#flagless[@]} -eq 0 ]; then
+if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ] && [ ${#flagless[@]} -eq 0 ] \
+  && [ ${#unguarded[@]} -eq 0 ]; then
   echo "All ${#files[@]} samples ran standalone and exited 0,"
-  echo "and every documented command passes --enable-asserts."
+  echo "every documented command passes --enable-asserts,"
+  echo "and every sample refuses to run without it."
   exit 0
 fi
 
@@ -160,6 +193,10 @@ fi
 if [ ${#flagless[@]} -gt 0 ]; then
   echo "Documented without --enable-asserts (${#flagless[@]}):"
   printf '    %s\n' "${flagless[@]}"
+fi
+if [ ${#unguarded[@]} -gt 0 ]; then
+  echo "No requireAsserts() in main() (${#unguarded[@]}):"
+  printf '    %s\n' "${unguarded[@]}"
 fi
 echo "Logs: $LOG_DIR"
 exit 1

@@ -38,6 +38,8 @@ import 'dart:io';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// Capturing log sink used to observe what the isolate/remote outputs emit.
 ///
 /// Mirrors the level gate of the real outputs: it only records a call whose
@@ -830,5 +832,6 @@ class _ScriptedLogEndpoint
 }
 
 Future<void> main() async {
+  requireAsserts();
   await run();
 }

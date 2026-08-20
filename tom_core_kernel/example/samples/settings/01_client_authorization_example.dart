@@ -3,6 +3,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Creating a Settings Request Message
 // =============================================================================
@@ -262,4 +264,7 @@ void run() {
   CheckEntitlementsExample.example8CheckEntitlements();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

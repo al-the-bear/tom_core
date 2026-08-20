@@ -11,6 +11,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Platform Initializer Tracking
 // ============================================================================
@@ -342,4 +344,7 @@ void run() {
   print('\n✓ All advanced runtime examples passed!\n');
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

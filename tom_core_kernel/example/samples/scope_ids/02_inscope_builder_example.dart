@@ -17,6 +17,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 void run() {
   print('=== 02: InScopeBuilder Example ===\n');
 
@@ -144,4 +146,7 @@ void run() {
 }
 
 /// Standalone entry point.
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

@@ -115,6 +115,13 @@ anyone who was writing them.
   not-yet-installed one stays silent.
 - `TomHeader.location` — the `Location` header name, which is what makes a 3xx a
   redirect rather than an empty body with an odd status.
+- **`TomReflectionInfo(strictUnknownFields: true)` (tcinc196).** `setValues`
+  silently dropped any key naming no declaration on the target, which is the
+  right default on the wire but hides a typo in a config file. The new
+  converter option raises `reflection.set.unknown_field` instead. It is a
+  property of the converter, not of the call, so nested objects inherit it —
+  the walk recurses through `createInstanceFromJson` on the same instance. The
+  shared `tomReflectionInfo` stays lenient.
 
 ### Changed
 
@@ -251,6 +258,20 @@ anyone who was writing them.
   `example/samples/result/` (envelope, error details, wire format),
   `example/samples/preferences/` (codec, contract), and
   `example/samples/observable/08_observable_enum.dart`.
+- **Every sample now refuses to run without `--enable-asserts` (tcinc198).**
+  The samples verify themselves with ~1800 `assert`s and nothing else, and
+  `dart run` strips every one of them — so a flagless run printed its usual
+  "✓ … passed" and exited 0 while checking nothing, which is worse than a
+  crash because it is indistinguishable from success. Only the 37 entry points
+  calling `bootstrapSamples()` were guarded; the other 77 were not, because the
+  guard sat behind an import of the generated reflection registry that costs
+  ~3 s of compile time and that they had no other reason to pay for. The check
+  now lives in its own registry-free `example/sample_asserts.dart` as
+  `requireAsserts()`, which every sample's `main()` calls (or reaches through
+  `bootstrapSamples()`), and `tool/run_standalone_examples.sh` fails the sweep
+  if a sample stops calling it.
+- The reflection samples `01`–`06` document the command that runs them on their
+  own (tcinc197); they were already standalone-runnable but said so nowhere.
 
 ### Documentation
 

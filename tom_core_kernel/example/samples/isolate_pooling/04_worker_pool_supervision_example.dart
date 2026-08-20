@@ -17,6 +17,8 @@ import 'dart:isolate';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// A normal compute command used to confirm the pool works before and after a
 /// worker death.
 class AddCommand extends TomCommand {
@@ -100,4 +102,7 @@ Future<void> run() async {
 }
 
 /// Standalone entry point.
-Future<void> main() async => run();
+Future<void> main() async {
+  requireAsserts();
+  await run();
+}

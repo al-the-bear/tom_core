@@ -22,6 +22,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'scheduling_support.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // A body that records the window it was given
 // =============================================================================
@@ -485,4 +487,7 @@ Future<void> run() async {
   await OneShotAlreadyPastExample.example5AOneShotAlreadyPast();
 }
 
-Future<void> main() => run();
+Future<void> main() {
+  requireAsserts();
+  return run();
+}

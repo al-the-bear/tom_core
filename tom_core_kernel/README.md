@@ -180,8 +180,11 @@ dart run --enable-asserts example/run_all_samples.dart
 
 `--enable-asserts` is not optional. The samples check themselves with `assert`,
 and Dart compiles asserts away unless the flag is passed — without it the
-examples still print their output and still exit 0, but nothing they claim is
-actually verified.
+examples would still print their output and still exit 0, while verifying
+nothing they claim. Rather than leave that trap open, every sample's `main()`
+opens with `requireAsserts()`
+([`example/sample_asserts.dart`](example/sample_asserts.dart)), which prints the
+correct command and exits `2` instead of running hollow.
 
 Every sample also runs on its own, which is usually what you want while reading
 one:
@@ -192,10 +195,13 @@ dart run --enable-asserts example/samples/observable/03_tom_class.dart
 
 Samples that build reflected types call `bootstrapSamples()`
 ([`example/sample_bootstrap.dart`](example/sample_bootstrap.dart)) as the first
-statement of their `main()`; that is the one place the generated reflection
-registry is installed. The rest reflect over nothing and skip it, because
-importing the registry costs roughly three seconds of compile time per entry
-point.
+statement of their `main()` instead of `requireAsserts()` — it does the flag
+check and then installs the generated reflection registry, which is the one
+place that happens. The rest reflect over nothing and skip it, because importing
+the registry costs roughly three seconds of compile time per entry point. That
+cost is also why the flag check lives in its own registry-free library: it lets
+the non-reflecting samples be guarded without paying for a registry they never
+touch.
 
 The master runner cannot police the standalone path — it drives samples through
 their group runners and ends in `exit(0)`, so a sample that has no `main()`,

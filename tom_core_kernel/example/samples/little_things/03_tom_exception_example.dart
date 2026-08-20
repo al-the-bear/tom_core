@@ -17,6 +17,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// Log output that records every emitted message so this example can observe
 /// (and assert on) the logging side-effects of the exception helpers.
 ///
@@ -474,4 +476,7 @@ void run() {
   print('\n✓ All TomException examples passed!\n');
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

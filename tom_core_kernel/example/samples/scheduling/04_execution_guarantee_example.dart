@@ -28,6 +28,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'scheduling_support.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: The Duplicate You Are Promised
 // =============================================================================
@@ -406,4 +408,7 @@ Future<void> run() async {
   await FencingTokenExample.example4TheFencingToken();
 }
 
-Future<void> main() => run();
+Future<void> main() {
+  requireAsserts();
+  return run();
+}

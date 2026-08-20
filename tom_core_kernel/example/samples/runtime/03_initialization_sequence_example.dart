@@ -3,6 +3,8 @@ library;
 
 import 'package:tom_core_server/tom_core_server.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // Environment Initializers
 // =============================================================================
@@ -217,4 +219,7 @@ void run() {
   GetRuntimeReportExample.example6GetRuntimeReport();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

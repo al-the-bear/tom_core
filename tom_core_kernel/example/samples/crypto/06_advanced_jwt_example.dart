@@ -12,6 +12,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Example Class
 // ============================================================================
@@ -416,4 +418,7 @@ void run() {
   print('\n✓ All advanced JWT examples passed!\n');
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

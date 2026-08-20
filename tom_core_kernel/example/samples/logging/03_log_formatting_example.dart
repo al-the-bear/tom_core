@@ -3,6 +3,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// Custom log output that captures messages for testing/demonstration.
 class CapturingLogOutput extends TomLogOutput {
   final List<String> messages = [];
@@ -322,4 +324,7 @@ void run() {
   TimestampExample.example6Timestamp();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

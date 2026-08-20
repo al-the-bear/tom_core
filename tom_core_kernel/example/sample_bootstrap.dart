@@ -7,43 +7,23 @@
 /// ```
 ///
 /// The `--enable-asserts` is not decoration, and [bootstrapSamples] refuses to
-/// run without it — see *Asserts are the samples' only verification* below.
+/// run without it — see [requireAsserts], which it calls first and which every
+/// other sample calls directly.
 ///
 /// Samples that build reflected types — anything using `@tomReflector`,
 /// `TomClass`, or the preference/scheduling codecs that reflect over their
 /// values — must register the generated reflection data before they run, or
 /// the first construction fails with *"Reflection has not been initialized"*.
 /// Those samples call [bootstrapSamples] as the first statement of `main()`;
-/// the ones that reflect over nothing call nothing.
+/// the ones that reflect over nothing call [requireAsserts] instead, from
+/// `sample_asserts.dart`, and must not call both.
 ///
 /// This file is the only place that names `run_all_samples.reflection.dart`.
 /// That file is generated (`dart run build_runner build`), it is one large
 /// registry for the whole `samples/` tree, and importing it costs roughly three
 /// seconds of compile time per entry point — which is why samples that do not
-/// need it do not pay for it.
-///
-/// ## Asserts are the samples' only verification
-///
-/// A sample demonstrates an API by *stating what it should produce*, and it
-/// states that with `assert`. There is no other check in the tree: roughly 1800
-/// `assert`s and not one `expect`. Dart strips asserts in release mode, and
-/// `dart run` **is** release mode, so a sample run without `--enable-asserts`
-/// executes every line, prints every "✓ … passed", exits 0 — and verifies
-/// nothing whatsoever.
-///
-/// That is a worse failure than a crash, because it is indistinguishable from
-/// success. It is also not hypothetical: two real defects in these samples (a
-/// shifted instant that lost its `isUtc`, and a codec example that threw on its
-/// fourth case) sat behind exactly this, green in every flagless run.
-///
-/// So [bootstrapSamples] checks the flag and exits with a message naming the
-/// correct command rather than letting a hollow run report success. Every group
-/// runner and `run_all_samples.dart` call it, so the entry points a reader
-/// actually starts from are covered. The samples that reflect over nothing call
-/// nothing — they must not import the registry above for a flag check — and are
-/// covered instead by `tool/run_standalone_examples.sh`, which both runs them
-/// with the flag and fails the sweep if any sample's header documents a command
-/// without it.
+/// need it do not pay for it, and why the flag check lives in its own
+/// registry-free library rather than here.
 ///
 /// ## Timezones need no bootstrap
 ///
@@ -64,9 +44,10 @@
 /// do not reinstate the sleep.
 library;
 
-import 'dart:io';
-
 import 'run_all_samples.reflection.dart';
+import 'sample_asserts.dart';
+
+export 'sample_asserts.dart' show requireAsserts;
 
 /// Prepares a sample to run: requires `--enable-asserts`, then registers the
 /// generated reflection data.
@@ -78,36 +59,8 @@ import 'run_all_samples.reflection.dart';
 ///
 /// If asserts are disabled it prints the correct command and exits `2` instead
 /// of running — a flagless run would otherwise print success while checking
-/// nothing (see the library documentation above).
+/// nothing (see [requireAsserts]).
 void bootstrapSamples() {
-  _requireAsserts();
+  requireAsserts();
   initializeReflection();
-}
-
-/// Whether the VM was started with `--enable-asserts`.
-///
-/// The assignment inside the `assert` is the standard detection idiom: the
-/// expression is the assert's condition, so it is evaluated only when asserts
-/// are on, and `enabled` stays `false` in a run where they were stripped.
-bool get _assertsEnabled {
-  var enabled = false;
-  assert(enabled = true);
-  return enabled;
-}
-
-/// Stops a flagless run before it can report a success it did not verify.
-///
-/// Exits rather than throws: the reader's mistake is a missing flag, and a
-/// stack trace would bury the one sentence that fixes it. Exit `2` — not `1` —
-/// so the sweep script's log distinguishes "never ran" from "ran and failed".
-void _requireAsserts() {
-  if (_assertsEnabled) return;
-  stderr.writeln(
-    'Asserts are disabled, so this sample would verify nothing.\n'
-    'Every check in the samples is an `assert`, and `dart run` strips them.\n'
-    'Re-run with the flag:\n'
-    '\n'
-    '    dart run --enable-asserts <sample>\n',
-  );
-  exit(2);
 }

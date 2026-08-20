@@ -5,6 +5,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: The Explicit Discriminator
 // =============================================================================
@@ -190,4 +192,7 @@ void run() {
   MalformedPayloadExample.example6MalformedPayload();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

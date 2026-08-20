@@ -15,6 +15,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 void run() {
   print('=== 01: Scope Basics Example ===\n');
 
@@ -150,4 +152,7 @@ void run() {
 }
 
 /// Standalone entry point.
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

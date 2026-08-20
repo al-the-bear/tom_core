@@ -10,6 +10,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Example Class
 // ============================================================================
@@ -256,4 +258,7 @@ class TimezoneBasicsExample {
 
 void run() => TimezoneBasicsExample.run();
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

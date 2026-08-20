@@ -12,6 +12,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Service Interfaces
 // ============================================================================
@@ -361,4 +363,7 @@ class BeanDependencyPatternsExample {
 
 void run() => BeanDependencyPatternsExample.run();
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

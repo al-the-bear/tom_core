@@ -10,6 +10,8 @@ import 'dart:typed_data';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Basic signing and verification
 // =============================================================================
@@ -265,4 +267,7 @@ void run() {
   MultipleSignaturesExample.example7MultipleSignatures();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

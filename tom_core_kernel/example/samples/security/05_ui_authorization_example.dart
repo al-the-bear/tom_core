@@ -18,6 +18,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// A test adapter that resolves authorization from a fixed lookup table.
 ///
 /// Unknown paths fall back to [TomAuthState.full] (development default).
@@ -259,4 +261,7 @@ void run() {
 }
 
 /// Standalone entry point.
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

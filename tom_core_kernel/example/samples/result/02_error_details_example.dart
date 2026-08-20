@@ -4,6 +4,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Field-Level Validation Errors
 // =============================================================================
@@ -154,4 +156,7 @@ void run() {
   SeverityExample.example4Severity();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

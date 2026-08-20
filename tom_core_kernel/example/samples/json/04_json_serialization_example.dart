@@ -22,6 +22,8 @@ import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // The value objects
 // =============================================================================
@@ -214,4 +216,7 @@ void run() {
   assert(!formatted.contains('\n'));
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

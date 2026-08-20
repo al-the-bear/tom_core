@@ -18,6 +18,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// A domain object that is *itself* a scope by mixing in [TomScopeMixin].
 ///
 /// This mirrors how Tom widgets adopt a scope: the class carries its own
@@ -135,4 +137,7 @@ void run() {
 }
 
 /// Standalone entry point.
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

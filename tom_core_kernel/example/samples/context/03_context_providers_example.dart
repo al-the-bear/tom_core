@@ -13,6 +13,8 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Using TomContextProviders without a principal (defaults)
 // =============================================================================
@@ -387,4 +389,7 @@ void run() {
   print('');
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

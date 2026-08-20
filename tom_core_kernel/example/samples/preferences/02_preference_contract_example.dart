@@ -8,6 +8,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: The framework's well-known keys
 // =============================================================================
@@ -261,4 +263,7 @@ void run() {
   RegisterApiExample.example6RegisterApi();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

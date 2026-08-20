@@ -16,6 +16,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'scheduling_support.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // A job body worth watching
 // =============================================================================
@@ -314,4 +316,7 @@ Future<void> run() async {
   await LeaseLockExample.example3TheLeaseAndItsResource();
 }
 
-Future<void> main() => run();
+Future<void> main() {
+  requireAsserts();
+  return run();
+}

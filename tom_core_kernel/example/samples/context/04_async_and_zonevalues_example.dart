@@ -18,6 +18,8 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // Async Context + Zone Values Example
 // =============================================================================
@@ -172,4 +174,7 @@ Future<void> run() async {
 }
 
 /// Standalone entry point.
-Future<void> main() async => run();
+Future<void> main() async {
+  requireAsserts();
+  await run();
+}

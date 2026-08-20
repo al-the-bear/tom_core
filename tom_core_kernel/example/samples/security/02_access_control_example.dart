@@ -3,6 +3,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // Test Principals Setup
 // =============================================================================
@@ -279,4 +281,7 @@ void run() {
   MultipleRolesExample.example7MultipleRoles();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

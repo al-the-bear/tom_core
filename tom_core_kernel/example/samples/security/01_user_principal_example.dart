@@ -4,6 +4,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Creating a Basic TomUser
 // =============================================================================
@@ -266,4 +268,7 @@ void run() {
   TwoFactorPrincipalExample.example7TwoFactorPrincipal();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

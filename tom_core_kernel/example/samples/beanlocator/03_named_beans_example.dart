@@ -13,6 +13,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Configuration Classes
 // ============================================================================
@@ -340,4 +342,7 @@ class NamedBeansExample {
 
 void run() => NamedBeansExample.run();
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

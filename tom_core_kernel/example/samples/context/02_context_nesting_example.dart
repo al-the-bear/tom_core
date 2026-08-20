@@ -11,6 +11,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Combining contexts with combineWith
 // =============================================================================
@@ -373,4 +375,7 @@ void run() {
   print('');
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

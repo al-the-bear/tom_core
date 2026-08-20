@@ -10,6 +10,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // ============================================================================
 // Test Principals Setup
 // ============================================================================
@@ -412,4 +414,7 @@ void run() {
   print('\n✓ All advanced access control examples passed!\n');
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

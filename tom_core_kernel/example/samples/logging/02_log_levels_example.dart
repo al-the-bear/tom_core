@@ -3,6 +3,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 // =============================================================================
 // EXAMPLE 1: Individual Log Levels and Their Bit Patterns
 // =============================================================================
@@ -255,4 +257,7 @@ void run() {
   PushPopLogLevelExample.example7PushPopLogLevel();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}

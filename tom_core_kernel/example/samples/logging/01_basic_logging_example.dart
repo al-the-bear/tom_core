@@ -3,6 +3,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../sample_asserts.dart';
+
 /// Example class implementing TomLoggable for custom log representation.
 class User implements TomLoggable {
   final String id;
@@ -261,4 +263,7 @@ void run() {
   AllLogLevelsExample.example6AllLogLevels();
 }
 
-void main() => run();
+void main() {
+  requireAsserts();
+  run();
+}
