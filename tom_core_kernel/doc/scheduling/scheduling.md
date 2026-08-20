@@ -374,6 +374,12 @@ reported **at start-up**, naming the offending class:
 | `scheduled_job.duplicate_name` | two classes claim one job name |
 | `scheduled_job.name_already_registered` | a discovered job would replace one already registered |
 
+`duplicate_name` names **both** declaring classes, not just the second one the
+scan reached. The scan aborts, so the message is the only thing the operator
+gets, and resolving the clash means deleting or renaming one of *two*
+declarations — naming one would leave the other to be found by grepping the
+codebase for the job name.
+
 Every declaration is validated before any of them is registered, so a start-up
 with one bad job registers *none* of them rather than half of them.
 

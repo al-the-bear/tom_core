@@ -426,11 +426,26 @@ void main() {
           where: only({'FirstColliding', 'SecondColliding'}),
         ),
         throwsA(
-          isA<TomScheduledJobException>().having(
-            (e) => e.key,
-            'key',
-            'scheduled_job.duplicate_name',
-          ),
+          isA<TomScheduledJobException>()
+              .having((e) => e.key, 'key', 'scheduled_job.duplicate_name')
+              // Both names, because the operator has to find *two* declarations
+              // to delete one of them, and the scan has aborted — this message
+              // is all they get. Naming only the second leaves them grepping
+              // for the job name across the codebase to find the first.
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(
+                  contains('FirstColliding'),
+                  contains('SecondColliding'),
+                  isNot(contains('TomJobDefinition')),
+                ),
+              )
+              .having(
+                (e) => e.parameters?['classes'],
+                'classes',
+                containsAll(['FirstColliding', 'SecondColliding']),
+              ),
         ),
       );
     });

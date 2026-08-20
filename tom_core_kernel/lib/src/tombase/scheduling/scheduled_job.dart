@@ -266,28 +266,42 @@ class TomScheduledJobs {
     Stream<Object?>? Function(String jobName)? eventSource,
     bool Function(ClassMirror candidate)? where,
   }) {
-    final definitions = <String, TomJobDefinition>{};
+    // Keyed by job name, and carrying the declaring class alongside each
+    // definition because a [TomJobDefinition] cannot say where it came from: it
+    // holds a name, a schedule and a closure, and the class it was derived from
+    // is exactly what the duplicate-name failure below has to name.
+    final discovered =
+        <String, ({TomJobDefinition definition, String declaredBy})>{};
     for (final candidate in tomReflector.annotatedClasses) {
       if (!candidate.metadata.any((o) => o is TomScheduledJob)) continue;
       if (where != null && !where(candidate)) continue;
       final annotation =
           candidate.metadata.firstWhere((o) => o is TomScheduledJob)
               as TomScheduledJob;
+      final declaredBy = _nameOf(candidate);
       final definition = _defineJob(candidate, annotation, eventSource);
-      final existing = definitions[definition.name];
+      final existing = discovered[definition.name];
       if (existing != null) {
         throw TomScheduledJobException(
           'scheduled_job.duplicate_name',
           "Two classes declare the job '${definition.name}': "
-              '$existing and ${_nameOf(candidate)}. A job name is the '
+              '${existing.declaredBy} and $declaredBy. A job name is the '
               'store key, so it must identify exactly one class.',
-          parameters: {'job': definition.name},
+          parameters: {
+            'job': definition.name,
+            'classes': [existing.declaredBy, declaredBy],
+          },
           autoLog: true,
         );
       }
-      definitions[definition.name] = definition;
+      discovered[definition.name] = (
+        definition: definition,
+        declaredBy: declaredBy,
+      );
     }
-    return definitions.values.toList(growable: false);
+    return discovered.values
+        .map((entry) => entry.definition)
+        .toList(growable: false);
   }
 
   /// Discovers every annotated job and registers it on [scheduler].
