@@ -83,7 +83,7 @@ void main() {
       test('attachment is a compile-time constant', () {
         // A `const` context only accepts a `const` field, so this line *is* the
         // assertion: it stops compiling the moment the field becomes mutable
-        // again (tcca16).
+        // again.
         const List<String> dispositions = [TomContentDisposition.attachment];
         expect(dispositions.single, equals('attachment'));
       });
@@ -166,7 +166,7 @@ void main() {
         expect(TomHttpMethod.methods['UNKNOWN'], isNull);
       });
 
-      // tcca16: the map is shared by every consumer of the library, so a single
+      // The map is shared by every consumer of the library, so a single
       // caller writing it would silently reroute method lookup process-wide.
       test('is unmodifiable', () {
         expect(
@@ -1445,9 +1445,9 @@ void main() {
   // ==========================================================================
   group('TomClientRemoteContext', () {
     setUp(() {
-      // Reset current to null before each test. `current` has no setter
-      // (tcca16) — reassigning it would change which remote every subsequent
-      // call addresses — so the reset goes through the declared test seam.
+      // Reset current to null before each test. `current` has no setter —
+      // reassigning it would change which remote every subsequent call
+      // addresses — so the reset goes through the declared test seam.
       TomClientRemoteContext.resetCurrent();
     });
 
@@ -1498,8 +1498,8 @@ void main() {
       });
     });
 
-    // tcca16: `current` used to be a public mutable static. The scoped helper
-    // is the supported way to point calls at a different remote — it is
+    // The scoped helper, not a mutable static, is the supported way to point
+    // calls at a different remote — it is
     // zone-carried, so the caller's own continuation never sees it. That
     // bounds reachability, not lifetime: anything the body *schedules* (a
     // fire-and-forget request, a timer) inherits the zone and still targets
@@ -2619,7 +2619,7 @@ void main() {
   });
 
   // ==========================================================================
-  // TomServerCall request-lifecycle Tests (§29) — driven by an injected mock
+  // TomServerCall request-lifecycle Tests — driven by an injected mock
   // Client so no real network is required.
   // ==========================================================================
   group('TomServerCall lifecycle', () {
@@ -2830,7 +2830,7 @@ void main() {
         expect(() => call.send(TomServerCallLoad()), returnsNormally);
       });
 
-      test('applies a new string body passed to reset (§39)', () {
+      test('applies a new string body passed to reset', () {
         final client = _MockClient((_) async => _streamed('x'));
         final call = TomServerCall(client, specs());
 
@@ -2839,7 +2839,7 @@ void main() {
         expect(call.abortableRequest.body, equals('reset-body'));
       });
 
-      test('applies new body fields passed to reset (§39)', () {
+      test('applies new body fields passed to reset', () {
         final client = _MockClient((_) async => _streamed('x'));
         final call = TomServerCall(client, specs());
 
@@ -2860,7 +2860,7 @@ void main() {
       });
 
       test('read() of an aborted stream throws TomRequestAbortedException '
-          'with the abort message (§40)', () async {
+          'with the abort message', () async {
         final client = _MockClient(
           (_) async => StreamedResponse(
             Stream<List<int>>.error(RequestAbortedException()),
@@ -3028,7 +3028,7 @@ void main() {
   });
 
   // ==========================================================================
-  // TomServerEndpoint.send / createApiServerEndpoint Tests (§29)
+  // TomServerEndpoint.send / createApiServerEndpoint Tests
   // ==========================================================================
   group('TomServerEndpoint.createApiServerEndpoint', () {
     test('throws TomEndpointException on request/response type mismatch', () {
@@ -3362,9 +3362,10 @@ void main() {
 
     test('a refused connection is reported as noResponseError', () async {
       // The most ordinary failure a network client meets. Every HTTP failure
-      // already comes back through the tuple; this one used to be the single
-      // case that threw instead, so a caller who followed the documented
-      // `if (error?.hasError ?? false)` shape crashed on a dropped network.
+      // comes back through the tuple, this one included: were it to throw
+      // instead, a caller following the documented
+      // `if (error?.hasError ?? false)` shape would crash on a dropped
+      // network.
       final (response, error) = await endpointWith(
         (_) async => throw ClientException('Connection refused'),
       ).send(EndpointRequest()..note = 'create');
@@ -3373,7 +3374,7 @@ void main() {
       expect(error!.hasError, isTrue);
       expect(error.internalError, equals(TomServerCallError.noResponseError));
       // The identity of the branch, pinned without leaning on the constant:
-      // noResponseError and serverError share the value 2 (tcopen13), so the
+      // noResponseError and serverError share the value 2, so the
       // code alone cannot distinguish "no response" from "the response failed
       // to parse". No status and no body can only be the former.
       expect(error.statusCode, equals(0));

@@ -17,7 +17,7 @@ String storedText(String text) => jsonEncode(text);
 /// Reads [json] as a [T] the only way the codec allows: through a DTO that
 /// declares the value is a [T].
 ///
-/// The codec has no public entry point taking the text alone (tcinc163), so a
+/// The codec has no public entry point taking the text alone, so a
 /// test that wants to exercise the narrowing has to say what the stored value
 /// claims to be — which is exactly what a caller has to say too.
 T decodeStored<T extends Object>(String json, [String key = 'ui.value']) =>
@@ -219,9 +219,9 @@ void main() {
   // needs their mirrors registered.
   setUpAll(initializeReflection);
 
-  // tcinc160: a zoneless ISO timestamp passed `validateEncoded` and then
-  // decoded to a different instant on every device — the exact failure the
-  // module's dartdoc promises cannot happen.
+  // A zoneless ISO timestamp would pass `validateEncoded` and then decode to
+  // a different instant on every device — the exact failure the module's
+  // dartdoc promises cannot happen.
   group('TomUserPreferenceCodec — a stored DateTime names one instant', () {
     group('validateEncoded', () {
       for (final text in zonedTimestamps) {
@@ -374,8 +374,8 @@ void main() {
     });
   });
 
-  // tcinc161: the scalar branch called `jsonEncode` outside the guard, so a
-  // non-finite double threw `JsonUnsupportedObjectError` straight through a
+  // Calling `jsonEncode` outside the guard in the scalar branch would let a
+  // non-finite double throw `JsonUnsupportedObjectError` straight through a
   // codec whose whole documented contract is that it throws
   // `TomUserPreferenceCodecException`.
   group('TomUserPreferenceCodec — encodeValue reports its own failures', () {
@@ -421,10 +421,10 @@ void main() {
       );
     });
 
-    // tcinc168: there are five ways to reach a write failure and they have
-    // five different remedies, but every one of them used to be told to add
-    // an annotation — advice a Set, a Map keyed by int and a NaN cannot act
-    // on. These tests hold each refusal to its own diagnosis.
+    // There are five ways to reach a write failure and they have five
+    // different remedies. Answering all of them with "add an annotation" is
+    // advice a Set, a Map keyed by int and a NaN cannot act on. These tests
+    // hold each refusal to its own diagnosis.
     group('the refusal names the cause it can actually detect', () {
       test(
         'a non-finite element is the JSON problem it is, not a shape one',
@@ -572,7 +572,7 @@ void main() {
     });
   });
 
-  // tcinc162: a reflected value is rebuilt member by member, so a payload
+  // A reflected value is rebuilt member by member, so a payload
   // belonging to a different class produces a defaulted instance rather than
   // an error. The `valueType` guard in `decode` is what keeps that from being
   // reachable by asking for the wrong class — what is left is a row whose
@@ -710,8 +710,8 @@ void main() {
     });
 
     test('an unreflected class is refused rather than defaulted', () {
-      // Refused for want of a stored identity now (tcinc164) rather than at
-      // the instantiation: a class the registry does not know has no name a
+      // Refused for want of a stored identity rather than at the
+      // instantiation: a class the registry does not know has no name a
       // row could have been written under, so the read is answered before the
       // payload is even looked at.
       expect(
@@ -721,10 +721,11 @@ void main() {
     });
   });
 
-  // tcinc163: the module's headline promise is that a mismatched read fails
-  // rather than coerces, but `decodeValue` was public and took the text alone,
-  // so the promise held only for callers who reached for `decode`. It is
-  // private now; these tests pin the cases that used to slip past it.
+  // The module's headline promise is that a mismatched read fails rather
+  // than coerces. That holds only while no public entry point takes the text
+  // alone: `decodeValue` is private, so every read states the type it
+  // expects. These tests pin the cases a text-only entry point would let
+  // slip past.
   //
   // That the whole file compiles without naming `decodeValue` is the other
   // half of the assertion: there is no longer an entry point to reach for.
@@ -808,12 +809,12 @@ void main() {
     );
   });
 
-  // tcinc164: a non-scalar was stored under `value.runtimeType.toString()` — a
-  // string the compiler owns rather than the program. It leaked private SDK
-  // names, carried the generic instantiation, and is explicitly not preserved
-  // by web minification, so a preference could be written under a name no
-  // reader could ever ask for. The identity now comes from the reflection
-  // registry.
+  // Storing a non-scalar under `value.runtimeType.toString()` would use a
+  // string the compiler owns rather than the program. It leaks private SDK
+  // names, carries the generic instantiation, and is explicitly not
+  // preserved by web minification, so a preference could be written under a
+  // name no reader could ever ask for. The identity comes from the
+  // reflection registry instead.
   //
   // The obfuscation hazard itself cannot be observed from the VM. What these
   // tests pin instead is the thing that implies it: the name is the
@@ -968,15 +969,14 @@ void main() {
     });
   });
 
-  // tcinc165: the dartdoc claimed the two naming methods "agree for every type
-  // either of them can see". They do not, and cannot: `typeNameOf` asks a
-  // *value* what it is, `typeNameForType` asks a *type*. Those are different
-  // questions wherever the value's runtime class is not the type the caller
-  // wrote down.
+  // The two naming methods do not agree for every type either of them can
+  // see, and cannot: `typeNameOf` asks a *value* what it is,
+  // `typeNameForType` asks a *type*. Those are different questions wherever
+  // the value's runtime class is not the type the caller wrote down.
   //
-  // tcinc164 removed the accidental half of the divergence — the generic
-  // instantiation leaking into the stored name. What is left is inherent, so
-  // these tests assert it rather than assert against it.
+  // The divergence is inherent rather than accidental — it is not the
+  // generic instantiation leaking into the stored name — so these tests
+  // assert it rather than assert against it.
   group('TomUserPreferenceCodec — where the two naming methods diverge', () {
     test('they agree when the value is exactly the type asked about', () {
       // The ordinary case, and the reason the divergence below is easy to
@@ -1058,13 +1058,13 @@ void main() {
     });
   });
 
-  // tcinc166: the library dartdoc names "an enum written as its index" as one
-  // of the two conventions the codec exists to settle, and the codec settled
-  // only the other one. What an annotated enum actually did was worse than
-  // being unsupported: `encode` wrote `{}` — the chosen constant simply gone —
-  // `validateEncoded` passed that row, and the read then threw a raw
-  // `ReflectionNoSuchMethodError`, which is not the exception type the module
-  // tells callers to catch.
+  // The library dartdoc names "an enum written as its index" as one of the
+  // two conventions the codec exists to settle, so it has to settle it. An
+  // annotated enum falling into the reflected branch is worse than being
+  // unsupported: `encode` writes `{}` — the chosen constant simply gone —
+  // `validateEncoded` passes that row, and the read then throws a raw
+  // `ReflectionNoSuchMethodError`, which is not the exception type the
+  // module tells callers to catch.
   group('TomUserPreferenceCodec — an enum is stored by name', () {
     test('an enum round-trips', () {
       final stored = TomUserPreferenceCodec.encode(
@@ -1162,10 +1162,10 @@ void main() {
 
     test('an unannotated enum is refused, with advice that can be followed', () {
       // The rule is the one every non-scalar already follows, so there is no
-      // separate thing to learn: annotate it. Before tcinc164 this failed one
-      // call later, from `encodeValue`, with a message telling the caller to
-      // annotate a class — advice an enum could not act on. It now fails while
-      // naming the value, which is the call that cannot answer.
+      // separate thing to learn: annotate it. The refusal comes while naming
+      // the value — the call that cannot answer — rather than one call later
+      // from `encodeValue`, whose message would tell the caller to annotate a
+      // class, advice an enum cannot act on.
       expect(
         () => TomUserPreferenceCodec.typeNameOf(
           UnreflectedThemePreference.dark,
@@ -1239,7 +1239,7 @@ void main() {
     );
   });
 
-  // tcinc167: a list of strings — pinned items, recent files, enabled feature
+  // A list of strings — pinned items, recent files, enabled feature
   // names — is one of the most ordinary preferences there is, and it had no
   // path through the codec: `List` and `Map` are not scalars, so they fell
   // into the reflected branch and `convertToJsonString` could not serialize

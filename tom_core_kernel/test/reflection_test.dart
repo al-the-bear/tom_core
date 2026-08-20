@@ -488,11 +488,11 @@ void main() {
     tz_init.initializeTimeZones();
   });
 
-  // tcinc165: `getValues` and `setValues` each reflected the instance and then
-  // threw that mirror away to look the class up again by `o.runtimeType`. The
-  // second lookup is declaration-keyed, so a generic value was reflected
-  // successfully and then reported as un-reflectable one line later — it could
-  // be neither serialized nor populated, despite being annotated.
+  // `getValues` and `setValues` must not reflect the instance and then throw
+  // that mirror away to look the class up again by `o.runtimeType`. That
+  // second lookup is declaration-keyed, so a generic value reflects
+  // successfully and is then reported as un-reflectable one line later — it
+  // could be neither serialized nor populated, despite being annotated.
   group('a generic reflected class is read and written like any other', () {
     test('getValues reads the members of a generic instance', () {
       final holder = GenericHolder<int>()
@@ -1709,7 +1709,7 @@ void main() {
       expect(holder.teamMembers!['manager']!.name, 'Eve');
     });
 
-    // NOTE: The following tests verify ATOMIC deserialization (bug §48): a null
+    // NOTE: The following tests verify ATOMIC deserialization: a null
     // value destined for a non-nullable collection element MUST surface a
     // TomReflectorException and leave the target field untouched, rather than
     // silently truncating it to whatever was materialized before the failure.
@@ -1773,7 +1773,7 @@ void main() {
       'should preserve pre-populated list content when an update fails atomically',
       () {
         // A pre-populated List<TeamMember> must keep its existing content if the
-        // incoming update cannot be materialized in full (bug §48 atomicity).
+        // incoming update cannot be materialized in full.
         final team = Team()
           ..teamName = 'Original'
           ..members.add(
@@ -1944,7 +1944,7 @@ void main() {
   });
 
   // ==========================================================================
-  // Type Resolution — generic-argument validation (bug §49a)
+  // Type Resolution — generic-argument validation
   // ==========================================================================
   group('tomReflectionInfo type resolution validation', () {
     // Each case asserts the *key*, not merely the exception type. The two
@@ -2338,7 +2338,7 @@ void main() {
   });
 
   // ==========================================================================
-  // Round-trip serialization (tests §33a)
+  // Round-trip serialization
   // ==========================================================================
   group('tomReflectionInfo round-trip serialization', () {
     test(
@@ -2859,9 +2859,10 @@ void main() {
       });
 
       test('a throwing hook does not silently degrade to a field walk', () {
-        // The quiet consequence: `setValues` used to return the object having
-        // written the fields itself, so the caller got a plausible-looking
-        // result that ignored the custom representation entirely.
+        // The quiet consequence a silent fallback would have: `setValues`
+        // returns the object having written the fields itself, so the caller
+        // gets a plausible-looking result that ignored the custom
+        // representation entirely. Raising is what makes that visible.
         final holder = ThrowingJsonHookHolder();
 
         expect(
@@ -3017,8 +3018,8 @@ void main() {
     // Each class here carries two hooks that would produce different results,
     // so the assertion is not "a hook ran" but "*this* hook ran". Without
     // these, the order is an accident of how the `if`s happen to be stacked,
-    // and reordering them — which the central-dispatch rework in tcinc1117
-    // sets out to do — would be invisible to the suite.
+    // and reordering them — which the planned central-dispatch rework sets
+    // out to do — would be invisible to the suite.
 
     ClassMirror mirrorOf(Type t) => tomReflector.reflectType(t) as ClassMirror;
 
@@ -3065,8 +3066,9 @@ void main() {
     test('inbound: reaching setValues directly runs jsonDecode instead', () {
       // Same class, same payload, different entry point, different hook. That
       // the answer depends on which method the caller happened to reach for is
-      // the asymmetry tcinc1117 exists to remove; pinning it here means the
-      // removal shows up as a failing test rather than as a silent change.
+      // the asymmetry the planned central-dispatch rework removes; pinning it
+      // here means the removal shows up as a failing test rather than as a
+      // silent change.
       final holder = tomReflectionInfo.setValues(FromJsonAndDecodeHolder(), {
         'source': 'payload',
       });
@@ -3101,8 +3103,9 @@ void main() {
     // practice, and also why it is worth pinning: the compensation is what
     // hides it.
     //
-    // tcinc1117 makes `getValues` honour both. These two tests are written to
-    // fail when it does — deliberately. A change that big should not be able
+    // The planned central-dispatch rework makes `getValues` honour both.
+    // These two tests are written to fail when it lands — deliberately. A
+    // change that big should not be able
     // to land while the suite stays green, and the failure is the notification
     // that the expectations below, and the doc they mirror, are now wrong.
 
@@ -3133,14 +3136,14 @@ void main() {
   });
 
   group('there is one reflector, and unreflected input is reported', () {
-    // The constructor used to take a reflector and store it in a public
+    // The constructor takes no reflector, and must not: `createInstance`,
+    // `setValues` and `getValues` read the global `tomReflector`, and a
+    // per-instance choice could never be honoured anyway — the generator emits
+    // no data for an indirect subclass of `Reflection`, and
+    // `const TomReflector()` is canonicalised to the global. A public
     // `final reflector` field documented as "used for all reflection
-    // operations", while `createInstance`, `setValues` and `getValues` read
-    // the global `tomReflector` regardless. The choice could never have been
-    // honoured — the generator emits no data for an indirect subclass of
-    // `Reflection`, and `const TomReflector()` is canonicalised to the global
-    // — so the parameter was removed rather than obeyed. What remains
-    // testable is the consequence the split was hiding: what a caller sees
+    // operations" would therefore promise a choice that does not exist. What
+    // is testable is the consequence such a promise hides: what a caller sees
     // when the reflector does not know the type.
 
     test('a converter of your own reflects against the same registry', () {
@@ -3218,7 +3221,7 @@ void main() {
       // everything, so an unreflectable class and a class with no usable
       // default constructor arrive under the same key, and the prose doc's
       // Error Handling example names it. Asserting only the exception type
-      // would let that name drift — the failure mode tcinc188 found.
+      // would let that name drift.
       expect(
         () => tomReflectionInfo.createInstance<NotReflectedHolder>(),
         throwsA(
@@ -4042,9 +4045,8 @@ void main() {
     // was declared as. The two paths then disagree about what to do when the
     // field cannot take that shape — the map path raises, the list path drops
     // the value and reports success. This group states that difference rather
-    // than arguing with it. The asymmetry is a known open end (tcopen55 /
-    // tcopen56); until it is settled, an untested silent path is one that can
-    // change by accident.
+    // than arguing with it: the asymmetry is a known open end, and until it is
+    // settled, an untested silent path is one that can change by accident.
 
     test('a List handed to a field that is not a list is silently dropped', () {
       // Four different non-list shapes, one call each, so a future change that

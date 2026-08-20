@@ -56,8 +56,8 @@ Every entry point insists the target class carries `@tomReflector`. Passing a
 `String`, an `int`, a `DateTime`, a `List` or a plain `Map` raises
 `reflector.type.not_annotated` rather than doing nothing: those types have
 mirror data only because they appear as *field types* of annotated classes, so
-they reflect successfully and then present no settable fields — `getValues`
-used to return `{}` and `convertToJsonString` the string `"{}"`, a
+they reflect successfully and then present no settable fields — without the check
+`getValues` would return `{}` and `convertToJsonString` the string `"{}"`, a
 valid-looking payload with every field dropped. A class with no generated data
 at all still raises `reflector.reflect.not_reflectable`; both are
 `TomReflectorException`, so one `catch` covers either.
@@ -78,11 +78,11 @@ optional hooks: a `fromJson` constructor (used by `createInstanceFromJson`), a
 `getValues`). Each is looked up before it is called, so **declaring no hook
 still falls back silently, while a hook that exists and throws propagates** as
 `reflection.hook.failed`, naming the hook and the class and keeping the
-original error as `rootException`. The lookups used to be the *call itself*
-inside an unqualified `catch`, which made the two cases one: a bug in a
-caller's own `fromJson` was swallowed and the object rebuilt by the fallback
-path, and a throwing `jsonDecode` or `jsonEncode` produced no error at all —
-the custom representation was simply not used. A hook that returns something
+original error as `rootException`. Making the lookup the *call itself* inside
+an unqualified `catch` would fuse the two cases: a bug in a caller's own
+`fromJson` would be swallowed and the object rebuilt by the fallback path, and
+a throwing `jsonDecode` or `jsonEncode` would produce no error at all — the
+custom representation simply not used. A hook that returns something
 unusable — a `jsonEncode` that is not a `Map<String, Object?>` — raises
 `reflection.hook.invalid_return` rather than being ignored.
 

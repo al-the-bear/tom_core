@@ -272,12 +272,12 @@ bool _isFormatterFrame(Frame frame) => _formatterMembers.contains(frame.member);
 /// A list of formatted stack frame strings, newest first. Empty when the trace
 /// carries no frames — see [StackTrace.empty] below.
 List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
-  // The parameter is `StackTrace?`, not `Object?`. The wider type used to be
-  // narrowed here by `s as StackTrace?`, which accepted anything at the call
-  // site and then threw a `TypeError` at this line — while formatting a trace,
-  // i.e. while reporting some *other* failure, and in `TomException`'s case
-  // before the exception being reported even existed. The narrow parameter
-  // rejects the same values, but at compile time, where the mistake is free.
+  // The parameter is `StackTrace?`, not `Object?`. Widening it and narrowing
+  // here with `s as StackTrace?` would accept anything at the call site and
+  // then throw a `TypeError` at this line — while formatting a trace, i.e.
+  // while reporting some *other* failure, and in `TomException`'s case before
+  // the exception being reported even existed. The narrow parameter rejects
+  // the same values at compile time, where the mistake is free.
   final stackTrace = s ?? StackTrace.current;
   // A Chain holds one trace *segment* per `await` boundary, newest first.
   // Flattening all of them is what makes an asynchronous trace complete: the

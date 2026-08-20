@@ -158,8 +158,8 @@ void main() {
       });
 
       test('inner context wins on colliding key (precedence)', () {
-        // Bug §3b regression: when a key exists in both the parent (outer) and
-        // the child (inner) context, the inner — the one being run — must win.
+        // When a key exists in both the parent (outer) and the child (inner)
+        // context, the inner — the one being run — must win.
         final outerContext = TomExecutionContext({
           'shared': TomContextEntry<String>(() => 'outerValue'),
         });
@@ -180,9 +180,9 @@ void main() {
       });
 
       test('does not mutate source context map (no aliasing)', () {
-        // Bug §3a regression: running the inner context inside a parent zone
-        // must not pollute the inner context's own contextMap with the
-        // parent's entries — the source object must be left unchanged.
+        // Running the inner context inside a parent zone must not pollute the
+        // inner context's own contextMap with the parent's entries — the
+        // source object must be left unchanged.
         final outerContext = TomExecutionContext({
           'outer': TomContextEntry<String>(() => 'outerValue'),
         });
@@ -253,7 +253,7 @@ void main() {
       });
 
       test('inner context wins on colliding key (precedence)', () async {
-        // Bug §3b regression for the async path.
+        // 
         final outerContext = TomExecutionContext({
           'shared': TomContextEntry<String>(() => 'outerValue'),
         });
@@ -275,7 +275,7 @@ void main() {
       });
 
       test('does not mutate source context map (no aliasing)', () async {
-        // Bug §3a regression for the async path.
+        // 
         final outerContext = TomExecutionContext({
           'outer': TomContextEntry<String>(() => 'outerValue'),
         });
@@ -294,9 +294,10 @@ void main() {
 
     // Both run methods are a single runZoned over the same merged entries, so
     // they install the same zone; the async variant differs only in its
-    // signature. The docs used to claim the synchronous form "might not
-    // propagate correctly" across async work, which would make the choice
-    // between them a correctness question rather than a typing one.
+    // signature. Choosing between them is therefore a typing question, never a
+    // correctness one — which is worth pinning, because "the synchronous form
+    // might not propagate correctly across async work" is an easy caveat to
+    // write and a wrong one.
     group('async propagation is identical in both run variants', () {
       test(
         'the synchronous variant keeps the context across an await',

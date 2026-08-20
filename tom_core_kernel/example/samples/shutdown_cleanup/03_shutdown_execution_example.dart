@@ -12,7 +12,7 @@
 ///   but a manual `performShutdown()` always runs
 /// - [TomShutdownCleanup.silent]: suppresses status/diagnostic output
 /// - [TomShutdownCleanup.cancelAll] / [TomShutdownCleanup.dispose]: tear the
-///   signal watchers down so a short-lived instance stops leaking (bug §53)
+///   signal watchers down so a short-lived instance stops leaking
 /// - [TomCloseAdaptor]: adapts an object with a `close()`/`dispose()`/custom
 ///   teardown method (resolved via reflection) into a [TomClosable]
 library;

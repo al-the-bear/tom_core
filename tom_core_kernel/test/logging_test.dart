@@ -1017,11 +1017,10 @@ void main() {
       });
 
       // Two independent things can refuse a record: the message can be
-      // undecodable, or the sink can be broken. These used to be induced
-      // together in one test, which could only ever observe the first —
-      // `DateTime.parse` throws before the output is called — and could not
-      // tell which it had observed anyway, because the cause was discarded.
-      // Each cause now gets its own test, and each asserts its own cause.
+      // undecodable, or the sink can be broken. Inducing both in one test
+      // could only ever observe the first — `DateTime.parse` throws before the
+      // output is called — so each cause gets its own test, and each asserts
+      // the cause it induced rather than merely that something failed.
       test('reports a malformed timestamp as the cause', () {
         final server = TomRemoteLogServer();
         final message = TomRemoteLogMessage();
@@ -1102,7 +1101,7 @@ void main() {
         expect(mockOutput.lastMessage, contains('invalid-timestamp'));
       });
 
-      // Security §3 (CWE-117), continued from the test below: the cause folded
+      // CWE-117, continued from the test below: the cause folded
       // into the result is itself derived from client-controlled input.
       // `FormatException.toString()` embeds a newline *and* the offending
       // string verbatim, so echoing the raw error into the server's log stream
@@ -1124,7 +1123,7 @@ void main() {
         expect(result.errorMessage, contains('FORGED'));
       });
 
-      // Security §3 (CWE-117): a remote client controls every field of the
+      // CWE-117: a remote client controls every field of the
       // message, which this server reconstructs into its own local log stream.
       // Control characters in those fields let a client forge extra log lines
       // (CR/LF spoofing) or inject terminal escape sequences (ESC) into a
@@ -1169,7 +1168,7 @@ void main() {
       });
     });
 
-    // Security §3 (CWE-117), length half: sanitizing bounds each untrusted
+    // CWE-117, length half: sanitizing bounds each untrusted
     // field as well as stripping it. The cap is stated in UTF-16 code units —
     // the unit `String.length` counts and the unit that decides what the field
     // costs the sink — and truncation says so in the record, because a field

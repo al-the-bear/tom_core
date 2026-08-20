@@ -1058,11 +1058,11 @@ class TomServerEndpoint<T extends Object, R extends Object> {
       // the exception past. The original stays reachable through [exception]
       // for a caller that needs to know which way the connection failed.
       //
-      // The test for this used to sit *after* the read, asking whether
-      // `serverCall.serverResponse` was null — but the read dereferences that
-      // same field non-null on its way to producing a body, so the condition
-      // could not hold where it was asked and the failure it named surfaced as
-      // a raw throw instead of as [noResponseError].
+      // The test has to be here, around the call. Placing it *after* the read
+      // and asking whether `serverCall.serverResponse` is null cannot work:
+      // the read dereferences that same field non-null on its way to producing
+      // a body, so the condition can never hold where it is asked and the
+      // failure it names surfaces as a raw throw instead of [noResponseError].
       return (
         response,
         TomServerCallError(

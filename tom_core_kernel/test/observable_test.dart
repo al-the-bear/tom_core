@@ -106,7 +106,7 @@ class TestUserProfile extends TomClass {
 
 /// A [TomString] whose [get] always throws, used to verify that
 /// [TomClass.getValues] surfaces a serialization failure instead of silently
-/// swallowing it into partial data (bug §47 / tests §32b).
+/// swallowing it into partial data.
 ///
 /// The field that holds it is statically typed [TomString] in
 /// [TestThrowingMember] so the reflection generator never references this
@@ -880,9 +880,10 @@ void main() {
     });
 
     test('toJson unwraps TomList elements so jsonEncode round-trips', () {
-      // Before the fix, a TomList member serialized to a List of raw TomObject
-      // instances (TomList.get() returns the backing list without unwrapping),
-      // so jsonEncode(toJson()) threw JsonUnsupportedObjectError.
+      // `TomList.get()` returns the backing list without unwrapping, so a
+      // TomList member that serialized through it would produce a List of raw
+      // TomObject instances and jsonEncode(toJson()) would throw
+      // JsonUnsupportedObjectError.
       final item = TestTaggedItem();
       item.title | "release";
       item.tags.append(TomString("urgent")).append(TomString("backend"));
@@ -2191,7 +2192,7 @@ void main() {
         // The range types are TomClass subclasses and declare no toString of
         // their own, so they must render as the member map. Asserted
         // structurally rather than against a frozen literal: the member *values*
-        // of an empty range are the subject of tcincb51 and will change, but the
+        // of an empty range are an open question and may change, but the
         // inherited *form* is what this test is for.
         final range = TomDateRange();
         expect(range.toString(), equals(range.getValues().toString()));
@@ -2363,10 +2364,10 @@ void main() {
     });
   });
 
-  // tests §32a — composite/single mutations must each notify observers exactly
-  // once, never leaking half-applied intermediate state through extra
-  // notifications. removeRange/insertAll/setAll/insert are regression guards
-  // (already single-notify); replaceRange/retainWhere pin the §40 refactor.
+  // Composite and single mutations must each notify observers exactly once,
+  // never leaking half-applied intermediate state through extra
+  // notifications. removeRange/insertAll/setAll/insert guard the ones that
+  // already single-notify; replaceRange/retainWhere pin the rest.
   group('TomList mutation single-notification', () {
     TomList<TomInt> seeded(List<int> values) {
       final list = TomList<TomInt>();
@@ -2474,8 +2475,8 @@ void main() {
     });
   });
 
-  // tests §41 — strongly typed Iterable overrides must accept the natural
-  // element-typed callbacks (no unchecked casts), pinning the §41 refactor.
+  // Strongly typed Iterable overrides must accept the natural element-typed
+  // callbacks, with no unchecked casts.
   group('TomList typed Iterable overrides', () {
     TomList<TomInt> seeded(List<int> values) {
       final list = TomList<TomInt>();
@@ -2516,9 +2517,8 @@ void main() {
     });
   });
 
-  // tests §32b — getValues/toJson must propagate a member serialization
-  // failure as a TomObservableException instead of swallowing it into silent
-  // partial data (bug §47).
+  // getValues/toJson must propagate a member serialization failure as a
+  // TomObservableException instead of swallowing it into silent partial data.
   group('TomClass.getValues serialization failure', () {
     test('getValues throws TomObservableException when a member throws', () {
       final subject = TestThrowingMember();
@@ -3850,7 +3850,8 @@ void main() {
       // that an element type which merely *accepts* a double is not a reason
       // to produce one. It cannot be tested here: such a member cannot be
       // deserialized at all, because reflection resolves no ClassMirror for
-      // `TomObject<dynamic>`. That is tcincb40, which owns those two tests.
+      // `TomObject<dynamic>`. Those two tests belong with whatever closes that
+      // resolution gap, not here.
 
       test('a fractional number nested in a list survives', () {
         item.setValues({
@@ -3886,7 +3887,8 @@ void main() {
       // widening does fire for it, but the element cannot be installed: no
       // nullable leaf type can, because `_createFrom` only ever builds the
       // non-nullable ones (a `TomList<TomNString>` rejects a plain string the
-      // same way). That is tcincb41, which owns that test.
+      // same way). That test belongs with whatever teaches `_createFrom` the
+      // nullable leaf types, not here.
     });
 
     group('the typed path (a scalar member)', () {
@@ -3953,9 +3955,9 @@ void main() {
       test('a price survives a real JSON encode/decode round trip', () {
         // The map member is left empty on purpose: `_serializeMember` has no
         // TomMap branch, so a populated map member fails at `jsonEncode`
-        // before any of this reaches the number handling. That is tcopen44,
-        // a separate defect that afflicts every value type equally — the
-        // map's number handling is covered above through `setValues`.
+        // before any of this reaches the number handling. That is a separate
+        // defect, and it afflicts every value type equally — the map's number
+        // handling is covered above through `setValues`.
         item.price | 19.99;
         item.discount | 1.5;
         item.rates.addAll([TomDouble(0.5), TomDouble(1.25)]);
@@ -5055,9 +5057,9 @@ void main() {
         ),
       );
 
-      // The point of the todo that produced this test: before the fix the
-      // write succeeded, and *every* later reader of the sentinel — in
-      // unrelated objects, anywhere in the process — saw 'clobbered'.
+      // The refusal must also leave the sentinel untouched. It is process-wide,
+      // so a write that got through would be seen as 'clobbered' by *every*
+      // later reader — in unrelated objects, anywhere in the process.
       expect(~tomNull, equals('tomNull'));
     });
 

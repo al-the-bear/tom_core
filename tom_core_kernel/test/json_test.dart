@@ -381,12 +381,12 @@ void main() {
       });
 
       test(
-        'should not throw when override array is shorter than base (§44)',
+        'should not throw when override array is shorter than base',
         () {
           // The base array has more map elements than the override — a normal
-          // "override only the first N" config-layering case. Before the fix the
-          // merge loop indexed overrideMapArray[i] past its end and threw
-          // RangeError.
+          // "override only the first N" config-layering case. A merge loop
+          // driven by the base's length would index overrideMapArray[i] past
+          // its end and throw RangeError.
           final base = <String, dynamic>{
             'servers': [
               <String, Object>{'host': 'a', 'port': 1},
@@ -598,7 +598,7 @@ void main() {
       );
     });
 
-    group('decoded JSON inputs (§45)', () {
+    group('decoded JSON inputs', () {
       test('deep-merges nested maps coming from jsonDecode', () {
         final base =
             jsonDecode('{"db":{"host":"localhost","port":5432}}')
@@ -610,9 +610,9 @@ void main() {
 
         final db = base['db'] as Map;
         expect(db['host'], equals('prod')); // overridden
-        // Before the fix the reified-type guard rejected the decoded
-        // Map<String, dynamic>, so the nested base map (and 'port') was
-        // discarded by the wholesale-replace fallback.
+        // A reified-type guard would reject the decoded Map<String, dynamic>,
+        // and the nested base map — 'port' with it — would be discarded by the
+        // wholesale-replace fallback.
         expect(db['port'], equals(5432));
       });
     });
@@ -938,7 +938,7 @@ void main() {
       );
     });
 
-    test('descends into maps and lists coming from jsonDecode (§45)', () {
+    test('descends into maps and lists coming from jsonDecode', () {
       final tree =
           jsonDecode(r'{"a":{"b":"${X}"},"list":["${X}",{"c":"${X}"}]}')
               as Map<String, dynamic>;
@@ -949,18 +949,18 @@ void main() {
         (s) => s.replaceAll(r'${X}', 'Y'),
       );
 
-      // Before the fix the reified-type guards rejected the decoded
-      // Map<String, dynamic> / List<dynamic>, so traversal never descended.
+      // Reified-type guards would reject the decoded Map<String, dynamic> /
+      // List<dynamic>, and traversal would never descend.
       expect((tree['a'] as Map)['b'], equals('Y'));
       expect((tree['list'] as List)[0], equals('Y'));
       expect(((tree['list'] as List)[1] as Map)['c'], equals('Y'));
     });
 
-    group('nested lists (§81)', () {
+    group('nested lists', () {
       // A list inside a list is ordinary JSON — a matrix, a list of coordinate
-      // pairs, a list of tag groups. The §45 per-element dispatch handled a
-      // map and a string element and silently ignored every other kind,
-      // including a List, so only the outermost array was ever reached.
+      // pairs, a list of tag groups. Per-element dispatch must recurse into a
+      // List element as well as handling a map and a string one — otherwise
+      // only the outermost array is ever reached.
 
       test('descends into a list nested inside a list', () {
         final tree = <String, dynamic>{
@@ -1133,7 +1133,7 @@ void main() {
       expect(tree['urls'], equals(['host/1', 'host/2']));
     });
 
-    test('substitutes inside decoded JSON config (§45)', () {
+    test('substitutes inside decoded JSON config', () {
       final tree =
           jsonDecode(r'{"server":{"url":"${BASE}/api"},"tags":["${BASE}/x"]}')
               as Map<String, dynamic>;
@@ -1235,7 +1235,7 @@ void main() {
       expect(foundKeys, equals(['string@key']));
     });
 
-    group('the creator can insert (§80)', () {
+    group('the creator can insert', () {
       test('an insert into the location map succeeds', () {
         final tree = <String, dynamic>{'ref@pattern': 'targetValue'};
 
@@ -1412,7 +1412,7 @@ void main() {
       expect(result['y'], equals(2));
     });
 
-    group('present-but-null values (§79)', () {
+    group('present-but-null values', () {
       test('a terminal null is wrapped like any other non-map value', () {
         // null is a non-map terminal, so it takes the documented wrapping rule
         // rather than a special case of its own.
@@ -1535,7 +1535,7 @@ void main() {
       expect(result, equals('deep'));
     });
 
-    group('the walk always terminates inside itself (§85)', () {
+    group('the walk always terminates inside itself', () {
       // The function used to end with a trailing `throw Exception("...
       // IllegalState detected. This is an anomaly.")` guarding a fall-through
       // that cannot happen. These pin the two shapes where the interior loop
@@ -1572,7 +1572,7 @@ void main() {
       );
     });
 
-    group('present-but-null values (§79)', () {
+    group('present-but-null values', () {
       // A deliberate null is a value, not an absence — the position
       // makeCleanJsonMap already takes. The path reader used to collapse the
       // distinction the sanitiser exists to protect, in the same file.
@@ -1754,7 +1754,7 @@ void main() {
       expect(callCount, equals(0));
     });
 
-    group('a key that is not exactly three parts (§83)', () {
+    group('a key that is not exactly three parts', () {
       test('rejects a four-part key instead of using its first three', () {
         final tree = <String, dynamic>{'a@b@c@d': 'replace'};
 
@@ -1847,7 +1847,7 @@ void main() {
       });
     });
 
-    group('the "@" directive without the key (§82)', () {
+    group('the "@" directive without the key', () {
       test('reports a missing key as an Exception, not a TypeError', () {
         final tree = <String, dynamic>{'wanted@some.path@prod': '@'};
 
@@ -1935,7 +1935,7 @@ void main() {
       });
     });
 
-    group('a failing provider (§86)', () {
+    group('a failing provider', () {
       // processTree used to catch everything the provider threw and re-throw a
       // bare `Exception` whose message interpolated the original object and its
       // stack trace. That destroyed the type the caller would have caught on,
@@ -2459,13 +2459,13 @@ void main() {
   });
 
   // ===========================================================================
-  // Cross-function contract: string-keyed maps of any reified type (§84)
+  // Cross-function contract: string-keyed maps of any reified type
   // ===========================================================================
 
-  group('a Map<dynamic, dynamic> child (§84)', () {
-    // The same defect class as §45, one level down. §45 fixed the *list*
-    // guards and the top-level signature; the nested-map guards still tested
-    // `is Map<String, dynamic>`, which a Map<dynamic, dynamic> fails. Such a
+  group('a Map<dynamic, dynamic> child', () {
+    // A nested-map guard testing `is Map<String, dynamic>` is a reified test,
+    // which a Map<dynamic, dynamic> fails — the same trap as a typed guard on
+    // a list, one level down. Such a
     // map never comes out of jsonDecode, but TomYaml.loadYamlFile, hand-built
     // maps and anything round-tripped through an untyped container all produce
     // one — and the module already accepts a bare Map in makeCleanJsonMap, so

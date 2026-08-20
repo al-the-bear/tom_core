@@ -814,7 +814,7 @@ void main() {
       });
 
       test(
-        'should preserve the user\'s own resource keys (bug §10 regression)',
+        'should preserve the user\'s own resource keys',
         () {
           // The user directly holds a resource key; resolution must keep it
           // rather than dropping it in favour of entitlement names.
@@ -868,7 +868,7 @@ void main() {
       );
 
       test(
-        'resolved entitlements are entitlements, not a copy of groups (bug §11)',
+        'resolved entitlements are entitlements, not a copy of groups',
         () {
           // Distinct group and entitlement names so a groups/entitlements mixup
           // is detectable.
@@ -2127,7 +2127,7 @@ void main() {
   });
 
   // ===========================================================================
-  // TomBearerAuthentication Tests (tests §7)
+  // TomBearerAuthentication Tests
   // ===========================================================================
 
   group('TomBearerAuthentication', () {
@@ -2259,7 +2259,7 @@ void main() {
       });
     });
 
-    group('convertTokenPayloadToPrincipal malformed tokens (bug §14)', () {
+    group('convertTokenPayloadToPrincipal malformed tokens', () {
       test('throws a clean StateError when the payload is null', () {
         final token = _FakeClientJwtToken(payload: null);
 

@@ -1,13 +1,13 @@
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-/// tccc3 — initialization must not report routine setup as a failure.
+/// Initialization must not report routine setup as a failure.
 ///
 /// `package:timezone`'s bundled IANA database has no location keyed exactly
 /// `UTC` — it ships `Etc/UTC` — while [TomTimezone.utc] is a documented
 /// singleton and `fromName('UTC')` is expected to resolve. `TomTimezone`
-/// therefore registers the singleton itself, which is correct and intended;
-/// what was wrong was announcing it with `tomLog.error`. That branch is not
+/// therefore registers the singleton itself, which is correct and intended —
+/// but announcing it with `tomLog.error` would not be. That branch is not
 /// intermittent: it fires on every run, on every platform, forever, for a
 /// state the code fully anticipates and repairs. An ERROR line that is always
 /// there teaches a team to filter out ERROR.

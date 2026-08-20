@@ -108,9 +108,9 @@ void main() {
         expect(TomScope.buildScopePath(leaf), equals('app.checkout.orderForm'));
       });
 
-      // Bug §50 / tests §34a: only the actual root sentinel (defaultScope) is
-      // elided from the path. A legitimate domain scope whose local id happens
-      // to be 'default' is NOT the root sentinel and must appear in its path.
+      // Only the actual root sentinel (defaultScope) is elided from the path.
+      // A legitimate domain scope whose local id happens to be 'default' is
+      // NOT the root sentinel and must appear in its path.
       test('keeps a non-root scope named "default" in the path', () {
         final root = TomScopeBase(scopeId: 'app', parentScope: null);
         final named = TomScopeBase(scopeId: 'default', parentScope: root);
@@ -191,10 +191,9 @@ void main() {
     });
 
     // initScope need not run from a constructor — it is the single write-once
-    // entry point, so a scope may also be identified after construction.
-    // (The `id` / `parent` setters this test used to exercise were removed in
-    // tcca16: they wrote the same `late final` fields and only served to make
-    // a supposedly write-once identity look assignable.)
+    // entry point, so a scope may also be identified after construction. There
+    // is no setter for `id` or `parent`: both are `late final`, and a
+    // write-once identity must not offer an API that looks assignable.
     test('initScope assigns the identity after construction', () {
       final root = _MixinScope(scopeId: 'root');
       final lazy = _LazyMixinScope()
@@ -204,8 +203,8 @@ void main() {
       expect(lazy.getScopePath(), equals('root.lazy'));
     });
 
-    // tcca16: `defaultScope` is the root of every scope path, so a reassignment
-    // would change resource resolution for the whole process. It is `final`;
+    // `defaultScope` is the root of every scope path, so a reassignment would
+    // change resource resolution for the whole process. It is `final`;
     // `withScope` / `runInScope` are the supported ways to change the current
     // scope, and they change it only for that body and the callbacks it
     // schedules — never for the caller. (What they do *not* bound is the
@@ -224,11 +223,10 @@ void main() {
   // Zone propagation — what a scope's lifetime actually is
   // ===========================================================================
   //
-  // A zone bounds *reachability*, not *lifetime*. These tests pin the two
-  // halves of that, because the module's documentation used to claim a scope
-  // "cannot outlive its body" — which is false the moment the body schedules
-  // anything, and which is the sentence a reader leans on when deciding
-  // whether a scope needs tearing down.
+  // A zone bounds *reachability*, not *lifetime*. These tests pin both halves
+  // of that, because "a scope cannot outlive its body" is the sentence a
+  // reader reaches for when deciding whether a scope needs tearing down — and
+  // it is false the moment the body schedules anything.
   //
   // The distinction between the two groups below is also the entire reason
   // InScopeBuilder exists: async-scheduled callbacks inherit the zone for

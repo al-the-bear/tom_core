@@ -152,9 +152,9 @@ alike.
 This matters because the reified type is not under the caller's control as
 often as it looks. `jsonDecode` always produces `Map<String, dynamic>`, but
 `TomYaml.loadYamlFile`, a hand-written map literal and anything round-tripped
-through an untyped container do not — and those maps used to be walked past
-without an error or a log line, leaving their contents untransformed (bug §84,
-the same defect class as §45 one level down).
+through an untyped container do not. A reified `is Map<String, dynamic>` test
+would walk those maps past without an error or a log line, leaving their
+contents untransformed — which is why the test is on the keys instead.
 
 The one map that is *not* a subtree is one with a non-`String` key. It cannot
 be a JSON object, and every callback in this module takes a `String key`, so

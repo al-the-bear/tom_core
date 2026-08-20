@@ -17,7 +17,8 @@
 /// The reified type is not under the caller's control as often as it looks —
 /// `jsonDecode` always yields `Map<String, dynamic>`, but `TomYaml`, a
 /// hand-written literal and anything round-tripped through an untyped container
-/// do not, and such maps used to be walked past silently (bug §84).
+/// do not. Testing for a reified `Map<String, dynamic>` would skip all of
+/// those silently, so the test here is on the keys.
 ///
 /// A map with a non-`String` key is *not* a subtree: it cannot be a JSON object
 /// and every callback here takes a `String key`, so it is skipped whole rather
@@ -48,14 +49,13 @@ import 'json_serializable.dart';
 /// A `Map<String, dynamic>` view of [value], or `null` if it is not a map this
 /// module can walk.
 ///
-/// The tree functions used to test children with `is Map<String, dynamic>`
-/// directly. That is a *reified* test: a `Map<dynamic, dynamic>` fails it and
-/// was walked past without an error or a log line, so its contents were
-/// silently left untransformed (bug §84 — the same defect as §45, which fixed
-/// the list guards and the top-level signature but left the nested-map ones).
-/// `jsonDecode` never produces such a map, so the common path was safe, but
-/// `TomYaml.loadYamlFile`, hand-built maps and anything round-tripped through
-/// an untyped container all do.
+/// Testing a child with `is Map<String, dynamic>` directly would be a
+/// *reified* test: a `Map<dynamic, dynamic>` fails it, and would be walked
+/// past without an error or a log line, leaving its contents silently
+/// untransformed. `jsonDecode` never produces such a map, so the common path
+/// would look correct, but `TomYaml.loadYamlFile`, hand-built maps and
+/// anything round-tripped through an untyped container all do — which is why
+/// the check is on the keys rather than the reified type.
 ///
 /// The returned view **writes through** to [value], which is what lets the
 /// in-place traversals keep their contract: a caller holding the original map
@@ -111,8 +111,8 @@ List<dynamic> _mergeListsOneSided(
   final List<dynamic> result = List<dynamic>.of(base);
 
   // Only the overlapping prefix has two elements to combine. Iterating to
-  // base.length unconditionally caused a RangeError when the override array
-  // was shorter (bug §44).
+  // base.length unconditionally would be a RangeError whenever the override
+  // array is shorter.
   final int overlap = base.length < override.length
       ? base.length
       : override.length;
@@ -376,14 +376,14 @@ void traverseAndProcess(
 ///
 /// Dispatch is per element rather than on the list's own type, so mixed lists
 /// from `jsonDecode` — `List<dynamic>` holding maps, strings and further lists
-/// side by side — are handled. The typed checks this replaced
-/// (`List<Map<String, Object>>` / `List<String>`) never matched a decoded JSON
-/// list at all, silently skipping its contents (bug §45).
+/// side by side — are handled. A typed check on the list itself
+/// (`List<Map<String, Object>>` / `List<String>`) would never match a decoded
+/// JSON list at all, and would skip its contents silently.
 ///
 /// A list element recurses through this same function, so a list nested inside
-/// a list is reached at any depth. Handling only the outermost array left every
-/// ordinary nested shape — a matrix, a list of coordinate pairs, a list of tag
-/// groups — untransformed and unreported (bug §81).
+/// a list is reached at any depth. Handling only the outermost array would
+/// leave every ordinary nested shape — a matrix, a list of coordinate pairs, a
+/// list of tag groups — untransformed and unreported.
 void _processList(
   List<dynamic> list,
   bool Function(String) test,
@@ -640,12 +640,11 @@ Object? _readSegment(
 /// avoid modifying the tree while iterating.
 ///
 /// Every field is `final` and non-nullable, so an instance that exists is
-/// always applicable. The class used to carry nullable fields that [apply]
-/// cleared on its way out, which created a half-applied state that could only
-/// be described by a defensive throw reading "Modification already applied or
-/// tree was null" — a message that could not say which of the two had
-/// happened, guarding a state the module had no path to (bug §85). A
-/// non-directive key is now represented by returning `null` from [_modifyTree]
+/// always applicable. Nullable fields that [apply] cleared on its way out
+/// would create a half-applied state describable only by a defensive throw —
+/// one that could not say whether the modification had already been applied or
+/// the tree was null, guarding a state the module has no path to. A
+/// non-directive key is represented by returning `null` from [_modifyTree]
 /// rather than by a mutable singleton standing in for "nothing to do".
 class _TreeModification {
   /// Creates a modification with the specified parameters.
@@ -767,11 +766,10 @@ _TreeModification? _modifyTree(
   // `value` for context, and neither is information the caller lacks: `name` is
   // the concatenation of the three arguments the provider was just called with,
   // and `value` is the directive, which the provider never sees and which plays
-  // no part in the call that failed. So the wrapper that used to stand here
-  // bought nothing and cost two things — the provider's exception type, which
-  // is what a caller would catch on, and its stack trace, which it flattened
-  // into characters inside a message. Letting the failure through delivers both
-  // intact (bug §86).
+  // no part in the call that failed. Such a wrapper would buy nothing and cost
+  // two things — the provider's exception type, which is what a caller would
+  // catch on, and its stack trace, which it would flatten into characters
+  // inside a message. Letting the failure through delivers both intact.
   final Map<String, dynamic> insertTree = provider(keyName, path, profileName);
 
   // Why here and not in apply(): processTree collects every modification before

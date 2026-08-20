@@ -653,12 +653,12 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// therefore lost.
   ///
   /// The record cannot be saved — the fallback is the last sink in the chain,
-  /// which is the whole reason its failure used to be discarded. But "must not
-  /// throw" and "must not tell anyone" are different requirements, and only the
-  /// first one is a property of a well-behaved logging sink. Silence here made
-  /// every other guarantee in this class unverifiable in production: a process
-  /// with a misconfigured fallback reported perfect health while losing every
-  /// record.
+  /// so there is nowhere left to write it. That makes discarding the failure
+  /// tempting, but "must not throw" and "must not tell anyone" are different
+  /// requirements, and only the first one is a property of a well-behaved
+  /// logging sink. Silence here would make every other guarantee in this class
+  /// unverifiable in production: a process with a misconfigured fallback would
+  /// report perfect health while losing every record.
   ///
   /// The report goes to [TomPlatformUtils.outError] rather than to any
   /// [TomLogOutput], because the logging stack is the thing that just failed;

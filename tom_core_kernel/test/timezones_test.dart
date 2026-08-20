@@ -177,8 +177,8 @@ void main() {
         expect(tzResult, isNull);
       });
 
-      // Bug §55: name-only lookup (offset null) must return the named zone
-      // instead of throwing a name/offset-mismatch exception.
+      // A name-only lookup (offset null) must return the named zone instead of
+      // throwing a name/offset-mismatch exception.
       test(
         'should return named zone when name is given and offset is null',
         () {
@@ -1708,9 +1708,9 @@ void main() {
     });
   });
 
-  // Bug §56: parseFromString must throw a FormatException when the timezone
-  // name does not resolve, instead of silently downgrading to UTC.
-  group('parseFromString unknown timezone (§56)', () {
+  // parseFromString must throw a FormatException when the timezone name does
+  // not resolve, instead of silently downgrading to UTC.
+  group('parseFromString unknown timezone', () {
     test('TomTimezoned.parseFromString throws for unknown zone', () {
       expect(
         () => TomTimezoned.parseFromString(

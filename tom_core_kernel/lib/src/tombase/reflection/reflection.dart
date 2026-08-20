@@ -625,15 +625,16 @@ class TomReflectionInfo {
   /// Reports that an optional conversion hook ran and raised.
   ///
   /// The three hooks — the `fromJson` constructor, the `jsonDecode` method and
-  /// the `jsonEncode` getter — are all *optional*, and each used to be found
-  /// by trying it inside an unqualified `catch`: whatever came out, the hook
-  /// was declared missing and the ordinary field-walking path took over. That
-  /// made a hook that does not exist and a hook that exists and is buggy the
-  /// same event, and the second is the one worth hearing about — the caller's
-  /// own code failed, and nothing said so. The failure was then attributed to
-  /// the reflection layer, or to nothing at all.
+  /// the `jsonEncode` getter — are all *optional*. Detecting one by *trying*
+  /// it inside an unqualified `catch` — whatever comes out, the hook is
+  /// declared missing and the ordinary field-walking path takes over — would
+  /// make a hook that does not exist and a hook that exists and is buggy the
+  /// same event, and the second is the one worth hearing about: the caller's
+  /// own code failed, and nothing would say so. The failure would then be
+  /// attributed to the reflection layer, or to nothing at all.
   ///
-  /// Each hook is now *looked up before it is called*, so absence is settled
+  /// Each hook is therefore *looked up before it is called*, so absence is
+  /// settled
   /// without running anything and the invocation itself is guarded only for
   /// the purpose of attribution. Nothing is inferred from the type of the
   /// failure, which matters because `tom_reflection` does not report
@@ -641,9 +642,9 @@ class TomReflectionInfo {
   /// [NoSuchCapabilityError], but a missing method or getter surfaces as a
   /// plain `NoSuchMethodError` from a dynamic dispatch, because the generated
   /// getters map is shared across the whole reflector rather than per class.
-  /// Catching by type would therefore have kept the two cases fused for two
-  /// hooks out of three, and would additionally have re-fused them for any
-  /// hook whose own body happens to raise either error.
+  /// Catching by type would therefore keep the two cases fused for two hooks
+  /// out of three, and would additionally re-fuse them for any hook whose own
+  /// body happens to raise either error.
   static TomReflectorException _hookFailed(
     String hook,
     Object owner,
@@ -1497,8 +1498,8 @@ class TomReflectionInfo {
     }
 
     // Materialize every value into a fresh map first; only assign on full
-    // success so a mid-stream failure never leaves the field half-populated
-    // (bug §48). A value rejected by the (non-nullable) target type surfaces
+    // success so a mid-stream failure never leaves the field half-populated.
+    // A value rejected by the (non-nullable) target type surfaces
     // as a TomReflectorException instead of silently truncating the map.
     final newMap = typeString.endsWith("?>")
         ? memberMirror.createNullableValuedMap<String>()
@@ -1777,7 +1778,7 @@ class TomReflectionInfo {
 
     // Materialize every element into a fresh list first; only assign on full
     // success so a mid-stream failure never leaves the field cleared-and-
-    // truncated (bug §48). An element rejected by the (non-nullable) target
+    // truncated. An element rejected by the (non-nullable) target
     // type surfaces as a TomReflectorException instead of silent truncation.
     final newList = typeString.endsWith("?>")
         ? memberMirror.createNullableList()

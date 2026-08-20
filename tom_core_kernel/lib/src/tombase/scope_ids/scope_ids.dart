@@ -79,7 +79,7 @@ abstract class TomScope {
       // Elide only the actual root sentinel ([defaultScope]) — identified by
       // identity, not by its 'default' id string. A legitimate domain scope
       // whose local id happens to be 'default' is not the sentinel and must
-      // keep its segment in the path (bug §50).
+      // keep its segment in the path.
       if (!identical(current, TomScope.defaultScope)) {
         parts.add(current.id);
       }

@@ -11,7 +11,7 @@ import 'settings_test.reflection.dart';
 void main() {
   // The settings DTOs are @tomReflector classes whose reason to exist is
   // client<->server (de)serialization — register their mirrors so the JSON
-  // round-trip tests below can exercise it (tests §35a).
+  // round-trip tests below can exercise it.
   setUpAll(initializeReflection);
 
   group('TomGetSettingsMessage', () {
@@ -755,10 +755,10 @@ void main() {
       });
     });
 
-    // Bug §51 / tests §35b: a default-constructed result documents its
-    // collections as "empty collections", and the idiomatic use is to mutate
-    // them in place. The defaults must therefore be fresh growable instances,
-    // not shared `const` immutables (which throw on add/[]=).
+    // A default-constructed result documents its collections as "empty
+    // collections", and the idiomatic use is to mutate them in place. The
+    // defaults must therefore be fresh growable instances, not shared `const`
+    // immutables (which throw on add/[]=).
     group('default-constructed in-place collection mutation', () {
       test('texts is a mutable empty map by default', () {
         final result = TomGetSettingsResult();
@@ -805,7 +805,7 @@ void main() {
       });
     });
 
-    // Tests §35a: the DTOs exist to be serialized; guard their reflection
+    // The DTOs exist to be serialized; guard their reflection
     // (de)serialization with full round-trips so a regression can't pass green.
     group('JSON serialization round-trip', () {
       test('TomGetSettingsResult survives serialize -> deserialize', () {

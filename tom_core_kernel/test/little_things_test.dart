@@ -454,8 +454,8 @@ void main() {
       final stack = await _captureAsyncChainStack();
       final frames = tomGetStackTraceAsList(stack);
 
-      // Every level of the chain must be represented. Before the fix only the
-      // innermost survived: the chain was truncated to its newest segment.
+      // Every level of the chain must be represented. Reading only the newest
+      // Chain segment would leave the innermost level and nothing else.
       expect(frames.join('\n'), contains('_asyncLevelInnermost'));
       expect(frames.join('\n'), contains('_asyncLevelMiddle'));
       expect(frames.join('\n'), contains('_asyncLevelOuter'));
@@ -643,8 +643,9 @@ void main() {
 
     test('depth counts from the caller, not from the formatter', () {
       // The practical consequence of folding: a small depth on an implicitly
-      // captured trace must be spent on the caller. Before the fix `depth: 1`
-      // returned a formatter frame, so the whole budget went to this library.
+      // captured trace must be spent on the caller. If the capture were not
+      // folded away, `depth: 1` would return a formatter frame and the whole
+      // budget would go to this library.
       final frames = _callerOfTomGetStackTraceAsList(1);
       expect(frames, hasLength(1));
       expect(frames.single, contains('_callerOfTomGetStackTraceAsList'));
@@ -1216,8 +1217,8 @@ void main() {
         exception.printStackTrace();
 
         // The whole point of the method: name the code that created the
-        // exception. Before the fix the trace was captured inside the
-        // formatter, so the record held only the formatter's own frames.
+        // exception. Capturing the trace inside the formatter instead would
+        // leave the record holding only the formatter's own frames.
         expect(
           captured.messages.any(
             (m) => m.contains('_constructExceptionAtKnownSite'),

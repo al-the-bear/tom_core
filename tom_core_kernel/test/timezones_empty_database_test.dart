@@ -2,12 +2,11 @@ import 'package:test/test.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-/// tccc3 — the other half: a database that did not load must still report
-/// loudly.
+/// A database that did not load must still report loudly.
 ///
-/// Demoting the routine UTC message to debug is only safe if the *genuine*
-/// failure is still an ERROR, otherwise the fix trades a false alarm for a
-/// silent one. On a native platform the embedded IANA database always loads,
+/// Keeping the routine UTC message at debug level is only safe if the
+/// *genuine* failure is still an ERROR, otherwise the module trades a false
+/// alarm for a silent one. On a native platform the embedded IANA database always loads,
 /// so that state cannot be provoked through the public entry points — which is
 /// why [TomTimezone.populateFromLocations] exists: it is the same code path
 /// initialization takes, with the location map passed in.

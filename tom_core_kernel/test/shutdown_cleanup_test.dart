@@ -62,7 +62,7 @@ class OwnCloseTarget {
 }
 
 /// Base declaring `close()`; the leaf [InheritsClose] does not redeclare it,
-/// so the adaptor must walk the superclass chain to find it (bug §52).
+/// so the adaptor must walk the superclass chain to find it.
 @tomReflector
 class BaseWithClose {
   bool closed = false;
@@ -705,7 +705,7 @@ void main() {
   });
 
   // ===========================================================================
-  // TomCloseAdaptor Tests (bug §52 — inherited close/dispose resolution)
+  // TomCloseAdaptor Tests — inherited close/dispose resolution
   // ===========================================================================
 
   group('TomCloseAdaptor', () {
@@ -718,7 +718,7 @@ void main() {
       expect(target.closed, isTrue);
     });
 
-    test('resolves a close() inherited from a superclass (§52)', () {
+    test('resolves a close() inherited from a superclass', () {
       final target = InheritsClose();
 
       // Pre-fix: the constructor threw because `declarations` holds only the
@@ -729,7 +729,7 @@ void main() {
       expect(target.closed, isTrue);
     });
 
-    test('resolves a dispose() inherited from a superclass (§52)', () {
+    test('resolves a dispose() inherited from a superclass', () {
       final target = InheritsDispose();
 
       final adaptor = TomCloseAdaptor(target);
@@ -739,7 +739,7 @@ void main() {
     });
 
     test(
-      'resolves a custom-named method inherited from a superclass (§52)',
+      'resolves a custom-named method inherited from a superclass',
       () {
         final target = InheritsShutdown();
 
@@ -781,7 +781,7 @@ void main() {
   });
 
   // ===========================================================================
-  // performShutdown() & teardown behaviour (tests §36)
+  // performShutdown() & teardown behaviour
   // ===========================================================================
 
   group('performShutdown', () {
@@ -888,7 +888,7 @@ void main() {
     });
   });
 
-  group('dispose / cancelAll (bug §53)', () {
+  group('dispose / cancelAll', () {
     test('dispose cancels signal subscriptions without throwing', () async {
       final cleanup = TomShutdownCleanup();
 

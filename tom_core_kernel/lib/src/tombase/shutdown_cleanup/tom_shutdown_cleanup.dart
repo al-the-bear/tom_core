@@ -180,7 +180,7 @@ class TomCloseAdaptor implements TomClosable {
   ///
   /// `ClassMirror.declarations` holds only the type's **own** members, so a
   /// `close()`/`dispose()` inherited from a superclass or mixin is invisible to
-  /// the leaf type alone (bug §52). This walks from the concrete type up its
+  /// the leaf type alone. This walks from the concrete type up its
   /// superclass chain, so the most-derived class wins and, at each level, an
   /// explicit [methodName] is honoured (otherwise `close` is preferred over
   /// `dispose`). Returns `null` when no matching method exists anywhere.
@@ -286,7 +286,7 @@ class TomShutdownCleanup {
         performShutdown(signal: signal, fromSignal: true);
     // SIGHUP/SIGINT are registered through the same watcher-subscription path
     // as [addSignal], so there is a single place that owns how a signal is
-    // watched and how its subscription is retained for teardown (bug §53).
+    // watched and how its subscription is retained for teardown.
     addSignal(ProcessSignal.sighup);
     addSignal(ProcessSignal.sigint);
   }
@@ -345,8 +345,8 @@ class TomShutdownCleanup {
   final List<TomDisposable> _disposables = [];
 
   /// Active OS-signal watcher subscriptions, retained so they can be cancelled
-  /// by [dispose]/[cancelAll] (bug §53 — otherwise each watcher keeps the
-  /// process alive and leaks for the instance's whole life).
+  /// by [dispose]/[cancelAll] — otherwise each watcher keeps the process alive
+  /// and leaks for the instance's whole life.
   final List<StreamSubscription<ProcessSignal>> _signalSubscriptions = [];
 
   /// Adds a custom signal handler to be executed during shutdown.
@@ -408,7 +408,7 @@ class TomShutdownCleanup {
 
   /// Tears the instance down by cancelling its signal watchers (see
   /// [cancelAll]). Call this for any short-lived [TomShutdownCleanup] so its
-  /// watchers stop leaking (bug §53); the process-lifetime global
+  /// watchers stop leaking; the process-lifetime global
   /// [tomShutdownCleanup] normally never needs it.
   Future<void> dispose() => cancelAll();
 

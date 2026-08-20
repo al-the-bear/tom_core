@@ -24,7 +24,7 @@ class AnotherService {
 }
 
 // ----------------------------------------------------------------------------
-// Ambiguous-type fixtures (bug §1): two beans assignable to one interface.
+// Ambiguous-type fixtures: two beans assignable to one interface.
 // ----------------------------------------------------------------------------
 abstract class AmbiguousService {}
 
@@ -240,9 +240,9 @@ void main() {
       });
 
       test('fromName resolves lazily when the bean is registered later', () {
-        // Bug §2 regression: a handle created before registration must still
-        // resolve once the name is registered. The handle records the name
-        // unconditionally so get() routes through name resolution.
+        // A handle created before registration must still resolve once the
+        // name is registered. The handle records the name unconditionally so
+        // get() routes through name resolution.
         final bean = TomBean<AnotherService>.fromName('lazyBean');
 
         TomBean.withName('lazyBean', AnotherService('lazy-value'));
@@ -275,9 +275,9 @@ void main() {
       });
 
       test('throws when more than one implementation matches the type', () {
-        // Bug §1 regression: two beans assignable to AmbiguousService are
-        // registered under distinct type keys; resolving by the shared
-        // interface must raise the ambiguous-implementation error.
+        // Two beans assignable to AmbiguousService are registered under
+        // distinct type keys; resolving by the shared interface must raise the
+        // ambiguous-implementation error.
         TomBean.withType(AmbiguousServiceA, AmbiguousServiceA());
         TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
 

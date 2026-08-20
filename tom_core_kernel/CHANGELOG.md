@@ -250,6 +250,19 @@ anyone who was writing them.
   new log levels and drive the empty-database branch.
 - `api_reference_coverage_test.dart` guards the doc tree against drifting from
   `lib/`.
+- **`comments_read_as_is_test.dart` keeps shipped prose free of development
+  history.** Roughly 170 comments across `lib/`, `test/`, `example/` and `doc/`
+  pointed at internal work items (`bug §50`, `tests §34a`, quest todo ids) or
+  narrated what the code used to do — both unresolvable for anyone reading the
+  published package, and both easy to reintroduce while the work is fresh.
+  Every site in this package has been restated as the rule that holds now,
+  usually by turning the past tense into a conditional, and the new suite fails
+  the build if one comes back. It distinguishes the three uses of `§` that look
+  alike: citations of published standards (`RFC 4226 §5.3`, `CWE-117`) and
+  specification sections (`§5.26`, `CE-ER §7`) are kept, only work-item
+  pointers are refused. Traceability now runs todo → code through the todo's
+  own `references` list, so the link outlives the work item without the code
+  carrying its id.
 
 ### Examples
 

@@ -914,17 +914,17 @@ void main() {
   // ===========================================================================
   //
   // Both providers must be installed explicitly before anything reads them.
-  // There used to be a lazy path — the first `getAppResources()` created a
-  // provider from the static `loader` — and it installed a bundle without
-  // bumping `appResourcesRevision`. Observers registered before the first
-  // lookup (`TomObservableEnum` re-derives its labels from that counter) never
-  // heard about the bundle that the lookup itself had just loaded, and kept
-  // showing raw keys until some unrelated later change moved the counter.
+  // A lazy path — the first `getAppResources()` building a provider from the
+  // static `loader` — would install a bundle without bumping
+  // `appResourcesRevision`. Observers registered before the first lookup
+  // (`TomObservableEnum` re-derives its labels from that counter) would never
+  // hear about the bundle that the lookup itself had just loaded, and would
+  // keep showing raw keys until some unrelated later change moved the counter.
   //
-  // These tests pin the replacement: there is no way to install a bundle
-  // except through `setAppResourceProvider`, which notifies. The counter and
-  // the installed bundle can no longer disagree because only one thing
-  // installs.
+  // These tests pin the contract that rules that out: there is no way to
+  // install a bundle except through `setAppResourceProvider`, which notifies.
+  // The counter and the installed bundle cannot disagree because only one
+  // thing installs.
   group('bootstrap contract', () {
     setUp(() {
       TomTextResourceProvider.loader = null;
@@ -995,9 +995,8 @@ void main() {
       );
     });
 
-    // The defect this contract replaced, stated as its own test: `loader` is a
-    // recipe, not an install. Declaring how to load the bundle used to be
-    // enough to get one silently installed at revision 0.
+    // `loader` is a recipe, not an install. Declaring how to load the bundle
+    // must not be enough to get one silently installed at revision 0.
     test('setting the static loader does not install a bundle', () {
       TomTextResourceProvider.loader = () => {
         'app': {'title': 'Lazy Loaded'},

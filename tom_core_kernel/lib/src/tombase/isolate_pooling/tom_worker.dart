@@ -839,7 +839,7 @@ class TomWorker {
       }
       // If close() was requested while requests were still in flight, the
       // response port could not be closed then; close it now that the last
-      // pending request has resolved so the ReceivePort does not leak (bug §5).
+      // pending request has resolved so the ReceivePort does not leak.
       if (_closed && _activeRequests.isEmpty) {
         _responses.close();
       }

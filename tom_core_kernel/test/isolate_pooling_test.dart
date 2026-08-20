@@ -1580,7 +1580,7 @@ void main() {
         );
 
         // The worker isolate catches the throw and sends back a RemoteError,
-        // which must complete the awaiting future with an error (tests §3c).
+        // which must complete the awaiting future with an error.
         await expectLater(
           worker.executeCommand(ThrowingCommand('boom')),
           throwsA(isA<RemoteError>()),
@@ -1600,7 +1600,7 @@ void main() {
 
         // The worker delegates to the creator via executeInCreator; the
         // creator runs CreatorComputeCommand and the answer round-trips back
-        // to this caller (tests §3b).
+        // to this caller.
         final result = await worker.executeCommand(CreatorRoundTripCommand(5));
 
         expect(result, equals(1005));
@@ -1618,8 +1618,8 @@ void main() {
         );
 
         // Start a command, then close the worker while it is still in flight.
-        // The response port can only be closed once this request resolves
-        // (bug §5); the awaiting caller must still receive the result.
+        // The response port can only be closed once this request resolves; the
+        // awaiting caller must still receive the result.
         final pending = worker.executeCommand(DelayedCommand(50, 'late'));
         expect(worker.isBusy(), isTrue);
 

@@ -204,9 +204,8 @@ bool tomProtected(String resourceKey) {
 /// at all. Subclasses instead implement the two hooks:
 ///
 /// - [checkPrincipalAccess] / [resolvePrincipalAuthState] — the *user* operand:
-///   what this control demands of the calling principal. This is the rule that
-///   used to live in `checkAccessibility`; the logic is unchanged, only the
-///   method it belongs in.
+///   what this control demands of the calling principal. This is the whole of
+///   a subclass's own rule; nothing about the deployment belongs here.
 /// - [resolveServerAuthState] — the *deployment* operand: what grade this
 ///   control's subject is granted to the deployment. It defaults to
 ///   [TomAuthState.full] (uncapped), because most controls name a *user*
