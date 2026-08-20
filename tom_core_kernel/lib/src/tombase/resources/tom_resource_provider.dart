@@ -108,6 +108,21 @@ class TomResourceException extends TomException {
 // intact. Only the path *through* them is closed, and closed silently: the walk
 // throws, the flat leg finds nothing, and the fallback echoes the key, so a
 // mistaken path renders as its own text instead of raising.
+//
+// That silence is why the guard around the walk is narrow. It absorbs
+// `Exception` and nothing else, which is precisely the set [getObjectFromTree]
+// raises to report a lookup outcome: a segment naming an absent key, or an
+// interior segment with no subtree to descend into. Both are ordinary results
+// of a lenient lookup and belong on the flat leg.
+//
+// Everything else — every `Error` subtype — travels out of the accessor
+// untouched. An `Error` inside the walk is a programming fault, not a lookup
+// outcome, and absorbing one would produce this module's worst failure mode:
+// the fault falls through to the flat leg, misses there too, and renders as the
+// key's own text, with no exception, no log line and nothing to grep for.
+// Because the lenient fallback is the *designed* answer for a genuine miss,
+// nothing downstream could tell the two apart. Letting the `Error` propagate is
+// the only signal available, so it is kept.
 
 /// Resolves the raw object at [path] in [resources].
 ///
@@ -117,7 +132,7 @@ class TomResourceException extends TomException {
 Object? _resolveObjectOrNull(Map<String, dynamic> resources, String path) {
   try {
     return getObjectFromTree(resources, path);
-  } catch (_) {
+  } on Exception catch (_) {
     // Path not resolvable as a tree walk — fall back to a flat-key lookup.
   }
   return resources[path];
@@ -134,7 +149,7 @@ String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
   try {
     final value = getObjectFromTree(resources, path);
     if (value is String) return value;
-  } catch (_) {
+  } on Exception catch (_) {
     // Path not resolvable as a tree walk — fall back to a flat-key lookup.
   }
   final flat = resources[path];
@@ -707,7 +722,7 @@ class TomConfigResourceProvider {
   ///
   /// The `TypeError` names `String` and `int` and never names the key, so it
   /// tells you nothing about which setting is missing. Use [getObjectOrNull]
-  /// with a default instead — it is one lookup and it cannot throw:
+  /// with a default instead — it is one lookup, and a miss cannot throw:
   ///
   /// ```dart
   /// final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;

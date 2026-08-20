@@ -647,6 +647,21 @@ fallback echoes the key — so `getText('items.0.label')` renders the literal te
 rendering as itself, check the shape of what it walks through before assuming
 the key is missing.
 
+### What the silence covers
+
+Only lookup outcomes. The guard around the walk absorbs `Exception` — the class
+`getObjectFromTree` raises to report an absent key or an interior segment with
+no subtree — and lets every `Error` subtype travel out of the accessor
+untouched.
+
+The distinction matters because the lenient fallback is the *designed* answer
+for a genuine miss, so anything folded into it becomes indistinguishable from
+one. An `Error` is a programming fault, not a lookup outcome; absorbing one
+would render the fault as the key's own text, with no exception, no log line and
+nothing to grep for. Propagating it is the only signal available, so a lookup
+that raises an `Error` raises it at the call site rather than returning a
+placeholder.
+
 ---
 
 ## Dependencies

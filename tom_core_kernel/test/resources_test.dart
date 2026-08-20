@@ -1502,6 +1502,66 @@ void main() {
           isTrue,
         );
       });
+
+      // -----------------------------------------------------------------------
+      // What the guarded walk absorbs, and what it refuses to.
+      //
+      // Falling through to the flat leg on an unresolvable path is the whole
+      // lenient-lookup design, and `getObjectFromTree` signals that with an
+      // `Exception`. The guard is narrowed to exactly that, so an `Error` — a
+      // programming fault rather than a lookup outcome — travels out instead.
+      // Absorbing one would be the module's worst failure mode: the fault
+      // renders as the key's own text, with no exception, no log line and
+      // nothing to grep for.
+      // -----------------------------------------------------------------------
+      test('an Error raised during the tree walk propagates instead of '
+          'becoming a miss', () {
+        // The subtree throws when the walk reads its terminal segment. The
+        // outer bundle is an ordinary map holding a literal dotted key, so the
+        // flat leg is reachable and *would* quietly answer for the walk if the
+        // Error were absorbed — which is what makes the miss silent.
+        final bundle = {
+          'corrupt': _ThrowingSubtree(),
+          'corrupt.leaf': 'flat literal',
+        };
+        final text = TomTextResourceProvider.from(bundle);
+        final config = TomConfigResourceProvider.from(bundle);
+
+        // Every accessor on both providers routes through the two shared
+        // resolvers, so the guarantee is asserted across the whole surface
+        // rather than at one entry point.
+        final reads = <String, Object? Function()>{
+          'text.getText': () => text.getText('corrupt.leaf'),
+          'text.getTextOrNull': () => text.getTextOrNull('corrupt.leaf'),
+          'text.exists': () => text.exists('corrupt.leaf'),
+          'text.getObject': () => text.getObject('corrupt.leaf'),
+          'text.getObjectOrNull': () => text.getObjectOrNull('corrupt.leaf'),
+          'text.existsObject': () => text.existsObject('corrupt.leaf'),
+          'config.getText': () => config.getText('corrupt.leaf'),
+          'config.getObjectOrNull': () =>
+              config.getObjectOrNull('corrupt.leaf'),
+          'config.exists': () => config.exists('corrupt.leaf'),
+        };
+        reads.forEach((name, read) {
+          expect(read, throwsA(isA<StateError>()), reason: name);
+        });
+      });
+
+      test('an Exception raised during the tree walk is still absorbed', () {
+        // The counterpart, and the reason the narrowing is `on Exception`
+        // rather than no guard at all: an unresolvable path must keep falling
+        // through to the flat leg. Both legs are exercised — a literal dotted
+        // key that resolves, and one that does not and reaches the fallback.
+        final provider = TomTextResourceProvider.from({
+          'a': {'b': 1},
+          'a.missing': 'flat literal',
+        });
+
+        expect(provider.getText('a.missing'), equals('flat literal'));
+        expect(provider.exists('a.missing'), isTrue);
+        expect(provider.getObject('a.absent'), equals('a.absent'));
+        expect(provider.getObjectOrNull('a.absent'), isNull);
+      });
     });
 
     group('loader function behavior', () {
@@ -1669,4 +1729,21 @@ void main() {
 class _UiValue {
   final String name;
   const _UiValue(this.name);
+}
+
+/// A bundle subtree that throws an [Error] — not an [Exception] — as soon as
+/// the tree walk reads it.
+///
+/// It stands in for any programming fault that can surface inside
+/// `getObjectFromTree`. What the resolvers have to tell apart is the *kind* of
+/// throwable, not the particular fault, so throwing from [noSuchMethod] covers
+/// the whole `Map` surface without implementing a member that no test reads.
+///
+/// It passes the walk's subtree test untouched: that test short-circuits on
+/// `value is Map<String, dynamic>`, so nothing is invoked until the segment
+/// read itself.
+class _ThrowingSubtree implements Map<String, dynamic> {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw StateError('bundle is corrupt');
 }
