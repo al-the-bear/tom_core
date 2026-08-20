@@ -3141,12 +3141,6 @@ void main() {
         await scheduler.tick();
         expect(await store.all(), isEmpty);
       });
-
-      test('close does not close a pool it was merely handed', () {
-        // Documented contract of TomWorkerPoolJobDispatcher.ownsPool; asserted
-        // here on the flag because closing a real pool is covered separately.
-        expect(const TomInlineJobDispatcher().dispatch(OkCommand()), completes);
-      });
     });
 
     group('end to end', () {
@@ -3301,6 +3295,23 @@ void main() {
         expect(await pool.execute(OkCommand(11)), 11);
       },
     );
+
+    test('ownsPool true closes the pool the dispatcher was given', () async {
+      final pool = await TomWorkerPool.withSize(1, SchedulingWorkerContext());
+      // close() is idempotent, so the tear-down is harmless on a pool this test
+      // has already closed — and keeps the isolates released if it fails early.
+      addTearDown(pool.close);
+
+      TomWorkerPoolJobDispatcher(pool, ownsPool: true).close();
+
+      // The other half of the flag. Asserted through the pool's own refusal to
+      // work rather than through the flag, because `ownsPool` is only worth
+      // anything if it reaches TomWorkerPool.close.
+      await expectLater(
+        pool.execute(OkCommand()),
+        throwsA(isA<TomWorkerException>()),
+      );
+    });
   });
 
   // ===========================================================================
