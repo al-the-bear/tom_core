@@ -140,6 +140,25 @@ anyone who was writing them.
 
 ### Changed
 
+- **The mirror's `TomResourceKeyProtection` section states the master switch and
+  gains the missing `isProtectedFor` row.** The `isProtected` row described only
+  the key lookup — "whether the resource is protected from the current
+  principal" — omitting both branches that come first: the whole method
+  short-circuits to "accessible" while `globalSettingProtectionDefault` is
+  `false` (its default), and with protection on it is fail-closed for a caller
+  with no principal. A reader taking the row at face value would expect a
+  freshly added protection call to protect something, and would misread the
+  outside-a-request-zone case as "allowed". The `globalSettingProtectionDefault`
+  property row now names the `false` default, and the `protect`, `tomProtect`
+  and `tomProtected` rows state that they inherit the precondition. Separately,
+  the section listed two static methods where the class has three:
+  `isProtectedFor` — the rule over an explicit principal, added when the method
+  was split out — had never been mirrored. It is now present, and the
+  `TomResourceKeyAccess` entry says it delegates there, so the explicit-operand
+  and ambient-zone forms are told apart in the document as they are in the code.
+  A test pins `isProtectedFor` reading its argument rather than the zone; until
+  now that was asserted only about its one-line delegate.
+
 - **The mirror's `convertTokenPayloadToPrincipal` row states the real
   `requires2FA` test and its `StateError`.** It said a token "carrying a
   `requires2FA` claim" yields an unauthenticated principal, which is close to

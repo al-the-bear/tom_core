@@ -696,14 +696,17 @@ const TomResourceRoleAdapter(Map<String, String> resourceRoles)
 ### TomResourceKeyProtection
 
 Provides resource-level protection based on resource keys, selectively hiding or
-exposing data based on the current principal's access rights. All members are
-static.
+exposing data according to a principal's access rights. All members are static.
+The rule lives in [isProtectedFor], which takes the principal as an argument;
+[isProtected] and [protect] are the ambient-zone forms of it, reading the
+principal the current request installed. Every one of them is gated on
+[globalSettingProtectionDefault], which is `false` by default.
 
 #### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `globalSettingProtectionDefault` | `bool` | Master switch to enable/disable resource protection globally. |
+| `globalSettingProtectionDefault` | `bool` | Master switch for resource protection. **Defaults to `false`**, and while it is off every method below short-circuits to "accessible" — a protection call added to the code protects nothing until this is set. |
 | `globalSettingUseAutomaticEndpointProtection` | `bool` | When enabled, API endpoints are automatically protected based on metadata. |
 | `globalSettingUseAutomaticJsonProtection` | `bool` | When enabled, JSON serialization automatically respects resource protection. |
 | `globalSettingUseAutomaticDatabaseProtection` | `bool` | When enabled, database queries automatically filter protected resources. |
@@ -715,8 +718,9 @@ static.
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `protect<T>(T data, T fallback, String resourceKey)` | `T` | Returns [data] if the current user has access to [resourceKey], else [fallback]. |
-| `isProtected(String resourceKey)` | `bool` | Whether the resource is protected (user lacks access) from the current principal. |
+| `protect<T>(T data, T fallback, String resourceKey)` | `T` | Returns [data] if the current user has access to [resourceKey], else [fallback]. Decided by [isProtected], so it inherits the master switch: while [globalSettingProtectionDefault] is `false` this returns [data] for every key and every principal. |
+| `isProtectedFor(TomPrincipal? principal, String resourceKey)` | `bool` | The protection rule itself, stated over an explicit principal. Answers `false` (accessible) whenever [globalSettingProtectionDefault] is `false`, before any key is consulted; otherwise `true` unless `principal` holds `resourceKey` in its ACI. A `null` principal holds no keys, so with protection on it is denied everything. |
+| `isProtected(String resourceKey)` | `bool` | [isProtectedFor] applied to the principal on the ambient zone — the operand is read from the zone, not passed. Note the two ways it answers `false`: protection is switched off, or the principal holds the key. Outside a request zone there is no principal, so with protection on this answers `true` for everything — fail-closed. Where a principal is already in hand, call [isProtectedFor]. |
 
 ### TomAccessControl
 
@@ -976,7 +980,13 @@ const TomGroupAccess(List<String> groups)
 ### TomResourceKeyAccess
 
 Grants access based on resource key protection, integrating with
-[TomResourceKeyProtection] for field-/resource-level control.
+[TomResourceKeyProtection] for field-/resource-level control. Unlike its
+siblings this control has a second operand: while
+[TomResourceKeyProtection.globalSettingProtectionDefault] is `false` — its
+default — resource keys are not enforced at all and every principal is granted.
+Once it is on, the rule is the ordinary one. It is deliberately not routed
+through the shared ACI helper the role and group controls use, because that
+master switch is a genuinely different rule.
 
 - **Extends:** `TomAccessControl`
 
@@ -996,7 +1006,7 @@ const TomResourceKeyAccess(String key)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` when [key] is not protected. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` when [key] is not protected from `principal`. Delegates to [TomResourceKeyProtection.isProtectedFor] — the explicit-principal form, so the answer is about the principal passed in, not about the ambient zone. |
 
 ### TomAuthenticationMessage
 
@@ -1615,8 +1625,8 @@ Strategy for how a [TomAuthorizer] interacts with resource authorization.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `tomProtect` | `T tomProtect<T>(T data, T fallback, String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.protect]. |
-| `tomProtected` | `bool tomProtected(String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.isProtected]. |
+| `tomProtect` | `T tomProtect<T>(T data, T fallback, String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.protect], inheriting its precondition: nothing is protected until [TomResourceKeyProtection.globalSettingProtectionDefault] is `true`. |
+| `tomProtected` | `bool tomProtected(String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.isProtected], inheriting its precondition: while [TomResourceKeyProtection.globalSettingProtectionDefault] is `false` — its default — this always answers `false`, so a `if (!tomProtected(...))` guard always passes. |
 | `registerTomOAuthApi` | `void registerTomOAuthApi()` | Registers `tomOAuthApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves — a server before mounting the endpoints, a client before building a caller. Registration is explicit rather than implicit in a top-level initializer because a deployment that configures no providers should not carry the API in its registry. |
 
 ### Constants

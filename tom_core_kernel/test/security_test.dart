@@ -1193,6 +1193,29 @@ void main() {
       });
     });
 
+    group('isProtectedFor', () {
+      test('should read its argument, not the zone principal', () {
+        // The rule and its ambient-zone form differ in exactly one respect:
+        // where the principal comes from. Pinned by name because every other
+        // assertion about the explicit operand is made about
+        // `TomResourceKeyAccess`, a one-line delegate — so nothing today would
+        // catch this method silently starting to consult the zone.
+        TomResourceKeyProtection.globalSettingProtectionDefault = true;
+        final holder = createTestPrincipal(resourceKeys: ['user.salary']);
+        final stranger = createTestPrincipal(resourceKeys: ['user.email']);
+
+        runZoned(() {
+          expect(
+            TomResourceKeyProtection.isProtectedFor(stranger, 'user.salary'),
+            isTrue,
+          );
+          // The zone holds the key; the argument does not decide differently
+          // for having been asked in that zone.
+          expect(TomResourceKeyProtection.isProtected('user.salary'), isFalse);
+        }, zoneValues: {TomPrincipal: holder});
+      });
+    });
+
     group('isProtected', () {
       test('should return false when protection is disabled', () {
         // Arrange
