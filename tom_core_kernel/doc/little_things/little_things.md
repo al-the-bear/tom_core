@@ -151,18 +151,31 @@ Transform errors with context-aware wrappers:
 // Async version
 final data = await runChecked(
   () => httpClient.get(url),
-  (error, stack) => NetworkException(
+  (error, stack) => TomException(
+    'catalog.fetch.unreachable',
     'Request to $url failed',
-    originalError: error,
+    rootException: error,
+    stack: stack,
   ),
 );
 
 // Sync version
 final config = runCheckedSync(
   () => parseConfig(json),
-  (error, stack) => ConfigException('Invalid format', error),
+  (error, stack) => TomException(
+    'config.parse.invalid_format',
+    'Invalid format',
+    rootException: error,
+    stack: stack,
+  ),
 );
 ```
+
+`onError` returns `Object`, so any type will do — but returning a
+[`TomException`](#tomexception) is what makes the wrapping worth doing. It is
+the one shape that carries `rootException` and the caught `stack` forward, so
+the original failure survives the transformation instead of being replaced by
+a message about it.
 
 ### Stack Trace Processing
 

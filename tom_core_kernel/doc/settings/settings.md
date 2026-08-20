@@ -258,7 +258,7 @@ Check required roles/entitlements at app startup:
 ```dart
 void validateAccess(TomGetSettingsResult settings) {
   if (!settings.roles.contains('user')) {
-    throw TomException('settings.access.role-missing', 'User role required');
+    throw TomException('startup.validate.role_missing', 'User role required');
   }
 }
 ```

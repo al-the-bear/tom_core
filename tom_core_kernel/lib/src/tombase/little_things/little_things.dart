@@ -16,7 +16,8 @@
 /// // Run with error transformation
 /// final result = await runChecked(
 ///   () => fetchData(),
-///   (error, stack) => CustomException('Fetch failed', error),
+///   (error, stack) => TomException('catalog.fetch.failed', 'Fetch failed',
+///       rootException: error, stack: stack),
 /// );
 ///
 /// // Get formatted stack trace
@@ -141,12 +142,18 @@ Object? getObjectFromCurrentZone(Type t) {
 /// ```dart
 /// final data = await runChecked(
 ///   () => httpClient.get(url),
-///   (error, stacktrace) => NetworkException(
+///   (error, stacktrace) => TomException(
+///     'catalog.fetch.unreachable',
 ///     'Request failed',
-///     originalError: error,
+///     rootException: error,
+///     stack: stacktrace,
 ///   ),
 /// );
 /// ```
+///
+/// [onError] returns `Object`, so any type will do; returning a [TomException]
+/// is what carries [error] and [stacktrace] forward rather than discarding
+/// them.
 ///
 /// ## Parameters
 ///
@@ -181,7 +188,12 @@ Future<T> runChecked<T>(
 /// ```dart
 /// final config = runCheckedSync(
 ///   () => parseConfig(jsonString),
-///   (error, stacktrace) => ConfigException('Invalid config format'),
+///   (error, stacktrace) => TomException(
+///     'config.parse.invalid_format',
+///     'Invalid config format',
+///     rootException: error,
+///     stack: stacktrace,
+///   ),
 /// );
 /// ```
 T runCheckedSync<T>(

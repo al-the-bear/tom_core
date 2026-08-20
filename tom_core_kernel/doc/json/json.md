@@ -574,7 +574,11 @@ final port = getObjectFromTree(config, 'database.port');
 if (port is int) {
   connectToDatabase(port);
 } else {
-  throw ConfigurationError('database.port must be an integer');
+  throw TomException(
+    'config.validate.type_mismatch',
+    'database.port must be an integer',
+    parameters: {'key': 'database.port', 'value': port},
+  );
 }
 ```
 

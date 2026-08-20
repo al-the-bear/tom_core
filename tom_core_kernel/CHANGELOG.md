@@ -993,6 +993,28 @@ anyone who was writing them.
 
 ### Documentation
 
+- **Every invented exception type was removed from the samples, and the samples
+  now use the vocabulary the package actually documents (tcinc297).** Five
+  samples threw or constructed a type that is declared nowhere —
+  `UnauthorizedException` (settings), `NetworkException` and `ConfigException`
+  (`little_things`, in both the prose and the dartdoc), `CustomException`
+  (the `little_things` library dartdoc) and `ConfigurationError` (json). All
+  five are now `TomException` with a proper `<area>.<operation>.<condition>`
+  key, which is what the rest of `little_things.md` had been showing all along.
+
+  The `runChecked` samples gained more than a compilable name. Their whole
+  subject is transforming an error, and each one was discarding the caught
+  `error` and `stack` in the process — the opposite of the point. They now
+  thread both through `rootException:` and `stack:`, and both the prose and the
+  dartdoc say why: `onError` returns `Object`, so any type compiles, but only a
+  `TomException` carries the original failure forward.
+
+  One key was also corrected rather than invented: `settings.access.role-missing`
+  was the only hyphenated error key in the package (every other one separates
+  words with `_`) and it claimed the `settings.` namespace for what is
+  application startup code, not the settings module. It is now
+  `startup.validate.role_missing`.
+
 - **Flutter was removed from every code sample in this Flutter-free package
   (tcinc296).** `pubspec.yaml` has no `flutter` entry, yet nine samples across
   the documentation and the shipped dartdoc were written against Flutter: the
