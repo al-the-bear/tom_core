@@ -979,8 +979,14 @@ is rejected rather than silently resolved to the first match:
 // Both a.dart and b.dart declare an annotated `Address`.
 tomReflectionInfo.singleElementType(<Address>[]);
 // throws TomReflectorException(reflector.classmirror.ambiguous_simple_name),
-// naming both qualified names in the message.
+// naming the library of each candidate in the message.
 ```
+
+The message identifies the candidates by their **library URI**, not by
+qualified name: the reflector is configured without `libraryCapability`, so
+every qualified name here is `.Address` and listing them would only repeat the
+ambiguous name back. Resolve the collision by renaming one class or by dropping
+its `@tomReflector`.
 
 ## Best Practices
 

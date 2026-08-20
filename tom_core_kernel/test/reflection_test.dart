@@ -5,6 +5,8 @@ import 'package:timezone/data/latest.dart' as tz_init;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'reflection_test.reflection.dart';
+import 'support/reflection_clash_first.dart' as first_clash;
+import 'support/reflection_clash_second.dart' as second_clash;
 
 // ============================================================================
 // Test Classes
@@ -1866,13 +1868,23 @@ void main() {
   // Type Resolution — generic-argument validation (bug §49a)
   // ==========================================================================
   group('tomReflectionInfo type resolution validation', () {
+    // Each case asserts the *key*, not merely the exception type. The two
+    // failures below arise one line apart in the same method and are told apart
+    // only by their key, so a test that accepts any TomReflectorException would
+    // still pass if the two were merged or swapped.
     test(
       'mapValueElementType throws TomReflectorException on a non-generic value',
       () {
         // 42.runtimeType.toString() == 'int' has no '<...>' — must not force-unwrap.
         expect(
           () => tomReflectionInfo.mapValueElementType(42),
-          throwsA(isA<TomReflectorException>()),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.key,
+              'key',
+              'reflector.type_resolution.not_a_generic_type',
+            ),
+          ),
         );
       },
     );
@@ -1883,7 +1895,13 @@ void main() {
         // List<int> only has one type argument — not a Map<K, V>; must not RangeError.
         expect(
           () => tomReflectionInfo.mapValueElementType(<int>[1, 2, 3]),
-          throwsA(isA<TomReflectorException>()),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.key,
+              'key',
+              'reflector.type_resolution.not_a_map_type',
+            ),
+          ),
         );
       },
     );
@@ -1893,10 +1911,90 @@ void main() {
       () {
         expect(
           () => tomReflectionInfo.singleElementType(42),
-          throwsA(isA<TomReflectorException>()),
+          throwsA(
+            isA<TomReflectorException>().having(
+              (e) => e.key,
+              'key',
+              'reflector.type_resolution.not_a_generic_type',
+            ),
+          ),
         );
       },
     );
+
+    test('singleElementType reports an element type that is not annotated', () {
+      // NotReflectedHolder carries no @tomReflector, so its simple name
+      // matches nothing in the domain. The key names the *iterable* lookup,
+      // which is what tells this apart from the map-value lookup below.
+      expect(
+        () => tomReflectionInfo.singleElementType(<NotReflectedHolder>[]),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.classmirror.not_found_for_iterable_value',
+          ),
+        ),
+      );
+    });
+
+    test('mapValueElementType reports a value type that is not annotated', () {
+      expect(
+        () => tomReflectionInfo.mapValueElementType(
+          <String, NotReflectedHolder>{},
+        ),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.classmirror.not_found_for_map_value',
+          ),
+        ),
+      );
+    });
+
+    test('a simple name shared by two annotated classes is refused', () {
+      // ClashingItem is declared in both support/reflection_clash_first.dart
+      // and support/reflection_clash_second.dart. These lookups resolve a type
+      // *by simple name*, so there is no principled way to choose — and
+      // choosing the first registered would return a mirror for a class the
+      // caller never named, materializing the wrong type without a word.
+      //
+      // Both directions are asserted: the refusal is a property of the name,
+      // not of which of the two libraries the caller happened to reach from.
+      final ambiguous = isA<TomReflectorException>()
+          .having(
+            (e) => e.key,
+            'key',
+            'reflector.classmirror.ambiguous_simple_name',
+          )
+          // Naming the collision is the whole value of the message, and the
+          // name alone does not name it: both candidates are called
+          // ClashingItem. Only the owning libraries tell them apart, so both
+          // must appear — a message built from qualifiedName would read
+          // ".ClashingItem, .ClashingItem" and leave the reader exactly where
+          // they started.
+          .having(
+            (e) => e.defaultUserMessage,
+            'defaultUserMessage',
+            allOf(
+              contains("'ClashingItem' is ambiguous"),
+              contains('support/reflection_clash_first.dart'),
+              contains('support/reflection_clash_second.dart'),
+            ),
+          );
+
+      expect(
+        () => tomReflectionInfo.singleElementType(<first_clash.ClashingItem>[]),
+        throwsA(ambiguous),
+      );
+      expect(
+        () => tomReflectionInfo.mapValueElementType(
+          <String, second_clash.ClashingItem>{},
+        ),
+        throwsA(ambiguous),
+      );
+    });
   });
 
   // ==========================================================================
@@ -3435,6 +3533,184 @@ void main() {
       expect(holder.intList, [1, 2]);
       expect(holder.boolList, [true, false]);
       expect(holder.dynamicList, [1, 'two', null]);
+    });
+  });
+
+  // ==========================================================================
+  // setValues — the remaining refusals, asserted by key
+  // ==========================================================================
+  group('every way setValues can refuse a value has its own key', () {
+    // The keys are the API: callers branch on them and translations are looked
+    // up by them, so a refusal that silently changes key is a breaking change
+    // that no type-only assertion would catch. Each test below names the key
+    // it pins, and the group covers the `reflection.set.*` refusals that the
+    // groups above leave untested.
+
+    test('a String offered for a field that is not date-like is refused', () {
+      // Reaching a String-valued entry means the field is not a String either
+      // — that case is handled long before here. What remains is the date
+      // family, which parses from text, and everything else, which does not.
+      expect(
+        () => tomReflectionInfo.setValues(SimplePerson(), {'age': 'abc'}),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.unexpected_string_type',
+              )
+              // The message has to identify the field and what arrived, or the
+              // caller is left grepping a payload for the offending entry.
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(contains('age'), contains('abc'), contains('int')),
+              ),
+        ),
+      );
+    });
+
+    test('a String offered for a nested annotated field is refused too', () {
+      // An annotated object is built from a Map, never from text. This is the
+      // same refusal as above and must not degrade into a cast error just
+      // because the target happens to be reflectable.
+      expect(
+        () => tomReflectionInfo.setValues(PersonWithAddress(), {
+          'address': 'Main Street 1',
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.unexpected_string_type',
+          ),
+        ),
+      );
+    });
+
+    test('a non-String element of a DateTime map is refused', () {
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeMapHolder(), {
+          'dateTimeMap': {'start': 42},
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.datetime_must_be_filled_from_string_in_map',
+              )
+              // The map key locates the bad entry; without it a large map
+              // reports only that *something* in it was wrong.
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                contains('start'),
+              ),
+        ),
+      );
+    });
+
+    test('a null value in a non-nullable DateTime map is refused', () {
+      // null takes the same exit as 42: it is only accepted when the declared
+      // value type admits it. `Map<String, DateTime>` does not, and letting
+      // null through would produce a map that violates its own type.
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeMapHolder(), {
+          'dateTimeMap': {'start': null},
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.datetime_must_be_filled_from_string_in_map',
+          ),
+        ),
+      );
+    });
+
+    test('a non-String element of a DateTime list is refused', () {
+      // The list counterpart carries its own key: the two collection shapes
+      // fail for the same reason but a caller fixing a payload needs to know
+      // which one it was looking at.
+      expect(
+        () => tomReflectionInfo.setValues(DateTimeListHolder(), {
+          'dateTimeList': [42],
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.datetime_must_be_filled_from_string_for_list',
+          ),
+        ),
+      );
+    });
+
+    test('a list element that is not a Map cannot be materialized', () {
+      // `List<Address>` is filled by building an Address per element, so each
+      // element must be a Map. A String is not, and the cast that discovers
+      // this fires while the lazily cast list is *iterated* — inside the try —
+      // which is what lets this be reported as a materialization failure
+      // naming the field rather than as a bare TypeError.
+      final holder = UninitializedCollectionsHolder();
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'addresses': ['Main Street 1'],
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.list_element_materialization_failed',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(contains('addresses'), contains('List<Address>')),
+              )
+              .having(
+                (e) => e.parameters?['key'],
+                'parameters[key]',
+                'addresses',
+              ),
+        ),
+      );
+      // The list is built to the side and assigned only once it is complete,
+      // so a refusal must leave the field exactly as it found it.
+      expect(holder.addresses, isNull);
+    });
+
+    test('a map value that is not a Map cannot be materialized', () {
+      final holder = UninitializedCollectionsHolder();
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'teamMembers': {'lead': 'Alice'},
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.map_value_materialization_failed',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(
+                  contains('teamMembers'),
+                  contains('Map<String, TeamMember>'),
+                ),
+              )
+              .having(
+                (e) => e.parameters?['key'],
+                'parameters[key]',
+                'teamMembers',
+              ),
+        ),
+      );
+      expect(holder.teamMembers, isNull);
     });
   });
 }

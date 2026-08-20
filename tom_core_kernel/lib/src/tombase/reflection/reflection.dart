@@ -529,11 +529,19 @@ class TomReflectionInfo {
       // Resolving a type by its simple name is ambiguous when two annotated
       // classes share it across libraries: returning the first match risks
       // materializing the wrong type. Reject the lookup and name the collision.
-      final qualifiedNames = matches.map((m) => m.qualifiedName).join(", ");
+      //
+      // The collision is named by *library*, not by qualifiedName: the
+      // reflector carries no libraryCapability, so every qualifiedName here is
+      // ".$typeName" and listing them would repeat the ambiguous name back at
+      // the reader instead of resolving it. The owning library's URI is the one
+      // thing that differs, and it is what the fix — rename one, or drop its
+      // annotation — needs to point at.
+      final libraries = matches.map((m) => (m.owner as LibraryMirror).uri);
       throw TomReflectorException(
         "reflector.classmirror.ambiguous_simple_name",
         "TomReflectionInfo._findClassMirror: simple name '$typeName' is "
-            "ambiguous; it matches multiple annotated classes: $qualifiedNames",
+            "ambiguous; it matches annotated classes in "
+            "${libraries.join(", ")}",
         autoLog: true,
       );
     }
