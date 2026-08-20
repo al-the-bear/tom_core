@@ -582,7 +582,8 @@ once every one of them has succeeded.
 ### Collection Types
 
 **Lists:**
-- `List<dynamic>`, `List<Object>`, `List<Object?>`
+- `List<dynamic>`, `List<Object>`, `List<Object?>` — see
+  [Dynamic Collections Carry Values, Not Types](#dynamic-collections-carry-values-not-types)
 - `List<String>`, `List<String?>`
 - `List<int>`, `List<int?>`
 - `List<double>`, `List<double?>`
@@ -592,7 +593,8 @@ once every one of them has succeeded.
 - `List<MyClass>`, `List<MyClass?>` (where MyClass is annotated)
 
 **Maps:**
-- `Map<String, dynamic>`, `Map<String, Object>`, `Map<String, Object?>`
+- `Map<String, dynamic>`, `Map<String, Object>`, `Map<String, Object?>` — see
+  [Dynamic Collections Carry Values, Not Types](#dynamic-collections-carry-values-not-types)
 - `Map<String, String>`, `Map<String, String?>`
 - `Map<String, int>`, `Map<String, int?>`
 - `Map<String, double>`, `Map<String, double?>`
@@ -600,6 +602,89 @@ once every one of them has succeeded.
 - `Map<String, DateTime>`, `Map<String, DateTime?>`
 - `Map<String, TomZonedDate>`, `Map<String, TomZonedTime>`, `Map<String, TomZonedDateTime>` and their nullable forms
 - `Map<String, MyClass>`, `Map<String, MyClass?>` (where MyClass is annotated)
+
+### Dynamic Collections Carry Values, Not Types
+
+A `Map<String, dynamic>` or `List<dynamic>` field round-trips **JSON-native
+values** — `String`, `int`, `double`, `bool`, `null` — unchanged. Anything else
+comes back as the JSON form the encoder produced, because a `dynamic` element
+has no declared type for the decoder to dispatch on. The encode side knows what
+it holds; the decode side does not.
+
+```dart
+holder.dynamicMap = {'when': DateTime.utc(2026, 1, 2), 'count': 5};
+
+final json = tomReflectionInfo.convertToJsonString(holder);
+// {"dynamicMap":{"when":"2026-01-02T00:00:00.000Z","count":5}}
+
+tomReflectionInfo.convertFromJsonString(restored, json);
+restored.dynamicMap!['when'];   // String  — not DateTime
+restored.dynamicMap!['count'];  // 5       — unaffected
+```
+
+What each kind of value becomes:
+
+| Value placed in a dynamic collection | What comes back |
+|--------------------------------------|-----------------|
+| `String`, `int`, `double`, `bool`, `null` | Itself, unchanged |
+| `DateTime` | `String` — ISO-8601 text |
+| `TomZonedDate` / `TomZonedTime` / `TomZonedDateTime` | `String` — the `@D@` / `@T@` / `@X@` marker text |
+| A class annotated with `@tomReflector` | `Map<String, dynamic>` of its fields — **not** an instance |
+| A nested `Map` or `List` | Itself, with its own values erased by the same rule |
+
+This is **type erasure, not data loss.** The text is the same encoding the
+typed fields use, so a caller who knows the intended type can restore it:
+
+```dart
+DateTime.parse(restored.dynamicMap!['when'] as String);
+TomZonedDateTime.parseFromString(restored.dynamicMap!['z'] as String);
+```
+
+The failure is silent — no exception, no trace, and the object looks fully
+populated. Code that reads `map['when'] as DateTime` throws at the cast, far
+from the deserialization that caused it.
+
+**Declare the element type when you know it.** The same value in a
+`Map<String, DateTime>` field is restored as a `DateTime`, because the field
+tells the decoder what to parse:
+
+```dart
+Map<String, DateTime>? dateTimeMap;   // round-trips as DateTime
+Map<String, dynamic>? attributes;     // round-trips as String
+```
+
+Reserve `dynamic` for genuinely free-form data whose values are JSON-native —
+attribute bags, passthrough payloads.
+
+If such a field must carry typed values, the class itself is the only place
+left that knows what they are, and
+[`jsonDecode`](#inbound-precedence--createinstancefromjson-and-setvalues) is
+where that knowledge goes:
+
+```dart
+@tomReflector
+class Session {
+  String label = '';
+  Map<String, dynamic>? attributes;
+
+  Session();
+
+  void jsonDecode(Map<String, dynamic> json) {
+    label = json['label'] as String? ?? '';
+    final source = json['attributes'] as Map?;
+    attributes = source?.map((key, value) => MapEntry(
+          key as String,
+          value is String ? (DateTime.tryParse(value) ?? value) : value,
+        ));
+  }
+}
+```
+
+Note the cost: `jsonDecode` takes deserialization over **entirely**, so the
+hook must populate every field, not only the one it cares about — `label` is
+restored by hand above for that reason. `fromJson` is not an alternative here;
+it is a construction-time hook, so it is skipped when a caller fills an object
+that already exists.
 
 **Collections nest one level deep.** The element type of a `List<T>` or a
 `Map<String, T>` must be a primitive, one of the date/time types, or a class

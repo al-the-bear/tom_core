@@ -184,6 +184,36 @@ class JsonHookHolder {
   Map<String, Object?> get jsonEncode => {'encoded': name};
 }
 
+/// The documented way out of dynamic-collection type erasure.
+///
+/// A `Map<String, dynamic>` field cannot tell the decoder that one of its
+/// values was a [DateTime], so the reflective field walk puts the ISO text
+/// back. This class knows what it stores, and a `jsonDecode` hook is where
+/// that knowledge can be applied — see "Dynamic Collections Carry Values, Not
+/// Types" in `doc/reflection/reflection.md`.
+///
+/// The hook takes decoding over *entirely*, so it restores [label] too rather
+/// than only the field it cares about.
+@tomReflector
+class DynamicMapWithHookHolder {
+  String label = '';
+  Map<String, dynamic>? attributes;
+
+  DynamicMapWithHookHolder();
+
+  void jsonDecode(Map<String, dynamic> json) {
+    label = json['label'] as String? ?? '';
+    final source = json['attributes'] as Map?;
+    attributes = source?.map(
+      (key, value) => MapEntry(key as String, _restore(value)),
+    );
+  }
+
+  /// `when` is the one key this model stores a [DateTime] under.
+  static Object? _restore(Object? value) =>
+      value is String ? (DateTime.tryParse(value) ?? value) : value;
+}
+
 /// Both hooks exist and both raise.
 @tomReflector
 class ThrowingJsonHookHolder {
@@ -2361,6 +2391,169 @@ void main() {
       expect(restored.address!.street, '1 Main St');
       expect(restored.address!.city, 'Springfield');
       expect(restored.address!.zipCode, '12345');
+    });
+  });
+
+  // ==========================================================================
+  // Dynamic collections erase the type of anything that is not JSON-native
+  // ==========================================================================
+  group('a dynamic collection round-trips values, not their types', () {
+    // The encode side knows what it holds; the decode side does not. A
+    // `Map<String, dynamic>` field has no element type to dispatch on, so
+    // whatever the encoder turned a value into is what the decoder puts back.
+    //
+    // These tests pin that outcome rather than correct it: the asymmetry is
+    // inherent to `dynamic`, and the alternatives — refusing to serialize such
+    // values, or tagging them with a type marker — either break working models
+    // or invent a wire format inside a field other systems already read. What
+    // matters is that the boundary is *known*, so it is asserted here and
+    // stated in the "Supported Types" documentation.
+    //
+    // Nothing is lost that the caller cannot recover: the text is the same
+    // encoding the typed fields use, so a caller who knows the intended type
+    // can parse it back. The type is erased; the data is not.
+
+    test('a DateTime in a dynamic map comes back as its ISO text', () {
+      final holder = MapHolder();
+      holder.dynamicMap = {'when': DateTime.utc(2026, 1, 2), 'count': 5};
+
+      final json = tomReflectionInfo.convertToJsonString(holder);
+      final restored = MapHolder();
+      tomReflectionInfo.convertFromJsonString(restored, json);
+
+      expect(restored.dynamicMap!['when'], isA<String>());
+      expect(restored.dynamicMap!['when'], '2026-01-02T00:00:00.000Z');
+      // The JSON-native neighbour in the same map is unaffected.
+      expect(restored.dynamicMap!['count'], 5);
+
+      // Recoverable by the caller, because it is the standard encoding.
+      expect(
+        DateTime.parse(restored.dynamicMap!['when'] as String),
+        DateTime.utc(2026, 1, 2),
+      );
+    });
+
+    test(
+      'the same DateTime in a typed map field is restored as a DateTime',
+      () {
+        // The contrast that makes the erasure a property of `dynamic` rather
+        // than of DateTime handling: identical value, declared element type.
+        final holder = DateTimeMapHolder();
+        holder.dateTimeMap = {'when': DateTime.utc(2026, 1, 2)};
+
+        final json = tomReflectionInfo.convertToJsonString(holder);
+        final restored = DateTimeMapHolder();
+        tomReflectionInfo.convertFromJsonString(restored, json);
+
+        expect(restored.dateTimeMap!['when'], isA<DateTime>());
+        expect(restored.dateTimeMap!['when'], DateTime.utc(2026, 1, 2));
+      },
+    );
+
+    test('a DateTime in a dynamic list comes back as its ISO text', () {
+      final holder = ListHolder();
+      holder.dynamicList = [DateTime.utc(2026, 1, 2), 7];
+
+      final json = tomReflectionInfo.convertToJsonString(holder);
+      final restored = ListHolder();
+      tomReflectionInfo.convertFromJsonString(restored, json);
+
+      expect(restored.dynamicList![0], isA<String>());
+      expect(restored.dynamicList![0], '2026-01-02T00:00:00.000Z');
+      expect(restored.dynamicList![1], 7);
+    });
+
+    test(
+      'a TomZonedDateTime in a dynamic map comes back as its marker text',
+      () {
+        // Worth pinning separately from DateTime: the zoned types serialize to
+        // an `@X@`-prefixed marker, not to ISO-8601. That is this module's wire
+        // format for them everywhere — a typed `List<TomZonedDateTime>` uses the
+        // same text and restores from it — but in a dynamic map it is what the
+        // caller is left holding, and it does not read like a date.
+        final holder = MapHolder();
+        holder.dynamicMap = {
+          'z': TomZonedDateTime(
+            year: 2024,
+            month: 6,
+            day: 15,
+            hour: 14,
+            minute: 30,
+            second: 0,
+            millisecond: 0,
+            timezone: TomTimezone.fromName('America/New_York'),
+          ),
+        };
+
+        final json = tomReflectionInfo.convertToJsonString(holder);
+        final restored = MapHolder();
+        tomReflectionInfo.convertFromJsonString(restored, json);
+
+        final text = restored.dynamicMap!['z'];
+        expect(text, isA<String>());
+        expect(text, startsWith('@X@'));
+        expect(text, contains('America/New_York'));
+
+        // Also recoverable, by the parser the typed path would have used.
+        final parsed = TomZonedDateTime.parseFromString(text as String);
+        expect(parsed.timezone.timezone, 'America/New_York');
+      },
+    );
+
+    test('an annotated object in a dynamic map comes back as a plain Map', () {
+      // Not only the date/time types: `getValues` recurses into an annotated
+      // value and emits its field map, and a field map is what returns. The
+      // class is gone, so `as Address` at the call site throws.
+      final holder = MapHolder();
+      holder.dynamicMap = {
+        'addr': Address()
+          ..street = 'Main'
+          ..city = 'Berlin',
+      };
+
+      final json = tomReflectionInfo.convertToJsonString(holder);
+      final restored = MapHolder();
+      tomReflectionInfo.convertFromJsonString(restored, json);
+
+      expect(restored.dynamicMap!['addr'], isNot(isA<Address>()));
+      expect(restored.dynamicMap!['addr'], isA<Map<String, dynamic>>());
+      expect(restored.dynamicMap!['addr'], containsPair('city', 'Berlin'));
+    });
+
+    test('the erasure reaches values nested inside a dynamic map', () {
+      // The dynamic-ness is inherited: a map inside a dynamic map has no
+      // declared element type either, so depth does not restore the type.
+      final holder = MapHolder();
+      holder.dynamicMap = {
+        'inner': {'when': DateTime.utc(2026, 3, 4)},
+      };
+
+      final json = tomReflectionInfo.convertToJsonString(holder);
+      final restored = MapHolder();
+      tomReflectionInfo.convertFromJsonString(restored, json);
+
+      expect(
+        (restored.dynamicMap!['inner'] as Map)['when'],
+        '2026-03-04T00:00:00.000Z',
+      );
+    });
+
+    test('a jsonDecode hook is where a model can restore what it knows', () {
+      // The documented way out, executed rather than merely described: the
+      // field type cannot carry the knowledge, but the class can.
+      final holder = DynamicMapWithHookHolder()
+        ..label = 'session'
+        ..attributes = {'when': DateTime.utc(2026, 1, 2), 'count': 5};
+
+      final json = tomReflectionInfo.convertToJsonString(holder);
+      final restored = DynamicMapWithHookHolder();
+      tomReflectionInfo.convertFromJsonString(restored, json);
+
+      expect(restored.attributes!['when'], isA<DateTime>());
+      expect(restored.attributes!['when'], DateTime.utc(2026, 1, 2));
+      expect(restored.attributes!['count'], 5);
+      // The hook owns the whole decode, so the untouched field is its job too.
+      expect(restored.label, 'session');
     });
   });
 
