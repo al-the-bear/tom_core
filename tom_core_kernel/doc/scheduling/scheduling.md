@@ -869,10 +869,22 @@ Three questions and where they are answered:
 
 ## Dependencies
 
-| Dependency | Used for |
-| ---------- | -------- |
-| `little_things` | `TomException` base for `TomScheduleException` |
-| `logging` | Default `onAlert` sink |
-| `isolate_pooling` | `TomWorkerPoolJobDispatcher` |
-| `shutdown_cleanup` | `TomClosable`, implemented by `TomScheduler` |
-| `dart:io` | `TomFileJobStore` and `TomFileLeaseLock` only |
+| Dependency | Kind | Used for |
+| ---------- | ---- | -------- |
+| `tom_reflection` | package | `ClassMirror`, which appears in `TomScheduledJobs.discover`'s own signature. The whole of [Declaring a Job](#declaring-a-job) rests on it |
+| `reflection` | kernel module | The global `tomReflector` and the `@tomReflector` annotation — the only query the scan has |
+| `tom_basics` | package | `tomLog`, the default `onAlert` sink |
+| `little_things` | kernel module | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`; `tomWriteFileAtomically` for `TomFileJobStore` |
+| `isolate_pooling` | kernel module | `TomCommand`, which *is* the job body type; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
+| `shutdown_cleanup` | kernel module | `TomClosable`, implemented by `TomScheduler` |
+| `dart:io` | SDK | `TomFileJobStore` and `TomFileLeaseLock` only |
+
+The two reflection rows are the ones that cost something. Declaring a job by
+annotation means the declaring package needs a **`build_runner` step**:
+`tomReflector` answers from generated reflection data, so a package with
+`@TomScheduledJob` classes takes `tom_reflection_generator` as a dev dependency
+and runs `dart run build_runner build` before the scan can see anything. This
+package does exactly that for its own samples
+([`example/run_all_samples.reflection.dart`](../../example/run_all_samples.reflection.dart)).
+Hand-written `TomJobDefinition`s need none of it — the build step is the price
+of the annotation path, not of the module.
