@@ -292,9 +292,34 @@ anyone who was writing them.
   primitives; new `meta ^1.9.0` for the `@nonVirtual` annotations that make the
   deployment cap load-bearing. Dev: `tom_reflection_generator` `>=1.3.1`
   (type-literal annotation arguments are now emitted import-prefixed).
+- **Breaking: `TomResourceKeyAccess` now answers about the principal it is
+  given.** `checkPrincipalAccess` dropped its argument and consulted the
+  ambient zone instead, making it the one control in the family that did not
+  answer the question the family's contract states — "whether *[principal]*
+  satisfies this control". Outside a request zone the divergence was silent and
+  fail-closed: `TomResourceKeyAccess('x').checkAccessibility(p)` returned
+  `false` for a principal `p` whose `aci.resourceKeys` contained `'x'`, because
+  the zone was empty. The rule is now stated once over an explicit operand,
+  `TomResourceKeyProtection.isProtectedFor(principal, key)`, and reached two
+  ways: the control passes the principal it was asked about, while
+  `isProtected`, `tomProtect` and `tomProtected` keep their zone-reading
+  behaviour unchanged and now delegate to it. The master switch
+  `globalSettingProtectionDefault` is unaffected and still gates the whole rule
+  — with it `false`, every principal is granted. Callers who relied on the zone
+  being consulted *through an access control* must pass the principal instead,
+  which is what every call site already looks like since `checkAccessibility`
+  takes one. The suite's `should integrate with TomResourceKeyProtection` case
+  asserted the old behaviour and was replaced.
 
 ### Tests
 
+- **`TomResourceKeyAccess` is pinned to its argument.** The group grew from two
+  cases to seven, covering both sides of the master switch, a `null` principal,
+  and a principal that holds the key with **no zone installed** — the case that
+  can only pass if the control reads what it was handed. One case sets the two
+  operands against each other deliberately, running the check inside a zone
+  holding a *different* principal, so a zone read cannot rescue an argument
+  that lacks the key nor condemn one that holds it.
 - **Scope ids are pinned at all three entry points.** A
   `scope ids are validated` group runs the five unusable ids (`a.b`, `.`, `a.`,
   `.a`, `''`) through `withScope`, the `TomScopeBase` constructor and
@@ -388,6 +413,16 @@ anyone who was writing them.
 
 ### Examples
 
+- **The resource-key sample now exercises the control rather than the ACI.**
+  Section four of `03_advanced_access_control_example.dart` built an
+  `emailAccess` and a `salaryAccess` and then asserted on
+  `principal.aci.resourceKeys.contains(...)` directly — demonstrating the
+  collection, not the access control, and needing a file-level
+  `unused_local_variable` waiver to do it. It now asks the controls
+  themselves through `checkAccessibility(principal)`, the same call every other
+  section makes, and ends by switching `globalSettingProtectionDefault` off and
+  watching the principal who was just refused be let through — the one operand
+  this control has that its siblings do not.
 - **The `default`-named domain scope is now shown costing something.** Section
   seven of `01_scope_basics_example.dart` demonstrated the identity rule by
   constructing the chain by hand and asserting the resulting paths; it now also

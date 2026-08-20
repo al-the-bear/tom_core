@@ -1,4 +1,3 @@
-// ignore_for_file: unused_local_variable
 /// Advanced Access Control Example
 ///
 /// This example demonstrates advanced access control mechanisms:
@@ -140,6 +139,7 @@ class ResourceKeyAccessExample {
   static bool? emailAccessBasic;
   static bool? salaryAccessPremium;
   static bool? salaryAccessBasic;
+  static bool? salaryAccessUnprotected;
   static bool resourceKeyAccessWorks = false;
 
   static void example4ResourceKeyAccess() {
@@ -153,26 +153,22 @@ class ResourceKeyAccessExample {
     // Check access to salary (only premium has)
     const salaryAccess = TomResourceKeyAccess('user.salary');
 
-    // We need to run in a zone with the principal to test this properly
-    // For this example, we'll demonstrate the pattern
     print('   - Resource key protection enabled');
     print('   - Premium resource keys: ${premiumPrincipal.aci.resourceKeys}');
     print('   - Basic resource keys: ${basicPrincipal.aci.resourceKeys}');
 
-    // Direct check on the access control
-    emailAccessPremium = premiumPrincipal.aci.resourceKeys.contains(
-      'user.email',
-    );
-    emailAccessBasic = basicPrincipal.aci.resourceKeys.contains('user.email');
-    salaryAccessPremium = premiumPrincipal.aci.resourceKeys.contains(
-      'user.salary',
-    );
-    salaryAccessBasic = basicPrincipal.aci.resourceKeys.contains('user.salary');
+    // Asked the same way as every other control in the family: hand it the
+    // principal you want an answer about. No zone is installed here, and none
+    // is needed — the argument is the operand.
+    emailAccessPremium = emailAccess.checkAccessibility(premiumPrincipal);
+    emailAccessBasic = emailAccess.checkAccessibility(basicPrincipal);
+    salaryAccessPremium = salaryAccess.checkAccessibility(premiumPrincipal);
+    salaryAccessBasic = salaryAccess.checkAccessibility(basicPrincipal);
 
-    print('   - Premium has email key: $emailAccessPremium');
-    print('   - Basic has email key: $emailAccessBasic');
-    print('   - Premium has salary key: $salaryAccessPremium');
-    print('   - Basic has salary key: $salaryAccessBasic');
+    print('   - Premium may see email:  $emailAccessPremium');
+    print('   - Basic may see email:    $emailAccessBasic');
+    print('   - Premium may see salary: $salaryAccessPremium');
+    print('   - Basic may see salary:   $salaryAccessBasic');
 
     resourceKeyAccessWorks =
         emailAccessPremium == true &&
@@ -180,13 +176,24 @@ class ResourceKeyAccessExample {
         salaryAccessPremium == true &&
         salaryAccessBasic == false;
 
-    // Reset protection setting
+    // Reset protection setting. The master switch is the second operand of
+    // this control and of nothing else: with it off, resource keys are not
+    // enforced, so the principal who was just refused is now let through.
     TomResourceKeyProtection.globalSettingProtectionDefault = false;
+    salaryAccessUnprotected = salaryAccess.checkAccessibility(basicPrincipal);
+
+    print(
+      '   - Protection off, basic may see salary: $salaryAccessUnprotected',
+    );
 
     // Assertions
     assert(salaryAccessPremium == true, 'Premium should have salary access');
     assert(salaryAccessBasic == false, 'Basic should not have salary access');
     assert(resourceKeyAccessWorks, 'Resource key access should work');
+    assert(
+      salaryAccessUnprotected == true,
+      'the global switch gates the whole rule, not just the default',
+    );
   }
 }
 

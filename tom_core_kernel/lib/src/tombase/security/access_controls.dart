@@ -119,21 +119,37 @@ class TomResourceKeyProtection {
     return data;
   }
 
+  /// Checks if a resource is protected from [principal].
+  ///
+  /// Returns `true` if the resource is protected (the principal lacks access),
+  /// `false` if the resource is accessible. A `null` [principal] is treated as
+  /// holding no keys, so a protected resource is out of its reach.
+  ///
+  /// This is the rule itself, stated over an explicit operand. [isProtected]
+  /// applies it to whoever the ambient zone names; [TomResourceKeyAccess]
+  /// applies it to the principal its caller asked about.
+  ///
+  /// - [principal]: The principal whose keys decide access, or `null`
+  /// - [resourceKey]: The key identifying the resource to check
+  // TODO: plugin actual check for resource access here...
+  static bool isProtectedFor(TomPrincipal? principal, String resourceKey) {
+    if (!globalSettingProtectionDefault) return false;
+    if (principal == null) return true;
+    return !principal.aci.resourceKeys.contains(resourceKey);
+  }
+
   /// Checks if a resource is protected from the current user.
+  ///
+  /// The "current user" is the principal installed on the ambient zone. Where
+  /// a principal is already in hand, call [isProtectedFor] instead — reading
+  /// the zone when the caller named someone answers a different question.
   ///
   /// Returns `true` if the resource is protected (user lacks access),
   /// `false` if the resource is accessible.
   ///
   /// - [resourceKey]: The key identifying the resource to check
-  // TODO: plugin actual check for resource access here...
-  static bool isProtected(String resourceKey) {
-    if (!globalSettingProtectionDefault) return false;
-    var authentication = getFromCurrentZone<TomPrincipal>();
-    if (authentication != null) {
-      return !authentication.aci.resourceKeys.contains(resourceKey);
-    }
-    return true;
-  }
+  static bool isProtected(String resourceKey) =>
+      isProtectedFor(getFromCurrentZone<TomPrincipal>(), resourceKey);
 }
 
 // =============================================================================
@@ -723,6 +739,16 @@ class TomGroupAccess extends TomAccessControl {
 /// @TomResourceKeyAccess('user.salary')
 /// Widget salaryField() { ... }
 /// ```
+///
+/// Unlike its siblings, this control has a second operand: while
+/// [TomResourceKeyProtection.globalSettingProtectionDefault] is `false`,
+/// resource keys are not enforced at all and every principal is granted. Once
+/// it is on, the rule is the ordinary one — the principal's own
+/// `aci.resourceKeys` must contain [key].
+///
+/// It is deliberately *not* routed through the shared ACI helper the role and
+/// group controls use: that master switch is a genuinely different rule, in
+/// the same way entitlement matching is.
 class TomResourceKeyAccess extends TomAccessControl {
   /// The resource key to check.
   final String key;
@@ -734,5 +760,5 @@ class TomResourceKeyAccess extends TomAccessControl {
 
   @override
   bool checkPrincipalAccess(TomPrincipal? principal) =>
-      !TomResourceKeyProtection.isProtected(key);
+      !TomResourceKeyProtection.isProtectedFor(principal, key);
 }

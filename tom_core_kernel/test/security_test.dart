@@ -1476,21 +1476,90 @@ void main() {
       TomResourceKeyProtection.globalSettingProtectionDefault = false;
     });
 
+    tearDown(() {
+      TomResourceKeyProtection.globalSettingProtectionDefault = false;
+    });
+
     test('should grant access when protection is disabled', () {
       var access = const TomResourceKeyAccess('user.salary');
       expect(access.checkAccessibility(null), isTrue);
     });
 
-    test('should integrate with TomResourceKeyProtection', () {
-      // Arrange
+    test(
+      'should grant access to any principal when protection is disabled',
+      () {
+        // The master switch is the whole rule while it is off: the key the
+        // principal does not hold is still not a reason to deny.
+        var access = const TomResourceKeyAccess('user.salary');
+        var principal = createTestPrincipal(resourceKeys: ['user.email']);
+        expect(access.checkPrincipalAccess(principal), isTrue);
+      },
+    );
+
+    test('should grant access when the given principal holds the key', () {
+      // The argument is the operand. No principal is installed on the zone, so
+      // this can only pass if the control reads the one it was handed.
       TomResourceKeyProtection.globalSettingProtectionDefault = true;
       var access = const TomResourceKeyAccess('user.salary');
+      var principal = createTestPrincipal(
+        resourceKeys: ['user.salary', 'user.email'],
+      );
+      expect(access.checkPrincipalAccess(principal), isTrue);
+    });
 
-      // Act - no principal in zone means protected
-      var result = access.checkAccessibility(createTestPrincipal());
+    test('should deny access when the given principal lacks the key', () {
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      var access = const TomResourceKeyAccess('user.salary');
+      var principal = createTestPrincipal(resourceKeys: ['user.email']);
+      expect(access.checkPrincipalAccess(principal), isFalse);
+    });
 
-      // Assert
-      expect(result, isFalse);
+    test('should deny access to null principal when protection is enabled', () {
+      // Fail-closed: an unauthenticated caller holds no keys, so a protected
+      // resource is out of reach.
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      var access = const TomResourceKeyAccess('user.salary');
+      expect(access.checkPrincipalAccess(null), isFalse);
+    });
+
+    test('should ignore the zone principal in favour of the argument', () {
+      // The two operands disagree on purpose. `checkPrincipalAccess` answers
+      // about the principal it is asked about — the same promise every other
+      // control in this family makes — so a zone principal must neither rescue
+      // an argument that lacks the key nor condemn one that holds it.
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      var access = const TomResourceKeyAccess('user.salary');
+      var holder = createTestPrincipal(resourceKeys: ['user.salary']);
+      var stranger = createTestPrincipal(resourceKeys: ['user.email']);
+
+      var strangerUnderHolderZone = runZoned(
+        () => access.checkPrincipalAccess(stranger),
+        zoneValues: {TomPrincipal: holder},
+      );
+      var holderUnderStrangerZone = runZoned(
+        () => access.checkPrincipalAccess(holder),
+        zoneValues: {TomPrincipal: stranger},
+      );
+
+      expect(strangerUnderHolderZone, isFalse);
+      expect(holderUnderStrangerZone, isTrue);
+    });
+
+    test('should agree with its siblings through checkAccessibility', () {
+      // The public entry point, reached the way `doc/security/security.md`
+      // shows it: one principal argument, uniform across the family.
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      var access = const TomResourceKeyAccess('user.salary');
+      expect(
+        access.checkAccessibility(
+          createTestPrincipal(resourceKeys: ['user.salary']),
+        ),
+        isTrue,
+      );
+      expect(
+        access.checkAccessibility(createTestPrincipal(resourceKeys: [])),
+        isFalse,
+      );
     });
   });
 

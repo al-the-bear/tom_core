@@ -210,14 +210,21 @@ var completeAci = definition.completeFromDefinition(userAci);
 | `TomRoleAccess` | Requires specific roles |
 | `TomGroupAccess` | Requires group membership |
 | `TomEntitlementAccess` | Requires specific entitlements |
-| `TomResourceKeyAccess` | Checks resource key protection |
+| `TomResourceKeyAccess` | Requires a resource key, while protection is switched on |
 | `TomCustomAccess` | Delegates to custom handler |
 
-Each of these states a requirement on the **user**. That is only half of an
-access decision: the result is met with what the *deployment* is granted, so a
-control the user satisfies can still resolve to `none`. See [The Server
-Principal and the Meet](#the-server-principal-and-the-meet) — read it before
-debugging a refusal you cannot explain.
+Each of these states a requirement on the **user**, and each answers about the
+principal you hand it — `checkAccessibility(principal)` means the same thing
+for every row. That is only half of an access decision: the result is met with
+what the *deployment* is granted, so a control the user satisfies can still
+resolve to `none`. See [The Server Principal and the
+Meet](#the-server-principal-and-the-meet) — read it before debugging a refusal
+you cannot explain.
+
+`TomResourceKeyAccess` carries one extra condition the others do not: while
+`TomResourceKeyProtection.globalSettingProtectionDefault` is `false` — its
+default — resource keys are not enforced at all and the control grants
+everyone. Turn the switch on before expecting a key to be required.
 
 #### Resource Key Protection
 
@@ -235,6 +242,24 @@ if (!tomProtected('user.salary')) {
   showSalary(user.salary);
 }
 ```
+
+The rule lives in one place, `TomResourceKeyProtection.isProtectedFor`, and is
+reached two ways. The helpers above — `tomProtect`, `tomProtected` and
+`isProtected` — apply it to whoever the **ambient zone** names, which is what
+you want at a field you are rendering for the current request. Where a
+principal is already in hand, name it:
+
+```dart
+// Answers about `principal`, whatever the zone happens to hold.
+if (!TomResourceKeyProtection.isProtectedFor(principal, 'user.salary')) {
+  showSalary(user.salary);
+}
+```
+
+This is the distinction `TomResourceKeyAccess` sits on: as an access control it
+is asked about a principal, so it takes the second form. Reading the zone when
+the caller has named someone answers a different question — and outside a
+request zone, a fail-closed one.
 
 ---
 
