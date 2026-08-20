@@ -195,6 +195,13 @@ Three behaviours worth knowing:
   how the answer is *rendered*, never which moment it means. Pass a local
   `DateTime` and you get that machine's reading of it; the schedule fires at the
   same absolute instant either way.
+- **Across a DST boundary, cron and intervals move opposite ways.** Cron and
+  calendar hold the wall clock, so a local `0 3 * * *` stays at 03:00 and the gap
+  to the previous run becomes 23 or 25 hours. An interval holds the grid, so a
+  24-hour period stays 24 real hours and its wall-clock time shifts by an hour.
+  Pick by what the job actually needs — local 03:00 for a nightly report, 24 real
+  hours for a token refresh — and ask in UTC when it must ignore civil time
+  altogether.
 
 `TomEventSchedule` inverts the direction: instead of the clock producing windows,
 each event on the stream enqueues a run carrying its payload. Two events at the

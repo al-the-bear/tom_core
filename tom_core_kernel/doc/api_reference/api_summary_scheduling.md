@@ -134,7 +134,7 @@ const TomSchedule()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `nextFireAfter` | `DateTime? nextFireAfter(DateTime from)` | The first fire time strictly after `from`, or `null` if the schedule will never fire again. |
+| `nextFireAfter` | `DateTime? nextFireAfter(DateTime from)` | The first fire time strictly after `from`, or `null` if the schedule will never fire again. Answered in `from`'s zone; for the wall-clock kinds (cron, calendar) that zone also decides what the fields *mean*. |
 | `describe` | `String describe()` | A short human-readable form, used in logs and alerts. |
 | `toString` | `String toString()` | *(override)* Delegates to `describe`. |
 

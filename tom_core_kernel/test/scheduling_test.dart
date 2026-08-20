@@ -473,6 +473,32 @@ void main() {
         expect(fire!.isUtc, isFalse);
         expect(fire, DateTime(2026, 3, 2));
       });
+
+      test('reads its fields in the caller zone rather than normalising', () {
+        // The two tests above pin the zone *flag* of the answer. Neither says
+        // what the zone does to the meaning, which is the part that surprises
+        // people: both answers below read 03:00, so they are the same wall
+        // clock and therefore a different instant. A reader who assumes the
+        // schedule normalises to UTC pins a nightly job to the wrong midnight.
+        final cron = TomCronSchedule('0 3 * * *');
+        final callerZone = DateTime(2026, 3, 1);
+        final utc = cron.nextFireAfter(DateTime.utc(2026, 3, 1))!;
+        final local = cron.nextFireAfter(callerZone)!;
+
+        expect(
+          [local.year, local.month, local.day, local.hour, local.minute],
+          [utc.year, utc.month, utc.day, utc.hour, utc.minute],
+          reason: '03:00 is 03:00 in whichever zone it was asked about',
+        );
+        // Compared against the *caller's* offset, not the answer's, so a
+        // normalising implementation fails here instead of reporting a zero
+        // offset and agreeing with itself.
+        expect(
+          local.toUtc() == utc,
+          callerZone.timeZoneOffset == Duration.zero,
+          reason: 'a wall-clock field must not be normalised to UTC',
+        );
+      });
     });
 
     group('day-of-month / day-of-week', () {
