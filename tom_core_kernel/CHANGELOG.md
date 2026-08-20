@@ -314,6 +314,16 @@ anyone who was writing them.
   fifth test holds the other side of the line — a scope identified after
   construction installs normally — so the guard cannot be tightened into
   breaking the pattern it is protecting.
+- **`scope_ids_test.dart` pins the reason `buildScopePath` needs no cycle
+  guard.** The walk is unguarded on the grounds that a scope built through this
+  module cannot form a loop, which rests on `initScope` refusing an
+  uninitialised parent and writing the link once. A
+  `the parent chain cannot be made cyclic` group closes each of the three ways a
+  link could be bent back — parenting to a scope that has no identity yet,
+  self-parenting, and re-pointing an established parent — so relaxing either
+  mechanism fails here rather than in whichever isolate later walks the loop.
+  The loop itself is deliberately untested: a test that hangs until the VM dies
+  takes the suite with it.
 
 ### Examples
 
@@ -366,6 +376,19 @@ anyone who was writing them.
   `initScope` — which entry point refuses what, why the parent is checked at
   `initScope` rather than during the path walk, and the invariant the two
   checks buy: whatever `TomScope.current` returns is usable.
+- **The acyclicity requirement `buildScopePath` relies on is now written down**
+  — in its own dartdoc, in `initScope`'s, in `doc/scope_ids/scope_ids.md` and in
+  the API summary. The walk up the parent chain is iterative and has no cycle
+  guard, so a loop does not raise `StackOverflowError`: it spins silently,
+  appending segments, until the heap is exhausted and the isolate dies. It is
+  left unguarded because no scope built through this module can form a loop —
+  `withScope` and the `TomScopeBase` constructor take a parent that already
+  exists, and `initScope` refuses one that is not yet initialised and then
+  writes the link once, so every parent is strictly older than its child and a
+  chain that only moves backwards in time cannot return to itself. What the
+  documentation adds is the part that argument does not cover: a hand-rolled
+  `implements TomScope` supplies its own `parent` and carries the obligation
+  itself.
 
 ## 1.1.15
 

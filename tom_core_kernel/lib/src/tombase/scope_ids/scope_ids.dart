@@ -98,6 +98,22 @@ abstract class TomScope {
 
   /// Builds the scope path for any TomScope instance.
   /// Returns a dot-separated string (e.g., "app.checkout.orderForm").
+  ///
+  /// **The parent chain must be acyclic.** The walk is iterative and
+  /// unguarded, so a loop does not raise `StackOverflowError` — it spins
+  /// silently, appending segments until the heap is exhausted and the isolate
+  /// dies. In a server that is the whole process.
+  ///
+  /// No guard is needed for scopes this module builds, because none of them can
+  /// form a loop: [withScope] and the [TomScopeBase] constructor take a parent
+  /// that already exists, and [TomScopeMixin.initScope] refuses one that is not
+  /// yet initialised and then writes the link once. Every parent is therefore
+  /// strictly older than its child, and a chain that only ever moves backwards
+  /// in time cannot return to where it started.
+  ///
+  /// The requirement binds anything that implements [TomScope] by hand: such a
+  /// type supplies its own [parent], outside that argument and outside any
+  /// check this module can make.
   static String buildScopePath(TomScope scope) {
     final List<String> parts = [];
     TomScope? current = scope;
@@ -152,6 +168,15 @@ mixin TomScopeMixin on Object implements TomScope {
   /// rather than when the path is built is what keeps the check O(1): an
   /// initialised scope then has a fully initialised chain by induction, since
   /// the identity is write-once and a parent cannot lose one later.
+  ///
+  /// The same rule is also what keeps the chain **acyclic**, which
+  /// [TomScope.buildScopePath] relies on and does not verify. Requiring the
+  /// parent to be initialised already makes it strictly older than its child,
+  /// and writing the link once means it stays that way — so following parents
+  /// always moves backwards in time and can never arrive back at where it
+  /// started. Closing a loop would need this call to accept a scope that is not
+  /// yet initialised, or to run a second time on a scope that already is;
+  /// neither is allowed.
   void initScope({required String scopeId, TomScope? parentScope}) {
     // Validate before mutating: a rejected call must leave the instance in the
     // state it was in, still initialisable.

@@ -11,6 +11,8 @@
 ///   known once the enclosing scope exists
 /// - What that window costs: until `initScope` runs the instance is not yet a
 ///   scope, and using it as one is refused on the spot
+/// - Why the same rule keeps the parent chain acyclic, which the unguarded
+///   walk in `buildScopePath` relies on
 ///
 /// Run with (asserts MUST be enabled so the invariants below are checked):
 /// ```bash
@@ -145,6 +147,48 @@ void run() {
   print('');
 
   // ===========================================================================
+  // Example 6: why the same rule keeps the chain acyclic
+  // ===========================================================================
+  //
+  // `buildScopePath` walks the parent chain without a cycle guard — the walk is
+  // iterative, so a loop would not overflow the stack, it would spin until the
+  // heap is gone. It needs no guard because a loop cannot be built here: a
+  // parent must already be initialised, which makes it strictly older than its
+  // child, and the link is written once, so it stays that way.
+  //
+  // Closing a loop needs one of the two moves below, and both are refused.
+
+  print('6. Attempting to bend the parent chain back on itself:');
+
+  // Point a scope at one that does not exist yet, planning to close the loop
+  // afterwards. Refused at the first half.
+  final unbornParentRefusal = refusalOf(() {
+    final a = LazyScope();
+    final b = LazyScope();
+    a.initScope(scopeId: 'a', parentScope: b);
+    b.initScope(scopeId: 'b', parentScope: a);
+  });
+
+  // Re-point an established parent. `initScope` backs `late final` fields, so
+  // this fails as a LateError rather than a StateError.
+  final child = ScreenSection(
+    title: 'Child',
+    scopeId: 'child',
+    parentScope: app,
+  );
+  var rePointRefused = false;
+  try {
+    child.initScope(scopeId: 'child', parentScope: checkout);
+  } on Error {
+    rePointRefused = true;
+  }
+
+  print('   parent not yet initialised: $unbornParentRefusal');
+  print('   re-pointing a parent:       refused: $rePointRefused');
+  print('   child.parent unchanged:     ${identical(child.parent, app)}');
+  print('');
+
+  // ===========================================================================
   // Assertions
   // ===========================================================================
 
@@ -173,6 +217,13 @@ void run() {
   assert(installRefusal.contains('initScope'));
   assert(parentRefusal.contains('LazyScope'));
   assert(parentRefusal.contains('initScope'));
+
+  // Example 6: both routes to a cycle are closed, and the refused re-point
+  // leaves the existing link intact
+  assert(unbornParentRefusal.contains('LazyScope'));
+  assert(unbornParentRefusal.contains('initScope'));
+  assert(rePointRefused);
+  assert(identical(child.parent, app));
 }
 
 /// Standalone entry point.

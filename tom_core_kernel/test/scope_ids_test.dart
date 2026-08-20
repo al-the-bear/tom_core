@@ -169,6 +169,54 @@ void main() {
         );
         expect(path, equals('default'));
       });
+
+      // The walk up the parent chain has no cycle guard: it is iterative, so a
+      // loop does not raise StackOverflowError — it spins silently, growing the
+      // segment list until the heap is exhausted and the isolate dies.
+      //
+      // That is safe only because a scope built through this module cannot form
+      // a cycle, and these tests are what make "cannot" checkable. Each one
+      // closes one of the three ways a parent link could ever be bent back:
+      // there is no fourth, because `_parent` is written once and only by
+      // initScope. The cycle itself is deliberately not tested — a test that
+      // hangs the isolate until the VM dies takes the suite with it.
+      group('the parent chain cannot be made cyclic', () {
+        test('a parent that has no identity yet is refused', () {
+          // The only ordering that could close a loop: point A at B while B is
+          // still unborn, then give B its identity with A as *its* parent.
+          // Refusing the first half is what makes a parent strictly older than
+          // its child, and a strictly-increasing chain cannot return to itself.
+          final a = _LazyMixinScope();
+          final b = _LazyMixinScope();
+
+          expect(
+            () => a.initScope(scopeId: 'a', parentScope: b),
+            throwsA(isA<StateError>()),
+          );
+        });
+
+        test('a scope cannot be its own parent', () {
+          final a = _LazyMixinScope();
+          expect(
+            () => a.initScope(scopeId: 'a', parentScope: a),
+            throwsA(isA<StateError>()),
+          );
+        });
+
+        test('an established parent link cannot be re-pointed', () {
+          // Every parent being older than its child only rules out cycles while
+          // the links stay put. They do: initScope writes `late final` fields,
+          // so a second call is rejected rather than bending the chain back.
+          final root = _MixinScope(scopeId: 'root');
+          final child = _MixinScope(scopeId: 'child', parentScope: root);
+
+          expect(
+            () => child.initScope(scopeId: 'child', parentScope: root),
+            throwsA(isA<Error>()),
+          );
+          expect(child.parent, same(root), reason: 'the link must be intact');
+        });
+      });
     });
   });
 

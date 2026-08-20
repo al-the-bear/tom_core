@@ -77,7 +77,7 @@ on the current `Zone`.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `withScope` | `static T withScope<T>(String scope, T Function() body)` | Runs `body` in a new child scope named `scope`, parented to `current`. The zone bounds reachability, not lifetime: the caller's continuation never sees the scope, but anything `body` schedules inherits it and observes it whenever it later runs. |
-| `buildScopePath` | `static String buildScopePath(TomScope scope)` | Builds the dot-separated scope path for any `TomScope` (e.g. `app.checkout.orderForm`), eliding only the root sentinel. |
+| `buildScopePath` | `static String buildScopePath(TomScope scope)` | Builds the dot-separated scope path for any `TomScope` (e.g. `app.checkout.orderForm`), eliding only the root sentinel. Requires an acyclic parent chain: the walk is iterative and unguarded, so a loop exhausts the heap rather than raising `StackOverflowError`. Scopes built through this module cannot form one — the obligation falls on hand-rolled `implements TomScope`. |
 
 #### Properties
 
@@ -130,7 +130,7 @@ known later.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `StateError` if `parentScope` has no identity of its own. |
+| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `StateError` if `parentScope` has no identity of its own — which is also what keeps the chain acyclic, since it makes every parent strictly older than its child and the link is then written once. |
 | `getScopePath` | `String getScopePath()` | *(override)* Returns the full dot-separated scope path. |
 | `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. Throws `StateError` before `initScope` has run, without running `body`. |
 

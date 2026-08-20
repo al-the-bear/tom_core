@@ -16,6 +16,7 @@ threading an identifier through every call.
     - [The window before initScope](#the-window-before-initscope)
   - [InScopeBuilder](#inscopebuilder)
 - [Scope Paths](#scope-paths)
+  - [The chain must be acyclic](#the-chain-must-be-acyclic)
 - [Crossing Zone Boundaries](#crossing-zone-boundaries)
   - [Fire-and-forget work started inside a scope](#fire-and-forget-work-started-inside-a-scope)
   - [Deferred callbacks the framework invokes](#deferred-callbacks-the-framework-invokes)
@@ -193,6 +194,45 @@ Matching on the id string instead would delete that segment silently, and
 collapse two genuinely distinct scopes onto one path. That is why the rule is
 written as an identity check rather than a name comparison.
 
+### The chain must be acyclic
+
+The walk is iterative and has **no cycle guard**. A loop therefore does not
+raise `StackOverflowError` — the walk spins silently, appending segments, until
+the heap is exhausted and the isolate dies. In a server that is the whole
+process, and the stack trace names neither scopes nor whoever built the loop.
+
+Nothing is guarded because nothing needs to be: **a scope built through this
+module cannot form a loop.** Both ways of building one hand it a parent that
+already exists —
+
+| How the scope is built | Why the parent is already there |
+| ---------------------- | ------------------------------- |
+| `withScope` | parents the new scope to `TomScope.current` |
+| `TomScopeBase(scopeId:, parentScope:)` | `initScope` runs in the constructor |
+| `initScope` on a constructed instance | refuses a `parentScope` that has no identity yet |
+
+— so every parent is strictly *older* than its child, and `initScope` writes the
+link once, so it stays that way. Following parents only ever moves backwards in
+time, and a chain that only moves backwards cannot arrive back where it started.
+
+Bending a link back would take one of two things, and both are refused:
+
+```dart
+final a = LazyScope();
+final b = LazyScope();
+a.initScope(scopeId: 'a', parentScope: b);  // StateError — b has no identity
+b.initScope(scopeId: 'b', parentScope: a);
+
+final child = TomScopeBase(scopeId: 'child', parentScope: root);
+child.initScope(scopeId: 'child', parentScope: other);  // LateError — write-once
+```
+
+**The requirement does bind a hand-rolled `implements TomScope`.** Such a type
+supplies its own `parent`, so it sits outside the argument above and outside any
+check the module can make; `buildScopePath` accepts it and will walk whatever it
+is given. If you implement the interface directly, keeping the chain acyclic is
+yours to guarantee.
+
 ## Crossing Zone Boundaries
 
 A zone bounds **reachability, not lifetime**. This is the single most
@@ -290,6 +330,10 @@ So the two tools are:
    a scope keeps it for its whole life, so a fire-and-forget task inherits the
    scope of whatever happened to start it. Start genuinely independent work
    outside the scope, or install the one it should run under.
+5. **Prefer `TomScopeMixin` to implementing `TomScope` by hand.** The mixin is
+   what makes the chain acyclic, and `buildScopePath` walks the chain without
+   checking. A hand-rolled implementation supplies its own `parent` and inherits
+   that obligation.
 
 ## Dependencies
 
