@@ -1474,6 +1474,142 @@ void main() {
       requestsRecovery: requestsRecovery,
     );
 
+    // Every constructor argument whose range matters is asserted here, in one
+    // place. Keeping these beside their topical groups is what let a gap
+    // survive: the catch-up budget's check was tested under 'catch-up budget'
+    // and the dispatch budget's absence was invisible from there, because
+    // nothing in that group was about construction at all. One group makes the
+    // next omission a visible hole in a list rather than a test nobody thought
+    // to write.
+    group('construction validation', () {
+      void expectRejected(String label, TomScheduler Function() build) {
+        expect(
+          build,
+          throwsA(
+            isA<TomScheduleException>().having(
+              (e) => e.key,
+              'key',
+              'schedule.scheduler.$label',
+            ),
+          ),
+        );
+      }
+
+      test('a dispatch budget below one is rejected', () {
+        // Zero claims nothing, every tick, forever: the store's claim loop
+        // breaks on `claimed.length >= limit` before it looks at a single run.
+        // Planning keeps enqueueing, so the queue grows and nothing drains.
+        for (final bad in [0, -5]) {
+          expectRejected(
+            'runs_per_tick',
+            () => schedulerFor(store, clock, maxRunsPerTick: bad),
+          );
+        }
+      });
+
+      test('a catch-up budget below one is rejected', () {
+        for (final bad in [0, -5]) {
+          expectRejected(
+            'catch_up_per_tick',
+            () => schedulerFor(store, clock, maxCatchUpPerTick: bad),
+          );
+        }
+      });
+
+      test('an out-of-range tick jitter is rejected', () {
+        for (final bad in [-0.1, 1.0, 2.0]) {
+          expectRejected(
+            'tick_jitter',
+            () => schedulerFor(store, clock, tickJitter: bad),
+          );
+        }
+      });
+
+      test('a non-positive tick interval is rejected', () {
+        // A zero or negative delay makes the one-shot timer chain re-arm on the
+        // next event-loop turn, so the scheduler hammers the store as fast as it
+        // can be asked to. `tick()` is public, so driving passes by hand — the
+        // one legitimate reason to want no waiting — needs no such setting.
+        for (final bad in [Duration.zero, const Duration(seconds: -1)]) {
+          expectRejected(
+            'tick_interval',
+            () => schedulerFor(store, clock, tickInterval: bad),
+          );
+        }
+      });
+
+      test('a non-positive lease timeout is rejected', () {
+        // The timeout is how long a claim may look unfinished before recovery
+        // takes it back. At zero every run is abandoned the moment it is
+        // claimed, so work is yanked away mid-flight and nothing ever completes.
+        for (final bad in [Duration.zero, const Duration(seconds: -1)]) {
+          expectRejected(
+            'lease_timeout',
+            () => schedulerFor(store, clock, leaseTimeout: bad),
+          );
+        }
+      });
+
+      test('a non-positive lease TTL is rejected', () {
+        // Caught in its own right rather than left to the renew-interval check.
+        // That check only catches a bad TTL when the interval is defaulted from
+        // it; pass a negative interval explicitly and `interval >= ttl` is false,
+        // so a zero TTL sails through into leases that expire on arrival.
+        for (final bad in [Duration.zero, const Duration(seconds: -1)]) {
+          expectRejected(
+            'lease_ttl',
+            () => schedulerFor(store, clock, leaseTtl: bad),
+          );
+        }
+        expectRejected(
+          'lease_ttl',
+          () => schedulerFor(
+            store,
+            clock,
+            leaseTtl: Duration.zero,
+            leaseRenewInterval: const Duration(seconds: -1),
+          ),
+        );
+      });
+
+      test('a renew interval at or above the TTL is rejected', () {
+        for (final bad in [
+          const Duration(minutes: 1),
+          const Duration(minutes: 2),
+        ]) {
+          expectRejected(
+            'renew_interval',
+            () => schedulerFor(
+              store,
+              clock,
+              leaseTtl: const Duration(minutes: 1),
+              leaseRenewInterval: bad,
+            ),
+          );
+        }
+      });
+
+      test('the boundary values are accepted', () {
+        // One run and one catch-up per tick are slow, not wrong; zero jitter is
+        // the exact-period setting the docs recommend for a single node; and a
+        // microsecond is a legal, if absurd, duration. Pinning these keeps a
+        // future tightening from quietly turning "unusual" into "rejected".
+        final scheduler = schedulerFor(
+          store,
+          clock,
+          maxRunsPerTick: 1,
+          maxCatchUpPerTick: 1,
+          tickJitter: 0,
+          tickInterval: const Duration(microseconds: 1),
+          leaseTimeout: const Duration(microseconds: 1),
+          leaseTtl: const Duration(microseconds: 2),
+          leaseRenewInterval: const Duration(microseconds: 1),
+        );
+        addTearDown(scheduler.close);
+        expect(scheduler.maxRunsPerTick, 1);
+      });
+    });
+
     group('registration', () {
       test('register makes the job visible', () {
         final scheduler = schedulerFor(store, clock, alerts: alerts);
@@ -2641,38 +2777,9 @@ void main() {
           reason: 'look-ahead is skipped only when the backlog was clipped',
         );
       });
-
-      test('a budget below one is rejected at construction', () {
-        expect(
-          () => schedulerFor(store, clock, maxCatchUpPerTick: 0),
-          throwsA(
-            isA<TomScheduleException>().having(
-              (e) => e.key,
-              'key',
-              'schedule.scheduler.catch_up_per_tick',
-            ),
-          ),
-        );
-      });
     });
 
     group('tick jitter', () {
-      test('an out-of-range jitter is rejected at construction', () {
-        for (final bad in [-0.1, 1.0, 2.0]) {
-          expect(
-            () => schedulerFor(store, clock, tickJitter: bad),
-            throwsA(
-              isA<TomScheduleException>().having(
-                (e) => e.key,
-                'key',
-                'schedule.scheduler.tick_jitter',
-              ),
-            ),
-            reason: 'jitter $bad',
-          );
-        }
-      });
-
       test(
         'successive intervals differ, and never exceed tickInterval',
         () async {

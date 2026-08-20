@@ -455,6 +455,16 @@ several nodes share one queue:
 The jitter is downward-only, so a tick never happens *later* than
 `tickInterval`: lateness is the property schedules care about.
 
+Every constructor argument whose range matters is checked at construction, each
+under its own `schedule.scheduler.*` code: `tickInterval`, `leaseTimeout` and
+`leaseTtl` must be positive, `leaseRenewInterval` must be shorter than
+`leaseTtl`, `maxRunsPerTick` and `maxCatchUpPerTick` must be at least 1, and
+`tickJitter` must be in `[0, 1)`. Each of these values has a way of failing that
+produces no error and no output — a zero dispatch budget claims nothing on every
+pass while planning keeps filling the queue, a zero lease timeout abandons every
+run the instant it is claimed — so the constructor is the last place the mistake
+is still cheap to see.
+
 Dispatch does **not** await the work it starts — a slow job must not hold up the
 next window of a fast one — so completion, the store write and the lease release
 all land in later turns of the event loop.

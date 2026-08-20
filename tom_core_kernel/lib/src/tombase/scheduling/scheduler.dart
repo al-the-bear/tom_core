@@ -71,7 +71,7 @@ class TomScheduler implements TomClosable {
   /// Where work bodies are executed.
   final TomJobDispatcher dispatcher;
 
-  /// How often [start] runs a [tick].
+  /// How often [start] runs a [tick]. Positive.
   final Duration tickInterval;
 
   /// How long a claim may go unrefreshed before the run is considered
@@ -79,7 +79,8 @@ class TomScheduler implements TomClosable {
   ///
   /// Must comfortably exceed the longest [TomJobDefinition.timeout] in the
   /// registry, or a slow-but-healthy run will be handed to a second attempt
-  /// while the first is still going.
+  /// while the first is still going. Positive — only the lower bound can be
+  /// checked here, since the registry is not populated until [register].
   final Duration leaseTimeout;
 
   /// Identifies this scheduler in [TomJobRun.claimedBy].
@@ -95,6 +96,10 @@ class TomScheduler implements TomClosable {
   final Random random;
 
   /// The most runs claimed in one pass.
+  ///
+  /// At least 1. Zero is not "no limit": the claim stops once it holds this
+  /// many, so a zero budget claims nothing on every pass while planning keeps
+  /// filling the queue behind it.
   final int maxRunsPerTick;
 
   /// The most catch-up runs enqueued in one pass, across **all** jobs.
@@ -136,7 +141,7 @@ class TomScheduler implements TomClosable {
   /// Short is good: it bounds how long a dead node blocks its work. It is safe
   /// to keep it short because [leaseRenewInterval] pushes it forward for as long
   /// as the work is genuinely running, so this does **not** need to exceed the
-  /// slowest job.
+  /// slowest job. Positive, and strictly above [leaseRenewInterval].
   final Duration leaseTtl;
 
   /// How often a held lease is renewed while its work runs.
@@ -220,6 +225,34 @@ class TomScheduler implements TomClosable {
        leaseRenewInterval =
            leaseRenewInterval ??
            Duration(microseconds: leaseTtl.inMicroseconds ~/ 3) {
+    if (tickInterval <= Duration.zero) {
+      throw TomScheduleException(
+        'schedule.scheduler.tick_interval',
+        'tickInterval must be positive, or the timer chain re-arms on the next '
+            'event-loop turn and the scheduler spins against the store; '
+            'got $tickInterval. Drive passes by hand with tick() instead.',
+        parameters: {'tickInterval': tickInterval.toString()},
+      );
+    }
+    if (leaseTimeout <= Duration.zero) {
+      throw TomScheduleException(
+        'schedule.scheduler.lease_timeout',
+        'leaseTimeout must be positive, or every run is abandoned the moment '
+            'it is claimed and no work ever finishes; got $leaseTimeout.',
+        parameters: {'leaseTimeout': leaseTimeout.toString()},
+      );
+    }
+    // Before the renew-interval check below, which would otherwise report a
+    // non-positive TTL as a renew-interval fault whenever the interval was
+    // defaulted from it — naming the symptom rather than the cause.
+    if (leaseTtl <= Duration.zero) {
+      throw TomScheduleException(
+        'schedule.scheduler.lease_ttl',
+        'leaseTtl must be positive, or a coordination lease expires as soon as '
+            'it is acquired; got $leaseTtl.',
+        parameters: {'leaseTtl': leaseTtl.toString()},
+      );
+    }
     if (this.leaseRenewInterval >= leaseTtl) {
       throw TomScheduleException(
         'schedule.scheduler.renew_interval',
@@ -229,6 +262,14 @@ class TomScheduler implements TomClosable {
           'leaseTtl': leaseTtl.toString(),
           'leaseRenewInterval': this.leaseRenewInterval.toString(),
         },
+      );
+    }
+    if (maxRunsPerTick < 1) {
+      throw TomScheduleException(
+        'schedule.scheduler.runs_per_tick',
+        'maxRunsPerTick must be at least 1, or no pass ever claims anything '
+            'while planning keeps filling the queue; got $maxRunsPerTick.',
+        parameters: {'maxRunsPerTick': maxRunsPerTick},
       );
     }
     if (maxCatchUpPerTick < 1) {

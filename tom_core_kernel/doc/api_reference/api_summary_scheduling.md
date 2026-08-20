@@ -880,10 +880,24 @@ TomScheduler({
 
 `ownerId` defaults to a per-process unique string, `clock` to `DateTime.now`,
 `onAlert` to a sink that logs at a severity matching the alert kind, and
-`leaseRenewInterval` to a third of `leaseTtl`. Throws `TomScheduleException` if
-`leaseRenewInterval >= leaseTtl` (the lease would lapse before its first
-renewal), if `maxCatchUpPerTick < 1` (catch-up would never progress), or if
-`tickJitter` is outside `[0, 1)`.
+`leaseRenewInterval` to a third of `leaseTtl`.
+
+Every argument whose range matters is checked at construction, each throwing a
+`TomScheduleException` under its own `schedule.scheduler.*` code:
+
+| Condition | Code | Why it is an error |
+| --------- | ---- | ------------------ |
+| `tickInterval <= 0` | `tick_interval` | The timer chain re-arms on the next event-loop turn and spins against the store. Use `tick()` to drive passes by hand. |
+| `leaseTimeout <= 0` | `lease_timeout` | Every run is abandoned the moment it is claimed, so nothing finishes. |
+| `leaseTtl <= 0` | `lease_ttl` | A coordination lease expires as soon as it is acquired. |
+| `leaseRenewInterval >= leaseTtl` | `renew_interval` | The lease lapses before its first renewal. |
+| `maxRunsPerTick < 1` | `runs_per_tick` | No pass claims anything while planning keeps filling the queue. |
+| `maxCatchUpPerTick < 1` | `catch_up_per_tick` | Catch-up never progresses. |
+| `tickJitter` outside `[0, 1)` | `tick_jitter` | At 1 a tick could be scheduled for immediately. |
+
+`leaseTtl` is checked before `leaseRenewInterval` so that a non-positive TTL is
+reported as itself rather than as the renew-interval fault it also causes when
+the interval is defaulted from it.
 
 #### Static Properties
 
@@ -897,14 +911,14 @@ renewal), if `maxCatchUpPerTick < 1` (catch-up would never progress), or if
 | -------- | ---- | ----------- |
 | `store` | `TomJobStore` | Where runs live. |
 | `dispatcher` | `TomJobDispatcher` | How commands are executed. |
-| `tickInterval` | `Duration` | Nominal gap between passes. |
-| `leaseTimeout` | `Duration` | After which a claim counts as abandoned. |
+| `tickInterval` | `Duration` | Nominal gap between passes. Positive. |
+| `leaseTimeout` | `Duration` | After which a claim counts as abandoned. Positive. |
 | `ownerId` | `String` | This scheduler's identity in the store and the lock. |
 | `clock` | `DateTime Function()` | Injectable time source. |
 | `onAlert` | `TomJobAlertSink` | Where alerts go. |
 | `random` | `Random` | Jitter source. |
-| `maxRunsPerTick` | `int` | Cap on runs dispatched per pass. |
-| `maxCatchUpPerTick` | `int` | Cap on catch-up windows enqueued per pass. |
+| `maxRunsPerTick` | `int` | Cap on runs dispatched per pass. At least 1. |
+| `maxCatchUpPerTick` | `int` | Cap on catch-up windows enqueued per pass. At least 1. |
 | `tickJitter` | `double` | Fraction each interval is randomly shortened by, so a cluster started together does not stay in lockstep. |
 | `lock` | `TomLeaseLock?` | Cluster coordination; `null` for a single node. |
 | `leaseTtl` | `Duration` | Lease lifetime. |
