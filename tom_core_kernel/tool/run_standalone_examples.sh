@@ -28,24 +28,32 @@
 # themselves with ~1800 `assert`s that Dart strips without the flag, so a run
 # without it proves only that nothing threw.
 #
-# Which is also why this script does one thing that is not a run at all: before
-# the sweep it checks that every `dart run …example/…` command the package
-# *documents* — anywhere in the package: a sample header, `README.md`, `doc/`, a
-# dartdoc comment in `lib/`, a sibling script in `tool/` — carries
-# `--enable-asserts`. That this sweep passes the flag says nothing about what a
-# reader does, and a reader does what the documentation says. A header that
-# omits it hands out a command under which the sample prints its usual
-# "✓ … passed" and exits 0 while verifying nothing — a green run that proves
-# nothing, which is worse than a red one. The omission is easy to make and
-# invisible once made: nothing about a flagless command looks wrong, and the run
-# it produces looks right. Which is why it is checked rather than watched for.
+# Which is also why this script does things that are not runs at all. Before the
+# sweep it checks every `dart run …example/…` command the package *documents* —
+# anywhere in the package: a sample header, `README.md`, `doc/`, a dartdoc
+# comment in `lib/`, a sibling script in `tool/` — on two counts:
 #
-# It also checks the reader's side of that: every sample's `main()` must open
+#   a. it carries `--enable-asserts`. That this sweep passes the flag says
+#      nothing about what a reader does, and a reader does what the
+#      documentation says. A header that omits it hands out a command under
+#      which the sample prints its usual "✓ … passed" and exits 0 while
+#      verifying nothing — a green run that proves nothing, which is worse than
+#      a red one. The omission is easy to make and invisible once made: nothing
+#      about a flagless command looks wrong, and the run it produces looks
+#      right. Which is why it is checked rather than watched for.
+#
+#   b. the path it names exists. The sweep below cannot cover this: it finds
+#      samples with `find`, so it runs the files that are there rather than the
+#      paths the documentation claims are there. A command naming a moved,
+#      renamed or mistyped file is invisible to every other check here and
+#      fails immediately for the reader.
+#
+# It also checks the reader's side of (a): every sample's `main()` must open
 # with `requireAsserts()` (or `bootstrapSamples()`, which calls it), so a
 # flagless run refuses instead of reporting a success it did not verify.
 #
-# Exits non-zero if any sample fails, any documented command omits the flag, or
-# any sample would run hollow without it.
+# Exits non-zero if any sample fails, any documented command omits the flag or
+# names a file that does not exist, or any sample would run hollow without it.
 
 set -uo pipefail
 
@@ -152,6 +160,54 @@ if [ ${#unguarded[@]} -gt 0 ]; then
   echo
 fi
 
+# A third way a documented command fails the reader, and the one nothing above
+# catches: the path it names does not exist.
+#
+# The two checks above ask whether a command verifies what it runs. Neither asks
+# whether it runs at all. Nor does the sweep below, despite running every
+# sample: it finds them with `find`, so it exercises the files that *are* there
+# rather than the paths the documentation *claims* are there. A header naming a
+# moved, renamed or mistyped file therefore passes every check in this script
+# and fails for the only person it was written for, with
+# "Error when reading '…': No such file or directory".
+#
+# It is also the failure most likely to arrive unaided. Renaming a sample is a
+# `git mv`; its header is prose in a neighbouring file and stays behind. This
+# package has already been through one such move — `doc/analyzer_analysis.json`
+# still holds dartdoc from before the paths changed, which is why the file-type
+# allowlist above leaves it out.
+#
+# Nothing needs to be run to check this, which is the point: the reader's
+# command is a string, and whether the string names a file is answerable
+# statically, before the 117 VM starts below.
+#
+# Trailing punctuation falls out of the character class rather than needing a
+# strip — these commands are quoted in prose, and `(dart run … .dart)` occurs.
+missing_path=()
+while IFS= read -r hit; do
+  [ -n "$hit" ] || continue
+  loc="${hit%%:dart run*}"
+  # Every `example/….dart` token in the matched command — normally exactly one,
+  # but a line documenting two commands must not have its second one skipped.
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    [ -f "$path" ] && continue
+    missing_path+=("$loc -> $path")
+  done < <(printf '%s\n' "$hit" | grep -oE 'example/[A-Za-z0-9_./-]*\.dart')
+done < <(grep -rno 'dart run [^`]*example/[A-Za-z0-9_./-]*\.dart' \
+  --include='*.dart' --include='*.md' --include='*.sh' \
+  --include='*.yaml' --include='*.txt' \
+  --exclude='run_standalone_examples.sh' \
+  --exclude-dir='.dart_tool' --exclude-dir='build' \
+  --exclude-dir='coverage' --exclude-dir='testlog' \
+  . 2>/dev/null)
+
+if [ ${#missing_path[@]} -gt 0 ]; then
+  echo "Documented commands naming a path that does not exist (${#missing_path[@]}):"
+  printf '    %s\n' "${missing_path[@]}"
+  echo
+fi
+
 echo "Running ${#files[@]} samples standalone (timeout ${TIMEOUT_SECONDS}s each)."
 echo
 
@@ -191,10 +247,10 @@ done
 
 echo
 if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ] && [ ${#flagless[@]} -eq 0 ] \
-  && [ ${#unguarded[@]} -eq 0 ]; then
+  && [ ${#unguarded[@]} -eq 0 ] && [ ${#missing_path[@]} -eq 0 ]; then
   echo "All ${#files[@]} samples ran standalone and exited 0,"
-  echo "every documented command passes --enable-asserts,"
-  echo "and every sample refuses to run without it."
+  echo "every documented command names a file that exists and passes"
+  echo "--enable-asserts, and every sample refuses to run without it."
   exit 0
 fi
 
@@ -215,6 +271,10 @@ fi
 if [ ${#unguarded[@]} -gt 0 ]; then
   echo "No requireAsserts() in main() (${#unguarded[@]}):"
   printf '    %s\n' "${unguarded[@]}"
+fi
+if [ ${#missing_path[@]} -gt 0 ]; then
+  echo "Documented path does not exist (${#missing_path[@]}):"
+  printf '    %s\n' "${missing_path[@]}"
 fi
 echo "Logs: $LOG_DIR"
 exit 1

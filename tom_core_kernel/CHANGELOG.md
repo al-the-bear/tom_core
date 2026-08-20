@@ -272,6 +272,16 @@ anyone who was writing them.
   if a sample stops calling it.
 - The reflection samples `01`–`06` document the command that runs them on their
   own (tcinc197); they were already standalone-runnable but said so nowhere.
+- **`tool/run_standalone_examples.sh` now checks that every documented
+  `dart run` command pointing into `example/` names a file that exists
+  (tcinc261).** The
+  sweep runs every sample, but it finds them with `find` rather than by reading
+  the documentation, so it exercises the files that are there instead of the
+  paths the headers claim are there. A command naming a moved, renamed or
+  mistyped file was therefore invisible to the whole script and failed only for
+  the reader who typed it. This was the shape of the original defect — a header
+  advertising a command the file could not answer — and it is now the third
+  static check, beside the `--enable-asserts` and `requireAsserts()` ones.
 
 ### Documentation
 

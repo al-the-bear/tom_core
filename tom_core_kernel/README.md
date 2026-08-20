@@ -207,13 +207,27 @@ The master runner cannot police the standalone path — it drives samples throug
 their group runners and ends in `exit(0)`, so a sample that has no `main()`,
 never registers reflection, or never terminates is invisible to it.
 [`tool/run_standalone_examples.sh`](tool/run_standalone_examples.sh) is the guard
-for that: it runs every sample by itself under a watchdog and fails on a hang as
-well as on a non-zero exit.
+for that. It runs every sample by itself under a watchdog, failing on a hang as
+well as on a non-zero exit, and before the sweep it checks the commands this
+package *hands out* — anywhere in it, not just in a sample header:
+
+- every documented `dart run` command pointing into `example/` **names a file
+  that exists**, which the sweep itself cannot check, since it finds samples with
+  `find` rather than by reading the documentation;
+- every one of them **passes `--enable-asserts`**, so a reader who copies the
+  command gets a run that verifies something;
+- every sample's `main()` **calls `requireAsserts()`**, so a reader who types the
+  command from memory and omits the flag is refused rather than shown a hollow
+  green.
 
 ```bash
 ./tool/run_standalone_examples.sh              # all of them
 ./tool/run_standalone_examples.sh observable   # one group
 ```
+
+The group argument narrows the *sweep* only — the three checks always cover the
+whole package, because a wrong command is wrong for every reader, not only for
+the group under test.
 
 > **Cross-package sample.** Beyond these per-module examples, the shared
 > [`tom_core_samples/todo_domain`](../tom_core_samples/todo_domain/readme.md)
