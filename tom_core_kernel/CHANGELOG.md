@@ -129,6 +129,24 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomGradedAccess` now appears in the security prose, including in the
+  built-in access-control table it was missing from.** The table listed nine
+  controls; `access_controls.dart` ships ten. The omitted one is the only
+  control that overrides `resolvePrincipalAuthState` rather than the boolean
+  `checkPrincipalAccess`, which makes it the only one able to resolve to
+  `disabled` or `read` — every other row is two-valued and collapses to `full`
+  or `none`. The doc therefore introduced a four-state model and then offered
+  nine controls that between them could produce two of the states. Added: a
+  tenth table row marking it as the composer, a `Graded Access (all four
+  states)` subsection covering the ladder, the `read`→`full`/`disabled`→`read`
+  defaulting, the `showsContent` collapse for binary consumers and the
+  deployment-side grading, and a paragraph under `TomAuthState` naming all
+  three sources of the middle states (graded access, per-resource roles, the
+  meet). The previously undefined mention in the meet section and the
+  `resolvePrincipalAuthState` row of the operand table now link to it, and
+  Best Practice 5 contrasts it with all-or-nothing resource keys. The existing
+  sample `06_graded_access_example.dart` is now linked from the prose.
+
 - **The security documentation now covers per-resource roles, which it had
   never mentioned.** `resource_role_authorization.dart` is exported from the
   barrel, tested, and used throughout `tom_core_server` and the advanced

@@ -232,12 +232,18 @@ var completeAci = definition.completeFromDefinition(userAci);
 | `TomEntitlementAccess` | Requires specific entitlements |
 | `TomResourceKeyAccess` | Requires a resource key, while protection is switched on |
 | `TomCustomAccess` | Delegates to custom handler |
+| `TomGradedAccess` | **Composes** three of the above into all four states — see [Graded Access](#graded-access-all-four-states) |
 
-Each of these states a requirement on the **user**, and each answers about the
-principal you hand it — `checkAccessibility(principal)` means the same thing
-for every row. That is only half of an access decision: the result is met with
-what the *deployment* is granted, so a control the user satisfies can still
-resolve to `none`. See [The Server Principal and the
+The first nine each state a requirement on the **user**, and each answers about
+the principal you hand it — `checkAccessibility(principal)` means the same thing
+for every row. They are also two-valued: the requirement is either met or it is
+not, so they resolve to `full` or `none` and never to the middle two states.
+[`TomGradedAccess`](#graded-access-all-four-states) is the exception, and that is
+the entire purpose of the tenth row.
+
+Stating a requirement on the user is only half of an access decision: the result
+is met with what the *deployment* is granted, so a control the user satisfies can
+still resolve to `none`. See [The Server Principal and the
 Meet](#the-server-principal-and-the-meet) — read it before debugging a refusal
 you cannot explain.
 
@@ -245,6 +251,45 @@ you cannot explain.
 `TomResourceKeyProtection.globalSettingProtectionDefault` is `false` — its
 default — resource keys are not enforced at all and the control grants
 everyone. Turn the switch on before expecting a key to be required.
+
+#### Graded Access (all four states)
+
+Every control above answers yes or no. `TomGradedAccess` answers with a
+*grade*, by composing three of them — one for each state it can grant:
+
+```dart
+final salary = TomGradedAccess(
+  full: const TomRoleAccess(['payroll.admin']),
+  read: const TomRoleAccess(['manager']),
+  disabled: const TomAuthenticatedAccess(),
+);
+
+salary.resolveAuthState(principal);
+// payroll.admin → full · manager → read · other staff → disabled
+// anonymous     → none
+```
+
+Resolution walks the ladder from most to least privileged and stops at the first
+child that grants: `full`, then `read`, then `disabled`, otherwise `none`.
+
+Omitting a tier inherits the one above it — `read` defaults to `full`, and
+`disabled` defaults to `read`. That keeps the ladder monotonic (whoever may edit
+may also read, and whoever may read may also see), so the common case of
+"editable for these people, invisible to everyone else" needs only the `full`
+argument.
+
+Binary consumers are unaffected: `checkAccessibility` is
+`resolveAuthState(...).showsContent` for every control, so a `read` or `full`
+outcome counts as accessible while `disabled` and `none` do not.
+
+`TomGradedAccess` grades the *deployment* side of [the
+meet](#the-server-principal-and-the-meet) too, walking the same ladder against
+the server principal. A deployment licensed for a feature's view tier but not
+its edit tier resolves to `read` there, which caps even an editing user down to
+read.
+
+Runnable:
+[`example/samples/security/06_graded_access_example.dart`](../../example/samples/security/06_graded_access_example.dart).
 
 #### Resource Key Protection
 
@@ -313,6 +358,15 @@ TomAuthState.full.narrow(TomAuthState.read);   // read
 // widen → the LESS restrictive of two states
 TomAuthState.read.widen(TomAuthState.disabled); // read
 ```
+
+**Where the middle two states come from.** The access controls in the previous
+section are two-valued and can only produce `full` or `none`, so a model with
+four states needs something that reaches `disabled` and `read`. Three things do:
+[`TomGradedAccess`](#graded-access-all-four-states), which composes binary
+controls into the full ladder; [per-resource
+roles](#per-resource-roles-the-shipped-adapter), whose registry maps a role name
+onto any of the four; and [the meet](#the-server-principal-and-the-meet), which
+can cap a user's `full` down to a lower state the deployment is licensed for.
 
 ### TomAuthorizable
 
@@ -591,7 +645,7 @@ cap at all.
 | Member | Operand | Notes |
 | ------ | ------- | ----- |
 | `checkPrincipalAccess(principal)` | User | What this control demands of the caller. Subclasses implement this. |
-| `resolvePrincipalAuthState(principal)` | User | The four-state view; defaults to bridging the boolean above onto `full`/`none`. |
+| `resolvePrincipalAuthState(principal)` | User | The four-state view; defaults to bridging the boolean above onto `full`/`none`. [`TomGradedAccess`](#graded-access-all-four-states) is the one shipped control that overrides it. |
 | `resolveServerAuthState(serverPrincipal)` | Deployment | What grade this control's subject is granted to the deployment. Defaults to `TomAuthState.full` — *uncapped*. |
 | `resolveAuthState(principal)` | **Both** | The meet. `@nonVirtual`. |
 | `checkAccessibility(principal)` | **Both** | `resolveAuthState(...).showsContent`. `@nonVirtual`. |
@@ -608,9 +662,9 @@ requirement kind that means the same thing on both sides of the meet: asked
 about a user, "may this person use the feature"; asked about the server
 principal, "is this deployment licensed for the feature at all". Same pattern
 set, other principal — which is why server-level grants needed no new class.
-`TomGradedAccess` composes its children's deployment answers into the same
-ladder, so a feature the deployment only partly licenses can still resolve to
-`read`.
+[`TomGradedAccess`](#graded-access-all-four-states) composes its children's
+deployment answers into the same ladder, so a feature the deployment only partly
+licenses can still resolve to `read`.
 
 **Seeing it happen.** The advanced full-stack sample runs a back-office server
 whose service account holds one grant more than the process is capped for, and
@@ -867,6 +921,11 @@ Use resource keys for PII and sensitive data:
 'phone': tomProtect(user.phone, null, 'user.phone'),
 'salary': tomProtect(user.salary, null, 'user.salary'),
 ```
+
+Resource keys are all-or-nothing: the value is served or it is replaced. When a
+field needs a middle ground — payroll edits it, managers see it, everyone else
+gets a locked placeholder — reach for [`TomGradedAccess`](#graded-access-all-four-states)
+instead and let the resolved state drive the rendering.
 
 ### 6. Drive 2FA from the Challenge, Not from the Type
 
